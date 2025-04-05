@@ -1,0 +1,54 @@
+[package]
+name = "streamweave"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Async runtime and utilities
+tokio = { version = "1.0", features = ["full"] }
+futures = "0.3"
+async-trait = "0.1"
+
+# HTTP related
+hyper = { version = "1.6", features = ["full"] }
+http = "1.0"
+http-body-util = "0.1"
+bytes = "1.0"
+
+# Compression
+async-compression = { version = "0.4", features = ["tokio", "gzip", "deflate"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# JSON Schema validation
+jsonschema = "0.17"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Random number generation
+rand = "0.8"
+
+# Pin utilities
+pin-project = "1.0"
+
+async-stream = "0.3.3"
+hyper-tungstenite = "0.13"
+hyper-util = { version = "0.1", features = ["full"] }
+jsonwebtoken = "9.2"
+mime = "0.3"
+multipart = "0.18"
+num-traits = "0.2.19"
+regex = "1.10"
+serde_urlencoded = "0.7"
+sha2 = "0.10"
+tempfile = "3.10.0"
+thiserror = "1.0.57"
+tokio-stream = { version = "0.1", features = ["io-util"] }
+tokio-tungstenite = "0.21"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
+base64 = "0.22.1"
+tokio-util = "0.7.14"
