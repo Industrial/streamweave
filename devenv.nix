@@ -56,6 +56,14 @@
       entry = "cargo build";
       pass_filenames = false;
     };
+
+    # Test
+    test = {
+      enable = true;
+      name = "cargo-test";
+      description = "Run cargo tests";
+      entry = "cargo test";
+    };
   };
 
   # Automatic commands
