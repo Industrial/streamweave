@@ -145,49 +145,6 @@ fn clean_emails() -> impl Transformer<Row, String, Error> {
 }
 ```
 
-## ⚙️ Supported Components
-
-### Producers
-- `ArrayProducer`
-- `ChannelProducer`
-- `CommandProducer`
-- `EnvVarProducer`
-- `FileProducer`
-- `HashMapProducer`
-- `HashSetProducer`
-- `IntervalProducer`
-- `LineProducer`
-- `RandomNumberProducer`
-- `RangeProducer`
-- `StdinProducer`
-- `StringProducer`
-- `TcpStreamProducer`
-- `TimeoutProducer`
-- `VecProducer`
-
-### Transformers
-- `BatchTransformer`
-- `CsvTransformer`
-- `DeduplicateTransformer`
-- `ErrorRouterTransformer`
-- `FallbackTransformer`
-- `FilterTransformer`
-- `FlatMapTransformer`
-- `JsonTransformer`
-- `LimitTransformer`
-- `LogTransformer`
-- `MapTransformer`
-- `RetryTransformer`
-- `SplitTransformer`
-- `WindowTransformer`
-
-### Consumers
-- `ChannelConsumer`
-- `ConsoleConsumer`
-- `FileConsumer`
-- `StdoutConsumer`
-- `VecConsumer`
-
 ## 🧪 Testing Pipelines
 
 You can unit test sub-pipelines just like functions:
