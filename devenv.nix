@@ -36,5 +36,35 @@
 
     # Formatting tools
     alejandra
+
+    # Added from the code block
+    cargo-watch
   ];
+
+  # Pre-commit hooks
+  pre-commit.hooks = {
+    # Rust checks
+    cargo-check.enable = true;
+    clippy.enable = true;
+    rustfmt.enable = true;
+
+    # Build check
+    build = {
+      enable = true;
+      name = "cargo-build";
+      description = "Check if project builds successfully";
+      entry = "cargo build";
+      pass_filenames = false;
+    };
+  };
+
+  # Automatic commands
+  enterShell = ''
+    echo "🦀 Running initial cargo build..."
+    cargo build
+  '';
+
+  processes = {
+    cargo-watch.exec = "cargo watch -x check -x test";
+  };
 }

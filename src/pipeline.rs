@@ -57,11 +57,6 @@ where
   consumer: Option<C>,
 }
 
-// Create a standalone builder function
-pub fn build() -> PipelineBuilder<Empty> {
-  PipelineBuilder::new()
-}
-
 // Initial builder creation
 impl PipelineBuilder<Empty> {
   fn new() -> Self {
@@ -317,7 +312,7 @@ mod tests {
       collected: Vec::new(),
     };
 
-    let (_, consumer) = build()
+    let (_, consumer) = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
       .consumer(consumer)
@@ -339,7 +334,7 @@ mod tests {
       collected: Vec::new(),
     };
 
-    let (_, consumer) = build()
+    let (_, consumer) = PipelineBuilder::new()
       .producer(producer)
       .transformer(double_transformer)
       .transformer(stringify_transformer)
@@ -359,7 +354,7 @@ mod tests {
       collected: Vec::new(),
     };
 
-    let (_, consumer) = build()
+    let (_, consumer) = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
       .consumer(consumer)
@@ -397,7 +392,7 @@ mod tests {
       collected: Vec::new(),
     };
 
-    let result = build()
+    let result = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
       .consumer(consumer)
