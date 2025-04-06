@@ -104,11 +104,7 @@ mod tests {
     let input = stream::iter(vec![1, 2, 3, 4, 5, 6].into_iter().map(Ok));
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).try_collect().await.unwrap();
 
     assert_eq!(result, vec![2, 4, 6]);
   }
@@ -119,11 +115,7 @@ mod tests {
     let input = stream::iter(Vec::<Result<i32, FilterError>>::new());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).try_collect().await.unwrap();
 
     assert_eq!(result, Vec::<i32>::new());
   }
@@ -134,11 +126,7 @@ mod tests {
     let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter().map(Ok));
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).try_collect().await.unwrap();
 
     assert_eq!(result, vec![1, 2, 3, 4, 5]);
   }
@@ -149,11 +137,7 @@ mod tests {
     let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter().map(Ok));
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).try_collect().await.unwrap();
 
     assert_eq!(result, Vec::<i32>::new());
   }
@@ -173,11 +157,7 @@ mod tests {
     );
     let boxed_input = Box::pin(input);
 
-    let result: Vec<String> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<String> = transformer.transform(boxed_input).try_collect().await.unwrap();
 
     assert_eq!(result, vec!["apple".to_string(), "avocado".to_string()]);
   }
@@ -195,10 +175,7 @@ mod tests {
     ]);
     let boxed_input = Box::pin(input);
 
-    let result = transformer
-      .transform(boxed_input)
-      .try_collect::<Vec<_>>()
-      .await;
+    let result = transformer.transform(boxed_input).try_collect::<Vec<_>>().await;
 
     assert!(result.is_err());
     match result {

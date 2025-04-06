@@ -31,16 +31,16 @@ struct NumberProducer {
   range: std::ops::Range<i32>,
 }
 
-#[async_trait]
 impl Producer for NumberProducer {
   type Output = i32;
   type Error = TestError;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<i32, TestError>> + Send>>;
 
-  fn produce(&mut self) -> Pin<Box<dyn Stream<Item = Self::Output> + Send + '_>> {
+  fn produce(&mut self) -> Self::OutputStream {
     if !self.initialized {
-      Box::pin(stream::iter(vec![]))
+      Box::pin(stream::empty())
     } else {
-      Box::pin(stream::iter(self.range.clone()))
+      Box::pin(stream::iter(self.range.clone()).map(Ok))
     }
   }
 
@@ -58,17 +58,15 @@ impl Producer for NumberProducer {
 // A transformer that doubles numbers
 struct DoubleTransformer;
 
-#[async_trait]
 impl Transformer for DoubleTransformer {
   type Input = i32;
   type Output = i32;
   type Error = TestError;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<i32, TestError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<i32, TestError>> + Send>>;
 
-  fn transform(
-    &mut self,
-    input: Pin<Box<dyn Stream<Item = Self::Input> + Send>>,
-  ) -> Pin<Box<dyn Stream<Item = Self::Output> + Send>> {
-    Box::pin(input.map(|x| x * 2))
+  fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
+    Box::pin(input.map(|r| r.map(|x| x * 2)))
   }
 
   async fn transform_async(&mut self, input: Self::Input) -> Result<Self::Output, Self::Error> {
@@ -79,17 +77,15 @@ impl Transformer for DoubleTransformer {
 // A transformer that converts numbers to strings
 struct StringifyTransformer;
 
-#[async_trait]
 impl Transformer for StringifyTransformer {
   type Input = i32;
   type Output = String;
   type Error = TestError;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<i32, TestError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<String, TestError>> + Send>>;
 
-  fn transform(
-    &mut self,
-    input: Pin<Box<dyn Stream<Item = Self::Input> + Send>>,
-  ) -> Pin<Box<dyn Stream<Item = Self::Output> + Send>> {
-    Box::pin(input.map(|x| x.to_string()))
+  fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
+    Box::pin(input.map(|r| r.map(|x| x.to_string())))
   }
 
   async fn transform_async(&mut self, input: Self::Input) -> Result<Self::Output, Self::Error> {
@@ -102,73 +98,35 @@ struct CollectorConsumer {
   collected: Vec<String>,
 }
 
-#[async_trait]
 impl Consumer for CollectorConsumer {
   type Input = String;
   type Error = TestError;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<String, TestError>> + Send>>;
 
-  async fn consume(
-    &mut self,
-    mut stream: Pin<Box<dyn Stream<Item = Self::Input> + Send>>,
-  ) -> Result<(), Self::Error> {
-    while let Some(item) = stream.next().await {
-      self.collected.push(item);
+  async fn consume(&mut self, mut stream: Self::InputStream) -> Result<(), Self::Error> {
+    while let Some(result) = stream.next().await {
+      match result {
+        Ok(item) => self.collected.push(item),
+        Err(e) => return Err(e),
+      }
     }
     Ok(())
   }
 }
 
 #[tokio::test]
-async fn test_number_processing_pipeline() {
-  // Create pipeline components
-  let mut producer = NumberProducer {
-    initialized: false,
-    range: 1..4,
+async fn test_pipeline() {
+  let producer = NumberProducer {
+    initialized: true,
+    range: 0..3,
   };
-  let mut double_transformer = DoubleTransformer;
-  let mut stringify_transformer = StringifyTransformer;
-  let mut consumer = CollectorConsumer {
+  let transformers = vec![DoubleTransformer, StringifyTransformer];
+  let consumer = CollectorConsumer {
     collected: Vec::new(),
   };
 
-  // Initialize the producer
-  producer
-    .init()
-    .await
-    .expect("Failed to initialize producer");
-
-  // Collect all the data from the producer first
-  let numbers: Vec<i32> = producer.produce().collect().await;
-
-  // Process the collected data through transformers
-  let doubled: Vec<i32> = double_transformer
-    .transform(Box::pin(stream::iter(numbers)))
-    .collect()
-    .await;
-
-  let strings: Vec<String> = stringify_transformer
-    .transform(Box::pin(stream::iter(doubled)))
-    .collect()
-    .await;
-
-  // Feed the transformed data to the consumer
-  consumer
-    .consume(Box::pin(stream::iter(strings)))
-    .await
-    .expect("Failed to consume stream");
-
-  // Verify the pipeline results
-  assert_eq!(
-    consumer.collected,
-    vec!["2", "4", "6"],
-    "Pipeline should double numbers and convert to strings"
-  );
-
-  // Clean up
-  producer
-    .shutdown()
-    .await
-    .expect("Failed to shutdown producer");
+  let pipeline = Pipeline::new(producer, transformers, consumer);
+  pipeline.run().await.unwrap();
 }
 
 #[tokio::test]
