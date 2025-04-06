@@ -33,7 +33,7 @@ All components can be chained together fluently.
 ## 🔄 Example Pipeline
 
 ```rust
-let pipeline = Pipeline::new()
+let pipeline = PipelineBuilder::new()
   .producer(FileProducer::new("input.csv"))
   .transform(CsvTransformer::new())
   .transform(FilterTransformer::new(|row| row["active"] == "true"))
@@ -48,7 +48,7 @@ pipeline.run().await?;
 ### ✅ Pipeline Construction
 
 ```rust
-Pipeline::new()
+PipelineBuilder::new()
   .producer(...)
   .transform(...)
   .transform(...)
@@ -150,7 +150,7 @@ fn clean_emails() -> impl Transformer<Row, String, Error> {
 You can unit test sub-pipelines just like functions:
 
 ```rust
-let test_pipeline = Pipeline::new()
+let test_pipeline = PipelineBuilder::new()
   .producer(VecProducer::new(vec![1, 2, 3]))
   .transform(MapTransformer::new(|x| x * 10))
   .consumer(VecConsumer::new());
