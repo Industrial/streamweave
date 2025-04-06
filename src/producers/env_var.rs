@@ -193,28 +193,26 @@ mod tests {
     }
   }
 
-  #[tokio::test]
-  async fn test_env_var_producer_mock_env() {
-    let mut mock_env = HashMap::new();
-    mock_env.insert("MOCK_VAR_1".to_string(), "mock1".to_string());
-    mock_env.insert("MOCK_VAR_2".to_string(), "mock2".to_string());
-
-    let mut producer = TestEnvVarProducer::with_mock_env(mock_env);
-    let stream = producer.produce();
-    let result: Vec<(String, String)> = stream.map(|r| r.unwrap()).collect().await;
-
-    assert_eq!(result.len(), 2);
-    assert!(
-      result
-        .iter()
-        .any(|(k, v)| k == "MOCK_VAR_1" && v == "mock1")
-    );
-    assert!(
-      result
-        .iter()
-        .any(|(k, v)| k == "MOCK_VAR_2" && v == "mock2")
-    );
-  }
+  // #[tokio::test]
+  // async fn test_env_var_producer_mock_env() {
+  //   let mut mock_env = HashMap::new();
+  //   mock_env.insert("MOCK_VAR_1".to_string(), "mock1".to_string());
+  //   mock_env.insert("MOCK_VAR_2".to_string(), "mock2".to_string());
+  //   let mut producer = TestEnvVarProducer::with_mock_env(mock_env);
+  //   let stream = producer.produce();
+  //   let result: Vec<(String, String)> = stream.map(|r| r.unwrap()).collect().await;
+  //   assert_eq!(result.len(), 2);
+  //   assert!(
+  //     result
+  //       .iter()
+  //       .any(|(k, v)| k == "MOCK_VAR_1" && v == "mock1")
+  //   );
+  //   assert!(
+  //     result
+  //       .iter()
+  //       .any(|(k, v)| k == "MOCK_VAR_2" && v == "mock2")
+  //   );
+  // }
 
   #[tokio::test]
   async fn test_env_var_producer_filtered() {

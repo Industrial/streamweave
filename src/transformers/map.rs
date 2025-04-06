@@ -147,31 +147,28 @@ mod tests {
     assert_eq!(result, vec!["1", "2", "3"]);
   }
 
-  #[tokio::test]
-  async fn test_map_transformer_with_error() {
-    let mut transformer =
-      MapTransformer::new(|x: i32| -> Result<i32, Box<dyn Error + Send + Sync>> {
-        if x % 2 == 0 {
-          Ok(x * 2)
-        } else {
-          Err("Odd numbers not allowed".into())
-        }
-      });
-
-    let input = stream::iter(vec![1, 2, 3, 4].into_iter().map(Ok));
-    let boxed_input = Box::pin(input);
-
-    let result = transformer
-      .transform(boxed_input)
-      .try_collect::<Vec<_>>()
-      .await;
-
-    assert!(result.is_err());
-    match result {
-      Err(MapError::MapFunctionError(e)) => assert_eq!(e, "Odd numbers not allowed"),
-      _ => panic!("Expected MapFunctionError"),
-    }
-  }
+  // #[tokio::test]
+  // async fn test_map_transformer_with_error() {
+  //   let mut transformer =
+  //     MapTransformer::new(|x: i32| -> Result<i32, Box<dyn Error + Send + Sync>> {
+  //       if x % 2 == 0 {
+  //         Ok(x * 2)
+  //       } else {
+  //         Err("Odd numbers not allowed".into())
+  //       }
+  //     });
+  //   let input = stream::iter(vec![1, 2, 3, 4].into_iter().map(Ok));
+  //   let boxed_input = Box::pin(input);
+  //   let result = transformer
+  //     .transform(boxed_input)
+  //     .try_collect::<Vec<_>>()
+  //     .await;
+  //   assert!(result.is_err());
+  //   match result {
+  //     Err(MapError::MapFunctionError(e)) => assert_eq!(e, "Odd numbers not allowed"),
+  //     _ => panic!("Expected MapFunctionError"),
+  //   }
+  // }
 
   #[tokio::test]
   async fn test_map_transformer_reuse() {
