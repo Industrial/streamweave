@@ -10,13 +10,22 @@ browser-specific stream primitives.
 
 ## ✨ Key Features
 
-- Pure Rust API — zero-cost abstractions
+### ✅ Implemented
+
+- Pure Rust API with zero-cost abstractions
 - Full async/await compatibility via `futures::Stream`
-- Fluent pipeline-style API
-- Lightweight error handling & routing
-- Optional conditional logic and fan-in/fan-out support
+- Fluent pipeline-style API with type-safe builder pattern
+- Basic error propagation
 - Code-as-configuration — no external DSLs
-- WASM compatible with minimal footprint
+- Comprehensive test infrastructure
+
+### 🚧 Planned
+
+- Lightweight error handling & routing strategies
+- Optional conditional logic and fan-in/fan-out support
+- WASM compatibility with minimal footprint
+- Common transformers and utilities
+- Reusable pipeline components
 
 ## 📦 Core Concepts
 
@@ -32,137 +41,141 @@ All components can be chained together fluently.
 
 ## 🔄 Example Pipeline
 
+### ✅ Currently Possible
+
+```rust
+// Basic pipeline with custom components
+let pipeline = PipelineBuilder::new()
+    .producer(producer)
+    .transform(transformer)
+    .consumer(consumer);
+
+pipeline.run().await?;
+```
+
+### 🚧 Planned Features
+
 ```rust
 let pipeline = PipelineBuilder::new()
-  .producer(FileProducer::new("input.csv"))
-  .transform(CsvTransformer::new())
-  .transform(FilterTransformer::new(|row| row["active"] == "true"))
-  .transform(MapTransformer::new(|row| row["email"].to_lowercase()))
-  .consumer(FileConsumer::new("output.csv"));
+    .producer(FileProducer::new("input.csv"))
+    .transform(CsvTransformer::new())
+    .transform(FilterTransformer::new(|row| row["active"] == "true"))
+    .transform(MapTransformer::new(|row| row["email"].to_lowercase()))
+    .consumer(FileConsumer::new("output.csv"));
 
 pipeline.run().await?;
 ```
 
 ## 🧱 API Overview
 
-### ✅ Pipeline Construction
+### ✅ Implemented Pipeline Construction
 
 ```rust
 PipelineBuilder::new()
-  .producer(...)
-  .transform(...)
-  .transform(...)
-  .consumer(...)
-  .run()
+    .producer(...)    // Add data source
+    .transform(...)   // Add transformation
+    .consumer(...)    // Add data sink
+    .run()           // Execute pipeline
 ```
 
-- Each method adds a stage to the pipeline.
-- `.run()` executes the pipeline and awaits completion.
+### 🚧 Planned Features
 
-### 🔁 Transformers
-
-Transformers support common stream combinators:
-
-```rust
-MapTransformer::new(|x| x * 2)
-FilterTransformer::new(|x| x > 10)
-FlatMapTransformer::new(|x| vec![x, x + 1])
-```
-
-They can be chained via `.transform(...)`.
-
-### ⚠️ Error Handling
-
-Each stream stage uses `Result<T, E>` as its item type.
-
-#### Strategies:
-- **Propagate errors** by default.
-- **Suppress or redirect errors** with `.on_error(...)`.
+#### Error Handling
 
 ```rust
 MapTransformer::new(parse)
-  .on_error(ErrorStrategy::Ignore)
+    .on_error(ErrorStrategy::Ignore)
 
 MapTransformer::new(parse)
-  .on_error(ErrorStrategy::ReplaceWith(Default::default()))
+    .on_error(ErrorStrategy::ReplaceWith(Default::default()))
 
 MapTransformer::new(parse)
-  .on_error(ErrorStrategy::RedirectTo(error_sink()))
+    .on_error(ErrorStrategy::RedirectTo(error_sink()))
 ```
 
-### 🤔 Conditional Logic
-
-Pipeline branches can be conditionally included at runtime:
+#### Conditional Logic
 
 ```rust
 if config.enable_filter {
-  graph = graph.transform(FilterTransformer::new(...));
+    graph = graph.transform(FilterTransformer::new(...));
 }
-```
 
-Or using `.transform_when()`:
-
-```rust
+// Or using planned .transform_when():
 graph.transform_when(
-  || config.enable_filter,
-  FilterTransformer::new(...)
+    || config.enable_filter,
+    FilterTransformer::new(...)
 )
 ```
 
-### 🔀 Fan-Out (Broadcast)
-
-Duplicate a stream to multiple branches:
+#### Fan-Out (Broadcast)
 
 ```rust
 graph
-  .producer(SensorProducer::new())
-  .tee()
-  .branch(|b| {
-    b.transform(LogTransformer::new()).consumer(LogConsumer::new());
-    b.transform(MetricsTransformer::new()).consumer(MetricsConsumer::new());
-  });
+    .producer(SensorProducer::new())
+    .tee()
+    .branch(|b| {
+        b.transform(LogTransformer::new()).consumer(LogConsumer::new());
+        b.transform(MetricsTransformer::new()).consumer(MetricsConsumer::new());
+    });
 ```
 
-### 🔁 Fan-In (Merge)
-
-Combine multiple streams into one:
+#### Fan-In (Merge)
 
 ```rust
 graph
-  .merge(vec![stream1, stream2])
-  .transform(DeduplicateTransformer::new())
-  .consumer(OutputConsumer::new());
+    .merge(vec![stream1, stream2])
+    .transform(DeduplicateTransformer::new())
+    .consumer(OutputConsumer::new());
 ```
 
-## 🛠️ Composable Subgraphs
-
-You can define reusable sub-pipelines as functions:
+#### Composable Subgraphs
 
 ```rust
 fn clean_emails() -> impl Transformer<Row, String, Error> {
-  FilterTransformer::new(|row| row["active"] == "true")
-    .chain(MapTransformer::new(|row| row["email"].to_lowercase()))
+    FilterTransformer::new(|row| row["active"] == "true")
+        .chain(MapTransformer::new(|row| row["email"].to_lowercase()))
 }
 ```
 
 ## 🧪 Testing Pipelines
 
-You can unit test sub-pipelines just like functions:
+### ✅ Implemented
+
+The framework includes comprehensive test infrastructure for unit testing pipelines and components:
+
+```rust
+// Example from the test suite
+let producer = NumberProducer { numbers: vec![1, 2, 3] };
+let transformer = StringifyTransformer;
+let consumer = CollectConsumer { collected: Vec::new() };
+
+let (_, consumer) = PipelineBuilder::new()
+    .producer(producer)
+    .transformer(transformer)
+    .consumer(consumer)
+    .run()
+    .await
+    .unwrap();
+
+assert_eq!(consumer.collected, vec!["1", "2", "3"]);
+```
+
+### 🚧 Planned Testing Features
 
 ```rust
 let test_pipeline = PipelineBuilder::new()
-  .producer(VecProducer::new(vec![1, 2, 3]))
-  .transform(MapTransformer::new(|x| x * 10))
-  .consumer(VecConsumer::new());
+    .producer(VecProducer::new(vec![1, 2, 3]))
+    .transform(MapTransformer::new(|x| x * 10))
+    .consumer(VecConsumer::new());
 
 assert_eq!(test_pipeline.run().await?, vec![10, 20, 30]);
 ```
 
 ## 🌐 WASM Support
 
-- StreamWeave compiles cleanly to WebAssembly (WASM).
-- Use it for streaming pipelines in the browser or server.
-- Works with `wasm-bindgen`, `wasm-pack`, or `wasmer`.
+🚧 **Planned**: StreamWeave is designed to compile cleanly to WebAssembly (WASM).
+- Use it for streaming pipelines in the browser or server
+- Works with `wasm-bindgen`, `wasm-pack`, or `wasmer`
 
 ## 📚 Philosophy
 
@@ -175,4 +188,10 @@ StreamWeave is built on the belief that:
 ## 🧠 Contributions Welcome
 
 StreamWeave is early-stage. Contributions, feedback, and experimentation are
-very welcome.
+very welcome. Current focus areas:
+
+1. Implementing error handling strategies
+2. Adding common transformers (Map, Filter, FlatMap)
+3. Implementing fan-out/fan-in operations
+4. Adding WASM examples and documentation
+5. Creating common producers/consumers (File, Vec, etc.)
