@@ -68,13 +68,18 @@ where
   where
     U: Transformer<Input = P::Output>,
     U::InputStream: From<P::OutputStream>,
+    U::InputStream: From<T::OutputStream>,
   {
-    if self.producer_stream.is_none() {
-      panic!("Producer stream is not set");
+    if self.producer_stream.is_none() && self.transformer_stream.is_none() {
+      panic!("No input stream available");
     }
 
-    let producer_stream = self.producer_stream.unwrap();
-    let transformer_stream = transformer.transform(producer_stream.into());
+    let transformer_stream = if self.transformer_stream.is_some() {
+      transformer.transform(self.transformer_stream.unwrap().into())
+    } else {
+      transformer.transform(self.producer_stream.unwrap().into())
+    };
+
     Pipeline {
       producer_stream: None,
       transformer_stream: Some(transformer_stream),
@@ -120,5 +125,16 @@ where
       .consume(self.transformer_stream.unwrap().into())
       .await
       .map_err(PipelineError::new)
+  }
+}
+
+impl<P, T, C> Default for Pipeline<P, T, C>
+where
+  P: Producer,
+  T: Transformer,
+  C: Consumer,
+{
+  fn default() -> Self {
+    Self::new()
   }
 }
