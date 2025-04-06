@@ -1,4 +1,11 @@
-use crate::traits::{error::Error, output::Output, producer::Producer};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  error::Error,
+  output::Output,
+  producer::{Producer, ProducerConfig},
+};
 use futures::{Stream, StreamExt};
 use num_traits::Num;
 use std::error::Error as StdError;
@@ -9,6 +16,7 @@ pub struct RangeProducer<T> {
   start: T,
   end: T,
   step: T,
+  config: ProducerConfig,
 }
 
 impl<T> RangeProducer<T>
@@ -16,30 +24,30 @@ where
   T: Num + Copy + Send + PartialOrd + 'static,
 {
   pub fn new(start: T, end: T, step: T) -> Self {
-    Self { start, end, step }
-  }
-}
-
-#[derive(Debug)]
-pub enum RangeError {
-  InvalidRange,
-}
-
-impl fmt::Display for RangeError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      RangeError::InvalidRange => write!(f, "Invalid range specified"),
+    Self {
+      start,
+      end,
+      step,
+      config: ProducerConfig::default(),
     }
   }
-}
 
-impl StdError for RangeError {}
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
+  }
+
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
+  }
+}
 
 impl<T> Error for RangeProducer<T>
 where
   T: Num + Copy + Send + Sync + PartialOrd + 'static,
 {
-  type Error = RangeError;
+  type Error = StreamError;
 }
 
 impl<T> Output for RangeProducer<T>
@@ -47,7 +55,7 @@ where
   T: Num + Copy + Send + Sync + PartialOrd + 'static,
 {
   type Output = T;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<T, RangeError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<T, StreamError>> + Send>>;
 }
 
 impl<T> Producer for RangeProducer<T>
@@ -57,7 +65,14 @@ where
   fn produce(&mut self) -> Self::OutputStream {
     if self.start >= self.end || self.step <= T::zero() {
       return Box::pin(futures::stream::once(async {
-        Err(RangeError::InvalidRange)
+        Err(StreamError::new(
+          Box::new(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "Invalid range specified",
+          )),
+          self.create_error_context(None),
+          self.component_info(),
+        ))
       }));
     }
 
@@ -75,6 +90,41 @@ where
     });
 
     Box::pin(stream)
+  }
+
+  fn config(&self) -> &ProducerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut ProducerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: &StreamError) -> ErrorAction {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorAction::Stop,
+      ErrorStrategy::Skip => ErrorAction::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      _ => ErrorAction::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Producer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "range_producer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -116,7 +166,7 @@ mod tests {
     let mut producer = RangeProducer::new(5, 0, 1);
     let stream = producer.produce();
     let result = stream.collect::<Vec<_>>().await;
-    assert!(matches!(result[0], Err(RangeError::InvalidRange)));
+    assert!(result[0].is_err());
   }
 
   #[tokio::test]
@@ -124,11 +174,33 @@ mod tests {
     let mut producer = RangeProducer::new(0, 5, 0);
     let stream = producer.produce();
     let result = stream.collect::<Vec<_>>().await;
-    assert!(matches!(result[0], Err(RangeError::InvalidRange)));
+    assert!(result[0].is_err());
 
     let mut producer = RangeProducer::new(0, 5, -1);
     let stream = producer.produce();
     let result = stream.collect::<Vec<_>>().await;
-    assert!(matches!(result[0], Err(RangeError::InvalidRange)));
+    assert!(result[0].is_err());
+  }
+
+  #[tokio::test]
+  async fn test_error_handling_strategies() {
+    let mut producer = RangeProducer::new(0, 5, 1)
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_producer".to_string());
+
+    let config = producer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_producer".to_string()));
+
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(
+        std::io::ErrorKind::InvalidInput,
+        "test error",
+      )),
+      producer.create_error_context(None),
+      producer.component_info(),
+    );
+
+    assert_eq!(producer.handle_error(&error), ErrorAction::Skip);
   }
 }

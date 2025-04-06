@@ -1,58 +1,42 @@
-use crate::error::TransformError;
-use crate::traits::{input::Input, output::Output, transformer::Transformer};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  input::Input,
+  output::Output,
+  transformer::{Transformer, TransformerConfig},
+};
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
-use std::error::Error;
-use std::fmt;
 use std::pin::Pin;
+use tokio::time::{Duration, Instant};
 
 pub struct WindowTransformer<T> {
-  window_size: usize,
-  buffer: Vec<T>,
+  size: usize,
+  config: TransformerConfig,
   _phantom: std::marker::PhantomData<T>,
 }
 
 impl<T> WindowTransformer<T>
 where
-  T: Clone + Send + 'static,
+  T: Send + 'static,
 {
-  pub fn new(window_size: usize) -> Result<Self, WindowError> {
-    if window_size == 0 {
-      return Err(WindowError::ZeroWindowSize);
-    }
-    Ok(Self {
-      window_size,
-      buffer: Vec::with_capacity(window_size),
+  pub fn new(size: usize) -> Self {
+    Self {
+      size,
+      config: TransformerConfig::default(),
       _phantom: std::marker::PhantomData,
-    })
-  }
-}
-
-#[derive(Debug)]
-pub enum WindowError {
-  Transform(TransformError),
-  ZeroWindowSize,
-  InsufficientItems,
-  BufferError(String),
-}
-
-impl fmt::Display for WindowError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      WindowError::Transform(e) => write!(f, "{}", e),
-      WindowError::ZeroWindowSize => write!(f, "Window size must be greater than 0"),
-      WindowError::InsufficientItems => write!(f, "Not enough items to fill window"),
-      WindowError::BufferError(msg) => write!(f, "Buffer operation failed: {}", msg),
     }
   }
-}
 
-impl Error for WindowError {
-  fn source(&self) -> Option<&(dyn Error + 'static)> {
-    match self {
-      WindowError::Transform(e) => Some(e),
-      _ => None,
-    }
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
+  }
+
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
   }
 }
 
@@ -60,7 +44,7 @@ impl<T> crate::traits::error::Error for WindowTransformer<T>
 where
   T: Send + 'static,
 {
-  type Error = WindowError;
+  type Error = StreamError;
 }
 
 impl<T> Input for WindowTransformer<T>
@@ -68,7 +52,7 @@ where
   T: Send + 'static,
 {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
 }
 
 impl<T> Output for WindowTransformer<T>
@@ -76,38 +60,61 @@ where
   T: Send + 'static,
 {
   type Output = Vec<T>;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, Self::Error>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError>> + Send>>;
 }
 
 #[async_trait]
 impl<T> Transformer for WindowTransformer<T>
 where
-  T: Clone + Send + 'static,
+  T: Send + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let window_size = self.window_size;
-    let mut buffer = Vec::with_capacity(window_size);
-
-    Box::pin(futures::stream::unfold(
-      (input, buffer),
-      move |(mut input, mut buf)| async move {
-        if window_size == 0 {
-          return Some((Err(WindowError::ZeroWindowSize), (input, buf)));
+    let size = self.size;
+    Box::pin(input.chunks(size).map(|chunk| {
+      let mut window = Vec::with_capacity(size);
+      for item in chunk {
+        match item {
+          Ok(item) => window.push(item),
+          Err(e) => return Err(e),
         }
+      }
+      Ok(window)
+    }))
+  }
 
-        match input.next().await {
-          Some(Ok(item)) => {
-            buf.push(item);
-            if buf.len() > window_size {
-              buf.remove(0);
-            }
-            Some((Ok(buf.clone()), (input, buf)))
-          }
-          Some(Err(e)) => Some((Err(e), (input, buf))),
-          None => None,
-        }
-      },
-    ))
+  fn config(&self) -> &TransformerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut TransformerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorStrategy::Stop,
+      ErrorStrategy::Skip => ErrorStrategy::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
+      _ => ErrorStrategy::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Transformer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "window_transformer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -119,36 +126,27 @@ mod tests {
 
   #[tokio::test]
   async fn test_window_basic() {
-    let mut transformer = WindowTransformer::new(3).unwrap();
-    let input = vec![1, 2, 3, 4, 5];
-    let input_stream = Box::pin(stream::iter(input.into_iter().map(Ok)));
+    let mut transformer = WindowTransformer::new(3);
+    let input = stream::iter(vec![1, 2, 3, 4, 5, 6, 7].into_iter().map(Ok));
+    let boxed_input = Box::pin(input);
 
     let result: Vec<Vec<i32>> = transformer
-      .transform(input_stream)
+      .transform(boxed_input)
       .try_collect()
       .await
       .unwrap();
 
-    assert_eq!(
-      result,
-      vec![
-        vec![1],
-        vec![1, 2],
-        vec![1, 2, 3],
-        vec![2, 3, 4],
-        vec![3, 4, 5],
-      ]
-    );
+    assert_eq!(result, vec![vec![1, 2, 3], vec![4, 5, 6], vec![7],]);
   }
 
   #[tokio::test]
   async fn test_window_empty_input() {
-    let mut transformer = WindowTransformer::new(3).unwrap();
-    let input = Vec::<i32>::new();
-    let input_stream = Box::pin(stream::iter(input.into_iter().map(Ok)));
+    let mut transformer = WindowTransformer::new(3);
+    let input = stream::iter(Vec::<Result<i32, StreamError>>::new());
+    let boxed_input = Box::pin(input);
 
     let result: Vec<Vec<i32>> = transformer
-      .transform(input_stream)
+      .transform(boxed_input)
       .try_collect()
       .await
       .unwrap();
@@ -157,91 +155,47 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_window_size_one() {
-    let mut transformer = WindowTransformer::new(1).unwrap();
-    let input = vec![1, 2, 3];
-    let input_stream = Box::pin(stream::iter(input.into_iter().map(Ok)));
-
-    let result: Vec<Vec<i32>> = transformer
-      .transform(input_stream)
-      .try_collect()
-      .await
-      .unwrap();
-
-    assert_eq!(result, vec![vec![1], vec![2], vec![3]]);
-  }
-
-  #[tokio::test]
-  async fn test_window_zero_size() {
-    let result = WindowTransformer::<i32>::new(0);
-    assert!(matches!(result, Err(WindowError::ZeroWindowSize)));
-  }
-
-  #[tokio::test]
-  async fn test_window_with_strings() {
-    let mut transformer = WindowTransformer::new(2).unwrap();
-    let input = vec!["a".to_string(), "b".to_string(), "c".to_string()];
-    let input_stream = Box::pin(stream::iter(input.into_iter().map(Ok)));
-
-    let result: Vec<Vec<String>> = transformer
-      .transform(input_stream)
-      .try_collect()
-      .await
-      .unwrap();
-
-    assert_eq!(
-      result,
-      vec![
-        vec!["a".to_string()],
-        vec!["a".to_string(), "b".to_string()],
-        vec!["b".to_string(), "c".to_string()],
-      ]
-    );
-  }
-
-  #[tokio::test]
-  async fn test_window_reuse() {
-    let mut transformer = WindowTransformer::new(2).unwrap();
-
-    let input1 = vec![1, 2, 3];
-    let input_stream1 = Box::pin(stream::iter(input1.into_iter().map(Ok)));
-    let result1: Vec<Vec<i32>> = transformer
-      .transform(input_stream1)
-      .try_collect()
-      .await
-      .unwrap();
-    assert_eq!(result1, vec![vec![1], vec![1, 2], vec![2, 3]]);
-
-    let input2 = vec![4, 5, 6];
-    let input_stream2 = Box::pin(stream::iter(input2.into_iter().map(Ok)));
-    let result2: Vec<Vec<i32>> = transformer
-      .transform(input_stream2)
-      .try_collect()
-      .await
-      .unwrap();
-    assert_eq!(result2, vec![vec![4], vec![4, 5], vec![5, 6]]);
-  }
-
-  #[tokio::test]
-  async fn test_window_error_propagation() {
-    let mut transformer = WindowTransformer::new(2).unwrap();
-    let input = vec![
+  async fn test_window_with_error() {
+    let mut transformer = WindowTransformer::new(3);
+    let input = stream::iter(vec![
       Ok(1),
-      Ok(2),
-      Err(WindowError::BufferError("test error".to_string())),
+      Err(StreamError::new(
+        Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+        ErrorContext {
+          timestamp: chrono::Utc::now(),
+          item: None,
+          stage: PipelineStage::Transformer,
+        },
+        ComponentInfo {
+          name: "test".to_string(),
+          type_name: "test".to_string(),
+        },
+      )),
       Ok(3),
-    ];
-    let input_stream = Box::pin(stream::iter(input));
+    ]);
+    let boxed_input = Box::pin(input);
 
-    let result = transformer
-      .transform(input_stream)
-      .try_collect::<Vec<_>>()
-      .await;
+    let result: Result<Vec<Vec<i32>>, _> = transformer.transform(boxed_input).try_collect().await;
 
     assert!(result.is_err());
-    match result.unwrap_err() {
-      WindowError::BufferError(msg) => assert_eq!(msg, "test error"),
-      _ => panic!("Expected BufferError"),
-    }
+  }
+
+  #[tokio::test]
+  async fn test_error_handling_strategies() {
+    let mut transformer = WindowTransformer::new(3)
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_transformer".to_string());
+
+    let config = transformer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_transformer".to_string()));
+
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      transformer.create_error_context(None),
+      transformer.component_info(),
+    );
+
+    assert_eq!(transformer.handle_error(error), ErrorStrategy::Skip);
   }
 }

@@ -1,14 +1,19 @@
-use crate::error::TransformError;
-use crate::traits::{input::Input, output::Output, transformer::Transformer};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  input::Input,
+  output::Output,
+  transformer::{Transformer, TransformerConfig},
+};
 use async_trait::async_trait;
 use futures::TryStreamExt;
 use futures::{Stream, StreamExt};
-use std::error::Error;
-use std::fmt;
 use std::pin::Pin;
 
 pub struct BatchTransformer<T> {
   size: usize,
+  config: TransformerConfig,
   _phantom: std::marker::PhantomData<T>,
 }
 
@@ -16,53 +21,54 @@ impl<T> BatchTransformer<T>
 where
   T: Send + 'static,
 {
-  pub fn new(size: usize) -> Result<Self, BatchError> {
+  pub fn new(size: usize) -> Result<Self, StreamError> {
     if size == 0 {
-      return Err(BatchError::BatchSizeZero);
+      return Err(StreamError::new(
+        Box::new(std::io::Error::new(
+          std::io::ErrorKind::InvalidInput,
+          "Batch size must be greater than zero",
+        )),
+        ErrorContext {
+          timestamp: chrono::Utc::now(),
+          item: None,
+          stage: PipelineStage::Transformer,
+        },
+        ComponentInfo {
+          name: "batch_transformer".to_string(),
+          type_name: std::any::type_name::<Self>().to_string(),
+        },
+      ));
     }
     Ok(Self {
       size,
+      config: TransformerConfig::default(),
       _phantom: std::marker::PhantomData,
     })
   }
-}
 
-#[derive(Debug)]
-pub enum BatchError {
-  Transform(TransformError),
-  BatchSizeZero,
-}
-
-impl fmt::Display for BatchError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      BatchError::Transform(e) => write!(f, "{}", e),
-      BatchError::BatchSizeZero => write!(f, "Batch size must be greater than zero"),
-    }
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
   }
-}
 
-impl Error for BatchError {
-  fn source(&self) -> Option<&(dyn Error + 'static)> {
-    match self {
-      BatchError::Transform(e) => Some(e),
-      _ => None,
-    }
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
   }
 }
 
 impl<T: Send + 'static> crate::traits::error::Error for BatchTransformer<T> {
-  type Error = BatchError;
+  type Error = StreamError;
 }
 
 impl<T: Send + 'static> Input for BatchTransformer<T> {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
 }
 
 impl<T: Send + 'static> Output for BatchTransformer<T> {
   type Output = Vec<T>;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, Self::Error>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError>> + Send>>;
 }
 
 #[async_trait]
@@ -88,6 +94,41 @@ impl<T: Send + 'static> Transformer for BatchTransformer<T> {
     };
 
     Box::pin(stream)
+  }
+
+  fn config(&self) -> &TransformerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut TransformerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorStrategy::Stop,
+      ErrorStrategy::Skip => ErrorStrategy::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
+      _ => ErrorStrategy::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Transformer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "batch_transformer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -129,7 +170,7 @@ mod tests {
   #[tokio::test]
   async fn test_batch_empty_input() {
     let mut transformer = BatchTransformer::new(2).unwrap();
-    let input = stream::iter(Vec::<Result<i32, BatchError>>::new());
+    let input = stream::iter(Vec::<Result<i32, StreamError>>::new());
     let boxed_input = Box::pin(input);
 
     let result: Vec<Vec<i32>> = transformer
@@ -172,27 +213,22 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_error_propagation() {
-    let mut transformer = BatchTransformer::new(2).unwrap();
-    let input = stream::iter(vec![
-      Ok(1),
-      Ok(2),
-      Err(BatchError::Transform(TransformError::Custom(
-        "test error".to_string(),
-      ))),
-      Ok(4),
-    ]);
-    let boxed_input = Box::pin(input);
+  async fn test_error_handling_strategies() {
+    let mut transformer = BatchTransformer::new(2)
+      .unwrap()
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_transformer".to_string());
 
-    let result = transformer
-      .transform(boxed_input)
-      .try_collect::<Vec<_>>()
-      .await;
+    let config = transformer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_transformer".to_string()));
 
-    assert!(result.is_err());
-    match result {
-      Err(BatchError::Transform(e)) => assert_eq!(e.to_string(), "test error"),
-      _ => panic!("Expected TransformError"),
-    }
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      transformer.create_error_context(None),
+      transformer.component_info(),
+    );
+
+    assert_eq!(transformer.handle_error(error), ErrorStrategy::Skip);
   }
 }

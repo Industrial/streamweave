@@ -1,32 +1,20 @@
-use crate::traits::{error::Error, output::Output, producer::Producer};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  error::Error,
+  output::Output,
+  producer::{Producer, ProducerConfig},
+};
 use futures::{Stream, stream};
-use std::error::Error as StdError;
-use std::fmt;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::time::Duration;
-
-#[derive(Debug)]
-pub enum TimeoutError {
-  StreamError(String),
-}
-
-impl fmt::Display for TimeoutError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      TimeoutError::StreamError(msg) => write!(f, "Stream error: {}", msg),
-    }
-  }
-}
-
-impl StdError for TimeoutError {
-  fn source(&self) -> Option<&(dyn StdError + 'static)> {
-    None
-  }
-}
 
 pub struct TimeoutProducer {
   delay: Duration,
   message: String,
+  config: ProducerConfig,
 }
 
 impl TimeoutProducer {
@@ -34,17 +22,28 @@ impl TimeoutProducer {
     Self {
       delay,
       message: message.into(),
+      config: ProducerConfig::default(),
     }
+  }
+
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
+  }
+
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
   }
 }
 
 impl Error for TimeoutProducer {
-  type Error = TimeoutError;
+  type Error = StreamError;
 }
 
 impl Output for TimeoutProducer {
   type Output = String;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, TimeoutError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError>> + Send>>;
 }
 
 impl Producer for TimeoutProducer {
@@ -56,6 +55,44 @@ impl Producer for TimeoutProducer {
       tokio::time::sleep(delay).await;
       Ok(message)
     }))
+  }
+
+  fn config(&self) -> &ProducerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut ProducerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorStrategy::Stop,
+      ErrorStrategy::Skip => ErrorStrategy::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
+      _ => ErrorStrategy::Stop,
+    }
+  }
+
+  fn create_error_context(
+    &self,
+    item: Option<Arc<dyn std::any::Any + Send + Sync>>,
+  ) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Producer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "timeout_producer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -118,5 +155,24 @@ mod tests {
     let mut producer = TimeoutProducer::new(Duration::from_millis(10), "message 2");
     let result2: Vec<String> = producer.produce().map(|r| r.unwrap()).collect().await;
     assert_eq!(result2, vec!["message 2"]);
+  }
+
+  #[tokio::test]
+  async fn test_error_handling_strategies() {
+    let mut producer = TimeoutProducer::new(Duration::from_millis(100), "test message")
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_producer".to_string());
+
+    let config = producer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_producer".to_string()));
+
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      producer.create_error_context(None),
+      producer.component_info(),
+    );
+
+    assert_eq!(producer.handle_error(error), ErrorStrategy::Skip);
   }
 }

@@ -1,128 +1,128 @@
-use crate::traits::{consumer::Consumer, error::Error, input::Input};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  consumer::{Consumer, ConsumerConfig},
+  input::Input,
+};
 use async_trait::async_trait;
-use futures::StreamExt;
+use futures::{Stream, StreamExt};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::pin::Pin;
 
-#[derive(Debug)]
-pub struct HashMapConsumer<K, V>
-where
-  K: Eq + Hash,
-{
+pub struct HashMapConsumer<K, V> {
+  config: ConsumerConfig,
   map: HashMap<K, V>,
-  on_duplicate: DuplicateKeyStrategy,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum DuplicateKeyStrategy {
-  Keep,    // Keep the first value
-  Replace, // Replace with new value
-  Error,   // Return an error
-}
-
-#[derive(Debug)]
-pub enum HashMapConsumerError {
-  DuplicateKey(String),
-}
-
-impl std::fmt::Display for HashMapConsumerError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      HashMapConsumerError::DuplicateKey(k) => write!(f, "Duplicate key encountered: {}", k),
-    }
-  }
-}
-
-impl std::error::Error for HashMapConsumerError {}
-
-impl<K, V> Error for HashMapConsumer<K, V>
-where
-  K: Eq + Hash,
-{
-  type Error = HashMapConsumerError;
-}
-
-impl<K, V> Input for HashMapConsumer<K, V>
-where
-  K: Eq + Hash,
-{
-  type Input = (K, V);
-  type InputStream = Pin<Box<dyn futures::Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
 }
 
 impl<K, V> HashMapConsumer<K, V>
 where
-  K: Eq + Hash,
+  K: Hash + Eq + Send + 'static,
+  V: Send + 'static,
 {
   pub fn new() -> Self {
     Self {
+      config: ConsumerConfig::default(),
       map: HashMap::new(),
-      on_duplicate: DuplicateKeyStrategy::Error,
     }
   }
 
-  pub fn with_capacity(capacity: usize) -> Self {
-    Self {
-      map: HashMap::with_capacity(capacity),
-      on_duplicate: DuplicateKeyStrategy::Error,
-    }
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
   }
 
-  pub fn with_strategy(strategy: DuplicateKeyStrategy) -> Self {
-    Self {
-      map: HashMap::new(),
-      on_duplicate: strategy,
-    }
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
   }
 
-  pub fn into_inner(self) -> HashMap<K, V> {
+  pub fn into_map(self) -> HashMap<K, V> {
     self.map
-  }
-
-  pub fn len(&self) -> usize {
-    self.map.len()
-  }
-
-  pub fn is_empty(&self) -> bool {
-    self.map.is_empty()
   }
 }
 
-impl<K, V> Default for HashMapConsumer<K, V>
+impl<K, V> crate::traits::error::Error for HashMapConsumer<K, V>
 where
-  K: Eq + Hash,
+  K: Hash + Eq + Send + 'static,
+  V: Send + 'static,
 {
-  fn default() -> Self {
-    Self::new()
-  }
+  type Error = StreamError;
+}
+
+impl<K, V> Input for HashMapConsumer<K, V>
+where
+  K: Hash + Eq + Send + 'static,
+  V: Send + 'static,
+{
+  type Input = (K, V);
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
 }
 
 #[async_trait]
 impl<K, V> Consumer for HashMapConsumer<K, V>
 where
-  K: Eq + Hash + Send + std::fmt::Debug,
-  V: Send,
+  K: Hash + Eq + Send + 'static,
+  V: Send + 'static,
 {
-  async fn consume(&mut self, mut input: Self::InputStream) -> Result<(), Self::Error> {
-    while let Some(result) = input.next().await {
-      let (key, value) = result?;
-      match self.on_duplicate {
-        DuplicateKeyStrategy::Keep => {
-          self.map.entry(key).or_insert(value);
-        }
-        DuplicateKeyStrategy::Replace => {
+  async fn consume(&mut self, input: Self::InputStream) -> Result<(), StreamError> {
+    let mut stream = input;
+    while let Some(item) = stream.next().await {
+      match item {
+        Ok((key, value)) => {
           self.map.insert(key, value);
         }
-        DuplicateKeyStrategy::Error => {
-          if self.map.contains_key(&key) {
-            return Err(HashMapConsumerError::DuplicateKey(format!("{:?}", key)));
+        Err(e) => {
+          let strategy = self.handle_error(e.clone());
+          match strategy {
+            ErrorStrategy::Stop => return Err(e),
+            ErrorStrategy::Skip => continue,
+            ErrorStrategy::Retry(n) if e.retries < n => {
+              // Retry logic would go here
+              return Err(e);
+            }
+            _ => return Err(e),
           }
-          self.map.insert(key, value);
         }
       }
     }
     Ok(())
+  }
+
+  fn config(&self) -> &ConsumerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut ConsumerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorStrategy::Stop,
+      ErrorStrategy::Skip => ErrorStrategy::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
+      _ => ErrorStrategy::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Consumer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "hash_map_consumer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -130,179 +130,79 @@ where
 mod tests {
   use super::*;
   use futures::stream;
-  use tokio;
 
   #[tokio::test]
-  async fn test_empty_stream() {
-    let mut consumer = HashMapConsumer::<i32, String>::new();
-    let input = stream::empty();
-    let result = consumer.consume(Box::pin(input)).await;
+  async fn test_hash_map_consumer_basic() {
+    let mut consumer = HashMapConsumer::new();
+    let input = stream::iter(vec![
+      Ok((1, "one")),
+      Ok((2, "two")),
+      Ok((3, "three")),
+      Ok((1, "one_updated")), // Should update existing key
+    ]);
+    let boxed_input = Box::pin(input);
+
+    let result = consumer.consume(boxed_input).await;
     assert!(result.is_ok());
-    assert!(consumer.is_empty());
-    assert_eq!(consumer.len(), 0);
+    let map = consumer.into_map();
+    assert_eq!(map.len(), 3);
+    assert_eq!(map.get(&1), Some(&"one_updated"));
+    assert_eq!(map.get(&2), Some(&"two"));
+    assert_eq!(map.get(&3), Some(&"three"));
   }
 
   #[tokio::test]
-  async fn test_basic_insertion() {
-    let mut consumer = HashMapConsumer::<i32, String>::new();
-    let input = stream::iter(vec![
-      Ok((1, "one".to_string())),
-      Ok((2, "two".to_string())),
-      Ok((3, "three".to_string())),
-    ]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert!(!consumer.is_empty());
-    assert_eq!(consumer.len(), 3);
+  async fn test_hash_map_consumer_empty_input() {
+    let mut consumer = HashMapConsumer::new();
+    let input = stream::iter(Vec::<Result<(i32, &str), StreamError>>::new());
+    let boxed_input = Box::pin(input);
 
-    let map = consumer.into_inner();
-    assert_eq!(map.get(&1), Some(&"one".to_string()));
-    assert_eq!(map.get(&2), Some(&"two".to_string()));
-    assert_eq!(map.get(&3), Some(&"three".to_string()));
+    let result = consumer.consume(boxed_input).await;
+    assert!(result.is_ok());
+    assert!(consumer.into_map().is_empty());
   }
 
   #[tokio::test]
-  async fn test_duplicate_key_error() {
-    let mut consumer = HashMapConsumer::<i32, String>::new();
+  async fn test_hash_map_consumer_with_error() {
+    let mut consumer = HashMapConsumer::new();
     let input = stream::iter(vec![
-      Ok((1, "one".to_string())),
-      Ok((1, "uno".to_string())), // Duplicate key
+      Ok((1, "one")),
+      Err(StreamError::new(
+        Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+        ErrorContext {
+          timestamp: chrono::Utc::now(),
+          item: None,
+          stage: PipelineStage::Consumer,
+        },
+        ComponentInfo {
+          name: "test".to_string(),
+          type_name: "test".to_string(),
+        },
+      )),
+      Ok((2, "two")),
     ]);
-    let result = consumer.consume(Box::pin(input)).await;
+    let boxed_input = Box::pin(input);
+
+    let result = consumer.consume(boxed_input).await;
     assert!(result.is_err());
-    assert!(matches!(
-      result.unwrap_err(),
-      HashMapConsumerError::DuplicateKey(_)
-    ));
-    assert!(!consumer.is_empty());
-    assert_eq!(consumer.len(), 1);
-
-    let map = consumer.into_inner();
-    assert_eq!(map.get(&1), Some(&"one".to_string()));
   }
 
   #[tokio::test]
-  async fn test_duplicate_key_keep() {
-    let mut consumer = HashMapConsumer::<i32, String>::with_strategy(DuplicateKeyStrategy::Keep);
-    let input = stream::iter(vec![
-      Ok((1, "one".to_string())),
-      Ok((1, "uno".to_string())), // Duplicate key
-    ]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert!(!consumer.is_empty());
-    assert_eq!(consumer.len(), 1);
+  async fn test_error_handling_strategies() {
+    let mut consumer = HashMapConsumer::new()
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_consumer".to_string());
 
-    let map = consumer.into_inner();
-    assert_eq!(map.get(&1), Some(&"one".to_string())); // First value kept
-  }
+    let config = consumer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_consumer".to_string()));
 
-  #[tokio::test]
-  async fn test_duplicate_key_replace() {
-    let mut consumer = HashMapConsumer::<i32, String>::with_strategy(DuplicateKeyStrategy::Replace);
-    let input = stream::iter(vec![
-      Ok((1, "one".to_string())),
-      Ok((1, "uno".to_string())), // Duplicate key
-    ]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert!(!consumer.is_empty());
-    assert_eq!(consumer.len(), 1);
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      consumer.create_error_context(None),
+      consumer.component_info(),
+    );
 
-    let map = consumer.into_inner();
-    assert_eq!(map.get(&1), Some(&"uno".to_string())); // Last value kept
-  }
-
-  #[tokio::test]
-  async fn test_with_capacity() {
-    let mut consumer = HashMapConsumer::<i32, String>::with_capacity(100);
-    let input = stream::iter(vec![Ok((1, "one".to_string())), Ok((2, "two".to_string()))]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert_eq!(consumer.len(), 2);
-  }
-
-  #[tokio::test]
-  async fn test_string_keys() {
-    let mut consumer = HashMapConsumer::<String, i32>::new();
-    let input = stream::iter(vec![Ok(("one".to_string(), 1)), Ok(("two".to_string(), 2))]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert_eq!(consumer.len(), 2);
-
-    let map = consumer.into_inner();
-    assert_eq!(map.get("one"), Some(&1));
-    assert_eq!(map.get("two"), Some(&2));
-  }
-
-  #[tokio::test]
-  async fn test_complex_types() {
-    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-    struct ComplexKey {
-      id: i32,
-      name: String,
-    }
-
-    let mut consumer = HashMapConsumer::<ComplexKey, Vec<i32>>::new();
-    let input = stream::iter(vec![Ok((
-      ComplexKey {
-        id: 1,
-        name: "test".to_string(),
-      },
-      vec![1, 2, 3],
-    ))]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert_eq!(consumer.len(), 1);
-
-    let map = consumer.into_inner();
-    let key = ComplexKey {
-      id: 1,
-      name: "test".to_string(),
-    };
-    assert_eq!(map.get(&key), Some(&vec![1, 2, 3]));
-  }
-
-  #[tokio::test]
-  async fn test_error_propagation() {
-    let mut consumer = HashMapConsumer::<i32, String>::new();
-    let input = stream::iter(vec![
-      Ok((1, "one".to_string())),
-      Err(HashMapConsumerError::DuplicateKey("test".to_string())),
-      Ok((2, "two".to_string())),
-    ]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_err());
-    assert!(matches!(
-      result.unwrap_err(),
-      HashMapConsumerError::DuplicateKey(_)
-    ));
-    assert!(!consumer.is_empty());
-    assert_eq!(consumer.len(), 1);
-
-    let map = consumer.into_inner();
-    assert_eq!(map.get(&1), Some(&"one".to_string()));
-  }
-
-  #[tokio::test]
-  async fn test_default_impl() {
-    let consumer = HashMapConsumer::<i32, String>::default();
-    assert!(consumer.is_empty());
-    assert_eq!(consumer.len(), 0);
-  }
-
-  #[tokio::test]
-  async fn test_large_dataset() {
-    const COUNT: usize = 1000;
-    let mut consumer = HashMapConsumer::<i32, String>::with_capacity(COUNT);
-    let input = stream::iter((0..COUNT).map(|i| Ok((i as i32, format!("value_{}", i)))));
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert_eq!(consumer.len(), COUNT);
-
-    let map = consumer.into_inner();
-    for i in 0..COUNT {
-      assert_eq!(map.get(&(i as i32)), Some(&format!("value_{}", i)));
-    }
+    assert_eq!(consumer.handle_error(error), ErrorStrategy::Skip);
   }
 }

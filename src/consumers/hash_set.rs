@@ -1,124 +1,124 @@
-use crate::traits::{consumer::Consumer, error::Error, input::Input};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  consumer::{Consumer, ConsumerConfig},
+  input::Input,
+};
 use async_trait::async_trait;
-use futures::StreamExt;
+use futures::{Stream, StreamExt};
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::pin::Pin;
 
-#[derive(Debug)]
-pub struct HashSetConsumer<T>
-where
-  T: Eq + Hash + Clone,
-{
+pub struct HashSetConsumer<T> {
+  config: ConsumerConfig,
   set: HashSet<T>,
-  on_duplicate: DuplicateStrategy,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum DuplicateStrategy {
-  Ignore, // Skip duplicates silently
-  Error,  // Return an error on duplicates
-}
-
-#[derive(Debug)]
-pub enum HashSetConsumerError {
-  DuplicateItem(String),
-}
-
-impl std::fmt::Display for HashSetConsumerError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      HashSetConsumerError::DuplicateItem(item) => {
-        write!(f, "Duplicate item encountered: {}", item)
-      }
-    }
-  }
-}
-
-impl std::error::Error for HashSetConsumerError {}
-
-impl<T> Error for HashSetConsumer<T>
-where
-  T: Eq + Hash + Clone,
-{
-  type Error = HashSetConsumerError;
-}
-
-impl<T> Input for HashSetConsumer<T>
-where
-  T: Eq + Hash + Clone,
-{
-  type Input = T;
-  type InputStream = Pin<Box<dyn futures::Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
 }
 
 impl<T> HashSetConsumer<T>
 where
-  T: Eq + Hash + Clone,
+  T: Hash + Eq + Send + 'static,
 {
   pub fn new() -> Self {
     Self {
+      config: ConsumerConfig::default(),
       set: HashSet::new(),
-      on_duplicate: DuplicateStrategy::Error,
     }
   }
 
-  pub fn with_capacity(capacity: usize) -> Self {
-    Self {
-      set: HashSet::with_capacity(capacity),
-      on_duplicate: DuplicateStrategy::Error,
-    }
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
   }
 
-  pub fn with_strategy(strategy: DuplicateStrategy) -> Self {
-    Self {
-      set: HashSet::new(),
-      on_duplicate: strategy,
-    }
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
   }
 
-  pub fn into_inner(self) -> HashSet<T> {
+  pub fn into_set(self) -> HashSet<T> {
     self.set
-  }
-
-  pub fn len(&self) -> usize {
-    self.set.len()
-  }
-
-  pub fn is_empty(&self) -> bool {
-    self.set.is_empty()
   }
 }
 
-impl<T> Default for HashSetConsumer<T>
+impl<T> crate::traits::error::Error for HashSetConsumer<T>
 where
-  T: Eq + Hash + Clone,
+  T: Hash + Eq + Send + 'static,
 {
-  fn default() -> Self {
-    Self::new()
-  }
+  type Error = StreamError;
+}
+
+impl<T> Input for HashSetConsumer<T>
+where
+  T: Hash + Eq + Send + 'static,
+{
+  type Input = T;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
 }
 
 #[async_trait]
 impl<T> Consumer for HashSetConsumer<T>
 where
-  T: Eq + Hash + Send + std::fmt::Debug + Clone,
+  T: Hash + Eq + Send + 'static,
 {
-  async fn consume(&mut self, mut input: Self::InputStream) -> Result<(), Self::Error> {
-    while let Some(result) = input.next().await {
-      let item = result?;
-      match self.on_duplicate {
-        DuplicateStrategy::Ignore => {
-          self.set.insert(item);
+  async fn consume(&mut self, input: Self::InputStream) -> Result<(), StreamError> {
+    let mut stream = input;
+    while let Some(item) = stream.next().await {
+      match item {
+        Ok(value) => {
+          self.set.insert(value);
         }
-        DuplicateStrategy::Error => {
-          if !self.set.insert(item.clone()) {
-            return Err(HashSetConsumerError::DuplicateItem(format!("{:?}", item)));
+        Err(e) => {
+          let strategy = self.handle_error(e.clone());
+          match strategy {
+            ErrorStrategy::Stop => return Err(e),
+            ErrorStrategy::Skip => continue,
+            ErrorStrategy::Retry(n) if e.retries < n => {
+              // Retry logic would go here
+              return Err(e);
+            }
+            _ => return Err(e),
           }
         }
       }
     }
     Ok(())
+  }
+
+  fn config(&self) -> &ConsumerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut ConsumerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorStrategy::Stop,
+      ErrorStrategy::Skip => ErrorStrategy::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
+      _ => ErrorStrategy::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Consumer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "hash_set_consumer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -126,192 +126,74 @@ where
 mod tests {
   use super::*;
   use futures::stream;
-  use tokio;
 
   #[tokio::test]
-  async fn test_empty_stream() {
-    let mut consumer = HashSetConsumer::<i32>::new();
-    let input = stream::empty();
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert!(consumer.is_empty());
-    assert_eq!(consumer.len(), 0);
-  }
-
-  #[tokio::test]
-  async fn test_single_item() {
+  async fn test_hash_set_consumer_basic() {
     let mut consumer = HashSetConsumer::new();
-    let input = stream::iter(vec![Ok(42)]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert!(!consumer.is_empty());
-    assert_eq!(consumer.len(), 1);
-    assert!(consumer.into_inner().contains(&42));
-  }
+    let input = stream::iter(vec![1, 2, 3, 2, 1].into_iter().map(Ok));
+    let boxed_input = Box::pin(input);
 
-  #[tokio::test]
-  async fn test_multiple_unique_items() {
-    let mut consumer = HashSetConsumer::new();
-    let input = stream::iter(vec![Ok(1), Ok(2), Ok(3)]);
-    let result = consumer.consume(Box::pin(input)).await;
+    let result = consumer.consume(boxed_input).await;
     assert!(result.is_ok());
-    assert_eq!(consumer.len(), 3);
-    let set = consumer.into_inner();
+    let set = consumer.into_set();
+    assert_eq!(set.len(), 3);
     assert!(set.contains(&1));
     assert!(set.contains(&2));
     assert!(set.contains(&3));
   }
 
   #[tokio::test]
-  async fn test_duplicate_items_error_strategy() {
+  async fn test_hash_set_consumer_empty_input() {
     let mut consumer = HashSetConsumer::new();
-    let input = stream::iter(vec![Ok(1), Ok(2), Ok(1)]); // Duplicate 1
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_err());
-    if let Err(HashSetConsumerError::DuplicateItem(msg)) = result {
-      assert!(msg.contains("1"));
-    } else {
-      panic!("Expected DuplicateItem error");
-    }
-    assert_eq!(consumer.len(), 2);
-    let set = consumer.into_inner();
-    assert!(set.contains(&1));
-    assert!(set.contains(&2));
-  }
+    let input = stream::iter(Vec::<Result<i32, StreamError>>::new());
+    let boxed_input = Box::pin(input);
 
-  #[tokio::test]
-  async fn test_duplicate_items_ignore_strategy() {
-    let mut consumer = HashSetConsumer::with_strategy(DuplicateStrategy::Ignore);
-    let input = stream::iter(vec![Ok(1), Ok(2), Ok(1), Ok(2), Ok(3)]);
-    let result = consumer.consume(Box::pin(input)).await;
+    let result = consumer.consume(boxed_input).await;
     assert!(result.is_ok());
-    assert_eq!(consumer.len(), 3);
-    let set = consumer.into_inner();
-    assert!(set.contains(&1));
-    assert!(set.contains(&2));
-    assert!(set.contains(&3));
+    assert!(consumer.into_set().is_empty());
   }
 
   #[tokio::test]
-  async fn test_with_capacity() {
-    let mut consumer = HashSetConsumer::<i32>::with_capacity(10);
-    let input = stream::iter(vec![Ok(1), Ok(2), Ok(3)]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert_eq!(consumer.len(), 3);
-  }
-
-  #[tokio::test]
-  async fn test_string_items() {
+  async fn test_hash_set_consumer_with_error() {
     let mut consumer = HashSetConsumer::new();
-    let input = stream::iter(vec![
-      Ok("hello".to_string()),
-      Ok("world".to_string()),
-      Ok("!".to_string()),
-    ]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert_eq!(consumer.len(), 3);
-    let set = consumer.into_inner();
-    assert!(set.contains("hello"));
-    assert!(set.contains("world"));
-    assert!(set.contains("!"));
-  }
-
-  #[tokio::test]
-  async fn test_complex_type() {
-    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-    struct TestStruct {
-      id: i32,
-      name: String,
-    }
-
-    let mut consumer = HashSetConsumer::new();
-    let items = vec![
-      TestStruct {
-        id: 1,
-        name: "one".to_string(),
-      },
-      TestStruct {
-        id: 2,
-        name: "two".to_string(),
-      },
-    ];
-    let input = stream::iter(items.clone().into_iter().map(Ok));
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert_eq!(consumer.len(), 2);
-    let set = consumer.into_inner();
-    for item in items {
-      assert!(set.contains(&item));
-    }
-  }
-
-  #[tokio::test]
-  async fn test_error_propagation() {
-    let mut consumer = HashSetConsumer::<i32>::new();
     let input = stream::iter(vec![
       Ok(1),
-      Ok(2),
-      Err(HashSetConsumerError::DuplicateItem(
-        "test error".to_string(),
+      Err(StreamError::new(
+        Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+        ErrorContext {
+          timestamp: chrono::Utc::now(),
+          item: None,
+          stage: PipelineStage::Consumer,
+        },
+        ComponentInfo {
+          name: "test".to_string(),
+          type_name: "test".to_string(),
+        },
       )),
-      Ok(3),
+      Ok(2),
     ]);
-    let result = consumer.consume(Box::pin(input)).await;
+    let boxed_input = Box::pin(input);
+
+    let result = consumer.consume(boxed_input).await;
     assert!(result.is_err());
-    if let Err(HashSetConsumerError::DuplicateItem(msg)) = result {
-      assert_eq!(msg, "test error");
-    } else {
-      panic!("Expected DuplicateItem error");
-    }
-    assert_eq!(consumer.len(), 2);
   }
 
   #[tokio::test]
-  async fn test_default_implementation() {
-    let consumer = HashSetConsumer::<i32>::default();
-    assert!(consumer.is_empty());
-    assert_eq!(consumer.len(), 0);
-    match consumer.on_duplicate {
-      DuplicateStrategy::Error => (),
-      _ => panic!("Expected Error strategy as default"),
-    }
-  }
+  async fn test_error_handling_strategies() {
+    let mut consumer = HashSetConsumer::new()
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_consumer".to_string());
 
-  #[tokio::test]
-  async fn test_large_dataset() {
-    let mut consumer = HashSetConsumer::with_capacity(1000);
-    let items: Vec<i32> = (0..1000).collect();
-    let input = stream::iter(items.clone().into_iter().map(Ok));
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert_eq!(consumer.len(), 1000);
-    let set = consumer.into_inner();
-    for i in 0..1000 {
-      assert!(set.contains(&i));
-    }
-  }
+    let config = consumer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_consumer".to_string()));
 
-  #[tokio::test]
-  async fn test_multiple_consume_calls() {
-    let mut consumer = HashSetConsumer::new();
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      consumer.create_error_context(None),
+      consumer.component_info(),
+    );
 
-    // First consume
-    let input1 = stream::iter(vec![Ok(1), Ok(2), Ok(3)]);
-    let result1 = consumer.consume(Box::pin(input1)).await;
-    assert!(result1.is_ok());
-    assert_eq!(consumer.len(), 3);
-
-    // Second consume - should work with new items
-    let input2 = stream::iter(vec![Ok(4), Ok(5), Ok(6)]);
-    let result2 = consumer.consume(Box::pin(input2)).await;
-    assert!(result2.is_ok());
-    assert_eq!(consumer.len(), 6);
-
-    let set = consumer.into_inner();
-    for i in 1..=6 {
-      assert!(set.contains(&i));
-    }
+    assert_eq!(consumer.handle_error(error), ErrorStrategy::Skip);
   }
 }

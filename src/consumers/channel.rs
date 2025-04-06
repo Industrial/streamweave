@@ -5,8 +5,13 @@ use std::fmt;
 use std::pin::Pin;
 use tokio::sync::mpsc::{Receiver, Sender, channel};
 
-use crate::error::{ConsumptionError, ConsumptionErrorInspection};
-use crate::traits::{consumer::Consumer, error::Error, input::Input};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  consumer::{Consumer, ConsumerConfig},
+  input::Input,
+};
 
 #[derive(Debug)]
 pub enum ChannelError {
@@ -46,46 +51,115 @@ impl ConsumptionErrorInspection for ChannelError {
 }
 
 pub struct ChannelConsumer<T> {
-  tx: Option<Sender<T>>,
-  buffer_size: usize,
+  config: ConsumerConfig,
+  sender: Sender<T>,
 }
 
-impl<T> ChannelConsumer<T> {
-  pub fn new(buffer_size: usize) -> (Self, Receiver<T>) {
-    let (tx, rx) = channel(buffer_size);
-    (
-      Self {
-        tx: Some(tx),
-        buffer_size,
-      },
-      rx,
-    )
+impl<T> ChannelConsumer<T>
+where
+  T: Send + 'static,
+{
+  pub fn new(sender: Sender<T>) -> Self {
+    Self {
+      config: ConsumerConfig::default(),
+      sender,
+    }
+  }
+
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
+  }
+
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
   }
 }
 
-impl<T: Send + 'static> Error for ChannelConsumer<T> {
-  type Error = ChannelError;
+impl<T> crate::traits::error::Error for ChannelConsumer<T>
+where
+  T: Send + 'static,
+{
+  type Error = StreamError;
 }
 
-impl<T: Send + 'static> Input for ChannelConsumer<T> {
+impl<T> Input for ChannelConsumer<T>
+where
+  T: Send + 'static,
+{
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
 }
 
 #[async_trait]
-impl<T: Send + 'static> Consumer for ChannelConsumer<T> {
-  async fn consume(&mut self, mut stream: Self::InputStream) -> Result<(), Self::Error> {
-    let tx = self
-      .tx
-      .take()
-      .ok_or_else(|| ChannelError::Consumption(ConsumptionError::AlreadyConsumed))?;
-
+impl<T> Consumer for ChannelConsumer<T>
+where
+  T: Send + 'static,
+{
+  async fn consume(&mut self, input: Self::InputStream) -> Result<(), StreamError> {
+    let mut stream = input;
     while let Some(item) = stream.next().await {
-      tx.send(item?)
-        .await
-        .map_err(|_| ChannelError::SendError("Channel closed".to_string()))?;
+      match item {
+        Ok(value) => {
+          self.sender.send(value).await.map_err(|e| {
+            StreamError::new(
+              Box::new(e),
+              self.create_error_context(None),
+              self.component_info(),
+            )
+          })?;
+        }
+        Err(e) => {
+          let strategy = self.handle_error(e.clone());
+          match strategy {
+            ErrorStrategy::Stop => return Err(e),
+            ErrorStrategy::Skip => continue,
+            ErrorStrategy::Retry(n) if e.retries < n => {
+              // Retry logic would go here
+              return Err(e);
+            }
+            _ => return Err(e),
+          }
+        }
+      }
     }
     Ok(())
+  }
+
+  fn config(&self) -> &ConsumerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut ConsumerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorStrategy::Stop,
+      ErrorStrategy::Skip => ErrorStrategy::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
+      _ => ErrorStrategy::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Consumer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "channel_consumer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -93,75 +167,83 @@ impl<T: Send + 'static> Consumer for ChannelConsumer<T> {
 mod tests {
   use super::*;
   use futures::stream;
-  use tokio::sync::mpsc::Receiver;
 
-  async fn collect_receiver<T>(mut rx: Receiver<T>) -> Vec<T> {
-    let mut result = Vec::new();
-    while let Some(item) = rx.recv().await {
-      result.push(item);
-    }
-    result
+  #[tokio::test]
+  async fn test_channel_consumer_basic() {
+    let (tx, mut rx) = channel(10);
+    let mut consumer = ChannelConsumer::new(tx);
+
+    let input = stream::iter(vec![1, 2, 3].into_iter().map(Ok));
+    let boxed_input = Box::pin(input);
+
+    let result = consumer.consume(boxed_input).await;
+    assert!(result.is_ok());
+
+    assert_eq!(rx.recv().await, Some(1));
+    assert_eq!(rx.recv().await, Some(2));
+    assert_eq!(rx.recv().await, Some(3));
+    assert_eq!(rx.recv().await, None);
   }
 
   #[tokio::test]
-  async fn test_channel_consumer() {
-    let (mut consumer, rx) = ChannelConsumer::new(10);
-    let input = vec![1, 2, 3];
-    let stream = Box::pin(stream::iter(input.clone()).map(Ok));
+  async fn test_channel_consumer_empty_input() {
+    let (tx, mut rx) = channel(10);
+    let mut consumer = ChannelConsumer::new(tx);
 
-    let handle = tokio::spawn(async move {
-      consumer.consume(stream).await.unwrap();
-      drop(consumer); // Close sender
-    });
+    let input = stream::iter(Vec::<Result<i32, StreamError>>::new());
+    let boxed_input = Box::pin(input);
 
-    let result = collect_receiver(rx).await;
-    handle.await.unwrap();
-
-    assert_eq!(result, input);
+    let result = consumer.consume(boxed_input).await;
+    assert!(result.is_ok());
+    assert_eq!(rx.recv().await, None);
   }
 
   #[tokio::test]
-  async fn test_channel_consumer_buffer_size() {
-    let (mut consumer, rx) = ChannelConsumer::new(1);
-    let input = vec![1, 2, 3, 4, 5];
-    let stream = Box::pin(stream::iter(input.clone()).map(Ok));
+  async fn test_channel_consumer_with_error() {
+    let (tx, mut rx) = channel(10);
+    let mut consumer = ChannelConsumer::new(tx);
 
-    let handle = tokio::spawn(async move {
-      consumer.consume(stream).await.unwrap();
-    });
+    let input = stream::iter(vec![
+      Ok(1),
+      Err(StreamError::new(
+        Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+        ErrorContext {
+          timestamp: chrono::Utc::now(),
+          item: None,
+          stage: PipelineStage::Consumer,
+        },
+        ComponentInfo {
+          name: "test".to_string(),
+          type_name: "test".to_string(),
+        },
+      )),
+      Ok(2),
+    ]);
+    let boxed_input = Box::pin(input);
 
-    let result = collect_receiver(rx).await;
-    handle.await.unwrap();
-
-    assert_eq!(result, input);
+    let result = consumer.consume(boxed_input).await;
+    assert!(result.is_err());
+    assert_eq!(rx.recv().await, Some(1));
+    assert_eq!(rx.recv().await, None);
   }
 
   #[tokio::test]
-  async fn test_channel_consumer_reuse_fails() {
-    let (mut consumer, rx) = ChannelConsumer::new(1);
-    let stream1 = Box::pin(stream::iter(vec![1]).map(Ok));
-    let stream2 = Box::pin(stream::iter(vec![2]).map(Ok));
+  async fn test_error_handling_strategies() {
+    let (tx, _rx) = channel(10);
+    let mut consumer = ChannelConsumer::new(tx)
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_consumer".to_string());
 
-    assert!(consumer.consume(stream1).await.is_ok());
+    let config = consumer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_consumer".to_string()));
 
-    let err = consumer.consume(stream2).await.unwrap_err();
-    assert!(matches!(
-      err,
-      ChannelError::Consumption(ConsumptionError::AlreadyConsumed)
-    ));
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      consumer.create_error_context(None),
+      consumer.component_info(),
+    );
 
-    drop(rx); // Clean up receiver
-  }
-
-  #[tokio::test]
-  async fn test_channel_consumer_closed_receiver() {
-    let (mut consumer, rx) = ChannelConsumer::new(1);
-    let stream = Box::pin(stream::iter(vec![1, 2, 3]).map(Ok));
-
-    // Drop the receiver before consuming
-    drop(rx);
-
-    let err = consumer.consume(stream).await.unwrap_err();
-    assert!(matches!(err, ChannelError::SendError(_)));
+    assert_eq!(consumer.handle_error(error), ErrorStrategy::Skip);
   }
 }

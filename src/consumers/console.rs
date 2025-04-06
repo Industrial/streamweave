@@ -1,4 +1,5 @@
 use crate::traits::{consumer::Consumer, error::Error, input::Input};
+use crate::transformers::map::MapError;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::error::Error as StdError;
@@ -8,6 +9,12 @@ use std::pin::Pin;
 #[derive(Debug)]
 pub enum ConsoleError {
   WriteError(String),
+}
+
+impl From<MapError> for ConsoleError {
+  fn from(e: MapError) -> Self {
+    ConsoleError::WriteError(e.to_string())
+  }
 }
 
 impl fmt::Display for ConsoleError {
@@ -39,6 +46,14 @@ impl<T> ConsoleConsumer<T> {
 impl<T> Default for ConsoleConsumer<T> {
   fn default() -> Self {
     Self::new()
+  }
+}
+
+impl<T> Clone for ConsoleConsumer<T> {
+  fn clone(&self) -> Self {
+    Self {
+      _phantom: std::marker::PhantomData,
+    }
   }
 }
 

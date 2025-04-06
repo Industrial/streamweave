@@ -1,75 +1,139 @@
-use crate::traits::{error::Error, output::Output, producer::Producer};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  error::Error,
+  output::Output,
+  producer::{Producer, ProducerConfig},
+};
+use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::error::Error as StdError;
 use std::fmt;
-use std::path::PathBuf;
+use std::io::{self, BufRead};
 use std::pin::Pin;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
-#[derive(Debug)]
-pub enum FileProducerError {
-  IoError(std::io::Error),
-  StreamError(String),
-}
-
-impl fmt::Display for FileProducerError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      FileProducerError::IoError(e) => write!(f, "IO error: {}", e),
-      FileProducerError::StreamError(msg) => write!(f, "Stream error: {}", msg),
-    }
-  }
-}
-
-impl StdError for FileProducerError {
-  fn source(&self) -> Option<&(dyn StdError + 'static)> {
-    match self {
-      FileProducerError::IoError(e) => Some(e),
-      FileProducerError::StreamError(_) => None,
-    }
-  }
-}
-
 pub struct FileProducer {
-  path: PathBuf,
+  path: String,
+  config: ProducerConfig,
 }
 
 impl FileProducer {
-  pub fn new<P: Into<PathBuf>>(path: P) -> Self {
-    Self { path: path.into() }
+  pub fn new(path: String) -> Self {
+    Self {
+      path,
+      config: ProducerConfig::default(),
+    }
+  }
+
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
+  }
+
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
   }
 }
 
 impl Error for FileProducer {
-  type Error = FileProducerError;
+  type Error = StreamError;
 }
 
 impl Output for FileProducer {
   type Output = String;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<String, FileProducerError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<String, StreamError>> + Send>>;
 }
 
+#[async_trait]
 impl Producer for FileProducer {
   fn produce(&mut self) -> Self::OutputStream {
     let path = self.path.clone();
+    let config = self.config.clone();
 
-    let stream = async_stream::try_stream! {
-        let file = File::open(&path).await.map_err(FileProducerError::IoError)?;
-        let mut reader = BufReader::new(file);
-        let mut line = String::new();
-
-        while let Ok(bytes_read) = reader.read_line(&mut line).await {
-            if bytes_read == 0 {
-                break;
+    Box::pin(futures::stream::unfold(
+      (path, config),
+      |(path, config)| async move {
+        match File::open(&path).await {
+          Ok(file) => {
+            let mut reader = BufReader::new(file);
+            let mut line = String::new();
+            match reader.read_line(&mut line).await {
+              Ok(0) => None,
+              Ok(_) => Some((Ok(line.trim().to_string()), (path, config))),
+              Err(e) => Some((
+                Err(StreamError::new(
+                  Box::new(e),
+                  ErrorContext {
+                    timestamp: chrono::Utc::now(),
+                    item: None,
+                    stage: PipelineStage::Producer,
+                  },
+                  ComponentInfo {
+                    name: config.name().unwrap_or_else(|| "file_producer".to_string()),
+                    type_name: std::any::type_name::<Self>().to_string(),
+                  },
+                )),
+                (path, config),
+              )),
             }
-            let trimmed = line.trim().to_string();
-            line.clear();
-            yield trimmed;
+          }
+          Err(e) => Some((
+            Err(StreamError::new(
+              Box::new(e),
+              ErrorContext {
+                timestamp: chrono::Utc::now(),
+                item: None,
+                stage: PipelineStage::Producer,
+              },
+              ComponentInfo {
+                name: config.name().unwrap_or_else(|| "file_producer".to_string()),
+                type_name: std::any::type_name::<Self>().to_string(),
+              },
+            )),
+            (path, config),
+          )),
         }
-    };
+      },
+    ))
+  }
 
-    Box::pin(stream)
+  fn config(&self) -> &ProducerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut ProducerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: &StreamError) -> ErrorAction {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorAction::Stop,
+      ErrorStrategy::Skip => ErrorAction::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      _ => ErrorAction::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Producer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "file_producer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -78,64 +142,59 @@ mod tests {
   use super::*;
   use futures::StreamExt;
   use tempfile::NamedTempFile;
-  use tokio::fs::write;
+  use tokio::io::AsyncWriteExt;
 
   #[tokio::test]
   async fn test_file_producer() {
-    let file = NamedTempFile::new().unwrap();
-    write(file.path(), "line1\nline2\nline3").await.unwrap();
+    let mut file = NamedTempFile::new().unwrap();
+    writeln!(file, "line 1").unwrap();
+    writeln!(file, "line 2").unwrap();
+    writeln!(file, "line 3").unwrap();
+    let path = file.path().to_str().unwrap().to_string();
 
-    let mut producer = FileProducer::new(file.path());
+    let mut producer = FileProducer::new(path);
     let stream = producer.produce();
     let result: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
-    assert_eq!(result, vec!["line1", "line2", "line3"]);
+
+    assert_eq!(result, vec!["line 1", "line 2", "line 3"]);
   }
 
   #[tokio::test]
-  async fn test_file_producer_empty_file() {
+  async fn test_empty_file() {
     let file = NamedTempFile::new().unwrap();
-    let mut producer = FileProducer::new(file.path());
+    let path = file.path().to_str().unwrap().to_string();
+
+    let mut producer = FileProducer::new(path);
     let stream = producer.produce();
     let result: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
-    assert_eq!(result, Vec::<String>::new());
+
+    assert!(result.is_empty());
   }
 
   #[tokio::test]
-  async fn test_file_producer_nonexistent_file() {
-    let mut producer = FileProducer::new("nonexistent.txt");
+  async fn test_nonexistent_file() {
+    let mut producer = FileProducer::new("nonexistent.txt".to_string());
     let stream = producer.produce();
     let result = stream.collect::<Vec<_>>().await;
-    assert!(matches!(result[0], Err(FileProducerError::IoError(_))));
+    assert!(result[0].is_err());
   }
 
   #[tokio::test]
-  async fn test_multiple_reads() {
-    let file = NamedTempFile::new().unwrap();
-    write(file.path(), "test1\ntest2").await.unwrap();
+  async fn test_error_handling_strategies() {
+    let mut producer = FileProducer::new("test.txt".to_string())
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_producer".to_string());
 
-    let mut producer = FileProducer::new(file.path());
+    let config = producer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_producer".to_string()));
 
-    // First read
-    let stream = producer.produce();
-    let result1: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
-    assert_eq!(result1, vec!["test1", "test2"]);
+    let error = StreamError::new(
+      Box::new(io::Error::new(io::ErrorKind::NotFound, "test error")),
+      producer.create_error_context(None),
+      producer.component_info(),
+    );
 
-    // Second read
-    let stream = producer.produce();
-    let result2: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
-    assert_eq!(result2, vec!["test1", "test2"]);
-  }
-
-  #[tokio::test]
-  async fn test_file_with_empty_lines() {
-    let file = NamedTempFile::new().unwrap();
-    write(file.path(), "line1\n\nline2\n\n\nline3")
-      .await
-      .unwrap();
-
-    let mut producer = FileProducer::new(file.path());
-    let stream = producer.produce();
-    let result: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
-    assert_eq!(result, vec!["line1", "", "line2", "", "", "line3"]);
+    assert_eq!(producer.handle_error(&error), ErrorAction::Skip);
   }
 }

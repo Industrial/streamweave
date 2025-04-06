@@ -1,35 +1,10 @@
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineError, PipelineStage,
+  StreamError,
+};
 use crate::traits::{consumer::Consumer, producer::Producer, transformer::Transformer};
-use std::error::Error;
+use chrono::Utc;
 use std::marker::PhantomData;
-
-// Common error type for the pipeline
-#[derive(Debug)]
-pub struct PipelineError {
-  inner: Box<dyn Error + Send + Sync>,
-}
-
-impl PipelineError {
-  pub fn new<E>(error: E) -> Self
-  where
-    E: Error + Send + Sync + 'static,
-  {
-    Self {
-      inner: Box::new(error),
-    }
-  }
-}
-
-impl std::fmt::Display for PipelineError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", self.inner)
-  }
-}
-
-impl Error for PipelineError {
-  fn source(&self) -> Option<&(dyn Error + 'static)> {
-    Some(&*self.inner)
-  }
-}
 
 // State types for the builder
 pub struct Empty;
@@ -37,11 +12,12 @@ pub struct HasProducer<P>(PhantomData<P>);
 pub struct HasTransformer<P, T>(PhantomData<(P, T)>);
 pub struct Complete<P, T, C>(PhantomData<(P, T, C)>);
 
-// Pipeline builder with state
+// Pipeline builder with state and error handling
 pub struct PipelineBuilder<State> {
   producer_stream: Option<Box<dyn std::any::Any + Send + 'static>>,
   transformer_stream: Option<Box<dyn std::any::Any + Send + 'static>>,
   consumer: Option<Box<dyn std::any::Any + Send + 'static>>,
+  error_strategy: ErrorStrategy,
   _state: State,
 }
 
@@ -55,17 +31,24 @@ where
   producer_stream: Option<P::OutputStream>,
   transformer_stream: Option<T::OutputStream>,
   consumer: Option<C>,
+  error_strategy: ErrorStrategy,
 }
 
 // Initial builder creation
 impl PipelineBuilder<Empty> {
-  fn new() -> Self {
+  pub fn new() -> Self {
     PipelineBuilder {
       producer_stream: None,
       transformer_stream: None,
       consumer: None,
+      error_strategy: ErrorStrategy::Stop,
       _state: Empty,
     }
+  }
+
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.error_strategy = strategy;
+    self
   }
 
   pub fn producer<P>(mut self, mut producer: P) -> PipelineBuilder<HasProducer<P>>
@@ -80,8 +63,15 @@ impl PipelineBuilder<Empty> {
       producer_stream: self.producer_stream,
       transformer_stream: None,
       consumer: None,
+      error_strategy: self.error_strategy,
       _state: HasProducer(PhantomData),
     }
+  }
+}
+
+impl Default for PipelineBuilder<Empty> {
+  fn default() -> Self {
+    Self::new()
   }
 }
 
@@ -93,7 +83,7 @@ where
 {
   pub fn transformer<T>(mut self, mut transformer: T) -> PipelineBuilder<HasTransformer<P, T>>
   where
-    T: Transformer<Input = P::Output> + 'static,
+    T: Transformer + 'static,
     T::InputStream: From<P::OutputStream>,
     T::OutputStream: 'static,
   {
@@ -111,6 +101,7 @@ where
       producer_stream: None,
       transformer_stream: self.transformer_stream,
       consumer: None,
+      error_strategy: self.error_strategy,
       _state: HasTransformer(PhantomData),
     }
   }
@@ -125,7 +116,7 @@ where
 {
   pub fn transformer<U>(mut self, mut transformer: U) -> PipelineBuilder<HasTransformer<P, U>>
   where
-    U: Transformer<Input = T::Output> + 'static,
+    U: Transformer + 'static,
     U::InputStream: From<T::OutputStream>,
     U::OutputStream: 'static,
   {
@@ -143,13 +134,14 @@ where
       producer_stream: None,
       transformer_stream: self.transformer_stream,
       consumer: None,
+      error_strategy: self.error_strategy,
       _state: HasTransformer(PhantomData),
     }
   }
 
   pub fn consumer<C>(mut self, consumer: C) -> Pipeline<P, T, C>
   where
-    C: Consumer<Input = T::Output>,
+    C: Consumer,
     C::InputStream: From<T::OutputStream>,
   {
     let transformer_stream = self
@@ -163,6 +155,7 @@ where
       producer_stream: None,
       transformer_stream: Some(*transformer_stream),
       consumer: Some(consumer),
+      error_strategy: self.error_strategy,
     }
   }
 }
@@ -173,6 +166,26 @@ where
   T: Transformer,
   C: Consumer,
 {
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.error_strategy = strategy;
+    self
+  }
+
+  async fn handle_error(&self, error: StreamError) -> Result<ErrorAction, PipelineError> {
+    match &self.error_strategy {
+      ErrorStrategy::Stop => Ok(ErrorAction::Stop),
+      ErrorStrategy::Skip => Ok(ErrorAction::Skip),
+      ErrorStrategy::Retry(max_retries) => {
+        if error.retries < *max_retries {
+          Ok(ErrorAction::Retry)
+        } else {
+          Ok(ErrorAction::Stop)
+        }
+      }
+      ErrorStrategy::Custom(handler) => Ok(handler(&error)),
+    }
+  }
+
   pub async fn run(mut self) -> Result<((), C), PipelineError>
   where
     C::InputStream: From<T::OutputStream>,
@@ -183,7 +196,20 @@ where
     consumer
       .consume(transformer_stream.into())
       .await
-      .map_err(PipelineError::new)
+      .map_err(|e| {
+        PipelineError::new(
+          e,
+          ErrorContext {
+            timestamp: Utc::now(),
+            item: None,
+            stage: PipelineStage::Consumer,
+          },
+          ComponentInfo {
+            name: "consumer".to_string(),
+            type_name: std::any::type_name::<C>().to_string(),
+          },
+        )
+      })
       .map(|()| ((), consumer))
   }
 }

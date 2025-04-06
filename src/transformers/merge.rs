@@ -1,13 +1,18 @@
-use crate::error::TransformError;
-use crate::traits::{input::Input, output::Output, transformer::Transformer};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  input::Input,
+  output::Output,
+  transformer::{Transformer, TransformerConfig},
+};
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
-use std::error::Error;
-use std::fmt;
 use std::pin::Pin;
 
 pub struct MergeTransformer<T> {
   _phantom: std::marker::PhantomData<T>,
+  config: TransformerConfig,
 }
 
 impl<T> MergeTransformer<T>
@@ -17,7 +22,18 @@ where
   pub fn new() -> Self {
     Self {
       _phantom: std::marker::PhantomData,
+      config: TransformerConfig::default(),
     }
+  }
+
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
+  }
+
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
   }
 }
 
@@ -30,44 +46,18 @@ where
   }
 }
 
-#[derive(Debug)]
-pub enum MergeError {
-  Transform(TransformError),
-  EmptyInput,
-  EmptyStream,
-}
-
-impl fmt::Display for MergeError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      MergeError::Transform(e) => write!(f, "{}", e),
-      MergeError::EmptyInput => write!(f, "No streams provided to merge"),
-      MergeError::EmptyStream => write!(f, "Stream contained no items"),
-    }
-  }
-}
-
-impl Error for MergeError {
-  fn source(&self) -> Option<&(dyn Error + 'static)> {
-    match self {
-      MergeError::Transform(e) => Some(e),
-      _ => None,
-    }
-  }
-}
-
 impl<T: Send + 'static> crate::traits::error::Error for MergeTransformer<T> {
-  type Error = MergeError;
+  type Error = StreamError;
 }
 
 impl<T: Send + 'static> Input for MergeTransformer<T> {
-  type Input = Vec<Pin<Box<dyn Stream<Item = Result<T, MergeError>> + Send>>>;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
+  type Input = Vec<Pin<Box<dyn Stream<Item = Result<T, StreamError>> + Send>>>;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
 }
 
 impl<T: Send + 'static> Output for MergeTransformer<T> {
   type Output = T;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, Self::Error>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError>> + Send>>;
 }
 
 #[async_trait]
@@ -100,7 +90,7 @@ where
               // If there are remaining items, create a new stream with them
               if !all_items.is_empty() {
                 let remaining_stream = Box::pin(futures::stream::iter(
-                  all_items.into_iter().map(|item| Ok::<T, MergeError>(item)),
+                  all_items.into_iter().map(|item| Ok::<T, StreamError>(item)),
                 ));
                 let mut new_streams = Vec::new();
                 new_streams.push(remaining_stream);
@@ -115,6 +105,41 @@ where
       None
     }))
   }
+
+  fn config(&self) -> &TransformerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut TransformerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorStrategy::Stop,
+      ErrorStrategy::Skip => ErrorStrategy::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
+      _ => ErrorStrategy::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Transformer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "merge_transformer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
+  }
 }
 
 #[cfg(test)]
@@ -125,23 +150,9 @@ mod tests {
 
   fn create_stream<T: Send + 'static>(
     items: Vec<T>,
-  ) -> Pin<Box<dyn Stream<Item = Result<T, MergeError>> + Send>> {
+  ) -> Pin<Box<dyn Stream<Item = Result<T, StreamError>> + Send>> {
     Box::pin(stream::iter(items.into_iter().map(Ok)))
   }
-
-  // #[tokio::test]
-  // async fn test_merge_basic() {
-  //   let mut transformer = MergeTransformer::<i32>::new();
-  //   let streams = vec![create_stream(vec![1, 2, 3]), create_stream(vec![4, 5, 6])];
-  //   let input = stream::iter(vec![Ok(streams)]);
-  //   let boxed_input = Box::pin(input);
-  //   let result: Vec<i32> = transformer
-  //     .transform(boxed_input)
-  //     .try_collect()
-  //     .await
-  //     .unwrap();
-  //   assert_eq!(result, vec![1, 2, 3, 4, 5, 6]);
-  // }
 
   #[tokio::test]
   async fn test_merge_empty_input() {
@@ -179,30 +190,21 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_error_propagation() {
-    let mut transformer = MergeTransformer::<i32>::new();
-    let streams = vec![
-      create_stream(vec![1, 2]),
-      Box::pin(stream::iter(vec![
-        Ok(3),
-        Err(MergeError::Transform(TransformError::Custom(
-          "test error".to_string(),
-        ))),
-        Ok(4),
-      ])) as Pin<Box<dyn Stream<Item = Result<_, MergeError>> + Send>>,
-    ];
-    let input = stream::iter(vec![Ok(streams)]);
-    let boxed_input = Box::pin(input);
+  async fn test_error_handling_strategies() {
+    let mut transformer = MergeTransformer::<i32>::new()
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_transformer".to_string());
 
-    let result = transformer
-      .transform(boxed_input)
-      .try_collect::<Vec<_>>()
-      .await;
+    let config = transformer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_transformer".to_string()));
 
-    assert!(result.is_err());
-    match result {
-      Err(MergeError::Transform(e)) => assert_eq!(e.to_string(), "test error"),
-      _ => panic!("Expected TransformError"),
-    }
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      transformer.create_error_context(None),
+      transformer.component_info(),
+    );
+
+    assert_eq!(transformer.handle_error(error), ErrorStrategy::Skip);
   }
 }

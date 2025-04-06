@@ -1,66 +1,101 @@
-use crate::traits::{error::Error, output::Output, producer::Producer};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  error::Error,
+  output::Output,
+  producer::{Producer, ProducerConfig},
+};
+use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::error::Error as StdError;
 use std::fmt;
 use std::pin::Pin;
-use tokio::sync::mpsc::{self, Sender};
-use tokio_stream::wrappers::ReceiverStream;
-
-#[derive(Debug)]
-pub enum ChannelError {
-  SendError(String),
-}
-
-impl fmt::Display for ChannelError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      ChannelError::SendError(msg) => write!(f, "Channel send error: {}", msg),
-    }
-  }
-}
-
-impl StdError for ChannelError {}
+use tokio::sync::mpsc;
 
 pub struct ChannelProducer<T> {
-  receiver: Option<mpsc::Receiver<T>>,
-  buffer_size: usize,
+  rx: mpsc::Receiver<T>,
+  config: ProducerConfig,
 }
 
 impl<T> ChannelProducer<T> {
-  pub fn new(buffer_size: usize) -> (Self, Sender<T>) {
-    let (tx, rx) = mpsc::channel(buffer_size);
-    (
-      Self {
-        receiver: Some(rx),
-        buffer_size,
-      },
-      tx,
-    )
+  pub fn new(rx: mpsc::Receiver<T>) -> Self {
+    Self {
+      rx,
+      config: ProducerConfig::default(),
+    }
   }
 
-  pub fn with_default_buffer() -> (Self, Sender<T>) {
-    Self::new(32)
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
   }
 
-  pub fn buffer_size(&self) -> usize {
-    self.buffer_size
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
   }
 }
 
 impl<T: Send + 'static> Error for ChannelProducer<T> {
-  type Error = ChannelError;
+  type Error = StreamError;
 }
 
 impl<T: Send + 'static> Output for ChannelProducer<T> {
   type Output = T;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<T, ChannelError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<T, StreamError>> + Send>>;
 }
 
+#[async_trait]
 impl<T: Send + 'static> Producer for ChannelProducer<T> {
   fn produce(&mut self) -> Self::OutputStream {
-    let receiver = self.receiver.take().expect("Stream already taken");
-    let stream = ReceiverStream::new(receiver).map(Ok);
-    Box::pin(stream)
+    let mut rx = self.rx.clone();
+    let config = self.config.clone();
+
+    Box::pin(futures::stream::unfold(
+      (rx, config),
+      |(mut rx, config)| async move {
+        match rx.recv().await {
+          Some(item) => Some((Ok(item), (rx, config))),
+          None => None,
+        }
+      },
+    ))
+  }
+
+  fn config(&self) -> &ProducerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut ProducerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: &StreamError) -> ErrorAction {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorAction::Stop,
+      ErrorStrategy::Skip => ErrorAction::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      _ => ErrorAction::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Producer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "channel_producer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -68,91 +103,52 @@ impl<T: Send + 'static> Producer for ChannelProducer<T> {
 mod tests {
   use super::*;
   use futures::StreamExt;
-  use tokio::sync::mpsc::error::TrySendError;
+  use tokio::sync::mpsc;
 
   #[tokio::test]
   async fn test_channel_producer() {
-    let (mut producer, sender) = ChannelProducer::new(2);
+    let (tx, rx) = mpsc::channel(10);
+    let mut producer = ChannelProducer::new(rx);
 
-    // Start consuming in a separate task
+    tx.send(1).await.unwrap();
+    tx.send(2).await.unwrap();
+    tx.send(3).await.unwrap();
+    drop(tx);
+
     let stream = producer.produce();
-    let collect_task =
-      tokio::spawn(async move { stream.map(|r| r.unwrap()).collect::<Vec<i32>>().await });
+    let result: Vec<i32> = stream.map(|r| r.unwrap()).collect().await;
 
-    // Send data
-    sender.send(1).await.unwrap();
-    sender.send(2).await.unwrap();
-    sender.send(3).await.unwrap();
-    drop(sender);
-
-    // Wait for collection to complete
-    let result = collect_task.await.unwrap();
     assert_eq!(result, vec![1, 2, 3]);
   }
 
   #[tokio::test]
-  async fn test_channel_producer_empty() {
-    let (mut producer, sender) = ChannelProducer::<i32>::new(2);
-    drop(sender);
+  async fn test_empty_channel() {
+    let (_, rx) = mpsc::channel::<i32>(10);
+    let mut producer = ChannelProducer::new(rx);
 
     let stream = producer.produce();
     let result: Vec<i32> = stream.map(|r| r.unwrap()).collect().await;
+
     assert!(result.is_empty());
   }
 
   #[tokio::test]
-  async fn test_channel_buffer_size() {
-    let (producer, sender) = ChannelProducer::<i32>::new(2);
-    assert_eq!(producer.buffer_size(), 2);
+  async fn test_error_handling_strategies() {
+    let (_, rx) = mpsc::channel::<i32>(10);
+    let mut producer = ChannelProducer::new(rx)
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_producer".to_string());
 
-    // Test that buffer size is enforced
-    sender.try_send(1).unwrap();
-    sender.try_send(2).unwrap();
-    assert!(matches!(sender.try_send(3), Err(TrySendError::Full(3))));
-  }
+    let config = producer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_producer".to_string()));
 
-  #[tokio::test]
-  async fn test_default_buffer() {
-    let (producer, _) = ChannelProducer::<i32>::with_default_buffer();
-    assert_eq!(producer.buffer_size(), 32);
-  }
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      producer.create_error_context(None),
+      producer.component_info(),
+    );
 
-  #[tokio::test]
-  #[should_panic(expected = "Stream already taken")]
-  async fn test_double_produce() {
-    let (mut producer, _) = ChannelProducer::<i32>::new(2);
-    let _stream1 = producer.produce();
-    let _stream2 = producer.produce(); // Should panic
-  }
-
-  #[tokio::test]
-  async fn test_multiple_senders() {
-    let (mut producer, sender1) = ChannelProducer::new(4);
-    let sender2 = sender1.clone();
-
-    // Start consuming in a separate task
-    let stream = producer.produce();
-    let collect_task =
-      tokio::spawn(async move { stream.map(|r| r.unwrap()).collect::<Vec<i32>>().await });
-
-    // Spawn two tasks that send data
-    let task1 = tokio::spawn(async move {
-      sender1.send(1).await.unwrap();
-      sender1.send(3).await.unwrap();
-    });
-
-    let task2 = tokio::spawn(async move {
-      sender2.send(2).await.unwrap();
-      sender2.send(4).await.unwrap();
-    });
-
-    // Wait for sends to complete
-    task1.await.unwrap();
-    task2.await.unwrap();
-
-    // Wait for collection and check results
-    let mut result = collect_task.await.unwrap();
-    result.sort(); // Order may vary due to concurrent sends
-    assert_eq!(result, vec![1, 2, 3, 4]);
+    assert_eq!(producer.handle_error(&error), ErrorAction::Skip);
   }
 }

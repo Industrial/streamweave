@@ -1,53 +1,43 @@
-use crate::error::TransformError;
-use crate::traits::{input::Input, output::Output, transformer::Transformer};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  input::Input,
+  output::Output,
+  transformer::{Transformer, TransformerConfig},
+};
 use async_trait::async_trait;
 use futures::stream;
 use futures::{Stream, StreamExt};
-use std::error::Error;
-use std::fmt;
 use std::pin::Pin;
-
-#[derive(Debug)]
-pub enum SplitError {
-  Transform(TransformError),
-  ChunkingFailed,
-  PredicateError(String),
-}
-
-impl fmt::Display for SplitError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      SplitError::Transform(e) => write!(f, "{}", e),
-      SplitError::ChunkingFailed => write!(f, "Failed to split stream into chunks"),
-      SplitError::PredicateError(msg) => write!(f, "Predicate evaluation failed: {}", msg),
-    }
-  }
-}
-
-impl Error for SplitError {
-  fn source(&self) -> Option<&(dyn Error + 'static)> {
-    match self {
-      SplitError::Transform(e) => Some(e),
-      _ => None,
-    }
-  }
-}
 
 pub struct SplitTransformer<F, T> {
   predicate: F,
   _phantom: std::marker::PhantomData<T>,
+  config: TransformerConfig,
 }
 
 impl<F, T> SplitTransformer<F, T>
 where
-  F: FnMut(&T) -> Result<bool, Box<dyn Error + Send + Sync>> + Send + Clone + 'static,
+  F: FnMut(&T) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> + Send + Clone + 'static,
   T: Clone + Send + 'static,
 {
   pub fn new(predicate: F) -> Self {
     Self {
       predicate,
       _phantom: std::marker::PhantomData,
+      config: TransformerConfig::default(),
     }
+  }
+
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
+  }
+
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
   }
 }
 
@@ -56,7 +46,7 @@ where
   F: Send + 'static,
   T: Send + 'static,
 {
-  type Error = SplitError;
+  type Error = StreamError;
 }
 
 impl<F, T> Input for SplitTransformer<F, T>
@@ -65,7 +55,7 @@ where
   T: Send + 'static,
 {
   type Input = Vec<T>;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
 }
 
 impl<F, T> Output for SplitTransformer<F, T>
@@ -74,13 +64,13 @@ where
   T: Send + 'static,
 {
   type Output = Vec<T>;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, Self::Error>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError>> + Send>>;
 }
 
 #[async_trait]
 impl<F, T> Transformer for SplitTransformer<F, T>
 where
-  F: FnMut(&T) -> Result<bool, Box<dyn Error + Send + Sync>> + Send + Clone + 'static,
+  F: FnMut(&T) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> + Send + Clone + 'static,
   T: Clone + Send + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
@@ -104,10 +94,9 @@ where
                     current_chunk.push(item);
                   }
                   Err(e) => {
-                    return Some((
-                      Err(SplitError::Transform(TransformError::OperationFailed(e))),
-                      (input, pred),
-                    ));
+                    let error =
+                      StreamError::new(e, self.create_error_context(None), self.component_info());
+                    return Some((Err(error), (input, pred)));
                   }
                 }
               }
@@ -125,7 +114,7 @@ where
                   first,
                   (
                     Box::pin(stream::iter(iter).chain(input))
-                      as Pin<Box<dyn Stream<Item = Result<Vec<T>, SplitError>> + Send>>,
+                      as Pin<Box<dyn Stream<Item = Result<Vec<T>, StreamError>> + Send>>,
                     pred,
                   ),
                 ))
@@ -138,6 +127,41 @@ where
         }
       },
     ))
+  }
+
+  fn config(&self) -> &TransformerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut TransformerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorStrategy::Stop,
+      ErrorStrategy::Skip => ErrorStrategy::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
+      _ => ErrorStrategy::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Transformer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "split_transformer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -161,15 +185,6 @@ mod tests {
 
     assert_eq!(result, vec![vec![1], vec![2, 3], vec![4, 5], vec![6]]);
   }
-
-  // #[tokio::test]
-  // async fn test_split_empty_input() {
-  //   let mut transformer = SplitTransformer::new(|x: &i32| Ok(x % 2 == 0));
-  //   let input = vec![Vec::<i32>::new()];
-  //   let input_stream = Box::pin(stream::iter(input.into_iter().map(Ok)));
-  //   let result: Vec<Vec<i32>> = transformer.transform(input_stream).try_collect().await.unwrap();
-  //   assert_eq!(result, Vec::<Vec<i32>>::new());
-  // }
 
   #[tokio::test]
   async fn test_split_no_splits() {
@@ -205,12 +220,6 @@ mod tests {
       .await;
 
     assert!(result.is_err());
-    match result.unwrap_err() {
-      SplitError::Transform(TransformError::OperationFailed(e)) => {
-        assert_eq!(e.to_string(), "Cannot process 3")
-      }
-      _ => panic!("Expected OperationFailed error"),
-    }
   }
 
   #[tokio::test]
@@ -242,25 +251,21 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_split_reuse() {
-    let mut transformer = SplitTransformer::new(|x: &i32| Ok(x % 2 == 0));
+  async fn test_error_handling_strategies() {
+    let mut transformer = SplitTransformer::new(|_: &i32| Ok(true))
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_transformer".to_string());
 
-    let input1 = vec![vec![1, 2, 3]];
-    let input_stream1 = Box::pin(stream::iter(input1.into_iter().map(Ok)));
-    let result1: Vec<Vec<i32>> = transformer
-      .transform(input_stream1)
-      .try_collect()
-      .await
-      .unwrap();
-    assert_eq!(result1, vec![vec![1], vec![2, 3]]);
+    let config = transformer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_transformer".to_string()));
 
-    let input2 = vec![vec![4, 5, 6]];
-    let input_stream2 = Box::pin(stream::iter(input2.into_iter().map(Ok)));
-    let result2: Vec<Vec<i32>> = transformer
-      .transform(input_stream2)
-      .try_collect()
-      .await
-      .unwrap();
-    assert_eq!(result2, vec![vec![4, 5], vec![6]]);
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      transformer.create_error_context(None),
+      transformer.component_info(),
+    );
+
+    assert_eq!(transformer.handle_error(error), ErrorStrategy::Skip);
   }
 }

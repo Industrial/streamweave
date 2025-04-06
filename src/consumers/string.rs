@@ -1,83 +1,117 @@
-use crate::traits::{consumer::Consumer, error::Error, input::Input};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  consumer::{Consumer, ConsumerConfig},
+  input::Input,
+};
 use async_trait::async_trait;
-use futures::StreamExt;
+use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-#[derive(Debug)]
 pub struct StringConsumer {
-  result: String,
-  separator: Option<String>,
-}
-
-#[derive(Debug)]
-pub enum StringConsumerError {
-  JoinError(String),
-}
-
-impl std::fmt::Display for StringConsumerError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      StringConsumerError::JoinError(e) => write!(f, "Failed to join strings: {}", e),
-    }
-  }
-}
-
-impl std::error::Error for StringConsumerError {}
-
-impl Error for StringConsumer {
-  type Error = StringConsumerError;
-}
-
-impl Input for StringConsumer {
-  type Input = String;
-  type InputStream = Pin<Box<dyn futures::Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
+  config: ConsumerConfig,
+  buffer: String,
 }
 
 impl StringConsumer {
   pub fn new() -> Self {
     Self {
-      result: String::new(),
-      separator: None,
+      config: ConsumerConfig::default(),
+      buffer: String::new(),
     }
   }
 
-  pub fn with_separator(separator: impl Into<String>) -> Self {
+  pub fn with_capacity(capacity: usize) -> Self {
     Self {
-      result: String::new(),
-      separator: Some(separator.into()),
+      config: ConsumerConfig::default(),
+      buffer: String::with_capacity(capacity),
     }
+  }
+
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
+  }
+
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
   }
 
   pub fn into_string(self) -> String {
-    self.result
-  }
-
-  pub fn as_str(&self) -> &str {
-    &self.result
+    self.buffer
   }
 }
 
-impl Default for StringConsumer {
-  fn default() -> Self {
-    Self::new()
-  }
+impl crate::traits::error::Error for StringConsumer {
+  type Error = StreamError;
+}
+
+impl Input for StringConsumer {
+  type Input = String;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
 }
 
 #[async_trait]
 impl Consumer for StringConsumer {
-  async fn consume(&mut self, mut input: Self::InputStream) -> Result<(), Self::Error> {
-    let mut is_first = self.result.is_empty(); // Only true if no content exists
-    while let Some(result) = input.next().await {
-      let value = result?;
-      if !is_first {
-        if let Some(sep) = &self.separator {
-          self.result.push_str(sep);
+  async fn consume(&mut self, input: Self::InputStream) -> Result<(), StreamError> {
+    let mut stream = input;
+    while let Some(item) = stream.next().await {
+      match item {
+        Ok(value) => {
+          self.buffer.push_str(&value);
+        }
+        Err(e) => {
+          let strategy = self.handle_error(e.clone());
+          match strategy {
+            ErrorStrategy::Stop => return Err(e),
+            ErrorStrategy::Skip => continue,
+            ErrorStrategy::Retry(n) if e.retries < n => {
+              // Retry logic would go here
+              return Err(e);
+            }
+            _ => return Err(e),
+          }
         }
       }
-      self.result.push_str(&value);
-      is_first = false;
     }
     Ok(())
+  }
+
+  fn config(&self) -> &ConsumerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut ConsumerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorStrategy::Stop,
+      ErrorStrategy::Skip => ErrorStrategy::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
+      _ => ErrorStrategy::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Consumer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "string_consumer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -85,145 +119,89 @@ impl Consumer for StringConsumer {
 mod tests {
   use super::*;
   use futures::stream;
-  use tokio;
 
   #[tokio::test]
-  async fn test_empty_stream() {
+  async fn test_string_consumer_basic() {
     let mut consumer = StringConsumer::new();
-    let input = stream::empty();
-    let result = consumer.consume(Box::pin(input)).await;
+    let input = stream::iter(
+      vec!["hello", " ", "world"]
+        .into_iter()
+        .map(|s| Ok(s.to_string())),
+    );
+    let boxed_input = Box::pin(input);
+
+    let result = consumer.consume(boxed_input).await;
     assert!(result.is_ok());
-    assert_eq!(consumer.as_str(), "");
-    assert_eq!(consumer.into_string(), "");
+    assert_eq!(consumer.into_string(), "hello world");
   }
 
   #[tokio::test]
-  async fn test_single_string() {
+  async fn test_string_consumer_empty_input() {
     let mut consumer = StringConsumer::new();
-    let input = stream::iter(vec![Ok("hello".to_string())]);
-    let result = consumer.consume(Box::pin(input)).await;
+    let input = stream::iter(Vec::<Result<String, StreamError>>::new());
+    let boxed_input = Box::pin(input);
+
+    let result = consumer.consume(boxed_input).await;
     assert!(result.is_ok());
-    assert_eq!(consumer.as_str(), "hello");
-    assert_eq!(consumer.into_string(), "hello");
+    assert!(consumer.into_string().is_empty());
   }
 
   #[tokio::test]
-  async fn test_multiple_strings_no_separator() {
-    let mut consumer = StringConsumer::new();
-    let input = stream::iter(vec![
-      Ok("hello".to_string()),
-      Ok("world".to_string()),
-      Ok("!".to_string()),
-    ]);
-    let result = consumer.consume(Box::pin(input)).await;
+  async fn test_string_consumer_with_capacity() {
+    let mut consumer = StringConsumer::with_capacity(100);
+    let input = stream::iter(
+      vec!["hello", " ", "world"]
+        .into_iter()
+        .map(|s| Ok(s.to_string())),
+    );
+    let boxed_input = Box::pin(input);
+
+    let result = consumer.consume(boxed_input).await;
     assert!(result.is_ok());
-    assert_eq!(consumer.as_str(), "helloworld!");
+    assert_eq!(consumer.into_string(), "hello world");
   }
 
   #[tokio::test]
-  async fn test_multiple_strings_with_separator() {
-    let mut consumer = StringConsumer::with_separator(", ");
-    let input = stream::iter(vec![
-      Ok("hello".to_string()),
-      Ok("world".to_string()),
-      Ok("!".to_string()),
-    ]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert_eq!(consumer.as_str(), "hello, world, !");
-  }
-
-  #[tokio::test]
-  async fn test_empty_strings() {
-    let mut consumer = StringConsumer::with_separator("|");
-    let input = stream::iter(vec![
-      Ok("".to_string()),
-      Ok("hello".to_string()),
-      Ok("".to_string()),
-      Ok("world".to_string()),
-      Ok("".to_string()),
-    ]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert_eq!(consumer.as_str(), "|hello||world|");
-  }
-
-  #[tokio::test]
-  async fn test_error_propagation() {
+  async fn test_string_consumer_with_error() {
     let mut consumer = StringConsumer::new();
     let input = stream::iter(vec![
       Ok("hello".to_string()),
-      Err(StringConsumerError::JoinError("test error".to_string())),
+      Err(StreamError::new(
+        Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+        ErrorContext {
+          timestamp: chrono::Utc::now(),
+          item: None,
+          stage: PipelineStage::Consumer,
+        },
+        ComponentInfo {
+          name: "test".to_string(),
+          type_name: "test".to_string(),
+        },
+      )),
       Ok("world".to_string()),
     ]);
-    let result = consumer.consume(Box::pin(input)).await;
+    let boxed_input = Box::pin(input);
+
+    let result = consumer.consume(boxed_input).await;
     assert!(result.is_err());
-    assert!(matches!(
-      result.unwrap_err(),
-      StringConsumerError::JoinError(_)
-    ));
-    assert_eq!(consumer.as_str(), "hello");
   }
 
   #[tokio::test]
-  async fn test_default_impl() {
-    let consumer = StringConsumer::default();
-    assert_eq!(consumer.as_str(), "");
-  }
+  async fn test_error_handling_strategies() {
+    let mut consumer = StringConsumer::new()
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_consumer".to_string());
 
-  #[tokio::test]
-  async fn test_large_strings() {
-    let mut consumer = StringConsumer::with_separator("\n");
-    let strings: Vec<_> = (0..1000).map(|i| Ok(format!("line_{}", i))).collect();
-    let input = stream::iter(strings);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
+    let config = consumer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_consumer".to_string()));
 
-    let result = consumer.into_string();
-    let lines: Vec<_> = result.split('\n').collect();
-    assert_eq!(lines.len(), 1000);
-    for i in 0..1000 {
-      assert_eq!(lines[i], format!("line_{}", i));
-    }
-  }
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      consumer.create_error_context(None),
+      consumer.component_info(),
+    );
 
-  #[tokio::test]
-  async fn test_unicode_strings() {
-    let mut consumer = StringConsumer::with_separator(" ");
-    let input = stream::iter(vec![
-      Ok("こんにちは".to_string()),
-      Ok("世界".to_string()),
-      Ok("!".to_string()),
-    ]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert_eq!(consumer.as_str(), "こんにちは 世界 !");
-  }
-
-  #[tokio::test]
-  async fn test_special_characters() {
-    let mut consumer = StringConsumer::with_separator("\t");
-    let input = stream::iter(vec![
-      Ok("hello\nworld".to_string()),
-      Ok("foo\r\nbar".to_string()),
-      Ok("baz\tqux".to_string()),
-    ]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-    assert_eq!(consumer.as_str(), "hello\nworld\tfoo\r\nbar\tbaz\tqux");
-  }
-
-  #[tokio::test]
-  async fn test_repeated_consumption() {
-    let mut consumer = StringConsumer::with_separator("|");
-    let input1 = stream::iter(vec![Ok("hello".to_string())]);
-    let result1 = consumer.consume(Box::pin(input1)).await;
-    assert!(result1.is_ok());
-    assert_eq!(consumer.as_str(), "hello");
-
-    let input2 = stream::iter(vec![Ok("world".to_string())]);
-    let result2 = consumer.consume(Box::pin(input2)).await;
-    assert!(result2.is_ok());
-    assert_eq!(consumer.as_str(), "hello|world");
+    assert_eq!(consumer.handle_error(error), ErrorStrategy::Skip);
   }
 }

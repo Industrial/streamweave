@@ -1,52 +1,58 @@
-use crate::error::TransformError;
-use crate::traits::{input::Input, output::Output, transformer::Transformer};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  input::Input,
+  output::Output,
+  transformer::{Transformer, TransformerConfig},
+};
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
-use std::error::Error;
-use std::fmt;
 use std::pin::Pin;
 
 pub struct MapTransformer<F, I, O> {
   f: F,
+  config: TransformerConfig,
   _phantom_i: std::marker::PhantomData<I>,
   _phantom_o: std::marker::PhantomData<O>,
 }
 
 impl<F, I, O> MapTransformer<F, I, O>
 where
-  F: FnMut(I) -> Result<O, Box<dyn Error + Send + Sync>> + Send + Clone + 'static,
+  F: FnMut(I) -> Result<O, Box<dyn std::error::Error + Send + Sync>> + Send + Clone + 'static,
   I: Send + 'static,
   O: Send + 'static,
 {
   pub fn new(f: F) -> Self {
     Self {
       f,
+      config: TransformerConfig::default(),
       _phantom_i: std::marker::PhantomData,
       _phantom_o: std::marker::PhantomData,
     }
   }
-}
 
-#[derive(Debug)]
-pub enum MapError {
-  Transform(TransformError),
-  MapFunctionError(String),
-}
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
+  }
 
-impl fmt::Display for MapError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      MapError::Transform(e) => write!(f, "{}", e),
-      MapError::MapFunctionError(msg) => write!(f, "Map function failed: {}", msg),
-    }
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
   }
 }
 
-impl Error for MapError {
-  fn source(&self) -> Option<&(dyn Error + 'static)> {
-    match self {
-      MapError::Transform(e) => Some(e),
-      _ => None,
+impl<F, I, O> Clone for MapTransformer<F, I, O>
+where
+  F: Clone,
+{
+  fn clone(&self) -> Self {
+    Self {
+      f: self.f.clone(),
+      config: self.config.clone(),
+      _phantom_i: std::marker::PhantomData,
+      _phantom_o: std::marker::PhantomData,
     }
   }
 }
@@ -57,7 +63,7 @@ where
   I: Send + 'static,
   O: Send + 'static,
 {
-  type Error = MapError;
+  type Error = StreamError;
 }
 
 impl<F, I, O> Input for MapTransformer<F, I, O>
@@ -67,7 +73,7 @@ where
   O: Send + 'static,
 {
   type Input = I;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
 }
 
 impl<F, I, O> Output for MapTransformer<F, I, O>
@@ -77,13 +83,13 @@ where
   O: Send + 'static,
 {
   type Output = O;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, Self::Error>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError>> + Send>>;
 }
 
 #[async_trait]
 impl<F, I, O> Transformer for MapTransformer<F, I, O>
 where
-  F: FnMut(I) -> Result<O, Box<dyn Error + Send + Sync>> + Send + Clone + 'static,
+  F: FnMut(I) -> Result<O, Box<dyn std::error::Error + Send + Sync>> + Send + Clone + 'static,
   I: Send + 'static,
   O: Send + 'static,
 {
@@ -98,7 +104,18 @@ where
             let mapped = match result {
               Ok(item) => match f(item) {
                 Ok(output) => Ok(output),
-                Err(e) => Err(MapError::Transform(TransformError::OperationFailed(e))),
+                Err(e) => Err(StreamError::new(
+                  e,
+                  ErrorContext {
+                    timestamp: chrono::Utc::now(),
+                    item: None,
+                    stage: PipelineStage::Transformer,
+                  },
+                  ComponentInfo {
+                    name: "map_transformer".to_string(),
+                    type_name: std::any::type_name::<Self>().to_string(),
+                  },
+                )),
               },
               Err(e) => Err(e),
             };
@@ -108,6 +125,41 @@ where
         }
       },
     ))
+  }
+
+  fn config(&self) -> &TransformerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut TransformerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorStrategy::Stop,
+      ErrorStrategy::Skip => ErrorStrategy::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
+      _ => ErrorStrategy::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Transformer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "map_transformer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -147,29 +199,6 @@ mod tests {
     assert_eq!(result, vec!["1", "2", "3"]);
   }
 
-  // #[tokio::test]
-  // async fn test_map_transformer_with_error() {
-  //   let mut transformer =
-  //     MapTransformer::new(|x: i32| -> Result<i32, Box<dyn Error + Send + Sync>> {
-  //       if x % 2 == 0 {
-  //         Ok(x * 2)
-  //       } else {
-  //         Err("Odd numbers not allowed".into())
-  //       }
-  //     });
-  //   let input = stream::iter(vec![1, 2, 3, 4].into_iter().map(Ok));
-  //   let boxed_input = Box::pin(input);
-  //   let result = transformer
-  //     .transform(boxed_input)
-  //     .try_collect::<Vec<_>>()
-  //     .await;
-  //   assert!(result.is_err());
-  //   match result {
-  //     Err(MapError::MapFunctionError(e)) => assert_eq!(e, "Odd numbers not allowed"),
-  //     _ => panic!("Expected MapFunctionError"),
-  //   }
-  // }
-
   #[tokio::test]
   async fn test_map_transformer_reuse() {
     let mut transformer = MapTransformer::new(|x: i32| Ok(x * 2));
@@ -193,5 +222,24 @@ mod tests {
       .await
       .unwrap();
     assert_eq!(result2, vec![8, 10, 12]);
+  }
+
+  #[tokio::test]
+  async fn test_error_handling_strategies() {
+    let mut transformer = MapTransformer::new(|x: i32| Ok(x * 2))
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_transformer".to_string());
+
+    let config = transformer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_transformer".to_string()));
+
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      transformer.create_error_context(None),
+      transformer.component_info(),
+    );
+
+    assert_eq!(transformer.handle_error(error), ErrorStrategy::Skip);
   }
 }

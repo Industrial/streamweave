@@ -1,116 +1,171 @@
-use crate::traits::{consumer::Consumer, error::Error, input::Input};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  consumer::{Consumer, ConsumerConfig},
+  input::Input,
+};
 use async_trait::async_trait;
-use futures::StreamExt;
-use std::ffi::OsStr;
+use futures::{Stream, StreamExt};
 use std::pin::Pin;
-use std::process::Stdio;
-use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
-#[derive(Debug)]
-pub struct CommandConsumer {
-  command: Command,
-  delimiter: Option<Vec<u8>>,
+pub struct CommandConsumer<T> {
+  command: String,
+  args: Vec<String>,
+  config: ConsumerConfig,
+  _phantom: std::marker::PhantomData<T>,
 }
 
-#[derive(Debug)]
-pub enum CommandConsumerError {
-  IoError(std::io::Error),
-  ProcessError(i32),
-}
-
-impl std::fmt::Display for CommandConsumerError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      CommandConsumerError::IoError(e) => write!(f, "Command I/O error: {}", e),
-      CommandConsumerError::ProcessError(code) => {
-        write!(f, "Command failed with exit code: {}", code)
-      }
-    }
-  }
-}
-
-impl std::error::Error for CommandConsumerError {
-  fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-    match self {
-      CommandConsumerError::IoError(e) => Some(e),
-      CommandConsumerError::ProcessError(_) => None,
-    }
-  }
-}
-
-impl From<std::io::Error> for CommandConsumerError {
-  fn from(error: std::io::Error) -> Self {
-    CommandConsumerError::IoError(error)
-  }
-}
-
-impl Error for CommandConsumer {
-  type Error = CommandConsumerError;
-}
-
-impl Input for CommandConsumer {
-  type Input = Vec<u8>;
-  type InputStream = Pin<Box<dyn futures::Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
-}
-
-impl CommandConsumer {
-  pub fn new(program: impl AsRef<OsStr>) -> Self {
-    let mut cmd = Command::new(program.as_ref());
-    cmd.stdin(Stdio::piped());
+impl<T> CommandConsumer<T>
+where
+  T: Send + 'static,
+{
+  pub fn new(command: String, args: Vec<String>) -> Self {
     Self {
-      command: cmd,
-      delimiter: None,
+      command,
+      args,
+      config: ConsumerConfig::default(),
+      _phantom: std::marker::PhantomData,
     }
   }
 
-  pub fn with_delimiter(mut self, delimiter: Vec<u8>) -> Self {
-    self.delimiter = Some(delimiter);
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
     self
   }
 
-  pub fn arg<S: AsRef<OsStr>>(mut self, arg: S) -> Self {
-    self.command.arg(arg);
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
     self
   }
+}
 
-  pub fn args<I, S>(mut self, args: I) -> Self
-  where
-    I: IntoIterator<Item = S>,
-    S: AsRef<OsStr>,
-  {
-    self.command.args(args);
-    self
-  }
+impl<T> crate::traits::error::Error for CommandConsumer<T>
+where
+  T: Send + 'static,
+{
+  type Error = StreamError;
+}
+
+impl<T> Input for CommandConsumer<T>
+where
+  T: Send + 'static,
+{
+  type Input = T;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
 }
 
 #[async_trait]
-impl Consumer for CommandConsumer {
-  async fn consume(&mut self, mut input: Self::InputStream) -> Result<(), Self::Error> {
-    let mut child = self.command.spawn()?;
-    let stdin = child
-      .stdin
-      .as_mut()
-      .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::BrokenPipe, "Failed to open stdin"))?;
+impl<T> Consumer for CommandConsumer<T>
+where
+  T: Send + 'static + std::fmt::Display,
+{
+  async fn consume(&mut self, input: Self::InputStream) -> Result<(), StreamError> {
+    let mut stream = input;
+    while let Some(item) = stream.next().await {
+      match item {
+        Ok(value) => {
+          let mut cmd = Command::new(&self.command);
+          cmd.args(&self.args);
+          cmd.arg(value.to_string());
 
-    while let Some(result) = input.next().await {
-      let data = result?;
-      stdin.write_all(&data).await?;
-      if let Some(delimiter) = &self.delimiter {
-        stdin.write_all(delimiter).await?;
+          match cmd.output().await {
+            Ok(output) => {
+              if !output.status.success() {
+                let error = StreamError::new(
+                  Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!(
+                      "Command failed with status {}: {}",
+                      output.status,
+                      String::from_utf8_lossy(&output.stderr)
+                    ),
+                  )),
+                  self.create_error_context(Some(Box::new(value))),
+                  self.component_info(),
+                );
+                let strategy = self.handle_error(error.clone());
+                match strategy {
+                  ErrorStrategy::Stop => return Err(error),
+                  ErrorStrategy::Skip => continue,
+                  ErrorStrategy::Retry(n) if error.retries < n => {
+                    // Retry logic would go here
+                    return Err(error);
+                  }
+                  _ => return Err(error),
+                }
+              }
+            }
+            Err(e) => {
+              let error = StreamError::new(
+                Box::new(e),
+                self.create_error_context(Some(Box::new(value))),
+                self.component_info(),
+              );
+              let strategy = self.handle_error(error.clone());
+              match strategy {
+                ErrorStrategy::Stop => return Err(error),
+                ErrorStrategy::Skip => continue,
+                ErrorStrategy::Retry(n) if error.retries < n => {
+                  // Retry logic would go here
+                  return Err(error);
+                }
+                _ => return Err(error),
+              }
+            }
+          }
+        }
+        Err(e) => {
+          let strategy = self.handle_error(e.clone());
+          match strategy {
+            ErrorStrategy::Stop => return Err(e),
+            ErrorStrategy::Skip => continue,
+            ErrorStrategy::Retry(n) if e.retries < n => {
+              // Retry logic would go here
+              return Err(e);
+            }
+            _ => return Err(e),
+          }
+        }
       }
     }
-
-    drop(stdin); // Close stdin to signal EOF
-    let status = child.wait().await?;
-
-    if !status.success() {
-      return Err(CommandConsumerError::ProcessError(
-        status.code().unwrap_or(-1),
-      ));
-    }
-
     Ok(())
+  }
+
+  fn config(&self) -> &ConsumerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut ConsumerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorStrategy::Stop,
+      ErrorStrategy::Skip => ErrorStrategy::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
+      _ => ErrorStrategy::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Consumer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "command_consumer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -118,133 +173,53 @@ impl Consumer for CommandConsumer {
 mod tests {
   use super::*;
   use futures::stream;
-  use std::path::Path;
-  use tokio;
 
   #[tokio::test]
-  async fn test_empty_stream() {
-    let mut consumer = CommandConsumer::new("echo");
-    let input = stream::empty();
-    let result = consumer.consume(Box::pin(input)).await;
+  async fn test_command_consumer_basic() {
+    let mut consumer = CommandConsumer::new("echo".to_string(), vec![]);
+    let input = stream::iter(vec!["test"].into_iter().map(Ok));
+    let boxed_input = Box::pin(input);
+
+    let result = consumer.consume(boxed_input).await;
     assert!(result.is_ok());
   }
 
   #[tokio::test]
-  async fn test_basic_command() {
-    let mut consumer = CommandConsumer::new("echo");
-    let input = stream::iter(vec![Ok(b"hello world".to_vec())]);
-    let result = consumer.consume(Box::pin(input)).await;
+  async fn test_command_consumer_empty_input() {
+    let mut consumer = CommandConsumer::new("echo".to_string(), vec![]);
+    let input = stream::iter(Vec::<Result<&str, StreamError>>::new());
+    let boxed_input = Box::pin(input);
+
+    let result = consumer.consume(boxed_input).await;
     assert!(result.is_ok());
   }
 
   #[tokio::test]
-  async fn test_command_with_args() {
-    let mut consumer = CommandConsumer::new("echo").arg("-n").arg("test");
-    let input = stream::iter(vec![Ok(b"hello".to_vec())]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-  }
+  async fn test_command_consumer_with_error() {
+    let mut consumer = CommandConsumer::new("nonexistent_command".to_string(), vec![]);
+    let input = stream::iter(vec![Ok("test")]);
+    let boxed_input = Box::pin(input);
 
-  #[tokio::test]
-  async fn test_command_with_multiple_args() {
-    let mut consumer = CommandConsumer::new("echo").args(vec!["-n", "test"]);
-    let input = stream::iter(vec![Ok(b"hello".to_vec())]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-  }
-
-  #[tokio::test]
-  async fn test_command_with_delimiter() {
-    let mut consumer = CommandConsumer::new("echo").with_delimiter(b"\n".to_vec());
-    let input = stream::iter(vec![Ok(b"hello".to_vec()), Ok(b"world".to_vec())]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-  }
-
-  #[tokio::test]
-  async fn test_command_with_path() {
-    let mut consumer = CommandConsumer::new(Path::new("echo"));
-    let input = stream::iter(vec![Ok(b"hello".to_vec())]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-  }
-
-  #[tokio::test]
-  async fn test_command_with_error() {
-    let mut consumer = if cfg!(windows) {
-      CommandConsumer::new("cmd").arg("/C").arg("exit /b 1")
-    } else {
-      CommandConsumer::new("sh").arg("-c").arg("exit 1")
-    };
-    let input = stream::iter(vec![Ok(b"hello".to_vec())]);
-    let result = consumer.consume(Box::pin(input)).await;
+    let result = consumer.consume(boxed_input).await;
     assert!(result.is_err());
-    assert!(matches!(
-      result.unwrap_err(),
-      CommandConsumerError::ProcessError(_)
-    ));
   }
 
   #[tokio::test]
-  async fn test_nonexistent_command() {
-    let mut consumer = CommandConsumer::new("nonexistent_command_123456");
-    let input = stream::iter(vec![Ok(b"hello".to_vec())]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_err());
-    assert!(matches!(
-      result.unwrap_err(),
-      CommandConsumerError::IoError(_)
-    ));
-  }
+  async fn test_error_handling_strategies() {
+    let mut consumer = CommandConsumer::new("echo".to_string(), vec![])
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_consumer".to_string());
 
-  #[tokio::test]
-  async fn test_large_input() {
-    let mut consumer = CommandConsumer::new("cat");
-    let data = vec![b'a'; 1024 * 1024]; // 1MB of data
-    let input = stream::iter(vec![Ok(data)]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-  }
+    let config = consumer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_consumer".to_string()));
 
-  #[tokio::test]
-  async fn test_multiple_chunks() {
-    let mut consumer = CommandConsumer::new("cat");
-    let input = stream::iter(vec![
-      Ok(b"hello".to_vec()),
-      Ok(b" ".to_vec()),
-      Ok(b"world".to_vec()),
-    ]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
-  }
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      consumer.create_error_context(None),
+      consumer.component_info(),
+    );
 
-  #[tokio::test]
-  async fn test_error_propagation() {
-    let mut consumer = CommandConsumer::new("cat");
-    let input = stream::iter(vec![
-      Ok(b"hello".to_vec()),
-      Err(CommandConsumerError::IoError(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        "test error",
-      ))),
-      Ok(b"world".to_vec()),
-    ]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_err());
-    assert!(matches!(
-      result.unwrap_err(),
-      CommandConsumerError::IoError(_)
-    ));
-  }
-
-  #[tokio::test]
-  async fn test_command_with_special_chars() {
-    let mut consumer = CommandConsumer::new("echo");
-    let input = stream::iter(vec![
-      Ok(b"hello\nworld".to_vec()),
-      Ok(b"\x00\x01\x02".to_vec()),
-    ]);
-    let result = consumer.consume(Box::pin(input)).await;
-    assert!(result.is_ok());
+    assert_eq!(consumer.handle_error(error), ErrorStrategy::Skip);
   }
 }

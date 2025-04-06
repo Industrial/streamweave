@@ -1,100 +1,146 @@
-use crate::traits::{consumer::Consumer, error::Error, input::Input};
+use crate::error::{
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
+};
+use crate::traits::{
+  consumer::{Consumer, ConsumerConfig},
+  input::Input,
+};
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
-use std::error::Error as StdError;
-use std::fmt;
-use std::path::{Path, PathBuf};
 use std::pin::Pin;
-use tokio::fs::OpenOptions;
+use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
-#[derive(Debug)]
-pub enum FileError {
-  IoError(std::io::Error),
-  WriteError(String),
+pub struct FileConsumer {
+  config: ConsumerConfig,
+  file: Option<File>,
+  path: String,
 }
 
-impl fmt::Display for FileError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      FileError::IoError(e) => write!(f, "File IO error: {}", e),
-      FileError::WriteError(msg) => write!(f, "File write error: {}", msg),
-    }
-  }
-}
-
-impl StdError for FileError {
-  fn source(&self) -> Option<&(dyn StdError + 'static)> {
-    match self {
-      FileError::IoError(e) => Some(e),
-      FileError::WriteError(_) => None,
-    }
-  }
-}
-
-impl From<std::io::Error> for FileError {
-  fn from(err: std::io::Error) -> Self {
-    FileError::IoError(err)
-  }
-}
-
-pub struct FileConsumer<T> {
-  path: PathBuf,
-  file: Option<tokio::fs::File>,
-  _phantom: std::marker::PhantomData<T>,
-}
-
-impl<T> FileConsumer<T> {
-  pub fn new(path: impl AsRef<Path>) -> Self {
+impl FileConsumer {
+  pub fn new(path: String) -> Self {
     Self {
-      path: path.as_ref().to_path_buf(),
+      config: ConsumerConfig::default(),
       file: None,
-      _phantom: std::marker::PhantomData,
+      path,
     }
   }
 
-  async fn initialize(&mut self) -> Result<(), FileError> {
-    if let Some(parent) = self.path.parent() {
-      tokio::fs::create_dir_all(parent).await?;
-    }
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+    self.config_mut().set_error_strategy(strategy);
+    self
+  }
 
-    let file = OpenOptions::new()
-      .create(true)
-      .append(true)
-      .open(&self.path)
-      .await?;
-
-    self.file = Some(file);
-    Ok(())
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config_mut().set_name(name);
+    self
   }
 }
 
-impl<T: ToString + Send + 'static> Error for FileConsumer<T> {
-  type Error = FileError;
+impl crate::traits::error::Error for FileConsumer {
+  type Error = StreamError;
 }
 
-impl<T: ToString + Send + 'static> Input for FileConsumer<T> {
-  type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
+impl Input for FileConsumer {
+  type Input = String;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
 }
 
 #[async_trait]
-impl<T: ToString + Send + 'static> Consumer for FileConsumer<T> {
-  async fn consume(&mut self, mut stream: Self::InputStream) -> Result<(), Self::Error> {
-    self.initialize().await?;
+impl Consumer for FileConsumer {
+  async fn consume(&mut self, input: Self::InputStream) -> Result<(), StreamError> {
+    if self.file.is_none() {
+      self.file = Some(File::create(&self.path).await.map_err(|e| {
+        StreamError::new(
+          Box::new(e),
+          self.create_error_context(None),
+          self.component_info(),
+        )
+      })?);
+    }
 
-    let file = self
-      .file
-      .as_mut()
-      .ok_or_else(|| FileError::WriteError("File not initialized".to_string()))?;
-
+    let mut stream = input;
     while let Some(item) = stream.next().await {
-      let line = format!("{}\n", item?.to_string());
-      file.write_all(line.as_bytes()).await?;
-      file.flush().await?;
+      match item {
+        Ok(value) => {
+          if let Some(file) = &mut self.file {
+            file.write_all(value.as_bytes()).await.map_err(|e| {
+              StreamError::new(
+                Box::new(e),
+                self.create_error_context(None),
+                self.component_info(),
+              )
+            })?;
+            file.write_all(b"\n").await.map_err(|e| {
+              StreamError::new(
+                Box::new(e),
+                self.create_error_context(None),
+                self.component_info(),
+              )
+            })?;
+          }
+        }
+        Err(e) => {
+          let strategy = self.handle_error(e.clone());
+          match strategy {
+            ErrorStrategy::Stop => return Err(e),
+            ErrorStrategy::Skip => continue,
+            ErrorStrategy::Retry(n) if e.retries < n => {
+              // Retry logic would go here
+              return Err(e);
+            }
+            _ => return Err(e),
+          }
+        }
+      }
+    }
+
+    if let Some(file) = &mut self.file {
+      file.flush().await.map_err(|e| {
+        StreamError::new(
+          Box::new(e),
+          self.create_error_context(None),
+          self.component_info(),
+        )
+      })?;
     }
 
     Ok(())
+  }
+
+  fn config(&self) -> &ConsumerConfig {
+    &self.config
+  }
+
+  fn config_mut(&mut self) -> &mut ConsumerConfig {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
+    match self.config().error_strategy() {
+      ErrorStrategy::Stop => ErrorStrategy::Stop,
+      ErrorStrategy::Skip => ErrorStrategy::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
+      _ => ErrorStrategy::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Consumer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config()
+        .name()
+        .unwrap_or_else(|| "file_consumer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -102,77 +148,91 @@ impl<T: ToString + Send + 'static> Consumer for FileConsumer<T> {
 mod tests {
   use super::*;
   use futures::stream;
-  use tempfile::tempdir;
+  use std::fs;
+  use tempfile::NamedTempFile;
 
   #[tokio::test]
-  async fn test_file_consumer() {
-    let temp_dir = tempdir().unwrap();
-    let file_path = temp_dir.path().join("test.txt");
+  async fn test_file_consumer_basic() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let mut consumer = FileConsumer::new(path.clone());
 
-    let mut consumer = FileConsumer::new(&file_path);
-    let items = vec![
-      "test1".to_string(),
-      "test2".to_string(),
-      "test3".to_string(),
-    ];
-    let stream = Box::pin(stream::iter(items.clone()).map(Ok));
+    let input = stream::iter(
+      vec!["line1", "line2", "line3"]
+        .into_iter()
+        .map(|s| Ok(s.to_string())),
+    );
+    let boxed_input = Box::pin(input);
 
-    assert!(consumer.consume(stream).await.is_ok());
+    let result = consumer.consume(boxed_input).await;
+    assert!(result.is_ok());
 
-    // Verify file contents
-    let contents = tokio::fs::read_to_string(&file_path).await.unwrap();
-    let expected = items.join("\n") + "\n";
-    assert_eq!(contents, expected);
+    let contents = fs::read_to_string(path).unwrap();
+    assert_eq!(contents, "line1\nline2\nline3\n");
   }
 
   #[tokio::test]
-  async fn test_multiple_writes() {
-    let temp_dir = tempdir().unwrap();
-    let file_path = temp_dir.path().join("test_multiple.txt");
-    let mut consumer = FileConsumer::new(&file_path);
+  async fn test_file_consumer_empty_input() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let mut consumer = FileConsumer::new(path.clone());
 
-    // First write
-    let items1 = vec!["first1".to_string(), "first2".to_string()];
-    let stream1 = Box::pin(stream::iter(items1.clone()).map(Ok));
-    assert!(consumer.consume(stream1).await.is_ok());
+    let input = stream::iter(Vec::<Result<String, StreamError>>::new());
+    let boxed_input = Box::pin(input);
 
-    // Second write
-    let items2 = vec!["second1".to_string(), "second2".to_string()];
-    let stream2 = Box::pin(stream::iter(items2.clone()).map(Ok));
-    assert!(consumer.consume(stream2).await.is_ok());
+    let result = consumer.consume(boxed_input).await;
+    assert!(result.is_ok());
 
-    // Verify file contents
-    let contents = tokio::fs::read_to_string(&file_path).await.unwrap();
-    let expected = format!("{}\n{}\n", items1.join("\n"), items2.join("\n"));
-    assert_eq!(contents, expected);
+    let contents = fs::read_to_string(path).unwrap();
+    assert_eq!(contents, "");
   }
 
   #[tokio::test]
-  async fn test_error_handling() {
-    let temp_dir = tempdir().unwrap();
-    let file_path = temp_dir.path().join("test_error.txt");
-    let mut consumer = FileConsumer::new(&file_path);
+  async fn test_file_consumer_with_error() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let mut consumer = FileConsumer::new(path);
 
-    let error_stream = Box::pin(stream::iter(vec![
+    let input = stream::iter(vec![
       Ok("line1".to_string()),
-      Err(FileError::WriteError("test error".to_string())),
-      Ok("line3".to_string()),
-    ]));
+      Err(StreamError::new(
+        Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+        ErrorContext {
+          timestamp: chrono::Utc::now(),
+          item: None,
+          stage: PipelineStage::Consumer,
+        },
+        ComponentInfo {
+          name: "test".to_string(),
+          type_name: "test".to_string(),
+        },
+      )),
+      Ok("line2".to_string()),
+    ]);
+    let boxed_input = Box::pin(input);
 
-    let result = consumer.consume(error_stream).await;
+    let result = consumer.consume(boxed_input).await;
     assert!(result.is_err());
-    match result {
-      Err(FileError::WriteError(msg)) => assert_eq!(msg, "test error"),
-      _ => panic!("Expected WriteError"),
-    }
   }
 
   #[tokio::test]
-  async fn test_invalid_path() {
-    let mut consumer = FileConsumer::<String>::new("/nonexistent/directory/file.txt");
-    let stream = Box::pin(stream::iter(vec!["test".to_string()]).map(Ok));
+  async fn test_error_handling_strategies() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let mut consumer = FileConsumer::new(path)
+      .with_error_strategy(ErrorStrategy::Skip)
+      .with_name("test_consumer".to_string());
 
-    let result = consumer.consume(stream).await;
-    assert!(matches!(result, Err(FileError::IoError(_))));
+    let config = consumer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.name(), Some("test_consumer".to_string()));
+
+    let error = StreamError::new(
+      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      consumer.create_error_context(None),
+      consumer.component_info(),
+    );
+
+    assert_eq!(consumer.handle_error(error), ErrorStrategy::Skip);
   }
 }

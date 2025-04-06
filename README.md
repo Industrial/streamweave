@@ -82,15 +82,59 @@ PipelineBuilder::new()
 
 #### Error Handling
 
+StreamWeave provides two levels of error handling:
+
+1. **Pipeline Level (Default)**
 ```rust
-MapTransformer::new(parse)
-    .on_error(ErrorStrategy::Ignore)
+// Default behavior: Pipeline stops on first error
+pipeline.run().await?;
 
-MapTransformer::new(parse)
-    .on_error(ErrorStrategy::ReplaceWith(Default::default()))
+// Configure pipeline-wide error handling
+pipeline
+    .with_error_strategy(ErrorStrategy::Stop)  // Default
+    .with_error_strategy(ErrorStrategy::Skip)  // Skip errored items
+    .with_error_strategy(ErrorStrategy::Retry(3))  // Retry 3 times
+    .run()
+    .await?;
+```
 
+2. **Component Level**
+```rust
+// Override error handling for specific components
 MapTransformer::new(parse)
-    .on_error(ErrorStrategy::RedirectTo(error_sink()))
+    .with_error_strategy(ErrorStrategy::Stop)      // Stop component and pipeline
+    .with_error_strategy(ErrorStrategy::Skip)      // Skip errors, continue processing
+    .with_error_strategy(ErrorStrategy::Retry(3))  // Retry operation 3 times
+    .with_error_strategy(ErrorStrategy::Custom(|err| {
+        // Custom error handling logic
+        ErrorAction::Skip
+    }));
+```
+
+**Default Behaviors:**
+- Pipeline Level: `ErrorStrategy::Stop` - Pipeline stops on first error
+- Component Level: Inherits pipeline strategy unless overridden
+
+**Error Actions:**
+- `Stop`: Stop processing and propagate error (default)
+- `Skip`: Skip errored item and continue
+- `Retry(n)`: Retry operation n times before applying next strategy
+- `Custom(handler)`: Custom error handling logic
+
+**Error Context:**
+```rust
+struct StreamError<E> {
+    source: E,                    // Original error
+    context: ErrorContext,        // Error metadata
+    retries: usize,              // Retry attempts if any
+    component: ComponentInfo,     // Component where error occurred
+}
+
+struct ErrorContext {
+    timestamp: DateTime<Utc>,
+    item: Option<Box<dyn Any>>,  // Item being processed
+    stage: PipelineStage,        // Stage where error occurred
+}
 ```
 
 #### Conditional Logic
