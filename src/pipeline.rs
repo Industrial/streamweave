@@ -36,12 +36,9 @@ where
   T: Transformer,
   C: Consumer,
 {
-  producer: Option<P>,
   producer_stream: Option<P::OutputStream>,
-  transformer: Option<T>,
   transformer_stream: Option<T::OutputStream>,
   consumer: Option<C>,
-  consumer_stream: Option<C::InputStream>,
 }
 
 impl<P, T, C> Pipeline<P, T, C>
@@ -52,53 +49,44 @@ where
 {
   pub fn new() -> Self {
     Pipeline {
-      producer: None,
       producer_stream: None,
-      transformer: None,
       transformer_stream: None,
       consumer: None,
-      consumer_stream: None,
     }
   }
 
-  pub fn producer(self, producer: P) -> Self {
+  pub fn producer(self, mut producer: P) -> Self {
+    let stream = producer.produce();
     Pipeline {
-      producer: Some(producer),
-      producer_stream: Some(producer.produce()),
-      transformer: self.transformer,
+      producer_stream: Some(stream),
       transformer_stream: None,
-      consumer: self.consumer,
-      consumer_stream: None,
+      consumer: None,
     }
   }
 
-  pub fn transformer(self, transformer: T) -> Self {
+  pub fn transformer<U>(self, mut transformer: U) -> Pipeline<P, U, C>
+  where
+    U: Transformer<Input = P::Output>,
+    U::InputStream: From<P::OutputStream>,
+  {
     if self.producer_stream.is_none() {
       panic!("Producer stream is not set");
     }
 
-    if self.transformer_stream.is_none() {
-      Pipeline {
-        producer: self.producer,
-        producer_stream: self.producer_stream,
-        transformer: Some(transformer),
-        transformer_stream: Some(transformer.transform(self.producer_stream.unwrap())),
-        consumer: self.consumer,
-        consumer_stream: None,
-      }
-    } else {
-      Pipeline {
-        producer: self.producer,
-        producer_stream: self.producer_stream,
-        transformer: Some(transformer),
-        transformer_stream: Some(transformer.transform(self.transformer_stream.unwrap())),
-        consumer: self.consumer,
-        consumer_stream: None,
-      }
+    let producer_stream = self.producer_stream.unwrap();
+    let transformer_stream = transformer.transform(producer_stream.into());
+    Pipeline {
+      producer_stream: None,
+      transformer_stream: Some(transformer_stream),
+      consumer: None,
     }
   }
 
-  pub fn consumer(self, consumer: C) -> Self {
+  pub fn consumer<U>(self, consumer: U) -> Pipeline<P, T, U>
+  where
+    U: Consumer<Input = T::Output>,
+    U::InputStream: From<T::OutputStream>,
+  {
     if self.producer_stream.is_none() {
       panic!("Producer stream is not set");
     }
@@ -108,19 +96,29 @@ where
     }
 
     Pipeline {
-      producer: self.producer,
       producer_stream: self.producer_stream,
-      transformer: self.transformer,
       transformer_stream: self.transformer_stream,
       consumer: Some(consumer),
-      consumer_stream: Some(consumer.consume(self.transformer_stream.unwrap())),
     }
   }
 
-  pub async fn run(self) -> Result<(), PipelineError> {
-    self
-      .consumer_stream
+  pub async fn run(self) -> Result<(), PipelineError>
+  where
+    C::InputStream: From<T::OutputStream>,
+  {
+    if self.consumer.is_none() {
+      panic!("No consumer set");
+    }
+
+    if self.transformer_stream.is_none() {
+      panic!("No transformer stream set");
+    }
+
+    let mut consumer = self.consumer.unwrap();
+
+    consumer
+      .consume(self.transformer_stream.unwrap().into())
       .await
-      .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)
+      .map_err(PipelineError::new)
   }
 }
