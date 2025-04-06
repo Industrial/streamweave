@@ -5,4 +5,5 @@ pub mod pipeline;
 pub mod producers;
 pub mod testing;
 pub mod traits;
+pub mod transformers;
 pub mod utils;

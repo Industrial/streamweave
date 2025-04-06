@@ -74,14 +74,19 @@ mod tests {
   async fn test_channel_producer() {
     let (mut producer, sender) = ChannelProducer::new(2);
 
-    // Send some data
+    // Start consuming in a separate task
+    let stream = producer.produce();
+    let collect_task =
+      tokio::spawn(async move { stream.map(|r| r.unwrap()).collect::<Vec<i32>>().await });
+
+    // Send data
     sender.send(1).await.unwrap();
     sender.send(2).await.unwrap();
     sender.send(3).await.unwrap();
     drop(sender);
 
-    let stream = producer.produce();
-    let result: Vec<i32> = stream.map(|r| r.unwrap()).collect().await;
+    // Wait for collection to complete
+    let result = collect_task.await.unwrap();
     assert_eq!(result, vec![1, 2, 3]);
   }
 
@@ -125,6 +130,11 @@ mod tests {
     let (mut producer, sender1) = ChannelProducer::new(4);
     let sender2 = sender1.clone();
 
+    // Start consuming in a separate task
+    let stream = producer.produce();
+    let collect_task =
+      tokio::spawn(async move { stream.map(|r| r.unwrap()).collect::<Vec<i32>>().await });
+
     // Spawn two tasks that send data
     let task1 = tokio::spawn(async move {
       sender1.send(1).await.unwrap();
@@ -140,8 +150,8 @@ mod tests {
     task1.await.unwrap();
     task2.await.unwrap();
 
-    let stream = producer.produce();
-    let mut result: Vec<i32> = stream.map(|r| r.unwrap()).collect().await;
+    // Wait for collection and check results
+    let mut result = collect_task.await.unwrap();
     result.sort(); // Order may vary due to concurrent sends
     assert_eq!(result, vec![1, 2, 3, 4]);
   }
