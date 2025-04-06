@@ -63,6 +63,7 @@
       name = "cargo-test";
       description = "Run cargo tests";
       entry = "cargo test";
+      pass_filenames = false;
     };
   };
 

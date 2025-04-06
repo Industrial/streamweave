@@ -1,4 +1,9 @@
+pub mod array;
 pub mod channel;
+pub mod command;
 pub mod console;
 pub mod file;
+pub mod hash_map;
+pub mod hash_set;
+pub mod string;
 pub mod vec;
