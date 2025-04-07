@@ -1,13 +1,10 @@
-use crate::error::{
-  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
-};
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::traits::{
   output::Output,
   producer::{Producer, ProducerConfig},
 };
 use async_trait::async_trait;
-use futures::{Stream, StreamExt};
-use std::io;
+use futures::Stream;
 use std::pin::Pin;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -115,8 +112,8 @@ impl Producer for FileProducer {
 mod tests {
   use super::*;
   use futures::StreamExt;
+  use std::io::Write;
   use tempfile::NamedTempFile;
-  use tokio::io::AsyncWriteExt;
 
   #[tokio::test]
   async fn test_file_producer() {
@@ -164,7 +161,10 @@ mod tests {
     assert_eq!(config.name(), Some("test_producer".to_string()));
 
     let error = StreamError {
-      source: Box::new(io::Error::new(io::ErrorKind::NotFound, "test error")),
+      source: Box::new(std::io::Error::new(
+        std::io::ErrorKind::NotFound,
+        "test error",
+      )),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
