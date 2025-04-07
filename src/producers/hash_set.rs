@@ -82,7 +82,11 @@ where
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      component_name: self.config.name.clone(),
+      component_name: self
+        .config
+        .name
+        .clone()
+        .unwrap_or_else(|| "hash_set_producer".to_string()),
       component_type: std::any::type_name::<Self>().to_string(),
     }
   }
@@ -187,7 +191,8 @@ mod tests {
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
-        stage: PipelineStage::Producer,
+        component_name: "test".to_string(),
+        component_type: "HashSetProducer".to_string(),
       },
       component: ComponentInfo {
         name: "test".to_string(),
