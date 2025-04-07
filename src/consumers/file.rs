@@ -81,7 +81,7 @@ impl Consumer for FileConsumer {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Consumer(self.component_info().name),
+      stage: PipelineStage::Consumer,
     }
   }
 

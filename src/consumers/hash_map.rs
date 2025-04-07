@@ -18,8 +18,8 @@ pub struct HashMapConsumer<K, V> {
 
 impl<K, V> HashMapConsumer<K, V>
 where
-  K: Hash + Eq + Send + 'static,
-  V: Send + 'static,
+  K: Hash + Eq + Send + Clone + 'static,
+  V: Send + Clone + 'static,
 {
   pub fn new() -> Self {
     Self {
@@ -45,8 +45,8 @@ where
 
 impl<K, V> Input for HashMapConsumer<K, V>
 where
-  K: Hash + Eq + Send + 'static,
-  V: Send + 'static,
+  K: Hash + Eq + Send + Clone + 'static,
+  V: Send + Clone + 'static,
 {
   type Input = (K, V);
   type InputStream = Pin<Box<dyn Stream<Item = (K, V)> + Send>>;
@@ -55,8 +55,8 @@ where
 #[async_trait]
 impl<K, V> Consumer for HashMapConsumer<K, V>
 where
-  K: Hash + Eq + Send + 'static,
-  V: Send + 'static,
+  K: Hash + Eq + Send + Clone + 'static,
+  V: Send + Clone + 'static,
 {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some((key, value)) = stream.next().await {
@@ -85,7 +85,7 @@ where
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Consumer(self.component_info().name),
+      stage: PipelineStage::Consumer,
     }
   }
 

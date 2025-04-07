@@ -15,7 +15,7 @@ pub struct ConsoleConsumer<T> {
 
 impl<T> ConsoleConsumer<T>
 where
-  T: Send + Sync + 'static + std::fmt::Debug + std::fmt::Display,
+  T: Send + Sync + Clone + 'static + std::fmt::Debug + std::fmt::Display,
 {
   pub fn new() -> Self {
     Self {
@@ -36,7 +36,7 @@ where
 
 impl<T> Input for ConsoleConsumer<T>
 where
-  T: Send + Sync + 'static + std::fmt::Debug + std::fmt::Display,
+  T: Send + Sync + Clone + 'static + std::fmt::Debug + std::fmt::Display,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -45,7 +45,7 @@ where
 #[async_trait]
 impl<T> Consumer for ConsoleConsumer<T>
 where
-  T: Send + Sync + 'static + std::fmt::Debug + std::fmt::Display,
+  T: Send + Sync + Clone + 'static + std::fmt::Debug + std::fmt::Display,
 {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some(value) = stream.next().await {
@@ -74,7 +74,7 @@ where
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Consumer(self.component_info().name),
+      stage: PipelineStage::Consumer,
     }
   }
 

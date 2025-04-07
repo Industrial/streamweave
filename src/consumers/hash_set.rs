@@ -18,7 +18,7 @@ pub struct HashSetConsumer<T> {
 
 impl<T> HashSetConsumer<T>
 where
-  T: Hash + Eq + Send + 'static,
+  T: Hash + Eq + Send + Clone + 'static,
 {
   pub fn new() -> Self {
     Self {
@@ -44,7 +44,7 @@ where
 
 impl<T> Input for HashSetConsumer<T>
 where
-  T: Hash + Eq + Send + 'static,
+  T: Hash + Eq + Send + Clone + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -53,7 +53,7 @@ where
 #[async_trait]
 impl<T> Consumer for HashSetConsumer<T>
 where
-  T: Hash + Eq + Send + 'static,
+  T: Hash + Eq + Send + Clone + 'static,
 {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some(value) = stream.next().await {
@@ -82,7 +82,7 @@ where
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Consumer(self.component_info().name),
+      stage: PipelineStage::Consumer,
     }
   }
 

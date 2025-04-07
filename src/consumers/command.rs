@@ -17,7 +17,7 @@ pub struct CommandConsumer<T> {
 
 impl<T> CommandConsumer<T>
 where
-  T: Send + Sync + 'static + std::fmt::Debug + std::fmt::Display,
+  T: Send + Sync + Clone + 'static + std::fmt::Debug + std::fmt::Display,
 {
   pub fn new(command: String, args: Vec<String>) -> Self {
     let mut cmd = Command::new(command);
@@ -41,7 +41,7 @@ where
 
 impl<T> Input for CommandConsumer<T>
 where
-  T: Send + Sync + 'static + std::fmt::Debug + std::fmt::Display,
+  T: Send + Sync + Clone + 'static + std::fmt::Debug + std::fmt::Display,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -50,7 +50,7 @@ where
 #[async_trait]
 impl<T> Consumer for CommandConsumer<T>
 where
-  T: Send + Sync + 'static + std::fmt::Debug + std::fmt::Display,
+  T: Send + Sync + Clone + 'static + std::fmt::Debug + std::fmt::Display,
 {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some(value) = stream.next().await {
@@ -67,8 +67,8 @@ where
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> &ConsumerConfig<T> {
-    &self.config
+  fn get_config_impl(&self) -> ConsumerConfig<T> {
+    self.config.clone()
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
@@ -84,7 +84,7 @@ where
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Consumer(self.component_info().name),
+      stage: PipelineStage::Consumer,
     }
   }
 

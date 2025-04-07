@@ -16,7 +16,7 @@ pub struct VecConsumer<T> {
 
 impl<T> VecConsumer<T>
 where
-  T: Send + Sync + 'static + std::fmt::Debug,
+  T: Send + Sync + Clone + 'static + std::fmt::Debug,
 {
   pub fn new() -> Self {
     Self {
@@ -49,7 +49,7 @@ where
 
 impl<T> Input for VecConsumer<T>
 where
-  T: Send + Sync + 'static + std::fmt::Debug,
+  T: Send + Sync + Clone + 'static + std::fmt::Debug,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -58,7 +58,7 @@ where
 #[async_trait]
 impl<T> Consumer for VecConsumer<T>
 where
-  T: Send + Sync + 'static + std::fmt::Debug,
+  T: Send + Sync + Clone + 'static + std::fmt::Debug,
 {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some(value) = stream.next().await {
