@@ -8,7 +8,10 @@ use crate::traits::{
 use futures::{Stream, stream};
 use std::pin::Pin;
 
-pub struct VecProducer<T> {
+pub struct VecProducer<T>
+where
+  T: Clone + Send + 'static,
+{
   data: Vec<T>,
   config: ProducerConfig<T>,
 }

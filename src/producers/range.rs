@@ -9,7 +9,10 @@ use futures::{Stream, stream};
 use num_traits::Num;
 use std::pin::Pin;
 
-pub struct RangeProducer<T> {
+pub struct RangeProducer<T>
+where
+  T: Num + Copy + Clone + Send + PartialOrd + 'static,
+{
   start: T,
   end: T,
   step: T,

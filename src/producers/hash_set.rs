@@ -10,7 +10,10 @@ use std::collections::HashSet;
 use std::hash::Hash;
 use std::pin::Pin;
 
-pub struct HashSetProducer<T> {
+pub struct HashSetProducer<T>
+where
+  T: Send + Clone + Hash + Eq + 'static,
+{
   data: HashSet<T>,
   config: ProducerConfig<T>,
 }

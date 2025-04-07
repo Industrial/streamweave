@@ -11,7 +11,11 @@ use std::hash::Hash;
 use std::pin::Pin;
 use std::sync::Arc;
 
-pub struct HashMapProducer<K, V> {
+pub struct HashMapProducer<K, V>
+where
+  K: Clone + Send + 'static,
+  V: Clone + Send + 'static,
+{
   data: HashMap<K, V>,
   config: ProducerConfig<(K, V)>,
 }
