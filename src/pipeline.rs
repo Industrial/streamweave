@@ -1,8 +1,5 @@
-use crate::error::{
-  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineError, StreamError,
-};
+use crate::error::{ErrorAction, ErrorStrategy, PipelineError, StreamError};
 use crate::traits::{consumer::Consumer, producer::Producer, transformer::Transformer};
-use chrono::Utc;
 use std::marker::PhantomData;
 
 // State types for the builder

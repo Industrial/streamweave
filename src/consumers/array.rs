@@ -154,4 +154,71 @@ mod tests {
     assert_eq!(config.error_strategy, ErrorStrategy::<i32>::Skip);
     assert_eq!(config.name, "test_consumer");
   }
+
+  #[tokio::test]
+  async fn test_error_handling_during_consumption() {
+    let mut consumer = ArrayConsumer::<i32, 3>::new()
+      .with_error_strategy(ErrorStrategy::<i32>::Skip)
+      .with_name("test_consumer".to_string());
+
+    // Test that Skip strategy allows consumption to continue
+    let action = consumer.handle_error(&StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: Some(42),
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 0,
+    });
+    assert_eq!(action, ErrorAction::Skip);
+
+    // Test that Stop strategy halts consumption
+    let mut consumer = consumer.with_error_strategy(ErrorStrategy::<i32>::Stop);
+    let action = consumer.handle_error(&StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: Some(42),
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 0,
+    });
+    assert_eq!(action, ErrorAction::Stop);
+  }
+
+  #[tokio::test]
+  async fn test_component_info() {
+    let consumer = ArrayConsumer::<i32, 3>::new().with_name("test_consumer".to_string());
+
+    let info = consumer.component_info();
+    assert_eq!(info.name, "test_consumer");
+    assert_eq!(
+      info.type_name,
+      "streamweave::consumers::array::ArrayConsumer<i32, 3>"
+    );
+  }
+
+  #[tokio::test]
+  async fn test_error_context_creation() {
+    let consumer = ArrayConsumer::<i32, 3>::new().with_name("test_consumer".to_string());
+
+    let context = consumer.create_error_context(Some(42));
+    assert_eq!(context.component_name, "test_consumer");
+    assert_eq!(
+      context.component_type,
+      "streamweave::consumers::array::ArrayConsumer<i32, 3>"
+    );
+    assert_eq!(context.item, Some(42));
+  }
 }
