@@ -57,6 +57,17 @@ impl Consumer for FileConsumer {
         if let Err(e) = file.write_all(value.as_bytes()).await {
           eprintln!("Failed to write to file: {}", e);
         }
+        // Ensure each write is flushed
+        if let Err(e) = file.flush().await {
+          eprintln!("Failed to flush file: {}", e);
+        }
+      }
+    }
+
+    // Final flush after stream is consumed
+    if let Some(file) = &mut self.file {
+      if let Err(e) = file.flush().await {
+        eprintln!("Failed to flush file: {}", e);
       }
     }
   }
@@ -99,8 +110,8 @@ impl Consumer for FileConsumer {
 mod tests {
   use super::*;
   use futures::stream;
-  use std::fs;
   use tempfile::NamedTempFile;
+  use tokio::fs as tokio_fs;
 
   #[tokio::test]
   async fn test_file_consumer_basic() {
@@ -113,7 +124,8 @@ mod tests {
 
     consumer.consume(boxed_input).await;
 
-    let contents = fs::read_to_string(path).unwrap();
+    // Use async file reading to ensure all writes are complete
+    let contents = tokio_fs::read_to_string(path).await.unwrap();
     assert_eq!(contents, "line1line2");
   }
 
@@ -128,7 +140,8 @@ mod tests {
 
     consumer.consume(boxed_input).await;
 
-    let contents = fs::read_to_string(path).unwrap();
+    // Use async file reading to ensure all writes are complete
+    let contents = tokio_fs::read_to_string(path).await.unwrap();
     assert_eq!(contents, "");
   }
 
