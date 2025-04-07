@@ -106,30 +106,26 @@ where
     let rate_limit = self.rate_limit;
     let time_window = self.time_window;
 
-    Box::pin(
-      input
-        .filter_map(move |item| {
-          let count = count.clone();
-          let window_start = window_start.clone();
-          async move {
-            let now = Instant::now();
-            let mut window_start = window_start.write().await;
+    Box::pin(input.filter_map(move |item| {
+      let count = count.clone();
+      let window_start = window_start.clone();
+      async move {
+        let now = Instant::now();
+        let mut window_start = window_start.write().await;
 
-            if now.duration_since(*window_start) >= time_window {
-              count.store(0, Ordering::SeqCst);
-              *window_start = now;
-            }
+        if now.duration_since(*window_start) >= time_window {
+          count.store(0, Ordering::SeqCst);
+          *window_start = now;
+        }
 
-            if count.load(Ordering::SeqCst) >= rate_limit {
-              None
-            } else {
-              count.fetch_add(1, Ordering::SeqCst);
-              Some(item)
-            }
-          }
-        })
-        .throttle(time_window / rate_limit as u32),
-    )
+        if count.load(Ordering::SeqCst) >= rate_limit {
+          None
+        } else {
+          count.fetch_add(1, Ordering::SeqCst);
+          Some(item)
+        }
+      }
+    }))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

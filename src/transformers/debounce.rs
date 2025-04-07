@@ -67,10 +67,7 @@ where
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let duration = self.duration;
-    Box::pin(input.timeout(duration).filter_map(|result| match result {
-      Ok(item) => Some(item),
-      Err(_) => None,
-    }))
+    Box::pin(input.delay(duration))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

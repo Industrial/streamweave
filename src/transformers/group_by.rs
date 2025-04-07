@@ -86,8 +86,7 @@ where
           groups.entry(key).or_insert_with(Vec::new).push(item);
           groups
         })
-        .then(|groups| async move { groups.into_iter().collect::<Vec<_>>() })
-        .flat_map(futures::stream::iter),
+        .then(|groups| async move { futures::stream::iter(groups.into_iter()) }),
     )
   }
 

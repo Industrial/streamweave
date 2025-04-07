@@ -8,6 +8,7 @@ use crate::traits::{
 };
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::pin::Pin;
@@ -64,10 +65,11 @@ where
   T: Send + 'static + Hash + Eq + Clone,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let mut seen = HashSet::new();
+    let seen = RefCell::new(HashSet::new());
     Box::pin(input.filter(move |item| {
       let item = item.clone();
-      async move { seen.insert(item) }
+      let mut seen = seen.borrow_mut();
+      seen.insert(item)
     }))
   }
 
