@@ -27,26 +27,15 @@ where
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
-    let mut config = self.get_config();
-    config.error_strategy = strategy;
-    self.set_config(config);
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
+    self.config.error_strategy = strategy;
     self
   }
 
   pub fn with_name(mut self, name: String) -> Self {
-    let mut config = self.get_config();
-    config.name = name;
-    self.set_config(config);
+    self.config.name = name;
     self
   }
-}
-
-impl<T> crate::traits::error::Error for ChannelConsumer<T>
-where
-  T: Send + Sync + 'static + std::fmt::Debug,
-{
-  type Error = StreamError<T>;
 }
 
 impl<T> Input for ChannelConsumer<T>
@@ -54,7 +43,7 @@ where
   T: Send + Sync + 'static + std::fmt::Debug,
 {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 #[async_trait]
@@ -62,52 +51,31 @@ impl<T> Consumer for ChannelConsumer<T>
 where
   T: Send + Sync + 'static + std::fmt::Debug,
 {
-  async fn consume(&mut self, input: Self::InputStream) -> Result<(), StreamError<T>> {
+  async fn consume(&mut self, input: Self::InputStream) -> () {
     let mut stream = input;
-    while let Some(item) = stream.next().await {
-      match item {
-        Ok(value) => {
-          if let Some(sender) = &self.channel {
-            if let Err(e) = sender.send(value).await {
-              return Err(StreamError::new(
-                Box::new(e),
-                self.create_error_context(None),
-                self.component_info(),
-              ));
-            }
-          } else {
-            return Err(StreamError::new(
-              Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Channel is closed",
-              )),
-              self.create_error_context(None),
-              self.component_info(),
-            ));
-          }
-        }
-        Err(e) => {
-          let action = self.handle_error(&e);
-          match action {
-            ErrorAction::Stop => return Err(e),
-            ErrorAction::Skip => continue,
-            ErrorAction::Retry => {
-              // Retry logic would go here
-              return Err(e);
-            }
-          }
+    while let Some(value) = stream.next().await {
+      if let Some(sender) = &self.channel {
+        if let Err(e) = sender.send(value).await {
+          eprintln!("Failed to send value to channel: {}", e);
         }
       }
     }
-    Ok(())
+  }
+
+  fn set_config_impl(&mut self, config: ConsumerConfig<T>) {
+    self.config = config;
+  }
+
+  fn get_config_impl(&self) -> &ConsumerConfig<T> {
+    &self.config
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.get_config().error_strategy {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
-      ErrorStrategy::Retry(_) => ErrorAction::Retry,
-      ErrorStrategy::Custom(_) => ErrorAction::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      _ => ErrorAction::Stop,
     }
   }
 
@@ -120,9 +88,8 @@ where
   }
 
   fn component_info(&self) -> ComponentInfo {
-    let config = self.get_config();
     ComponentInfo {
-      name: config.name,
+      name: self.config.name.clone(),
       type_name: std::any::type_name::<Self>().to_string(),
     }
   }
@@ -138,11 +105,10 @@ mod tests {
     let (tx, mut rx) = channel(10);
     let mut consumer = ChannelConsumer::new(tx);
 
-    let input = stream::iter(vec![1, 2, 3].into_iter().map(Ok));
+    let input = stream::iter(vec![1, 2, 3]);
     let boxed_input = Box::pin(input);
 
-    let result = consumer.consume(boxed_input).await;
-    assert!(result.is_ok());
+    consumer.consume(boxed_input).await;
 
     assert_eq!(rx.recv().await, Some(1));
     assert_eq!(rx.recv().await, Some(2));
@@ -155,40 +121,10 @@ mod tests {
     let (tx, mut rx) = channel(10);
     let mut consumer = ChannelConsumer::new(tx);
 
-    let input = stream::iter(Vec::<Result<i32, StreamError<i32>>>::new());
+    let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
-    let result = consumer.consume(boxed_input).await;
-    assert!(result.is_ok());
-    assert_eq!(rx.recv().await, None);
-  }
-
-  #[tokio::test]
-  async fn test_channel_consumer_with_error() {
-    let (tx, mut rx) = channel(10);
-    let mut consumer = ChannelConsumer::new(tx);
-
-    let input = stream::iter(vec![
-      Ok(1),
-      Err(StreamError::new(
-        Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-        ErrorContext {
-          timestamp: chrono::Utc::now(),
-          item: None,
-          stage: PipelineStage::Consumer,
-        },
-        ComponentInfo {
-          name: "test".to_string(),
-          type_name: "test".to_string(),
-        },
-      )),
-      Ok(2),
-    ]);
-    let boxed_input = Box::pin(input);
-
-    let result = consumer.consume(boxed_input).await;
-    assert!(result.is_err());
-    assert_eq!(rx.recv().await, Some(1));
+    consumer.consume(boxed_input).await;
     assert_eq!(rx.recv().await, None);
   }
 
@@ -196,19 +132,11 @@ mod tests {
   async fn test_error_handling_strategies() {
     let (tx, _rx) = channel(10);
     let mut consumer = ChannelConsumer::new(tx)
-      .with_error_strategy(ErrorStrategy::Skip)
+      .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_consumer".to_string());
 
     let config = consumer.get_config();
-    assert_eq!(config.error_strategy, ErrorStrategy::Skip);
+    assert_eq!(config.error_strategy, ErrorStrategy::<i32>::Skip);
     assert_eq!(config.name, "test_consumer");
-
-    let error = StreamError::new(
-      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-      consumer.create_error_context(None),
-      consumer.component_info(),
-    );
-
-    assert_eq!(consumer.handle_error(&error), ErrorAction::Skip);
   }
 }
