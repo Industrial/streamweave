@@ -347,7 +347,12 @@ mod tests {
   impl Consumer for CollectConsumer {
     async fn consume(&mut self, input: Self::InputStream) {
       let mut items = Vec::new();
-      input.for_each(|item| items.push(item)).await;
+      input
+        .for_each(|item| {
+          items.push(item);
+          futures::future::ready(())
+        })
+        .await;
       self.items = items;
     }
 
