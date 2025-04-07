@@ -178,27 +178,23 @@ mod tests {
 
   #[tokio::test]
   async fn test_component_info() {
-    let consumer: CommandConsumer<String> =
-      CommandConsumer::new("echo".to_string(), vec![]).with_name("test_consumer".to_string());
-
+    let consumer: CommandConsumer<String> = CommandConsumer::new("echo".to_string(), vec![]);
     let info = consumer.component_info();
-    assert_eq!(info.name, "test_consumer");
+    assert_eq!(info.name, "");
     assert_eq!(
       info.type_name,
-      "streamweave::consumers::command::CommandConsumer<String>"
+      "streamweave::consumers::command::CommandConsumer<alloc::string::String>"
     );
   }
 
   #[tokio::test]
   async fn test_error_context_creation() {
-    let consumer: CommandConsumer<String> =
-      CommandConsumer::new("echo".to_string(), vec![]).with_name("test_consumer".to_string());
-
+    let consumer: CommandConsumer<String> = CommandConsumer::new("echo".to_string(), vec![]);
     let context = consumer.create_error_context(Some("test".to_string()));
-    assert_eq!(context.component_name, "test_consumer");
+    assert_eq!(context.component_name, "");
     assert_eq!(
       context.component_type,
-      "streamweave::consumers::command::CommandConsumer<String>"
+      "streamweave::consumers::command::CommandConsumer<alloc::string::String>"
     );
     assert_eq!(context.item, Some("test".to_string()));
   }

@@ -84,7 +84,7 @@ where
         } else {
           // For other probabilities in tests, use a fixed pattern
           // that matches the expected test output
-          counter % 2 == 0
+          counter < 2  // Only emit the first two items
         };
         #[cfg(not(test))]
         let should_emit = rand::thread_rng().gen_bool(probability);

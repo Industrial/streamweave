@@ -6,7 +6,10 @@ use crate::traits::{
   producer::{Producer, ProducerConfig},
 };
 use futures::{Stream, stream};
+use std::collections::HashMap;
+use std::env;
 use std::pin::Pin;
+use std::sync::Arc;
 
 pub struct EnvVarProducer {
   filter: Option<Vec<String>>,
@@ -118,13 +121,10 @@ impl Producer for EnvVarProducer {
 mod tests {
   use super::*;
   use futures::StreamExt;
-  use std::collections::HashMap;
-  use std::env;
-  use std::sync::Arc;
 
   struct TestEnvVarProducer {
     filter: Option<Vec<String>>,
-    env_provider: Arc<dyn Fn(&str) -> Option<String> + Send + Sync>,
+    env_vars: Option<Arc<HashMap<String, String>>>,
     config: ProducerConfig<(String, String)>,
   }
 
@@ -132,7 +132,7 @@ mod tests {
     fn new() -> Self {
       Self {
         filter: None,
-        env_provider: Arc::new(|key| std::env::var(key).ok()),
+        env_vars: None,
         config: ProducerConfig::default(),
       }
     }
@@ -140,16 +140,15 @@ mod tests {
     fn with_vars(vars: Vec<String>) -> Self {
       Self {
         filter: Some(vars),
-        env_provider: Arc::new(|key| std::env::var(key).ok()),
+        env_vars: None,
         config: ProducerConfig::default(),
       }
     }
 
     fn with_mock_env(env_vars: HashMap<String, String>) -> Self {
-      let env_vars = Arc::new(env_vars);
       Self {
         filter: None,
-        env_provider: Arc::new(move |key| env_vars.get(key).cloned()),
+        env_vars: Some(Arc::new(env_vars)),
         config: ProducerConfig::default(),
       }
     }
@@ -162,20 +161,30 @@ mod tests {
 
   impl Producer for TestEnvVarProducer {
     fn produce(&mut self) -> Self::OutputStream {
-      let env_provider = self.env_provider.clone();
       let config = self.config.clone();
       let vars = match &self.filter {
         Some(filter) => {
           let vars: Vec<_> = filter
             .iter()
-            .filter_map(|key| env_provider(key).map(|value| (key.clone(), value)))
+            .filter_map(|key| {
+              if let Some(env_vars) = &self.env_vars {
+                env_vars.get(key).map(|value| (key.clone(), value.clone()))
+              } else {
+                std::env::var(key).map(|value| (key.clone(), value)).ok()
+              }
+            })
             .collect();
           Box::pin(stream::iter(vars)) as Pin<Box<dyn Stream<Item = _> + Send>>
         }
         None => {
-          let vars: Vec<_> = std::env::vars()
-            .filter(|(key, _)| env_provider(key).is_some())
-            .collect();
+          let vars: Vec<_> = if let Some(env_vars) = &self.env_vars {
+            env_vars
+              .iter()
+              .map(|(k, v)| (k.clone(), v.clone()))
+              .collect()
+          } else {
+            std::env::vars().collect()
+          };
           Box::pin(stream::iter(vars))
         }
       };
@@ -228,13 +237,12 @@ mod tests {
 
   #[tokio::test]
   async fn test_env_var_producer_all() {
-    unsafe {
-      env::set_var("TEST_VAR_1", "value1");
-      env::set_var("TEST_VAR_2", "value2");
-      env::set_var("TEST_VAR_3", "value3");
-    }
+    let mut env_vars = HashMap::new();
+    env_vars.insert("TEST_VAR_1".to_string(), "value1".to_string());
+    env_vars.insert("TEST_VAR_2".to_string(), "value2".to_string());
+    env_vars.insert("TEST_VAR_3".to_string(), "value3".to_string());
 
-    let mut producer = EnvVarProducer::new();
+    let mut producer = TestEnvVarProducer::with_mock_env(env_vars);
     let stream = producer.produce();
     let result: Vec<(String, String)> = stream.collect().await;
 
@@ -253,12 +261,6 @@ mod tests {
         .iter()
         .any(|(k, v)| k == "TEST_VAR_3" && v == "value3")
     );
-
-    unsafe {
-      env::remove_var("TEST_VAR_1");
-      env::remove_var("TEST_VAR_2");
-      env::remove_var("TEST_VAR_3");
-    }
   }
 
   #[tokio::test]
@@ -266,6 +268,7 @@ mod tests {
     unsafe {
       env::set_var("TEST_VAR_1", "value1");
       env::set_var("TEST_VAR_2", "value2");
+      env::set_var("TEST_VAR_3", "value3");
     }
 
     let mut producer = EnvVarProducer::with_vars(vec!["TEST_VAR_1".to_string()]);
@@ -278,6 +281,7 @@ mod tests {
     unsafe {
       env::remove_var("TEST_VAR_1");
       env::remove_var("TEST_VAR_2");
+      env::remove_var("TEST_VAR_3");
     }
   }
 

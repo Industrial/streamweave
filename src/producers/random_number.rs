@@ -69,6 +69,11 @@ impl Producer for RandomNumberProducer {
       move |(mut rng, range, mut interval)| async move {
         interval.tick().await;
         let number = rng.gen_range(range.clone());
+        let new_seed = std::time::SystemTime::now()
+          .duration_since(std::time::UNIX_EPOCH)
+          .unwrap()
+          .as_nanos() as u64;
+        rng = StdRng::seed_from_u64(new_seed);
         Some((number, (rng, range, interval)))
       },
     );

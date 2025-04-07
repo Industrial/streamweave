@@ -55,10 +55,14 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for Timeout
     Box::pin(async_stream::stream! {
       let mut input = input;
 
-      while let Some(item) = input.next().await {
-        match tokio::time::timeout(duration, async move { item }).await {
-          Ok(item) => yield item,
-          Err(_) => break, // Stop the stream on timeout
+      loop {
+        match tokio::time::timeout(duration, input.next()).await {
+          Ok(Some(item)) => yield item,
+          Ok(None) => break,
+          Err(_) => {
+            // On timeout, stop the stream
+            break;
+          }
         }
       }
     })

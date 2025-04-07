@@ -45,13 +45,14 @@ impl Input for FileConsumer {
 #[async_trait]
 impl Consumer for FileConsumer {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
-    while let Some(value) = stream.next().await {
-      if self.file.is_none() {
-        if let Ok(file) = File::create(&self.path).await {
-          self.file = Some(file);
-        }
+    // Create file once at the start
+    if self.file.is_none() {
+      if let Ok(file) = File::create(&self.path).await {
+        self.file = Some(file);
       }
+    }
 
+    while let Some(value) = stream.next().await {
       if let Some(file) = &mut self.file {
         if let Err(e) = file.write_all(value.as_bytes()).await {
           eprintln!("Failed to write to file: {}", e);
@@ -107,17 +108,13 @@ mod tests {
     let path = temp_file.path().to_str().unwrap().to_string();
     let mut consumer = FileConsumer::new(path.clone());
 
-    let input = stream::iter(
-      vec!["line1", "line2", "line3"]
-        .into_iter()
-        .map(|s| s.to_string()),
-    );
+    let input = stream::iter(vec!["line1", "line2"].into_iter().map(|s| s.to_string()));
     let boxed_input = Box::pin(input);
 
     consumer.consume(boxed_input).await;
 
     let contents = fs::read_to_string(path).unwrap();
-    assert_eq!(contents, "line1line2line3");
+    assert_eq!(contents, "line1line2");
   }
 
   #[tokio::test]

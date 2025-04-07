@@ -112,12 +112,19 @@ mod tests {
     let input = stream::iter(vec![1, 2, 3]);
     let boxed_input = Box::pin(input);
 
-    consumer.consume(boxed_input).await;
+    // Spawn the consumer in a separate task
+    let handle = tokio::spawn(async move {
+      consumer.consume(boxed_input).await;
+    });
 
+    // Wait for all items to be received
     assert_eq!(rx.recv().await, Some(1));
     assert_eq!(rx.recv().await, Some(2));
     assert_eq!(rx.recv().await, Some(3));
     assert_eq!(rx.recv().await, None);
+
+    // Wait for the consumer task to complete
+    handle.await.unwrap();
   }
 
   #[tokio::test]
@@ -128,8 +135,16 @@ mod tests {
     let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
-    consumer.consume(boxed_input).await;
+    // Spawn the consumer in a separate task
+    let handle = tokio::spawn(async move {
+      consumer.consume(boxed_input).await;
+    });
+
+    // Verify no items are received
     assert_eq!(rx.recv().await, None);
+
+    // Wait for the consumer task to complete
+    handle.await.unwrap();
   }
 
   #[tokio::test]
@@ -222,7 +237,10 @@ mod tests {
     let input = stream::iter(vec![1, 2, 3, 4]);
     let boxed_input = Box::pin(input);
 
-    consumer.consume(boxed_input).await;
+    // Spawn the consumer in a separate task
+    let handle = tokio::spawn(async move {
+      consumer.consume(boxed_input).await;
+    });
 
     // Should receive all items despite capacity limit
     assert_eq!(rx.recv().await, Some(1));
@@ -230,6 +248,9 @@ mod tests {
     assert_eq!(rx.recv().await, Some(3));
     assert_eq!(rx.recv().await, Some(4));
     assert_eq!(rx.recv().await, None);
+
+    // Wait for the consumer task to complete
+    handle.await.unwrap();
   }
 
   #[tokio::test]
@@ -243,7 +264,12 @@ mod tests {
     let input = stream::iter(vec![1, 2, 3]);
     let boxed_input = Box::pin(input);
 
+    // Spawn the consumer in a separate task
+    let handle = tokio::spawn(async move {
+      consumer.consume(boxed_input).await;
+    });
+
     // Should not panic when sending to dropped channel
-    consumer.consume(boxed_input).await;
+    handle.await.unwrap();
   }
 }

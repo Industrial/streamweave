@@ -25,7 +25,6 @@ pub mod sort;
 pub mod split;
 pub mod split_at;
 pub mod take;
-pub mod throttle;
 pub mod timeout;
 pub mod window;
 pub mod zip;
