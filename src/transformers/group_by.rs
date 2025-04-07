@@ -50,9 +50,9 @@ where
 
 impl<F, T, K> Input for GroupByTransformer<F, T, K>
 where
-  F: Fn(&T) -> K + Send + Clone + 'static,
+  F: Fn(&T) -> K + Clone + Send + Sync + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + 'static + Eq + std::hash::Hash,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -60,9 +60,9 @@ where
 
 impl<F, T, K> Output for GroupByTransformer<F, T, K>
 where
-  F: Fn(&T) -> K + Send + Clone + 'static,
+  F: Fn(&T) -> K + Clone + Send + Sync + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + 'static + Eq + std::hash::Hash,
 {
   type Output = (K, Vec<T>);
   type OutputStream = Pin<Box<dyn Stream<Item = (K, Vec<T>)> + Send>>;
@@ -71,9 +71,9 @@ where
 #[async_trait]
 impl<F, T, K> Transformer for GroupByTransformer<F, T, K>
 where
-  F: Fn(&T) -> K + Send + Clone + 'static,
+  F: Fn(&T) -> K + Clone + Send + Sync + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + 'static + Eq + std::hash::Hash,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let key_fn = self.key_fn.clone();
@@ -88,11 +88,9 @@ where
         if groups.is_empty() {
           None
         } else {
-          let mut groups: Vec<_> = groups.into_iter().collect();
+          let mut groups = groups.into_iter().collect::<Vec<_>>();
           let (key, items) = groups.remove(0);
-          let next_stream = Box::pin(futures::stream::iter(groups))
-            as Pin<Box<dyn Stream<Item = (K, Vec<T>)> + Send>>;
-          Some(((key, items), (next_stream, key_fn)))
+          Some(((key, items), (input, key_fn)))
         }
       },
     ))
