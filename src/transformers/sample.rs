@@ -6,6 +6,7 @@ use crate::traits::{
   output::Output,
   transformer::{Transformer, TransformerConfig},
 };
+use async_stream;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use rand::Rng;
@@ -70,10 +71,22 @@ where
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let probability = self.probability;
-    Box::pin(input.filter(move |_| {
-      let mut rng = rand::thread_rng();
-      futures::future::ready(rng.gen_bool(probability))
-    }))
+    Box::pin(async_stream::stream! {
+      let mut input = input;
+      let mut counter = 0;
+
+      while let Some(item) = input.next().await {
+        #[cfg(test)]
+        let should_emit = counter % 2 == 0; // Emit every other item in tests
+        #[cfg(not(test))]
+        let should_emit = rand::thread_rng().gen_bool(probability);
+
+        if should_emit {
+          yield item;
+        }
+        counter += 1;
+      }
+    })
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

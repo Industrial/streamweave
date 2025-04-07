@@ -7,7 +7,7 @@ use crate::traits::{
   transformer::{Transformer, TransformerConfig},
 };
 use async_trait::async_trait;
-use futures::{Stream, StreamExt, stream};
+use futures::{Stream, StreamExt};
 use std::collections::VecDeque;
 use std::pin::Pin;
 use tokio::time::{Duration, Instant};
@@ -52,32 +52,24 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for WindowTransf
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for WindowTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let size = self.size;
-    Box::pin(stream::unfold(
-      (input, VecDeque::with_capacity(size), false),
-      move |(mut input, mut window, mut done)| async move {
-        if window.len() < size && !done {
-          if let Some(item) = input.next().await {
-            window.push_back(item);
-          } else {
-            done = true;
-          }
-        }
+    Box::pin(async_stream::stream! {
+      let mut window: VecDeque<T> = VecDeque::with_capacity(size);
+      let mut input = input;
+
+      while let Some(item) = input.next().await {
+        window.push_back(item);
 
         if window.len() == size {
-          let result = window.iter().cloned().collect::<Vec<_>>();
-          window.pop_front();
-          Some((result, (input, window, done)))
-        } else if done && !window.is_empty() {
-          let result = window.iter().cloned().collect::<Vec<_>>();
-          window.clear();
-          Some((result, (input, window, done)))
-        } else if done {
-          None
-        } else {
-          Some((Vec::new(), (input, window, done)))
+          yield window.iter().cloned().collect::<Vec<_>>();
+          window.clear(); // Clear the entire window instead of just popping one item
         }
-      },
-    ))
+      }
+
+      // Emit any remaining items as a partial window
+      if !window.is_empty() {
+        yield window.iter().cloned().collect::<Vec<_>>();
+      }
+    })
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

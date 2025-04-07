@@ -6,6 +6,7 @@ use crate::traits::{
   output::Output,
   transformer::{Transformer, TransformerConfig},
 };
+use async_stream::stream;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
@@ -78,14 +79,15 @@ where
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let mut reducer = self.reducer.clone();
     let initial = self.accumulator.clone();
-    Box::pin(input.scan(initial, move |acc, item| {
-      let mut reducer = reducer.clone();
-      let acc = acc.clone();
-      async move {
-        let result = reducer(acc, item);
-        Some(result)
+    Box::pin(async_stream::stream! {
+      let mut acc = initial;
+      let mut input = input;
+
+      while let Some(item) = input.next().await {
+        acc = reducer(acc.clone(), item);
+        yield acc.clone();
       }
-    }))
+    })
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

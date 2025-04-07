@@ -6,6 +6,7 @@ use crate::traits::{
   output::Output,
   transformer::{Transformer, TransformerConfig},
 };
+use async_stream;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
@@ -52,10 +53,25 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for ThrottleTran
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for ThrottleTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let duration = self.duration;
-    Box::pin(input.then(move |item| async move {
-      tokio::time::sleep(duration).await;
-      item
-    }))
+    Box::pin(async_stream::stream! {
+      let mut input = input;
+      let mut last_emit = Instant::now();
+
+      while let Some(item) = input.next().await {
+        let now = Instant::now();
+        let elapsed = now.duration_since(last_emit);
+
+        if elapsed >= duration {
+          yield item;
+          last_emit = now;
+        } else {
+          // Wait for the remaining time
+          tokio::time::sleep(duration - elapsed).await;
+          yield item;
+          last_emit = Instant::now();
+        }
+      }
+    })
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

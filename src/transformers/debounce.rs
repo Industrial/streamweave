@@ -6,6 +6,7 @@ use crate::traits::{
   output::Output,
   transformer::{Transformer, TransformerConfig},
 };
+use async_stream;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
@@ -68,9 +69,39 @@ where
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let duration = self.duration;
-    Box::pin(
-      input.filter_map(move |item| async move { timeout(duration, async { item }).await.ok() }),
-    )
+
+    Box::pin(async_stream::stream! {
+      let mut last_item: Option<T> = None;
+      let mut delay = time::sleep(duration);
+      tokio::pin!(delay);
+
+      let mut input = input;
+
+      loop {
+        tokio::select! {
+          maybe_item = input.next() => {
+            match maybe_item {
+              Some(item) => {
+                last_item = Some(item);
+                delay.as_mut().reset(time::Instant::now() + duration);
+              }
+              None => {
+                if let Some(item) = last_item.take() {
+                  yield item;
+                }
+                break;
+              }
+            }
+          }
+          _ = &mut delay => {
+            if let Some(item) = last_item.take() {
+              yield item;
+            }
+            delay.as_mut().reset(time::Instant::now() + duration);
+          }
+        }
+      }
+    })
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

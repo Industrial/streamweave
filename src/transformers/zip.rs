@@ -4,6 +4,7 @@ use crate::traits::{
   output::Output,
   transformer::{Transformer, TransformerConfig},
 };
+use async_stream;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
@@ -45,33 +46,35 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for ZipTransform
 #[async_trait]
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for ZipTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    Box::pin(input.map(|items| {
-      let mut result = Vec::new();
-      let mut iterators: Vec<_> = items.into_iter().map(|item| vec![item]).collect();
+    Box::pin(async_stream::stream! {
+      let mut input = input;
+      let mut buffers: Vec<Vec<T>> = Vec::new();
 
-      while !iterators.is_empty() {
-        let mut current = Vec::new();
-        let mut empty_indices = Vec::new();
-
-        for (i, iter) in iterators.iter_mut().enumerate() {
-          if let Some(item) = iter.pop() {
-            current.push(item);
-          } else {
-            empty_indices.push(i);
-          }
-        }
-
-        if !current.is_empty() {
-          result = current;
-        }
-
-        for &i in empty_indices.iter().rev() {
-          iterators.remove(i);
-        }
+      while let Some(items) = input.next().await {
+        buffers.push(items);
       }
 
-      result
-    }))
+      // Early return if no input
+      if buffers.is_empty() {
+        return;
+      }
+
+      // Get the length of the longest vector
+      let max_len = buffers.iter().map(|v| v.len()).max().unwrap_or(0);
+
+      // Yield transposed vectors
+      for i in 0..max_len {
+        let mut result = Vec::new();
+        for buffer in &buffers {
+          if let Some(item) = buffer.get(i) {
+            result.push(item.clone());
+          }
+        }
+        if !result.is_empty() {
+          yield result;
+        }
+      }
+    })
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<Vec<T>>) {

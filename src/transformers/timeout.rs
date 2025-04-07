@@ -6,6 +6,7 @@ use crate::traits::{
   output::Output,
   transformer::{Transformer, TransformerConfig},
 };
+use async_stream;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
@@ -51,12 +52,16 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for TimeoutTrans
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for TimeoutTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let duration = self.duration;
-    Box::pin(input.then(move |item| async move {
-      match tokio::time::timeout(duration, async move { item }).await {
-        Ok(item) => item,
-        Err(_) => panic!("Stream item timed out"),
+    Box::pin(async_stream::stream! {
+      let mut input = input;
+
+      while let Some(item) = input.next().await {
+        match tokio::time::timeout(duration, async move { item }).await {
+          Ok(item) => yield item,
+          Err(_) => break, // Stop the stream on timeout
+        }
       }
-    }))
+    })
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {
