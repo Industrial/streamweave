@@ -101,7 +101,11 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug, const N: usize> Produce
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      component_name: self.config.name.clone(),
+      component_name: self
+        .config
+        .name
+        .clone()
+        .unwrap_or_else(|| "array_producer".to_string()),
       component_type: std::any::type_name::<Self>().to_string(),
     }
   }
@@ -122,6 +126,17 @@ mod tests {
   use super::*;
   use futures::StreamExt;
 
+  #[derive(Debug)]
+  struct TestError(String);
+
+  impl std::fmt::Display for TestError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      write!(f, "{}", self.0)
+    }
+  }
+
+  impl std::error::Error for TestError {}
+
   #[tokio::test]
   async fn test_array_producer_basic() {
     let mut producer = ArrayProducer::new([1, 2, 3, 4, 5]);
@@ -141,6 +156,27 @@ mod tests {
     let mut producer = ArrayProducer::new(["a", "b", "c"]);
     let result: Vec<&str> = producer.produce().collect().await;
     assert_eq!(result, vec!["a", "b", "c"]);
+  }
+
+  #[tokio::test]
+  async fn test_array_producer_with_error() {
+    let mut producer = ArrayProducer::new([1, 2, 3]);
+    let error = StreamError::new(
+      Box::new(TestError("test error".to_string())),
+      ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: Some(1),
+        component_name: "array_producer".to_string(),
+        component_type: std::any::type_name::<ArrayProducer<i32, 3>>().to_string(),
+      },
+      ComponentInfo {
+        name: "array_producer".to_string(),
+        type_name: std::any::type_name::<ArrayProducer<i32, 3>>().to_string(),
+      },
+    );
+
+    let action = producer.handle_error(&error);
+    assert_eq!(action, ErrorAction::Stop);
   }
 
   #[tokio::test]
@@ -203,7 +239,8 @@ mod tests {
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
-        stage: PipelineStage::Producer,
+        component_name: "test".to_string(),
+        component_type: "ArrayProducer".to_string(),
       },
       component: ComponentInfo {
         name: "test".to_string(),
@@ -225,7 +262,8 @@ mod tests {
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
-        stage: PipelineStage::Producer,
+        component_name: "test".to_string(),
+        component_type: "ArrayProducer".to_string(),
       },
       component: ComponentInfo {
         name: "test".to_string(),
