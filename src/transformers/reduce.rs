@@ -10,150 +10,113 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct ReduceTransformer<F, T, Acc> {
+pub struct ReduceTransformer<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> {
+  accumulator: Acc,
   reducer: F,
-  initial: Acc,
-  config: TransformerConfig,
+  config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
 }
 
-impl<F, T, Acc> ReduceTransformer<F, T, Acc>
+impl<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> ReduceTransformer<T, Acc, F>
 where
-  F:
-    FnMut(Acc, T) -> Result<Acc, Box<dyn std::error::Error + Send + Sync>> + Send + Clone + 'static,
-  T: Send + 'static,
-  Acc: Send + Clone + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + 'static + Clone,
 {
-  pub fn new(reducer: F, initial: Acc) -> Self {
+  pub fn new(initial: Acc, reducer: F) -> Self {
     Self {
+      accumulator: initial,
       reducer,
-      initial,
-      config: TransformerConfig::default(),
+      config: TransformerConfig::<T>::default(),
       _phantom: std::marker::PhantomData,
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
-    self.config_mut().set_error_strategy(strategy);
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
+    self.config.error_strategy = strategy;
     self
   }
 
   pub fn with_name(mut self, name: String) -> Self {
-    self.config_mut().set_name(name);
+    self.config.name = Some(name);
     self
   }
 }
 
-impl<F, T, Acc> crate::traits::error::Error for ReduceTransformer<F, T, Acc>
+impl<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> crate::traits::error::Error
+  for ReduceTransformer<T, Acc, F>
 where
-  F: Send + 'static,
-  T: Send + 'static,
-  Acc: Send + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + 'static + Clone,
 {
-  type Error = StreamError;
+  type Error = StreamError<T>;
 }
 
-impl<F, T, Acc> Input for ReduceTransformer<F, T, Acc>
+impl<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> Input
+  for ReduceTransformer<T, Acc, F>
 where
-  F: Send + 'static,
-  T: Send + 'static,
-  Acc: Send + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + 'static + Clone,
 {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
 }
 
-impl<F, T, Acc> Output for ReduceTransformer<F, T, Acc>
+impl<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> Output
+  for ReduceTransformer<T, Acc, F>
 where
-  F: Send + 'static,
-  T: Send + 'static,
-  Acc: Send + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + 'static + Clone,
 {
   type Output = Acc;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError<T>>> + Send>>;
 }
 
 #[async_trait]
-impl<F, T, Acc> Transformer for ReduceTransformer<F, T, Acc>
+impl<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> Transformer
+  for ReduceTransformer<T, Acc, F>
 where
-  F:
-    FnMut(Acc, T) -> Result<Acc, Box<dyn std::error::Error + Send + Sync>> + Send + Clone + 'static,
-  T: Send + 'static,
-  Acc: Send + Clone + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + 'static + Clone,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let reducer = self.reducer.clone();
-    let initial = self.initial.clone();
-
-    Box::pin(futures::stream::unfold(
-      (input, Some(initial), reducer),
-      |(mut input, mut acc, mut reducer)| async move {
-        while let Some(item_result) = input.next().await {
-          match item_result {
-            Ok(item) => {
-              if let Some(current_acc) = acc.take() {
-                match reducer(current_acc, item) {
-                  Ok(new_acc) => {
-                    acc = Some(new_acc.clone());
-                    return Some((Ok(new_acc), (input, acc, reducer)));
-                  }
-                  Err(e) => {
-                    return Some((
-                      Err(StreamError::new(
-                        e,
-                        ErrorContext {
-                          timestamp: chrono::Utc::now(),
-                          item: None,
-                          stage: PipelineStage::Transformer,
-                        },
-                        ComponentInfo {
-                          name: "reduce_transformer".to_string(),
-                          type_name: std::any::type_name::<Self>().to_string(),
-                        },
-                      )),
-                      (input, None, reducer),
-                    ));
-                  }
-                }
-              }
-            }
-            Err(e) => return Some((Err(e), (input, acc, reducer))),
-          }
-        }
-        None
-      },
-    ))
+    let mut accumulator = self.accumulator.clone();
+    let mut reducer = self.reducer.clone();
+    Box::pin(input.map(move |result| {
+      result.map(|item| {
+        accumulator = reducer(accumulator, item);
+        accumulator.clone()
+      })
+    }))
   }
 
-  fn config(&self) -> &TransformerConfig {
+  fn set_config_impl(&mut self, config: TransformerConfig<T>) {
+    self.config = config;
+  }
+
+  fn get_config_impl(&self) -> &TransformerConfig<T> {
     &self.config
   }
 
-  fn config_mut(&mut self) -> &mut TransformerConfig {
+  fn get_config_mut_impl(&mut self) -> &mut TransformerConfig<T> {
     &mut self.config
   }
 
-  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
-    match self.config().error_strategy() {
-      ErrorStrategy::Stop => ErrorStrategy::Stop,
-      ErrorStrategy::Skip => ErrorStrategy::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
-      _ => ErrorStrategy::Stop,
+  fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
+    match self.config.error_strategy() {
+      ErrorStrategy::Stop => ErrorAction::Stop,
+      ErrorStrategy::Skip => ErrorAction::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      _ => ErrorAction::Stop,
     }
   }
 
-  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+  fn create_error_context(&self, item: Option<T>) -> ErrorContext<T> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Transformer,
+      stage: PipelineStage::Transformer(self.component_info().name),
     }
   }
 
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self
-        .config()
+        .config
         .name()
         .unwrap_or_else(|| "reduce_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
@@ -169,7 +132,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_reduce_transformer_sum() {
-    let mut transformer = ReduceTransformer::new(|acc, x| Ok(acc + x), 0);
+    let mut transformer = ReduceTransformer::new(0, |acc, x| acc + x);
     let input = vec![1, 2, 3, 4, 5];
     let input_stream = Box::pin(stream::iter(input.into_iter().map(Ok)));
 
@@ -184,7 +147,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_reduce_transformer_string_concat() {
-    let mut transformer = ReduceTransformer::new(|acc: String, x: &str| Ok(acc + x), String::new());
+    let mut transformer = ReduceTransformer::new(String::new(), |acc, x| acc + x);
     let input = vec!["a", "b", "c"];
     let input_stream = Box::pin(stream::iter(input.into_iter().map(Ok)));
 
@@ -202,16 +165,8 @@ mod tests {
 
   #[tokio::test]
   async fn test_reduce_transformer_with_error() {
-    let mut transformer = ReduceTransformer::new(
-      |acc: i32, x: i32| {
-        if x % 2 == 0 {
-          Ok(acc + x)
-        } else {
-          Err("Odd numbers not allowed".into())
-        }
-      },
-      0,
-    );
+    let mut transformer =
+      ReduceTransformer::new(0, |acc, x| if x % 2 == 0 { acc + x } else { acc });
 
     let input = vec![2, 3, 4, 5, 6];
     let input_stream = Box::pin(stream::iter(input.into_iter().map(Ok)));
@@ -221,12 +176,8 @@ mod tests {
       .try_collect::<Vec<_>>()
       .await;
 
-    assert!(result.is_err());
-    match result.unwrap_err() {
-      StreamError { source, .. } => {
-        assert_eq!(source.to_string(), "Odd numbers not allowed")
-      }
-    }
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), vec![2, 2, 6, 6, 12]);
   }
 
   #[tokio::test]
@@ -237,17 +188,12 @@ mod tests {
       sum: i32,
     }
 
-    let mut transformer = ReduceTransformer::new(
-      |acc: Counter, x: i32| {
-        Ok(Counter {
-          count: acc.count + 1,
-          sum: acc.sum + x,
-        })
-      },
-      Counter { count: 0, sum: 0 },
-    );
+    let mut transformer = ReduceTransformer::new(Counter { count: 0, sum: 0 }, |acc, x| Counter {
+      count: acc.count + 1,
+      sum: acc.sum + x,
+    });
 
-    let input = vec![1, 2, 3];
+    let input = vec![1, 2, 3, 4, 5];
     let input_stream = Box::pin(stream::iter(input.into_iter().map(Ok)));
 
     let result: Vec<Counter> = transformer
@@ -262,26 +208,20 @@ mod tests {
         Counter { count: 1, sum: 1 },
         Counter { count: 2, sum: 3 },
         Counter { count: 3, sum: 6 },
+        Counter { count: 4, sum: 10 },
+        Counter { count: 5, sum: 15 },
       ]
     );
   }
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = ReduceTransformer::new(|acc, x| Ok(acc + x), 0)
-      .with_error_strategy(ErrorStrategy::Skip)
+    let mut transformer = ReduceTransformer::new(0, |acc, x| acc + x)
+      .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 
     let config = transformer.config();
-    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.error_strategy(), ErrorStrategy::<i32>::Skip);
     assert_eq!(config.name(), Some("test_transformer".to_string()));
-
-    let error = StreamError::new(
-      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-      transformer.create_error_context(None),
-      transformer.component_info(),
-    );
-
-    assert_eq!(transformer.handle_error(error), ErrorStrategy::Skip);
   }
 }

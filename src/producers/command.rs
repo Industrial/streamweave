@@ -2,7 +2,6 @@ use crate::error::{
   ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
 };
 use crate::traits::{
-  error::Error,
   output::Output,
   producer::{Producer, ProducerConfig},
 };
@@ -17,7 +16,7 @@ use tokio_stream::wrappers::LinesStream;
 pub struct CommandProducer {
   command: String,
   args: Vec<String>,
-  config: ProducerConfig,
+  config: ProducerConfig<String>,
 }
 
 impl CommandProducer {
@@ -29,24 +28,20 @@ impl CommandProducer {
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
-    self.config_mut().set_error_strategy(strategy);
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<String>) -> Self {
+    self.config.error_strategy = strategy;
     self
   }
 
   pub fn with_name(mut self, name: String) -> Self {
-    self.config_mut().set_name(name);
+    self.config.name = Some(name);
     self
   }
 }
 
-impl Error for CommandProducer {
-  type Error = StreamError;
-}
-
 impl Output for CommandProducer {
   type Output = String;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<String, StreamError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = String> + Send>>;
 }
 
 impl Producer for CommandProducer {
@@ -56,38 +51,24 @@ impl Producer for CommandProducer {
     let config = self.config.clone();
 
     // Create a stream that first spawns the command and then yields its output
-    let stream = async_stream::try_stream! {
-        let child = Command::new(&command_str)
+    let stream = async_stream::stream! {
+        let child = match Command::new(&command_str)
             .args(&args)
             .stdout(Stdio::piped())
-            .spawn()
-            .map_err(|e| StreamError::new(
-                Box::new(e),
-                self.create_error_context(None),
-                self.component_info(),
-            ))?;
+            .spawn() {
+            Ok(child) => child,
+            Err(_) => return,
+        };
 
-        let stdout = child.stdout
-            .ok_or_else(|| StreamError::new(
-                Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Failed to get stdout",
-                )),
-                self.create_error_context(None),
-                self.component_info(),
-            ))?;
+        let stdout = match child.stdout {
+            Some(stdout) => stdout,
+            None => return,
+        };
 
         let reader = BufReader::new(stdout);
         let mut lines = reader.lines();
 
-        while let Some(line) = lines.next_line()
-            .await
-            .map_err(|e| StreamError::new(
-                Box::new(e),
-                self.create_error_context(None),
-                self.component_info(),
-            ))?
-        {
+        while let Some(line) = lines.next_line().await.ok().flatten() {
             yield line;
         }
     };
@@ -95,27 +76,28 @@ impl Producer for CommandProducer {
     Box::pin(stream)
   }
 
-  fn config(&self) -> &ProducerConfig {
+  fn set_config_impl(&mut self, config: ProducerConfig<String>) {
+    self.config = config;
+  }
+
+  fn get_config_impl(&self) -> &ProducerConfig<String> {
     &self.config
   }
 
-  fn config_mut(&mut self) -> &mut ProducerConfig {
+  fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<String> {
     &mut self.config
   }
 
-  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
-    match self.config().error_strategy() {
-      ErrorStrategy::Stop => ErrorStrategy::Stop,
-      ErrorStrategy::Skip => ErrorStrategy::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
-      _ => ErrorStrategy::Stop,
+  fn handle_error(&self, error: &StreamError<String>) -> ErrorAction {
+    match self.config.error_strategy() {
+      ErrorStrategy::Stop => ErrorAction::Stop,
+      ErrorStrategy::Skip => ErrorAction::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      _ => ErrorAction::Stop,
     }
   }
 
-  fn create_error_context(
-    &self,
-    item: Option<Arc<dyn std::any::Any + Send + Sync>>,
-  ) -> ErrorContext {
+  fn create_error_context(&self, item: Option<String>) -> ErrorContext<String> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
@@ -126,7 +108,7 @@ impl Producer for CommandProducer {
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self
-        .config()
+        .config
         .name()
         .unwrap_or_else(|| "command_producer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
@@ -143,7 +125,7 @@ mod tests {
   async fn test_command_producer_echo() {
     let mut producer = CommandProducer::new("echo", vec!["Hello, World!"]);
     let stream = producer.produce();
-    let result: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
+    let result: Vec<String> = stream.collect().await;
     assert_eq!(result, vec!["Hello, World!"]);
   }
 
@@ -152,7 +134,7 @@ mod tests {
   async fn test_command_producer_multiple_lines() {
     let mut producer = CommandProducer::new("sh", vec!["-c", "echo 'line1\nline2\nline3'"]);
     let stream = producer.produce();
-    let result: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
+    let result: Vec<String> = stream.collect().await;
     assert_eq!(result, vec!["line1", "line2", "line3"]);
   }
 
@@ -160,8 +142,8 @@ mod tests {
   async fn test_command_producer_nonexistent() {
     let mut producer = CommandProducer::new("nonexistentcommand", Vec::<String>::new());
     let stream = producer.produce();
-    let result = stream.collect::<Vec<_>>().await;
-    assert!(matches!(result[0], Err(StreamError { .. })));
+    let result: Vec<String> = stream.collect().await;
+    assert!(result.is_empty());
   }
 
   #[tokio::test]
@@ -170,12 +152,12 @@ mod tests {
 
     // First call
     let stream = producer.produce();
-    let result1: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
+    let result1: Vec<String> = stream.collect().await;
     assert_eq!(result1, vec!["test"]);
 
     // Second call
     let stream = producer.produce();
-    let result2: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
+    let result2: Vec<String> = stream.collect().await;
     assert_eq!(result2, vec!["test"]);
   }
 
@@ -184,7 +166,7 @@ mod tests {
   async fn test_command_error_handling() {
     let mut producer = CommandProducer::new("sh", vec!["-c", "echo test && false"]);
     let stream = producer.produce();
-    let result: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
+    let result: Vec<String> = stream.collect().await;
     assert_eq!(result, vec!["test"]);
   }
 
@@ -198,12 +180,20 @@ mod tests {
     assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
     assert_eq!(config.name(), Some("test_producer".to_string()));
 
-    let error = StreamError::new(
-      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-      producer.create_error_context(None),
-      producer.component_info(),
-    );
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        stage: PipelineStage::Producer,
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "CommandProducer".to_string(),
+      },
+      retries: 0,
+    };
 
-    assert_eq!(producer.handle_error(error), ErrorStrategy::Skip);
+    assert_eq!(producer.handle_error(&error), ErrorAction::Skip);
   }
 }

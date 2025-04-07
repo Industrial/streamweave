@@ -11,8 +11,8 @@ use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
 pub struct InterleaveTransformer<T> {
-  other: Pin<Box<dyn Stream<Item = Result<T, StreamError>> + Send>>,
-  config: TransformerConfig,
+  other: Pin<Box<dyn Stream<Item = Result<T, StreamError<T>>> + Send>>,
+  config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
 }
 
@@ -20,7 +20,7 @@ impl<T> InterleaveTransformer<T>
 where
   T: Send + 'static,
 {
-  pub fn new(other: Pin<Box<dyn Stream<Item = Result<T, StreamError>> + Send>>) -> Self {
+  pub fn new(other: Pin<Box<dyn Stream<Item = Result<T, StreamError<T>>> + Send>>) -> Self {
     Self {
       other,
       config: TransformerConfig::default(),
@@ -28,7 +28,7 @@ where
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
     self.config_mut().set_error_strategy(strategy);
     self
   }
@@ -43,7 +43,7 @@ impl<T> crate::traits::error::Error for InterleaveTransformer<T>
 where
   T: Send + 'static,
 {
-  type Error = StreamError;
+  type Error = StreamError<T>;
 }
 
 impl<T> Input for InterleaveTransformer<T>
@@ -51,7 +51,7 @@ where
   T: Send + 'static,
 {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
 }
 
 impl<T> Output for InterleaveTransformer<T>
@@ -59,7 +59,7 @@ where
   T: Send + 'static,
 {
   type Output = T;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError<T>>> + Send>>;
 }
 
 #[async_trait]
@@ -67,25 +67,31 @@ impl<T> Transformer for InterleaveTransformer<T>
 where
   T: Send + 'static,
 {
+  type Error = StreamError<T>;
+  type Input = T;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
+  type Output = T;
+  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError<T>>> + Send>>;
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let other = self.other.clone();
     Box::pin(input.interleave(other))
   }
 
-  fn config(&self) -> &TransformerConfig {
+  fn config(&self) -> &TransformerConfig<T> {
     &self.config
   }
 
-  fn config_mut(&mut self) -> &mut TransformerConfig {
+  fn config_mut(&mut self) -> &mut TransformerConfig<T> {
     &mut self.config
   }
 
-  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
+  fn handle_error(&self, error: StreamError<T>) -> ErrorStrategy<T> {
     match self.config().error_strategy() {
       ErrorStrategy::Stop => ErrorStrategy::Stop,
       ErrorStrategy::Skip => ErrorStrategy::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
-      _ => ErrorStrategy::Stop,
+      ErrorStrategy::Retry => ErrorStrategy::Retry,
+      ErrorStrategy::Custom(_) => ErrorStrategy::Custom(Box::new(move |_| ErrorAction::Skip)),
     }
   }
 
@@ -132,9 +138,9 @@ mod tests {
 
   #[tokio::test]
   async fn test_interleave_empty_input() {
-    let other = stream::iter(Vec::<Result<i32, StreamError>>::new());
+    let other = stream::iter(Vec::<Result<i32, StreamError<i32>>>::new());
     let mut transformer = InterleaveTransformer::new(Box::pin(other));
-    let input = stream::iter(Vec::<Result<i32, StreamError>>::new());
+    let input = stream::iter(Vec::<Result<i32, StreamError<i32>>>::new());
     let boxed_input = Box::pin(input);
 
     let result: Vec<i32> = transformer

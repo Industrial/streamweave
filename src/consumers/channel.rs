@@ -1,7 +1,5 @@
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
-use std::error::Error as StdError;
-use std::fmt;
 use std::pin::Pin;
 use tokio::sync::mpsc::{Receiver, Sender, channel};
 
@@ -13,53 +11,20 @@ use crate::traits::{
   input::Input,
 };
 
-#[derive(Debug)]
-pub enum ChannelError {
-  SendError(String),
-  Consumption(ConsumptionError),
-}
-
-impl fmt::Display for ChannelError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      ChannelError::SendError(msg) => write!(f, "Channel send error: {}", msg),
-      ChannelError::Consumption(e) => write!(f, "{}", e),
-    }
-  }
-}
-
-impl StdError for ChannelError {
-  fn source(&self) -> Option<&(dyn StdError + 'static)> {
-    match self {
-      ChannelError::SendError(_) => None,
-      ChannelError::Consumption(e) => Some(e),
-    }
-  }
-}
-
-impl ConsumptionErrorInspection for ChannelError {
-  fn is_consumption_error(&self) -> bool {
-    matches!(self, ChannelError::Consumption(_))
-  }
-
-  fn as_consumption_error(&self) -> Option<&ConsumptionError> {
-    match self {
-      ChannelError::Consumption(e) => Some(e),
-      _ => None,
-    }
-  }
-}
-
 pub struct ChannelConsumer<T> {
-  sender: Sender<T>,
+  channel: Option<Sender<T>>,
+  config: ConsumerConfig<T>,
 }
 
 impl<T> ChannelConsumer<T>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug,
 {
   pub fn new(sender: Sender<T>) -> Self {
-    Self { sender }
+    Self {
+      channel: Some(sender),
+      config: ConsumerConfig::default(),
+    }
   }
 
   pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
@@ -79,36 +44,47 @@ where
 
 impl<T> crate::traits::error::Error for ChannelConsumer<T>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug,
 {
-  type Error = StreamError;
+  type Error = StreamError<T>;
 }
 
 impl<T> Input for ChannelConsumer<T>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug,
 {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
 }
 
 #[async_trait]
 impl<T> Consumer for ChannelConsumer<T>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug,
 {
-  async fn consume(&mut self, input: Self::InputStream) -> Result<(), StreamError> {
+  async fn consume(&mut self, input: Self::InputStream) -> Result<(), StreamError<T>> {
     let mut stream = input;
     while let Some(item) = stream.next().await {
       match item {
         Ok(value) => {
-          self.sender.send(value).await.map_err(|e| {
-            StreamError::new(
-              Box::new(e),
+          if let Some(sender) = &self.channel {
+            if let Err(e) = sender.send(value).await {
+              return Err(StreamError::new(
+                Box::new(e),
+                self.create_error_context(None),
+                self.component_info(),
+              ));
+            }
+          } else {
+            return Err(StreamError::new(
+              Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Channel is closed",
+              )),
               self.create_error_context(None),
               self.component_info(),
-            )
-          })?;
+            ));
+          }
         }
         Err(e) => {
           let action = self.handle_error(&e);
@@ -126,20 +102,20 @@ where
     Ok(())
   }
 
-  fn handle_error(&self, error: &StreamError) -> ErrorAction {
+  fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
     match self.get_config().error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
-      _ => ErrorAction::Stop,
+      ErrorStrategy::Retry(_) => ErrorAction::Retry,
+      ErrorStrategy::Custom(_) => ErrorAction::Skip,
     }
   }
 
-  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+  fn create_error_context(&self, item: Option<T>) -> ErrorContext<T> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Consumer,
+      stage: PipelineStage::Consumer(self.component_info().name),
     }
   }
 
@@ -179,7 +155,7 @@ mod tests {
     let (tx, mut rx) = channel(10);
     let mut consumer = ChannelConsumer::new(tx);
 
-    let input = stream::iter(Vec::<Result<i32, StreamError>>::new());
+    let input = stream::iter(Vec::<Result<i32, StreamError<i32>>>::new());
     let boxed_input = Box::pin(input);
 
     let result = consumer.consume(boxed_input).await;

@@ -2,22 +2,19 @@ use crate::error::{
   ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
 };
 use crate::traits::{
-  error::Error,
   output::Output,
   producer::{Producer, ProducerConfig},
 };
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
-use std::error::Error as StdError;
-use std::fmt;
-use std::io::{self, BufRead};
+use std::io;
 use std::pin::Pin;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 pub struct FileProducer {
   path: String,
-  config: ProducerConfig,
+  config: ProducerConfig<String>,
 }
 
 impl FileProducer {
@@ -28,24 +25,20 @@ impl FileProducer {
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
-    self.config_mut().set_error_strategy(strategy);
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<String>) -> Self {
+    self.config.error_strategy = strategy;
     self
   }
 
   pub fn with_name(mut self, name: String) -> Self {
-    self.config_mut().set_name(name);
+    self.config.name = Some(name);
     self
   }
 }
 
-impl Error for FileProducer {
-  type Error = StreamError;
-}
-
 impl Output for FileProducer {
   type Output = String;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<String, StreamError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = String> + Send>>;
 }
 
 #[async_trait]
@@ -63,54 +56,30 @@ impl Producer for FileProducer {
             let mut line = String::new();
             match reader.read_line(&mut line).await {
               Ok(0) => None,
-              Ok(_) => Some((Ok(line.trim().to_string()), (path, config))),
-              Err(e) => Some((
-                Err(StreamError::new(
-                  Box::new(e),
-                  ErrorContext {
-                    timestamp: chrono::Utc::now(),
-                    item: None,
-                    stage: PipelineStage::Producer,
-                  },
-                  ComponentInfo {
-                    name: config.name().unwrap_or_else(|| "file_producer".to_string()),
-                    type_name: std::any::type_name::<Self>().to_string(),
-                  },
-                )),
-                (path, config),
-              )),
+              Ok(_) => Some((line.trim().to_string(), (path, config))),
+              Err(_) => None,
             }
           }
-          Err(e) => Some((
-            Err(StreamError::new(
-              Box::new(e),
-              ErrorContext {
-                timestamp: chrono::Utc::now(),
-                item: None,
-                stage: PipelineStage::Producer,
-              },
-              ComponentInfo {
-                name: config.name().unwrap_or_else(|| "file_producer".to_string()),
-                type_name: std::any::type_name::<Self>().to_string(),
-              },
-            )),
-            (path, config),
-          )),
+          Err(_) => None,
         }
       },
     ))
   }
 
-  fn config(&self) -> &ProducerConfig {
+  fn set_config_impl(&mut self, config: ProducerConfig<String>) {
+    self.config = config;
+  }
+
+  fn get_config_impl(&self) -> &ProducerConfig<String> {
     &self.config
   }
 
-  fn config_mut(&mut self) -> &mut ProducerConfig {
+  fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<String> {
     &mut self.config
   }
 
-  fn handle_error(&self, error: &StreamError) -> ErrorAction {
-    match self.config().error_strategy() {
+  fn handle_error(&self, error: &StreamError<String>) -> ErrorAction {
+    match self.config.error_strategy() {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -118,7 +87,7 @@ impl Producer for FileProducer {
     }
   }
 
-  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+  fn create_error_context(&self, item: Option<String>) -> ErrorContext<String> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
@@ -129,7 +98,7 @@ impl Producer for FileProducer {
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self
-        .config()
+        .config
         .name()
         .unwrap_or_else(|| "file_producer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
@@ -154,7 +123,7 @@ mod tests {
 
     let mut producer = FileProducer::new(path);
     let stream = producer.produce();
-    let result: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
+    let result: Vec<String> = stream.collect().await;
 
     assert_eq!(result, vec!["line 1", "line 2", "line 3"]);
   }
@@ -166,7 +135,7 @@ mod tests {
 
     let mut producer = FileProducer::new(path);
     let stream = producer.produce();
-    let result: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
+    let result: Vec<String> = stream.collect().await;
 
     assert!(result.is_empty());
   }
@@ -175,8 +144,8 @@ mod tests {
   async fn test_nonexistent_file() {
     let mut producer = FileProducer::new("nonexistent.txt".to_string());
     let stream = producer.produce();
-    let result = stream.collect::<Vec<_>>().await;
-    assert!(result[0].is_err());
+    let result: Vec<String> = stream.collect().await;
+    assert!(result.is_empty());
   }
 
   #[tokio::test]
@@ -189,11 +158,19 @@ mod tests {
     assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
     assert_eq!(config.name(), Some("test_producer".to_string()));
 
-    let error = StreamError::new(
-      Box::new(io::Error::new(io::ErrorKind::NotFound, "test error")),
-      producer.create_error_context(None),
-      producer.component_info(),
-    );
+    let error = StreamError {
+      source: Box::new(io::Error::new(io::ErrorKind::NotFound, "test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        stage: PipelineStage::Producer,
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "FileProducer".to_string(),
+      },
+      retries: 0,
+    };
 
     assert_eq!(producer.handle_error(&error), ErrorAction::Skip);
   }

@@ -2,20 +2,16 @@ use crate::error::{
   ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
 };
 use crate::traits::{
-  error::Error,
   output::Output,
   producer::{Producer, ProducerConfig},
 };
 use futures::{Stream, StreamExt};
-use std::error::Error as StdError;
-use std::fmt;
 use std::pin::Pin;
-use std::sync::Arc;
 
 pub struct StringProducer {
   data: String,
   chunk_size: usize,
-  config: ProducerConfig,
+  config: ProducerConfig<String>,
 }
 
 impl StringProducer {
@@ -27,39 +23,26 @@ impl StringProducer {
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
-    self.config_mut().set_error_strategy(strategy);
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<String>) -> Self {
+    self.config.error_strategy = strategy;
     self
   }
 
   pub fn with_name(mut self, name: String) -> Self {
-    self.config_mut().set_name(name);
+    self.config.name = Some(name);
     self
   }
 }
 
-impl Error for StringProducer {
-  type Error = StreamError;
-}
-
 impl Output for StringProducer {
   type Output = String;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<String, StreamError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = String> + Send>>;
 }
 
 impl Producer for StringProducer {
   fn produce(&mut self) -> Self::OutputStream {
     if self.chunk_size == 0 {
-      return Box::pin(futures::stream::once(async {
-        Err(StreamError::new(
-          Box::new(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "Invalid chunk size",
-          )),
-          self.create_error_context(None),
-          self.component_info(),
-        ))
-      }));
+      return Box::pin(futures::stream::empty());
     }
 
     // Split by lines if chunk_size is 1 (default behavior in tests)
@@ -76,30 +59,31 @@ impl Producer for StringProducer {
         .collect::<Vec<_>>()
     };
 
-    Box::pin(futures::stream::iter(chunks).map(Ok))
+    Box::pin(futures::stream::iter(chunks))
   }
 
-  fn config(&self) -> &ProducerConfig {
+  fn set_config_impl(&mut self, config: ProducerConfig<String>) {
+    self.config = config;
+  }
+
+  fn get_config_impl(&self) -> &ProducerConfig<String> {
     &self.config
   }
 
-  fn config_mut(&mut self) -> &mut ProducerConfig {
+  fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<String> {
     &mut self.config
   }
 
-  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
-    match self.config().error_strategy() {
-      ErrorStrategy::Stop => ErrorStrategy::Stop,
-      ErrorStrategy::Skip => ErrorStrategy::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
-      _ => ErrorStrategy::Stop,
+  fn handle_error(&self, error: &StreamError<String>) -> ErrorAction {
+    match self.config.error_strategy() {
+      ErrorStrategy::Stop => ErrorAction::Stop,
+      ErrorStrategy::Skip => ErrorAction::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      _ => ErrorAction::Stop,
     }
   }
 
-  fn create_error_context(
-    &self,
-    item: Option<Arc<dyn std::any::Any + Send + Sync>>,
-  ) -> ErrorContext {
+  fn create_error_context(&self, item: Option<String>) -> ErrorContext<String> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
@@ -110,7 +94,7 @@ impl Producer for StringProducer {
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self
-        .config()
+        .config
         .name()
         .unwrap_or_else(|| "string_producer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
@@ -127,7 +111,7 @@ mod tests {
   async fn test_string_producer_single_line() {
     let mut producer = StringProducer::new("Hello, World!".to_string(), 1);
     let stream = producer.produce();
-    let result: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
+    let result: Vec<String> = stream.collect().await;
     assert_eq!(result, vec!["Hello, World!"]);
   }
 
@@ -135,7 +119,7 @@ mod tests {
   async fn test_string_producer_multiple_lines() {
     let mut producer = StringProducer::new("Line 1\nLine 2\nLine 3".to_string(), 1);
     let stream = producer.produce();
-    let result: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
+    let result: Vec<String> = stream.collect().await;
     assert_eq!(result, vec!["Line 1", "Line 2", "Line 3"]);
   }
 
@@ -143,7 +127,7 @@ mod tests {
   async fn test_string_producer_empty() {
     let mut producer = StringProducer::new("".to_string(), 1);
     let stream = producer.produce();
-    let result: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
+    let result: Vec<String> = stream.collect().await;
     assert_eq!(result, Vec::<String>::new());
   }
 
@@ -151,15 +135,15 @@ mod tests {
   async fn test_invalid_chunk_size() {
     let mut producer = StringProducer::new("test".to_string(), 0);
     let stream = producer.produce();
-    let result = stream.collect::<Vec<_>>().await;
-    assert!(matches!(result[0], Err(_)));
+    let result: Vec<String> = stream.collect().await;
+    assert!(result.is_empty());
   }
 
   #[tokio::test]
   async fn test_custom_chunk_size() {
     let mut producer = StringProducer::new("abcdef".to_string(), 2);
     let stream = producer.produce();
-    let result: Vec<String> = stream.map(|r| r.unwrap()).collect().await;
+    let result: Vec<String> = stream.collect().await;
     assert_eq!(result, vec!["ab", "cd", "ef"]);
   }
 
@@ -173,12 +157,20 @@ mod tests {
     assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
     assert_eq!(config.name(), Some("test_producer".to_string()));
 
-    let error = StreamError::new(
-      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-      producer.create_error_context(None),
-      producer.component_info(),
-    );
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        stage: PipelineStage::Producer,
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "StringProducer".to_string(),
+      },
+      retries: 0,
+    };
 
-    assert_eq!(producer.handle_error(error), ErrorStrategy::Skip);
+    assert_eq!(producer.handle_error(&error), ErrorAction::Skip);
   }
 }

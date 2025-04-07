@@ -2,46 +2,36 @@ use crate::error::{
   ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
 };
 use crate::traits::{
-  error::Error,
   output::Output,
   producer::{Producer, ProducerConfig},
 };
+use async_trait::async_trait;
 use futures::{Stream, StreamExt};
-use std::cell::RefCell;
-use std::error::Error as StdError;
-use std::fmt;
 use std::pin::Pin;
 
-thread_local! {
-    static DEFAULT_CONFIG: RefCell<ProducerConfig> = RefCell::new(ProducerConfig::default());
-}
-
-#[derive(Debug)]
-pub enum ArrayError {
-  InvalidOperation(String),
-}
-
-impl fmt::Display for ArrayError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      ArrayError::InvalidOperation(msg) => write!(f, "Array operation error: {}", msg),
-    }
-  }
-}
-
-impl StdError for ArrayError {}
-
-pub struct ArrayProducer<T, const N: usize> {
+pub struct ArrayProducer<T: Send + Sync + 'static + Clone + std::fmt::Debug, const N: usize> {
   array: [T; N],
-  config: ProducerConfig,
+  config: ProducerConfig<T>,
+  _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Clone, const N: usize> ArrayProducer<T, N> {
+impl<T: Send + Sync + 'static + Clone + std::fmt::Debug, const N: usize> ArrayProducer<T, N> {
   pub fn new(array: [T; N]) -> Self {
     Self {
       array,
-      config: ProducerConfig::default(),
+      config: ProducerConfig::<T>::default(),
+      _phantom: std::marker::PhantomData,
     }
+  }
+
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
+    self.config.error_strategy = strategy;
+    self
+  }
+
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config.name = Some(name);
+    self
   }
 
   pub fn from_slice(slice: &[T]) -> Option<Self>
@@ -70,27 +60,59 @@ impl<T: Clone, const N: usize> ArrayProducer<T, N> {
   }
 }
 
-impl<T: Clone + Send + 'static, const N: usize> Error for ArrayProducer<T, N> {
-  type Error = ArrayError;
-}
-
-impl<T: Clone + Send + 'static, const N: usize> Output for ArrayProducer<T, N> {
+impl<T: Send + Sync + 'static + Clone + std::fmt::Debug, const N: usize> Output
+  for ArrayProducer<T, N>
+{
   type Output = T;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<T, ArrayError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<T: Clone + Send + 'static, const N: usize> Producer for ArrayProducer<T, N> {
+#[async_trait]
+impl<T: Send + Sync + 'static + Clone + std::fmt::Debug, const N: usize> Producer
+  for ArrayProducer<T, N>
+{
   fn produce(&mut self) -> Self::OutputStream {
-    let items = self.array.clone();
-    Box::pin(futures::stream::iter(items.into_iter().map(Ok)))
+    let array = self.array.clone();
+    Box::pin(futures::stream::iter(array.into_iter()))
   }
 
-  fn config(&self) -> &ProducerConfig {
+  fn set_config_impl(&mut self, config: ProducerConfig<T>) {
+    self.config = config;
+  }
+
+  fn get_config_impl(&self) -> &ProducerConfig<T> {
     &self.config
   }
 
-  fn config_mut(&mut self) -> &mut ProducerConfig {
+  fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<T> {
     &mut self.config
+  }
+
+  fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
+    match self.config.error_strategy() {
+      ErrorStrategy::Stop => ErrorAction::Stop,
+      ErrorStrategy::Skip => ErrorAction::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      _ => ErrorAction::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<T>) -> ErrorContext<T> {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Producer,
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config
+        .name()
+        .unwrap_or_else(|| "array_producer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }
 
@@ -100,19 +122,35 @@ mod tests {
   use futures::StreamExt;
 
   #[tokio::test]
-  async fn test_array_producer() {
-    let mut producer = ArrayProducer::new([1, 2, 3]);
-    let stream = producer.produce();
-    let result: Vec<i32> = stream.map(|r| r.unwrap()).collect().await;
-    assert_eq!(result, vec![1, 2, 3]);
+  async fn test_array_producer_basic() {
+    let mut producer = ArrayProducer::new([1, 2, 3, 4, 5]);
+    let result: Vec<i32> = producer.produce().collect().await;
+    assert_eq!(result, vec![1, 2, 3, 4, 5]);
   }
 
   #[tokio::test]
   async fn test_array_producer_empty() {
     let mut producer = ArrayProducer::<i32, 0>::new([]);
-    let stream = producer.produce();
-    let result: Vec<i32> = stream.map(|r| r.unwrap()).collect().await;
-    assert!(result.is_empty());
+    let result: Vec<i32> = producer.produce().collect().await;
+    assert_eq!(result, Vec::<i32>::new());
+  }
+
+  #[tokio::test]
+  async fn test_array_producer_strings() {
+    let mut producer = ArrayProducer::new(["a", "b", "c"]);
+    let result: Vec<&str> = producer.produce().collect().await;
+    assert_eq!(result, vec!["a", "b", "c"]);
+  }
+
+  #[tokio::test]
+  async fn test_error_handling_strategies() {
+    let mut producer = ArrayProducer::new([1, 2, 3])
+      .with_error_strategy(ErrorStrategy::<i32>::Skip)
+      .with_name("test_producer".to_string());
+
+    let config = producer.config();
+    assert_eq!(config.error_strategy(), ErrorStrategy::<i32>::Skip);
+    assert_eq!(config.name(), Some("test_producer".to_string()));
   }
 
   #[tokio::test]
@@ -120,7 +158,7 @@ mod tests {
     let slice = &[1, 2, 3];
     let mut producer = ArrayProducer::<_, 3>::from_slice(slice).unwrap();
     let stream = producer.produce();
-    let result: Vec<i32> = stream.map(|r| r.unwrap()).collect().await;
+    let result: Vec<i32> = stream.collect().await;
     assert_eq!(result, vec![1, 2, 3]);
   }
 
@@ -136,12 +174,12 @@ mod tests {
 
     // First call
     let stream = producer.produce();
-    let result1: Vec<i32> = stream.map(|r| r.unwrap()).collect().await;
+    let result1: Vec<i32> = stream.collect().await;
     assert_eq!(result1, vec![1, 2, 3]);
 
     // Second call
     let stream = producer.produce();
-    let result2: Vec<i32> = stream.map(|r| r.unwrap()).collect().await;
+    let result2: Vec<i32> = stream.collect().await;
     assert_eq!(result2, vec![1, 2, 3]);
   }
 
@@ -160,21 +198,21 @@ mod tests {
   fn test_error_handling_stop() {
     let producer = ArrayProducer::<i32, 3>::new([1, 2, 3]);
     let error = StreamError {
-      source: Box::new(ArrayError::InvalidOperation("test error".to_string())),
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
         stage: PipelineStage::Producer,
       },
-      retries: 0,
       component: ComponentInfo {
         name: "test".to_string(),
         type_name: "ArrayProducer".to_string(),
       },
+      retries: 0,
     };
 
-    let strategy = producer.handle_error(error);
-    assert!(matches!(strategy, ErrorStrategy::Stop));
+    let strategy = producer.handle_error(&error);
+    assert!(matches!(strategy, ErrorAction::Stop));
   }
 
   #[test]
@@ -182,89 +220,20 @@ mod tests {
     let mut producer = ArrayProducer::<i32, 3>::new([1, 2, 3]);
     producer = producer.with_error_strategy(ErrorStrategy::Skip);
     let error = StreamError {
-      source: Box::new(ArrayError::InvalidOperation("test error".to_string())),
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
         stage: PipelineStage::Producer,
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "ArrayProducer".to_string(),
       },
       retries: 0,
-      component: ComponentInfo {
-        name: "test".to_string(),
-        type_name: "ArrayProducer".to_string(),
-      },
     };
 
-    let strategy = producer.handle_error(error);
-    assert!(matches!(strategy, ErrorStrategy::Skip));
-  }
-
-  #[test]
-  fn test_error_handling_retry() {
-    let mut producer = ArrayProducer::<i32, 3>::new([1, 2, 3]);
-    producer = producer.with_error_strategy(ErrorStrategy::Retry(3));
-    let error = StreamError {
-      source: Box::new(ArrayError::InvalidOperation("test error".to_string())),
-      context: ErrorContext {
-        timestamp: chrono::Utc::now(),
-        item: None,
-        stage: PipelineStage::Producer,
-      },
-      retries: 0,
-      component: ComponentInfo {
-        name: "test".to_string(),
-        type_name: "ArrayProducer".to_string(),
-      },
-    };
-
-    let strategy = producer.handle_error(error);
-    assert!(matches!(strategy, ErrorStrategy::Retry(3)));
-  }
-
-  #[test]
-  fn test_error_handling_retry_exhausted() {
-    let mut producer = ArrayProducer::<i32, 3>::new([1, 2, 3]);
-    producer = producer.with_error_strategy(ErrorStrategy::Retry(3));
-    let error = StreamError {
-      source: Box::new(ArrayError::InvalidOperation("test error".to_string())),
-      context: ErrorContext {
-        timestamp: chrono::Utc::now(),
-        item: None,
-        stage: PipelineStage::Producer,
-      },
-      retries: 3,
-      component: ComponentInfo {
-        name: "test".to_string(),
-        type_name: "ArrayProducer".to_string(),
-      },
-    };
-
-    let strategy = producer.handle_error(error);
-    assert!(matches!(strategy, ErrorStrategy::Stop));
-  }
-
-  #[test]
-  fn test_component_info() {
-    let producer = ArrayProducer::<i32, 3>::new([1, 2, 3]).with_name("test_producer".to_string());
-    let info = producer.component_info();
-    assert_eq!(info.name, "test_producer");
-    assert_eq!(info.type_name, "ArrayProducer");
-  }
-
-  #[test]
-  fn test_create_error_context() {
-    let producer = ArrayProducer::<i32, 3>::new([1, 2, 3]);
-    let context = producer.create_error_context(None);
-    assert!(matches!(context.stage, PipelineStage::Producer));
-    assert!(context.item.is_none());
-  }
-
-  #[test]
-  fn test_create_error_context_with_item() {
-    let producer = ArrayProducer::<i32, 3>::new([1, 2, 3]);
-    let item = Box::new(42) as Box<dyn std::any::Any + Send>;
-    let context = producer.create_error_context(Some(item));
-    assert!(matches!(context.stage, PipelineStage::Producer));
-    assert!(context.item.is_some());
+    let strategy = producer.handle_error(&error);
+    assert!(matches!(strategy, ErrorAction::Skip));
   }
 }

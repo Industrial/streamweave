@@ -8,6 +8,7 @@ pub mod dedupe;
 pub mod delay;
 pub mod distinct;
 pub mod filter;
+pub mod flat_map;
 pub mod flatten;
 pub mod group_by;
 pub mod interleave;

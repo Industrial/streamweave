@@ -11,19 +11,24 @@ use std::pin::Pin;
 
 pub struct VecConsumer<T> {
   vec: Vec<T>,
+  config: ConsumerConfig<T>,
 }
 
 impl<T> VecConsumer<T>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug,
 {
   pub fn new() -> Self {
-    Self { vec: Vec::new() }
+    Self {
+      vec: Vec::new(),
+      config: ConsumerConfig::default(),
+    }
   }
 
   pub fn with_capacity(capacity: usize) -> Self {
     Self {
       vec: Vec::with_capacity(capacity),
+      config: ConsumerConfig::default(),
     }
   }
 
@@ -48,25 +53,25 @@ where
 
 impl<T> crate::traits::error::Error for VecConsumer<T>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug,
 {
-  type Error = StreamError;
+  type Error = StreamError<T>;
 }
 
 impl<T> Input for VecConsumer<T>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug,
 {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
 }
 
 #[async_trait]
 impl<T> Consumer for VecConsumer<T>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug,
 {
-  async fn consume(&mut self, input: Self::InputStream) -> Result<(), StreamError> {
+  async fn consume(&mut self, input: Self::InputStream) -> Result<(), StreamError<T>> {
     let mut stream = input;
     while let Some(item) = stream.next().await {
       match item {
@@ -89,20 +94,20 @@ where
     Ok(())
   }
 
-  fn handle_error(&self, error: &StreamError) -> ErrorAction {
+  fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
     match self.get_config().error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
-      _ => ErrorAction::Stop,
+      ErrorStrategy::Retry(_) => ErrorAction::Retry,
+      ErrorStrategy::Custom(_) => ErrorAction::Skip,
     }
   }
 
-  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+  fn create_error_context(&self, item: Option<T>) -> ErrorContext<T> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Consumer,
+      stage: PipelineStage::Consumer(self.component_info().name),
     }
   }
 
@@ -128,18 +133,20 @@ mod tests {
 
     let result = consumer.consume(boxed_input).await;
     assert!(result.is_ok());
-    assert_eq!(consumer.into_vec(), vec![1, 2, 3]);
+    let vec = consumer.into_vec();
+    assert_eq!(vec, vec![1, 2, 3]);
   }
 
   #[tokio::test]
   async fn test_vec_consumer_empty_input() {
     let mut consumer = VecConsumer::new();
-    let input = stream::iter(Vec::<Result<i32, StreamError>>::new());
+    let input = stream::iter(Vec::<Result<i32, StreamError<i32>>>::new());
     let boxed_input = Box::pin(input);
 
     let result = consumer.consume(boxed_input).await;
     assert!(result.is_ok());
-    assert!(consumer.into_vec().is_empty());
+    let vec = consumer.into_vec();
+    assert!(vec.is_empty());
   }
 
   #[tokio::test]

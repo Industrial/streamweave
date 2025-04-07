@@ -11,20 +11,20 @@ use std::pin::Pin;
 use tokio::process::Command;
 
 pub struct CommandConsumer<T> {
-  command: String,
-  args: Vec<String>,
-  _phantom: std::marker::PhantomData<T>,
+  command: Option<Command>,
+  config: ConsumerConfig<T>,
 }
 
 impl<T> CommandConsumer<T>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug + std::fmt::Display,
 {
   pub fn new(command: String, args: Vec<String>) -> Self {
+    let mut cmd = Command::new(command);
+    cmd.args(args);
     Self {
-      command,
-      args,
-      _phantom: std::marker::PhantomData,
+      command: Some(cmd),
+      config: ConsumerConfig::default(),
     }
   }
 
@@ -45,59 +45,60 @@ where
 
 impl<T> crate::traits::error::Error for CommandConsumer<T>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug + std::fmt::Display,
 {
-  type Error = StreamError;
+  type Error = StreamError<T>;
 }
 
 impl<T> Input for CommandConsumer<T>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug + std::fmt::Display,
 {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
 }
 
 #[async_trait]
 impl<T> Consumer for CommandConsumer<T>
 where
-  T: Send + 'static + std::fmt::Display,
+  T: Send + Sync + 'static + std::fmt::Debug + std::fmt::Display,
 {
-  async fn consume(&mut self, mut stream: Self::InputStream) -> Result<(), StreamError> {
+  async fn consume(&mut self, mut stream: Self::InputStream) -> Result<(), StreamError<T>> {
     while let Some(item) = stream.next().await {
       match item {
         Ok(value) => {
-          let command = format!("{}", value);
-          let output = Command::new(&self.command)
-            .arg(&command)
-            .output()
-            .await
-            .map_err(|e| {
+          if let Some(cmd) = &mut self.command {
+            let output = cmd.arg(value.to_string()).output().await.map_err(|e| {
               StreamError::new(
                 Box::new(e),
-                self.create_error_context(Some(Box::new(value))),
+                self.create_error_context(Some(value)),
                 self.component_info(),
               )
             })?;
-
-          if !output.status.success() {
+            if !output.status.success() {
+              return Err(StreamError::new(
+                Box::new(std::io::Error::new(
+                  std::io::ErrorKind::Other,
+                  format!("Command failed with status: {}", output.status),
+                )),
+                self.create_error_context(Some(value)),
+                self.component_info(),
+              ));
+            }
+          } else {
             return Err(StreamError::new(
               Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
-                format!(
-                  "Command failed with status {}: {}",
-                  output.status,
-                  String::from_utf8_lossy(&output.stderr)
-                ),
+                "Command is not set",
               )),
-              self.create_error_context(Some(Box::new(value))),
+              self.create_error_context(Some(value)),
               self.component_info(),
             ));
           }
         }
         Err(e) => {
-          let strategy = self.handle_error(&e);
-          match strategy {
+          let action = self.handle_error(&e);
+          match action {
             ErrorAction::Stop => return Err(e),
             ErrorAction::Skip => continue,
             ErrorAction::Retry => {
@@ -111,12 +112,20 @@ where
     Ok(())
   }
 
-  fn handle_error(&self, error: &StreamError) -> ErrorAction {
+  fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
     match self.get_config().error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
-      _ => ErrorAction::Stop,
+      ErrorStrategy::Retry(_) => ErrorAction::Retry,
+      ErrorStrategy::Custom(_) => ErrorAction::Skip,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<T>) -> ErrorContext<T> {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      stage: PipelineStage::Consumer(self.component_info().name),
     }
   }
 
@@ -125,14 +134,6 @@ where
     ComponentInfo {
       name: config.name,
       type_name: std::any::type_name::<Self>().to_string(),
-    }
-  }
-
-  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
-    ErrorContext {
-      timestamp: chrono::Utc::now(),
-      item,
-      stage: PipelineStage::Consumer,
     }
   }
 }
@@ -145,7 +146,7 @@ mod tests {
   #[tokio::test]
   async fn test_command_consumer_basic() {
     let mut consumer = CommandConsumer::new("echo".to_string(), vec![]);
-    let input = stream::iter(vec!["test"].into_iter().map(Ok));
+    let input = stream::iter(vec![Ok("hello"), Ok("world")]);
     let boxed_input = Box::pin(input);
 
     let result = consumer.consume(boxed_input).await;
@@ -155,7 +156,7 @@ mod tests {
   #[tokio::test]
   async fn test_command_consumer_empty_input() {
     let mut consumer = CommandConsumer::new("echo".to_string(), vec![]);
-    let input = stream::iter(Vec::<Result<&str, StreamError>>::new());
+    let input = stream::iter(Vec::<Result<&str, StreamError<&str>>>::new());
     let boxed_input = Box::pin(input);
 
     let result = consumer.consume(boxed_input).await;
@@ -164,7 +165,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_command_consumer_with_error() {
-    let mut consumer = CommandConsumer::new("nonexistent_command".to_string(), vec![]);
+    let mut consumer = CommandConsumer::new("nonexistent".to_string(), vec![]);
     let input = stream::iter(vec![Ok("test")]);
     let boxed_input = Box::pin(input);
 

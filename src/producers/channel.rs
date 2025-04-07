@@ -2,23 +2,20 @@ use crate::error::{
   ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
 };
 use crate::traits::{
-  error::Error,
   output::Output,
   producer::{Producer, ProducerConfig},
 };
 use async_trait::async_trait;
-use futures::{Stream, StreamExt};
-use std::error::Error as StdError;
-use std::fmt;
+use futures::Stream;
 use std::pin::Pin;
 use tokio::sync::mpsc;
 
-pub struct ChannelProducer<T> {
+pub struct ChannelProducer<T: Clone> {
   rx: mpsc::Receiver<T>,
-  config: ProducerConfig,
+  config: ProducerConfig<T>,
 }
 
-impl<T> ChannelProducer<T> {
+impl<T: Clone> ChannelProducer<T> {
   pub fn new(rx: mpsc::Receiver<T>) -> Self {
     Self {
       rx,
@@ -26,53 +23,48 @@ impl<T> ChannelProducer<T> {
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
-    self.config_mut().set_error_strategy(strategy);
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
+    self.config.error_strategy = strategy;
     self
   }
 
   pub fn with_name(mut self, name: String) -> Self {
-    self.config_mut().set_name(name);
+    self.config.name = Some(name);
     self
   }
 }
 
-impl<T: Send + 'static> Error for ChannelProducer<T> {
-  type Error = StreamError;
-}
-
-impl<T: Send + 'static> Output for ChannelProducer<T> {
+impl<T: Send + Clone + 'static> Output for ChannelProducer<T> {
   type Output = T;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<T, StreamError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 #[async_trait]
-impl<T: Send + 'static> Producer for ChannelProducer<T> {
+impl<T: Send + Clone + 'static> Producer for ChannelProducer<T> {
   fn produce(&mut self) -> Self::OutputStream {
     let mut rx = self.rx.clone();
-    let config = self.config.clone();
-
-    Box::pin(futures::stream::unfold(
-      (rx, config),
-      |(mut rx, config)| async move {
-        match rx.recv().await {
-          Some(item) => Some((Ok(item), (rx, config))),
-          None => None,
-        }
-      },
-    ))
+    Box::pin(futures::stream::unfold(rx, |mut rx| async move {
+      match rx.recv().await {
+        Some(item) => Some((item, rx)),
+        None => None,
+      }
+    }))
   }
 
-  fn config(&self) -> &ProducerConfig {
+  fn set_config_impl(&mut self, config: ProducerConfig<T>) {
+    self.config = config;
+  }
+
+  fn get_config_impl(&self) -> &ProducerConfig<T> {
     &self.config
   }
 
-  fn config_mut(&mut self) -> &mut ProducerConfig {
+  fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<T> {
     &mut self.config
   }
 
-  fn handle_error(&self, error: &StreamError) -> ErrorAction {
-    match self.config().error_strategy() {
+  fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
+    match self.config.error_strategy() {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -80,7 +72,7 @@ impl<T: Send + 'static> Producer for ChannelProducer<T> {
     }
   }
 
-  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+  fn create_error_context(&self, item: Option<T>) -> ErrorContext<T> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
@@ -91,7 +83,7 @@ impl<T: Send + 'static> Producer for ChannelProducer<T> {
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self
-        .config()
+        .config
         .name()
         .unwrap_or_else(|| "channel_producer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
@@ -116,7 +108,7 @@ mod tests {
     drop(tx);
 
     let stream = producer.produce();
-    let result: Vec<i32> = stream.map(|r| r.unwrap()).collect().await;
+    let result: Vec<i32> = stream.collect().await;
 
     assert_eq!(result, vec![1, 2, 3]);
   }
@@ -127,7 +119,7 @@ mod tests {
     let mut producer = ChannelProducer::new(rx);
 
     let stream = producer.produce();
-    let result: Vec<i32> = stream.map(|r| r.unwrap()).collect().await;
+    let result: Vec<i32> = stream.collect().await;
 
     assert!(result.is_empty());
   }
@@ -143,11 +135,19 @@ mod tests {
     assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
     assert_eq!(config.name(), Some("test_producer".to_string()));
 
-    let error = StreamError::new(
-      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-      producer.create_error_context(None),
-      producer.component_info(),
-    );
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        stage: PipelineStage::Producer,
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "ChannelProducer".to_string(),
+      },
+      retries: 0,
+    };
 
     assert_eq!(producer.handle_error(&error), ErrorAction::Skip);
   }

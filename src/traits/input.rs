@@ -1,16 +1,14 @@
-use crate::traits::error::Error;
 use futures::Stream;
 
-pub trait Input: Error {
+pub trait Input {
   type Input;
-  type InputStream: Stream<Item = Result<Self::Input, Self::Error>> + Send;
+  type InputStream: Stream<Item = Self::Input> + Send;
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
   use futures::{StreamExt, stream};
-  use std::error::Error as StdError;
   use std::fmt;
   use std::pin::Pin;
 
@@ -24,20 +22,14 @@ mod tests {
     }
   }
 
-  impl StdError for TestError {}
-
   // Test implementation using Vec<i32>
   struct VecInput {
     data: Vec<i32>,
   }
 
-  impl Error for VecInput {
-    type Error = TestError;
-  }
-
   impl Input for VecInput {
     type Input = i32;
-    type InputStream = Pin<Box<dyn Stream<Item = Result<i32, TestError>> + Send>>;
+    type InputStream = Pin<Box<dyn Stream<Item = i32> + Send>>;
   }
 
   // Test implementation using String
@@ -45,13 +37,9 @@ mod tests {
     data: String,
   }
 
-  impl Error for StringInput {
-    type Error = TestError;
-  }
-
   impl Input for StringInput {
     type Input = char;
-    type InputStream = Pin<Box<dyn Stream<Item = Result<char, TestError>> + Send>>;
+    type InputStream = Pin<Box<dyn Stream<Item = char> + Send>>;
   }
 
   #[tokio::test]
@@ -61,12 +49,9 @@ mod tests {
     };
 
     // Verify type constraints are met
-    let stream: Pin<Box<dyn Stream<Item = Result<i32, TestError>> + Send>> =
-      Box::pin(stream::iter(input.data).map(Ok));
+    let stream: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(input.data));
 
-    let sum = stream
-      .fold(0, |acc, x| async move { acc + x.unwrap() })
-      .await;
+    let sum = stream.fold(0, |acc, x| async move { acc + x }).await;
     assert_eq!(sum, 6);
   }
 
@@ -77,10 +62,10 @@ mod tests {
     };
 
     // Verify type constraints are met
-    let stream: Pin<Box<dyn Stream<Item = Result<char, TestError>> + Send>> =
-      Box::pin(stream::iter(input.data.chars()).map(Ok));
+    let stream: Pin<Box<dyn Stream<Item = char> + Send>> =
+      Box::pin(stream::iter(input.data.chars()));
 
-    let result: String = stream.map(|r| r.unwrap()).collect().await;
+    let result: String = stream.collect().await;
     assert_eq!(result, "hello");
   }
 
@@ -90,13 +75,10 @@ mod tests {
       data: vec![1, 2, 3],
     };
 
-    let stream: Pin<Box<dyn Stream<Item = Result<i32, TestError>> + Send>> =
-      Box::pin(stream::iter(input.data).map(Ok));
+    let stream: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(input.data));
 
     let handle = tokio::spawn(async move {
-      let sum = stream
-        .fold(0, |acc, x| async move { acc + x.unwrap() })
-        .await;
+      let sum = stream.fold(0, |acc, x| async move { acc + x }).await;
       assert_eq!(sum, 6);
     });
 

@@ -22,10 +22,8 @@ where
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
-    let mut config = self.get_config();
-    config.error_strategy = strategy;
-    self.set_config(config);
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
+    self.config_mut().set_error_strategy(strategy);
     self
   }
 
@@ -43,25 +41,25 @@ where
 
 impl<T, const N: usize> crate::traits::error::Error for ArrayConsumer<T, N>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug,
 {
-  type Error = StreamError;
+  type Error = StreamError<T>;
 }
 
 impl<T, const N: usize> Input for ArrayConsumer<T, N>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug,
 {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
 }
 
 #[async_trait]
 impl<T, const N: usize> Consumer for ArrayConsumer<T, N>
 where
-  T: Send + 'static,
+  T: Send + Sync + 'static + std::fmt::Debug,
 {
-  async fn consume(&mut self, input: Self::InputStream) -> Result<(), StreamError> {
+  async fn consume(&mut self, input: Self::InputStream) -> Result<(), StreamError<T>> {
     let mut stream = input;
     while let Some(item) = stream.next().await {
       match item {
@@ -75,7 +73,7 @@ where
                 std::io::ErrorKind::Other,
                 "Array capacity exceeded",
               )),
-              self.create_error_context(Some(Box::new(value))),
+              self.create_error_context(Some(value)),
               self.component_info(),
             ));
           }
@@ -96,20 +94,20 @@ where
     Ok(())
   }
 
-  fn handle_error(&self, error: &StreamError) -> ErrorAction {
+  fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
     match self.get_config().error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
-      _ => ErrorAction::Stop,
+      ErrorStrategy::Retry(_) => ErrorAction::Retry,
+      ErrorStrategy::Custom(_) => ErrorAction::Skip,
     }
   }
 
-  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+  fn create_error_context(&self, item: Option<T>) -> ErrorContext<T> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Consumer,
+      stage: PipelineStage::Consumer(self.component_info().name),
     }
   }
 
@@ -144,7 +142,7 @@ mod tests {
   #[tokio::test]
   async fn test_array_consumer_empty_input() {
     let mut consumer = ArrayConsumer::<i32, 3>::new();
-    let input = stream::iter(Vec::<Result<i32, StreamError>>::new());
+    let input = stream::iter(Vec::<Result<i32, StreamError<i32>>>::new());
     let boxed_input = Box::pin(input);
 
     let result = consumer.consume(boxed_input).await;

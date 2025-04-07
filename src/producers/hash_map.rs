@@ -2,7 +2,6 @@ use crate::error::{
   ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
 };
 use crate::traits::{
-  error::Error,
   output::Output,
   producer::{Producer, ProducerConfig},
 };
@@ -14,7 +13,7 @@ use std::sync::Arc;
 
 pub struct HashMapProducer<K, V> {
   data: HashMap<K, V>,
-  config: ProducerConfig,
+  config: ProducerConfig<(K, V)>,
 }
 
 impl<K, V> HashMapProducer<K, V>
@@ -29,23 +28,15 @@ where
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
-    self.config_mut().set_error_strategy(strategy);
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<(K, V)>) -> Self {
+    self.config.error_strategy = strategy;
     self
   }
 
   pub fn with_name(mut self, name: String) -> Self {
-    self.config_mut().set_name(name);
+    self.config.name = Some(name);
     self
   }
-}
-
-impl<K, V> Error for HashMapProducer<K, V>
-where
-  K: Send + Clone + 'static,
-  V: Send + Clone + 'static,
-{
-  type Error = StreamError;
 }
 
 impl<K, V> Output for HashMapProducer<K, V>
@@ -54,7 +45,7 @@ where
   V: Send + Clone + 'static,
 {
   type Output = (K, V);
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<(K, V), StreamError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = (K, V)> + Send>>;
 }
 
 impl<K, V> Producer for HashMapProducer<K, V>
@@ -64,30 +55,31 @@ where
 {
   fn produce(&mut self) -> Self::OutputStream {
     let data = self.data.clone();
-    Box::pin(stream::iter(data.into_iter().map(Ok)))
+    Box::pin(stream::iter(data.into_iter()))
   }
 
-  fn config(&self) -> &ProducerConfig {
+  fn set_config_impl(&mut self, config: ProducerConfig<(K, V)>) {
+    self.config = config;
+  }
+
+  fn get_config_impl(&self) -> &ProducerConfig<(K, V)> {
     &self.config
   }
 
-  fn config_mut(&mut self) -> &mut ProducerConfig {
+  fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<(K, V)> {
     &mut self.config
   }
 
-  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
-    match self.config().error_strategy() {
-      ErrorStrategy::Stop => ErrorStrategy::Stop,
-      ErrorStrategy::Skip => ErrorStrategy::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
-      _ => ErrorStrategy::Stop,
+  fn handle_error(&self, error: &StreamError<(K, V)>) -> ErrorAction {
+    match self.config.error_strategy() {
+      ErrorStrategy::Stop => ErrorAction::Stop,
+      ErrorStrategy::Skip => ErrorAction::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      _ => ErrorAction::Stop,
     }
   }
 
-  fn create_error_context(
-    &self,
-    item: Option<Arc<dyn std::any::Any + Send + Sync>>,
-  ) -> ErrorContext {
+  fn create_error_context(&self, item: Option<(K, V)>) -> ErrorContext<(K, V)> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
@@ -98,7 +90,7 @@ where
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self
-        .config()
+        .config
         .name()
         .unwrap_or_else(|| "hash_map_producer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
@@ -120,7 +112,7 @@ mod tests {
 
     let mut producer = HashMapProducer::new(map.clone());
     let stream = producer.produce();
-    let mut result: Vec<(&str, i32)> = stream.map(|r| r.unwrap()).collect().await;
+    let mut result: Vec<(&str, i32)> = stream.collect().await;
 
     // Sort for deterministic comparison
     result.sort_by_key(|k| k.0);
@@ -132,7 +124,7 @@ mod tests {
     let map: HashMap<String, i32> = HashMap::new();
     let mut producer = HashMapProducer::new(map);
     let stream = producer.produce();
-    let result: Vec<(String, i32)> = stream.map(|r| r.unwrap()).collect().await;
+    let result: Vec<(String, i32)> = stream.collect().await;
     assert!(result.is_empty());
   }
 
@@ -150,7 +142,7 @@ mod tests {
 
     let mut producer = HashMapProducer::new(map);
     let stream = producer.produce();
-    let mut result: Vec<(CustomKey, CustomValue)> = stream.map(|r| r.unwrap()).collect().await;
+    let mut result: Vec<(CustomKey, CustomValue)> = stream.collect().await;
 
     // Sort for deterministic comparison
     result.sort_by_key(|k| k.0.0.clone());
@@ -171,13 +163,13 @@ mod tests {
 
     // First call
     let stream = producer.produce();
-    let result1: Vec<(&str, i32)> = stream.map(|r| r.unwrap()).collect().await;
+    let result1: Vec<(&str, i32)> = stream.collect().await;
     assert_eq!(result1.len(), 1);
     assert_eq!(result1[0], ("test", 42));
 
     // Second call
     let stream = producer.produce();
-    let result2: Vec<(&str, i32)> = stream.map(|r| r.unwrap()).collect().await;
+    let result2: Vec<(&str, i32)> = stream.collect().await;
     assert_eq!(result2.len(), 1);
     assert_eq!(result2[0], ("test", 42));
   }
@@ -195,12 +187,20 @@ mod tests {
     assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
     assert_eq!(config.name(), Some("test_producer".to_string()));
 
-    let error = StreamError::new(
-      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-      producer.create_error_context(None),
-      producer.component_info(),
-    );
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        stage: PipelineStage::Producer,
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "HashMapProducer".to_string(),
+      },
+      retries: 0,
+    };
 
-    assert_eq!(producer.handle_error(error), ErrorStrategy::Skip);
+    assert_eq!(producer.handle_error(&error), ErrorAction::Skip);
   }
 }
