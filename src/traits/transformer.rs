@@ -92,7 +92,8 @@ where
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Transformer(self.component_info().name),
+      component_name: self.component_info().name,
+      component_type: self.component_info().type_name,
     }
   }
 
@@ -210,7 +211,8 @@ mod tests {
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
-        stage: PipelineStage::Transformer(transformer.component_info().name),
+        component_name: transformer.component_info().name,
+        component_type: transformer.component_info().type_name,
       },
       component: ComponentInfo {
         name: "test".to_string(),

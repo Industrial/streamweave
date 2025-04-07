@@ -123,7 +123,8 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> Error for StreamError<T> {
 pub struct ErrorContext<T: std::fmt::Debug + Clone + Send + Sync> {
   pub timestamp: chrono::DateTime<chrono::Utc>,
   pub item: Option<T>,
-  pub stage: PipelineStage,
+  pub component_name: String,
+  pub component_type: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -143,6 +144,12 @@ impl ComponentInfo {
   pub fn new(name: String, type_name: String) -> Self {
     Self { name, type_name }
   }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PipelineErrorContext<T: std::fmt::Debug + Clone + Send + Sync> {
+  pub context: ErrorContext<T>,
+  pub stage: PipelineStage,
 }
 
 #[derive(Debug)]

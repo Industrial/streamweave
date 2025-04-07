@@ -74,7 +74,8 @@ where
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Consumer,
+      component_name: self.component_info().name,
+      component_type: self.component_info().type_name,
     }
   }
 
@@ -245,7 +246,8 @@ mod tests {
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
-        stage: PipelineStage::Consumer,
+        component_name: "test".to_string(),
+        component_type: "CollectorConsumer".to_string(),
       },
       retries: 0,
       component: ComponentInfo {
@@ -270,7 +272,8 @@ mod tests {
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
-        stage: PipelineStage::Consumer,
+        component_name: "test".to_string(),
+        component_type: "CollectorConsumer".to_string(),
       },
       retries: 0,
       component: ComponentInfo {
@@ -295,7 +298,8 @@ mod tests {
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
-        stage: PipelineStage::Consumer,
+        component_name: "test".to_string(),
+        component_type: "CollectorConsumer".to_string(),
       },
       retries: 0,
       component: ComponentInfo {
@@ -320,7 +324,8 @@ mod tests {
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
-        stage: PipelineStage::Consumer,
+        component_name: "test".to_string(),
+        component_type: "CollectorConsumer".to_string(),
       },
       retries: 3,
       component: ComponentInfo {
@@ -345,7 +350,8 @@ mod tests {
   fn test_consumer_create_error_context() {
     let consumer = CollectorConsumer::<i32>::new();
     let context = consumer.create_error_context(None);
-    assert!(matches!(context.stage, PipelineStage::Consumer));
+    assert_eq!(context.component_name, "CollectorConsumer".to_string());
+    assert_eq!(context.component_type, "CollectorConsumer".to_string());
     assert!(context.item.is_none());
   }
 
@@ -353,7 +359,8 @@ mod tests {
   fn test_consumer_create_error_context_with_item() {
     let consumer = CollectorConsumer::<i32>::new();
     let context = consumer.create_error_context(Some(42));
-    assert!(matches!(context.stage, PipelineStage::Consumer));
+    assert_eq!(context.component_name, "CollectorConsumer".to_string());
+    assert_eq!(context.component_type, "CollectorConsumer".to_string());
     assert!(context.item.is_some());
   }
 
@@ -422,7 +429,8 @@ mod tests {
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
-        stage: PipelineStage::Consumer,
+        component_name: "CollectorConsumer".to_string(),
+        component_type: "CollectorConsumer".to_string(),
       },
       retries: 0,
       component: ComponentInfo {
@@ -452,7 +460,8 @@ mod tests {
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
-        stage: PipelineStage::Consumer,
+        component_name: "CollectorConsumer".to_string(),
+        component_type: "CollectorConsumer".to_string(),
       },
       retries: 0,
       component: ComponentInfo {

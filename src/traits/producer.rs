@@ -94,7 +94,8 @@ where
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Producer,
+      component_name: self.component_info().name,
+      component_type: self.component_info().type_name,
     }
   }
 
@@ -206,7 +207,8 @@ mod tests {
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
-        stage: PipelineStage::Producer,
+        component_name: "test".to_string(),
+        component_type: "TestProducer".to_string(),
       },
       component: ComponentInfo {
         name: "test".to_string(),
