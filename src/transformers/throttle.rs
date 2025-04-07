@@ -38,18 +38,14 @@ impl<T: Send + 'static + Clone> ThrottleTransformer<T> {
   }
 }
 
-impl<T: Send + 'static + Clone> crate::traits::error::Error for ThrottleTransformer<T> {
-  type Error = StreamError<T>;
-}
-
 impl<T: Send + 'static + Clone> Input for ThrottleTransformer<T> {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 impl<T: Send + 'static + Clone> Output for ThrottleTransformer<T> {
   type Output = T;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError<T>>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 #[async_trait]
@@ -102,21 +98,17 @@ impl<T: Send + 'static + Clone> Transformer for ThrottleTransformer<T> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::TryStreamExt;
+  use futures::StreamExt;
   use futures::stream;
   use tokio::time::sleep;
 
   #[tokio::test]
   async fn test_throttle_basic() {
     let mut transformer = ThrottleTransformer::new(Duration::from_millis(100));
-    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter().map(Ok));
+    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, vec![1, 2, 3, 4, 5]);
   }
@@ -124,62 +116,24 @@ mod tests {
   #[tokio::test]
   async fn test_throttle_empty_input() {
     let mut transformer = ThrottleTransformer::new(Duration::from_millis(100));
-    let input = stream::iter(Vec::<Result<i32, StreamError<i32>>>::new());
+    let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, Vec::<i32>::new());
   }
 
   #[tokio::test]
-  async fn test_throttle_with_error() {
-    let mut transformer = ThrottleTransformer::new(Duration::from_millis(100));
-    let input = stream::iter(vec![
-      Ok(1),
-      Err(StreamError {
-        source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-        context: ErrorContext {
-          timestamp: chrono::Utc::now(),
-          item: None,
-          stage: PipelineStage::Transformer("test".to_string()),
-        },
-        retries: 0,
-        component: ComponentInfo {
-          name: "test".to_string(),
-          type_name: "test".to_string(),
-        },
-      }),
-      Ok(2),
-    ]);
-    let boxed_input = Box::pin(input);
-
-    let result: Result<Vec<i32>, _> = transformer.transform(boxed_input).try_collect().await;
-
-    assert!(result.is_err());
-  }
-
-  #[tokio::test]
   async fn test_throttle_timing() {
     let mut transformer = ThrottleTransformer::new(Duration::from_millis(100));
-    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter().map(|x| {
-      let x = x.clone();
-      async move {
-        sleep(Duration::from_millis(50)).await;
-        Ok(x)
-      }
-    }));
+    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter()).then(|x| async move {
+      sleep(Duration::from_millis(50)).await;
+      x
+    });
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, vec![1, 3, 5]);
   }

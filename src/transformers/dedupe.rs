@@ -11,9 +11,12 @@ use futures::{Stream, StreamExt};
 use std::collections::HashSet;
 use std::pin::Pin;
 
-pub struct DedupeTransformer<T> {
+pub struct DedupeTransformer<T>
+where
+  T: Clone + Send + 'static + Eq + std::hash::Hash,
+{
   seen: HashSet<T>,
-  config: TransformerConfig,
+  config: TransformerConfig<T>,
 }
 
 impl<T> DedupeTransformer<T>
@@ -27,29 +30,31 @@ where
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
-    self.config_mut().set_error_strategy(strategy);
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
+    self.config.error_strategy = strategy;
     self
   }
 
   pub fn with_name(mut self, name: String) -> Self {
-    self.config_mut().set_name(name);
+    self.config.name = Some(name);
     self
   }
 }
 
-impl<T: Send + 'static> crate::traits::error::Error for DedupeTransformer<T> {
-  type Error = StreamError;
-}
-
-impl<T: Send + 'static> Input for DedupeTransformer<T> {
+impl<T> Input for DedupeTransformer<T>
+where
+  T: Eq + std::hash::Hash + Clone + Send + 'static,
+{
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<T: Send + 'static> Output for DedupeTransformer<T> {
+impl<T> Output for DedupeTransformer<T>
+where
+  T: Eq + std::hash::Hash + Clone + Send + 'static,
+{
   type Output = T;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 #[async_trait]
@@ -63,17 +68,15 @@ where
         let (mut input, mut seen) = state;
 
         match input.next().await {
-          Some(Ok(item)) => {
+          Some(item) => {
             let is_new = seen.insert(item.clone());
-            let result = if is_new {
-              Ok(item)
+            if is_new {
+              Some((Some(item), (input, seen)))
             } else {
               // Skip duplicates by continuing to next item
-              return Some((None, (input, seen)));
-            };
-            Some((Some(result), (input, seen)))
+              Some((None, (input, seen)))
+            }
           }
-          Some(Err(e)) => Some((Some(Err(e)), (input, seen))),
           None => None,
         }
       })
@@ -81,35 +84,39 @@ where
     )
   }
 
-  fn config(&self) -> &TransformerConfig {
+  fn set_config_impl(&mut self, config: TransformerConfig<T>) {
+    self.config = config;
+  }
+
+  fn get_config_impl(&self) -> &TransformerConfig<T> {
     &self.config
   }
 
-  fn config_mut(&mut self) -> &mut TransformerConfig {
+  fn get_config_mut_impl(&mut self) -> &mut TransformerConfig<T> {
     &mut self.config
   }
 
-  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
-    match self.config().error_strategy() {
-      ErrorStrategy::Stop => ErrorStrategy::Stop,
-      ErrorStrategy::Skip => ErrorStrategy::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
-      _ => ErrorStrategy::Stop,
+  fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
+    match self.config.error_strategy() {
+      ErrorStrategy::Stop => ErrorAction::Stop,
+      ErrorStrategy::Skip => ErrorAction::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      _ => ErrorAction::Stop,
     }
   }
 
-  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+  fn create_error_context(&self, item: Option<T>) -> ErrorContext<T> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Transformer,
+      stage: PipelineStage::Transformer(self.component_info().name),
     }
   }
 
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self
-        .config()
+        .config
         .name()
         .unwrap_or_else(|| "dedupe_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
@@ -120,20 +127,16 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::TryStreamExt;
+  use futures::StreamExt;
   use futures::stream;
 
   #[tokio::test]
   async fn test_dedupe_transformer() {
     let mut transformer = DedupeTransformer::new();
-    let input = stream::iter(vec![1, 2, 2, 3, 3, 3, 4].into_iter().map(Ok));
+    let input = stream::iter(vec![1, 2, 2, 3, 3, 3, 4].into_iter());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, vec![1, 2, 3, 4]);
   }
@@ -141,14 +144,10 @@ mod tests {
   #[tokio::test]
   async fn test_dedupe_transformer_strings() {
     let mut transformer = DedupeTransformer::new();
-    let input = stream::iter(vec!["a", "b", "b", "c", "a"].into_iter().map(Ok));
+    let input = stream::iter(vec!["a", "b", "b", "c", "a"].into_iter());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<&str> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<&str> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, vec!["a", "b", "c"]);
   }
@@ -156,14 +155,10 @@ mod tests {
   #[tokio::test]
   async fn test_dedupe_transformer_empty() {
     let mut transformer = DedupeTransformer::new();
-    let input = stream::iter(Vec::<Result<i32, StreamError>>::new());
+    let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, Vec::<i32>::new());
   }
@@ -171,14 +166,10 @@ mod tests {
   #[tokio::test]
   async fn test_dedupe_transformer_all_duplicates() {
     let mut transformer = DedupeTransformer::new();
-    let input = stream::iter(vec![1, 1, 1, 1].into_iter().map(Ok));
+    let input = stream::iter(vec![1, 1, 1, 1].into_iter());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, vec![1]);
   }
@@ -186,19 +177,11 @@ mod tests {
   #[tokio::test]
   async fn test_error_handling_strategies() {
     let mut transformer = DedupeTransformer::new()
-      .with_error_strategy(ErrorStrategy::Skip)
+      .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 
     let config = transformer.config();
-    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.error_strategy(), ErrorStrategy::<i32>::Skip);
     assert_eq!(config.name(), Some("test_transformer".to_string()));
-
-    let error = StreamError::new(
-      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-      transformer.create_error_context(None),
-      transformer.component_info(),
-    );
-
-    assert_eq!(transformer.handle_error(error), ErrorStrategy::Skip);
   }
 }

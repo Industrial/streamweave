@@ -36,18 +36,14 @@ impl<T: Send + 'static + Clone> SplitAtTransformer<T> {
   }
 }
 
-impl<T: Send + 'static + Clone> crate::traits::error::Error for SplitAtTransformer<T> {
-  type Error = StreamError<T>;
-}
-
 impl<T: Send + 'static + Clone> Input for SplitAtTransformer<T> {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 impl<T: Send + 'static + Clone> Output for SplitAtTransformer<T> {
   type Output = (Vec<T>, Vec<T>);
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError<T>>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = (Vec<T>, Vec<T>)> + Send>>;
 }
 
 #[async_trait]
@@ -55,18 +51,13 @@ impl<T: Send + 'static + Clone> Transformer for SplitAtTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let index = self.index;
     Box::pin(
-      input.try_fold((Vec::new(), Vec::new()), move |mut acc, item| async move {
-        match item {
-          Ok(item) => {
-            if acc.0.len() < index {
-              acc.0.push(item);
-            } else {
-              acc.1.push(item);
-            }
-            Ok(acc)
-          }
-          Err(e) => Err(e),
+      input.fold((Vec::new(), Vec::new()), move |mut acc, item| async move {
+        if acc.0.len() < index {
+          acc.0.push(item);
+        } else {
+          acc.1.push(item);
         }
+        acc
       }),
     )
   }
@@ -114,20 +105,16 @@ impl<T: Send + 'static + Clone> Transformer for SplitAtTransformer<T> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::TryStreamExt;
+  use futures::StreamExt;
   use futures::stream;
 
   #[tokio::test]
   async fn test_split_at_basic() {
     let mut transformer = SplitAtTransformer::new(2);
-    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter().map(Ok));
+    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter());
     let boxed_input = Box::pin(input);
 
-    let result: (Vec<i32>, Vec<i32>) = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: (Vec<i32>, Vec<i32>) = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result.0, vec![1, 2]);
     assert_eq!(result.1, vec![3, 4, 5]);
@@ -136,45 +123,13 @@ mod tests {
   #[tokio::test]
   async fn test_split_at_empty_input() {
     let mut transformer = SplitAtTransformer::new(2);
-    let input = stream::iter(Vec::<Result<i32, StreamError<i32>>>::new());
+    let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
-    let result: (Vec<i32>, Vec<i32>) = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: (Vec<i32>, Vec<i32>) = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result.0, Vec::<i32>::new());
     assert_eq!(result.1, Vec::<i32>::new());
-  }
-
-  #[tokio::test]
-  async fn test_split_at_with_error() {
-    let mut transformer = SplitAtTransformer::new(2);
-    let input = stream::iter(vec![
-      Ok(1),
-      Err(StreamError {
-        source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-        context: ErrorContext {
-          timestamp: chrono::Utc::now(),
-          item: None,
-          stage: PipelineStage::Transformer("test".to_string()),
-        },
-        retries: 0,
-        component: ComponentInfo {
-          name: "test".to_string(),
-          type_name: "test".to_string(),
-        },
-      }),
-      Ok(2),
-    ]);
-    let boxed_input = Box::pin(input);
-
-    let result: Result<(Vec<i32>, Vec<i32>), _> =
-      transformer.transform(boxed_input).try_collect().await;
-
-    assert!(result.is_err());
   }
 
   #[tokio::test]

@@ -11,14 +11,14 @@ use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
 pub struct ZipTransformer<T: Send + 'static + Clone, U: Send + 'static + Clone> {
-  other: Pin<Box<dyn Stream<Item = Result<U, StreamError<U>>> + Send>>,
+  other: Pin<Box<dyn Stream<Item = U> + Send>>,
   config: TransformerConfig<T>,
   _phantom_t: std::marker::PhantomData<T>,
   _phantom_u: std::marker::PhantomData<U>,
 }
 
 impl<T: Send + 'static + Clone, U: Send + 'static + Clone> ZipTransformer<T, U> {
-  pub fn new(other: Pin<Box<dyn Stream<Item = Result<U, StreamError<U>>> + Send>>) -> Self {
+  pub fn new(other: Pin<Box<dyn Stream<Item = U> + Send>>) -> Self {
     Self {
       other,
       config: TransformerConfig::<T>::default(),
@@ -38,40 +38,21 @@ impl<T: Send + 'static + Clone, U: Send + 'static + Clone> ZipTransformer<T, U> 
   }
 }
 
-impl<T: Send + 'static + Clone, U: Send + 'static + Clone> crate::traits::error::Error
-  for ZipTransformer<T, U>
-{
-  type Error = StreamError<T>;
-}
-
 impl<T: Send + 'static + Clone, U: Send + 'static + Clone> Input for ZipTransformer<T, U> {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 impl<T: Send + 'static + Clone, U: Send + 'static + Clone> Output for ZipTransformer<T, U> {
   type Output = (T, U);
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError<T>>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = (T, U)> + Send>>;
 }
 
 #[async_trait]
 impl<T: Send + 'static + Clone, U: Send + 'static + Clone> Transformer for ZipTransformer<T, U> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let other = self.other.clone();
-    Box::pin(input.zip(other).map(|(a, b)| match (a, b) {
-      (Ok(a), Ok(b)) => Ok((a, b)),
-      (Err(e), _) => Err(e),
-      (_, Err(e)) => Err(StreamError {
-        source: e.source,
-        context: ErrorContext {
-          timestamp: chrono::Utc::now(),
-          item: None,
-          stage: PipelineStage::Transformer(self.component_info().name),
-        },
-        retries: 0,
-        component: self.component_info(),
-      }),
-    }))
+    Box::pin(input.zip(other))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {
@@ -117,73 +98,36 @@ impl<T: Send + 'static + Clone, U: Send + 'static + Clone> Transformer for ZipTr
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::TryStreamExt;
+  use futures::StreamExt;
   use futures::stream;
 
   #[tokio::test]
   async fn test_zip_basic() {
-    let other = stream::iter(vec!['a', 'b', 'c'].into_iter().map(Ok));
+    let other = stream::iter(vec!['a', 'b', 'c'].into_iter());
     let mut transformer = ZipTransformer::new(Box::pin(other));
-    let input = stream::iter(vec![1, 2, 3].into_iter().map(Ok));
+    let input = stream::iter(vec![1, 2, 3].into_iter());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<(i32, char)> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<(i32, char)> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, vec![(1, 'a'), (2, 'b'), (3, 'c')]);
   }
 
   #[tokio::test]
   async fn test_zip_empty_input() {
-    let other = stream::iter(Vec::<Result<char, StreamError<char>>>::new());
+    let other = stream::iter(Vec::<char>::new());
     let mut transformer = ZipTransformer::new(Box::pin(other));
-    let input = stream::iter(Vec::<Result<i32, StreamError<i32>>>::new());
+    let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<(i32, char)> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<(i32, char)> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, Vec::<(i32, char)>::new());
   }
 
   #[tokio::test]
-  async fn test_zip_with_error() {
-    let other = stream::iter(vec![Ok('a'), Ok('b')]);
-    let mut transformer = ZipTransformer::new(Box::pin(other));
-    let input = stream::iter(vec![
-      Ok(1),
-      Err(StreamError {
-        source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-        context: ErrorContext {
-          timestamp: chrono::Utc::now(),
-          item: None,
-          stage: PipelineStage::Transformer("test".to_string()),
-        },
-        retries: 0,
-        component: ComponentInfo {
-          name: "test".to_string(),
-          type_name: "test".to_string(),
-        },
-      }),
-      Ok(2),
-    ]);
-    let boxed_input = Box::pin(input);
-
-    let result: Result<Vec<(i32, char)>, _> =
-      transformer.transform(boxed_input).try_collect().await;
-
-    assert!(result.is_err());
-  }
-
-  #[tokio::test]
   async fn test_error_handling_strategies() {
-    let other = stream::iter(vec![Ok('a')]);
+    let other = stream::iter(vec!['a']);
     let mut transformer = ZipTransformer::new(Box::pin(other))
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());

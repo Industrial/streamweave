@@ -36,18 +36,14 @@ impl<T: Send + 'static + Clone> TakeTransformer<T> {
   }
 }
 
-impl<T: Send + 'static + Clone> crate::traits::error::Error for TakeTransformer<T> {
-  type Error = StreamError<T>;
-}
-
 impl<T: Send + 'static + Clone> Input for TakeTransformer<T> {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 impl<T: Send + 'static + Clone> Output for TakeTransformer<T> {
   type Output = T;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError<T>>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 #[async_trait]
@@ -100,20 +96,16 @@ impl<T: Send + 'static + Clone> Transformer for TakeTransformer<T> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::TryStreamExt;
+  use futures::StreamExt;
   use futures::stream;
 
   #[tokio::test]
   async fn test_take_basic() {
     let mut transformer = TakeTransformer::new(3);
-    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter().map(Ok));
+    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, vec![1, 2, 3]);
   }
@@ -121,43 +113,12 @@ mod tests {
   #[tokio::test]
   async fn test_take_empty_input() {
     let mut transformer = TakeTransformer::new(3);
-    let input = stream::iter(Vec::<Result<i32, StreamError<i32>>>::new());
+    let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, Vec::<i32>::new());
-  }
-
-  #[tokio::test]
-  async fn test_take_with_error() {
-    let mut transformer = TakeTransformer::new(3);
-    let input = stream::iter(vec![
-      Ok(1),
-      Err(StreamError {
-        source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-        context: ErrorContext {
-          timestamp: chrono::Utc::now(),
-          item: None,
-          stage: PipelineStage::Transformer("test".to_string()),
-        },
-        retries: 0,
-        component: ComponentInfo {
-          name: "test".to_string(),
-          type_name: "test".to_string(),
-        },
-      }),
-      Ok(2),
-    ]);
-    let boxed_input = Box::pin(input);
-
-    let result: Result<Vec<i32>, _> = transformer.transform(boxed_input).try_collect().await;
-
-    assert!(result.is_err());
   }
 
   #[tokio::test]

@@ -10,16 +10,20 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct FilterTransformer<F, T> {
+pub struct FilterTransformer<F, T>
+where
+  F: FnMut(&T) -> bool + Send + Clone + 'static,
+  T: Clone + Send + 'static,
+{
   predicate: F,
   _phantom: std::marker::PhantomData<T>,
-  config: TransformerConfig,
+  config: TransformerConfig<T>,
 }
 
 impl<F, T> FilterTransformer<F, T>
 where
   F: FnMut(&T) -> bool + Send + Clone + 'static,
-  T: Send + 'static,
+  T: Send + 'static + Clone,
 {
   pub fn new(predicate: F) -> Self {
     Self {
@@ -29,89 +33,82 @@ where
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
-    self.config_mut().set_error_strategy(strategy);
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
+    self.config.error_strategy = strategy;
     self
   }
 
   pub fn with_name(mut self, name: String) -> Self {
-    self.config_mut().set_name(name);
+    self.config.name = Some(name);
     self
   }
 }
 
-impl<F, T: Send + 'static> crate::traits::error::Error for FilterTransformer<F, T> {
-  type Error = StreamError;
-}
-
-impl<F, T: Send + 'static> Input for FilterTransformer<F, T> {
+impl<F, T> Input for FilterTransformer<F, T>
+where
+  F: FnMut(&T) -> bool + Send + Clone + 'static,
+  T: Send + 'static + Clone,
+{
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<F, T: Send + 'static> Output for FilterTransformer<F, T> {
+impl<F, T> Output for FilterTransformer<F, T>
+where
+  F: FnMut(&T) -> bool + Send + Clone + 'static,
+  T: Send + 'static + Clone,
+{
   type Output = T;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 #[async_trait]
 impl<F, T> Transformer for FilterTransformer<F, T>
 where
   F: FnMut(&T) -> bool + Send + Clone + 'static,
-  T: Send + Clone + 'static,
+  T: Send + 'static + Clone,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let mut predicate = self.predicate.clone();
-
-    Box::pin(futures::stream::unfold(input, move |mut input| {
+    Box::pin(input.filter(move |item| {
       let mut predicate = predicate.clone();
-      async move {
-        while let Some(result) = input.next().await {
-          match result {
-            Ok(item) => {
-              if predicate(&item) {
-                return Some((Ok(item), input));
-              }
-              // Continue to next item if predicate returns false
-              continue;
-            }
-            Err(e) => return Some((Err(e), input)),
-          }
-        }
-        None
-      }
+      futures::future::ready(predicate(item))
     }))
   }
 
-  fn config(&self) -> &TransformerConfig {
+  fn set_config_impl(&mut self, config: TransformerConfig<T>) {
+    self.config = config;
+  }
+
+  fn get_config_impl(&self) -> &TransformerConfig<T> {
     &self.config
   }
 
-  fn config_mut(&mut self) -> &mut TransformerConfig {
+  fn get_config_mut_impl(&mut self) -> &mut TransformerConfig<T> {
     &mut self.config
   }
 
-  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
-    match self.config().error_strategy() {
-      ErrorStrategy::Stop => ErrorStrategy::Stop,
-      ErrorStrategy::Skip => ErrorStrategy::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
-      _ => ErrorStrategy::Stop,
+  fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
+    match self.config.error_strategy() {
+      ErrorStrategy::Stop => ErrorAction::Stop,
+      ErrorStrategy::Skip => ErrorAction::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      _ => ErrorAction::Stop,
     }
   }
 
-  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+  fn create_error_context(&self, item: Option<T>) -> ErrorContext<T> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Transformer,
+      stage: PipelineStage::Transformer(self.component_info().name),
     }
   }
 
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self
-        .config()
+        .config
         .name()
         .unwrap_or_else(|| "filter_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
@@ -122,20 +119,16 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::TryStreamExt;
+  use futures::StreamExt;
   use futures::stream;
 
   #[tokio::test]
   async fn test_filter_even_numbers() {
     let mut transformer = FilterTransformer::new(|x: &i32| x % 2 == 0);
-    let input = stream::iter(vec![1, 2, 3, 4, 5, 6].into_iter().map(Ok));
+    let input = stream::iter(vec![1, 2, 3, 4, 5, 6].into_iter());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, vec![2, 4, 6]);
   }
@@ -143,14 +136,10 @@ mod tests {
   #[tokio::test]
   async fn test_filter_empty_input() {
     let mut transformer = FilterTransformer::new(|x: &i32| x % 2 == 0);
-    let input = stream::iter(Vec::<Result<i32, StreamError>>::new());
+    let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, Vec::<i32>::new());
   }
@@ -158,14 +147,10 @@ mod tests {
   #[tokio::test]
   async fn test_filter_all_match() {
     let mut transformer = FilterTransformer::new(|x: &i32| *x > 0);
-    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter().map(Ok));
+    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, vec![1, 2, 3, 4, 5]);
   }
@@ -173,14 +158,10 @@ mod tests {
   #[tokio::test]
   async fn test_filter_none_match() {
     let mut transformer = FilterTransformer::new(|x: &i32| *x > 10);
-    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter().map(Ok));
+    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, Vec::<i32>::new());
   }
@@ -195,16 +176,11 @@ mod tests {
         "avocado".to_string(),
         "cherry".to_string(),
       ]
-      .into_iter()
-      .map(Ok),
+      .into_iter(),
     );
     let boxed_input = Box::pin(input);
 
-    let result: Vec<String> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<String> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, vec!["apple".to_string(), "avocado".to_string()]);
   }
@@ -212,19 +188,11 @@ mod tests {
   #[tokio::test]
   async fn test_error_handling_strategies() {
     let mut transformer = FilterTransformer::new(|_: &i32| true)
-      .with_error_strategy(ErrorStrategy::Skip)
+      .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 
     let config = transformer.config();
-    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.error_strategy(), ErrorStrategy::<i32>::Skip);
     assert_eq!(config.name(), Some("test_transformer".to_string()));
-
-    let error = StreamError::new(
-      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-      transformer.create_error_context(None),
-      transformer.component_info(),
-    );
-
-    assert_eq!(transformer.handle_error(error), ErrorStrategy::Skip);
   }
 }

@@ -10,18 +10,23 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct FlatMapTransformer<F, I, O> {
+pub struct FlatMapTransformer<F, I, O>
+where
+  F: Fn(I) -> Vec<O> + Send + Clone + 'static,
+  I: Clone + Send + 'static,
+  O: Clone + Send + 'static,
+{
   f: F,
-  config: TransformerConfig,
+  config: TransformerConfig<I>,
   _phantom_i: std::marker::PhantomData<I>,
   _phantom_o: std::marker::PhantomData<O>,
 }
 
 impl<F, I, O> FlatMapTransformer<F, I, O>
 where
-  F: Fn(I) -> Result<Vec<O>, StreamError> + Send + 'static,
-  I: Send + 'static,
-  O: Send + 'static,
+  F: Fn(I) -> Vec<O> + Send + Clone + 'static,
+  I: Send + 'static + Clone,
+  O: Send + 'static + Clone,
 {
   pub fn new(f: F) -> Self {
     Self {
@@ -32,96 +37,85 @@ where
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
-    self.config_mut().set_error_strategy(strategy);
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<I>) -> Self {
+    self.config.error_strategy = strategy;
     self
   }
 
   pub fn with_name(mut self, name: String) -> Self {
-    self.config_mut().set_name(name);
+    self.config.name = Some(name);
     self
   }
 }
 
-impl<F, I, O> crate::traits::error::Error for FlatMapTransformer<F, I, O>
-where
-  F: Send + 'static,
-  I: Send + 'static,
-  O: Send + 'static,
-{
-  type Error = StreamError;
-}
-
 impl<F, I, O> Input for FlatMapTransformer<F, I, O>
 where
-  F: Send + 'static,
-  I: Send + 'static,
-  O: Send + 'static,
+  F: Fn(I) -> Vec<O> + Send + Clone + 'static,
+  I: Send + 'static + Clone,
+  O: Send + 'static + Clone,
 {
   type Input = I;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = I> + Send>>;
 }
 
 impl<F, I, O> Output for FlatMapTransformer<F, I, O>
 where
-  F: Send + 'static,
-  I: Send + 'static,
-  O: Send + 'static,
+  F: Fn(I) -> Vec<O> + Send + Clone + 'static,
+  I: Send + 'static + Clone,
+  O: Send + 'static + Clone,
 {
   type Output = O;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = O> + Send>>;
 }
 
 #[async_trait]
 impl<F, I, O> Transformer for FlatMapTransformer<F, I, O>
 where
-  F: Fn(I) -> Result<Vec<O>, StreamError> + Send + 'static,
-  I: Send + 'static,
-  O: Send + 'static,
+  F: Fn(I) -> Vec<O> + Send + Clone + 'static,
+  I: Send + 'static + Clone,
+  O: Send + 'static + Clone,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let f = &self.f;
-    Box::pin(input.flat_map(move |result| {
+    let f = self.f.clone();
+    Box::pin(input.flat_map(move |item| {
       let f = f.clone();
-      futures::stream::iter(match result {
-        Ok(item) => match f(item) {
-          Ok(items) => items.into_iter().map(Ok).collect(),
-          Err(e) => vec![Err(e)],
-        },
-        Err(e) => vec![Err(e)],
-      })
+      futures::stream::iter(f(item))
     }))
   }
 
-  fn config(&self) -> &TransformerConfig {
+  fn set_config_impl(&mut self, config: TransformerConfig<I>) {
+    self.config = config;
+  }
+
+  fn get_config_impl(&self) -> &TransformerConfig<I> {
     &self.config
   }
 
-  fn config_mut(&mut self) -> &mut TransformerConfig {
+  fn get_config_mut_impl(&mut self) -> &mut TransformerConfig<I> {
     &mut self.config
   }
 
-  fn handle_error(&self, error: StreamError) -> ErrorStrategy {
-    match self.config().error_strategy() {
-      ErrorStrategy::Stop => ErrorStrategy::Stop,
-      ErrorStrategy::Skip => ErrorStrategy::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorStrategy::Retry(n),
-      _ => ErrorStrategy::Stop,
+  fn handle_error(&self, error: &StreamError<I>) -> ErrorAction {
+    match self.config.error_strategy() {
+      ErrorStrategy::Stop => ErrorAction::Stop,
+      ErrorStrategy::Skip => ErrorAction::Skip,
+      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      _ => ErrorAction::Stop,
     }
   }
 
-  fn create_error_context(&self, item: Option<Box<dyn std::any::Any + Send>>) -> ErrorContext {
+  fn create_error_context(&self, item: Option<I>) -> ErrorContext<I> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Transformer,
+      stage: PipelineStage::Transformer(self.component_info().name),
     }
   }
 
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self
-        .config()
+        .config
         .name()
         .unwrap_or_else(|| "flat_map_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
@@ -132,83 +126,39 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::TryStreamExt;
+  use futures::StreamExt;
   use futures::stream;
 
   #[tokio::test]
   async fn test_flat_map_basic() {
-    let mut transformer = FlatMapTransformer::new(|x: i32| Ok(vec![x * 2, x * 3]));
-    let input = stream::iter(vec![1, 2, 3].into_iter().map(Ok));
+    let mut transformer = FlatMapTransformer::new(|x: i32| vec![x * 2, x * 3]);
+    let input = stream::iter(vec![1, 2, 3].into_iter());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, vec![2, 3, 4, 6, 6, 9]);
   }
 
   #[tokio::test]
   async fn test_flat_map_empty_output() {
-    let mut transformer = FlatMapTransformer::new(|_: i32| Ok(Vec::new()));
-    let input = stream::iter(vec![1, 2, 3].into_iter().map(Ok));
+    let mut transformer = FlatMapTransformer::new(|_: i32| Vec::new());
+    let input = stream::iter(vec![1, 2, 3].into_iter());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, Vec::<i32>::new());
   }
 
   #[tokio::test]
-  async fn test_flat_map_with_error() {
-    let mut transformer = FlatMapTransformer::new(|x: i32| {
-      if x == 2 {
-        Err(StreamError::new(
-          Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-          ErrorContext {
-            timestamp: chrono::Utc::now(),
-            item: None,
-            stage: PipelineStage::Transformer,
-          },
-          ComponentInfo {
-            name: "test".to_string(),
-            type_name: "test".to_string(),
-          },
-        ))
-      } else {
-        Ok(vec![x * 2])
-      }
-    });
-    let input = stream::iter(vec![1, 2, 3].into_iter().map(Ok));
-    let boxed_input = Box::pin(input);
-
-    let result: Result<Vec<i32>, _> = transformer.transform(boxed_input).try_collect().await;
-
-    assert!(result.is_err());
-  }
-
-  #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = FlatMapTransformer::new(|x: i32| Ok(vec![x * 2]))
-      .with_error_strategy(ErrorStrategy::Skip)
+    let mut transformer = FlatMapTransformer::new(|x: i32| vec![x * 2])
+      .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 
     let config = transformer.config();
-    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.error_strategy(), ErrorStrategy::<i32>::Skip);
     assert_eq!(config.name(), Some("test_transformer".to_string()));
-
-    let error = StreamError::new(
-      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-      transformer.create_error_context(None),
-      transformer.component_info(),
-    );
-
-    assert_eq!(transformer.handle_error(error), ErrorStrategy::Skip);
   }
 }

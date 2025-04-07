@@ -37,37 +37,21 @@ impl<T: Send + 'static + Clone> TimeoutTransformer<T> {
   }
 }
 
-impl<T: Send + 'static + Clone> crate::traits::error::Error for TimeoutTransformer<T> {
-  type Error = StreamError<T>;
-}
-
 impl<T: Send + 'static + Clone> Input for TimeoutTransformer<T> {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 impl<T: Send + 'static + Clone> Output for TimeoutTransformer<T> {
   type Output = T;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError<T>>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 #[async_trait]
 impl<T: Send + 'static + Clone> Transformer for TimeoutTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let duration = self.duration;
-    Box::pin(input.timeout(duration).map(|result| match result {
-      Ok(Ok(item)) => Ok(item),
-      Ok(Err(e)) => Err(e),
-      Err(_) => Err(StreamError {
-        source: Box::new(std::io::Error::new(
-          std::io::ErrorKind::TimedOut,
-          "Operation timed out",
-        )),
-        context: self.create_error_context(None),
-        retries: 0,
-        component: self.component_info(),
-      }),
-    }))
+    Box::pin(input.timeout(duration))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {
@@ -113,21 +97,17 @@ impl<T: Send + 'static + Clone> Transformer for TimeoutTransformer<T> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::TryStreamExt;
+  use futures::StreamExt;
   use futures::stream;
   use tokio::time::sleep;
 
   #[tokio::test]
   async fn test_timeout_basic() {
     let mut transformer = TimeoutTransformer::new(Duration::from_millis(100));
-    let input = stream::iter(vec![1, 2, 3].into_iter().map(Ok));
+    let input = stream::iter(vec![1, 2, 3].into_iter());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, vec![1, 2, 3]);
   }
@@ -135,60 +115,26 @@ mod tests {
   #[tokio::test]
   async fn test_timeout_empty_input() {
     let mut transformer = TimeoutTransformer::new(Duration::from_millis(100));
-    let input = stream::iter(Vec::<Result<i32, StreamError<i32>>>::new());
+    let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
-    let result: Vec<i32> = transformer
-      .transform(boxed_input)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
     assert_eq!(result, Vec::<i32>::new());
   }
 
   #[tokio::test]
-  async fn test_timeout_with_error() {
-    let mut transformer = TimeoutTransformer::new(Duration::from_millis(100));
-    let input = stream::iter(vec![
-      Ok(1),
-      Err(StreamError {
-        source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-        context: ErrorContext {
-          timestamp: chrono::Utc::now(),
-          item: None,
-          stage: PipelineStage::Transformer("test".to_string()),
-        },
-        retries: 0,
-        component: ComponentInfo {
-          name: "test".to_string(),
-          type_name: "test".to_string(),
-        },
-      }),
-      Ok(3),
-    ]);
-    let boxed_input = Box::pin(input);
-
-    let result: Result<Vec<i32>, _> = transformer.transform(boxed_input).try_collect().await;
-
-    assert!(result.is_err());
-  }
-
-  #[tokio::test]
   async fn test_timeout_actual_timeout() {
     let mut transformer = TimeoutTransformer::new(Duration::from_millis(50));
-    let input = stream::iter(vec![1, 2, 3].into_iter().map(Ok)).then(|x| async move {
+    let input = stream::iter(vec![1, 2, 3].into_iter()).then(|x| async move {
       sleep(Duration::from_millis(100)).await;
       x
     });
     let boxed_input = Box::pin(input);
 
-    let result: Result<Vec<i32>, _> = transformer.transform(boxed_input).try_collect().await;
+    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
 
-    assert!(result.is_err());
-    if let Err(e) = result {
-      assert_eq!(e.source.to_string(), "Operation timed out");
-    }
+    assert!(result.is_empty());
   }
 
   #[tokio::test]

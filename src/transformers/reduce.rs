@@ -41,21 +41,13 @@ where
   }
 }
 
-impl<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> crate::traits::error::Error
-  for ReduceTransformer<T, Acc, F>
-where
-  F: FnMut(Acc, T) -> Acc + Send + 'static + Clone,
-{
-  type Error = StreamError<T>;
-}
-
 impl<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> Input
   for ReduceTransformer<T, Acc, F>
 where
   F: FnMut(Acc, T) -> Acc + Send + 'static + Clone,
 {
   type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, StreamError<T>>> + Send>>;
+  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 impl<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> Output
@@ -64,7 +56,7 @@ where
   F: FnMut(Acc, T) -> Acc + Send + 'static + Clone,
 {
   type Output = Acc;
-  type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, StreamError<T>>> + Send>>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Acc> + Send>>;
 }
 
 #[async_trait]
@@ -76,11 +68,9 @@ where
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let mut accumulator = self.accumulator.clone();
     let mut reducer = self.reducer.clone();
-    Box::pin(input.map(move |result| {
-      result.map(|item| {
-        accumulator = reducer(accumulator, item);
-        accumulator.clone()
-      })
+    Box::pin(input.map(move |item| {
+      accumulator = reducer(accumulator, item);
+      accumulator.clone()
     }))
   }
 
@@ -127,20 +117,16 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::TryStreamExt;
+  use futures::StreamExt;
   use futures::stream;
 
   #[tokio::test]
   async fn test_reduce_transformer_sum() {
     let mut transformer = ReduceTransformer::new(0, |acc, x| acc + x);
     let input = vec![1, 2, 3, 4, 5];
-    let input_stream = Box::pin(stream::iter(input.into_iter().map(Ok)));
+    let input_stream = Box::pin(stream::iter(input.into_iter()));
 
-    let result: Vec<i32> = transformer
-      .transform(input_stream)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<i32> = transformer.transform(input_stream).collect().await;
 
     assert_eq!(result, vec![1, 3, 6, 10, 15]);
   }
@@ -149,13 +135,9 @@ mod tests {
   async fn test_reduce_transformer_string_concat() {
     let mut transformer = ReduceTransformer::new(String::new(), |acc, x| acc + x);
     let input = vec!["a", "b", "c"];
-    let input_stream = Box::pin(stream::iter(input.into_iter().map(Ok)));
+    let input_stream = Box::pin(stream::iter(input.into_iter()));
 
-    let result: Vec<String> = transformer
-      .transform(input_stream)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<String> = transformer.transform(input_stream).collect().await;
 
     assert_eq!(
       result,
@@ -169,15 +151,14 @@ mod tests {
       ReduceTransformer::new(0, |acc, x| if x % 2 == 0 { acc + x } else { acc });
 
     let input = vec![2, 3, 4, 5, 6];
-    let input_stream = Box::pin(stream::iter(input.into_iter().map(Ok)));
+    let input_stream = Box::pin(stream::iter(input.into_iter()));
 
     let result = transformer
       .transform(input_stream)
-      .try_collect::<Vec<_>>()
+      .collect::<Vec<_>>()
       .await;
 
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), vec![2, 2, 6, 6, 12]);
+    assert_eq!(result, vec![2, 2, 6, 6, 12]);
   }
 
   #[tokio::test]
@@ -194,13 +175,9 @@ mod tests {
     });
 
     let input = vec![1, 2, 3, 4, 5];
-    let input_stream = Box::pin(stream::iter(input.into_iter().map(Ok)));
+    let input_stream = Box::pin(stream::iter(input.into_iter()));
 
-    let result: Vec<Counter> = transformer
-      .transform(input_stream)
-      .try_collect()
-      .await
-      .unwrap();
+    let result: Vec<Counter> = transformer.transform(input_stream).collect().await;
 
     assert_eq!(
       result,
