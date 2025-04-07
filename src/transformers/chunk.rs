@@ -50,7 +50,7 @@ impl<T: Send + 'static + Clone> Output for ChunkTransformer<T> {
 impl<T: Send + 'static + Clone> Transformer for ChunkTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let size = self.size;
-    Box::pin(input.chunks(size).map(|chunk| chunk.collect()))
+    Box::pin(input.chunks(size))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {
