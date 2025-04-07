@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::fmt;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ErrorAction {
@@ -12,7 +13,7 @@ pub enum ErrorStrategy<T: std::fmt::Debug + Clone + Send + Sync> {
   Stop,
   Skip,
   Retry(usize),
-  Custom(Box<dyn Fn(&StreamError<T>) -> ErrorAction + Send + Sync>),
+  Custom(Arc<dyn Fn(&StreamError<T>) -> ErrorAction + Send + Sync>),
 }
 
 impl<T: std::fmt::Debug + Clone + Send + Sync> Clone for ErrorStrategy<T> {
@@ -21,7 +22,7 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> Clone for ErrorStrategy<T> {
       ErrorStrategy::Stop => ErrorStrategy::Stop,
       ErrorStrategy::Skip => ErrorStrategy::Skip,
       ErrorStrategy::Retry(n) => ErrorStrategy::Retry(*n),
-      ErrorStrategy::Custom(_) => ErrorStrategy::Stop, // Custom handlers can't be cloned
+      ErrorStrategy::Custom(handler) => ErrorStrategy::Custom(handler.clone()),
     }
   }
 }
@@ -54,7 +55,7 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> ErrorStrategy<T> {
   where
     F: Fn(&StreamError<T>) -> ErrorAction + Send + Sync + 'static,
   {
-    Self::Custom(Box::new(f))
+    Self::Custom(Arc::new(f))
   }
 }
 

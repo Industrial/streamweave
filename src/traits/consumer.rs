@@ -1,6 +1,10 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::traits::input::Input;
 use async_trait::async_trait;
+use futures::StreamExt;
+use std::pin::Pin;
+use std::sync::{Arc, Mutex};
+use tokio_stream::Stream;
 
 #[derive(Debug, Clone)]
 pub struct ConsumerConfig<T: std::fmt::Debug + Clone + Send + Sync> {
@@ -56,6 +60,7 @@ where
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      ErrorStrategy::Custom(ref handler) => handler(error),
       _ => ErrorAction::Stop,
     }
   }
@@ -106,14 +111,14 @@ mod tests {
   #[derive(Clone)]
   struct CollectorConsumer<T: std::fmt::Debug + Clone + Send + Sync> {
     items: Arc<Mutex<Vec<T>>>,
-    name: Option<String>,
+    config: ConsumerConfig<T>,
   }
 
   impl<T: std::fmt::Debug + Clone + Send + Sync> CollectorConsumer<T> {
     fn new() -> Self {
       Self {
         items: Arc::new(Mutex::new(Vec::new())),
-        name: None,
+        config: ConsumerConfig::default(),
       }
     }
 
@@ -138,23 +143,12 @@ mod tests {
       }
     }
 
-    fn with_name(mut self, name: String) -> Self
-    where
-      Self: Sized,
-    {
-      self.name = Some(name);
-      self
-    }
-
     fn set_config_impl(&mut self, config: ConsumerConfig<Self::Input>) {
-      self.name = Some(config.name);
+      self.config = config;
     }
 
     fn get_config_impl(&self) -> ConsumerConfig<Self::Input> {
-      ConsumerConfig {
-        error_strategy: ErrorStrategy::Stop,
-        name: self.name.clone().unwrap_or_default(),
-      }
+      self.config.clone()
     }
   }
 
@@ -260,10 +254,9 @@ mod tests {
 
   #[test]
   fn test_consumer_error_handling_skip() {
-    let mut consumer = CollectorConsumer::<i32>::new();
-    consumer = consumer.with_config(ConsumerConfig {
+    let consumer = CollectorConsumer::<i32>::new().with_config(ConsumerConfig {
       error_strategy: ErrorStrategy::Skip,
-      name: "test".to_string(),
+      name: "test_consumer".to_string(),
     });
     let error = StreamError {
       source: Box::new(TestError("test error".to_string())),
@@ -271,24 +264,22 @@ mod tests {
         timestamp: chrono::Utc::now(),
         item: None,
         component_name: "test".to_string(),
-        component_type: "CollectorConsumer".to_string(),
+        component_type: "TestProducer".to_string(),
       },
-      retries: 0,
       component: ComponentInfo {
         name: "test".to_string(),
-        type_name: "CollectorConsumer".to_string(),
+        type_name: "TestProducer".to_string(),
       },
+      retries: 0,
     };
-    let action = consumer.handle_error(&error);
-    assert!(matches!(action, ErrorAction::Skip));
+    assert!(matches!(consumer.handle_error(&error), ErrorAction::Skip));
   }
 
   #[test]
   fn test_consumer_error_handling_retry() {
-    let mut consumer = CollectorConsumer::<i32>::new();
-    consumer = consumer.with_config(ConsumerConfig {
+    let consumer = CollectorConsumer::<i32>::new().with_config(ConsumerConfig {
       error_strategy: ErrorStrategy::Retry(3),
-      name: "test".to_string(),
+      name: "test_consumer".to_string(),
     });
     let error = StreamError {
       source: Box::new(TestError("test error".to_string())),
@@ -296,16 +287,15 @@ mod tests {
         timestamp: chrono::Utc::now(),
         item: None,
         component_name: "test".to_string(),
-        component_type: "CollectorConsumer".to_string(),
+        component_type: "TestProducer".to_string(),
       },
-      retries: 0,
       component: ComponentInfo {
         name: "test".to_string(),
-        type_name: "CollectorConsumer".to_string(),
+        type_name: "TestProducer".to_string(),
       },
+      retries: 0,
     };
-    let action = consumer.handle_error(&error);
-    assert!(matches!(action, ErrorAction::Retry));
+    assert!(matches!(consumer.handle_error(&error), ErrorAction::Retry));
   }
 
   #[test]
@@ -335,33 +325,52 @@ mod tests {
 
   #[test]
   fn test_consumer_component_info() {
-    let consumer = CollectorConsumer::<i32>::new().with_name("test_consumer".to_string());
+    let consumer = CollectorConsumer::<i32>::new().with_config(ConsumerConfig {
+      error_strategy: ErrorStrategy::Stop,
+      name: "test_consumer".to_string(),
+    });
     let info = consumer.component_info();
     assert_eq!(info.name, "test_consumer");
-    assert_eq!(info.type_name, "CollectorConsumer");
+    assert_eq!(
+      info.type_name,
+      "streamweave::traits::consumer::tests::CollectorConsumer<i32>"
+    );
   }
 
   #[test]
   fn test_consumer_create_error_context() {
-    let consumer = CollectorConsumer::<i32>::new();
+    let consumer = CollectorConsumer::<i32>::new().with_config(ConsumerConfig {
+      error_strategy: ErrorStrategy::Stop,
+      name: "test_consumer".to_string(),
+    });
     let context = consumer.create_error_context(None);
-    assert_eq!(context.component_name, "CollectorConsumer".to_string());
-    assert_eq!(context.component_type, "CollectorConsumer".to_string());
+    assert_eq!(context.component_name, "test_consumer");
+    assert_eq!(
+      context.component_type,
+      "streamweave::traits::consumer::tests::CollectorConsumer<i32>"
+    );
     assert!(context.item.is_none());
   }
 
   #[test]
   fn test_consumer_create_error_context_with_item() {
-    let consumer = CollectorConsumer::<i32>::new();
+    let consumer = CollectorConsumer::<i32>::new().with_config(ConsumerConfig {
+      error_strategy: ErrorStrategy::Stop,
+      name: "test_consumer".to_string(),
+    });
     let context = consumer.create_error_context(Some(42));
-    assert_eq!(context.component_name, "CollectorConsumer".to_string());
-    assert_eq!(context.component_type, "CollectorConsumer".to_string());
-    assert!(context.item.is_some());
+    assert_eq!(context.component_name, "test_consumer");
+    assert_eq!(
+      context.component_type,
+      "streamweave::traits::consumer::tests::CollectorConsumer<i32>"
+    );
+    assert_eq!(context.item, Some(42));
   }
 
   #[tokio::test]
   async fn test_multiple_configuration_changes() {
     let mut consumer = CollectorConsumer::<i32>::new();
+
     // First config
     consumer = consumer.with_config(ConsumerConfig {
       error_strategy: ErrorStrategy::Skip,
@@ -372,6 +381,7 @@ mod tests {
       consumer.get_config().error_strategy,
       ErrorStrategy::Skip
     ));
+
     // Second config
     consumer = consumer.with_config(ConsumerConfig {
       error_strategy: ErrorStrategy::Retry(3),
@@ -390,14 +400,17 @@ mod tests {
       error_strategy: ErrorStrategy::Skip,
       name: "persistent".to_string(),
     });
+
     // First consume
     let input1 = vec![1, 2, 3];
     let stream1 = Box::pin(tokio_stream::iter(input1.clone()));
     consumer.consume(stream1).await;
+
     // Second consume - config should persist
     let input2 = vec![4, 5, 6];
     let stream2 = Box::pin(tokio_stream::iter(input2.clone()));
     consumer.consume(stream2).await;
+
     assert_eq!(consumer.get_config().name, "persistent");
     assert!(matches!(
       consumer.get_config().error_strategy,
@@ -408,25 +421,26 @@ mod tests {
 
   #[test]
   fn test_custom_error_handler() {
-    let mut consumer = CollectorConsumer::<i32>::new();
-    consumer = consumer.with_config(ConsumerConfig {
-      error_strategy: ErrorStrategy::Custom(Box::new(|_| ErrorAction::Skip)),
-      name: "custom".to_string(),
+    let mut consumer = CollectorConsumer::<i32>::new().with_config(ConsumerConfig {
+      error_strategy: ErrorStrategy::new_custom(|_| ErrorAction::Skip),
+      name: "test_consumer".to_string(),
     });
+
     let error = StreamError {
-      source: Box::new(TestError("test error".to_string())),
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
-        component_name: "CollectorConsumer".to_string(),
-        component_type: "CollectorConsumer".to_string(),
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
       },
-      retries: 0,
       component: ComponentInfo {
         name: "test".to_string(),
-        type_name: "CollectorConsumer".to_string(),
+        type_name: "test".to_string(),
       },
+      retries: 0,
     };
+
     let action = consumer.handle_error(&error);
     assert!(matches!(action, ErrorAction::Skip));
   }
