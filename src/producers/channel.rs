@@ -42,7 +42,7 @@ impl<T: Send + Clone + 'static> Output for ChannelProducer<T> {
 #[async_trait]
 impl<T: Send + Clone + 'static> Producer for ChannelProducer<T> {
   fn produce(&mut self) -> Self::OutputStream {
-    let mut rx = self.rx.clone();
+    let rx = std::mem::replace(&mut self.rx, mpsc::channel(1).1);
     Box::pin(futures::stream::unfold(rx, |mut rx| async move {
       match rx.recv().await {
         Some(item) => Some((item, rx)),
