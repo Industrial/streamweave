@@ -18,7 +18,7 @@ pub struct ChannelConsumer<T> {
 
 impl<T> ChannelConsumer<T>
 where
-  T: Send + Sync + 'static + std::fmt::Debug,
+  T: Send + Sync + Clone + 'static + std::fmt::Debug,
 {
   pub fn new(sender: Sender<T>) -> Self {
     Self {
@@ -40,7 +40,7 @@ where
 
 impl<T> Input for ChannelConsumer<T>
 where
-  T: Send + Sync + 'static + std::fmt::Debug,
+  T: Send + Sync + Clone + 'static + std::fmt::Debug,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -49,7 +49,7 @@ where
 #[async_trait]
 impl<T> Consumer for ChannelConsumer<T>
 where
-  T: Send + Sync + 'static + std::fmt::Debug,
+  T: Send + Sync + Clone + 'static + std::fmt::Debug,
 {
   async fn consume(&mut self, input: Self::InputStream) -> () {
     let mut stream = input;
@@ -66,8 +66,8 @@ where
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> &ConsumerConfig<T> {
-    &self.config
+  fn get_config_impl(&self) -> ConsumerConfig<T> {
+    self.config.clone()
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
@@ -83,7 +83,7 @@ where
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Consumer(self.component_info().name),
+      stage: PipelineStage::Consumer,
     }
   }
 
