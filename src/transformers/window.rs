@@ -105,7 +105,8 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for WindowT
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Transformer(self.component_info().name),
+      component_name: self.component_info().name,
+      component_type: std::any::type_name::<Self>().to_string(),
     }
   }
 

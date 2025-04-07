@@ -33,7 +33,8 @@ where
         ErrorContext {
           timestamp: chrono::Utc::now(),
           item: None,
-          stage: PipelineStage::Transformer("batch_transformer".to_string()),
+          component_name: "batch_transformer".to_string(),
+          component_type: std::any::type_name::<Self>().to_string(),
         },
         ComponentInfo {
           name: "batch_transformer".to_string(),

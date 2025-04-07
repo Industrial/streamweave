@@ -94,7 +94,8 @@ impl Producer for EnvVarProducer {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Producer,
+      component_name: self.config.name.clone(),
+      component_type: std::any::type_name::<Self>().to_string(),
     }
   }
 
