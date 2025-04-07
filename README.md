@@ -23,11 +23,21 @@ browser-specific stream primitives.
 
 ### 🚧 Planned
 
+- Add stateful processing
+- Implement exactly-once processing
+- Support distributed processing
+- Implement windowing operations
+- Support more data formats
+- Add more specialized transformers
 - Fan-in/fan-out support
 - WASM-specific optimizations and documentation
 - Additional specialized transformers and utilities
 - Reusable pipeline components
 - More specialized producers and consumers
+- Add machine learning integration
+- Implement monitoring and metrics
+- Add SQL-like querying
+- Add visualization tools
 
 ## 📦 Core Concepts
 
