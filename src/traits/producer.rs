@@ -184,10 +184,11 @@ mod tests {
 
   #[test]
   fn test_producer_config() {
-    let mut producer = TestProducer::new(vec![1, 2, 3])
-      .with_name("test_producer".to_string())
-      .with_config(ProducerConfig::default().with_error_strategy(ErrorStrategy::Skip));
-
+    let mut producer = TestProducer::new(vec![1, 2, 3]).with_config(
+      ProducerConfig::default()
+        .with_name("test_producer".to_string())
+        .with_error_strategy(ErrorStrategy::Skip),
+    );
     assert_eq!(producer.config().name(), Some("test_producer".to_string()));
     assert!(matches!(
       producer.config().error_strategy(),
@@ -199,7 +200,6 @@ mod tests {
   fn test_producer_error_handling() {
     let mut producer = TestProducer::new(vec![1, 2, 3])
       .with_config(ProducerConfig::default().with_error_strategy(ErrorStrategy::Skip));
-
     let error = StreamError {
       source: Box::new(TestError("test error".to_string())),
       context: ErrorContext {
@@ -214,7 +214,86 @@ mod tests {
       },
       retries: 0,
     };
-
     assert!(matches!(producer.handle_error(&error), ErrorAction::Skip));
+  }
+
+  #[tokio::test]
+  async fn test_empty_producer() {
+    let mut producer = TestProducer::new(Vec::<i32>::new());
+    let stream = producer.produce();
+    let result: Vec<i32> = stream.collect().await;
+    assert!(result.is_empty());
+  }
+
+  #[test]
+  fn test_different_error_strategies() {
+    let mut producer = TestProducer::new(vec![1, 2, 3])
+      .with_config(ProducerConfig::default().with_error_strategy(ErrorStrategy::Stop));
+    let error = StreamError {
+      source: Box::new(TestError("test error".to_string())),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "TestProducer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "TestProducer".to_string(),
+      },
+      retries: 0,
+    };
+    assert!(matches!(producer.handle_error(&error), ErrorAction::Stop));
+
+    let mut producer =
+      producer.with_config(ProducerConfig::default().with_error_strategy(ErrorStrategy::Retry(3)));
+    assert!(matches!(producer.handle_error(&error), ErrorAction::Retry));
+  }
+
+  #[test]
+  fn test_component_info() {
+    let producer = TestProducer::new(vec![1, 2, 3]).with_name("test_producer".to_string());
+
+    let info = producer.component_info();
+    assert_eq!(info.name, "test_producer");
+    assert_eq!(
+      info.type_name,
+      "streamweave::traits::producer::tests::TestProducer<i32>"
+    );
+  }
+
+  #[test]
+  fn test_error_context_creation() {
+    let producer = TestProducer::new(vec![1, 2, 3]).with_name("test_producer".to_string());
+
+    let context = producer.create_error_context(Some(42));
+    assert_eq!(context.component_name, "test_producer");
+    assert_eq!(
+      context.component_type,
+      "streamweave::traits::producer::tests::TestProducer<i32>"
+    );
+    assert_eq!(context.item, Some(42));
+  }
+
+  #[test]
+  fn test_with_name() {
+    let producer = TestProducer::new(vec![1, 2, 3]).with_name("test_producer".to_string());
+
+    assert_eq!(producer.config().name(), Some("test_producer".to_string()));
+  }
+
+  #[test]
+  fn test_config_mut() {
+    let mut producer = TestProducer::new(vec![1, 2, 3]);
+    producer.config_mut().name = Some("test_producer".to_string());
+    assert_eq!(producer.config().name(), Some("test_producer".to_string()));
+  }
+
+  #[tokio::test]
+  async fn test_producer_with_strings() {
+    let mut producer = TestProducer::new(vec!["hello".to_string(), "world".to_string()]);
+    let stream = producer.produce();
+    let result: Vec<String> = stream.collect().await;
+    assert_eq!(result, vec!["hello".to_string(), "world".to_string()]);
   }
 }
