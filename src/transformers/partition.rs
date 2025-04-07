@@ -80,7 +80,7 @@ where
           }
           acc
         })
-        .map(|acc| acc),
+        .then(|acc| async move { acc }),
     )
   }
 

@@ -69,8 +69,9 @@ where
     let mut accumulator = self.accumulator.clone();
     let mut reducer = self.reducer.clone();
     Box::pin(input.map(move |item| {
-      accumulator = reducer(accumulator, item);
-      accumulator.clone()
+      let new_accumulator = reducer(accumulator.clone(), item);
+      accumulator = new_accumulator.clone();
+      new_accumulator
     }))
   }
 

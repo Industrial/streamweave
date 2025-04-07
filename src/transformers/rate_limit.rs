@@ -128,7 +128,7 @@ where
             }
           }
         })
-        .buffered(1),
+        .throttle(time_window / rate_limit as u32),
     )
   }
 
