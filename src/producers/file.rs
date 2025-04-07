@@ -5,9 +5,11 @@ use crate::traits::{
 };
 use async_trait::async_trait;
 use futures::Stream;
+use futures::StreamExt;
 use std::pin::Pin;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio_stream::wrappers::LinesStream;
 
 pub struct FileProducer {
   path: String,
@@ -42,25 +44,19 @@ impl Output for FileProducer {
 impl Producer for FileProducer {
   fn produce(&mut self) -> Self::OutputStream {
     let path = self.path.clone();
-    let config = self.config.clone();
 
-    Box::pin(futures::stream::unfold(
-      (path, config),
-      |(path, config)| async move {
-        match File::open(&path).await {
-          Ok(file) => {
-            let mut reader = BufReader::new(file);
-            let mut line = String::new();
-            match reader.read_line(&mut line).await {
-              Ok(0) => None,
-              Ok(_) => Some((line.trim().to_string(), (path, config))),
-              Err(_) => None,
-            }
+    Box::pin(async_stream::stream! {
+      if let Ok(file) = File::open(&path).await {
+        let reader = BufReader::new(file);
+        let mut lines = LinesStream::new(reader.lines());
+
+        while let Some(line) = lines.next().await {
+          if let Ok(line) = line {
+            yield line;
           }
-          Err(_) => None,
         }
-      },
-    ))
+      }
+    })
   }
 
   fn set_config_impl(&mut self, config: ProducerConfig<String>) {
@@ -121,24 +117,22 @@ mod tests {
     writeln!(file, "line 1").unwrap();
     writeln!(file, "line 2").unwrap();
     writeln!(file, "line 3").unwrap();
+    file.flush().unwrap();
     let path = file.path().to_str().unwrap().to_string();
-
     let mut producer = FileProducer::new(path);
     let stream = producer.produce();
     let result: Vec<String> = stream.collect().await;
-
     assert_eq!(result, vec!["line 1", "line 2", "line 3"]);
+    drop(file);
   }
 
   #[tokio::test]
   async fn test_empty_file() {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
-
     let mut producer = FileProducer::new(path);
     let stream = producer.produce();
     let result: Vec<String> = stream.collect().await;
-
     assert!(result.is_empty());
   }
 
