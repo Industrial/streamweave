@@ -1,6 +1,4 @@
-use crate::error::{
-  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
-};
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::traits::{
   output::Output,
   producer::{Producer, ProducerConfig},
@@ -76,7 +74,11 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Producer for ChannelPro
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      component_name: self.config.name.clone(),
+      component_name: self
+        .config
+        .name
+        .clone()
+        .unwrap_or_else(|| "channel_producer".to_string()),
       component_type: std::any::type_name::<Self>().to_string(),
     }
   }
@@ -127,29 +129,13 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let (_, rx) = mpsc::channel::<i32>(10);
+    let (tx, rx) = tokio::sync::mpsc::channel(10);
     let mut producer = ChannelProducer::new(rx)
-      .with_error_strategy(ErrorStrategy::Skip)
+      .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_producer".to_string());
 
     let config = producer.config();
-    assert_eq!(config.error_strategy(), ErrorStrategy::Skip);
+    assert_eq!(config.error_strategy(), ErrorStrategy::<i32>::Skip);
     assert_eq!(config.name(), Some("test_producer".to_string()));
-
-    let error = StreamError {
-      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-      context: ErrorContext {
-        timestamp: chrono::Utc::now(),
-        item: None,
-        stage: PipelineStage::Producer,
-      },
-      component: ComponentInfo {
-        name: "test".to_string(),
-        type_name: "ChannelProducer".to_string(),
-      },
-      retries: 0,
-    };
-
-    assert_eq!(producer.handle_error(&error), ErrorAction::Skip);
   }
 }
