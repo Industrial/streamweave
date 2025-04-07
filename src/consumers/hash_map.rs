@@ -11,15 +11,19 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::pin::Pin;
 
-pub struct HashMapConsumer<K, V> {
+pub struct HashMapConsumer<K, V>
+where
+  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+  V: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   map: HashMap<K, V>,
   config: ConsumerConfig<(K, V)>,
 }
 
 impl<K, V> HashMapConsumer<K, V>
 where
-  K: Hash + Eq + Send + Clone + 'static,
-  V: Send + Clone + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+  V: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   pub fn new() -> Self {
     Self {
@@ -45,8 +49,8 @@ where
 
 impl<K, V> Input for HashMapConsumer<K, V>
 where
-  K: Hash + Eq + Send + Clone + 'static,
-  V: Send + Clone + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+  V: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Input = (K, V);
   type InputStream = Pin<Box<dyn Stream<Item = (K, V)> + Send>>;
@@ -55,8 +59,8 @@ where
 #[async_trait]
 impl<K, V> Consumer for HashMapConsumer<K, V>
 where
-  K: Hash + Eq + Send + Clone + 'static,
-  V: Send + Clone + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+  V: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some((key, value)) = stream.next().await {

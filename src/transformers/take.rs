@@ -10,13 +10,13 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct TakeTransformer<T: Send + 'static + Clone> {
+pub struct TakeTransformer<T: std::fmt::Debug + Clone + Send + Sync + 'static> {
   take: usize,
   config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Send + 'static + Clone> TakeTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> TakeTransformer<T> {
   pub fn new(take: usize) -> Self {
     Self {
       take,
@@ -36,18 +36,18 @@ impl<T: Send + 'static + Clone> TakeTransformer<T> {
   }
 }
 
-impl<T: Send + 'static + Clone> Input for TakeTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Input for TakeTransformer<T> {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<T: Send + 'static + Clone> Output for TakeTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for TakeTransformer<T> {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 #[async_trait]
-impl<T: Send + 'static + Clone> Transformer for TakeTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for TakeTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let take = self.take;
     Box::pin(input.take(take))
@@ -66,7 +66,7 @@ impl<T: Send + 'static + Clone> Transformer for TakeTransformer<T> {
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -86,7 +86,8 @@ impl<T: Send + 'static + Clone> Transformer for TakeTransformer<T> {
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "take_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

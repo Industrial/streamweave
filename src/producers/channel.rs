@@ -10,12 +10,12 @@ use futures::Stream;
 use std::pin::Pin;
 use tokio::sync::mpsc;
 
-pub struct ChannelProducer<T: Clone> {
+pub struct ChannelProducer<T: std::fmt::Debug + Clone + Send + Sync> {
   rx: mpsc::Receiver<T>,
   config: ProducerConfig<T>,
 }
 
-impl<T: Clone> ChannelProducer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> ChannelProducer<T> {
   pub fn new(rx: mpsc::Receiver<T>) -> Self {
     Self {
       rx,
@@ -34,13 +34,13 @@ impl<T: Clone> ChannelProducer<T> {
   }
 }
 
-impl<T: Send + Clone + 'static> Output for ChannelProducer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for ChannelProducer<T> {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 #[async_trait]
-impl<T: Send + Clone + 'static> Producer for ChannelProducer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Producer for ChannelProducer<T> {
   fn produce(&mut self) -> Self::OutputStream {
     let rx = std::mem::replace(&mut self.rx, mpsc::channel(1).1);
     Box::pin(futures::stream::unfold(rx, |mut rx| async move {

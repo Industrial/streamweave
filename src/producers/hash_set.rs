@@ -12,7 +12,7 @@ use std::pin::Pin;
 
 pub struct HashSetProducer<T>
 where
-  T: Send + Clone + Hash + Eq + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   data: HashSet<T>,
   config: ProducerConfig<T>,
@@ -20,7 +20,7 @@ where
 
 impl<T> HashSetProducer<T>
 where
-  T: Send + Clone + Hash + Eq + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   pub fn new(data: HashSet<T>) -> Self {
     Self {
@@ -42,7 +42,7 @@ where
 
 impl<T> Output for HashSetProducer<T>
 where
-  T: Send + Clone + Hash + Eq + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -50,7 +50,7 @@ where
 
 impl<T> Producer for HashSetProducer<T>
 where
-  T: Send + Clone + Hash + Eq + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   fn produce(&mut self) -> Self::OutputStream {
     let data = self.data.clone();

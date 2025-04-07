@@ -10,22 +10,29 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct ReduceTransformer<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> {
+pub struct ReduceTransformer<T, Acc, F>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+  Acc: std::fmt::Debug + Clone + Send + Sync + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + 'static,
+{
   accumulator: Acc,
   reducer: F,
   config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> ReduceTransformer<T, Acc, F>
+impl<T, Acc, F> ReduceTransformer<T, Acc, F>
 where
-  F: FnMut(Acc, T) -> Acc + Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+  Acc: std::fmt::Debug + Clone + Send + Sync + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + 'static,
 {
   pub fn new(initial: Acc, reducer: F) -> Self {
     Self {
       accumulator: initial,
       reducer,
-      config: TransformerConfig::<T>::default(),
+      config: TransformerConfig::default(),
       _phantom: std::marker::PhantomData,
     }
   }
@@ -41,37 +48,39 @@ where
   }
 }
 
-impl<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> Input
-  for ReduceTransformer<T, Acc, F>
+impl<T, Acc, F> Input for ReduceTransformer<T, Acc, F>
 where
-  F: FnMut(Acc, T) -> Acc + Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+  Acc: std::fmt::Debug + Clone + Send + Sync + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> Output
-  for ReduceTransformer<T, Acc, F>
+impl<T, Acc, F> Output for ReduceTransformer<T, Acc, F>
 where
-  F: FnMut(Acc, T) -> Acc + Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+  Acc: std::fmt::Debug + Clone + Send + Sync + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + 'static,
 {
   type Output = Acc;
   type OutputStream = Pin<Box<dyn Stream<Item = Acc> + Send>>;
 }
 
 #[async_trait]
-impl<T: Send + 'static + Clone, Acc: Send + 'static + Clone, F> Transformer
-  for ReduceTransformer<T, Acc, F>
+impl<T, Acc, F> Transformer for ReduceTransformer<T, Acc, F>
 where
-  F: FnMut(Acc, T) -> Acc + Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+  Acc: std::fmt::Debug + Clone + Send + Sync + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let mut accumulator = self.accumulator.clone();
     let mut reducer = self.reducer.clone();
     Box::pin(input.map(move |item| {
-      let new_accumulator = reducer(accumulator.clone(), item);
-      accumulator = new_accumulator.clone();
-      new_accumulator
+      accumulator = reducer(accumulator.clone(), item);
+      accumulator.clone()
     }))
   }
 
@@ -88,7 +97,7 @@ where
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -108,7 +117,8 @@ where
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "reduce_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

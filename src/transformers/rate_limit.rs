@@ -15,7 +15,7 @@ use tokio::time::{Duration, Instant};
 
 pub struct RateLimitTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   rate_limit: usize,
   time_window: Duration,
@@ -27,7 +27,7 @@ where
 
 impl<T> RateLimitTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   pub fn new(rate_limit: usize, time_window: Duration) -> Self {
     Self {
@@ -81,7 +81,7 @@ where
 
 impl<T> Input for RateLimitTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -89,7 +89,7 @@ where
 
 impl<T> Output for RateLimitTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -98,34 +98,38 @@ where
 #[async_trait]
 impl<T> Transformer for RateLimitTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let count = self.count.clone();
-    let window_start = self.window_start.clone();
     let rate_limit = self.rate_limit;
     let time_window = self.time_window;
+    let count = Arc::clone(&self.count);
+    let window_start = Arc::clone(&self.window_start);
 
-    Box::pin(input.filter_map(move |item| {
-      let count = count.clone();
-      let window_start = window_start.clone();
-      async move {
-        let now = Instant::now();
-        let mut window_start = window_start.write().await;
+    Box::pin(
+      input
+        .then(move |item| {
+          let count = Arc::clone(&count);
+          let window_start = Arc::clone(&window_start);
+          async move {
+            let now = Instant::now();
+            let mut window_start = window_start.write().await;
 
-        if now.duration_since(*window_start) >= time_window {
-          count.store(0, Ordering::SeqCst);
-          *window_start = now;
-        }
+            if now.duration_since(*window_start) > time_window {
+              count.store(0, Ordering::SeqCst);
+              *window_start = now;
+            }
 
-        if count.load(Ordering::SeqCst) >= rate_limit {
-          None
-        } else {
-          count.fetch_add(1, Ordering::SeqCst);
-          Some(item)
-        }
-      }
-    }))
+            if count.load(Ordering::SeqCst) >= rate_limit {
+              None
+            } else {
+              count.fetch_add(1, Ordering::SeqCst);
+              Some(item)
+            }
+          }
+        })
+        .filter_map(futures::future::ready),
+    )
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {
@@ -141,7 +145,7 @@ where
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -161,7 +165,8 @@ where
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "rate_limit_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

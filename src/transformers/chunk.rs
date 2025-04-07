@@ -10,13 +10,19 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct ChunkTransformer<T: Send + 'static + Clone> {
+pub struct ChunkTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   size: usize,
   config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Send + 'static + Clone> ChunkTransformer<T> {
+impl<T> ChunkTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   pub fn new(size: usize) -> Self {
     Self {
       size,
@@ -36,18 +42,27 @@ impl<T: Send + 'static + Clone> ChunkTransformer<T> {
   }
 }
 
-impl<T: Send + 'static + Clone> Input for ChunkTransformer<T> {
+impl<T> Input for ChunkTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<T: Send + 'static + Clone> Output for ChunkTransformer<T> {
+impl<T> Output for ChunkTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   type Output = Vec<T>;
   type OutputStream = Pin<Box<dyn Stream<Item = Vec<T>> + Send>>;
 }
 
 #[async_trait]
-impl<T: Send + 'static + Clone> Transformer for ChunkTransformer<T> {
+impl<T> Transformer for ChunkTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let size = self.size;
     Box::pin(input.chunks(size))
@@ -66,7 +81,7 @@ impl<T: Send + 'static + Clone> Transformer for ChunkTransformer<T> {
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -86,7 +101,8 @@ impl<T: Send + 'static + Clone> Transformer for ChunkTransformer<T> {
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "chunk_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

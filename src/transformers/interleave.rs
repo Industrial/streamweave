@@ -10,13 +10,19 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct InterleaveTransformer<T: Send + 'static + Clone> {
+pub struct InterleaveTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   other: Pin<Box<dyn Stream<Item = T> + Send>>,
   config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Send + 'static + Clone> InterleaveTransformer<T> {
+impl<T> InterleaveTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   pub fn new(other: Pin<Box<dyn Stream<Item = T> + Send>>) -> Self {
     Self {
       other,
@@ -36,18 +42,27 @@ impl<T: Send + 'static + Clone> InterleaveTransformer<T> {
   }
 }
 
-impl<T: Send + 'static + Clone> Input for InterleaveTransformer<T> {
+impl<T> Input for InterleaveTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<T: Send + 'static + Clone> Output for InterleaveTransformer<T> {
+impl<T> Output for InterleaveTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 #[async_trait]
-impl<T: Send + 'static + Clone> Transformer for InterleaveTransformer<T> {
+impl<T> Transformer for InterleaveTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let other = std::mem::replace(&mut self.other, Box::pin(futures::stream::empty()));
     Box::pin(futures::stream::select(input, other))
@@ -66,7 +81,7 @@ impl<T: Send + 'static + Clone> Transformer for InterleaveTransformer<T> {
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -86,7 +101,8 @@ impl<T: Send + 'static + Clone> Transformer for InterleaveTransformer<T> {
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "interleave_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

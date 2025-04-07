@@ -12,13 +12,13 @@ use std::pin::Pin;
 use std::time::Duration;
 use tokio::time::Instant;
 
-pub struct ThrottleTransformer<T: Send + 'static + Clone> {
+pub struct ThrottleTransformer<T: std::fmt::Debug + Clone + Send + Sync + 'static> {
   duration: Duration,
   config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Send + 'static + Clone> ThrottleTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> ThrottleTransformer<T> {
   pub fn new(duration: Duration) -> Self {
     Self {
       duration,
@@ -38,18 +38,18 @@ impl<T: Send + 'static + Clone> ThrottleTransformer<T> {
   }
 }
 
-impl<T: Send + 'static + Clone> Input for ThrottleTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Input for ThrottleTransformer<T> {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<T: Send + 'static + Clone> Output for ThrottleTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for ThrottleTransformer<T> {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 #[async_trait]
-impl<T: Send + 'static + Clone> Transformer for ThrottleTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for ThrottleTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let duration = self.duration;
     Box::pin(input.then(move |item| async move {
@@ -71,7 +71,7 @@ impl<T: Send + 'static + Clone> Transformer for ThrottleTransformer<T> {
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -91,7 +91,8 @@ impl<T: Send + 'static + Clone> Transformer for ThrottleTransformer<T> {
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "throttle_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

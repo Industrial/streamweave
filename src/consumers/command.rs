@@ -10,14 +10,17 @@ use futures::{Stream, StreamExt};
 use std::pin::Pin;
 use tokio::process::Command;
 
-pub struct CommandConsumer<T> {
+pub struct CommandConsumer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
+{
   command: Option<Command>,
   config: ConsumerConfig<T>,
 }
 
 impl<T> CommandConsumer<T>
 where
-  T: Send + Sync + Clone + 'static + std::fmt::Debug + std::fmt::Display,
+  T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
 {
   pub fn new(command: String, args: Vec<String>) -> Self {
     let mut cmd = Command::new(command);
@@ -41,7 +44,7 @@ where
 
 impl<T> Input for CommandConsumer<T>
 where
-  T: Send + Sync + Clone + 'static + std::fmt::Debug + std::fmt::Display,
+  T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -50,7 +53,7 @@ where
 #[async_trait]
 impl<T> Consumer for CommandConsumer<T>
 where
-  T: Send + Sync + Clone + 'static + std::fmt::Debug + std::fmt::Display,
+  T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
 {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some(value) = stream.next().await {

@@ -14,7 +14,7 @@ use tokio::time::{Duration, Instant};
 
 pub struct RetryTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   max_retries: usize,
   backoff: Duration,
@@ -24,7 +24,7 @@ where
 
 impl<T> RetryTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   pub fn new(max_retries: usize, backoff: Duration) -> Self {
     Self {
@@ -48,7 +48,7 @@ where
 
 impl<T> Input for RetryTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -56,7 +56,7 @@ where
 
 impl<T> Output for RetryTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -65,7 +65,7 @@ where
 #[async_trait]
 impl<T> Transformer for RetryTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let max_retries = self.max_retries;
@@ -75,7 +75,7 @@ where
       async move {
         loop {
           match item {
-            Ok(item) => return item,
+            Ok(item) => return Ok(item),
             Err(e) => {
               if retries >= max_retries {
                 return Err(e);
@@ -102,7 +102,7 @@ where
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -122,7 +122,8 @@ where
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "retry_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

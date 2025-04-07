@@ -10,24 +10,20 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct ZipTransformer<T: Send + 'static + Clone, U: Send + 'static + Clone> {
-  other: Pin<Box<dyn Stream<Item = U> + Send>>,
-  config: TransformerConfig<T>,
-  _phantom_t: std::marker::PhantomData<T>,
-  _phantom_u: std::marker::PhantomData<U>,
+pub struct ZipTransformer<T: std::fmt::Debug + Clone + Send + Sync + 'static> {
+  config: TransformerConfig<Vec<T>>,
+  _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Send + 'static + Clone, U: Send + 'static + Clone> ZipTransformer<T, U> {
-  pub fn new(other: Pin<Box<dyn Stream<Item = U> + Send>>) -> Self {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> ZipTransformer<T> {
+  pub fn new() -> Self {
     Self {
-      other,
-      config: TransformerConfig::<T>::default(),
-      _phantom_t: std::marker::PhantomData,
-      _phantom_u: std::marker::PhantomData,
+      config: TransformerConfig::<Vec<T>>::default(),
+      _phantom: std::marker::PhantomData,
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<Vec<T>>) -> Self {
     self.config.error_strategy = strategy;
     self
   }
@@ -38,37 +34,62 @@ impl<T: Send + 'static + Clone, U: Send + 'static + Clone> ZipTransformer<T, U> 
   }
 }
 
-impl<T: Send + 'static + Clone, U: Send + 'static + Clone> Input for ZipTransformer<T, U> {
-  type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Input for ZipTransformer<T> {
+  type Input = Vec<T>;
+  type InputStream = Pin<Box<dyn Stream<Item = Vec<T>> + Send>>;
 }
 
-impl<T: Send + 'static + Clone, U: Send + 'static + Clone> Output for ZipTransformer<T, U> {
-  type Output = (T, U);
-  type OutputStream = Pin<Box<dyn Stream<Item = (T, U)> + Send>>;
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for ZipTransformer<T> {
+  type Output = Vec<T>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Vec<T>> + Send>>;
 }
 
 #[async_trait]
-impl<T: Send + 'static + Clone, U: Send + 'static + Clone> Transformer for ZipTransformer<T, U> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for ZipTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let other = std::mem::replace(&mut self.other, Box::pin(futures::stream::empty()));
-    Box::pin(input.zip(other))
+    Box::pin(input.map(|items| {
+      let mut result = Vec::new();
+      let mut iterators: Vec<_> = items.into_iter().map(|item| vec![item]).collect();
+
+      while !iterators.is_empty() {
+        let mut current = Vec::new();
+        let mut empty_indices = Vec::new();
+
+        for (i, iter) in iterators.iter_mut().enumerate() {
+          if let Some(item) = iter.pop() {
+            current.push(item);
+          } else {
+            empty_indices.push(i);
+          }
+        }
+
+        if !current.is_empty() {
+          result.push(current);
+        }
+
+        for &i in empty_indices.iter().rev() {
+          iterators.remove(i);
+        }
+      }
+
+      result
+    }))
   }
 
-  fn set_config_impl(&mut self, config: TransformerConfig<T>) {
+  fn set_config_impl(&mut self, config: TransformerConfig<Vec<T>>) {
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> &TransformerConfig<T> {
+  fn get_config_impl(&self) -> &TransformerConfig<Vec<T>> {
     &self.config
   }
 
-  fn get_config_mut_impl(&mut self) -> &mut TransformerConfig<T> {
+  fn get_config_mut_impl(&mut self) -> &mut TransformerConfig<Vec<T>> {
     &mut self.config
   }
 
-  fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+  fn handle_error(&self, error: &StreamError<Vec<T>>) -> ErrorAction {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -76,7 +97,7 @@ impl<T: Send + 'static + Clone, U: Send + 'static + Clone> Transformer for ZipTr
     }
   }
 
-  fn create_error_context(&self, item: Option<T>) -> ErrorContext<T> {
+  fn create_error_context(&self, item: Option<Vec<T>>) -> ErrorContext<Vec<T>> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
@@ -88,7 +109,8 @@ impl<T: Send + 'static + Clone, U: Send + 'static + Clone> Transformer for ZipTr
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "zip_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

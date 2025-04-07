@@ -5,12 +5,12 @@ use crate::traits::input::Input;
 use async_trait::async_trait;
 
 #[derive(Debug, Clone)]
-pub struct ConsumerConfig<T> {
+pub struct ConsumerConfig<T: std::fmt::Debug + Clone + Send + Sync> {
   pub error_strategy: ErrorStrategy<T>,
   pub name: String,
 }
 
-impl<T> Default for ConsumerConfig<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> Default for ConsumerConfig<T> {
   fn default() -> Self {
     Self {
       error_strategy: ErrorStrategy::Stop,
@@ -20,7 +20,10 @@ impl<T> Default for ConsumerConfig<T> {
 }
 
 #[async_trait]
-pub trait Consumer: Input {
+pub trait Consumer: Input
+where
+  Self::Input: std::fmt::Debug + Clone + Send + Sync,
+{
   async fn consume(&mut self, stream: Self::InputStream);
 
   fn with_config(&self, config: ConsumerConfig<Self::Input>) -> Self
@@ -101,12 +104,12 @@ mod tests {
 
   // Test consumer that collects items into a vector
   #[derive(Clone)]
-  struct CollectorConsumer<T> {
+  struct CollectorConsumer<T: std::fmt::Debug + Clone + Send + Sync> {
     items: Arc<Mutex<Vec<T>>>,
     name: Option<String>,
   }
 
-  impl<T> CollectorConsumer<T> {
+  impl<T: std::fmt::Debug + Clone + Send + Sync> CollectorConsumer<T> {
     fn new() -> Self {
       Self {
         items: Arc::new(Mutex::new(Vec::new())),
@@ -122,13 +125,13 @@ mod tests {
     }
   }
 
-  impl<T: Clone + Send + 'static> Input for CollectorConsumer<T> {
+  impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Input for CollectorConsumer<T> {
     type Input = T;
     type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
   }
 
   #[async_trait]
-  impl<T: Clone + Send + 'static> Consumer for CollectorConsumer<T> {
+  impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Consumer for CollectorConsumer<T> {
     async fn consume(&mut self, mut stream: Self::InputStream) {
       while let Some(item) = stream.next().await {
         self.items.lock().unwrap().push(item);

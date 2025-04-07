@@ -13,8 +13,8 @@ use std::pin::Pin;
 pub struct FlatMapTransformer<F, I, O>
 where
   F: Fn(I) -> Vec<O> + Send + Clone + 'static,
-  I: Clone + Send + 'static,
-  O: Clone + Send + 'static,
+  I: std::fmt::Debug + Clone + Send + Sync + 'static,
+  O: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   f: F,
   config: TransformerConfig<I>,
@@ -25,8 +25,8 @@ where
 impl<F, I, O> FlatMapTransformer<F, I, O>
 where
   F: Fn(I) -> Vec<O> + Send + Clone + 'static,
-  I: Send + 'static + Clone,
-  O: Send + 'static + Clone,
+  I: std::fmt::Debug + Clone + Send + Sync + 'static,
+  O: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   pub fn new(f: F) -> Self {
     Self {
@@ -51,8 +51,8 @@ where
 impl<F, I, O> Input for FlatMapTransformer<F, I, O>
 where
   F: Fn(I) -> Vec<O> + Send + Clone + 'static,
-  I: Send + 'static + Clone,
-  O: Send + 'static + Clone,
+  I: std::fmt::Debug + Clone + Send + Sync + 'static,
+  O: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Input = I;
   type InputStream = Pin<Box<dyn Stream<Item = I> + Send>>;
@@ -61,8 +61,8 @@ where
 impl<F, I, O> Output for FlatMapTransformer<F, I, O>
 where
   F: Fn(I) -> Vec<O> + Send + Clone + 'static,
-  I: Send + 'static + Clone,
-  O: Send + 'static + Clone,
+  I: std::fmt::Debug + Clone + Send + Sync + 'static,
+  O: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Output = O;
   type OutputStream = Pin<Box<dyn Stream<Item = O> + Send>>;
@@ -72,8 +72,8 @@ where
 impl<F, I, O> Transformer for FlatMapTransformer<F, I, O>
 where
   F: Fn(I) -> Vec<O> + Send + Clone + 'static,
-  I: Send + 'static + Clone,
-  O: Send + 'static + Clone,
+  I: std::fmt::Debug + Clone + Send + Sync + 'static,
+  O: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let f = self.f.clone();
@@ -96,7 +96,7 @@ where
   }
 
   fn handle_error(&self, error: &StreamError<I>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -116,7 +116,8 @@ where
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "flat_map_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

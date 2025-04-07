@@ -10,13 +10,19 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct BufferTransformer<T: Send + 'static + Clone> {
+pub struct BufferTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   capacity: usize,
   config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Send + 'static + Clone> BufferTransformer<T> {
+impl<T> BufferTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   pub fn new(capacity: usize) -> Self {
     Self {
       capacity,
@@ -36,18 +42,27 @@ impl<T: Send + 'static + Clone> BufferTransformer<T> {
   }
 }
 
-impl<T: Send + 'static + Clone> Input for BufferTransformer<T> {
+impl<T> Input for BufferTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<T: Send + 'static + Clone> Output for BufferTransformer<T> {
+impl<T> Output for BufferTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 #[async_trait]
-impl<T: Send + 'static + Clone> Transformer for BufferTransformer<T> {
+impl<T> Transformer for BufferTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let capacity = self.capacity;
     Box::pin(input.ready_chunks(capacity).flat_map(futures::stream::iter))
@@ -66,7 +81,7 @@ impl<T: Send + 'static + Clone> Transformer for BufferTransformer<T> {
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -86,7 +101,8 @@ impl<T: Send + 'static + Clone> Transformer for BufferTransformer<T> {
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "buffer_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

@@ -11,14 +11,17 @@ use std::collections::HashSet;
 use std::hash::Hash;
 use std::pin::Pin;
 
-pub struct HashSetConsumer<T> {
+pub struct HashSetConsumer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+{
   set: HashSet<T>,
   config: ConsumerConfig<T>,
 }
 
 impl<T> HashSetConsumer<T>
 where
-  T: Hash + Eq + Send + Clone + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   pub fn new() -> Self {
     Self {
@@ -44,7 +47,7 @@ where
 
 impl<T> Input for HashSetConsumer<T>
 where
-  T: Hash + Eq + Send + Clone + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -53,7 +56,7 @@ where
 #[async_trait]
 impl<T> Consumer for HashSetConsumer<T>
 where
-  T: Hash + Eq + Send + Clone + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some(value) = stream.next().await {

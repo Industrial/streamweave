@@ -17,7 +17,7 @@ use std::sync::RwLock;
 
 pub struct DistinctTransformer<T>
 where
-  T: Clone + Send + Sync + 'static + Hash + Eq,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
@@ -25,7 +25,7 @@ where
 
 impl<T> DistinctTransformer<T>
 where
-  T: Send + Sync + 'static + Hash + Eq + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   pub fn new() -> Self {
     Self {
@@ -47,7 +47,7 @@ where
 
 impl<T> Input for DistinctTransformer<T>
 where
-  T: Send + Sync + 'static + Hash + Eq + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -55,7 +55,7 @@ where
 
 impl<T> Output for DistinctTransformer<T>
 where
-  T: Send + Sync + 'static + Hash + Eq + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -64,7 +64,7 @@ where
 #[async_trait]
 impl<T> Transformer for DistinctTransformer<T>
 where
-  T: Send + Sync + 'static + Hash + Eq + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let seen = Arc::new(RwLock::new(HashSet::new()));
@@ -95,7 +95,7 @@ where
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -115,7 +115,8 @@ where
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "distinct_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

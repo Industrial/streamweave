@@ -7,12 +7,12 @@ use futures::Stream;
 use std::pin::Pin;
 
 #[derive(Debug, Clone)]
-pub struct ProducerConfig<T: Clone> {
+pub struct ProducerConfig<T: std::fmt::Debug + Clone + Send + Sync> {
   pub error_strategy: ErrorStrategy<T>,
   pub name: Option<String>,
 }
 
-impl<T: Clone> Default for ProducerConfig<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> Default for ProducerConfig<T> {
   fn default() -> Self {
     Self {
       error_strategy: ErrorStrategy::Stop,
@@ -21,7 +21,7 @@ impl<T: Clone> Default for ProducerConfig<T> {
   }
 }
 
-impl<T: Clone> ProducerConfig<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> ProducerConfig<T> {
   pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
     self.error_strategy = strategy;
     self
@@ -44,7 +44,7 @@ impl<T: Clone> ProducerConfig<T> {
 #[async_trait]
 pub trait Producer: Output
 where
-  Self::Output: Clone,
+  Self::Output: std::fmt::Debug + Clone + Send + Sync,
 {
   fn produce(&mut self) -> Self::OutputStream;
 
@@ -136,12 +136,12 @@ mod tests {
 
   // Test producer that yields items from a vector
   #[derive(Clone)]
-  struct TestProducer<T: Clone> {
+  struct TestProducer<T: std::fmt::Debug + Clone + Send + Sync> {
     items: Vec<T>,
     config: ProducerConfig<T>,
   }
 
-  impl<T: Clone> TestProducer<T> {
+  impl<T: std::fmt::Debug + Clone + Send + Sync> TestProducer<T> {
     fn new(items: Vec<T>) -> Self {
       Self {
         items,
@@ -150,13 +150,13 @@ mod tests {
     }
   }
 
-  impl<T: Clone + Send + 'static> Output for TestProducer<T> {
+  impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for TestProducer<T> {
     type Output = T;
     type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
   }
 
   #[async_trait]
-  impl<T: Clone + Send + 'static> Producer for TestProducer<T> {
+  impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Producer for TestProducer<T> {
     fn produce(&mut self) -> Self::OutputStream {
       let items = self.items.clone();
       Box::pin(futures::stream::iter(items))

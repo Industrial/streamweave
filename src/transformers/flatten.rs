@@ -12,7 +12,7 @@ use std::pin::Pin;
 
 pub struct FlattenTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   _phantom: std::marker::PhantomData<T>,
   config: TransformerConfig<Vec<T>>,
@@ -20,7 +20,7 @@ where
 
 impl<T> FlattenTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   pub fn new() -> Self {
     Self {
@@ -42,7 +42,7 @@ where
 
 impl<T> Input for FlattenTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Input = Vec<T>;
   type InputStream = Pin<Box<dyn Stream<Item = Vec<T>> + Send>>;
@@ -50,7 +50,7 @@ where
 
 impl<T> Output for FlattenTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -59,7 +59,7 @@ where
 #[async_trait]
 impl<T> Transformer for FlattenTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     Box::pin(input.flat_map(|vec| futures::stream::iter(vec)))
@@ -78,7 +78,7 @@ where
   }
 
   fn handle_error(&self, error: &StreamError<Vec<T>>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -98,7 +98,8 @@ where
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "flatten_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

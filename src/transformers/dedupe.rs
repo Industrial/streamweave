@@ -9,11 +9,13 @@ use crate::traits::{
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::collections::HashSet;
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::pin::Pin;
 
 pub struct DedupeTransformer<T>
 where
-  T: Clone + Send + 'static + Eq + std::hash::Hash,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   seen: HashSet<T>,
   config: TransformerConfig<T>,
@@ -21,7 +23,7 @@ where
 
 impl<T> DedupeTransformer<T>
 where
-  T: Eq + std::hash::Hash + Clone + Send + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   pub fn new() -> Self {
     Self {
@@ -43,7 +45,7 @@ where
 
 impl<T> Input for DedupeTransformer<T>
 where
-  T: Eq + std::hash::Hash + Clone + Send + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -51,7 +53,7 @@ where
 
 impl<T> Output for DedupeTransformer<T>
 where
-  T: Eq + std::hash::Hash + Clone + Send + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -60,7 +62,7 @@ where
 #[async_trait]
 impl<T> Transformer for DedupeTransformer<T>
 where
-  T: Eq + std::hash::Hash + Clone + Send + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     Box::pin(
@@ -97,7 +99,7 @@ where
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -117,7 +119,8 @@ where
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "dedupe_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

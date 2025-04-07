@@ -10,13 +10,13 @@ use std::pin::Pin;
 
 pub struct VecProducer<T>
 where
-  T: Clone + Send + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   data: Vec<T>,
   config: ProducerConfig<T>,
 }
 
-impl<T: Clone + Send + 'static> VecProducer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> VecProducer<T> {
   pub fn new(data: Vec<T>) -> Self {
     Self {
       data,
@@ -35,12 +35,12 @@ impl<T: Clone + Send + 'static> VecProducer<T> {
   }
 }
 
-impl<T: Clone + Send + 'static> Output for VecProducer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for VecProducer<T> {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<T: Clone + Send + 'static> Producer for VecProducer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Producer for VecProducer<T> {
   fn produce(&mut self) -> Self::OutputStream {
     let stream = stream::iter(self.data.clone().into_iter());
     Box::pin(stream)

@@ -8,14 +8,14 @@ pub enum ErrorAction {
   Retry,
 }
 
-pub enum ErrorStrategy<T: std::fmt::Debug + Clone> {
+pub enum ErrorStrategy<T: std::fmt::Debug + Clone + Send + Sync> {
   Stop,
   Skip,
   Retry(usize),
   Custom(Box<dyn Fn(&StreamError<T>) -> ErrorAction + Send + Sync>),
 }
 
-impl<T: std::fmt::Debug + Clone> Clone for ErrorStrategy<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> Clone for ErrorStrategy<T> {
   fn clone(&self) -> Self {
     match self {
       ErrorStrategy::Stop => ErrorStrategy::Stop,
@@ -26,7 +26,7 @@ impl<T: std::fmt::Debug + Clone> Clone for ErrorStrategy<T> {
   }
 }
 
-impl<T: std::fmt::Debug + Clone> fmt::Debug for ErrorStrategy<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> fmt::Debug for ErrorStrategy<T> {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
       ErrorStrategy::Stop => write!(f, "ErrorStrategy::Stop"),
@@ -37,7 +37,7 @@ impl<T: std::fmt::Debug + Clone> fmt::Debug for ErrorStrategy<T> {
   }
 }
 
-impl<T: std::fmt::Debug + Clone> PartialEq for ErrorStrategy<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> PartialEq for ErrorStrategy<T> {
   fn eq(&self, other: &Self) -> bool {
     match (self, other) {
       (ErrorStrategy::Stop, ErrorStrategy::Stop) => true,
@@ -49,7 +49,7 @@ impl<T: std::fmt::Debug + Clone> PartialEq for ErrorStrategy<T> {
   }
 }
 
-impl<T: std::fmt::Debug + Clone> ErrorStrategy<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> ErrorStrategy<T> {
   pub fn new_custom<F>(f: F) -> Self
   where
     F: Fn(&StreamError<T>) -> ErrorAction + Send + Sync + 'static,
@@ -59,14 +59,14 @@ impl<T: std::fmt::Debug + Clone> ErrorStrategy<T> {
 }
 
 #[derive(Debug)]
-pub struct StreamError<T: std::fmt::Debug + Clone> {
+pub struct StreamError<T: std::fmt::Debug + Clone + Send + Sync> {
   pub source: Box<dyn Error + Send + Sync>,
   pub context: ErrorContext<T>,
   pub component: ComponentInfo,
   pub retries: usize,
 }
 
-impl<T: std::fmt::Debug + Clone> Clone for StreamError<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> Clone for StreamError<T> {
   fn clone(&self) -> Self {
     Self {
       source: Box::new(StringError(self.source.to_string())),
@@ -88,7 +88,7 @@ impl std::fmt::Display for StringError {
 
 impl std::error::Error for StringError {}
 
-impl<T: std::fmt::Debug + Clone> StreamError<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> StreamError<T> {
   pub fn new(
     source: Box<dyn Error + Send + Sync>,
     context: ErrorContext<T>,
@@ -103,7 +103,7 @@ impl<T: std::fmt::Debug + Clone> StreamError<T> {
   }
 }
 
-impl<T: std::fmt::Debug + Clone> fmt::Display for StreamError<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> fmt::Display for StreamError<T> {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(
       f,
@@ -113,14 +113,14 @@ impl<T: std::fmt::Debug + Clone> fmt::Display for StreamError<T> {
   }
 }
 
-impl<T: std::fmt::Debug + Clone> Error for StreamError<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> Error for StreamError<T> {
   fn source(&self) -> Option<&(dyn Error + 'static)> {
     Some(self.source.as_ref())
   }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ErrorContext<T: std::fmt::Debug + Clone> {
+pub struct ErrorContext<T: std::fmt::Debug + Clone + Send + Sync> {
   pub timestamp: chrono::DateTime<chrono::Utc>,
   pub item: Option<T>,
   pub stage: PipelineStage,
@@ -146,15 +146,14 @@ impl ComponentInfo {
 }
 
 #[derive(Debug)]
-pub struct PipelineError<T: std::fmt::Debug + Clone> {
+pub struct PipelineError<T: std::fmt::Debug + Clone + Send + Sync> {
   inner: StreamError<T>,
 }
 
-impl<T: std::fmt::Debug + Clone> PipelineError<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> PipelineError<T> {
   pub fn new<E>(error: E, context: ErrorContext<T>, component: ComponentInfo) -> Self
   where
     E: Error + Send + Sync + 'static,
-    T: Send + Sync + 'static,
   {
     Self {
       inner: StreamError::new(Box::new(error), context, component),
@@ -174,7 +173,7 @@ impl<T: std::fmt::Debug + Clone> PipelineError<T> {
   }
 }
 
-impl<T: std::fmt::Debug + Clone> std::fmt::Display for PipelineError<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> std::fmt::Display for PipelineError<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(
       f,
@@ -184,7 +183,7 @@ impl<T: std::fmt::Debug + Clone> std::fmt::Display for PipelineError<T> {
   }
 }
 
-impl<T: std::fmt::Debug + Clone> Error for PipelineError<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> Error for PipelineError<T> {
   fn source(&self) -> Option<&(dyn Error + 'static)> {
     Some(&*self.inner.source)
   }

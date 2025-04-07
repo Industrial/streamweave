@@ -13,8 +13,8 @@ use std::sync::Arc;
 
 pub struct HashMapProducer<K, V>
 where
-  K: Clone + Send + 'static,
-  V: Clone + Send + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+  V: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   data: HashMap<K, V>,
   config: ProducerConfig<(K, V)>,
@@ -22,8 +22,8 @@ where
 
 impl<K, V> HashMapProducer<K, V>
 where
-  K: Send + Clone + 'static,
-  V: Send + Clone + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+  V: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   pub fn new(data: HashMap<K, V>) -> Self {
     Self {
@@ -45,8 +45,8 @@ where
 
 impl<K, V> Output for HashMapProducer<K, V>
 where
-  K: Send + Clone + 'static,
-  V: Send + Clone + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+  V: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Output = (K, V);
   type OutputStream = Pin<Box<dyn Stream<Item = (K, V)> + Send>>;
@@ -54,8 +54,8 @@ where
 
 impl<K, V> Producer for HashMapProducer<K, V>
 where
-  K: Send + Clone + 'static,
-  V: Send + Clone + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+  V: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   fn produce(&mut self) -> Self::OutputStream {
     let data = self.data.clone();

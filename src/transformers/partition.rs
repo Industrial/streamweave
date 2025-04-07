@@ -12,7 +12,7 @@ use std::pin::Pin;
 
 pub struct PartitionTransformer<T, F>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
   F: FnMut(&T) -> bool + Send + 'static,
 {
   predicate: F,
@@ -22,7 +22,7 @@ where
 
 impl<T, F> PartitionTransformer<T, F>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
   F: FnMut(&T) -> bool + Send + 'static,
 {
   pub fn new(predicate: F) -> Self {
@@ -46,7 +46,7 @@ where
 
 impl<T, F> Input for PartitionTransformer<T, F>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
   F: FnMut(&T) -> bool + Send + 'static,
 {
   type Input = T;
@@ -55,7 +55,7 @@ where
 
 impl<T, F> Output for PartitionTransformer<T, F>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
   F: FnMut(&T) -> bool + Send + 'static,
 {
   type Output = (Vec<T>, Vec<T>);
@@ -65,7 +65,7 @@ where
 #[async_trait]
 impl<T, F> Transformer for PartitionTransformer<T, F>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
   F: FnMut(&T) -> bool + Send + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
@@ -97,7 +97,7 @@ where
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -117,7 +117,8 @@ where
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "partition_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

@@ -15,7 +15,7 @@ use std::pin::Pin;
 pub struct GroupByTransformer<F, T, K>
 where
   F: Fn(&T) -> K + Send + 'static,
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
   K: Eq + Hash + Send + 'static,
 {
   key_fn: F,
@@ -27,7 +27,7 @@ where
 impl<F, T, K> GroupByTransformer<F, T, K>
 where
   F: Fn(&T) -> K + Send + 'static,
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
   K: Eq + Hash + Send + 'static,
 {
   pub fn new(key_fn: F) -> Self {
@@ -53,7 +53,7 @@ where
 impl<F, T, K> Input for GroupByTransformer<F, T, K>
 where
   F: Fn(&T) -> K + Send + 'static,
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
   K: Eq + Hash + Send + 'static,
 {
   type Input = T;
@@ -63,7 +63,7 @@ where
 impl<F, T, K> Output for GroupByTransformer<F, T, K>
 where
   F: Fn(&T) -> K + Send + 'static,
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
   K: Eq + Hash + Send + 'static,
 {
   type Output = (K, Vec<T>);
@@ -74,7 +74,7 @@ where
 impl<F, T, K> Transformer for GroupByTransformer<F, T, K>
 where
   F: Fn(&T) -> K + Send + 'static,
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
   K: Eq + Hash + Send + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
@@ -85,7 +85,7 @@ where
         let key = key_fn(&item);
         groups.entry(key).or_insert_with(Vec::new).push(item);
       }
-      futures::stream::iter::<Vec<(K, Vec<T>)>>(groups.into_iter().collect())
+      futures::stream::iter(groups.into_iter().collect::<Vec<_>>())
     });
     Box::pin(stream)
   }
@@ -103,7 +103,7 @@ where
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -123,7 +123,8 @@ where
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "group_by_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

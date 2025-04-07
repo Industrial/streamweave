@@ -9,14 +9,17 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct VecConsumer<T> {
+pub struct VecConsumer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   vec: Vec<T>,
   config: ConsumerConfig<T>,
 }
 
 impl<T> VecConsumer<T>
 where
-  T: Send + Sync + Clone + 'static + std::fmt::Debug,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   pub fn new() -> Self {
     Self {
@@ -49,7 +52,7 @@ where
 
 impl<T> Input for VecConsumer<T>
 where
-  T: Send + Sync + Clone + 'static + std::fmt::Debug,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -58,7 +61,7 @@ where
 #[async_trait]
 impl<T> Consumer for VecConsumer<T>
 where
-  T: Send + Sync + Clone + 'static + std::fmt::Debug,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some(value) = stream.next().await {

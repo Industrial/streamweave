@@ -11,7 +11,7 @@ use std::pin::Pin;
 
 pub struct RangeProducer<T>
 where
-  T: Num + Copy + Clone + Send + PartialOrd + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Num + Copy + PartialOrd + 'static,
 {
   start: T,
   end: T,
@@ -21,7 +21,7 @@ where
 
 impl<T> RangeProducer<T>
 where
-  T: Num + Copy + Clone + Send + PartialOrd + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Num + Copy + PartialOrd + 'static,
 {
   pub fn new(start: T, end: T, step: T) -> Self {
     Self {
@@ -45,7 +45,7 @@ where
 
 impl<T> Output for RangeProducer<T>
 where
-  T: Num + Copy + Clone + Send + PartialOrd + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Num + Copy + PartialOrd + 'static,
 {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -53,7 +53,7 @@ where
 
 impl<T> Producer for RangeProducer<T>
 where
-  T: Num + Copy + Clone + Send + PartialOrd + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + Num + Copy + PartialOrd + 'static,
 {
   fn produce(&mut self) -> Self::OutputStream {
     if self.start >= self.end || self.step <= T::zero() {

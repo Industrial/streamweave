@@ -11,13 +11,13 @@ use futures::{Stream, StreamExt};
 use std::pin::Pin;
 use tokio::time::{Duration, Instant, timeout};
 
-pub struct TimeoutTransformer<T: Send + 'static + Clone> {
+pub struct TimeoutTransformer<T: std::fmt::Debug + Clone + Send + Sync + 'static> {
   duration: Duration,
   config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Send + 'static + Clone> TimeoutTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> TimeoutTransformer<T> {
   pub fn new(duration: Duration) -> Self {
     Self {
       duration,
@@ -37,23 +37,26 @@ impl<T: Send + 'static + Clone> TimeoutTransformer<T> {
   }
 }
 
-impl<T: Send + 'static + Clone> Input for TimeoutTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Input for TimeoutTransformer<T> {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<T: Send + 'static + Clone> Output for TimeoutTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for TimeoutTransformer<T> {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 #[async_trait]
-impl<T: Send + 'static + Clone> Transformer for TimeoutTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for TimeoutTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let duration = self.duration;
-    Box::pin(
-      input.filter_map(move |item| async move { timeout(duration, async { item }).await.ok() }),
-    )
+    Box::pin(input.then(move |item| async move {
+      match tokio::time::timeout(duration, async move { item }).await {
+        Ok(item) => item,
+        Err(_) => panic!("Stream item timed out"),
+      }
+    }))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {
@@ -69,7 +72,7 @@ impl<T: Send + 'static + Clone> Transformer for TimeoutTransformer<T> {
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -89,7 +92,8 @@ impl<T: Send + 'static + Clone> Transformer for TimeoutTransformer<T> {
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "timeout_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

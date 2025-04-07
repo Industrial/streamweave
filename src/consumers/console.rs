@@ -9,13 +9,16 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct ConsoleConsumer<T> {
+pub struct ConsoleConsumer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
+{
   config: ConsumerConfig<T>,
 }
 
 impl<T> ConsoleConsumer<T>
 where
-  T: Send + Sync + Clone + 'static + std::fmt::Debug + std::fmt::Display,
+  T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
 {
   pub fn new() -> Self {
     Self {
@@ -36,7 +39,7 @@ where
 
 impl<T> Input for ConsoleConsumer<T>
 where
-  T: Send + Sync + Clone + 'static + std::fmt::Debug + std::fmt::Display,
+  T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -45,7 +48,7 @@ where
 #[async_trait]
 impl<T> Consumer for ConsoleConsumer<T>
 where
-  T: Send + Sync + Clone + 'static + std::fmt::Debug + std::fmt::Display,
+  T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
 {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some(value) = stream.next().await {

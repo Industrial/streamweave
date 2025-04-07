@@ -10,13 +10,19 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct BatchTransformer<T: Send + 'static + Clone> {
+pub struct BatchTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   size: usize,
   config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Send + 'static + Clone> BatchTransformer<T> {
+impl<T> BatchTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   pub fn new(size: usize) -> Result<Self, StreamError<T>> {
     if size == 0 {
       return Err(StreamError::new(
@@ -53,38 +59,43 @@ impl<T: Send + 'static + Clone> BatchTransformer<T> {
   }
 }
 
-impl<T: Send + 'static + Clone> Input for BatchTransformer<T> {
+impl<T> Input for BatchTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<T: Send + 'static + Clone> Output for BatchTransformer<T> {
+impl<T> Output for BatchTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   type Output = Vec<T>;
   type OutputStream = Pin<Box<dyn Stream<Item = Vec<T>> + Send>>;
 }
 
 #[async_trait]
-impl<T: Send + 'static + Clone> Transformer for BatchTransformer<T> {
+impl<T> Transformer for BatchTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   fn transform(&mut self, mut input: Self::InputStream) -> Self::OutputStream {
     let size = self.size;
     let mut current_batch: Vec<T> = Vec::with_capacity(size);
 
-    let stream = async_stream::stream! {
-        while let Some(item) = input.next().await {
-            current_batch.push(item);
-
-            if current_batch.len() >= size {
-                yield current_batch.split_off(0);
-            }
+    Box::pin(async_stream::stream! {
+      while let Some(item) = input.next().await {
+        current_batch.push(item);
+        if current_batch.len() == size {
+          yield current_batch;
+          current_batch = Vec::with_capacity(size);
         }
-
-        // Emit any remaining items
-        if !current_batch.is_empty() {
-            yield current_batch;
-        }
-    };
-
-    Box::pin(stream)
+      }
+      if !current_batch.is_empty() {
+        yield current_batch;
+      }
+    })
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {
@@ -100,7 +111,7 @@ impl<T: Send + 'static + Clone> Transformer for BatchTransformer<T> {
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -120,7 +131,8 @@ impl<T: Send + 'static + Clone> Transformer for BatchTransformer<T> {
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "batch_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

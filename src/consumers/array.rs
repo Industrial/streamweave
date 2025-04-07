@@ -9,7 +9,10 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct ArrayConsumer<T, const N: usize> {
+pub struct ArrayConsumer<T, const N: usize>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   array: [Option<T>; N],
   index: usize,
   config: ConsumerConfig<T>,
@@ -17,7 +20,7 @@ pub struct ArrayConsumer<T, const N: usize> {
 
 impl<T, const N: usize> ArrayConsumer<T, N>
 where
-  T: Send + Clone + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   pub fn new() -> Self {
     Self {
@@ -44,7 +47,7 @@ where
 
 impl<T, const N: usize> Input for ArrayConsumer<T, N>
 where
-  T: Send + Clone + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -53,7 +56,7 @@ where
 #[async_trait]
 impl<T, const N: usize> Consumer for ArrayConsumer<T, N>
 where
-  T: Send + Clone + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some(value) = stream.next().await {

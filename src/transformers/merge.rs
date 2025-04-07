@@ -12,7 +12,7 @@ use std::pin::Pin;
 
 pub struct MergeTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   _phantom: std::marker::PhantomData<T>,
   config: TransformerConfig<T>,
@@ -21,7 +21,7 @@ where
 
 impl<T> MergeTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   pub fn new() -> Self {
     Self {
@@ -48,7 +48,7 @@ where
 
 impl<T> Default for MergeTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   fn default() -> Self {
     Self::new()
@@ -57,7 +57,7 @@ where
 
 impl<T> Input for MergeTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -65,7 +65,7 @@ where
 
 impl<T> Output for MergeTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -74,7 +74,7 @@ where
 #[async_trait]
 impl<T> Transformer for MergeTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let mut all_streams = vec![input];
@@ -95,7 +95,7 @@ where
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -115,7 +115,8 @@ where
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "merge_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

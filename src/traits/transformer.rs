@@ -5,12 +5,12 @@ use crate::traits::{input::Input, output::Output};
 use async_trait::async_trait;
 
 #[derive(Debug, Clone)]
-pub struct TransformerConfig<T: Clone> {
+pub struct TransformerConfig<T: std::fmt::Debug + Clone + Send + Sync> {
   pub error_strategy: ErrorStrategy<T>,
   pub name: Option<String>,
 }
 
-impl<T: Clone> Default for TransformerConfig<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> Default for TransformerConfig<T> {
   fn default() -> Self {
     Self {
       error_strategy: ErrorStrategy::Stop,
@@ -19,7 +19,7 @@ impl<T: Clone> Default for TransformerConfig<T> {
   }
 }
 
-impl<T: Clone> TransformerConfig<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync> TransformerConfig<T> {
   pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
     self.error_strategy = strategy;
     self
@@ -42,7 +42,7 @@ impl<T: Clone> TransformerConfig<T> {
 #[async_trait]
 pub trait Transformer: Input + Output
 where
-  Self::Input: Clone,
+  Self::Input: std::fmt::Debug + Clone + Send + Sync,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream;
 
@@ -134,11 +134,11 @@ mod tests {
 
   // Test transformer that doubles the input
   #[derive(Clone)]
-  struct TestTransformer<T: Clone> {
+  struct TestTransformer<T: std::fmt::Debug + Clone + Send + Sync> {
     config: TransformerConfig<T>,
   }
 
-  impl<T: Clone> TestTransformer<T> {
+  impl<T: std::fmt::Debug + Clone + Send + Sync> TestTransformer<T> {
     fn new() -> Self {
       Self {
         config: TransformerConfig::default(),
@@ -146,18 +146,18 @@ mod tests {
     }
   }
 
-  impl<T: Clone + Send + 'static> Input for TestTransformer<T> {
+  impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Input for TestTransformer<T> {
     type Input = T;
     type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
   }
 
-  impl<T: Clone + Send + 'static> Output for TestTransformer<T> {
+  impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for TestTransformer<T> {
     type Output = T;
     type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
   }
 
   #[async_trait]
-  impl<T: Clone + Send + 'static> Transformer for TestTransformer<T> {
+  impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for TestTransformer<T> {
     fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
       Box::pin(input)
     }

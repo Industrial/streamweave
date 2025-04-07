@@ -12,7 +12,7 @@ use std::pin::Pin;
 
 pub struct SkipTransformer<T>
 where
-  T: Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   skip: usize,
   config: TransformerConfig<T>,
@@ -21,7 +21,7 @@ where
 
 impl<T> SkipTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   pub fn new(skip: usize) -> Self {
     Self {
@@ -44,7 +44,7 @@ where
 
 impl<T> Input for SkipTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -52,7 +52,7 @@ where
 
 impl<T> Output for SkipTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -61,7 +61,7 @@ where
 #[async_trait]
 impl<T> Transformer for SkipTransformer<T>
 where
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let skip = self.skip;
@@ -81,7 +81,7 @@ where
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -101,7 +101,8 @@ where
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "skip_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

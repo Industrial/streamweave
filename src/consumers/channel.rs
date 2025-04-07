@@ -11,14 +11,17 @@ use crate::traits::{
   input::Input,
 };
 
-pub struct ChannelConsumer<T> {
+pub struct ChannelConsumer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
   channel: Option<Sender<T>>,
   config: ConsumerConfig<T>,
 }
 
 impl<T> ChannelConsumer<T>
 where
-  T: Send + Sync + Clone + 'static + std::fmt::Debug,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   pub fn new(sender: Sender<T>) -> Self {
     Self {
@@ -40,7 +43,7 @@ where
 
 impl<T> Input for ChannelConsumer<T>
 where
-  T: Send + Sync + Clone + 'static + std::fmt::Debug,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -49,7 +52,7 @@ where
 #[async_trait]
 impl<T> Consumer for ChannelConsumer<T>
 where
-  T: Send + Sync + Clone + 'static + std::fmt::Debug,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   async fn consume(&mut self, input: Self::InputStream) -> () {
     let mut stream = input;

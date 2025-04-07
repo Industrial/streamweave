@@ -13,7 +13,7 @@ use std::pin::Pin;
 pub struct FilterTransformer<F, T>
 where
   F: FnMut(&T) -> bool + Send + Clone + 'static,
-  T: Clone + Send + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   predicate: F,
   _phantom: std::marker::PhantomData<T>,
@@ -23,7 +23,7 @@ where
 impl<F, T> FilterTransformer<F, T>
 where
   F: FnMut(&T) -> bool + Send + Clone + 'static,
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   pub fn new(predicate: F) -> Self {
     Self {
@@ -47,7 +47,7 @@ where
 impl<F, T> Input for FilterTransformer<F, T>
 where
   F: FnMut(&T) -> bool + Send + Clone + 'static,
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -56,7 +56,7 @@ where
 impl<F, T> Output for FilterTransformer<F, T>
 where
   F: FnMut(&T) -> bool + Send + Clone + 'static,
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -66,7 +66,7 @@ where
 impl<F, T> Transformer for FilterTransformer<F, T>
 where
   F: FnMut(&T) -> bool + Send + Clone + 'static,
-  T: Send + 'static + Clone,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let mut predicate = self.predicate.clone();
@@ -89,7 +89,7 @@ where
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -109,7 +109,8 @@ where
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "filter_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }

@@ -7,17 +7,18 @@ use crate::traits::{
   transformer::{Transformer, TransformerConfig},
 };
 use async_trait::async_trait;
-use futures::{Stream, StreamExt};
+use futures::{Stream, StreamExt, stream};
+use std::collections::VecDeque;
 use std::pin::Pin;
 use tokio::time::{Duration, Instant};
 
-pub struct WindowTransformer<T: Send + 'static + Clone> {
+pub struct WindowTransformer<T: std::fmt::Debug + Clone + Send + Sync + 'static> {
   size: usize,
   config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: Send + 'static + Clone> WindowTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> WindowTransformer<T> {
   pub fn new(size: usize) -> Self {
     Self {
       size,
@@ -37,21 +38,46 @@ impl<T: Send + 'static + Clone> WindowTransformer<T> {
   }
 }
 
-impl<T: Send + 'static + Clone> Input for WindowTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Input for WindowTransformer<T> {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<T: Send + 'static + Clone> Output for WindowTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for WindowTransformer<T> {
   type Output = Vec<T>;
   type OutputStream = Pin<Box<dyn Stream<Item = Vec<T>> + Send>>;
 }
 
 #[async_trait]
-impl<T: Send + 'static + Clone> Transformer for WindowTransformer<T> {
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for WindowTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let size = self.size;
-    Box::pin(input.chunks(size))
+    Box::pin(stream::unfold(
+      (input, VecDeque::with_capacity(size), false),
+      move |(mut input, mut window, mut done)| async move {
+        if window.len() < size && !done {
+          if let Some(item) = input.next().await {
+            window.push_back(item);
+          } else {
+            done = true;
+          }
+        }
+
+        if window.len() == size {
+          let result = window.iter().cloned().collect::<Vec<_>>();
+          window.pop_front();
+          Some((result, (input, window, done)))
+        } else if done && !window.is_empty() {
+          let result = window.iter().cloned().collect::<Vec<_>>();
+          window.clear();
+          Some((result, (input, window, done)))
+        } else if done {
+          None
+        } else {
+          Some((Vec::new(), (input, window, done)))
+        }
+      },
+    ))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {
@@ -67,7 +93,7 @@ impl<T: Send + 'static + Clone> Transformer for WindowTransformer<T> {
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -87,7 +113,8 @@ impl<T: Send + 'static + Clone> Transformer for WindowTransformer<T> {
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "window_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }
