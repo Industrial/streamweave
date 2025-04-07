@@ -49,8 +49,8 @@ impl<T: Send + 'static + Clone> Output for InterleaveTransformer<T> {
 #[async_trait]
 impl<T: Send + 'static + Clone> Transformer for InterleaveTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let other = self.other.clone();
-    Box::pin(input.interleave(other))
+    let other = std::mem::replace(&mut self.other, Box::pin(futures::stream::empty()));
+    Box::pin(futures::stream::select(input, other))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

@@ -15,7 +15,8 @@ where
   T: Send + 'static + Clone,
 {
   _phantom: std::marker::PhantomData<T>,
-  config: TransformerConfig<Vec<Pin<Box<dyn Stream<Item = T> + Send>>>>,
+  config: TransformerConfig<T>,
+  streams: Vec<Pin<Box<dyn Stream<Item = T> + Send>>>,
 }
 
 impl<T> MergeTransformer<T>
@@ -26,13 +27,11 @@ where
     Self {
       _phantom: std::marker::PhantomData,
       config: TransformerConfig::default(),
+      streams: Vec::new(),
     }
   }
 
-  pub fn with_error_strategy(
-    mut self,
-    strategy: ErrorStrategy<Vec<Pin<Box<dyn Stream<Item = T> + Send>>>>,
-  ) -> Self {
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
     self.config.error_strategy = strategy;
     self
   }
@@ -40,6 +39,10 @@ where
   pub fn with_name(mut self, name: String) -> Self {
     self.config.name = Some(name);
     self
+  }
+
+  pub fn add_stream(&mut self, stream: Pin<Box<dyn Stream<Item = T> + Send>>) {
+    self.streams.push(stream);
   }
 }
 
@@ -56,8 +59,8 @@ impl<T> Input for MergeTransformer<T>
 where
   T: Send + 'static + Clone,
 {
-  type Input = Vec<Pin<Box<dyn Stream<Item = T> + Send>>>;
-  type InputStream = Pin<Box<dyn Stream<Item = Self::Input> + Send>>;
+  type Input = T;
+  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
 impl<T> Output for MergeTransformer<T>
@@ -74,30 +77,24 @@ where
   T: Send + 'static + Clone,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    Box::pin(input.flat_map(|streams| futures::stream::select_all(streams)))
+    let mut all_streams = vec![input];
+    all_streams.extend(std::mem::take(&mut self.streams));
+    Box::pin(futures::stream::select_all(all_streams))
   }
 
-  fn set_config_impl(
-    &mut self,
-    config: TransformerConfig<Vec<Pin<Box<dyn Stream<Item = T> + Send>>>>,
-  ) {
+  fn set_config_impl(&mut self, config: TransformerConfig<T>) {
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> &TransformerConfig<Vec<Pin<Box<dyn Stream<Item = T> + Send>>>> {
+  fn get_config_impl(&self) -> &TransformerConfig<T> {
     &self.config
   }
 
-  fn get_config_mut_impl(
-    &mut self,
-  ) -> &mut TransformerConfig<Vec<Pin<Box<dyn Stream<Item = T> + Send>>>> {
+  fn get_config_mut_impl(&mut self) -> &mut TransformerConfig<T> {
     &mut self.config
   }
 
-  fn handle_error(
-    &self,
-    error: &StreamError<Vec<Pin<Box<dyn Stream<Item = T> + Send>>>>,
-  ) -> ErrorAction {
+  fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
     match self.config.error_strategy() {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
@@ -106,10 +103,7 @@ where
     }
   }
 
-  fn create_error_context(
-    &self,
-    item: Option<Vec<Pin<Box<dyn Stream<Item = T> + Send>>>>,
-  ) -> ErrorContext<Vec<Pin<Box<dyn Stream<Item = T> + Send>>>> {
+  fn create_error_context(&self, item: Option<T>) -> ErrorContext<T> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,

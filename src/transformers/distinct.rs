@@ -64,19 +64,11 @@ where
   T: Send + 'static + Hash + Eq + Clone,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    Box::pin(
-      input
-        .collect::<Vec<_>>()
-        .map(|items| {
-          let mut seen = HashSet::new();
-          futures::stream::iter(
-            items
-              .into_iter()
-              .filter(move |item| seen.insert(item.clone())),
-          )
-        })
-        .flatten(),
-    )
+    let mut seen = HashSet::new();
+    Box::pin(input.filter(move |item| {
+      let item = item.clone();
+      async move { seen.insert(item) }
+    }))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {
