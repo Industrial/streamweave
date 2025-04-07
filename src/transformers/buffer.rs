@@ -50,7 +50,7 @@ impl<T: Send + 'static + Clone> Output for BufferTransformer<T> {
 impl<T: Send + 'static + Clone> Transformer for BufferTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let capacity = self.capacity;
-    Box::pin(input.buffered(capacity))
+    Box::pin(input.ready_chunks(capacity).flat_map(futures::stream::iter))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {
