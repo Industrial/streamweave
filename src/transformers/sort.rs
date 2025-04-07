@@ -7,7 +7,7 @@ use crate::traits::{
   transformer::{Transformer, TransformerConfig},
 };
 use async_trait::async_trait;
-use futures::{Stream, StreamExt};
+use futures::{FutureExt, Stream, StreamExt};
 use std::pin::Pin;
 
 pub struct SortTransformer<T>
@@ -62,7 +62,7 @@ where
   T: Clone + Send + 'static + Ord,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    Box::pin(input.collect::<Vec<_>>().map(move |mut items| {
+    Box::pin(input.collect::<Vec<_>>().then(move |mut items| async move {
       items.sort();
       futures::stream::iter(items)
     }))

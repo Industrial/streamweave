@@ -7,7 +7,7 @@ use crate::traits::{
   transformer::{Transformer, TransformerConfig},
 };
 use async_trait::async_trait;
-use futures::{Stream, StreamExt};
+use futures::{FutureExt, Stream, StreamExt};
 use std::pin::Pin;
 
 pub struct SplitAtTransformer<T: Send + 'static + Clone> {
@@ -50,7 +50,7 @@ impl<T: Send + 'static + Clone> Output for SplitAtTransformer<T> {
 impl<T: Send + 'static + Clone> Transformer for SplitAtTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let index = self.index;
-    Box::pin(input.collect::<Vec<_>>().map(move |items| {
+    Box::pin(input.collect::<Vec<_>>().then(move |items| async move {
       let (first, second) = items.split_at(index);
       futures::stream::iter(vec![(first.to_vec(), second.to_vec())])
     }))

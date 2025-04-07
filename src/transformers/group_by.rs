@@ -7,7 +7,7 @@ use crate::traits::{
   transformer::{Transformer, TransformerConfig},
 };
 use async_trait::async_trait;
-use futures::{Stream, StreamExt};
+use futures::{FutureExt, Stream, StreamExt};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::pin::Pin;
@@ -79,14 +79,15 @@ where
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let key_fn = &self.key_fn;
-    Box::pin(input.collect::<Vec<_>>().map(move |items| {
+    let stream = input.collect::<Vec<_>>().then(move |items| async move {
       let mut groups = HashMap::new();
       for item in items {
         let key = key_fn(&item);
         groups.entry(key).or_insert_with(Vec::new).push(item);
       }
-      futures::stream::iter(groups.into_iter())
-    }))
+      futures::stream::iter::<Vec<(K, Vec<T>)>>(groups.into_iter().collect())
+    });
+    Box::pin(stream)
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {
