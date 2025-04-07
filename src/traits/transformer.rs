@@ -127,11 +127,13 @@ mod tests {
   #[derive(Debug)]
   struct TestError(String);
 
-  impl fmt::Display for TestError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-      write!(f, "Test error: {}", self.0)
+  impl std::fmt::Display for TestError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      write!(f, "{}", self.0)
     }
   }
+
+  impl std::error::Error for TestError {}
 
   // Test transformer that doubles the input
   #[derive(Clone)]
