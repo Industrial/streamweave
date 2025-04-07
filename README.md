@@ -19,11 +19,11 @@ browser-specific stream primitives.
 - Code-as-configuration — no external DSLs
 - Comprehensive test infrastructure
 - File-based producers and consumers
-- Common transformers (Map, Batch, RateLimit, CircuitBreaker, Retry)
+- Common transformers (Map, Batch, RateLimit, CircuitBreaker, Retry, Filter)
 
 ### 🚧 Planned
 
-- Conditional logic and fan-in/fan-out support
+- Fan-in/fan-out support
 - WASM-specific optimizations and documentation
 - Additional specialized transformers and utilities
 - Reusable pipeline components
@@ -132,20 +132,6 @@ struct ErrorContext {
 
 ### 🚧 Planned Features
 
-#### Conditional Logic
-
-```rust
-if config.enable_filter {
-    graph = graph.transform(FilterTransformer::new(...));
-}
-
-// Or using planned .transform_when():
-graph.transform_when(
-    || config.enable_filter,
-    FilterTransformer::new(...)
-)
-```
-
 #### Fan-Out (Broadcast)
 
 ```rust
@@ -219,7 +205,6 @@ StreamWeave is actively developed. Contributions, feedback, and experimentation 
 very welcome. Current focus areas:
 
 1. Implementing fan-out/fan-in operations
-2. Adding conditional logic support
-3. Creating reusable pipeline components
-4. Adding WASM examples and documentation
-5. Implementing additional specialized transformers and consumers
+2. Creating reusable pipeline components
+3. Adding WASM examples and documentation
+4. Implementing additional specialized transformers and consumers
