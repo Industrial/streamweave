@@ -15,17 +15,19 @@ browser-specific stream primitives.
 - Pure Rust API with zero-cost abstractions
 - Full async/await compatibility via `futures::Stream`
 - Fluent pipeline-style API with type-safe builder pattern
-- Basic error propagation
+- Comprehensive error handling system with multiple strategies
 - Code-as-configuration — no external DSLs
 - Comprehensive test infrastructure
+- File-based producers and consumers
+- Common transformers (Map, Batch, RateLimit, CircuitBreaker, Retry)
 
 ### 🚧 Planned
 
-- Lightweight error handling & routing strategies
-- Optional conditional logic and fan-in/fan-out support
-- WASM compatibility with minimal footprint
-- Common transformers and utilities
+- Conditional logic and fan-in/fan-out support
+- WASM-specific optimizations and documentation
+- Additional specialized transformers and utilities
 - Reusable pipeline components
+- More specialized producers and consumers
 
 ## 📦 Core Concepts
 
@@ -44,26 +46,19 @@ All components can be chained together fluently.
 ### ✅ Currently Possible
 
 ```rust
-// Basic pipeline with custom components
+// Advanced pipeline with error handling and multiple transformers
 let pipeline = PipelineBuilder::new()
-    .producer(producer)
-    .transform(transformer)
-    .consumer(consumer);
-
-pipeline.run().await?;
-```
-
-### 🚧 Planned Features
-
-```rust
-let pipeline = PipelineBuilder::new()
-    .producer(FileProducer::new("input.csv"))
-    .transform(CsvTransformer::new())
-    .transform(FilterTransformer::new(|row| row["active"] == "true"))
-    .transform(MapTransformer::new(|row| row["email"].to_lowercase()))
-    .consumer(FileConsumer::new("output.csv"));
-
-pipeline.run().await?;
+    .producer(FileProducer::new("input.txt"))
+    .transformer(MapTransformer::new(|s: String| {
+        s.parse::<i32>().unwrap_or_default()
+    }))
+    .transformer(BatchTransformer::new(3).unwrap())
+    .transformer(RateLimitTransformer::new(1, Duration::from_secs(1)))
+    .transformer(CircuitBreakerTransformer::new(3, Duration::from_secs(5)))
+    .transformer(RetryTransformer::new(3, Duration::from_millis(100)))
+    .consumer(FileConsumer::new("output.txt"))
+    .run()
+    .await?;
 ```
 
 ## 🧱 API Overview
@@ -73,18 +68,16 @@ pipeline.run().await?;
 ```rust
 PipelineBuilder::new()
     .producer(...)    // Add data source
-    .transform(...)   // Add transformation
+    .transformer(...) // Add transformation
     .consumer(...)    // Add data sink
     .run()           // Execute pipeline
 ```
 
-### 🚧 Planned Features
-
-#### Error Handling
+### ✅ Error Handling
 
 StreamWeave provides two levels of error handling:
 
-1. **Pipeline Level (Default)**
+1. **Pipeline Level**
 ```rust
 // Default behavior: Pipeline stops on first error
 pipeline.run().await?;
@@ -136,6 +129,8 @@ struct ErrorContext {
     stage: PipelineStage,        // Stage where error occurred
 }
 ```
+
+### 🚧 Planned Features
 
 #### Conditional Logic
 
@@ -204,17 +199,6 @@ let (_, consumer) = PipelineBuilder::new()
 assert_eq!(consumer.collected, vec!["1", "2", "3"]);
 ```
 
-### 🚧 Planned Testing Features
-
-```rust
-let test_pipeline = PipelineBuilder::new()
-    .producer(VecProducer::new(vec![1, 2, 3]))
-    .transform(MapTransformer::new(|x| x * 10))
-    .consumer(VecConsumer::new());
-
-assert_eq!(test_pipeline.run().await?, vec![10, 20, 30]);
-```
-
 ## 🌐 WASM Support
 
 🚧 **Planned**: StreamWeave is designed to compile cleanly to WebAssembly (WASM).
@@ -231,11 +215,11 @@ StreamWeave is built on the belief that:
 
 ## 🧠 Contributions Welcome
 
-StreamWeave is early-stage. Contributions, feedback, and experimentation are
+StreamWeave is actively developed. Contributions, feedback, and experimentation are
 very welcome. Current focus areas:
 
-1. Implementing error handling strategies
-2. Adding common transformers (Map, Filter, FlatMap)
-3. Implementing fan-out/fan-in operations
+1. Implementing fan-out/fan-in operations
+2. Adding conditional logic support
+3. Creating reusable pipeline components
 4. Adding WASM examples and documentation
-5. Creating common producers/consumers (File, Vec, etc.)
+5. Implementing additional specialized transformers and consumers
