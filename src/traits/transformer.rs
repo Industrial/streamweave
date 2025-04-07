@@ -84,6 +84,7 @@ where
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      ErrorStrategy::Custom(ref handler) => handler(error),
       _ => ErrorAction::Stop,
     }
   }
@@ -178,54 +179,233 @@ mod tests {
     }
   }
 
-  // #[tokio::test]
-  // async fn test_transformer() {
-  //   let mut transformer = TestTransformer::<i32>::new();
-  //   let input = futures::stream::iter(vec![1, 2, 3]);
-  //   let output = transformer.transform(Box::pin(input));
-  //   let result: Vec<i32> = output.collect().await;
-  //   assert_eq!(result, vec![1, 2, 3]);
-  // }
+  #[tokio::test]
+  async fn test_transformer() {
+    let mut transformer = TestTransformer::<i32>::new();
+    let input = futures::stream::iter(vec![1, 2, 3]);
+    let output = transformer.transform(Box::pin(input));
+    let result: Vec<i32> = output.collect().await;
+    assert_eq!(result, vec![1, 2, 3]);
+  }
 
-  // #[test]
-  // fn test_transformer_config() {
-  //   let mut transformer = TestTransformer::<i32>::new()
-  //     .with_name("test_transformer".to_string())
-  //     .with_config(TransformerConfig::default().with_error_strategy(ErrorStrategy::Skip));
+  #[test]
+  fn test_transformer_config() {
+    let mut transformer = TestTransformer::<i32>::new().with_config(
+      TransformerConfig::default()
+        .with_name("test_transformer".to_string())
+        .with_error_strategy(ErrorStrategy::Skip),
+    );
 
-  //   assert_eq!(
-  //     transformer.config().name(),
-  //     Some("test_transformer".to_string())
-  //   );
-  //   assert!(matches!(
-  //     transformer.config().error_strategy(),
-  //     ErrorStrategy::Skip
-  //   ));
-  // }
+    assert_eq!(
+      transformer.config().name(),
+      Some("test_transformer".to_string())
+    );
+    assert!(matches!(
+      transformer.config().error_strategy(),
+      ErrorStrategy::Skip
+    ));
+  }
 
-  // #[test]
-  // fn test_transformer_error_handling() {
-  //   let mut transformer = TestTransformer::<i32>::new()
-  //     .with_config(TransformerConfig::default().with_error_strategy(ErrorStrategy::Skip));
+  #[test]
+  fn test_transformer_error_handling() {
+    let mut transformer = TestTransformer::<i32>::new()
+      .with_config(TransformerConfig::default().with_error_strategy(ErrorStrategy::Skip));
 
-  //   let error = StreamError {
-  //     source: Box::new(TestError("test error".to_string())),
-  //     context: ErrorContext {
-  //       timestamp: chrono::Utc::now(),
-  //       item: None,
-  //       component_name: transformer.component_info().name,
-  //       component_type: transformer.component_info().type_name,
-  //     },
-  //     component: ComponentInfo {
-  //       name: "test".to_string(),
-  //       type_name: "TestTransformer".to_string(),
-  //     },
-  //     retries: 0,
-  //   };
+    let error = StreamError {
+      source: Box::new(TestError("test error".to_string())),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: transformer.component_info().name,
+        component_type: transformer.component_info().type_name,
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "TestTransformer".to_string(),
+      },
+      retries: 0,
+    };
 
-  //   assert!(matches!(
-  //     transformer.handle_error(&error),
-  //     ErrorAction::Skip
-  //   ));
-  // }
+    assert!(matches!(
+      transformer.handle_error(&error),
+      ErrorAction::Skip
+    ));
+  }
+
+  #[tokio::test]
+  async fn test_empty_input() {
+    let mut transformer = TestTransformer::<i32>::new();
+    let input = futures::stream::iter(Vec::<i32>::new());
+    let output = transformer.transform(Box::pin(input));
+    let result: Vec<i32> = output.collect().await;
+    assert_eq!(result, Vec::<i32>::new());
+  }
+
+  #[test]
+  fn test_different_error_strategies() {
+    let mut transformer = TestTransformer::<i32>::new();
+
+    // Test Stop strategy
+    transformer = transformer
+      .with_config(TransformerConfig::default().with_error_strategy(ErrorStrategy::Stop));
+    let error = StreamError {
+      source: Box::new(TestError("test error".to_string())),
+      context: ErrorContext::default(),
+      component: ComponentInfo::default(),
+      retries: 0,
+    };
+    assert!(matches!(
+      transformer.handle_error(&error),
+      ErrorAction::Stop
+    ));
+
+    // Test Retry strategy
+    transformer = transformer
+      .with_config(TransformerConfig::default().with_error_strategy(ErrorStrategy::Retry(3)));
+    assert!(matches!(
+      transformer.handle_error(&error),
+      ErrorAction::Retry
+    ));
+  }
+
+  #[test]
+  fn test_custom_error_handler() {
+    let mut transformer = TestTransformer::<i32>::new().with_config(
+      TransformerConfig::default()
+        .with_error_strategy(ErrorStrategy::new_custom(|_| ErrorAction::Skip)),
+    );
+
+    let error = StreamError {
+      source: Box::new(TestError("test error".to_string())),
+      context: ErrorContext::default(),
+      component: ComponentInfo::default(),
+      retries: 0,
+    };
+
+    assert!(matches!(
+      transformer.handle_error(&error),
+      ErrorAction::Skip
+    ));
+  }
+
+  #[test]
+  fn test_component_info() {
+    let transformer = TestTransformer::<i32>::new()
+      .with_config(TransformerConfig::default().with_name("test_transformer".to_string()));
+
+    let info = transformer.component_info();
+    assert_eq!(info.name, "test_transformer");
+    assert_eq!(
+      info.type_name,
+      std::any::type_name::<TestTransformer<i32>>()
+    );
+  }
+
+  #[test]
+  fn test_error_context_creation() {
+    let transformer = TestTransformer::<i32>::new()
+      .with_config(TransformerConfig::default().with_name("test_transformer".to_string()));
+
+    let context = transformer.create_error_context(Some(42));
+    assert_eq!(context.component_name, "test_transformer");
+    assert_eq!(
+      context.component_type,
+      std::any::type_name::<TestTransformer<i32>>()
+    );
+    assert_eq!(context.item, Some(42));
+  }
+
+  #[test]
+  fn test_configuration_persistence() {
+    let mut transformer = TestTransformer::<i32>::new().with_config(
+      TransformerConfig::default()
+        .with_name("test_transformer".to_string())
+        .with_error_strategy(ErrorStrategy::Skip),
+    );
+
+    // Verify initial config
+    assert_eq!(
+      transformer.config().name(),
+      Some("test_transformer".to_string())
+    );
+    assert!(matches!(
+      transformer.config().error_strategy(),
+      ErrorStrategy::Skip
+    ));
+
+    // Change config
+    transformer = transformer.with_config(
+      TransformerConfig::default()
+        .with_name("new_name".to_string())
+        .with_error_strategy(ErrorStrategy::Stop),
+    );
+
+    // Verify new config
+    assert_eq!(transformer.config().name(), Some("new_name".to_string()));
+    assert!(matches!(
+      transformer.config().error_strategy(),
+      ErrorStrategy::Stop
+    ));
+  }
+
+  #[test]
+  fn test_multiple_configuration_changes() {
+    let mut transformer = TestTransformer::<i32>::new();
+
+    // First config change
+    transformer = transformer.with_config(
+      TransformerConfig::default()
+        .with_name("first".to_string())
+        .with_error_strategy(ErrorStrategy::Skip),
+    );
+    assert_eq!(transformer.config().name(), Some("first".to_string()));
+    assert!(matches!(
+      transformer.config().error_strategy(),
+      ErrorStrategy::Skip
+    ));
+
+    // Second config change
+    transformer = transformer.with_config(
+      TransformerConfig::default()
+        .with_name("second".to_string())
+        .with_error_strategy(ErrorStrategy::Stop),
+    );
+    assert_eq!(transformer.config().name(), Some("second".to_string()));
+    assert!(matches!(
+      transformer.config().error_strategy(),
+      ErrorStrategy::Stop
+    ));
+  }
+
+  #[test]
+  fn test_thread_local_configuration() {
+    let transformer1 = TestTransformer::<i32>::new().with_config(
+      TransformerConfig::default()
+        .with_name("transformer1".to_string())
+        .with_error_strategy(ErrorStrategy::Skip),
+    );
+
+    let transformer2 = TestTransformer::<i32>::new().with_config(
+      TransformerConfig::default()
+        .with_name("transformer2".to_string())
+        .with_error_strategy(ErrorStrategy::Stop),
+    );
+
+    assert_eq!(
+      transformer1.config().name(),
+      Some("transformer1".to_string())
+    );
+    assert!(matches!(
+      transformer1.config().error_strategy(),
+      ErrorStrategy::Skip
+    ));
+    assert_eq!(
+      transformer2.config().name(),
+      Some("transformer2".to_string())
+    );
+    assert!(matches!(
+      transformer2.config().error_strategy(),
+      ErrorStrategy::Stop
+    ));
+  }
 }

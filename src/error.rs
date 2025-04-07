@@ -128,6 +128,17 @@ pub struct ErrorContext<T: std::fmt::Debug + Clone + Send + Sync> {
   pub component_type: String,
 }
 
+impl<T: std::fmt::Debug + Clone + Send + Sync> Default for ErrorContext<T> {
+  fn default() -> Self {
+    Self {
+      timestamp: chrono::Utc::now(),
+      item: None,
+      component_name: "default".to_string(),
+      component_type: "default".to_string(),
+    }
+  }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum PipelineStage {
   Producer,
@@ -139,6 +150,15 @@ pub enum PipelineStage {
 pub struct ComponentInfo {
   pub name: String,
   pub type_name: String,
+}
+
+impl Default for ComponentInfo {
+  fn default() -> Self {
+    Self {
+      name: "default".to_string(),
+      type_name: "default".to_string(),
+    }
+  }
 }
 
 impl ComponentInfo {
