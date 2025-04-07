@@ -14,7 +14,7 @@ pub struct ReduceTransformer<T, Acc, F>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
   Acc: std::fmt::Debug + Clone + Send + Sync + 'static,
-  F: FnMut(Acc, T) -> Acc + Send + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + Clone + 'static,
 {
   accumulator: Acc,
   reducer: F,
@@ -26,7 +26,7 @@ impl<T, Acc, F> ReduceTransformer<T, Acc, F>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
   Acc: std::fmt::Debug + Clone + Send + Sync + 'static,
-  F: FnMut(Acc, T) -> Acc + Send + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + Clone + 'static,
 {
   pub fn new(initial: Acc, reducer: F) -> Self {
     Self {
@@ -52,7 +52,7 @@ impl<T, Acc, F> Input for ReduceTransformer<T, Acc, F>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
   Acc: std::fmt::Debug + Clone + Send + Sync + 'static,
-  F: FnMut(Acc, T) -> Acc + Send + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + Clone + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -62,7 +62,7 @@ impl<T, Acc, F> Output for ReduceTransformer<T, Acc, F>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
   Acc: std::fmt::Debug + Clone + Send + Sync + 'static,
-  F: FnMut(Acc, T) -> Acc + Send + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + Clone + 'static,
 {
   type Output = Acc;
   type OutputStream = Pin<Box<dyn Stream<Item = Acc> + Send>>;
@@ -73,14 +73,18 @@ impl<T, Acc, F> Transformer for ReduceTransformer<T, Acc, F>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
   Acc: std::fmt::Debug + Clone + Send + Sync + 'static,
-  F: FnMut(Acc, T) -> Acc + Send + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + Clone + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let mut accumulator = self.accumulator.clone();
     let mut reducer = self.reducer.clone();
-    Box::pin(input.map(move |item| {
-      accumulator = reducer(accumulator.clone(), item);
-      accumulator.clone()
+    let initial = self.accumulator.clone();
+    Box::pin(input.scan(initial, move |acc, item| {
+      let mut reducer = reducer.clone();
+      let acc = acc.clone();
+      async move {
+        let result = reducer(acc, item);
+        Some(result)
+      }
     }))
   }
 
