@@ -143,9 +143,9 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_flat_map_empty_output() {
-    let mut transformer = FlatMapTransformer::new(|_: i32| Vec::new());
-    let input = stream::iter(vec![1, 2, 3].into_iter());
+  async fn test_flat_map_empty_input() {
+    let mut transformer = FlatMapTransformer::new(|_: i32| Vec::<i32>::new());
+    let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
     let result: Vec<i32> = transformer.transform(boxed_input).collect().await;

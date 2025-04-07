@@ -1,6 +1,4 @@
-use crate::error::{
-  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
-};
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::traits::{
   consumer::{Consumer, ConsumerConfig},
   input::Input,
@@ -124,7 +122,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_console_consumer_custom_type() {
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     struct CustomType(i32);
 
     impl std::fmt::Display for CustomType {

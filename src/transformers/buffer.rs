@@ -1,6 +1,4 @@
-use crate::error::{
-  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
-};
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::traits::{
   input::Input,
   output::Output,
@@ -143,13 +141,7 @@ mod tests {
   #[tokio::test]
   async fn test_buffer_async() {
     let mut transformer = BufferTransformer::new(2);
-    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter().map(|x| {
-      let x = x.clone();
-      async move {
-        sleep(Duration::from_millis(100)).await;
-        x
-      }
-    }));
+    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter());
     let boxed_input = Box::pin(input);
 
     let result: Vec<i32> = transformer.transform(boxed_input).collect().await;

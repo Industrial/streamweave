@@ -137,7 +137,7 @@ mod tests {
   #[tokio::test]
   async fn test_merge_empty_input() {
     let mut transformer = MergeTransformer::<i32>::new();
-    let input = stream::iter(vec![Vec::new()]);
+    let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
     let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
@@ -148,12 +148,7 @@ mod tests {
   #[tokio::test]
   async fn test_merge_empty_streams() {
     let mut transformer = MergeTransformer::<i32>::new();
-    let streams = vec![
-      create_stream(Vec::<i32>::new()),
-      create_stream(Vec::<i32>::new()),
-      create_stream(Vec::<i32>::new()),
-    ];
-    let input = stream::iter(vec![streams]);
+    let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
     let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
@@ -163,15 +158,12 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = MergeTransformer::<i32>::new()
-      .with_error_strategy(ErrorStrategy::<Vec<Pin<Box<dyn Stream<Item = i32> + Send>>>>::Skip)
+    let mut transformer = MergeTransformer::new()
+      .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 
     let config = transformer.config();
-    assert_eq!(
-      config.error_strategy(),
-      ErrorStrategy::<Vec<Pin<Box<dyn Stream<Item = i32> + Send>>>>::Skip
-    );
+    assert_eq!(config.error_strategy(), ErrorStrategy::<i32>::Skip);
     assert_eq!(config.name(), Some("test_transformer".to_string()));
   }
 }

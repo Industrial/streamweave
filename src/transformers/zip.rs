@@ -144,7 +144,7 @@ mod tests {
 
     let result: Vec<Vec<i32>> = transformer.transform(boxed_input).collect().await;
 
-    assert_eq!(result, Vec::new());
+    assert_eq!(result, Vec::<Vec<i32>>::new());
   }
 
   #[tokio::test]

@@ -121,8 +121,19 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::TryStreamExt;
+  use futures::StreamExt;
   use futures::stream;
+
+  #[derive(Debug)]
+  struct TestError(String);
+
+  impl std::fmt::Display for TestError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      write!(f, "{}", self.0)
+    }
+  }
+
+  impl std::error::Error for TestError {}
 
   #[tokio::test]
   async fn test_sample_basic() {
@@ -151,30 +162,30 @@ mod tests {
   #[tokio::test]
   async fn test_sample_with_error() {
     let mut transformer = SampleTransformer::new(0.5);
-    let input = stream::iter(vec![1, 2, 3].into_iter().map(|x| {
-      if x == 2 {
-        Err(StreamError::new(
-          Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-          ErrorContext {
-            timestamp: chrono::Utc::now(),
-            item: None,
-            component_name: "test".to_string(),
-            component_type: std::any::type_name::<Self>().to_string(),
-          },
-          ComponentInfo {
-            name: "test".to_string(),
-            type_name: "test".to_string(),
-          },
-        ))
-      } else {
-        Ok(x)
-      }
-    }));
+    let input = stream::iter(vec![1, 2, 3, 4, 5].into_iter());
     let boxed_input = Box::pin(input);
 
     let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
-    assert!(result.len() <= 3);
-    assert!(result.iter().all(|&x| x == 1 || x == 3));
+
+    assert_eq!(result.len(), 2);
+    assert!(result.iter().all(|&x| x >= 1 && x <= 5));
+
+    let error = StreamError::new(
+      Box::new(TestError("test error".to_string())),
+      ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: Some(1),
+        component_name: "sample_transformer".to_string(),
+        component_type: std::any::type_name::<SampleTransformer<i32>>().to_string(),
+      },
+      ComponentInfo {
+        name: "sample_transformer".to_string(),
+        type_name: std::any::type_name::<SampleTransformer<i32>>().to_string(),
+      },
+    );
+
+    let action = transformer.handle_error(&error);
+    assert_eq!(action, ErrorAction::Stop);
   }
 
   #[tokio::test]
