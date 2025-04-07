@@ -210,21 +210,7 @@ where
     let transformer_stream = self.transformer_stream.take().unwrap();
     let mut consumer = self.consumer.take().unwrap();
 
-    if let Err(e) = consumer.consume(transformer_stream.into()).await {
-      return Err(PipelineError::new(
-        Box::new(e),
-        ErrorContext {
-          timestamp: Utc::now(),
-          item: None,
-          component_name: "pipeline".to_string(),
-          component_type: std::any::type_name::<Self>().to_string(),
-        },
-        ComponentInfo {
-          name: "pipeline".to_string(),
-          type_name: std::any::type_name::<Self>().to_string(),
-        },
-      ));
-    }
+    consumer.consume(transformer_stream.into()).await;
     Ok(((), consumer))
   }
 }
