@@ -5,7 +5,7 @@ use crate::traits::{
   output::Output,
   producer::{Producer, ProducerConfig},
 };
-use futures::{Stream, stream};
+use futures::{Stream, StreamExt, stream};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use std::ops::Range;
