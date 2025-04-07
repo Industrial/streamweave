@@ -51,7 +51,7 @@ impl<T: Send + 'static + Clone> Transformer for SplitAtTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let index = self.index;
     Box::pin(input.collect::<Vec<_>>().then(move |items| async move {
-      let (first, second) = items.split_at(index.min(items.len()));
+      let (first, second) = items.split_at(index);
       (first.to_vec(), second.to_vec())
     }))
   }

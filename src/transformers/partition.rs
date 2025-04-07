@@ -69,8 +69,8 @@ where
   F: FnMut(&T) -> bool + Send + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let predicate = self.predicate.clone();
-    Box::pin(input.collect::<Vec<_>>().map(move |items| {
+    let predicate = &mut self.predicate;
+    Box::pin(input.collect::<Vec<_>>().then(move |items| async move {
       let mut first = Vec::new();
       let mut second = Vec::new();
       for item in items {

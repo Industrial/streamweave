@@ -51,9 +51,11 @@ impl<T: Send + 'static + Clone> Output for TimeoutTransformer<T> {
 impl<T: Send + 'static + Clone> Transformer for TimeoutTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let duration = self.duration;
-    Box::pin(input.timeout(duration).filter_map(|result| match result {
-      Ok(item) => Some(item),
-      Err(_) => None,
+    Box::pin(input.timeout(duration).filter_map(|result| async move {
+      match result {
+        Ok(item) => Some(item),
+        Err(_) => None,
+      }
     }))
   }
 

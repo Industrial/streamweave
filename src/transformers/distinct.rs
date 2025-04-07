@@ -12,6 +12,8 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::pin::Pin;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 pub struct DistinctTransformer<T>
 where
@@ -65,11 +67,12 @@ where
   T: Send + 'static + Hash + Eq + Clone,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let seen = RefCell::new(HashSet::new());
+    let seen = Arc::new(RwLock::new(HashSet::new()));
     Box::pin(input.filter_map(move |item| {
+      let seen = seen.clone();
       let item = item.clone();
-      let mut seen = seen.borrow_mut();
       async move {
+        let mut seen = seen.write().unwrap();
         if seen.insert(item.clone()) {
           Some(item)
         } else {
