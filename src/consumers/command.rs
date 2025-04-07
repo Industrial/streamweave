@@ -133,4 +133,103 @@ mod tests {
     assert_eq!(config.error_strategy, ErrorStrategy::<&str>::Skip);
     assert_eq!(config.name, "test_consumer");
   }
+
+  #[tokio::test]
+  async fn test_error_handling_during_consumption() {
+    let mut consumer = CommandConsumer::new("echo".to_string(), vec![])
+      .with_error_strategy(ErrorStrategy::<&str>::Skip)
+      .with_name("test_consumer".to_string());
+
+    // Test that Skip strategy allows consumption to continue
+    let action = consumer.handle_error(&StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: Some("test"),
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 0,
+    });
+    assert_eq!(action, ErrorAction::Skip);
+
+    // Test that Stop strategy halts consumption
+    let mut consumer = consumer.with_error_strategy(ErrorStrategy::<&str>::Stop);
+    let action = consumer.handle_error(&StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: Some("test"),
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 0,
+    });
+    assert_eq!(action, ErrorAction::Stop);
+  }
+
+  #[tokio::test]
+  async fn test_component_info() {
+    let consumer: CommandConsumer<String> =
+      CommandConsumer::new("echo".to_string(), vec![]).with_name("test_consumer".to_string());
+
+    let info = consumer.component_info();
+    assert_eq!(info.name, "test_consumer");
+    assert_eq!(
+      info.type_name,
+      "streamweave::consumers::command::CommandConsumer<String>"
+    );
+  }
+
+  #[tokio::test]
+  async fn test_error_context_creation() {
+    let consumer: CommandConsumer<String> =
+      CommandConsumer::new("echo".to_string(), vec![]).with_name("test_consumer".to_string());
+
+    let context = consumer.create_error_context(Some("test".to_string()));
+    assert_eq!(context.component_name, "test_consumer");
+    assert_eq!(
+      context.component_type,
+      "streamweave::consumers::command::CommandConsumer<String>"
+    );
+    assert_eq!(context.item, Some("test".to_string()));
+  }
+
+  #[tokio::test]
+  async fn test_command_with_arguments() {
+    let mut consumer: CommandConsumer<String> =
+      CommandConsumer::new("echo".to_string(), vec!["-n".to_string()]);
+    let input = stream::iter(vec!["hello".to_string(), "world".to_string()]);
+    let boxed_input = Box::pin(input);
+
+    consumer.consume(boxed_input).await;
+  }
+
+  #[tokio::test]
+  async fn test_command_execution_failure() {
+    let mut consumer: CommandConsumer<String> =
+      CommandConsumer::new("nonexistent_command".to_string(), vec![]);
+    let input = stream::iter(vec!["test".to_string()]);
+    let boxed_input = Box::pin(input);
+
+    // Should not panic when command execution fails
+    consumer.consume(boxed_input).await;
+  }
+
+  #[tokio::test]
+  async fn test_command_output_handling() {
+    let mut consumer: CommandConsumer<String> = CommandConsumer::new("echo".to_string(), vec![]);
+    let input = stream::iter(vec!["test output".to_string()]);
+    let boxed_input = Box::pin(input);
+
+    consumer.consume(boxed_input).await;
+  }
 }
