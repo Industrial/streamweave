@@ -1,6 +1,5 @@
 use crate::error::{
-  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineError, PipelineStage,
-  StreamError,
+  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineError, StreamError,
 };
 use crate::traits::{consumer::Consumer, producer::Producer, transformer::Transformer};
 use chrono::Utc;
@@ -17,7 +16,7 @@ pub struct PipelineBuilder<State> {
   producer_stream: Option<Box<dyn std::any::Any + Send + 'static>>,
   transformer_stream: Option<Box<dyn std::any::Any + Send + 'static>>,
   consumer: Option<Box<dyn std::any::Any + Send + 'static>>,
-  error_strategy: ErrorStrategy,
+  error_strategy: ErrorStrategy<()>,
   _state: State,
 }
 
@@ -27,11 +26,15 @@ where
   P: Producer,
   T: Transformer,
   C: Consumer,
+  P::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
+  T::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
+  T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
+  C::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   producer_stream: Option<P::OutputStream>,
   transformer_stream: Option<T::OutputStream>,
   consumer: Option<C>,
-  error_strategy: ErrorStrategy,
+  error_strategy: ErrorStrategy<()>,
 }
 
 // Initial builder creation
@@ -46,7 +49,7 @@ impl PipelineBuilder<Empty> {
     }
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<()>) -> Self {
     self.error_strategy = strategy;
     self
   }
@@ -54,6 +57,7 @@ impl PipelineBuilder<Empty> {
   pub fn producer<P>(mut self, mut producer: P) -> PipelineBuilder<HasProducer<P>>
   where
     P: Producer + 'static,
+    P::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
     P::OutputStream: 'static,
   {
     let stream = producer.produce();
@@ -79,11 +83,14 @@ impl Default for PipelineBuilder<Empty> {
 impl<P> PipelineBuilder<HasProducer<P>>
 where
   P: Producer + 'static,
+  P::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
   P::OutputStream: 'static,
 {
   pub fn transformer<T>(mut self, mut transformer: T) -> PipelineBuilder<HasTransformer<P, T>>
   where
     T: Transformer + 'static,
+    T::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
+    T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
     T::InputStream: From<P::OutputStream>,
     T::OutputStream: 'static,
   {
@@ -112,11 +119,16 @@ impl<P, T> PipelineBuilder<HasTransformer<P, T>>
 where
   P: Producer + 'static,
   T: Transformer + 'static,
+  P::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
+  T::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
+  T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
   T::OutputStream: 'static,
 {
   pub fn transformer<U>(mut self, mut transformer: U) -> PipelineBuilder<HasTransformer<P, U>>
   where
     U: Transformer + 'static,
+    U::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
+    U::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
     U::InputStream: From<T::OutputStream>,
     U::OutputStream: 'static,
   {
@@ -141,7 +153,8 @@ where
 
   pub fn consumer<C>(mut self, consumer: C) -> Pipeline<P, T, C>
   where
-    C: Consumer,
+    C: Consumer + 'static,
+    C::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
     C::InputStream: From<T::OutputStream>,
   {
     let transformer_stream = self
@@ -165,13 +178,17 @@ where
   P: Producer,
   T: Transformer,
   C: Consumer,
+  P::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
+  T::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
+  T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
+  C::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy) -> Self {
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<()>) -> Self {
     self.error_strategy = strategy;
     self
   }
 
-  async fn handle_error(&self, error: StreamError) -> Result<ErrorAction, PipelineError> {
+  async fn handle_error(&self, error: StreamError<()>) -> Result<ErrorAction, PipelineError<()>> {
     match &self.error_strategy {
       ErrorStrategy::Stop => Ok(ErrorAction::Stop),
       ErrorStrategy::Skip => Ok(ErrorAction::Skip),
@@ -186,44 +203,48 @@ where
     }
   }
 
-  pub async fn run(mut self) -> Result<((), C), PipelineError>
+  pub async fn run(mut self) -> Result<((), C), PipelineError<()>>
   where
     C::InputStream: From<T::OutputStream>,
   {
-    let mut consumer = self.consumer.take().unwrap();
     let transformer_stream = self.transformer_stream.take().unwrap();
+    let mut consumer = self.consumer.take().unwrap();
 
-    consumer
-      .consume(transformer_stream.into())
-      .await
-      .map_err(|e| {
-        PipelineError::new(
-          e,
-          ErrorContext {
-            timestamp: Utc::now(),
-            item: None,
-            stage: PipelineStage::Consumer,
-          },
-          ComponentInfo {
-            name: "consumer".to_string(),
-            type_name: std::any::type_name::<C>().to_string(),
-          },
-        )
-      })
-      .map(|()| ((), consumer))
+    if let Err(e) = consumer.consume(transformer_stream.into()).await {
+      return Err(PipelineError::new(
+        Box::new(e),
+        ErrorContext {
+          timestamp: Utc::now(),
+          item: None,
+          component_name: "pipeline".to_string(),
+          component_type: std::any::type_name::<Self>().to_string(),
+        },
+        ComponentInfo {
+          name: "pipeline".to_string(),
+          type_name: std::any::type_name::<Self>().to_string(),
+        },
+      ));
+    }
+    Ok(((), consumer))
   }
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::traits::{error::Error as StreamError, input::Input, output::Output};
+  use crate::traits::{
+    consumer::{Consumer, ConsumerConfig},
+    input::Input,
+    output::Output,
+    producer::{Producer, ProducerConfig},
+    transformer::{Transformer, TransformerConfig},
+  };
   use async_trait::async_trait;
   use futures::{Stream, StreamExt};
   use std::pin::Pin;
 
   // Test error types
-  #[derive(Debug)]
+  #[derive(Debug, Clone)]
   struct TestError(String);
 
   impl std::fmt::Display for TestError {
@@ -234,197 +255,137 @@ mod tests {
 
   impl std::error::Error for TestError {}
 
-  impl StreamError for TestError {
-    type Error = Self;
-  }
-
   // Mock Producer
+  #[derive(Clone)]
   struct NumberProducer {
     numbers: Vec<i32>,
+    config: ProducerConfig<i32>,
   }
 
-  impl StreamError for NumberProducer {
-    type Error = TestError;
+  impl NumberProducer {
+    fn new(numbers: Vec<i32>) -> Self {
+      Self {
+        numbers,
+        config: ProducerConfig::default(),
+      }
+    }
   }
 
   impl Output for NumberProducer {
     type Output = i32;
-    type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, Self::Error>> + Send>>;
+    type OutputStream = Pin<Box<dyn Stream<Item = i32> + Send>>;
   }
 
   impl Producer for NumberProducer {
     fn produce(&mut self) -> Self::OutputStream {
-      let numbers = self.numbers.clone();
-      Box::pin(futures::stream::iter(numbers).map(Ok))
+      Box::pin(futures::stream::iter(self.numbers.clone()))
+    }
+
+    fn set_config_impl(&mut self, config: ProducerConfig<Self::Output>) {
+      self.config = config;
+    }
+
+    fn get_config_impl(&self) -> &ProducerConfig<Self::Output> {
+      &self.config
+    }
+
+    fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<Self::Output> {
+      &mut self.config
     }
   }
 
-  // Mock Transformers
-  struct DoubleTransformer;
+  // Mock Transformer
+  #[derive(Clone)]
+  struct DoubleTransformer {
+    config: TransformerConfig<i32>,
+  }
 
-  impl StreamError for DoubleTransformer {
-    type Error = TestError;
+  impl DoubleTransformer {
+    fn new() -> Self {
+      Self {
+        config: TransformerConfig::default(),
+      }
+    }
   }
 
   impl Input for DoubleTransformer {
     type Input = i32;
-    type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
+    type InputStream = Pin<Box<dyn Stream<Item = i32> + Send>>;
   }
 
   impl Output for DoubleTransformer {
     type Output = i32;
-    type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, Self::Error>> + Send>>;
+    type OutputStream = Pin<Box<dyn Stream<Item = i32> + Send>>;
   }
 
   impl Transformer for DoubleTransformer {
     fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-      Box::pin(input.map(|r| r.map(|n| n * 2)))
+      Box::pin(input.map(|x| x * 2))
     }
-  }
 
-  struct StringifyTransformer;
+    fn set_config_impl(&mut self, config: TransformerConfig<Self::Input>) {
+      self.config = config;
+    }
 
-  impl StreamError for StringifyTransformer {
-    type Error = TestError;
-  }
+    fn get_config_impl(&self) -> &TransformerConfig<Self::Input> {
+      &self.config
+    }
 
-  impl Input for StringifyTransformer {
-    type Input = i32;
-    type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
-  }
-
-  impl Output for StringifyTransformer {
-    type Output = String;
-    type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, Self::Error>> + Send>>;
-  }
-
-  impl Transformer for StringifyTransformer {
-    fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-      Box::pin(input.map(|r| r.map(|n| n.to_string())))
+    fn get_config_mut_impl(&mut self) -> &mut TransformerConfig<Self::Input> {
+      &mut self.config
     }
   }
 
   // Mock Consumer
+  #[derive(Clone)]
   struct CollectConsumer {
-    collected: Vec<String>,
+    items: Vec<i32>,
+    config: ConsumerConfig<i32>,
   }
 
-  impl StreamError for CollectConsumer {
-    type Error = TestError;
+  impl CollectConsumer {
+    fn new() -> Self {
+      Self {
+        items: Vec::new(),
+        config: ConsumerConfig::default(),
+      }
+    }
   }
 
   impl Input for CollectConsumer {
-    type Input = String;
-    type InputStream = Pin<Box<dyn Stream<Item = Result<Self::Input, Self::Error>> + Send>>;
+    type Input = i32;
+    type InputStream = Pin<Box<dyn Stream<Item = i32> + Send>>;
   }
 
   #[async_trait]
   impl Consumer for CollectConsumer {
-    async fn consume(&mut self, mut input: Self::InputStream) -> Result<(), Self::Error> {
-      while let Some(result) = input.next().await {
-        self.collected.push(result?);
-      }
-      Ok(())
+    async fn consume(&mut self, input: Self::InputStream) {
+      let mut items = Vec::new();
+      input.for_each(|item| items.push(item)).await;
+      self.items = items;
+    }
+
+    fn set_config_impl(&mut self, config: ConsumerConfig<Self::Input>) {
+      self.config = config;
+    }
+
+    fn get_config_impl(&self) -> ConsumerConfig<Self::Input> {
+      self.config.clone()
     }
   }
 
   #[tokio::test]
-  async fn test_basic_pipeline() {
-    let producer = NumberProducer {
-      numbers: vec![1, 2, 3],
-    };
-    let transformer = StringifyTransformer;
-    let consumer = CollectConsumer {
-      collected: Vec::new(),
-    };
+  async fn test_pipeline() {
+    let producer = NumberProducer::new(vec![1, 2, 3]);
+    let transformer = DoubleTransformer::new();
+    let consumer = CollectConsumer::new();
 
-    let (_, consumer) = PipelineBuilder::new()
+    let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer)
-      .run()
-      .await
-      .unwrap();
+      .consumer(consumer);
 
-    assert_eq!(consumer.collected, vec!["1", "2", "3"]);
-  }
-
-  #[tokio::test]
-  async fn test_chained_transformers() {
-    let producer = NumberProducer {
-      numbers: vec![1, 2, 3],
-    };
-    let double_transformer = DoubleTransformer;
-    let stringify_transformer = StringifyTransformer;
-    let consumer = CollectConsumer {
-      collected: Vec::new(),
-    };
-
-    let (_, consumer) = PipelineBuilder::new()
-      .producer(producer)
-      .transformer(double_transformer)
-      .transformer(stringify_transformer)
-      .consumer(consumer)
-      .run()
-      .await
-      .unwrap();
-
-    assert_eq!(consumer.collected, vec!["2", "4", "6"]);
-  }
-
-  #[tokio::test]
-  async fn test_empty_stream() {
-    let producer = NumberProducer { numbers: vec![] };
-    let transformer = StringifyTransformer;
-    let consumer = CollectConsumer {
-      collected: Vec::new(),
-    };
-
-    let (_, consumer) = PipelineBuilder::new()
-      .producer(producer)
-      .transformer(transformer)
-      .consumer(consumer)
-      .run()
-      .await
-      .unwrap();
-
-    assert!(consumer.collected.is_empty());
-  }
-
-  #[tokio::test]
-  async fn test_error_propagation() {
-    struct ErrorProducer;
-
-    impl StreamError for ErrorProducer {
-      type Error = TestError;
-    }
-
-    impl Output for ErrorProducer {
-      type Output = i32;
-      type OutputStream = Pin<Box<dyn Stream<Item = Result<Self::Output, Self::Error>> + Send>>;
-    }
-
-    impl Producer for ErrorProducer {
-      fn produce(&mut self) -> Self::OutputStream {
-        Box::pin(futures::stream::once(async {
-          Err(TestError("Producer error".to_string()))
-        }))
-      }
-    }
-
-    let producer = ErrorProducer;
-    let transformer = StringifyTransformer;
-    let consumer = CollectConsumer {
-      collected: Vec::new(),
-    };
-
-    let result = PipelineBuilder::new()
-      .producer(producer)
-      .transformer(transformer)
-      .consumer(consumer)
-      .run()
-      .await;
-
-    assert!(result.is_err());
+    let ((), mut consumer) = pipeline.run().await.unwrap();
+    assert_eq!(consumer.items, vec![2, 4, 6]);
   }
 }

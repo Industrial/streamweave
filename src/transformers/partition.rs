@@ -1,6 +1,4 @@
-use crate::error::{
-  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
-};
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::traits::{
   input::Input,
   output::Output,
@@ -10,20 +8,20 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
-pub struct PartitionTransformer<T, F>
+pub struct PartitionTransformer<F, T>
 where
+  F: Fn(&T) -> bool + Send + Clone + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  F: FnMut(&T) -> bool + Send + 'static,
 {
   predicate: F,
   config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T, F> PartitionTransformer<T, F>
+impl<F, T> PartitionTransformer<F, T>
 where
+  F: Fn(&T) -> bool + Send + Clone + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  F: FnMut(&T) -> bool + Send + 'static,
 {
   pub fn new(predicate: F) -> Self {
     Self {
@@ -44,44 +42,57 @@ where
   }
 }
 
-impl<T, F> Input for PartitionTransformer<T, F>
+impl<F, T> Input for PartitionTransformer<F, T>
 where
+  F: Fn(&T) -> bool + Send + Clone + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  F: FnMut(&T) -> bool + Send + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-impl<T, F> Output for PartitionTransformer<T, F>
+impl<F, T> Output for PartitionTransformer<F, T>
 where
+  F: Fn(&T) -> bool + Send + Clone + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  F: FnMut(&T) -> bool + Send + 'static,
 {
   type Output = (Vec<T>, Vec<T>);
   type OutputStream = Pin<Box<dyn Stream<Item = (Vec<T>, Vec<T>)> + Send>>;
 }
 
 #[async_trait]
-impl<T, F> Transformer for PartitionTransformer<T, F>
+impl<F, T> Transformer for PartitionTransformer<F, T>
 where
+  F: Fn(&T) -> bool + Send + Clone + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  F: FnMut(&T) -> bool + Send + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let predicate = &mut self.predicate;
-    Box::pin(input.collect::<Vec<_>>().then(move |items| async move {
-      let mut first = Vec::new();
-      let mut second = Vec::new();
-      for item in items {
-        if predicate(&item) {
-          first.push(item);
-        } else {
-          second.push(item);
+    let predicate = self.predicate.clone();
+    Box::pin(futures::stream::unfold(
+      (input, predicate),
+      |(mut input, predicate)| async move {
+        let mut matches = Vec::new();
+        let mut non_matches = Vec::new();
+        while let Some(item) = input.next().await {
+          if predicate(&item) {
+            matches.push(item);
+          } else {
+            non_matches.push(item);
+          }
         }
-      }
-      futures::stream::iter(vec![(first, second)])
-    }))
+        if matches.is_empty() && non_matches.is_empty() {
+          None
+        } else {
+          Some((
+            (matches, non_matches),
+            (
+              Box::pin(futures::stream::empty()) as Pin<Box<dyn Stream<Item = T> + Send>>,
+              predicate,
+            ),
+          ))
+        }
+      },
+    ))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {
@@ -109,7 +120,11 @@ where
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      component_name: self.component_info().name,
+      component_name: self
+        .config
+        .name
+        .clone()
+        .unwrap_or_else(|| "partition_transformer".to_string()),
       component_type: std::any::type_name::<Self>().to_string(),
     }
   }
@@ -129,19 +144,17 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::StreamExt;
   use futures::stream;
 
   #[tokio::test]
   async fn test_partition_basic() {
     let mut transformer = PartitionTransformer::new(|x: &i32| x % 2 == 0);
-    let input = stream::iter(vec![1, 2, 3, 4, 5]);
+    let input = stream::iter(vec![1, 2, 3, 4, 5, 6]);
     let boxed_input = Box::pin(input);
 
-    let result: (Vec<i32>, Vec<i32>) = transformer.transform(boxed_input).collect().await;
+    let result: Vec<(Vec<i32>, Vec<i32>)> = transformer.transform(boxed_input).collect().await;
 
-    assert_eq!(result.0, vec![2, 4]);
-    assert_eq!(result.1, vec![1, 3, 5]);
+    assert_eq!(result, vec![(vec![2, 4, 6], vec![1, 3, 5])]);
   }
 
   #[tokio::test]
@@ -150,10 +163,9 @@ mod tests {
     let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
-    let result: (Vec<i32>, Vec<i32>) = transformer.transform(boxed_input).collect().await;
+    let result: Vec<(Vec<i32>, Vec<i32>)> = transformer.transform(boxed_input).collect().await;
 
-    assert_eq!(result.0, Vec::<i32>::new());
-    assert_eq!(result.1, Vec::<i32>::new());
+    assert_eq!(result, Vec::new());
   }
 
   #[tokio::test]
@@ -162,8 +174,8 @@ mod tests {
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 
-    let config = transformer.config();
-    assert_eq!(config.error_strategy(), ErrorStrategy::<i32>::Skip);
-    assert_eq!(config.name(), Some("test_transformer".to_string()));
+    let config = transformer.get_config_impl();
+    assert_eq!(config.error_strategy, ErrorStrategy::<i32>::Skip);
+    assert_eq!(config.name, Some("test_transformer".to_string()));
   }
 }

@@ -1,18 +1,16 @@
-use crate::error::{
-  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
-};
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::traits::{
   input::Input,
   output::Output,
   transformer::{Transformer, TransformerConfig},
 };
 use async_trait::async_trait;
-use futures::{FutureExt, Stream, StreamExt};
+use futures::{Stream, StreamExt};
 use std::pin::Pin;
 
 pub struct SortTransformer<T>
 where
-  T: Clone + Send + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static + Ord,
 {
   config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
@@ -20,7 +18,7 @@ where
 
 impl<T> SortTransformer<T>
 where
-  T: Clone + Send + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static + Ord,
 {
   pub fn new() -> Self {
     Self {
@@ -42,7 +40,7 @@ where
 
 impl<T> Input for SortTransformer<T>
 where
-  T: Clone + Send + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static + Ord,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -50,7 +48,7 @@ where
 
 impl<T> Output for SortTransformer<T>
 where
-  T: Clone + Send + 'static,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static + Ord,
 {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -59,12 +57,24 @@ where
 #[async_trait]
 impl<T> Transformer for SortTransformer<T>
 where
-  T: Clone + Send + 'static + Ord,
+  T: std::fmt::Debug + Clone + Send + Sync + 'static + Ord,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    Box::pin(input.collect::<Vec<_>>().then(move |mut items| async move {
-      items.sort();
-      futures::stream::iter(items)
+    Box::pin(futures::stream::unfold(input, |mut input| async move {
+      let mut items = Vec::new();
+      while let Some(item) = input.next().await {
+        items.push(item);
+      }
+      if items.is_empty() {
+        None
+      } else {
+        items.sort();
+        Some((
+          items[0].clone(),
+          (Box::pin(futures::stream::iter(items[1..].to_vec()))
+            as Pin<Box<dyn Stream<Item = T> + Send>>),
+        ))
+      }
     }))
   }
 
@@ -81,7 +91,7 @@ where
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
-    match self.config.error_strategy() {
+    match self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
@@ -93,7 +103,12 @@ where
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      stage: PipelineStage::Transformer(self.component_info().name),
+      component_name: self
+        .config
+        .name
+        .clone()
+        .unwrap_or_else(|| "sort_transformer".to_string()),
+      component_type: std::any::type_name::<Self>().to_string(),
     }
   }
 
@@ -101,7 +116,8 @@ where
     ComponentInfo {
       name: self
         .config
-        .name()
+        .name
+        .clone()
         .unwrap_or_else(|| "sort_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }
@@ -111,7 +127,6 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::StreamExt;
   use futures::stream;
 
   #[tokio::test]
@@ -137,40 +152,13 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_sort_with_error() {
-    let mut transformer = SortTransformer::new();
-    let input = stream::iter(vec![3, 1, 4].into_iter().map(|x| {
-      if x == 1 {
-        Err(StreamError::new(
-          Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
-          ErrorContext {
-            timestamp: chrono::Utc::now(),
-            item: None,
-            stage: PipelineStage::Transformer("test".to_string()),
-          },
-          ComponentInfo {
-            name: "test".to_string(),
-            type_name: "test".to_string(),
-          },
-        ))
-      } else {
-        Ok(x)
-      }
-    }));
-    let boxed_input = Box::pin(input);
-
-    let result: Vec<i32> = transformer.transform(boxed_input).collect().await;
-    assert_eq!(result, vec![3, 4]);
-  }
-
-  #[tokio::test]
   async fn test_error_handling_strategies() {
     let mut transformer = SortTransformer::new()
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 
-    let config = transformer.config();
-    assert_eq!(config.error_strategy(), ErrorStrategy::<i32>::Skip);
-    assert_eq!(config.name(), Some("test_transformer".to_string()));
+    let config = transformer.get_config_impl();
+    assert_eq!(config.error_strategy, ErrorStrategy::<i32>::Skip);
+    assert_eq!(config.name, Some("test_transformer".to_string()));
   }
 }

@@ -1,22 +1,20 @@
-use crate::error::{
-  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
-};
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::traits::{
   input::Input,
   output::Output,
   transformer::{Transformer, TransformerConfig},
 };
 use async_trait::async_trait;
-use futures::{FutureExt, Stream, StreamExt};
+use futures::{Stream, StreamExt};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::pin::Pin;
 
 pub struct GroupByTransformer<F, T, K>
 where
-  F: Fn(&T) -> K + Send + 'static,
+  F: Fn(&T) -> K + Send + Clone + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  K: Eq + Hash + Send + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   key_fn: F,
   config: TransformerConfig<T>,
@@ -26,9 +24,9 @@ where
 
 impl<F, T, K> GroupByTransformer<F, T, K>
 where
-  F: Fn(&T) -> K + Send + 'static,
+  F: Fn(&T) -> K + Send + Clone + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  K: Eq + Hash + Send + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   pub fn new(key_fn: F) -> Self {
     Self {
@@ -52,9 +50,9 @@ where
 
 impl<F, T, K> Input for GroupByTransformer<F, T, K>
 where
-  F: Fn(&T) -> K + Send + 'static,
+  F: Fn(&T) -> K + Send + Clone + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  K: Eq + Hash + Send + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -62,9 +60,9 @@ where
 
 impl<F, T, K> Output for GroupByTransformer<F, T, K>
 where
-  F: Fn(&T) -> K + Send + 'static,
+  F: Fn(&T) -> K + Send + Clone + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  K: Eq + Hash + Send + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   type Output = (K, Vec<T>);
   type OutputStream = Pin<Box<dyn Stream<Item = (K, Vec<T>)> + Send>>;
@@ -73,21 +71,31 @@ where
 #[async_trait]
 impl<F, T, K> Transformer for GroupByTransformer<F, T, K>
 where
-  F: Fn(&T) -> K + Send + 'static,
+  F: Fn(&T) -> K + Send + Clone + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  K: Eq + Hash + Send + 'static,
+  K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let key_fn = &self.key_fn;
-    let stream = input.collect::<Vec<_>>().then(move |items| async move {
-      let mut groups = HashMap::new();
-      for item in items {
-        let key = key_fn(&item);
-        groups.entry(key).or_insert_with(Vec::new).push(item);
-      }
-      futures::stream::iter(groups.into_iter().collect::<Vec<_>>())
-    });
-    Box::pin(stream)
+    let key_fn = self.key_fn.clone();
+    Box::pin(futures::stream::unfold(
+      (input, key_fn),
+      |(mut input, key_fn)| async move {
+        let mut groups = HashMap::new();
+        while let Some(item) = input.next().await {
+          let key = key_fn(&item);
+          groups.entry(key).or_insert_with(Vec::new).push(item);
+        }
+        if groups.is_empty() {
+          None
+        } else {
+          let mut groups: Vec<_> = groups.into_iter().collect();
+          let (key, items) = groups.remove(0);
+          let next_stream = Box::pin(futures::stream::iter(groups))
+            as Pin<Box<dyn Stream<Item = (K, Vec<T>)> + Send>>;
+          Some(((key, items), (next_stream, key_fn)))
+        }
+      },
+    ))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {
@@ -115,7 +123,11 @@ where
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
-      component_name: self.component_info().name,
+      component_name: self
+        .config
+        .name
+        .clone()
+        .unwrap_or_else(|| "group_by_transformer".to_string()),
       component_type: std::any::type_name::<Self>().to_string(),
     }
   }
@@ -135,21 +147,18 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::StreamExt;
   use futures::stream;
 
   #[tokio::test]
   async fn test_group_by_basic() {
     let mut transformer = GroupByTransformer::new(|x: &i32| x % 2);
-    let input = stream::iter(vec![1, 2, 3, 4, 5]);
+    let input = stream::iter(vec![1, 2, 3, 4, 5, 6]);
     let boxed_input = Box::pin(input);
 
     let mut result: Vec<(i32, Vec<i32>)> = transformer.transform(boxed_input).collect().await;
+    result.sort_by_key(|(k, _)| *k);
 
-    // Sort the results for consistent comparison
-    result.sort_by_key(|&(k, _)| k);
-
-    assert_eq!(result, vec![(0, vec![2, 4]), (1, vec![1, 3, 5]),]);
+    assert_eq!(result, vec![(0, vec![2, 4, 6]), (1, vec![1, 3, 5])]);
   }
 
   #[tokio::test]
@@ -160,7 +169,7 @@ mod tests {
 
     let result: Vec<(i32, Vec<i32>)> = transformer.transform(boxed_input).collect().await;
 
-    assert_eq!(result, Vec::<(i32, Vec<i32>)>::new());
+    assert_eq!(result, Vec::new());
   }
 
   #[tokio::test]
@@ -169,8 +178,8 @@ mod tests {
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 
-    let config = transformer.config();
-    assert_eq!(config.error_strategy(), ErrorStrategy::<i32>::Skip);
-    assert_eq!(config.name(), Some("test_transformer".to_string()));
+    let config = transformer.get_config_impl();
+    assert_eq!(config.error_strategy, ErrorStrategy::<i32>::Skip);
+    assert_eq!(config.name, Some("test_transformer".to_string()));
   }
 }
