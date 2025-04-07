@@ -69,12 +69,18 @@ where
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let max_retries = self.max_retries;
     let backoff = self.backoff;
-    Box::pin(input.retry(move |error| {
-      if error.retries < max_retries {
-        Some(backoff)
-      } else {
-        None
+    Box::pin(input.then(move |item| async move {
+      let mut retries = 0;
+      while retries < max_retries {
+        match item {
+          Ok(item) => return Ok(item),
+          Err(_) => {
+            retries += 1;
+            tokio::time::sleep(backoff).await;
+          }
+        }
       }
+      item
     }))
   }
 

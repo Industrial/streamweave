@@ -62,16 +62,11 @@ where
   T: Clone + Send + 'static + Ord,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    Box::pin(
-      input
-        .collect::<Vec<_>>()
-        .map(|items| {
-          let mut items = items;
-          items.sort();
-          futures::stream::iter(items.into_iter())
-        })
-        .flatten(),
-    )
+    Box::pin(input.collect::<Vec<_>>().then(|items| async move {
+      let mut items = items;
+      items.sort();
+      futures::stream::iter(items.into_iter())
+    }))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

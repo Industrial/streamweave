@@ -69,19 +69,19 @@ where
   F: FnMut(&T) -> bool + Send + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let mut predicate = self.predicate;
-    Box::pin(
-      input
-        .fold((Vec::new(), Vec::new()), move |mut acc, item| async move {
-          if predicate(&item) {
-            acc.0.push(item);
-          } else {
-            acc.1.push(item);
-          }
-          acc
-        })
-        .then(|acc| async move { acc }),
-    )
+    let predicate = self.predicate.clone();
+    Box::pin(input.collect::<Vec<_>>().map(move |items| {
+      let mut first = Vec::new();
+      let mut second = Vec::new();
+      for item in items {
+        if predicate(&item) {
+          first.push(item);
+        } else {
+          second.push(item);
+        }
+      }
+      (first, second)
+    }))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

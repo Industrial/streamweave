@@ -52,7 +52,10 @@ impl<T: Send + 'static + Clone> Output for ThrottleTransformer<T> {
 impl<T: Send + 'static + Clone> Transformer for ThrottleTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let duration = self.duration;
-    Box::pin(input.throttle(duration))
+    Box::pin(input.then(move |item| async move {
+      tokio::time::sleep(duration).await;
+      item
+    }))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

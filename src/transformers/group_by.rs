@@ -78,16 +78,15 @@ where
   K: Eq + Hash + Send + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let key_fn = &self.key_fn;
-    Box::pin(
-      input
-        .fold(HashMap::new(), move |mut groups, item| async move {
-          let key = key_fn(&item);
-          groups.entry(key).or_insert_with(Vec::new).push(item);
-          groups
-        })
-        .then(|groups| async move { futures::stream::iter(groups.into_iter()) }),
-    )
+    let key_fn = self.key_fn.clone();
+    Box::pin(input.collect::<Vec<_>>().map(move |items| {
+      let mut groups = HashMap::new();
+      for item in items {
+        let key = key_fn(&item);
+        groups.entry(key).or_insert_with(Vec::new).push(item);
+      }
+      futures::stream::iter(groups.into_iter())
+    }))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

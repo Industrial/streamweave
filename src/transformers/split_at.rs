@@ -50,16 +50,10 @@ impl<T: Send + 'static + Clone> Output for SplitAtTransformer<T> {
 impl<T: Send + 'static + Clone> Transformer for SplitAtTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let index = self.index;
-    Box::pin(
-      input.fold((Vec::new(), Vec::new()), move |mut acc, item| async move {
-        if acc.0.len() < index {
-          acc.0.push(item);
-        } else {
-          acc.1.push(item);
-        }
-        acc
-      }),
-    )
+    Box::pin(input.collect::<Vec<_>>().then(move |items| async move {
+      let (first, second) = items.split_at(index.min(items.len()));
+      (first.to_vec(), second.to_vec())
+    }))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

@@ -51,7 +51,7 @@ impl<T: Send + 'static + Clone, U: Send + 'static + Clone> Output for ZipTransfo
 #[async_trait]
 impl<T: Send + 'static + Clone, U: Send + 'static + Clone> Transformer for ZipTransformer<T, U> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let other = self.other.clone();
+    let other = std::mem::replace(&mut self.other, Box::pin(futures::stream::empty()));
     Box::pin(input.zip(other))
   }
 

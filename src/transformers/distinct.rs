@@ -66,10 +66,16 @@ where
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let seen = RefCell::new(HashSet::new());
-    Box::pin(input.filter(move |item| {
+    Box::pin(input.filter_map(move |item| {
       let item = item.clone();
       let mut seen = seen.borrow_mut();
-      seen.insert(item)
+      async move {
+        if seen.insert(item.clone()) {
+          Some(item)
+        } else {
+          None
+        }
+      }
     }))
   }
 
