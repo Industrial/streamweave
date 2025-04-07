@@ -11,6 +11,7 @@ use futures::{Stream, StreamExt};
 use std::pin::Pin;
 use std::time::Duration;
 use tokio::time;
+use tokio::time::timeout;
 
 pub struct DebounceTransformer<T>
 where
@@ -67,10 +68,7 @@ where
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let duration = self.duration;
-    Box::pin(input.timeout(duration).filter_map(|result| match result {
-      Ok(item) => Some(item),
-      Err(_) => None,
-    }))
+    Box::pin(input.then(move |item| async move { timeout(duration, async { item }).await.ok() }))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

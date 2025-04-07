@@ -17,7 +17,7 @@ use std::sync::RwLock;
 
 pub struct DistinctTransformer<T>
 where
-  T: Clone + Send + 'static + Hash + Eq,
+  T: Clone + Send + Sync + 'static + Hash + Eq,
 {
   config: TransformerConfig<T>,
   _phantom: std::marker::PhantomData<T>,
@@ -25,7 +25,7 @@ where
 
 impl<T> DistinctTransformer<T>
 where
-  T: Send + 'static + Hash + Eq + Clone,
+  T: Send + Sync + 'static + Hash + Eq + Clone,
 {
   pub fn new() -> Self {
     Self {
@@ -47,7 +47,7 @@ where
 
 impl<T> Input for DistinctTransformer<T>
 where
-  T: Send + 'static + Hash + Eq + Clone,
+  T: Send + Sync + 'static + Hash + Eq + Clone,
 {
   type Input = T;
   type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -55,7 +55,7 @@ where
 
 impl<T> Output for DistinctTransformer<T>
 where
-  T: Send + 'static + Hash + Eq + Clone,
+  T: Send + Sync + 'static + Hash + Eq + Clone,
 {
   type Output = T;
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -64,7 +64,7 @@ where
 #[async_trait]
 impl<T> Transformer for DistinctTransformer<T>
 where
-  T: Send + 'static + Hash + Eq + Clone,
+  T: Send + Sync + 'static + Hash + Eq + Clone,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let seen = Arc::new(RwLock::new(HashSet::new()));

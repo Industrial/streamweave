@@ -52,7 +52,7 @@ impl<T: Send + 'static + Clone> Transformer for SplitAtTransformer<T> {
     let index = self.index;
     Box::pin(input.collect::<Vec<_>>().then(move |items| async move {
       let (first, second) = items.split_at(index);
-      (first.to_vec(), second.to_vec())
+      futures::stream::iter(vec![(first.to_vec(), second.to_vec())])
     }))
   }
 

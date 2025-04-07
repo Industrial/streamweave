@@ -7,6 +7,7 @@ use crate::traits::{
   transformer::{Transformer, TransformerConfig},
 };
 use async_trait::async_trait;
+use futures::TryStreamExt;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 use tokio::time::{Duration, Instant};

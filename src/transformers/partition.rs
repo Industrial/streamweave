@@ -80,7 +80,7 @@ where
           second.push(item);
         }
       }
-      (first, second)
+      futures::stream::iter(vec![(first, second)])
     }))
   }
 
