@@ -49,7 +49,7 @@ impl<T: Send + 'static + Clone> Output for ConcatTransformer<T> {
 #[async_trait]
 impl<T: Send + 'static + Clone> Transformer for ConcatTransformer<T> {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let other = self.other.clone();
+    let other = std::mem::replace(&mut self.other, Box::pin(futures::stream::empty()));
     Box::pin(input.chain(other))
   }
 
