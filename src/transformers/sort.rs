@@ -62,7 +62,7 @@ where
   T: Clone + Send + 'static + Ord,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    Box::pin(input.collect::<Vec<_>>().then(move |mut items| async move {
+    Box::pin(input.collect::<Vec<_>>().map(move |mut items| {
       items.sort();
       futures::stream::iter(items)
     }))

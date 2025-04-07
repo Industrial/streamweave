@@ -75,7 +75,7 @@ where
       async move {
         loop {
           match item {
-            Ok(item) => return Ok(item),
+            Ok(item) => return item,
             Err(e) => {
               if retries >= max_retries {
                 return Err(e);

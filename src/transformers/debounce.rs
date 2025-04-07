@@ -68,7 +68,9 @@ where
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let duration = self.duration;
-    Box::pin(input.then(move |item| async move { timeout(duration, async { item }).await.ok() }))
+    Box::pin(
+      input.filter_map(move |item| async move { timeout(duration, async { item }).await.ok() }),
+    )
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<T>) {

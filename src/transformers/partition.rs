@@ -70,7 +70,7 @@ where
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let predicate = &mut self.predicate;
-    Box::pin(input.collect::<Vec<_>>().then(move |items| async move {
+    Box::pin(input.collect::<Vec<_>>().map(move |items| {
       let mut first = Vec::new();
       let mut second = Vec::new();
       for item in items {

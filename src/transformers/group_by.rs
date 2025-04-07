@@ -79,7 +79,7 @@ where
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let key_fn = &self.key_fn;
-    Box::pin(input.collect::<Vec<_>>().then(move |items| async move {
+    Box::pin(input.collect::<Vec<_>>().map(move |items| {
       let mut groups = HashMap::new();
       for item in items {
         let key = key_fn(&item);
