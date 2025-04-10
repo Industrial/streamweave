@@ -33,6 +33,6 @@ pub mod bracket;
 pub mod guard;
 pub mod scope;
 
-pub use bracket::Bracket;
-pub use guard::Guard;
-pub use scope::Scope;
+pub use bracket::*;
+pub use guard::*;
+pub use scope::*;

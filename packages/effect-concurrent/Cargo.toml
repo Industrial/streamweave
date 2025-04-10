@@ -1,0 +1,21 @@
+[package]
+name = "effect-concurrent"
+version = "0.1.0"
+edition = "2024"
+description = "Concurrent operations for the Effect ecosystem"
+license = "MIT"
+repository = "https://github.com/yourusername/streamweave"
+keywords = ["async", "concurrency", "effect", "functional"]
+categories = ["asynchronous", "concurrency"]
+
+[dependencies]
+effect-core = { path = "../effect-core" }
+effect-resource = { path = "../effect-resource" }
+tokio = { version = "1.0", features = ["full"] }
+futures = "0.3"
+async-trait = "0.1"
+pin-project = "1.0"
+thiserror = "1.0"
+
+[dev-dependencies]
+tokio-test = "0.4"

@@ -5,3 +5,5 @@
 //! applicative, and monad operations.
 
 pub mod stream;
+
+pub use stream::EffectStream;

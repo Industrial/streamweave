@@ -72,5 +72,6 @@ members = [
     "packages/effect-derive",
     "packages/effect-resource",
     "packages/effect-stream",
+    "packages/effect-concurrent",
 ]
 resolver = "2"
