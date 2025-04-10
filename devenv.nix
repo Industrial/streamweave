@@ -62,7 +62,7 @@
       enable = true;
       name = "cargo-test";
       description = "Run cargo tests";
-      entry = "cargo test";
+      entry = "cargo test --workspace";
       pass_filenames = false;
     };
   };
