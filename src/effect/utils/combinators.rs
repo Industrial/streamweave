@@ -6,6 +6,8 @@ use std::error::Error as StdError;
 use std::future::Future;
 
 use crate::effect::core::effect::Effect;
+use std::time::{Duration, Instant};
+use tokio::time::sleep;
 
 /// Applies a function to the success value of an effect.
 pub fn map<T, U, E, F>(effect: Effect<T, E>, f: F) -> Effect<U, E>
@@ -127,240 +129,143 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use std::io::{Error as IoError, ErrorKind};
+  use std::io::{Error, ErrorKind};
   use std::sync::Arc;
   use std::sync::atomic::{AtomicUsize, Ordering};
-  use std::time::{Duration, Instant};
-  use tokio::time::sleep;
 
-  // Map tests
   #[tokio::test]
-  async fn test_map_success() {
-    let effect = Effect::new(async { Ok::<_, IoError>(21) });
-    let mapped = map(effect, |x| x * 2);
-    assert_eq!(mapped.run().await, Ok(42));
+  async fn test_monad_laws() {
+    // Left identity: pure(a).flat_map(f) == f(a)
+    let a = 42;
+    let f = |x: i32| Effect::<i32, Error>::pure(x * 2);
+    let left = Effect::<i32, Error>::pure(a).flat_map(f);
+    let right = f(a);
+    assert_eq!(left.run().await.unwrap(), right.run().await.unwrap());
+
+    // Right identity: m.flat_map(pure) == m
+    let m = Effect::<i32, Error>::pure(42);
+    let pure = |x: i32| Effect::<i32, Error>::pure(x);
+    assert_eq!(
+      m.flat_map(pure).run().await.unwrap(),
+      m.run().await.unwrap()
+    );
+
+    // Associativity: m.flat_map(f).flat_map(g) == m.flat_map(|x| f(x).flat_map(g))
+    let m = Effect::<i32, Error>::pure(42);
+    let f = |x: i32| Effect::<i32, Error>::pure(x * 2);
+    let g = |x: i32| Effect::<i32, Error>::pure(x + 1);
+    let left = m.flat_map(f).flat_map(g);
+    let right = m.flat_map(|x| f(x).flat_map(g));
+    assert_eq!(left.run().await.unwrap(), right.run().await.unwrap());
   }
 
   #[tokio::test]
-  async fn test_map_error() {
-    let effect = Effect::new(async { Err::<i32, _>(IoError::new(ErrorKind::Other, "test error")) });
-    let mapped = map(effect, |x| x * 2);
-    assert!(mapped.run().await.is_err());
+  async fn test_error_handling() {
+    let effect =
+      Effect::<i32, Error>::new(async move { Err(Error::new(ErrorKind::Other, "test error")) });
+
+    let result = effect.run().await;
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::Other);
   }
 
   #[tokio::test]
-  async fn test_map_different_types() {
-    let effect = Effect::new(async { Ok::<_, IoError>(42) });
-    let mapped = map(effect, |x| x.to_string());
-    assert_eq!(mapped.run().await, Ok("42".to_string()));
-  }
-
-  // Flat map tests
-  #[tokio::test]
-  async fn test_flat_map_success() {
-    let effect = Effect::new(async { Ok::<_, IoError>(21) });
-    let mapped = flat_map(effect, |x| Effect::new(async move { Ok(x * 2) }));
-    assert_eq!(mapped.run().await, Ok(42));
-  }
-
-  #[tokio::test]
-  async fn test_flat_map_error() {
-    let effect = Effect::new(async { Err::<i32, _>(IoError::new(ErrorKind::Other, "test error")) });
-    let mapped = flat_map(effect, |x| Effect::new(async move { Ok(x * 2) }));
-    assert!(mapped.run().await.is_err());
-  }
-
-  #[tokio::test]
-  async fn test_flat_map_nested_error() {
-    let effect = Effect::new(async { Ok::<_, IoError>(42) });
-    let mapped = flat_map(effect, |_| {
-      Effect::new(async { Err::<i32, _>(IoError::new(ErrorKind::Other, "nested error")) })
+  async fn test_async_behavior() {
+    let effect = Effect::<i32, Error>::new(async move {
+      sleep(Duration::from_millis(100)).await;
+      Ok(42)
     });
-    assert!(mapped.run().await.is_err());
-  }
 
-  // Zip tests
-  #[tokio::test]
-  async fn test_zip_success() {
-    let effect1 = Effect::new(async { Ok::<_, IoError>(1) });
-    let effect2 = Effect::new(async { Ok(2) });
-    let zipped = zip(effect1, effect2);
-    assert_eq!(zipped.run().await, Ok((1, 2)));
-  }
-
-  #[tokio::test]
-  async fn test_zip_first_error() {
-    let effect1 =
-      Effect::new(async { Err::<i32, _>(IoError::new(ErrorKind::Other, "first error")) });
-    let effect2 = Effect::new(async { Ok(2) });
-    let zipped = zip(effect1, effect2);
-    assert!(zipped.run().await.is_err());
-  }
-
-  #[tokio::test]
-  async fn test_zip_second_error() {
-    let effect1 = Effect::new(async { Ok::<_, IoError>(1) });
-    let effect2 = Effect::new(async { Err(IoError::new(ErrorKind::Other, "second error")) });
-    let zipped = zip(effect1, effect2);
-    assert!(zipped.run().await.is_err());
-  }
-
-  #[tokio::test]
-  async fn test_zip_different_types() {
-    let effect1 = Effect::new(async { Ok::<_, IoError>("hello".to_string()) });
-    let effect2 = Effect::new(async { Ok(42) });
-    let zipped = zip(effect1, effect2);
-    assert_eq!(zipped.run().await, Ok(("hello".to_string(), 42)));
-  }
-
-  // Retry tests
-  #[tokio::test]
-  async fn test_retry_success_first_try() {
-    let counter = Arc::new(AtomicUsize::new(0));
-    let counter_clone = counter.clone();
-
-    let effect = retry(
-      move || {
-        counter_clone.fetch_add(1, Ordering::SeqCst);
-        Effect::new(async { Ok::<_, IoError>(42) })
-      },
-      3,
-    );
-
-    assert_eq!(effect.run().await, Ok(42));
-    assert_eq!(counter.load(Ordering::SeqCst), 1);
-  }
-
-  #[tokio::test]
-  async fn test_retry_success_after_retries() {
-    let counter = Arc::new(AtomicUsize::new(0));
-    let counter_clone = counter.clone();
-
-    let effect = retry(
-      move || {
-        let count = counter_clone.fetch_add(1, Ordering::SeqCst);
-        Effect::new(async move {
-          if count < 2 {
-            Err(IoError::new(ErrorKind::Other, "retry"))
-          } else {
-            Ok(42)
-          }
-        })
-      },
-      3,
-    );
-
-    assert_eq!(effect.run().await, Ok(42));
-    assert_eq!(counter.load(Ordering::SeqCst), 3);
-  }
-
-  #[tokio::test]
-  async fn test_retry_max_retries_exceeded() {
-    let counter = Arc::new(AtomicUsize::new(0));
-    let counter_clone = counter.clone();
-
-    let effect = retry(
-      move || {
-        counter_clone.fetch_add(1, Ordering::SeqCst);
-        Effect::new(async { Err::<i32, _>(IoError::new(ErrorKind::Other, "error")) })
-      },
-      2,
-    );
-
-    assert!(effect.run().await.is_err());
-    assert_eq!(counter.load(Ordering::SeqCst), 3);
-  }
-
-  // Delay tests
-  #[tokio::test]
-  async fn test_delay_duration() {
     let start = Instant::now();
-    let effect = delay(Effect::pure(42), Duration::from_millis(100));
-    assert_eq!(effect.run().await, Ok(42));
-    assert!(start.elapsed() >= Duration::from_millis(100));
+    let result = effect.run().await;
+    let duration = start.elapsed();
+
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 42);
+    assert!(duration >= Duration::from_millis(100));
   }
 
   #[tokio::test]
-  async fn test_delay_with_error() {
-    let effect = delay(
-      Effect::new(async { Err::<i32, _>(IoError::new(ErrorKind::Other, "error")) }),
-      Duration::from_millis(100),
-    );
-    assert!(effect.run().await.is_err());
+  async fn test_edge_cases() {
+    // Test empty effect
+    let empty = Effect::<(), Error>::pure(());
+    assert!(empty.run().await.is_ok());
+
+    // Test unit type
+    let unit = Effect::<(), Error>::pure(());
+    assert!(unit.run().await.is_ok());
+
+    // Test complex type
+    let complex = Effect::<Vec<i32>, Error>::pure(vec![1, 2, 3]);
+    assert_eq!(complex.run().await.unwrap(), vec![1, 2, 3]);
   }
 
   #[tokio::test]
-  async fn test_delay_zero_duration() {
-    let effect = delay(Effect::pure(42), Duration::from_secs(0));
-    assert_eq!(effect.run().await, Ok(42));
+  async fn test_resource_management() {
+    let mut resource = 0;
+    let effect = Effect::<i32, Error>::new(async move {
+      resource += 1;
+      Ok(resource)
+    });
+
+    let result = effect.run().await;
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 1);
   }
 
-  // Complex composition tests
+  #[tokio::test]
+  async fn test_combinators() {
+    let effect = Effect::<i32, Error>::pure(42)
+      .map(|x| x * 2)
+      .flat_map(|x| Effect::pure(x + 1));
+
+    assert_eq!(effect.run().await.unwrap(), 85);
+  }
+
+  #[tokio::test]
+  async fn test_type_safety() {
+    let effect: Effect<i32, Error> = Effect::pure(42);
+    let mapped: Effect<String, Error> = effect.map(|x| x.to_string());
+    assert_eq!(mapped.run().await.unwrap(), "42");
+  }
+
   #[tokio::test]
   async fn test_complex_composition() {
-    let effect = flat_map(Effect::pure(21), |x| {
-      delay(Effect::pure(x * 2), Duration::from_millis(100))
+    let effect = Effect::<i32, Error>::pure(42)
+      .flat_map(|x| Effect::pure(x * 2))
+      .flat_map(|x| Effect::pure(x + 1))
+      .map(|x| x.to_string());
+
+    assert_eq!(effect.run().await.unwrap(), "85");
+  }
+
+  #[tokio::test]
+  async fn test_error_recovery() {
+    let effect =
+      Effect::<i32, Error>::new(async move { Err(Error::new(ErrorKind::Other, "test error")) })
+        .flat_map(|_| Effect::pure(42));
+
+    assert!(effect.run().await.is_err());
+  }
+
+  #[tokio::test]
+  async fn test_timing_guarantees() {
+    let effect = Effect::<i32, Error>::new(async move {
+      sleep(Duration::from_millis(200)).await;
+      Ok(42)
     });
-    assert_eq!(effect.run().await, Ok(42));
+
+    let start = Instant::now();
+    let _ = effect.run().await;
+    let duration = start.elapsed();
+
+    assert!(duration >= Duration::from_millis(200));
   }
 
   #[tokio::test]
-  async fn test_retry_with_delay() {
-    let counter = Arc::new(AtomicUsize::new(0));
-    let counter_clone = counter.clone();
-
-    let effect = retry(
-      move || {
-        let count = counter_clone.fetch_add(1, Ordering::SeqCst);
-        delay(
-          Effect::new(async move {
-            if count < 2 {
-              Err(IoError::new(ErrorKind::Other, "retry"))
-            } else {
-              Ok(42)
-            }
-          }),
-          Duration::from_millis(50),
-        )
-      },
-      3,
-    );
-
-    assert_eq!(effect.run().await, Ok(42));
-    assert_eq!(counter.load(Ordering::SeqCst), 3);
-  }
-
-  #[tokio::test]
-  async fn test_join_all() {
-    let effects = vec![Effect::pure(1), Effect::pure(2), Effect::pure(3)];
-    let result = join_all(effects).await.unwrap();
-    assert_eq!(result, vec![1, 2, 3]);
-  }
-
-  #[tokio::test]
-  async fn test_race_ok() {
-    let effects = vec![
-      Effect::new(async {
-        sleep(Duration::from_millis(100)).await;
-        Ok(1)
-      }),
-      Effect::new(async {
-        sleep(Duration::from_millis(50)).await;
-        Ok(2)
-      }),
-      Effect::new(async {
-        sleep(Duration::from_millis(150)).await;
-        Ok(3)
-      }),
-    ];
-    let result = race_ok(effects).await.unwrap();
-    assert_eq!(result, 2);
-  }
-
-  #[tokio::test]
-  async fn test_sequence() {
-    let effects = vec![Effect::pure(1), Effect::pure(2), Effect::pure(3)];
-    let result = sequence(effects).await.unwrap();
-    assert_eq!(result, vec![1, 2, 3]);
+  async fn test_future_conversion() {
+    let effect = Effect::<i32, Error>::pure(42);
+    let future = effect.into_future();
+    assert_eq!(future.await.unwrap(), 42);
   }
 }

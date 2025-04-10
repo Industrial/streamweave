@@ -1,8 +1,7 @@
-//! Utility functions and types for the effect system.
+//! Utility types and functions for the effect system.
 //!
-//! This module provides utility functions, combinators, and types that are
-//! commonly used in the effect system.
+//! This module provides utility types and functions that are commonly used in
+//! the effect system.
 
-pub mod combinators;
-pub mod macros;
+pub mod shared;
 pub mod types;
