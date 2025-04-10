@@ -3,9 +3,10 @@
 //! This module defines the `Monad` trait and provides implementations for the
 //! `Effect` type, enabling monadic composition and transformation of effects.
 
+use std::collections::HashMap;
+
 use super::applicative::Applicative;
 use super::functor::Functor;
-use std::{cmp::PartialEq, convert::From, fmt::Debug};
 
 /// The function type for bind operations.
 pub type BindFn<T, U> = dyn FnOnce(T) -> U;
@@ -36,13 +37,13 @@ impl<A> Monad<A> for Option<A> {
   type Unit<T> = Option<T>;
   type Bind<T, F> = Option<T>;
 
-  fn unit(a: A) -> Self::Unit<A> {
-    Some(a)
+  fn unit(value: A) -> Self::Unit<A> {
+    Some(value)
   }
 
   fn bind<B, F>(self, f: F) -> Self::Bind<B, F>
   where
-    F: FnOnce(A) -> Self::SelfTrait<B>,
+    F: FnMut(A) -> Self::SelfTrait<B>,
   {
     self.and_then(f)
   }
@@ -54,46 +55,125 @@ impl<A> Monad<A> for Vec<A> {
   type Unit<T> = Vec<T>;
   type Bind<T, F> = Vec<T>;
 
-  fn unit(a: A) -> Self::Unit<A> {
-    vec![a]
+  fn unit(value: A) -> Self::Unit<A> {
+    vec![value]
   }
 
   fn bind<B, F>(self, f: F) -> Self::Bind<B, F>
   where
-    F: FnOnce(A) -> Self::SelfTrait<B>,
+    F: FnMut(A) -> Self::SelfTrait<B>,
   {
     self.into_iter().flat_map(f).collect()
+  }
+}
+
+// Implementation for Result
+impl<A, E> Monad<A> for Result<A, E> {
+  type SelfTrait<T> = Result<T, E>;
+  type Unit<T> = Result<T, E>;
+  type Bind<T, F> = Result<T, E>;
+
+  fn unit(value: A) -> Self::Unit<A> {
+    Ok(value)
+  }
+
+  fn bind<B, F>(self, f: F) -> Self::Bind<B, F>
+  where
+    F: FnMut(A) -> Self::SelfTrait<B>,
+  {
+    self.and_then(f)
+  }
+}
+
+// Implementation for Box
+impl<A> Monad<A> for Box<A> {
+  type SelfTrait<T> = Box<T>;
+  type Unit<T> = Box<T>;
+  type Bind<T, F> = Box<T>;
+
+  fn unit(value: A) -> Self::Unit<A> {
+    Box::new(value)
+  }
+
+  fn bind<B, F>(self, mut f: F) -> Self::Bind<B, F>
+  where
+    F: FnMut(A) -> Self::SelfTrait<B>,
+  {
+    f(*self)
+  }
+}
+
+// Implementation for HashMap (values only)
+impl<K: std::hash::Hash + Eq + std::default::Default + std::clone::Clone, V> Monad<V>
+  for HashMap<K, V>
+{
+  type SelfTrait<T> = HashMap<K, T>;
+  type Unit<T> = HashMap<K, T>;
+  type Bind<T, F> = HashMap<K, T>;
+
+  fn unit(value: V) -> Self::Unit<V> {
+    let mut map = HashMap::new();
+    map.insert(K::default(), value);
+    map
+  }
+
+  fn bind<B, F>(self, mut f: F) -> Self::Bind<B, F>
+  where
+    F: FnMut(V) -> Self::SelfTrait<B>,
+  {
+    self
+      .into_iter()
+      .flat_map(|(k, v)| f(v).into_iter().map(move |(_, b)| (k.clone(), b)))
+      .collect()
   }
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use std::{
-    future::Future,
-    pin::Pin,
-    task::{Context, Poll},
-  };
+  use std::fmt::Debug;
 
   // Define a simple monad for testing
   #[derive(Debug, PartialEq, Clone)]
   struct TestMonad<T>(T);
 
-  impl<T: Debug + PartialEq + Send + Sync + 'static> TestMonad<T> {
+  impl<T> TestMonad<T> {
     fn new(value: T) -> Self {
       TestMonad(value)
     }
 
-    // Helper method to create a monad with a specific type
-    fn of<U>(value: U) -> TestMonad<U>
-    where
-      U: Debug + PartialEq + Send + Sync + 'static,
-    {
+    fn of<U>(value: U) -> TestMonad<U> {
       TestMonad(value)
     }
   }
 
-  impl<T: Debug + PartialEq + Send + Sync + 'static> Monad<T> for TestMonad<T> {
+  impl<T> Functor<T> for TestMonad<T> {
+    type HigherSelf<U> = TestMonad<U>;
+
+    fn map<U, F>(self, mut f: F) -> Self::HigherSelf<U>
+    where
+      F: FnMut(T) -> U,
+    {
+      TestMonad(f(self.0))
+    }
+  }
+
+  impl<T> Applicative<T> for TestMonad<T> {
+    fn pure(a: T) -> Self {
+      TestMonad(a)
+    }
+
+    fn ap<B, F>(self, f: TestMonad<F>) -> TestMonad<B>
+    where
+      F: FnOnce(T) -> B,
+    {
+      let TestMonad(func) = f;
+      let TestMonad(value) = self;
+      TestMonad(func(value))
+    }
+  }
+
+  impl<T> Monad<T> for TestMonad<T> {
     type SelfTrait<U> = TestMonad<U>;
     type Unit<U> = TestMonad<U>;
     type Bind<U, F> = TestMonad<U>;
@@ -106,7 +186,8 @@ mod tests {
     where
       F: FnOnce(T) -> Self::SelfTrait<U>,
     {
-      TestMonad(f(self.0))
+      let TestMonad(u) = f(self.0);
+      TestMonad(u)
     }
   }
 

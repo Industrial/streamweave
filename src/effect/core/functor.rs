@@ -9,6 +9,9 @@ use std::collections::HashMap;
 /// Marker trait for types that can be mapped over.
 pub trait Mappable {}
 
+// Implement Mappable for all types
+impl<T> Mappable for T {}
+
 /// The Functor trait defines the basic operations for functor types.
 pub trait Functor<A> {
   /// The type constructor for the functor.
@@ -19,9 +22,6 @@ pub trait Functor<A> {
   where
     F: FnMut(A) -> B;
 }
-
-// Implement Mappable for Option
-impl<A> Mappable for Option<A> {}
 
 // Implementation for Option
 impl<A> Functor<A> for Option<A> {
@@ -35,9 +35,6 @@ impl<A> Functor<A> for Option<A> {
   }
 }
 
-// Implement Mappable for Vec
-impl<A> Mappable for Vec<A> {}
-
 // Implementation for Vec
 impl<A> Functor<A> for Vec<A> {
   type HigherSelf<T> = Vec<T>;
@@ -49,9 +46,6 @@ impl<A> Functor<A> for Vec<A> {
     self.into_iter().map(f).collect()
   }
 }
-
-// Implement Mappable for Result
-impl<A, E> Mappable for Result<A, E> {}
 
 // Implementation for Result
 impl<A, E> Functor<A> for Result<A, E> {
@@ -65,9 +59,6 @@ impl<A, E> Functor<A> for Result<A, E> {
   }
 }
 
-// Implement Mappable for Box
-impl<A> Mappable for Box<A> {}
-
 // Implementation for Box
 impl<A> Functor<A> for Box<A> {
   type HigherSelf<T> = Box<T>;
@@ -79,9 +70,6 @@ impl<A> Functor<A> for Box<A> {
     Box::new(f(*self))
   }
 }
-
-// Implement Mappable for HashMap
-impl<K, V> Mappable for HashMap<K, V> {}
 
 // Implementation for HashMap (values only)
 impl<K: std::hash::Hash + Eq, V> Functor<V> for HashMap<K, V> {
@@ -101,9 +89,6 @@ pub enum Either<L, R> {
   Left(L),
   Right(R),
 }
-
-// Implement Mappable for Either
-impl<L, R> Mappable for Either<L, R> {}
 
 // Implementation for Either
 impl<A, R> Functor<A> for Either<A, R> {
