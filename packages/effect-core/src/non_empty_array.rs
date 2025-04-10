@@ -1,6 +1,7 @@
 use crate::functor::Functor;
 use crate::monad::Monad;
 use std::fmt::Debug;
+use std::iter::FromIterator;
 
 /// A type that represents an array that is guaranteed to have at least one element.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,18 +35,14 @@ impl<T> NonEmptyArray<T> {
   }
 
   /// Creates a new NonEmptyArray from an iterator if it's not empty.
-  pub fn from_iter<I>(mut iter: I) -> Option<Self>
+  pub fn try_from_iter<I>(mut iter: I) -> Option<Self>
   where
     I: Iterator<Item = T>,
   {
-    if let Some(head) = iter.next() {
-      Some(Self {
-        head,
-        tail: iter.collect(),
-      })
-    } else {
-      None
-    }
+    iter.next().map(|head| Self {
+      head,
+      tail: iter.collect(),
+    })
   }
 
   /// Returns the first element of the array.
@@ -102,6 +99,19 @@ impl<T> NonEmptyArray<T> {
       acc = f(acc, item);
     }
     acc
+  }
+}
+
+impl<T> FromIterator<T> for NonEmptyArray<T> {
+  fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+    let mut iter = iter.into_iter();
+    let head = iter
+      .next()
+      .expect("NonEmptyArray::from_iter called with empty iterator");
+    Self {
+      head,
+      tail: iter.collect(),
+    }
   }
 }
 
@@ -178,7 +188,7 @@ mod tests {
   #[test]
   fn test_from_iter() {
     let iter = vec![1, 2, 3].into_iter();
-    let array = NonEmptyArray::from_iter(iter).unwrap();
+    let array = NonEmptyArray::try_from_iter(iter).unwrap();
     assert_eq!(array.head(), &1);
     assert_eq!(array.tail(), &[2, 3]);
     assert_eq!(array.len(), 3);
@@ -186,7 +196,7 @@ mod tests {
     assert!(!array.is_single());
 
     let empty_iter: std::iter::Empty<i32> = std::iter::empty();
-    assert!(NonEmptyArray::from_iter(empty_iter).is_none());
+    assert!(NonEmptyArray::try_from_iter(empty_iter).is_none());
   }
 
   #[test]
