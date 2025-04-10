@@ -7,7 +7,7 @@ use std::error::Error as StdError;
 use thiserror::Error;
 
 /// A unified error type for both stream operations and custom errors
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Debug, Clone, PartialEq)]
 pub enum EffectError<E> {
   #[error("Stream processing error: {0}")]
   Processing(String),
