@@ -78,7 +78,7 @@ where
     Effect::new(async move { Ok(T::from(value)) })
   }
 
-  fn map<F, U>(self, f: F) -> Self
+  fn map<F, U>(mut self, f: F) -> Self
   where
     F: FnOnce(Self::Inner) -> U + Send + Sync + 'static,
     U: Debug + PartialEq + Send + Sync + 'static,
@@ -90,7 +90,7 @@ where
     })
   }
 
-  fn flat_map<F, U>(self, f: F) -> Self
+  fn flat_map<F, U>(mut self, f: F) -> Self
   where
     F: FnOnce(Self::Inner) -> Self + Send + Sync + 'static,
   {
