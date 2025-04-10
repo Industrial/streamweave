@@ -97,16 +97,3 @@ pub fn derive_mappable(input: TokenStream) -> TokenStream {
 
   TokenStream::from(expanded)
 }
-
-#[proc_macro_derive(Bindable)]
-pub fn derive_bindable(input: TokenStream) -> TokenStream {
-  let input = parse_macro_input!(input as DeriveInput);
-  let name = &input.ident;
-  let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-
-  let expanded = quote! {
-    impl #impl_generics effect_core::monad::Bindable<T> for #name #ty_generics #where_clause {}
-  };
-
-  TokenStream::from(expanded)
-}

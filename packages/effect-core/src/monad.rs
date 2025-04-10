@@ -9,10 +9,6 @@ use std::hash::Hash;
 /// The function type for bind operations.
 pub type BindFn<T, U> = dyn FnOnce(T) -> U;
 
-/// Identity trait for monadic types
-pub trait Id<T> {}
-impl<T> Id<T> for T {}
-
 /// The Monad trait represents a type that can sequence computations.
 pub trait Monad<T> {
   /// The higher-kinded type that results from sequencing computations
@@ -28,17 +24,6 @@ pub trait Monad<T> {
   where
     F: FnMut(T) -> Self::HigherSelf<B> + Send + Sync + 'static,
     B: Send + Sync + 'static;
-}
-
-/// A trait for types that can sequence computations
-pub trait Bindable<T>: Monad<T> {}
-
-// Implement Bindable for all types that implement Monad
-impl<T, M> Bindable<T> for M
-where
-  M: Monad<T>,
-  T: Send + Sync + 'static,
-{
 }
 
 // Implementation for Option

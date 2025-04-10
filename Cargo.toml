@@ -67,4 +67,10 @@ name = "02_advanced_pipeline"
 path = "examples/02_advanced_pipeline/main.rs"
 
 [workspace]
-members = ["packages/effect-core", "packages/effect-derive", "packages/effect-resource"]
+members = [
+    "packages/effect-core",
+    "packages/effect-derive",
+    "packages/effect-resource",
+    "packages/effect-stream",
+]
+resolver = "2"
