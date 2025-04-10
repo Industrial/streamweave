@@ -3,22 +3,26 @@
 //! This module defines the `Monad` trait and provides implementations for the
 //! `Effect` type, enabling monadic composition and transformation of effects.
 
+use std::{cmp::PartialEq, convert::From, fmt::Debug};
+
 /// The Monad trait defines the basic operations for monadic types.
 pub trait Monad {
   /// The inner type of the monad.
-  type Inner;
+  type Inner: Debug + PartialEq + Send + Sync + 'static;
 
   /// Creates a new monad from a value.
   fn pure<T>(value: T) -> Self
   where
     Self: Sized,
-    T: Send + Sync + 'static;
+    T: Debug + PartialEq + Send + Sync + 'static,
+    Self::Inner: From<T>;
 
   /// Transforms the inner value of the monad.
   fn map<F, U>(self, f: F) -> Self
   where
     F: FnOnce(Self::Inner) -> U + Send + Sync + 'static,
-    U: Send + Sync + 'static,
+    U: Debug + PartialEq + Send + Sync + 'static,
+    Self::Inner: From<U>,
     Self: Sized;
 
   /// Composes two monads, applying a function to the inner value.

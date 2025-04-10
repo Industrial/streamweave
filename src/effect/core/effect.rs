@@ -79,26 +79,28 @@ where
 
 impl<T, E> Monad for Effect<T, E>
 where
-  T: Send + Sync + 'static,
-  E: StdError + Send + Sync + 'static,
+  T: Debug + PartialEq + Send + Sync + 'static,
+  E: Debug + PartialEq + Send + Sync + 'static,
 {
   type Inner = T;
 
   fn pure<A>(value: A) -> Self
   where
-    A: Send + Sync + 'static,
+    A: Debug + PartialEq + Send + Sync + 'static,
+    T: From<A>,
   {
-    Effect::new(async move { Ok(value) })
+    Effect::new(async move { Ok(T::from(value)) })
   }
 
   fn map<F, U>(self, f: F) -> Self
   where
     F: FnOnce(Self::Inner) -> U + Send + Sync + 'static,
-    U: Send + Sync + 'static,
+    U: Debug + PartialEq + Send + Sync + 'static,
+    T: From<U>,
   {
     Effect::new(async move {
       let value = self.run().await?;
-      Ok(f(value))
+      Ok(T::from(f(value)))
     })
   }
 
