@@ -7,8 +7,8 @@ use std::error::Error as StdError;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
-use crate::effect::core::effect::Effect;
 use crate::effect::utils::shared::Shared;
+use effect_core::effect::Effect;
 
 /// Context for handling effects.
 pub struct HandlerContext<T, E: StdError + Send + Sync + 'static> {

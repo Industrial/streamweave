@@ -9,7 +9,7 @@ use std::future::Future;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::effect::core::effect::Effect;
+use effect_core::effect::Effect;
 
 /// A scope for managing resources.
 pub struct ResourceScope<E: StdError + Send + Sync + 'static> {

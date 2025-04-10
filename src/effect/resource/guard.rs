@@ -8,7 +8,7 @@ use std::error::Error as StdError;
 use std::future::Future;
 use std::ops::{Deref, DerefMut};
 
-use crate::effect::core::effect::Effect;
+use effect_core::effect::Effect;
 
 /// A guard for a resource that ensures it is properly released.
 pub struct ResourceGuard<T, E: StdError + Send + Sync + 'static> {

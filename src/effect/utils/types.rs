@@ -7,7 +7,7 @@ use std::error::Error as StdError;
 use std::future::Future;
 use std::pin::Pin;
 
-use crate::effect::core::effect::Effect;
+use effect_core::effect::Effect;
 
 /// A type that represents a deferred effect.
 pub struct Deferred<T, E: StdError + Send + Sync + 'static, F> {

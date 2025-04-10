@@ -2,6 +2,8 @@
 //!
 //! This module provides macros for working with effects.
 
+use effect_core::effect::Effect;
+
 /// Creates a new effect from a value.
 #[macro_export]
 macro_rules! effect {

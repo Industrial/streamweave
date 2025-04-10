@@ -9,8 +9,8 @@ use std::future::Future;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::effect::core::effect::Effect;
-use crate::effect::core::monad::Monad;
+use effect_core::effect::Effect;
+use effect_core::monad::Monad;
 
 /// A token that can be used to cancel an effect.
 #[derive(Clone)]

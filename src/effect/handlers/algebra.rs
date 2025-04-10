@@ -7,8 +7,8 @@ use std::any::Any;
 use std::error::Error as StdError;
 use std::future::Future;
 
-use crate::effect::core::effect::Effect;
 use crate::effect::handlers::handler::{EffectHandler, HandlerContext};
+use effect_core::effect::Effect;
 
 /// A trait for effect operations.
 pub trait Operation: Any + Send + Sync {

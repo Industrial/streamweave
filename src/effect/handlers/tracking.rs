@@ -9,8 +9,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Instant;
 
-use crate::effect::core::effect::Effect;
 use crate::effect::handlers::handler::{EffectHandler, HandlerContext};
+use effect_core::effect::Effect;
 
 /// Context for tracking effects.
 pub struct TrackingContext {

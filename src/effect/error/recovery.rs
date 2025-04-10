@@ -4,7 +4,7 @@
 //! effect system. It includes the `Recover` and `RecoverWith` traits, which
 //! define how to recover from errors in effect computations.
 
-use crate::effect::core::effect::Effect;
+use effect_core::effect::Effect;
 use std::error::Error as StdError;
 
 /// A trait for recovering from errors in effect computations.

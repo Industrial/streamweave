@@ -6,8 +6,8 @@
 use std::error::Error as StdError;
 use std::future::Future;
 
-use crate::effect::core::effect::Effect;
-use crate::effect::core::monad::Monad;
+use effect_core::effect::Effect;
+use effect_core::monad::Monad;
 
 /// Executes a sequence of effects in parallel.
 pub fn parallel<T, E, I>(effects: I) -> Effect<Vec<T>, E>

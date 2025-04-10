@@ -6,7 +6,7 @@
 use std::error::Error as StdError;
 use std::future::Future;
 
-use crate::effect::core::effect::Effect;
+use effect_core::effect::Effect;
 
 /// The strategy to use when an effect fails.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

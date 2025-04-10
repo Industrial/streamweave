@@ -5,7 +5,7 @@
 use std::error::Error as StdError;
 use std::future::Future;
 
-use crate::effect::core::effect::Effect;
+use effect_core::effect::Effect;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 

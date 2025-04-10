@@ -7,7 +7,7 @@
 use std::error::Error as StdError;
 use std::future::Future;
 
-use crate::effect::core::effect::Effect;
+use effect_core::effect::Effect;
 
 /// A trait for the bracket pattern in resource management.
 pub trait Bracket {
