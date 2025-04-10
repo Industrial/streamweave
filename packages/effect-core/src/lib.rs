@@ -6,5 +6,4 @@
 pub mod applicative;
 pub mod effect;
 pub mod functor;
-pub mod future;
 pub mod monad;
