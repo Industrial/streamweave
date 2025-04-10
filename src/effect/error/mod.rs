@@ -5,4 +5,5 @@
 //! various error recovery strategies.
 
 pub mod either;
+pub mod error;
 pub mod recovery;

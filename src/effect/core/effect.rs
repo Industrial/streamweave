@@ -118,14 +118,14 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use std::io::{self, Error as IoError, ErrorKind};
+  use crate::effect::error::error::{EffectError, ErrorKind};
   use std::time::Duration;
   use tokio::time::sleep;
 
   // Basic functionality tests
   #[tokio::test]
   async fn test_effect_pure() {
-    let effect: Effect<i32, IoError> = Effect::pure(42);
+    let effect: Effect<i32, EffectError> = Effect::pure(42);
     let result = effect.run().await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 42);
@@ -133,7 +133,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_effect_map() {
-    let effect: Effect<i32, IoError> = Effect::pure(42).map(|x| x * 2);
+    let effect: Effect<i32, EffectError> = Effect::pure(42).map(|x| x * 2);
     let result = effect.run().await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 84);
@@ -141,7 +141,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_effect_flat_map() {
-    let effect: Effect<i32, IoError> = Effect::pure(42).flat_map(|x| Effect::pure(x * 2));
+    let effect: Effect<i32, EffectError> = Effect::pure(42).flat_map(|x| Effect::pure(x * 2));
     let result = effect.run().await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 84);
@@ -150,43 +150,43 @@ mod tests {
   // Error handling tests
   #[tokio::test]
   async fn test_effect_error() {
-    let effect: Effect<i32, IoError> =
-      Effect::new(async { Err(IoError::new(ErrorKind::Other, "test error")) });
+    let effect: Effect<i32, EffectError> =
+      Effect::new(async { Err(EffectError::new(ErrorKind::Other, "test error")) });
     let result = effect.run().await;
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::Other);
-    assert_eq!(err.to_string(), "test error");
+    assert_eq!(err.kind(), &ErrorKind::Other);
+    assert_eq!(err.message(), "test error");
   }
 
   #[tokio::test]
   async fn test_effect_error_propagation() {
-    let effect: Effect<i32, IoError> =
-      Effect::new(async { Err(IoError::new(ErrorKind::Other, "test error")) }).map(|x| x * 2);
+    let effect: Effect<i32, EffectError> =
+      Effect::new(async { Err(EffectError::new(ErrorKind::Other, "test error")) }).map(|x| x * 2);
     let result = effect.run().await;
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::Other);
-    assert_eq!(err.to_string(), "test error");
+    assert_eq!(err.kind(), &ErrorKind::Other);
+    assert_eq!(err.message(), "test error");
   }
 
   #[tokio::test]
   async fn test_effect_error_flat_map() {
-    let effect: Effect<i32, IoError> =
-      Effect::new(async { Err(IoError::new(ErrorKind::Other, "test error")) })
+    let effect: Effect<i32, EffectError> =
+      Effect::new(async { Err(EffectError::new(ErrorKind::Other, "test error")) })
         .flat_map(|x| Effect::pure::<i32>(x * 2));
     let result = effect.run().await;
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::Other);
-    assert_eq!(err.to_string(), "test error");
+    assert_eq!(err.kind(), &ErrorKind::Other);
+    assert_eq!(err.message(), "test error");
   }
 
   // Async behavior tests
   #[tokio::test]
   async fn test_effect_async_delay() {
     let start = std::time::Instant::now();
-    let effect: Effect<i32, IoError> = Effect::new(async {
+    let effect: Effect<i32, EffectError> = Effect::new(async {
       sleep(Duration::from_millis(100)).await;
       Ok(42)
     });
@@ -198,11 +198,11 @@ mod tests {
 
   #[tokio::test]
   async fn test_effect_concurrent() {
-    let effect1: Effect<i32, IoError> = Effect::new(async {
+    let effect1: Effect<i32, EffectError> = Effect::new(async {
       sleep(Duration::from_millis(100)).await;
       Ok(1)
     });
-    let effect2: Effect<i32, IoError> = Effect::new(async {
+    let effect2: Effect<i32, EffectError> = Effect::new(async {
       sleep(Duration::from_millis(100)).await;
       Ok(2)
     });
@@ -218,7 +218,7 @@ mod tests {
   // Edge cases tests
   #[tokio::test]
   async fn test_effect_unit_type() {
-    let effect: Effect<(), IoError> = Effect::pure(());
+    let effect: Effect<(), EffectError> = Effect::pure(());
     let result = effect.run().await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), ());
@@ -226,7 +226,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_effect_complex_type() {
-    let effect: Effect<i32, IoError> =
+    let effect: Effect<i32, EffectError> =
       Effect::pure(vec![1, 2, 3]).map(|v| v.into_iter().sum::<i32>());
     let result = effect.run().await;
     assert!(result.is_ok());
@@ -237,7 +237,7 @@ mod tests {
   #[tokio::test]
   async fn test_effect_resource_cleanup() {
     let mut cleanup_called = false;
-    let effect: Effect<i32, IoError> = Effect::new(async move {
+    let effect: Effect<i32, EffectError> = Effect::new(async move {
       let _guard = scopeguard::guard((), |_| cleanup_called = true);
       Ok(42)
     });
@@ -251,7 +251,7 @@ mod tests {
   // Combinator tests
   #[tokio::test]
   async fn test_effect_sequence() {
-    let effects: Vec<Effect<i32, IoError>> =
+    let effects: Vec<Effect<i32, EffectError>> =
       vec![Effect::pure(1), Effect::pure(2), Effect::pure(3)];
 
     let result = effects.into_iter().fold(Effect::pure(0), |acc, e| {
@@ -268,20 +268,20 @@ mod tests {
   async fn test_effect_send_sync() {
     fn assert_send_sync<T: Send + Sync>(_: T) {}
 
-    let effect: Effect<i32, IoError> = Effect::pure(42);
+    let effect: Effect<i32, EffectError> = Effect::pure(42);
     assert_send_sync(effect);
   }
 
   #[tokio::test]
   async fn test_effect_static() {
-    let effect: Effect<i32, IoError> = Effect::pure(42);
-    let _: Effect<i32, IoError> = Effect::new(async { Ok(42) });
+    let effect: Effect<i32, EffectError> = Effect::pure(42);
+    let _: Effect<i32, EffectError> = Effect::new(async { Ok(42) });
   }
 
   // Complex composition tests
   #[tokio::test]
   async fn test_effect_complex_composition() {
-    let effect: Effect<String, IoError> = Effect::pure(1)
+    let effect: Effect<String, EffectError> = Effect::pure(1)
       .flat_map(|x| Effect::pure::<i32>(x + 1))
       .map(|x| x * 2)
       .flat_map(|x| Effect::pure::<i32>(x + 1))
@@ -295,8 +295,8 @@ mod tests {
   // Error recovery tests
   #[tokio::test]
   async fn test_effect_error_recovery() {
-    let effect: Effect<i32, IoError> =
-      Effect::new(async { Err(IoError::new(ErrorKind::Other, "test error")) })
+    let effect: Effect<i32, EffectError> =
+      Effect::new(async { Err(EffectError::new(ErrorKind::Other, "test error")) })
         .flat_map(|_| Effect::pure::<i32>(42))
         .map(|x| x * 2);
 
