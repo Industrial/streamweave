@@ -12,7 +12,7 @@ use effect_core::effect::Effect;
 /// A trait for the bracket pattern in resource management.
 pub trait Bracket {
   /// The type of the resource.
-  type Resource;
+  type Resource: Clone + Send + Sync + 'static;
   /// The type of the error that can occur.
   type Error: StdError + Send + Sync + 'static;
 
@@ -25,7 +25,7 @@ pub trait Bracket {
   {
     Effect::new(async move {
       let resource = acquire().run().await?;
-      let result = use_resource(resource).run().await;
+      let result = use_resource(resource.clone()).run().await;
       release(resource).run().await?;
       result
     })
@@ -34,7 +34,7 @@ pub trait Bracket {
 
 impl<T, E> Bracket for Effect<T, E>
 where
-  T: Send + Sync + 'static,
+  T: Clone + Send + Sync + 'static,
   E: StdError + Send + Sync + 'static,
 {
   type Resource = T;
@@ -45,60 +45,67 @@ where
 mod tests {
   use super::*;
   use std::io::{Error as IoError, ErrorKind};
+  use std::sync::atomic::{AtomicBool, Ordering};
+  use std::sync::Arc;
 
   #[tokio::test]
   async fn test_bracket() {
-    let mut acquired = false;
-    let mut released = false;
+    let acquired = Arc::new(AtomicBool::new(false));
+    let released = Arc::new(AtomicBool::new(false));
+    let acquired_clone = Arc::clone(&acquired);
+    let released_clone = Arc::clone(&released);
 
-    let effect = Effect::<(), IoError>::bracket(
-      || {
-        acquired = true;
+    let mut effect = Effect::<(), IoError>::bracket(
+      move || {
+        acquired_clone.store(true, Ordering::SeqCst);
         Effect::pure(())
       },
       |_| Effect::pure(()),
-      |_| {
-        released = true;
+      move |_| {
+        released_clone.store(true, Ordering::SeqCst);
         Effect::pure(())
       },
     );
 
     effect.run().await.unwrap();
-    assert!(acquired);
-    assert!(released);
+    assert!(acquired.load(Ordering::SeqCst));
+    assert!(released.load(Ordering::SeqCst));
   }
 
   #[tokio::test]
   async fn test_bracket_with_error() {
-    let mut acquired = false;
-    let mut released = false;
+    let acquired = Arc::new(AtomicBool::new(false));
+    let released = Arc::new(AtomicBool::new(false));
+    let acquired_clone = Arc::clone(&acquired);
+    let released_clone = Arc::clone(&released);
 
-    let effect = Effect::<(), IoError>::bracket(
-      || {
-        acquired = true;
+    let mut effect = Effect::<(), IoError>::bracket(
+      move || {
+        acquired_clone.store(true, Ordering::SeqCst);
         Effect::pure(())
       },
       |_| Effect::new(async move { Err(IoError::new(ErrorKind::Other, "test error")) }),
-      |_| {
-        released = true;
+      move |_| {
+        released_clone.store(true, Ordering::SeqCst);
         Effect::pure(())
       },
     );
 
     assert!(effect.run().await.is_err());
-    assert!(acquired);
-    assert!(released);
+    assert!(acquired.load(Ordering::SeqCst));
+    assert!(released.load(Ordering::SeqCst));
   }
 
   #[tokio::test]
   async fn test_bracket_acquire_error() {
-    let mut released = false;
+    let released = Arc::new(AtomicBool::new(false));
+    let released_clone = Arc::clone(&released);
 
-    let effect = Effect::<(), IoError>::bracket(
+    let mut effect = Effect::<(), IoError>::bracket(
       || Effect::new(async { Err(IoError::new(ErrorKind::Other, "acquire error")) }),
       |_| Effect::pure(()),
-      |_| {
-        released = true;
+      move |_| {
+        released_clone.store(true, Ordering::SeqCst);
         Effect::pure(())
       },
     );
@@ -106,16 +113,20 @@ mod tests {
     let result = effect.run().await;
     assert!(result.is_err());
     assert_eq!(result.unwrap_err().to_string(), "acquire error");
-    assert!(!released, "Release should not be called if acquire fails");
+    assert!(
+      !released.load(Ordering::SeqCst),
+      "Release should not be called if acquire fails"
+    );
   }
 
   #[tokio::test]
   async fn test_bracket_release_error() {
-    let mut acquired = false;
+    let acquired = Arc::new(AtomicBool::new(false));
+    let acquired_clone = Arc::clone(&acquired);
 
-    let effect = Effect::<(), IoError>::bracket(
-      || {
-        acquired = true;
+    let mut effect = Effect::<(), IoError>::bracket(
+      move || {
+        acquired_clone.store(true, Ordering::SeqCst);
         Effect::pure(())
       },
       |_| Effect::pure(()),
@@ -124,7 +135,7 @@ mod tests {
 
     let result = effect.run().await;
     assert!(result.is_err());
-    assert!(acquired);
+    assert!(acquired.load(Ordering::SeqCst));
     assert_eq!(result.unwrap_err().to_string(), "release error");
   }
 }

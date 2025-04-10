@@ -1,0 +1,16 @@
+[package]
+name = "effect-resource"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "Resource management utilities for the effect system"
+
+[dependencies]
+effect-core = { path = "../effect-core" }
+effect-derive = { path = "../effect-derive" }
+tokio = { version = "1.0", features = ["full"] }
+futures = "0.3"
+thiserror = "1.0"
+
+[dev-dependencies]
+tokio-test = "0.4"
