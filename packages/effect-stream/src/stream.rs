@@ -373,3 +373,183 @@ where
     stream_guard.values.pop().map(Ok)
   }
 }
+
+mod tests {
+  use super::*;
+  use futures::StreamExt;
+  use tokio::test;
+
+  #[test]
+  async fn test_new() {
+    let stream = EffectStream::<i32, String>::new();
+    assert!(!stream.is_closed().await);
+    assert_eq!(stream.next().await, Ok(None));
+  }
+
+  #[test]
+  async fn test_from_iter() {
+    let stream = EffectStream::from_iter(vec![1, 2, 3]);
+    assert_eq!(stream.next().await, Ok(Some(3)));
+    assert_eq!(stream.next().await, Ok(Some(2)));
+    assert_eq!(stream.next().await, Ok(Some(1)));
+    assert_eq!(stream.next().await, Ok(None));
+  }
+
+  #[test]
+  async fn test_from_stream() {
+    let input = futures::stream::iter(vec![Ok(1), Ok(2), Ok(3)]);
+    let stream = EffectStream::from_stream(input);
+    assert_eq!(stream.next().await, Ok(Some(3)));
+    assert_eq!(stream.next().await, Ok(Some(2)));
+    assert_eq!(stream.next().await, Ok(Some(1)));
+    assert_eq!(stream.next().await, Ok(None));
+  }
+
+  #[test]
+  async fn test_push_and_next() {
+    let stream = EffectStream::new();
+    assert!(stream.push(1).await.is_ok());
+    assert!(stream.push(2).await.is_ok());
+    assert_eq!(stream.next().await, Ok(Some(2)));
+    assert_eq!(stream.next().await, Ok(Some(1)));
+    assert_eq!(stream.next().await, Ok(None));
+  }
+
+  #[test]
+  async fn test_close() {
+    let stream = EffectStream::new();
+    assert!(stream.push(1).await.is_ok());
+    assert!(stream.close().await.is_ok());
+    assert!(stream.is_closed().await);
+    assert!(stream.push(2).await.is_err());
+    assert_eq!(stream.next().await, Ok(Some(1)));
+    assert_eq!(stream.next().await, Ok(None));
+  }
+
+  #[test]
+  async fn test_set_error() {
+    let stream = EffectStream::new();
+    assert!(stream.push(1).await.is_ok());
+    assert!(stream
+      .set_error(EffectError::processing("test error"))
+      .await
+      .is_ok());
+    assert!(stream.push(2).await.is_err());
+    assert_eq!(
+      stream.next().await,
+      Err(EffectError::processing("test error"))
+    );
+  }
+
+  #[test]
+  async fn test_map() {
+    let stream = EffectStream::from_iter(vec![1, 2, 3]);
+    let mapped = stream.map(|x| x * 2);
+    assert_eq!(mapped.next().await, Ok(Some(6)));
+    assert_eq!(mapped.next().await, Ok(Some(4)));
+    assert_eq!(mapped.next().await, Ok(Some(2)));
+    assert_eq!(mapped.next().await, Ok(None));
+  }
+
+  #[test]
+  async fn test_map_with_error() {
+    let stream = EffectStream::from_iter(vec![1, 2, 3]);
+    let stream = stream.map(|x| if x == 2 { panic!("test error") } else { x * 2 });
+    assert_eq!(stream.next().await, Ok(Some(6)));
+    assert!(stream.next().await.is_err());
+  }
+
+  #[test]
+  async fn test_bind() {
+    let stream = EffectStream::from_iter(vec![1, 2, 3]);
+    let bound = stream.bind(|x| EffectStream::from_iter(vec![x, x * 2]));
+    assert_eq!(bound.next().await, Ok(Some(6)));
+    assert_eq!(bound.next().await, Ok(Some(3)));
+    assert_eq!(bound.next().await, Ok(Some(4)));
+    assert_eq!(bound.next().await, Ok(Some(2)));
+    assert_eq!(bound.next().await, Ok(Some(2)));
+    assert_eq!(bound.next().await, Ok(Some(1)));
+    assert_eq!(bound.next().await, Ok(None));
+  }
+
+  #[test]
+  async fn test_bind_with_error() {
+    let stream = EffectStream::from_iter(vec![1, 2, 3]);
+    let bound = stream.bind(|x| {
+      if x == 2 {
+        EffectStream::from_iter(vec![Ok(4), Err(EffectError::processing("test error"))])
+      } else {
+        EffectStream::from_iter(vec![Ok(x * 2)])
+      }
+    });
+    assert_eq!(bound.next().await, Ok(Some(6)));
+    assert_eq!(bound.next().await, Ok(Some(4)));
+    assert_eq!(
+      bound.next().await,
+      Err(EffectError::processing("test error"))
+    );
+  }
+
+  #[test]
+  async fn test_pure() {
+    let stream = EffectStream::pure(42);
+    assert_eq!(stream.next().await, Ok(Some(42)));
+    assert_eq!(stream.next().await, Ok(None));
+  }
+
+  #[test]
+  async fn test_clone() {
+    let stream = EffectStream::from_iter(vec![1, 2, 3]);
+    let clone = stream.clone();
+    assert_eq!(stream.next().await, Ok(Some(3)));
+    assert_eq!(clone.next().await, Ok(Some(3)));
+    assert_eq!(stream.next().await, Ok(Some(2)));
+    assert_eq!(clone.next().await, Ok(Some(2)));
+  }
+
+  #[test]
+  async fn test_stream_trait() {
+    let stream = EffectStream::from_iter(vec![1, 2, 3]);
+    let mut stream = Box::pin(stream);
+    assert_eq!(stream.next().await, Some(Ok(3)));
+    assert_eq!(stream.next().await, Some(Ok(2)));
+    assert_eq!(stream.next().await, Some(Ok(1)));
+    assert_eq!(stream.next().await, None);
+  }
+
+  #[test]
+  async fn test_concurrent_access() {
+    let stream = EffectStream::new();
+    let stream_clone = stream.clone();
+
+    tokio::spawn(async move {
+      assert!(stream_clone.push(1).await.is_ok());
+      assert!(stream_clone.push(2).await.is_ok());
+    });
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    assert_eq!(stream.next().await, Ok(Some(2)));
+    assert_eq!(stream.next().await, Ok(Some(1)));
+  }
+
+  #[test]
+  async fn test_error_propagation() {
+    let stream = EffectStream::new();
+    let stream_clone = stream.clone();
+
+    tokio::spawn(async move {
+      assert!(stream_clone.push(1).await.is_ok());
+      assert!(stream_clone
+        .set_error(EffectError::processing("test error"))
+        .await
+        .is_ok());
+    });
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    assert_eq!(stream.next().await, Ok(Some(1)));
+    assert_eq!(
+      stream.next().await,
+      Err(EffectError::processing("test error"))
+    );
+  }
+}
