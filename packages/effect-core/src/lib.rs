@@ -8,3 +8,7 @@ pub mod effect;
 pub mod either;
 pub mod functor;
 pub mod monad;
+pub mod non_empty_array;
+pub mod non_empty_string;
+pub mod option;
+pub mod result;
