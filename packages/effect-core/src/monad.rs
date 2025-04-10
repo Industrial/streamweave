@@ -4,6 +4,7 @@
 //! `Effect` type, enabling monadic composition and transformation of effects.
 
 use std::collections::HashMap;
+use std::fmt::Debug;
 
 use super::applicative::Applicative;
 use super::functor::Functor;
@@ -15,113 +16,118 @@ pub type BindFn<T, U> = dyn FnOnce(T) -> U;
 pub trait Id<T> {}
 impl<T> Id<T> for T {}
 
-/// Monad trait for monadic types
-pub trait Monad<A>: Functor<A> + Applicative<A> {
-  /// The type itself, used for self-referential types
-  type SelfTrait<U>: Monad<U> + Id<Self::SelfTrait<U>>;
-  /// The type constructor for unit
-  type Unit<U>: Monad<U> + Id<Self::Unit<U>>;
-  /// The type constructor for bind
-  type Bind<U, F>: Monad<U> + Id<Self::Bind<U, F>>;
+/// The Monad trait represents a type that can sequence computations.
+pub trait Monad<T> {
+  /// The higher-kinded type that results from sequencing computations
+  type HigherSelf<U: Send + Sync + 'static>;
 
-  /// Unit operation
-  fn unit(a: A) -> Self::Unit<A>;
-
-  /// Bind operation
-  fn bind<B, MB: Id<Self::SelfTrait<B>>, F>(self, f: F) -> Self::Bind<B, F>
+  /// Lifts a value into the monadic context
+  fn pure(value: T) -> Self::HigherSelf<T>
   where
-    F: FnOnce(A) -> MB;
+    T: Send + Sync + 'static;
+
+  /// Sequences computations within the monadic context
+  fn bind<B, F>(self, f: F) -> Self::HigherSelf<B>
+  where
+    F: FnMut(T) -> Self::HigherSelf<B> + Send + Sync + 'static,
+    B: Send + Sync + 'static;
+}
+
+/// A trait for types that can sequence computations
+pub trait Bindable<T>: Monad<T> {}
+
+// Implement Bindable for all types that implement Monad
+impl<T, M> Bindable<T> for M
+where
+  M: Monad<T>,
+  T: Send + Sync + 'static,
+{
 }
 
 // Implementation for Option
-impl<A> Monad<A> for Option<A> {
-  type SelfTrait<U> = Option<U>;
-  type Unit<U> = Option<U>;
-  type Bind<U, F> = Option<U>;
+impl<A: Send + Sync + 'static> Monad<A> for Option<A> {
+  type HigherSelf<U: Send + Sync + 'static> = Option<U>;
 
-  fn unit(a: A) -> Self::Unit<A> {
+  fn pure(a: A) -> Self::HigherSelf<A> {
     Some(a)
   }
 
-  fn bind<B, MB: Id<Option<B>>, F>(self, f: F) -> Self::Bind<B, F>
+  fn bind<B, F>(self, mut f: F) -> Self::HigherSelf<B>
   where
-    F: FnOnce(A) -> Option<B>,
+    F: FnMut(A) -> Self::HigherSelf<B> + Send + Sync + 'static,
+    B: Send + Sync + 'static,
   {
-    self.and_then(f)
+    self.and_then(|a| f(a))
   }
 }
 
 // Implementation for Vec
-impl<A> Monad<A> for Vec<A> {
-  type SelfTrait<U> = Vec<U>;
-  type Unit<U> = Vec<U>;
-  type Bind<U, F> = Vec<U>;
+impl<A: Send + Sync + 'static> Monad<A> for Vec<A> {
+  type HigherSelf<U: Send + Sync + 'static> = Vec<U>;
 
-  fn unit(a: A) -> Self::Unit<A> {
+  fn pure(a: A) -> Self::HigherSelf<A> {
     vec![a]
   }
 
-  fn bind<B, MB: Id<Vec<B>>, F>(self, f: F) -> Self::Bind<B, F>
+  fn bind<B, F>(self, mut f: F) -> Self::HigherSelf<B>
   where
-    F: FnMut(A) -> Vec<B>,
+    F: FnMut(A) -> Self::HigherSelf<B> + Send + Sync + 'static,
+    B: Send + Sync + 'static,
   {
-    self.into_iter().flat_map(f).collect()
+    self.into_iter().flat_map(|a| f(a)).collect()
   }
 }
 
 // Implementation for Result
-impl<A, E> Monad<A> for Result<A, E> {
-  type SelfTrait<U> = Result<U, E>;
-  type Unit<U> = Result<U, E>;
-  type Bind<U, F> = Result<U, E>;
+impl<A: Send + Sync + 'static, E> Monad<A> for Result<A, E> {
+  type HigherSelf<U: Send + Sync + 'static> = Result<U, E>;
 
-  fn unit(a: A) -> Self::Unit<A> {
+  fn pure(a: A) -> Self::HigherSelf<A> {
     Ok(a)
   }
 
-  fn bind<B, MB: Id<Result<B, E>>, F>(self, f: F) -> Self::Bind<B, F>
+  fn bind<B, F>(self, mut f: F) -> Self::HigherSelf<B>
   where
-    F: FnOnce(A) -> Result<B, E>,
+    F: FnMut(A) -> Self::HigherSelf<B> + Send + Sync + 'static,
+    B: Send + Sync + 'static,
   {
-    self.and_then(f)
+    self.and_then(|a| f(a))
   }
 }
 
 // Implementation for Box
-impl<A> Monad<A> for Box<A> {
-  type SelfTrait<U> = Box<U>;
-  type Unit<U> = Box<U>;
-  type Bind<U, F> = Box<U>;
+impl<A: Send + Sync + 'static> Monad<A> for Box<A> {
+  type HigherSelf<U: Send + Sync + 'static> = Box<U>;
 
-  fn unit(a: A) -> Self::Unit<A> {
+  fn pure(a: A) -> Self::HigherSelf<A> {
     Box::new(a)
   }
 
-  fn bind<B, MB: Id<Box<B>>, F>(self, f: F) -> Self::Bind<B, F>
+  fn bind<B, F>(self, mut f: F) -> Self::HigherSelf<B>
   where
-    F: FnOnce(A) -> Box<B>,
+    F: FnMut(A) -> Self::HigherSelf<B> + Send + Sync + 'static,
+    B: Send + Sync + 'static,
   {
     f(*self)
   }
 }
 
 // Implementation for HashMap (values only)
-impl<K: std::hash::Hash + Eq + std::default::Default + std::clone::Clone, V> Monad<V>
-  for HashMap<K, V>
+impl<K: std::hash::Hash + Eq + std::default::Default + std::clone::Clone, V: Send + Sync + 'static>
+  Monad<V> for HashMap<K, V>
 {
-  type SelfTrait<U> = HashMap<K, U>;
-  type Unit<U> = HashMap<K, U>;
-  type Bind<U, F> = HashMap<K, U>;
+  type HigherSelf<U: Send + Sync + 'static> = HashMap<K, U>;
 
-  fn unit(value: V) -> Self::Unit<V> {
+  fn pure(value: V) -> Self::HigherSelf<V> {
     let mut map = HashMap::new();
     map.insert(K::default(), value);
     map
   }
 
-  fn bind<B, MB: Id<HashMap<K, B>>, F>(self, mut f: F) -> Self::Bind<B, F>
+  fn bind<B, F>(self, mut f: F) -> Self::HigherSelf<B>
   where
-    F: FnMut(V) -> HashMap<K, B>,
+    F: FnMut(V) -> Self::HigherSelf<B> + Send + Sync + 'static,
+    B: Send + Sync + 'static,
   {
     self
       .into_iter()
@@ -133,7 +139,6 @@ impl<K: std::hash::Hash + Eq + std::default::Default + std::clone::Clone, V> Mon
 #[cfg(test)]
 mod tests {
   use super::*;
-  use std::fmt::Debug;
 
   // Define a simple monad for testing
   #[derive(Debug, PartialEq, Clone)]
@@ -143,53 +148,51 @@ mod tests {
     fn new(value: T) -> Self {
       TestMonad(value)
     }
-
-    fn of<U>(value: U) -> TestMonad<U> {
-      TestMonad(value)
-    }
   }
 
-  impl<T> Functor<T> for TestMonad<T> {
-    type HigherSelf<U> = TestMonad<U>;
+  impl<T: Send + Sync + 'static> Functor<T> for TestMonad<T> {
+    type HigherSelf<U: Send + Sync + 'static> = TestMonad<U>;
 
     fn map<U, F>(self, mut f: F) -> Self::HigherSelf<U>
     where
       F: FnMut(T) -> U,
+      U: Send + Sync + 'static,
     {
       TestMonad(f(self.0))
     }
   }
 
-  impl<T> Applicative<T> for TestMonad<T> {
-    fn pure(a: T) -> Self {
+  impl<T: Send + Sync + 'static> Applicative<T> for TestMonad<T> {
+    type HigherSelf<U: Send + Sync + 'static> = TestMonad<U>;
+
+    fn pure(a: T) -> Self::HigherSelf<T> {
       TestMonad(a)
     }
 
-    fn ap<B, F>(self, f: TestMonad<F>) -> TestMonad<B>
+    fn ap<B, F>(self, f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
     where
-      F: FnOnce(T) -> B,
+      F: FnMut(T) -> B + Send + Sync + 'static,
+      B: Send + Sync + 'static,
     {
-      let TestMonad(func) = f;
+      let TestMonad(mut func) = f;
       let TestMonad(value) = self;
       TestMonad(func(value))
     }
   }
 
-  impl<T> Monad<T> for TestMonad<T> {
-    type SelfTrait<U> = TestMonad<U>;
-    type Unit<U> = TestMonad<U>;
-    type Bind<U, F> = TestMonad<U>;
+  impl<T: Send + Sync + 'static> Monad<T> for TestMonad<T> {
+    type HigherSelf<U: Send + Sync + 'static> = TestMonad<U>;
 
-    fn unit(a: T) -> Self::Unit<T> {
+    fn pure(a: T) -> Self::HigherSelf<T> {
       TestMonad(a)
     }
 
-    fn bind<U, F>(self, f: F) -> Self::Bind<U, F>
+    fn bind<B, F>(self, mut f: F) -> Self::HigherSelf<B>
     where
-      F: FnOnce(T) -> Self::SelfTrait<U>,
+      F: FnMut(T) -> Self::HigherSelf<B> + Send + Sync + 'static,
+      B: Send + Sync + 'static,
     {
-      let TestMonad(u) = f(self.0);
-      TestMonad(u)
+      f(self.0)
     }
   }
 
@@ -199,11 +202,11 @@ mod tests {
     // Left identity: pure(a).flat_map(f) == f(a)
     let a = 42;
     let f = |x: i32| TestMonad::new(x * 2);
-    assert_eq!(TestMonad::unit(a).bind(f), f(a));
+    assert_eq!(<TestMonad<i32> as Monad<i32>>::pure(a).bind(f), f(a));
 
     // Right identity: m.flat_map(pure) == m
     let m = TestMonad::new(42);
-    assert_eq!(m.clone().bind(TestMonad::unit), m);
+    assert_eq!(m.clone().bind(<TestMonad<i32> as Monad<i32>>::pure), m);
 
     // Associativity: m.flat_map(f).flat_map(g) == m.flat_map(|x| f(x).flat_map(g))
     let m = TestMonad::new(42);
@@ -215,30 +218,32 @@ mod tests {
   // Test basic operations
   #[test]
   fn test_unit() {
-    let m: TestMonad<i32> = TestMonad::unit(42);
+    let m: TestMonad<i32> = <TestMonad<i32> as Monad<i32>>::pure(42);
     assert_eq!(m, TestMonad(42));
   }
 
   #[test]
   fn test_bind() {
-    let m: TestMonad<i32> = TestMonad::unit(42).bind(|x| TestMonad::new(x * 2));
+    let m: TestMonad<i32> =
+      <TestMonad<i32> as Monad<i32>>::pure(42).bind(|x| TestMonad::new(x * 2));
     assert_eq!(m, TestMonad(84));
   }
 
   // Test type conversions
   #[test]
   fn test_type_conversions() {
-    let m: TestMonad<String> = TestMonad::of(42).bind(|x: i32| TestMonad::new(x.to_string()));
+    let m: TestMonad<String> =
+      <TestMonad<i32> as Monad<i32>>::pure(42).bind(|x: i32| TestMonad::new(x.to_string()));
     assert_eq!(m, TestMonad("42".to_string()));
   }
 
   // Test complex composition
   #[test]
   fn test_complex_composition() {
-    let m: TestMonad<String> = TestMonad::of(1)
-      .bind(|x: i32| TestMonad::of(x + 1))
-      .bind(|x: i32| TestMonad::of(x * 2))
-      .bind(|x: i32| TestMonad::of(x + 1))
+    let m: TestMonad<String> = <TestMonad<i32> as Monad<i32>>::pure(1)
+      .bind(|x: i32| <TestMonad<i32> as Monad<i32>>::pure(x + 1))
+      .bind(|x: i32| <TestMonad<i32> as Monad<i32>>::pure(x * 2))
+      .bind(|x: i32| <TestMonad<i32> as Monad<i32>>::pure(x + 1))
       .bind(|x: i32| TestMonad::new(x.to_string()));
 
     assert_eq!(m, TestMonad("5".to_string()));
@@ -247,9 +252,10 @@ mod tests {
   // Test nested composition
   #[test]
   fn test_nested_composition() {
-    let m: TestMonad<i32> = TestMonad::of(1).bind(move |x: i32| {
-      TestMonad::of(x + 1)
-        .bind(move |y: i32| TestMonad::of(y * 2).bind(move |z: i32| TestMonad::new(z + x)))
+    let m: TestMonad<i32> = <TestMonad<i32> as Monad<i32>>::pure(1).bind(move |x: i32| {
+      <TestMonad<i32> as Monad<i32>>::pure(x + 1).bind(move |y: i32| {
+        <TestMonad<i32> as Monad<i32>>::pure(y * 2).bind(move |z: i32| TestMonad::new(z + x))
+      })
     });
 
     assert_eq!(m, TestMonad(5));
@@ -260,7 +266,7 @@ mod tests {
 
     #[test]
     fn test_unit() {
-      let unit = Option::<i32>::unit(42);
+      let unit = <Option<i32> as Monad<i32>>::pure(42);
       assert_eq!(unit, Some(42));
     }
 
@@ -291,7 +297,7 @@ mod tests {
 
     #[test]
     fn test_unit() {
-      let unit = Vec::<i32>::unit(42);
+      let unit = <Vec<i32> as Monad<i32>>::pure(42);
       assert_eq!(unit, vec![42]);
     }
 

@@ -5,103 +5,91 @@
 //!
 
 use std::collections::HashMap;
-
-/// Marker trait for types that can be mapped over.
-pub trait Mappable {}
-
-// Implement Mappable for all types
-impl<T> Mappable for T {}
+use std::hash::Hash;
 
 /// The Functor trait defines the basic operations for functor types.
-pub trait Functor<A> {
-  /// The type constructor for the functor.
-  type HigherSelf<T>: Functor<T> + Mappable;
+pub trait Functor<T> {
+  /// The higher-kinded type that results from mapping over this functor
+  type HigherSelf<U: Send + Sync + 'static>: Functor<U>;
 
-  /// Maps a function over the functor.
+  /// Maps a function over the functor
   fn map<B, F>(self, f: F) -> Self::HigherSelf<B>
   where
-    F: FnMut(A) -> B;
+    F: FnMut(T) -> B + Send + Sync + 'static,
+    B: Send + Sync + 'static;
 }
+
+/// A trait for types that can be mapped over
+pub trait Mappable<T>: Functor<T> {}
 
 // Implementation for Option
-impl<A> Functor<A> for Option<A> {
-  type HigherSelf<T> = Option<T>;
-
-  fn map<B, F>(self, f: F) -> Self::HigherSelf<B>
-  where
-    F: FnMut(A) -> B,
-  {
-    self.map(f)
-  }
-}
-
-// Implementation for Vec
-impl<A> Functor<A> for Vec<A> {
-  type HigherSelf<T> = Vec<T>;
-
-  fn map<B, F>(self, f: F) -> Self::HigherSelf<B>
-  where
-    F: FnMut(A) -> B,
-  {
-    self.into_iter().map(f).collect()
-  }
-}
-
-// Implementation for Result
-impl<A, E> Functor<A> for Result<A, E> {
-  type HigherSelf<T> = Result<T, E>;
-
-  fn map<B, F>(self, f: F) -> Self::HigherSelf<B>
-  where
-    F: FnMut(A) -> B,
-  {
-    self.map(f)
-  }
-}
-
-// Implementation for Box
-impl<A> Functor<A> for Box<A> {
-  type HigherSelf<T> = Box<T>;
+impl<T: Send + Sync + 'static> Functor<T> for Option<T> {
+  type HigherSelf<U: Send + Sync + 'static> = Option<U>;
 
   fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
   where
-    F: FnMut(A) -> B,
+    F: FnMut(T) -> B + Send + Sync + 'static,
+    B: Send + Sync + 'static,
+  {
+    self.map(|x| f(x))
+  }
+}
+
+impl<T: Send + Sync + 'static> Mappable<T> for Option<T> {}
+
+// Implementation for Vec
+impl<T: Send + Sync + 'static> Functor<T> for Vec<T> {
+  type HigherSelf<U: Send + Sync + 'static> = Vec<U>;
+
+  fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+  where
+    F: FnMut(T) -> B + Send + Sync + 'static,
+    B: Send + Sync + 'static,
+  {
+    self.into_iter().map(|x| f(x)).collect()
+  }
+}
+
+impl<T: Send + Sync + 'static> Mappable<T> for Vec<T> {}
+
+// Implementation for Result
+impl<T: Send + Sync + 'static, E: Send + Sync + 'static> Functor<T> for Result<T, E> {
+  type HigherSelf<U: Send + Sync + 'static> = Result<U, E>;
+
+  fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+  where
+    F: FnMut(T) -> B + Send + Sync + 'static,
+    B: Send + Sync + 'static,
+  {
+    self.map(|x| f(x))
+  }
+}
+
+impl<T: Send + Sync + 'static, E: Send + Sync + 'static> Mappable<T> for Result<T, E> {}
+
+// Implementation for Box
+impl<T: Send + Sync + 'static> Functor<T> for Box<T> {
+  type HigherSelf<U: Send + Sync + 'static> = Box<U>;
+
+  fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+  where
+    F: FnMut(T) -> B + Send + Sync + 'static,
+    B: Send + Sync + 'static,
   {
     Box::new(f(*self))
   }
 }
 
-// Implementation for HashMap (values only)
-impl<K: std::hash::Hash + Eq, V> Functor<V> for HashMap<K, V> {
-  type HigherSelf<T> = HashMap<K, T>;
+// Implementation for HashMap
+impl<K: Send + Sync + 'static + Eq + Hash, V: Send + Sync + 'static> Functor<V> for HashMap<K, V> {
+  type HigherSelf<U: Send + Sync + 'static> = HashMap<K, U>;
 
   fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
   where
-    F: FnMut(V) -> B,
+    F: FnMut(V) -> B + Send + Sync + 'static,
+    B: Send + Sync + 'static,
   {
     self.into_iter().map(|(k, v)| (k, f(v))).collect()
-  }
-}
-
-// Either type
-#[derive(Debug, PartialEq)]
-pub enum Either<L, R> {
-  Left(L),
-  Right(R),
-}
-
-// Implementation for Either
-impl<A, R> Functor<A> for Either<A, R> {
-  type HigherSelf<T> = Either<T, R>;
-
-  fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
-  where
-    F: FnMut(A) -> B,
-  {
-    match self {
-      Either::Left(v) => Either::Left(f(v)),
-      Either::Right(r) => Either::Right(r),
-    }
   }
 }
 

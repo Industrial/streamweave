@@ -2,28 +2,46 @@
 //!
 //! An applicative functor is a functor that can apply functions within the functor context.
 
-use super::functor::Functor;
+/// The Applicative trait represents a type that can apply functions within a context.
+pub trait Applicative<T> {
+  /// The higher-kinded type that results from applying a function
+  type HigherSelf<U: Send + Sync + 'static>;
 
-/// The Applicative trait defines operations for applicative functors.
-pub trait Applicative<A>: Functor<A> {
-  /// Lifts a value into the applicative context.
-  fn pure(a: A) -> Self;
+  /// Lifts a value into the applicative context
+  fn pure(value: T) -> Self::HigherSelf<T>
+  where
+    T: Send + Sync + 'static;
 
-  /// Applies a function within the applicative context.
+  /// Applies a function within the applicative context
   fn ap<B, F>(self, f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
   where
-    F: FnMut(A) -> B;
+    F: FnMut(T) -> B + Send + Sync + 'static,
+    B: Send + Sync + 'static;
+}
+
+/// A trait for types that can apply functions within a context
+pub trait Applicable<T>: Applicative<T> {}
+
+// Implement Applicable for all types that implement Applicative
+impl<T, A> Applicable<T> for A
+where
+  A: Applicative<T>,
+  T: Send + Sync + 'static,
+{
 }
 
 // Implementation for Option
-impl<A> Applicative<A> for Option<A> {
-  fn pure(a: A) -> Self {
+impl<A: Send + Sync + 'static> Applicative<A> for Option<A> {
+  type HigherSelf<U: Send + Sync + 'static> = Option<U>;
+
+  fn pure(a: A) -> Self::HigherSelf<A> {
     Some(a)
   }
 
-  fn ap<B, F>(self, f: Option<F>) -> Option<B>
+  fn ap<B, F>(self, f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
   where
-    F: FnMut(A) -> B,
+    F: FnMut(A) -> B + Send + Sync + 'static,
+    B: Send + Sync + 'static,
   {
     match (self, f) {
       (Some(a), Some(mut f)) => Some(f(a)),
@@ -33,14 +51,17 @@ impl<A> Applicative<A> for Option<A> {
 }
 
 // Implementation for Vec
-impl<A: Clone> Applicative<A> for Vec<A> {
-  fn pure(a: A) -> Self {
+impl<A: Send + Sync + 'static + Clone> Applicative<A> for Vec<A> {
+  type HigherSelf<U: Send + Sync + 'static> = Vec<U>;
+
+  fn pure(a: A) -> Self::HigherSelf<A> {
     vec![a]
   }
 
-  fn ap<B, F>(self, fs: Vec<F>) -> Vec<B>
+  fn ap<B, F>(self, fs: Self::HigherSelf<F>) -> Self::HigherSelf<B>
   where
-    F: FnMut(A) -> B,
+    F: FnMut(A) -> B + Send + Sync + 'static,
+    B: Send + Sync + 'static,
   {
     fs.into_iter()
       .flat_map(|mut f| self.iter().cloned().map(move |a| f(a)))
