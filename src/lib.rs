@@ -1,5 +1,5 @@
 pub mod consumers;
-pub mod effect;
+// pub mod effect;
 pub mod error;
 pub mod pipeline;
 pub mod producers;

@@ -8,6 +8,7 @@ use std::error::Error as StdError;
 use std::ops::{Deref, DerefMut};
 
 use effect_core::effect::Effect;
+use effect_core::option::{Option, OptionMut, OptionRef};
 
 /// A guard for a resource that ensures it is properly released.
 pub struct Guard<T: Send + 'static, E: StdError + Send + Sync + 'static> {
@@ -22,8 +23,8 @@ impl<T: Send + 'static, E: StdError + Send + Sync + 'static> Guard<T, E> {
     F: FnOnce(T) -> Effect<(), E> + Send + Sync + 'static,
   {
     Self {
-      resource: Some(resource),
-      release: Some(Box::new(release)),
+      resource: Option::some(resource),
+      release: Option::some(Box::new(release)),
     }
   }
 
@@ -39,19 +40,27 @@ impl<T: Send + 'static, E: StdError + Send + Sync + 'static> Deref for Guard<T, 
   type Target = T;
 
   fn deref(&self) -> &Self::Target {
-    self.resource.as_ref().unwrap()
+    match self.resource.as_ref() {
+      OptionRef::Some(value) => value,
+      OptionRef::None => panic!("called `Deref::deref` on a `None` value"),
+    }
   }
 }
 
 impl<T: Send + 'static, E: StdError + Send + Sync + 'static> DerefMut for Guard<T, E> {
   fn deref_mut(&mut self) -> &mut Self::Target {
-    self.resource.as_mut().unwrap()
+    match self.resource.as_mut() {
+      OptionMut::Some(value) => value,
+      OptionMut::None => panic!("called `DerefMut::deref_mut` on a `None` value"),
+    }
   }
 }
 
 impl<T: Send + 'static, E: StdError + Send + Sync + 'static> Drop for Guard<T, E> {
   fn drop(&mut self) {
-    if let (Some(resource), Some(release)) = (self.resource.take(), self.release.take()) {
+    if let (Option::Some(resource), Option::Some(release)) =
+      (self.resource.take(), self.release.take())
+    {
       // Try to get the current runtime handle
       match tokio::runtime::Handle::try_current() {
         Ok(rt) => {

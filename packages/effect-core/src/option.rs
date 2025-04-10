@@ -1,6 +1,6 @@
 use crate::functor::Functor;
 use crate::monad::Monad;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 
 /// A type that represents an optional value.
 /// Similar to Rust's built-in Option but with Effect system integration.
@@ -8,6 +8,20 @@ use std::fmt::{Debug, Display};
 pub enum Option<T> {
   None,
   Some(T),
+}
+
+/// A type that represents an optional reference.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OptionRef<'a, T> {
+  None,
+  Some(&'a T),
+}
+
+/// A type that represents an optional mutable reference.
+#[derive(Debug, PartialEq, Eq)]
+pub enum OptionMut<'a, T> {
+  None,
+  Some(&'a mut T),
 }
 
 impl<T> Option<T> {
@@ -29,6 +43,27 @@ impl<T> Option<T> {
   /// Returns true if the option is a None value.
   pub fn is_none(&self) -> bool {
     matches!(self, Self::None)
+  }
+
+  /// Takes the value out of the option, leaving a None in its place.
+  pub fn take(&mut self) -> Self {
+    std::mem::replace(self, Self::None)
+  }
+
+  /// Converts from &Option<T> to OptionRef<&T>.
+  pub fn as_ref(&self) -> OptionRef<'_, T> {
+    match self {
+      Self::Some(value) => OptionRef::Some(value),
+      Self::None => OptionRef::None,
+    }
+  }
+
+  /// Converts from &mut Option<T> to OptionMut<&mut T>.
+  pub fn as_mut(&mut self) -> OptionMut<'_, T> {
+    match self {
+      Self::Some(value) => OptionMut::Some(value),
+      Self::None => OptionMut::None,
+    }
   }
 
   /// Unwraps the option, yielding the content of a Some.
@@ -119,6 +154,52 @@ mod tests {
   }
 
   #[test]
+  fn test_option_take() {
+    let mut some = Option::some(42);
+    let taken = some.take();
+    assert!(some.is_none());
+    assert_eq!(taken.unwrap(), 42);
+
+    let mut none = Option::<i32>::none();
+    let taken = none.take();
+    assert!(none.is_none());
+    assert!(taken.is_none());
+  }
+
+  #[test]
+  fn test_option_as_ref() {
+    let some = Option::some(42);
+    match some.as_ref() {
+      OptionRef::Some(&value) => assert_eq!(value, 42),
+      OptionRef::None => panic!("Expected Some"),
+    }
+
+    let none = Option::<i32>::none();
+    match none.as_ref() {
+      OptionRef::Some(_) => panic!("Expected None"),
+      OptionRef::None => (),
+    }
+  }
+
+  #[test]
+  fn test_option_as_mut() {
+    let mut some = Option::some(42);
+    match some.as_mut() {
+      OptionMut::Some(value) => {
+        *value = 43;
+        assert_eq!(some.unwrap(), 43);
+      }
+      OptionMut::None => panic!("Expected Some"),
+    }
+
+    let mut none = Option::<i32>::none();
+    match none.as_mut() {
+      OptionMut::Some(_) => panic!("Expected None"),
+      OptionMut::None => (),
+    }
+  }
+
+  #[test]
   fn test_option_map() {
     let some = Option::some(42);
     let mapped = some.map(|x| x * 2);
@@ -147,6 +228,70 @@ mod tests {
 
     let none = Option::<i32>::none();
     assert_eq!(none.unwrap_or(0), 0);
+  }
+
+  #[test]
+  #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+  fn test_option_unwrap_none() {
+    let none = Option::<i32>::none();
+    none.unwrap();
+  }
+
+  #[test]
+  fn test_option_clone() {
+    let some = Option::some(42);
+    let cloned = some.clone();
+    assert_eq!(some, cloned);
+    assert_eq!(cloned.unwrap(), 42);
+
+    let none = Option::<i32>::none();
+    let cloned = none.clone();
+    assert_eq!(none, cloned);
+    assert!(cloned.is_none());
+  }
+
+  #[test]
+  fn test_option_ref_clone() {
+    let value = 42;
+    let some = OptionRef::Some(&value);
+    let cloned = some.clone();
+    match cloned {
+      OptionRef::Some(&v) => assert_eq!(v, 42),
+      OptionRef::None => panic!("Expected Some"),
+    }
+
+    let none = OptionRef::<i32>::None;
+    let cloned = none.clone();
+    assert_eq!(none, cloned);
+  }
+
+  #[test]
+  fn test_option_debug() {
+    let some = Option::some(42);
+    assert_eq!(format!("{:?}", some), "Some(42)");
+
+    let none = Option::<i32>::none();
+    assert_eq!(format!("{:?}", none), "None");
+  }
+
+  #[test]
+  fn test_option_ref_debug() {
+    let value = 42;
+    let some = OptionRef::Some(&value);
+    assert_eq!(format!("{:?}", some), "Some(42)");
+
+    let none = OptionRef::<i32>::None;
+    assert_eq!(format!("{:?}", none), "None");
+  }
+
+  #[test]
+  fn test_option_mut_debug() {
+    let mut value = 42;
+    let some = OptionMut::Some(&mut value);
+    assert_eq!(format!("{:?}", some), "Some(42)");
+
+    let none = OptionMut::<i32>::None;
+    assert_eq!(format!("{:?}", none), "None");
   }
 
   #[test]
@@ -190,5 +335,43 @@ mod tests {
       m.bind(move |x| f(x).bind(g_clone)),
       m_clone.bind(f_clone).bind(g)
     );
+  }
+
+  #[test]
+  fn test_option_complex_types() {
+    // Test with String
+    let some = Option::some(String::from("hello"));
+    assert_eq!(some.unwrap(), "hello");
+
+    // Test with Vec
+    let some = Option::some(vec![1, 2, 3]);
+    assert_eq!(some.unwrap(), vec![1, 2, 3]);
+
+    // Test with tuple
+    let some = Option::some((42, "hello"));
+    assert_eq!(some.unwrap(), (42, "hello"));
+  }
+
+  #[test]
+  fn test_option_ref_mut_interactions() {
+    let mut value = 42;
+    let mut opt = Option::some(value);
+
+    // Test as_ref followed by as_mut
+    {
+      let r = opt.as_ref();
+      match r {
+        OptionRef::Some(&v) => assert_eq!(v, 42),
+        OptionRef::None => panic!("Expected Some"),
+      }
+    }
+    {
+      let m = opt.as_mut();
+      match m {
+        OptionMut::Some(v) => *v = 43,
+        OptionMut::None => panic!("Expected Some"),
+      }
+    }
+    assert_eq!(opt.unwrap(), 43);
   }
 }
