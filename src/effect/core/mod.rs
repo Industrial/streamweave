@@ -1,9 +1,7 @@
-//! Core effect system implementation.
+//! Core types and traits for the effect system.
 //!
-//! This module provides the core types and traits for the effect system.
-//! It includes the `Effect` type, which represents an effectful computation,
-//! and the `Monad` trait, which provides the monadic operations for the
-//! effect system.
+//! This module provides the core types and traits for the effect system,
+//! including the `Effect` type and the `Monad` trait.
 
 pub mod effect;
 pub mod future;

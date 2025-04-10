@@ -7,16 +7,7 @@ use std::error::Error as StdError;
 use std::future::Future;
 use std::pin::Pin;
 
-use crate::effect::core::Effect;
-
-/// A type alias for a boxed future.
-pub type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send + Sync>>;
-
-/// A type alias for an effect that never fails.
-pub type Infallible<T> = Effect<T, std::convert::Infallible>;
-
-/// A type alias for an effect that can fail with any error type.
-pub type AnyError<T> = Effect<T, Box<dyn StdError + Send + Sync>>;
+use crate::effect::core::effect::Effect;
 
 /// A type that represents a deferred effect.
 pub struct Deferred<T, E: StdError + Send + Sync + 'static, F> {
