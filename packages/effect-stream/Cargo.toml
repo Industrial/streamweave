@@ -2,14 +2,16 @@
 name = "effect-stream"
 version = "0.1.0"
 edition = "2021"
+description = "A stream implementation for handling effects and errors"
 authors = ["Your Name <your.email@example.com>"]
-description = "Streaming capabilities for the Effect type system"
-license = "MIT"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/streamweave"
 
 [dependencies]
 effect-core = { path = "../effect-core" }
-effect-resource = { path = "../effect-resource" }
 futures = "0.3"
-tokio = { version = "1.0", features = ["full"] }
-tokio-stream = "0.1"
-async-trait = "0.1"
+thiserror = "1.0"
+tokio = { version = "1.36", features = ["full"] }
+
+[dev-dependencies]
+tokio-test = "0.4"

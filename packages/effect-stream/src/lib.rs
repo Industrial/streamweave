@@ -1,9 +1,9 @@
-//! Streaming capabilities for the Effect type system.
+//! A stream implementation for handling effects and errors.
 //!
-//! This module provides the `EffectStream` type, which represents a stream of values
-//! that can be transformed and combined using the Effect type system's functor,
-//! applicative, and monad operations.
+//! This crate provides an implementation of streams that can handle effects and errors:
+//! - `EffectStream`: A stream that can produce values and handle errors
+//! - Stream-specific error handling
+//! - Stream operations and utilities
 
+pub mod error;
 pub mod stream;
-
-pub use stream::EffectStream;

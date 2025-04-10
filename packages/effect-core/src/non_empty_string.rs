@@ -114,10 +114,10 @@ mod tests {
 
   #[test]
   fn test_non_empty_string_creation() {
-    let s = NonEmptyString::new("hello".to_string()).unwrap();
-    assert_eq!(s.len(), 5);
+    let s = NonEmptyString::new("héllo".to_string()).unwrap();
+    assert_eq!(s.len(), 6); // 'é' takes 2 bytes in UTF-8
     assert_eq!(s.first_char(), 'h');
-    assert_eq!(s.as_str(), "hello");
+    assert_eq!(s.as_str(), "héllo");
     assert!(!s.is_empty());
     assert!(!s.is_ascii());
 
@@ -142,12 +142,12 @@ mod tests {
 
   #[test]
   fn test_non_empty_string_properties() {
-    let s = NonEmptyString::new("hello".to_string()).unwrap();
-    assert_eq!(s.len(), 5);
+    let s = NonEmptyString::new("héllo".to_string()).unwrap();
+    assert_eq!(s.len(), 6); // 'é' takes 2 bytes in UTF-8
     assert!(!s.is_empty());
     assert!(!s.is_ascii());
     assert_eq!(s.first_char(), 'h');
-    assert_eq!(s.as_str(), "hello");
+    assert_eq!(s.as_str(), "héllo");
 
     let ascii = NonEmptyString::new("ASCII".to_string()).unwrap();
     assert!(ascii.is_ascii());

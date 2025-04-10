@@ -68,10 +68,24 @@ path = "examples/02_advanced_pipeline/main.rs"
 
 [workspace]
 members = [
+    "packages/effect-concurrent",
     "packages/effect-core",
     "packages/effect-derive",
     "packages/effect-resource",
     "packages/effect-stream",
-    "packages/effect-concurrent",
 ]
 resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/streamweave"
+description = "A collection of packages for handling streams and effects"
+
+[workspace.dependencies]
+tokio = { version = "1.36", features = ["full"] }
+futures = "0.3"
+thiserror = "1.0"
+tokio-test = "0.4"
