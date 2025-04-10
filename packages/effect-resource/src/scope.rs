@@ -9,9 +9,12 @@ use std::sync::Mutex;
 
 use effect_core::effect::Effect;
 
+/// Type alias for a resource release function.
+type ReleaseFunction<E> = Box<dyn FnOnce() -> Effect<(), E> + Send + Sync>;
+
 /// A scope for managing resource lifetimes.
 pub struct Scope<E: StdError + Send + Sync + 'static> {
-  resources: Mutex<Vec<Box<dyn FnOnce() -> Effect<(), E> + Send + Sync>>>,
+  resources: Mutex<Vec<ReleaseFunction<E>>>,
 }
 
 impl<E: StdError + Send + Sync + 'static> Scope<E> {
