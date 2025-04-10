@@ -113,7 +113,11 @@ impl<T, E> EffectStream<T, E> {
     if inner.is_closed && inner.values.is_empty() {
       return Ok(None);
     }
-    Ok(inner.values.pop())
+    if !inner.values.is_empty() {
+      Ok(Some(inner.values.remove(0)))
+    } else {
+      Ok(None)
+    }
   }
 
   /// Set an error on the stream
