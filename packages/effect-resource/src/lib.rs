@@ -20,11 +20,11 @@
 //! );
 //!
 //! // Using Guard
-//! let guard = Guard::new(42, |_| Effect::pure(()));
+//! let guard: Guard<i32, Error> = Guard::new(42, |_| Effect::pure(()));
 //! let value = *guard; // Access the resource
 //!
 //! // Using Scope
-//! let scope = Scope::new();
+//! let scope: Scope<Error> = Scope::new();
 //! scope.add_resource(|| Effect::pure(()));
 //! let effect = scope.run(|| Effect::pure(42));
 //! ```

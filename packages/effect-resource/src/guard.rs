@@ -52,9 +52,22 @@ impl<T: Send + 'static, E: StdError + Send + Sync + 'static> DerefMut for Guard<
 impl<T: Send + 'static, E: StdError + Send + Sync + 'static> Drop for Guard<T, E> {
   fn drop(&mut self) {
     if let (Some(resource), Some(release)) = (self.resource.take(), self.release.take()) {
-      tokio::spawn(async move {
-        let _ = release(resource).run().await;
-      });
+      // Try to get the current runtime handle
+      match tokio::runtime::Handle::try_current() {
+        Ok(rt) => {
+          // We're in an async context, spawn a task
+          let _ = rt.spawn(async move {
+            let _ = release(resource).run().await;
+          });
+        }
+        Err(_) => {
+          // We're in a sync context, create a new runtime
+          let rt = tokio::runtime::Runtime::new().unwrap();
+          rt.block_on(async {
+            let _ = release(resource).run().await;
+          });
+        }
+      }
     }
   }
 }
@@ -70,13 +83,15 @@ mod tests {
   async fn test_guard() {
     let released = Arc::new(AtomicBool::new(false));
     let released_clone = Arc::clone(&released);
-    let guard = Guard::<_, IoError>::new(42, move |_| {
-      released_clone.store(true, Ordering::SeqCst);
-      Effect::pure(())
-    });
-
-    assert_eq!(*guard, 42);
-    drop(guard);
+    {
+      let guard = Guard::<_, IoError>::new(42, move |_| {
+        released_clone.store(true, Ordering::SeqCst);
+        Effect::pure(())
+      });
+      assert_eq!(*guard, 42);
+    }
+    // Give the spawned task a chance to complete
+    tokio::task::yield_now().await;
     assert!(released.load(Ordering::SeqCst));
   }
 

@@ -5,7 +5,6 @@
 //! even in the presence of errors.
 
 use std::error::Error as StdError;
-use std::future::Future;
 
 use effect_core::effect::Effect;
 

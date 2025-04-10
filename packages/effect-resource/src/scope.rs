@@ -47,6 +47,12 @@ impl<E: StdError + Send + Sync + 'static> Scope<E> {
   }
 }
 
+impl<E: StdError + Send + Sync + 'static> Default for Scope<E> {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use std::io::{Error as IoError, ErrorKind};
