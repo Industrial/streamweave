@@ -34,6 +34,9 @@ rand = "0.8"
 # Pin utilities
 pin-project = "1.0"
 
+# Resource management
+scopeguard = "1.2"
+
 async-stream = "0.3.3"
 hyper-tungstenite = "0.13"
 hyper-util = { version = "0.1", features = ["full"] }
