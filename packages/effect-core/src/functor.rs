@@ -110,8 +110,6 @@ mod tests {
   use super::*;
 
   mod option_tests {
-    use super::*;
-
     #[test]
     fn test_some_to_some() {
       let some = Some(42);
@@ -196,8 +194,6 @@ mod tests {
   }
 
   mod result_tests {
-    use super::*;
-
     #[test]
     fn test_ok_to_ok() {
       let ok: Result<i32, &str> = Ok(42);
