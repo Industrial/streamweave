@@ -1,6 +1,6 @@
 use crate::functor::Functor;
 use crate::monad::Monad;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 
 /// A type that represents an array that is guaranteed to have at least one element.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,6 +23,31 @@ impl<T> NonEmptyArray<T> {
     Self { head, tail }
   }
 
+  /// Creates a new NonEmptyArray from a Vec if it's not empty.
+  pub fn from_vec(mut vec: Vec<T>) -> Option<Self> {
+    if vec.is_empty() {
+      None
+    } else {
+      let head = vec.remove(0);
+      Some(Self { head, tail: vec })
+    }
+  }
+
+  /// Creates a new NonEmptyArray from an iterator if it's not empty.
+  pub fn from_iter<I>(mut iter: I) -> Option<Self>
+  where
+    I: Iterator<Item = T>,
+  {
+    if let Some(head) = iter.next() {
+      Some(Self {
+        head,
+        tail: iter.collect(),
+      })
+    } else {
+      None
+    }
+  }
+
   /// Returns the first element of the array.
   pub fn head(&self) -> &T {
     &self.head
@@ -36,6 +61,11 @@ impl<T> NonEmptyArray<T> {
   /// Returns the length of the array.
   pub fn len(&self) -> usize {
     1 + self.tail.len()
+  }
+
+  /// Returns `false` since a `NonEmptyArray` always contains at least one element.
+  pub fn is_empty(&self) -> bool {
+    false
   }
 
   /// Returns true if the array has only one element.
@@ -104,7 +134,7 @@ impl<T: Send + Sync + 'static> Monad<T> for NonEmptyArray<T> {
   {
     let mut result = f(self.head);
     for item in self.tail {
-      let mut mapped = f(item);
+      let mapped = f(item);
       result.tail.extend(mapped.into_vec());
     }
     result
@@ -121,11 +151,49 @@ mod tests {
     assert_eq!(single.head(), &42);
     assert!(single.is_single());
     assert_eq!(single.len(), 1);
+    assert!(!single.is_empty());
 
     let array = NonEmptyArray::new(1, vec![2, 3, 4]);
     assert_eq!(array.head(), &1);
     assert_eq!(array.tail(), &[2, 3, 4]);
     assert_eq!(array.len(), 4);
+    assert!(!array.is_empty());
+    assert!(!array.is_single());
+  }
+
+  #[test]
+  fn test_from_vec() {
+    let vec = vec![1, 2, 3];
+    let array = NonEmptyArray::from_vec(vec).unwrap();
+    assert_eq!(array.head(), &1);
+    assert_eq!(array.tail(), &[2, 3]);
+    assert_eq!(array.len(), 3);
+    assert!(!array.is_empty());
+    assert!(!array.is_single());
+
+    let empty_vec: Vec<i32> = vec![];
+    assert!(NonEmptyArray::from_vec(empty_vec).is_none());
+  }
+
+  #[test]
+  fn test_from_iter() {
+    let iter = vec![1, 2, 3].into_iter();
+    let array = NonEmptyArray::from_iter(iter).unwrap();
+    assert_eq!(array.head(), &1);
+    assert_eq!(array.tail(), &[2, 3]);
+    assert_eq!(array.len(), 3);
+    assert!(!array.is_empty());
+    assert!(!array.is_single());
+
+    let empty_iter: std::iter::Empty<i32> = std::iter::empty();
+    assert!(NonEmptyArray::from_iter(empty_iter).is_none());
+  }
+
+  #[test]
+  fn test_into_vec() {
+    let array = NonEmptyArray::new(1, vec![2, 3, 4]);
+    let vec = array.into_vec();
+    assert_eq!(vec, vec![1, 2, 3, 4]);
   }
 
   #[test]
@@ -134,6 +202,9 @@ mod tests {
     let mapped = array.map(|x| x * 2);
     assert_eq!(mapped.head(), &2);
     assert_eq!(mapped.tail(), &[4, 6, 8]);
+    assert_eq!(mapped.len(), 4);
+    assert!(!mapped.is_empty());
+    assert!(!mapped.is_single());
   }
 
   #[test]
@@ -141,6 +212,10 @@ mod tests {
     let array = NonEmptyArray::new(1, vec![2, 3, 4]);
     let sum = array.fold_left(0, |acc, x| acc + x);
     assert_eq!(sum, 10);
+
+    let single = NonEmptyArray::single(42);
+    let sum = single.fold_left(0, |acc, x| acc + x);
+    assert_eq!(sum, 42);
   }
 
   #[test]
@@ -183,5 +258,32 @@ mod tests {
       .bind(|x| NonEmptyArray::new(x * 2, vec![x * 3]))
       .bind(|x| NonEmptyArray::new(x + 1, vec![x + 2]));
     assert_eq!(left, right);
+  }
+
+  #[test]
+  fn test_edge_cases() {
+    // Test with a single element
+    let single = NonEmptyArray::single(42);
+    assert_eq!(single.head(), &42);
+    assert!(single.is_single());
+    assert_eq!(single.len(), 1);
+    assert!(!single.is_empty());
+    assert_eq!(single.tail(), &[]);
+
+    // Test with two elements
+    let two = NonEmptyArray::new(1, vec![2]);
+    assert_eq!(two.head(), &1);
+    assert_eq!(two.tail(), &[2]);
+    assert_eq!(two.len(), 2);
+    assert!(!two.is_empty());
+    assert!(!two.is_single());
+
+    // Test with many elements
+    let many = NonEmptyArray::new(1, vec![2, 3, 4, 5]);
+    assert_eq!(many.head(), &1);
+    assert_eq!(many.tail(), &[2, 3, 4, 5]);
+    assert_eq!(many.len(), 5);
+    assert!(!many.is_empty());
+    assert!(!many.is_single());
   }
 }
