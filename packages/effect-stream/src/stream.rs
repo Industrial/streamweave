@@ -18,29 +18,23 @@ struct InnerStream<T, E> {
   is_closed: bool,
 }
 
+/// Type alias for a locked inner stream
+type LockedStream<T, E> = Arc<Mutex<InnerStream<T, E>>>;
+
+/// Type alias for the state tuple used in stream processing
+type StreamState<T, E, B, F> = (
+  LockedStream<T, E>,
+  Arc<Mutex<F>>,
+  Option<LockedStream<B, E>>,
+  bool,
+);
+
 impl<T, E> EffectStream<T, E> {
   /// Create a new empty stream
   pub fn new() -> Self {
     Self {
       inner: Arc::new(Mutex::new(InnerStream {
         values: Vec::new(),
-        error: None,
-        is_closed: false,
-      })),
-    }
-  }
-
-  /// Create a stream from an iterator
-  pub fn from_iter<I>(iter: I) -> Self
-  where
-    I: IntoIterator<Item = T>,
-    T: Send + Sync + 'static,
-    E: Send + Sync + 'static,
-  {
-    let values: Vec<T> = iter.into_iter().collect();
-    Self {
-      inner: Arc::new(Mutex::new(InnerStream {
-        values,
         error: None,
         is_closed: false,
       })),
@@ -186,7 +180,14 @@ where
   E: Send + Sync + 'static,
 {
   fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-    Self::from_iter(iter)
+    let values: Vec<T> = iter.into_iter().collect();
+    Self {
+      inner: Arc::new(Mutex::new(InnerStream {
+        values,
+        error: None,
+        is_closed: false,
+      })),
+    }
   }
 }
 
@@ -244,7 +245,7 @@ where
     EffectStream::from_iter(std::iter::once(a))
   }
 
-  fn bind<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+  fn bind<B, F>(self, f: F) -> Self::HigherSelf<B>
   where
     F: FnMut(T) -> Self::HigherSelf<B> + Send + Sync + 'static,
     B: Send + Sync + 'static,
@@ -259,21 +260,8 @@ where
 
 /// Helper function to process the next value from a stream
 async fn process_next_value<T, E, B, F>(
-  state: (
-    Arc<Mutex<InnerStream<T, E>>>,
-    Arc<Mutex<F>>,
-    Option<Arc<Mutex<InnerStream<B, E>>>>,
-    bool,
-  ),
-) -> Option<(
-  EffectResult<B, E>,
-  (
-    Arc<Mutex<InnerStream<T, E>>>,
-    Arc<Mutex<F>>,
-    Option<Arc<Mutex<InnerStream<B, E>>>>,
-    bool,
-  ),
-)>
+  state: StreamState<T, E, B, F>,
+) -> Option<(EffectResult<B, E>, StreamState<T, E, B, F>)>
 where
   T: Send + Sync + 'static,
   E: Send + Sync + Clone + 'static,
@@ -295,19 +283,11 @@ where
 
 /// Helper function to process the current stream
 async fn process_current_stream<T, E, B, F>(
-  stream: Arc<Mutex<InnerStream<B, E>>>,
-  input_stream: Arc<Mutex<InnerStream<T, E>>>,
+  stream: LockedStream<B, E>,
+  input_stream: LockedStream<T, E>,
   f: Arc<Mutex<F>>,
   input_exhausted: bool,
-) -> Option<(
-  EffectResult<B, E>,
-  (
-    Arc<Mutex<InnerStream<T, E>>>,
-    Arc<Mutex<F>>,
-    Option<Arc<Mutex<InnerStream<B, E>>>>,
-    bool,
-  ),
-)>
+) -> Option<(EffectResult<B, E>, StreamState<T, E, B, F>)>
 where
   T: Send + Sync + 'static,
   E: Send + Sync + Clone + 'static,
@@ -323,17 +303,9 @@ where
 
 /// Helper function to process the input stream
 async fn process_input_stream<T, E, B, F>(
-  input_stream: Arc<Mutex<InnerStream<T, E>>>,
+  input_stream: LockedStream<T, E>,
   f: Arc<Mutex<F>>,
-) -> Option<(
-  EffectResult<B, E>,
-  (
-    Arc<Mutex<InnerStream<T, E>>>,
-    Arc<Mutex<F>>,
-    Option<Arc<Mutex<InnerStream<B, E>>>>,
-    bool,
-  ),
-)>
+) -> Option<(EffectResult<B, E>, StreamState<T, E, B, F>)>
 where
   T: Send + Sync + 'static,
   E: Send + Sync + Clone + 'static,
@@ -359,17 +331,9 @@ where
 
 /// Helper function to process the next input value
 async fn process_next_input<T, E, B, F>(
-  input_stream: Arc<Mutex<InnerStream<T, E>>>,
+  input_stream: LockedStream<T, E>,
   f: Arc<Mutex<F>>,
-) -> Option<(
-  EffectResult<B, E>,
-  (
-    Arc<Mutex<InnerStream<T, E>>>,
-    Arc<Mutex<F>>,
-    Option<Arc<Mutex<InnerStream<B, E>>>>,
-    bool,
-  ),
-)>
+) -> Option<(EffectResult<B, E>, StreamState<T, E, B, F>)>
 where
   T: Send + Sync + 'static,
   E: Send + Sync + Clone + 'static,
