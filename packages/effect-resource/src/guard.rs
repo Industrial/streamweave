@@ -10,10 +10,13 @@ use std::ops::{Deref, DerefMut};
 use effect_core::effect::Effect;
 use effect_core::option::{Option, OptionMut, OptionRef};
 
+/// Type alias for a resource release function.
+type ReleaseFunction<T, E> = Box<dyn FnOnce(T) -> Effect<(), E> + Send + Sync>;
+
 /// A guard for a resource that ensures it is properly released.
 pub struct Guard<T: Send + 'static, E: StdError + Send + Sync + 'static> {
   resource: Option<T>,
-  release: Option<Box<dyn FnOnce(T) -> Effect<(), E> + Send + Sync>>,
+  release: Option<ReleaseFunction<T, E>>,
 }
 
 impl<T: Send + 'static, E: StdError + Send + Sync + 'static> Guard<T, E> {
@@ -65,9 +68,10 @@ impl<T: Send + 'static, E: StdError + Send + Sync + 'static> Drop for Guard<T, E
       match tokio::runtime::Handle::try_current() {
         Ok(rt) => {
           // We're in an async context, spawn a task
-          let _ = rt.spawn(async move {
+          let handle = rt.spawn(async move {
             let _ = release(resource).run().await;
           });
+          std::mem::drop(handle);
         }
         Err(_) => {
           // We're in a sync context, create a new runtime
