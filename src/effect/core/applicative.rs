@@ -33,7 +33,7 @@ impl<A> Applicative<A> for Option<A> {
 }
 
 // Implementation for Vec
-impl<A> Applicative<A> for Vec<A> {
+impl<A: Clone> Applicative<A> for Vec<A> {
   fn pure(a: A) -> Self {
     vec![a]
   }

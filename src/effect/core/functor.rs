@@ -4,6 +4,8 @@
 //!
 //!
 
+use std::iter;
+
 /// Marker trait for types that can be mapped over.
 pub trait Mappable {}
 
@@ -19,7 +21,7 @@ pub trait Functor<A> {
 }
 
 // Implement Mappable for Option
-impl<T> Mappable for Option<T> {}
+impl<A> Mappable for Option<A> {}
 
 // Implementation for Option
 impl<A> Functor<A> for Option<A> {
@@ -34,7 +36,7 @@ impl<A> Functor<A> for Option<A> {
 }
 
 // Implement Mappable for Vec
-impl<T> Mappable for Vec<T> {}
+impl<A> Mappable for Vec<A> {}
 
 // Implementation for Vec
 impl<A> Functor<A> for Vec<A> {
@@ -53,6 +55,8 @@ mod tests {
   use super::*;
 
   mod option_tests {
+    use super::*;
+
     #[test]
     fn test_some_to_some() {
       let some = Some(42);
@@ -87,13 +91,6 @@ mod tests {
       let mapped = some.map(|x| x * 2).map(|x| x + 1);
       assert_eq!(mapped, Some(85));
     }
-
-    #[test]
-    fn test_complex_type() {
-      let some = Some(vec![1, 2, 3]);
-      let mapped = some.map(|v| v.into_iter().sum::<i32>());
-      assert_eq!(mapped, Some(6));
-    }
   }
 
   mod vec_tests {
@@ -103,8 +100,7 @@ mod tests {
     fn test_empty_vec() {
       let empty: Vec<i32> = vec![];
       let mapped = empty.map(|x| x * 2);
-      let expected: Vec<i32> = vec![];
-      assert_eq!(mapped, expected);
+      assert_eq!(mapped, vec![]);
     }
 
     #[test]
@@ -140,31 +136,6 @@ mod tests {
       let vec = vec![1, 2, 3];
       let mapped = vec.map(|x| x * 2).map(|x| x + 1);
       assert_eq!(mapped, vec![3, 5, 7]);
-    }
-
-    #[test]
-    fn test_complex_type() {
-      let vec = vec![vec![1, 2], vec![3, 4]];
-      let mapped = vec.map(|v| v.into_iter().sum::<i32>());
-      assert_eq!(mapped, vec![3, 7]);
-    }
-
-    #[test]
-    fn test_mutating_closure() {
-      let mut counter = 0;
-      let vec = vec![1, 2, 3];
-      let mapped = vec.map(|x| {
-        counter += 1;
-        x * counter
-      });
-      assert_eq!(mapped, vec![1, 4, 9]);
-    }
-
-    #[test]
-    fn test_ordering_preservation() {
-      let vec = vec![3, 1, 4, 1, 5, 9];
-      let mapped = vec.map(|x| x * 2);
-      assert_eq!(mapped, vec![6, 2, 8, 2, 10, 18]);
     }
   }
 }

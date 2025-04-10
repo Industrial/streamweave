@@ -3,36 +3,67 @@
 //! This module defines the `Monad` trait and provides implementations for the
 //! `Effect` type, enabling monadic composition and transformation of effects.
 
+use super::applicative::Applicative;
+use super::functor::Functor;
 use std::{cmp::PartialEq, convert::From, fmt::Debug};
 
+/// The function type for bind operations.
+pub type BindFn<T, U> = dyn FnOnce(T) -> U;
+
 /// The Monad trait defines the basic operations for monadic types.
-pub trait Monad {
-  /// The inner type of the monad.
-  type Inner: Debug + PartialEq + Send + Sync + 'static;
-  /// The type of the monad after mapping.
-  type Mapped<U>: Monad<Inner = U>
-  where
-    U: Debug + PartialEq + Send + Sync + 'static;
+pub trait Monad<A>: Applicative<A> {
+  /// The type constructor for the monad.
+  type SelfTrait<T>: Monad<T>;
 
-  /// Creates a new monad from a value.
-  fn pure<T>(value: T) -> Self
-  where
-    Self: Sized,
-    T: Debug + PartialEq + Send + Sync + 'static,
-    Self::Inner: From<T>;
+  /// The type constructor for the unit operation.
+  type Unit<T>: Monad<T>;
 
-  /// Transforms the inner value of the monad.
-  fn map<F, U>(self, f: F) -> Self::Mapped<U>
-  where
-    F: FnOnce(Self::Inner) -> U + Send + Sync + 'static,
-    U: Debug + PartialEq + Send + Sync + 'static,
-    Self: Sized;
+  /// The type constructor for the bind operation.
+  type Bind<T, F>: Monad<T>;
 
-  /// Composes two monads, applying a function to the inner value.
-  fn flat_map<F>(self, f: F) -> Self
+  /// Lifts a value into the monadic context.
+  fn unit(a: A) -> Self::Unit<A>;
+
+  /// Binds a function over the monadic value.
+  fn bind<B, F>(self, f: F) -> Self::Bind<B, F>
   where
-    F: FnOnce(Self::Inner) -> Self + Send + Sync + 'static,
-    Self: Sized;
+    F: FnOnce(A) -> Self::SelfTrait<B>;
+}
+
+// Implementation for Option
+impl<A> Monad<A> for Option<A> {
+  type SelfTrait<T> = Option<T>;
+  type Unit<T> = Option<T>;
+  type Bind<T, F> = Option<T>;
+
+  fn unit(a: A) -> Self::Unit<A> {
+    Some(a)
+  }
+
+  fn bind<B, F>(self, f: F) -> Self::Bind<B, F>
+  where
+    F: FnOnce(A) -> Self::SelfTrait<B>,
+  {
+    self.and_then(f)
+  }
+}
+
+// Implementation for Vec
+impl<A> Monad<A> for Vec<A> {
+  type SelfTrait<T> = Vec<T>;
+  type Unit<T> = Vec<T>;
+  type Bind<T, F> = Vec<T>;
+
+  fn unit(a: A) -> Self::Unit<A> {
+    vec![a]
+  }
+
+  fn bind<B, F>(self, f: F) -> Self::Bind<B, F>
+  where
+    F: FnOnce(A) -> Self::SelfTrait<B>,
+  {
+    self.into_iter().flat_map(f).collect()
+  }
 }
 
 #[cfg(test)]
@@ -62,34 +93,20 @@ mod tests {
     }
   }
 
-  impl<T: Debug + PartialEq + Send + Sync + 'static> Monad for TestMonad<T> {
-    type Inner = T;
-    type Mapped<U>
-      = TestMonad<U>
-    where
-      U: Debug + PartialEq + Send + Sync + 'static;
+  impl<T: Debug + PartialEq + Send + Sync + 'static> Monad<T> for TestMonad<T> {
+    type SelfTrait<U> = TestMonad<U>;
+    type Unit<U> = TestMonad<U>;
+    type Bind<U, F> = TestMonad<U>;
 
-    fn pure<U>(value: U) -> Self
-    where
-      U: Debug + PartialEq + Send + Sync + 'static,
-      T: From<U>,
-    {
-      TestMonad(value.into())
+    fn unit(a: T) -> Self::Unit<T> {
+      TestMonad(a)
     }
 
-    fn map<F, U>(self, f: F) -> Self::Mapped<U>
+    fn bind<U, F>(self, f: F) -> Self::Bind<U, F>
     where
-      F: FnOnce(T) -> U + Send + Sync + 'static,
-      U: Debug + PartialEq + Send + Sync + 'static,
+      F: FnOnce(T) -> Self::SelfTrait<U>,
     {
       TestMonad(f(self.0))
-    }
-
-    fn flat_map<F>(self, f: F) -> Self
-    where
-      F: FnOnce(T) -> Self + Send + Sync + 'static,
-    {
-      f(self.0)
     }
   }
 
@@ -99,45 +116,36 @@ mod tests {
     // Left identity: pure(a).flat_map(f) == f(a)
     let a = 42;
     let f = |x: i32| TestMonad::new(x * 2);
-    assert_eq!(TestMonad::pure(a).flat_map(f), f(a));
+    assert_eq!(TestMonad::unit(a).bind(f), f(a));
 
     // Right identity: m.flat_map(pure) == m
     let m = TestMonad::new(42);
-    assert_eq!(m.clone().flat_map(TestMonad::pure), m);
+    assert_eq!(m.clone().bind(TestMonad::unit), m);
 
     // Associativity: m.flat_map(f).flat_map(g) == m.flat_map(|x| f(x).flat_map(g))
     let m = TestMonad::new(42);
     let f = |x: i32| TestMonad::new(x * 2);
     let g = |x: i32| TestMonad::new(x + 1);
-    assert_eq!(
-      m.clone().flat_map(f).flat_map(g),
-      m.flat_map(move |x| f(x).flat_map(g))
-    );
+    assert_eq!(m.clone().bind(f).bind(g), m.bind(move |x| f(x).bind(g)));
   }
 
   // Test basic operations
   #[test]
-  fn test_pure() {
-    let m: TestMonad<i32> = TestMonad::pure(42);
+  fn test_unit() {
+    let m: TestMonad<i32> = TestMonad::unit(42);
     assert_eq!(m, TestMonad(42));
   }
 
   #[test]
-  fn test_map() {
-    let m: TestMonad<i32> = TestMonad::pure(42).map(|x: i32| x * 2);
-    assert_eq!(m, TestMonad(84));
-  }
-
-  #[test]
-  fn test_flat_map() {
-    let m: TestMonad<i32> = TestMonad::pure(42).flat_map(|x| TestMonad::new(x * 2));
+  fn test_bind() {
+    let m: TestMonad<i32> = TestMonad::unit(42).bind(|x| TestMonad::new(x * 2));
     assert_eq!(m, TestMonad(84));
   }
 
   // Test type conversions
   #[test]
   fn test_type_conversions() {
-    let m: TestMonad<String> = TestMonad::of(42).map(|x: i32| x.to_string());
+    let m: TestMonad<String> = TestMonad::of(42).bind(|x: i32| TestMonad::new(x.to_string()));
     assert_eq!(m, TestMonad("42".to_string()));
   }
 
@@ -145,10 +153,10 @@ mod tests {
   #[test]
   fn test_complex_composition() {
     let m: TestMonad<String> = TestMonad::of(1)
-      .flat_map(|x: i32| TestMonad::of(x + 1))
-      .map(|x: i32| x * 2)
-      .flat_map(|x: i32| TestMonad::of(x + 1))
-      .map(|x: i32| x.to_string());
+      .bind(|x: i32| TestMonad::of(x + 1))
+      .bind(|x: i32| TestMonad::of(x * 2))
+      .bind(|x: i32| TestMonad::of(x + 1))
+      .bind(|x: i32| TestMonad::new(x.to_string()));
 
     assert_eq!(m, TestMonad("5".to_string()));
   }
@@ -156,10 +164,80 @@ mod tests {
   // Test nested composition
   #[test]
   fn test_nested_composition() {
-    let m: TestMonad<i32> = TestMonad::of(1).flat_map(move |x: i32| {
-      TestMonad::of(x + 1).flat_map(move |y: i32| TestMonad::of(y * 2).map(move |z: i32| z + x))
+    let m: TestMonad<i32> = TestMonad::of(1).bind(move |x: i32| {
+      TestMonad::of(x + 1)
+        .bind(move |y: i32| TestMonad::of(y * 2).bind(move |z: i32| TestMonad::new(z + x)))
     });
 
     assert_eq!(m, TestMonad(5));
+  }
+
+  mod option_tests {
+    use super::*;
+
+    #[test]
+    fn test_unit() {
+      let unit = Option::<i32>::unit(42);
+      assert_eq!(unit, Some(42));
+    }
+
+    #[test]
+    fn test_bind_some() {
+      let some = Some(42);
+      let result = some.bind(|x| Some(x * 2));
+      assert_eq!(result, Some(84));
+    }
+
+    #[test]
+    fn test_bind_none() {
+      let none: Option<i32> = None;
+      let result = none.bind(|x| Some(x * 2));
+      assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_bind_composition() {
+      let some = Some(42);
+      let result = some.bind(|x| Some(x * 2)).bind(|x| Some(x + 1));
+      assert_eq!(result, Some(85));
+    }
+  }
+
+  mod vec_tests {
+    use super::*;
+
+    #[test]
+    fn test_unit() {
+      let unit = Vec::<i32>::unit(42);
+      assert_eq!(unit, vec![42]);
+    }
+
+    #[test]
+    fn test_bind_empty() {
+      let empty: Vec<i32> = vec![];
+      let result = empty.bind(|x| vec![x * 2]);
+      assert_eq!(result, vec![]);
+    }
+
+    #[test]
+    fn test_bind_single() {
+      let vec = vec![42];
+      let result = vec.bind(|x| vec![x * 2]);
+      assert_eq!(result, vec![84]);
+    }
+
+    #[test]
+    fn test_bind_multiple() {
+      let vec = vec![1, 2, 3];
+      let result = vec.bind(|x| vec![x * 2, x * 3]);
+      assert_eq!(result, vec![2, 3, 4, 6, 6, 9]);
+    }
+
+    #[test]
+    fn test_bind_composition() {
+      let vec = vec![1, 2, 3];
+      let result = vec.bind(|x| vec![x * 2]).bind(|x| vec![x + 1]);
+      assert_eq!(result, vec![3, 5, 7]);
+    }
   }
 }
