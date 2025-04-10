@@ -354,7 +354,7 @@ mod tests {
 
   #[test]
   fn test_option_ref_mut_interactions() {
-    let mut value = 42;
+    let value = 42;
     let mut opt = Option::some(value);
 
     // Test as_ref followed by as_mut

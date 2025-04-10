@@ -1,6 +1,6 @@
 use crate::functor::Functor;
 use crate::monad::Monad;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 
 /// A type that represents either success (Ok) or failure (Err).
 /// Similar to Rust's built-in Result but with Effect system integration.
