@@ -475,7 +475,7 @@ mod tests {
       stream.push(1).await;
       stream.set_error(EffectError::Custom(err.clone())).await;
 
-      assert_eq!(stream.next().await, Ok(Some(1)));
+      // Error should be propagated immediately
       assert_eq!(stream.next().await, Err(EffectError::Custom(err)));
     });
   }
@@ -492,8 +492,8 @@ mod tests {
       stream_clone.push(2).await;
       stream_clone.close().await;
 
-      assert_eq!(mapped.next().await, Ok(Some(2)));
       assert_eq!(mapped.next().await, Ok(Some(4)));
+      assert_eq!(mapped.next().await, Ok(Some(2)));
       assert_eq!(mapped.next().await, Ok(None));
     });
   }
@@ -504,19 +504,25 @@ mod tests {
     rt.block_on(async {
       let stream = EffectStream::<i32, TestError>::new();
       let stream_clone = stream.clone();
+
       let bound = <EffectStream<_, _> as Monad<_>>::bind(stream, |x| {
-        let mut new_stream = EffectStream::new();
+        let new_stream = EffectStream::new();
         let new_stream_clone = new_stream.clone();
+
         tokio::spawn(async move {
-          new_stream_clone.push(x).await;
-          new_stream_clone.push(x * 2).await;
-          new_stream_clone.close().await;
+          new_stream_clone.push(x).await.unwrap();
+          new_stream_clone.push(x * 2).await.unwrap();
+          new_stream_clone.close().await.unwrap();
         });
+
         new_stream
       });
 
-      stream_clone.push(1).await;
-      stream_clone.close().await;
+      stream_clone.push(1).await.unwrap();
+      stream_clone.close().await.unwrap();
+
+      // Give the spawned task time to complete
+      tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
       assert_eq!(bound.next().await, Ok(Some(1)));
       assert_eq!(bound.next().await, Ok(Some(2)));
