@@ -11,39 +11,41 @@ use super::functor::Functor;
 /// The function type for bind operations.
 pub type BindFn<T, U> = dyn FnOnce(T) -> U;
 
-/// The Monad trait defines the basic operations for monadic types.
-pub trait Monad<A>: Applicative<A> {
-  /// The type constructor for the monad.
-  type SelfTrait<T>: Monad<T>;
+/// Identity trait for monadic types
+pub trait Id<T> {}
+impl<T> Id<T> for T {}
 
-  /// The type constructor for the unit operation.
-  type Unit<T>: Monad<T>;
+/// Monad trait for monadic types
+pub trait Monad<A>: Functor<A> + Applicative<A> {
+  /// The type itself, used for self-referential types
+  type SelfTrait<U>: Monad<U> + Id<Self::SelfTrait<U>>;
+  /// The type constructor for unit
+  type Unit<U>: Monad<U> + Id<Self::Unit<U>>;
+  /// The type constructor for bind
+  type Bind<U, F>: Monad<U> + Id<Self::Bind<U, F>>;
 
-  /// The type constructor for the bind operation.
-  type Bind<T, F>: Monad<T>;
-
-  /// Lifts a value into the monadic context.
+  /// Unit operation
   fn unit(a: A) -> Self::Unit<A>;
 
-  /// Binds a function over the monadic value.
-  fn bind<B, F>(self, f: F) -> Self::Bind<B, F>
+  /// Bind operation
+  fn bind<B, MB: Id<Self::SelfTrait<B>>, F>(self, f: F) -> Self::Bind<B, F>
   where
-    F: FnOnce(A) -> Self::SelfTrait<B>;
+    F: FnOnce(A) -> MB;
 }
 
 // Implementation for Option
 impl<A> Monad<A> for Option<A> {
-  type SelfTrait<T> = Option<T>;
-  type Unit<T> = Option<T>;
-  type Bind<T, F> = Option<T>;
+  type SelfTrait<U> = Option<U>;
+  type Unit<U> = Option<U>;
+  type Bind<U, F> = Option<U>;
 
-  fn unit(value: A) -> Self::Unit<A> {
-    Some(value)
+  fn unit(a: A) -> Self::Unit<A> {
+    Some(a)
   }
 
-  fn bind<B, F>(self, f: F) -> Self::Bind<B, F>
+  fn bind<B, MB: Id<Option<B>>, F>(self, f: F) -> Self::Bind<B, F>
   where
-    F: FnMut(A) -> Self::SelfTrait<B>,
+    F: FnOnce(A) -> Option<B>,
   {
     self.and_then(f)
   }
@@ -51,17 +53,17 @@ impl<A> Monad<A> for Option<A> {
 
 // Implementation for Vec
 impl<A> Monad<A> for Vec<A> {
-  type SelfTrait<T> = Vec<T>;
-  type Unit<T> = Vec<T>;
-  type Bind<T, F> = Vec<T>;
+  type SelfTrait<U> = Vec<U>;
+  type Unit<U> = Vec<U>;
+  type Bind<U, F> = Vec<U>;
 
-  fn unit(value: A) -> Self::Unit<A> {
-    vec![value]
+  fn unit(a: A) -> Self::Unit<A> {
+    vec![a]
   }
 
-  fn bind<B, F>(self, f: F) -> Self::Bind<B, F>
+  fn bind<B, MB: Id<Vec<B>>, F>(self, f: F) -> Self::Bind<B, F>
   where
-    F: FnMut(A) -> Self::SelfTrait<B>,
+    F: FnMut(A) -> Vec<B>,
   {
     self.into_iter().flat_map(f).collect()
   }
@@ -69,17 +71,17 @@ impl<A> Monad<A> for Vec<A> {
 
 // Implementation for Result
 impl<A, E> Monad<A> for Result<A, E> {
-  type SelfTrait<T> = Result<T, E>;
-  type Unit<T> = Result<T, E>;
-  type Bind<T, F> = Result<T, E>;
+  type SelfTrait<U> = Result<U, E>;
+  type Unit<U> = Result<U, E>;
+  type Bind<U, F> = Result<U, E>;
 
-  fn unit(value: A) -> Self::Unit<A> {
-    Ok(value)
+  fn unit(a: A) -> Self::Unit<A> {
+    Ok(a)
   }
 
-  fn bind<B, F>(self, f: F) -> Self::Bind<B, F>
+  fn bind<B, MB: Id<Result<B, E>>, F>(self, f: F) -> Self::Bind<B, F>
   where
-    F: FnMut(A) -> Self::SelfTrait<B>,
+    F: FnOnce(A) -> Result<B, E>,
   {
     self.and_then(f)
   }
@@ -87,17 +89,17 @@ impl<A, E> Monad<A> for Result<A, E> {
 
 // Implementation for Box
 impl<A> Monad<A> for Box<A> {
-  type SelfTrait<T> = Box<T>;
-  type Unit<T> = Box<T>;
-  type Bind<T, F> = Box<T>;
+  type SelfTrait<U> = Box<U>;
+  type Unit<U> = Box<U>;
+  type Bind<U, F> = Box<U>;
 
-  fn unit(value: A) -> Self::Unit<A> {
-    Box::new(value)
+  fn unit(a: A) -> Self::Unit<A> {
+    Box::new(a)
   }
 
-  fn bind<B, F>(self, mut f: F) -> Self::Bind<B, F>
+  fn bind<B, MB: Id<Box<B>>, F>(self, f: F) -> Self::Bind<B, F>
   where
-    F: FnMut(A) -> Self::SelfTrait<B>,
+    F: FnOnce(A) -> Box<B>,
   {
     f(*self)
   }
@@ -107,9 +109,9 @@ impl<A> Monad<A> for Box<A> {
 impl<K: std::hash::Hash + Eq + std::default::Default + std::clone::Clone, V> Monad<V>
   for HashMap<K, V>
 {
-  type SelfTrait<T> = HashMap<K, T>;
-  type Unit<T> = HashMap<K, T>;
-  type Bind<T, F> = HashMap<K, T>;
+  type SelfTrait<U> = HashMap<K, U>;
+  type Unit<U> = HashMap<K, U>;
+  type Bind<U, F> = HashMap<K, U>;
 
   fn unit(value: V) -> Self::Unit<V> {
     let mut map = HashMap::new();
@@ -117,9 +119,9 @@ impl<K: std::hash::Hash + Eq + std::default::Default + std::clone::Clone, V> Mon
     map
   }
 
-  fn bind<B, F>(self, mut f: F) -> Self::Bind<B, F>
+  fn bind<B, MB: Id<HashMap<K, B>>, F>(self, mut f: F) -> Self::Bind<B, F>
   where
-    F: FnMut(V) -> Self::SelfTrait<B>,
+    F: FnMut(V) -> HashMap<K, B>,
   {
     self
       .into_iter()
