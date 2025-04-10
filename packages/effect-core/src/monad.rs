@@ -4,6 +4,7 @@
 //! `Effect` type, enabling monadic composition and transformation of effects.
 
 use std::collections::HashMap;
+use std::hash::Hash;
 
 /// The function type for bind operations.
 pub type BindFn<T, U> = dyn FnOnce(T) -> U;
@@ -109,14 +110,16 @@ impl<A: Send + Sync + 'static> Monad<A> for Box<A> {
 }
 
 // Implementation for HashMap (values only)
-impl<K: std::hash::Hash + Eq + std::default::Default + std::clone::Clone, V: Send + Sync + 'static>
-  Monad<V> for HashMap<K, V>
+impl<K, V> Monad<V> for HashMap<K, V>
+where
+  K: Clone + Eq + Hash + Default + Send + Sync + 'static,
+  V: Send + Sync + 'static,
 {
   type HigherSelf<U: Send + Sync + 'static> = HashMap<K, U>;
 
-  fn pure(value: V) -> Self::HigherSelf<V> {
+  fn pure(a: V) -> Self::HigherSelf<V> {
     let mut map = HashMap::new();
-    map.insert(K::default(), value);
+    map.insert(K::default(), a);
     map
   }
 
@@ -127,7 +130,7 @@ impl<K: std::hash::Hash + Eq + std::default::Default + std::clone::Clone, V: Sen
   {
     self
       .into_iter()
-      .flat_map(|(k, v)| f(v).into_iter().map(move |(_, b)| (k.clone(), b)))
+      .flat_map(|(k, v)| f(v).into_values().map(move |b| (k.clone(), b)))
       .collect()
   }
 }
