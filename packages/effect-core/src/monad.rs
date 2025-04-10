@@ -4,10 +4,6 @@
 //! `Effect` type, enabling monadic composition and transformation of effects.
 
 use std::collections::HashMap;
-use std::fmt::Debug;
-
-use super::applicative::Applicative;
-use super::functor::Functor;
 
 /// The function type for bind operations.
 pub type BindFn<T, U> = dyn FnOnce(T) -> U;
@@ -52,12 +48,12 @@ impl<A: Send + Sync + 'static> Monad<A> for Option<A> {
     Some(a)
   }
 
-  fn bind<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+  fn bind<B, F>(self, f: F) -> Self::HigherSelf<B>
   where
     F: FnMut(A) -> Self::HigherSelf<B> + Send + Sync + 'static,
     B: Send + Sync + 'static,
   {
-    self.and_then(|a| f(a))
+    self.and_then(f)
   }
 }
 
@@ -69,12 +65,12 @@ impl<A: Send + Sync + 'static> Monad<A> for Vec<A> {
     vec![a]
   }
 
-  fn bind<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+  fn bind<B, F>(self, f: F) -> Self::HigherSelf<B>
   where
     F: FnMut(A) -> Self::HigherSelf<B> + Send + Sync + 'static,
     B: Send + Sync + 'static,
   {
-    self.into_iter().flat_map(|a| f(a)).collect()
+    self.into_iter().flat_map(f).collect()
   }
 }
 
@@ -86,12 +82,12 @@ impl<A: Send + Sync + 'static, E> Monad<A> for Result<A, E> {
     Ok(a)
   }
 
-  fn bind<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+  fn bind<B, F>(self, f: F) -> Self::HigherSelf<B>
   where
     F: FnMut(A) -> Self::HigherSelf<B> + Send + Sync + 'static,
     B: Send + Sync + 'static,
   {
-    self.and_then(|a| f(a))
+    self.and_then(f)
   }
 }
 
@@ -139,6 +135,9 @@ impl<K: std::hash::Hash + Eq + std::default::Default + std::clone::Clone, V: Sen
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::applicative::Applicative;
+  use crate::functor::Functor;
+  use std::fmt::Debug;
 
   // Define a simple monad for testing
   #[derive(Debug, PartialEq, Clone)]
