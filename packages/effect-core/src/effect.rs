@@ -374,7 +374,7 @@ mod tests {
       let x = x.clone();
       Effect::from_future(async move {
         sleep(Duration::from_millis(10)).await;
-        Ok(increment(x))
+        Ok(double(x))
       })
     });
     assert_eq!(bound.run().await, Ok(84));
