@@ -26,12 +26,12 @@ pub trait Mappable<T>: Functor<T> {}
 impl<T: Send + Sync + 'static> Functor<T> for Option<T> {
   type HigherSelf<U: Send + Sync + 'static> = Option<U>;
 
-  fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+  fn map<B, F>(self, f: F) -> Self::HigherSelf<B>
   where
     F: FnMut(T) -> B + Send + Sync + 'static,
     B: Send + Sync + 'static,
   {
-    self.map(|x| f(x))
+    self.map(f)
   }
 }
 
@@ -41,12 +41,12 @@ impl<T: Send + Sync + 'static> Mappable<T> for Option<T> {}
 impl<T: Send + Sync + 'static> Functor<T> for Vec<T> {
   type HigherSelf<U: Send + Sync + 'static> = Vec<U>;
 
-  fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+  fn map<B, F>(self, f: F) -> Self::HigherSelf<B>
   where
     F: FnMut(T) -> B + Send + Sync + 'static,
     B: Send + Sync + 'static,
   {
-    self.into_iter().map(|x| f(x)).collect()
+    self.into_iter().map(f).collect()
   }
 }
 
@@ -56,12 +56,12 @@ impl<T: Send + Sync + 'static> Mappable<T> for Vec<T> {}
 impl<T: Send + Sync + 'static, E: Send + Sync + 'static> Functor<T> for Result<T, E> {
   type HigherSelf<U: Send + Sync + 'static> = Result<U, E>;
 
-  fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+  fn map<B, F>(self, f: F) -> Self::HigherSelf<B>
   where
     F: FnMut(T) -> B + Send + Sync + 'static,
     B: Send + Sync + 'static,
   {
-    self.map(|x| f(x))
+    self.map(f)
   }
 }
 
@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn test_identity() {
       let some = Some(42);
-      let mapped = some.map(|x| x);
+      let mapped = some;
       assert_eq!(mapped, some);
     }
 

@@ -254,10 +254,6 @@ mod tests {
     x * 3
   }
 
-  fn increment(x: i32) -> i32 {
-    x + 1
-  }
-
   fn identity(x: i32) -> i32 {
     x
   }
@@ -371,7 +367,6 @@ mod tests {
       Ok(42)
     });
     let mut bound = effect.bind(|x| {
-      let x = x.clone();
       Effect::from_future(async move {
         sleep(Duration::from_millis(10)).await;
         Ok(double(x))
@@ -420,14 +415,14 @@ mod tests {
     let g = |x| x + 1;
     let mut left = effect.map(move |x| f(g(x)));
     let effect2 = Effect::<i32, std::convert::Infallible>::pure(42);
-    let mut right = effect2.map(move |x| g(x)).map(move |x| f(x));
+    let mut right = effect2.map(g).map(f);
     assert_eq!(left.run().await, right.run().await);
   }
 
   #[tokio::test]
   async fn test_effect_applicative_laws() {
     // Identity: pure id <*> v ≡ v
-    let mut v: Infallible<i32> = Effect::pure(42);
+    let v: Infallible<i32> = Effect::pure(42);
     let id: Infallible<fn(i32) -> i32> = Effect::pure(identity);
     let mut left = v.ap(id);
     let mut v_clone: Infallible<i32> = Effect::pure(42);

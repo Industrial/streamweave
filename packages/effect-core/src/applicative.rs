@@ -64,7 +64,7 @@ impl<A: Send + Sync + 'static + Clone> Applicative<A> for Vec<A> {
     B: Send + Sync + 'static,
   {
     fs.into_iter()
-      .flat_map(|mut f| self.iter().cloned().map(move |a| f(a)))
+      .flat_map(|f| self.iter().cloned().map(f))
       .collect()
   }
 }
