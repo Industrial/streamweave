@@ -110,26 +110,21 @@ where
 
   /// Get the next value from the stream
   pub async fn next(&self) -> EffectResult<Option<T>, E> {
-    let mut stream = self.inner.lock().await;
-    if let Some(err) = &stream.error {
-      return Err(err.clone());
-    }
-    if stream.values.is_empty() {
-      if stream.is_closed {
-        return Ok(None);
+    loop {
+      let mut stream = self.inner.lock().await;
+      if !stream.values.is_empty() {
+        return Ok(Some(stream.values.remove(0)));
       }
-      drop(stream);
-      let notify = self.inner.lock().await.notify.clone();
-      notify.notified().await;
-      stream = self.inner.lock().await;
       if let Some(err) = &stream.error {
         return Err(err.clone());
       }
-      if stream.values.is_empty() && stream.is_closed {
+      if stream.is_closed {
         return Ok(None);
       }
+      let notify = stream.notify.clone();
+      drop(stream);
+      notify.notified().await;
     }
-    Ok(Some(stream.values.remove(0)))
   }
 
   /// Set an error on the stream
@@ -567,7 +562,7 @@ mod tests {
     let producer = tokio::spawn(async move {
       for i in 0..5 {
         assert!(matches!(stream.push(i).await, Ok(())));
-        sleep(Duration::from_millis(10)).await;
+        sleep(Duration::from_millis(50)).await;
       }
       assert!(matches!(stream.close().await, Ok(())));
     });
@@ -576,6 +571,7 @@ mod tests {
       let mut values = Vec::new();
       while let Ok(Some(value)) = stream_clone.next().await {
         values.push(value);
+        sleep(Duration::from_millis(10)).await;
       }
       values
     });
@@ -600,11 +596,12 @@ mod tests {
   #[tokio::test]
   async fn test_map() {
     let stream = EffectStream::<i32, TestError>::new();
+    let stream_clone = stream.clone();
     let mapped = stream.map(|x| x * 2).await;
 
-    assert!(matches!(mapped.push(1).await, Ok(())));
-    assert!(matches!(mapped.push(2).await, Ok(())));
-    assert!(matches!(mapped.close().await, Ok(())));
+    assert!(matches!(stream_clone.push(1).await, Ok(())));
+    assert!(matches!(stream_clone.push(2).await, Ok(())));
+    assert!(matches!(stream_clone.close().await, Ok(())));
 
     assert!(matches!(mapped.next().await, Ok(Some(2))));
     assert!(matches!(mapped.next().await, Ok(Some(4))));
