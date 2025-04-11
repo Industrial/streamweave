@@ -1,22 +1,33 @@
 use effect_core::{Functor, Monad};
 use futures::{Stream, StreamExt};
-use std::io::{Error as IoError, ErrorKind};
+use std::future::Future;
+use std::ops::DerefMut;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::sync::Mutex;
+use tokio::sync::Notify;
 
 use crate::error::{EffectError, EffectResult};
 
 /// A stream of values that are produced by effects
-pub struct EffectStream<T, E> {
+pub struct EffectStream<T, E>
+where
+  T: Send + Sync + 'static,
+  E: Send + Sync + Clone + 'static,
+{
   inner: Arc<Mutex<InnerStream<T, E>>>,
 }
 
-struct InnerStream<T, E> {
+struct InnerStream<T, E>
+where
+  T: Send + Sync + 'static,
+  E: Send + Sync + Clone + 'static,
+{
   values: Vec<T>,
-  error: Option<EffectError<E>>,
   is_closed: bool,
+  error: Option<EffectError<E>>,
+  notify: Arc<Notify>,
 }
 
 /// Type alias for a locked inner stream
@@ -30,15 +41,15 @@ type StreamState<T, E, B, F> = (
   bool,
 );
 
-impl<T, E> EffectStream<T, E> {
+impl<T, E> EffectStream<T, E>
+where
+  T: Send + Sync + 'static,
+  E: Send + Sync + Clone + 'static,
+{
   /// Create a new empty stream
   pub fn new() -> Self {
     Self {
-      inner: Arc::new(Mutex::new(InnerStream {
-        values: Vec::new(),
-        error: None,
-        is_closed: false,
-      })),
+      inner: Arc::new(Mutex::new(InnerStream::new())),
     }
   }
 
@@ -49,11 +60,7 @@ impl<T, E> EffectStream<T, E> {
     T: Send + Sync + 'static,
     E: Send + Sync + 'static,
   {
-    let inner = Arc::new(Mutex::new(InnerStream {
-      values: Vec::new(),
-      error: None,
-      is_closed: false,
-    }));
+    let inner = Arc::new(Mutex::new(InnerStream::new()));
 
     let inner_clone = Arc::clone(&inner);
     tokio::spawn(async move {
@@ -77,21 +84,23 @@ impl<T, E> EffectStream<T, E> {
 
   /// Push a value to the stream
   pub async fn push(&self, value: T) -> EffectResult<(), E> {
-    let mut inner = self.inner.lock().await;
-    if inner.is_closed {
+    let mut stream = self.inner.lock().await;
+    if stream.is_closed {
       return Err(EffectError::Closed);
     }
-    inner.values.push(value);
+    stream.values.push(value);
+    stream.notify.notify_one();
     Ok(())
   }
 
   /// Close the stream
   pub async fn close(&self) -> EffectResult<(), E> {
-    let mut inner = self.inner.lock().await;
-    if inner.is_closed {
+    let mut stream = self.inner.lock().await;
+    if stream.is_closed {
       return Err(EffectError::Closed);
     }
-    inner.is_closed = true;
+    stream.is_closed = true;
+    stream.notify.notify_one();
     Ok(())
   }
 
@@ -102,62 +111,156 @@ impl<T, E> EffectStream<T, E> {
   }
 
   /// Get the next value from the stream
-  pub async fn next(&self) -> EffectResult<Option<T>, E>
-  where
-    E: Clone,
-  {
-    let mut inner = self.inner.lock().await;
-    if let Some(err) = inner.error.clone() {
-      return Err(err);
+  pub async fn next(&self) -> EffectResult<Option<T>, E> {
+    let mut stream = self.inner.lock().await;
+    if let Some(err) = &stream.error {
+      return Err(err.clone());
     }
-    if inner.is_closed && inner.values.is_empty() {
-      return Ok(None);
+    if stream.values.is_empty() {
+      if stream.is_closed {
+        return Ok(None);
+      }
+      drop(stream);
+      let notify = self.inner.lock().await.notify.clone();
+      notify.notified().await;
+      stream = self.inner.lock().await;
+      if let Some(err) = &stream.error {
+        return Err(err.clone());
+      }
+      if stream.values.is_empty() && stream.is_closed {
+        return Ok(None);
+      }
     }
-    if !inner.values.is_empty() {
-      Ok(Some(inner.values.remove(0)))
-    } else {
-      Ok(None)
-    }
+    Ok(Some(stream.values.remove(0)))
   }
 
   /// Set an error on the stream
-  pub async fn set_error(&self, error: EffectError<E>) -> EffectResult<(), E> {
-    let mut inner = self.inner.lock().await;
-    if inner.is_closed {
-      return Err(EffectError::Closed);
-    }
-    inner.error = Some(error);
+  pub async fn set_error(&self, error: E) -> EffectResult<(), E> {
+    let mut stream = self.inner.lock().await;
+    stream.error = Some(EffectError::Custom(error));
+    stream.notify.notify_one();
     Ok(())
+  }
+
+  pub async fn map<F, B>(self, f: F) -> EffectStream<B, E>
+  where
+    F: Fn(T) -> B + Send + Sync + 'static,
+    B: Send + Sync + 'static,
+    E: Clone,
+  {
+    let inner = Arc::new(Mutex::new(InnerStream::new()));
+    let source_inner = self.inner;
+    let f = Arc::new(f);
+    let inner_clone = inner.clone();
+
+    tokio::spawn(async move {
+      loop {
+        let mut source = source_inner.lock().await;
+        if let Some(err) = &source.error {
+          let mut target = inner_clone.lock().await;
+          target.error = Some(err.clone());
+          target.notify.notify_one();
+          break;
+        }
+        if source.values.is_empty() {
+          if source.is_closed {
+            let mut target = inner_clone.lock().await;
+            target.is_closed = true;
+            target.notify.notify_one();
+            break;
+          }
+          drop(source);
+          let notify = source_inner.lock().await.notify.clone();
+          notify.notified().await;
+          continue;
+        }
+        let value = source.values.remove(0);
+        drop(source);
+        let result = (*f)(value);
+        let mut target = inner_clone.lock().await;
+        target.values.push(result);
+        target.notify.notify_one();
+      }
+    });
+
+    EffectStream { inner }
+  }
+
+  pub async fn bind<F, B>(self, f: F) -> EffectStream<B, E>
+  where
+    F: Fn(T) -> EffectStream<B, E> + Send + Sync + 'static,
+    B: Send + Sync + 'static,
+    E: Clone,
+  {
+    let inner = Arc::new(Mutex::new(InnerStream::new()));
+    let source_inner = self.inner;
+    let f = Arc::new(f);
+    let inner_clone = inner.clone();
+
+    tokio::spawn(async move {
+      loop {
+        let mut source = source_inner.lock().await;
+        if let Some(err) = &source.error {
+          let mut target = inner_clone.lock().await;
+          target.error = Some(err.clone());
+          target.notify.notify_one();
+          break;
+        }
+        if source.values.is_empty() {
+          if source.is_closed {
+            let mut target = inner_clone.lock().await;
+            target.is_closed = true;
+            target.notify.notify_one();
+            break;
+          }
+          drop(source);
+          let notify = source_inner.lock().await.notify.clone();
+          notify.notified().await;
+          continue;
+        }
+        let value = source.values.remove(0);
+        drop(source);
+        let mut stream = (*f)(value);
+        loop {
+          match stream.next().await {
+            Ok(Some(result)) => {
+              let mut target = inner_clone.lock().await;
+              target.values.push(result);
+              target.notify.notify_one();
+            }
+            Ok(None) => break,
+            Err(err) => {
+              let mut target = inner_clone.lock().await;
+              target.error = Some(err);
+              target.notify.notify_one();
+              break;
+            }
+          }
+        }
+      }
+    });
+
+    EffectStream { inner }
   }
 }
 
 impl<T, E> Stream for EffectStream<T, E>
 where
-  T: Send + Sync + 'static,
+  T: Send + Sync + Clone + 'static,
   E: Send + Sync + Clone + 'static,
 {
   type Item = EffectResult<T, E>;
 
   fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-    let mutex = Arc::clone(&self.inner);
-    let mut inner = match mutex.try_lock() {
-      Ok(inner) => inner,
-      Err(_) => {
-        cx.waker().wake_by_ref();
-        return Poll::Pending;
-      }
-    };
+    let inner = self.inner.clone();
+    let mut guard = futures::executor::block_on(inner.lock());
 
-    if let Some(err) = inner.error.clone() {
-      return Poll::Ready(Some(Err(err)));
-    }
-
-    if inner.is_closed && inner.values.is_empty() {
-      return Poll::Ready(None);
-    }
-
-    if let Some(value) = inner.values.pop() {
-      Poll::Ready(Some(Ok(value)))
+    if let Some(err) = &guard.error {
+      Poll::Ready(Some(Err(err.clone())))
+    } else if !guard.values.is_empty() {
+      Poll::Ready(Some(Ok(guard.values.remove(0))))
+    } else if guard.is_closed {
+      Poll::Ready(None)
     } else {
       cx.waker().wake_by_ref();
       Poll::Pending
@@ -165,15 +268,23 @@ where
   }
 }
 
-impl<T, E> Clone for EffectStream<T, E> {
+impl<T, E> Clone for EffectStream<T, E>
+where
+  T: Send + Sync + 'static,
+  E: Send + Sync + Clone + 'static,
+{
   fn clone(&self) -> Self {
     Self {
-      inner: Arc::clone(&self.inner),
+      inner: self.inner.clone(),
     }
   }
 }
 
-impl<T, E> Default for EffectStream<T, E> {
+impl<T, E> Default for EffectStream<T, E>
+where
+  T: Send + Sync + 'static,
+  E: Send + Sync + Clone + 'static,
+{
   fn default() -> Self {
     Self::new()
   }
@@ -182,7 +293,7 @@ impl<T, E> Default for EffectStream<T, E> {
 impl<T, E> FromIterator<T> for EffectStream<T, E>
 where
   T: Send + Sync + 'static,
-  E: Send + Sync + 'static,
+  E: Send + Sync + Clone + 'static,
 {
   fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
     let values: Vec<T> = iter.into_iter().collect();
@@ -191,51 +302,9 @@ where
         values,
         error: None,
         is_closed: false,
+        notify: Arc::new(Notify::new()),
       })),
     }
-  }
-}
-
-impl<T, E> Functor<T> for EffectStream<T, E>
-where
-  T: Send + Sync + 'static,
-  E: Send + Sync + Clone + 'static,
-{
-  type HigherSelf<U: Send + Sync + 'static> = EffectStream<U, E>;
-
-  fn map<B, F>(self, f: F) -> Self::HigherSelf<B>
-  where
-    F: FnMut(T) -> B + Send + Sync + 'static,
-    B: Send + Sync + 'static,
-  {
-    let f = Arc::new(Mutex::new(f));
-    EffectStream::from_stream(Box::pin(futures::stream::unfold(
-      self.inner,
-      move |inner| {
-        let f = f.clone();
-        async move {
-          let (value, err) = {
-            let mut stream = inner.lock().await;
-            if let Some(err) = stream.error.clone() {
-              (None, Some(err))
-            } else if stream.is_closed && stream.values.is_empty() {
-              (None, None)
-            } else {
-              (stream.values.pop(), None)
-            }
-          };
-
-          match (value, err) {
-            (Some(value), None) => {
-              let mut f = f.lock().await;
-              Some((Ok(f(value)), inner))
-            }
-            (_, Some(err)) => Some((Err(err), inner)),
-            _ => None,
-          }
-        }
-      },
-    )))
   }
 }
 
@@ -368,49 +437,72 @@ where
   T: Send + Sync + 'static,
   E: Send + Sync + Clone + 'static,
 {
-  let mut stream_guard = stream.lock().await;
-  if let Some(err) = stream_guard.error.clone() {
-    return Some(Err(err));
-  }
-  if stream_guard.is_closed && stream_guard.values.is_empty() {
-    None
-  } else {
-    stream_guard.values.pop().map(Ok)
+  loop {
+    let mut stream_guard = stream.lock().await;
+    if let Some(err) = stream_guard.error.clone() {
+      return Some(Err(err));
+    }
+    if !stream_guard.values.is_empty() {
+      return Some(Ok(stream_guard.values.remove(0)));
+    }
+    if stream_guard.is_closed {
+      return None;
+    }
+    let notify = stream_guard.notify.clone();
+    drop(stream_guard);
+    notify.notified().await;
   }
 }
+
+impl<T, E> InnerStream<T, E>
+where
+  T: Send + Sync + 'static,
+  E: Send + Sync + Clone + 'static,
+{
+  fn new() -> Self {
+    Self {
+      values: Vec::new(),
+      is_closed: false,
+      error: None,
+      notify: Arc::new(Notify::new()),
+    }
+  }
+}
+
+#[derive(Debug, Clone)]
+pub struct TestError {
+  message: String,
+}
+
+impl TestError {
+  pub fn new(message: &str) -> Self {
+    Self {
+      message: message.to_string(),
+    }
+  }
+}
+
+impl std::fmt::Display for TestError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "TestError: {}", self.message)
+  }
+}
+
+impl std::error::Error for TestError {}
 
 #[cfg(test)]
 mod tests {
   use super::*;
+  use std::time::Duration;
   use tokio::runtime::Runtime;
-
-  #[derive(Debug, Clone, PartialEq)]
-  pub struct TestError {
-    message: String,
-  }
-
-  impl TestError {
-    pub fn new(msg: &str) -> Self {
-      Self {
-        message: msg.to_string(),
-      }
-    }
-  }
-
-  impl std::fmt::Display for TestError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-      write!(f, "TestError: {}", self.message)
-    }
-  }
-
-  impl std::error::Error for TestError {}
+  use tokio::time::sleep;
 
   fn test_error(msg: &str) -> TestError {
     TestError::new(msg)
   }
 
   #[test]
-  fn test_new() {
+  fn test_new_stream() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
       let stream: EffectStream<i32, TestError> = EffectStream::new();
@@ -420,28 +512,13 @@ mod tests {
   }
 
   #[test]
-  fn test_from_iter() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let values = vec![1, 2, 3];
-      let stream = EffectStream::<_, TestError>::from_iter(values.into_iter());
-
-      assert_eq!(stream.next().await, Ok(Some(1)));
-      assert_eq!(stream.next().await, Ok(Some(2)));
-      assert_eq!(stream.next().await, Ok(Some(3)));
-      assert_eq!(stream.next().await, Ok(None));
-    });
-  }
-
-  #[test]
   fn test_push_and_next() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
       let stream = EffectStream::<i32, TestError>::new();
-
-      stream.push(1).await;
-      stream.push(2).await;
-      stream.push(3).await;
+      stream.push(1).await.unwrap();
+      stream.push(2).await.unwrap();
+      stream.push(3).await.unwrap();
 
       assert_eq!(stream.next().await, Ok(Some(1)));
       assert_eq!(stream.next().await, Ok(Some(2)));
@@ -455,32 +532,88 @@ mod tests {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
       let stream = EffectStream::<i32, TestError>::new();
-
-      stream.push(1).await;
-      stream.close().await;
+      stream.push(1).await.unwrap();
+      stream.close().await.unwrap();
 
       assert_eq!(stream.next().await, Ok(Some(1)));
       assert_eq!(stream.next().await, Ok(None));
       assert!(stream.is_closed().await);
 
       // Should not be able to push after closing
-      stream.push(2).await;
+      assert!(stream.push(2).await.is_err());
       assert_eq!(stream.next().await, Ok(None));
     });
   }
 
   #[test]
-  fn test_set_error() {
+  fn test_error_propagation() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
       let stream = EffectStream::<i32, TestError>::new();
       let err = test_error("test error");
+      stream.set_error(err.clone()).await.unwrap();
 
-      stream.push(1).await;
-      stream.set_error(EffectError::Custom(err.clone())).await;
+      assert!(matches!(stream.next().await, Err(EffectError::Custom(_))));
+      assert!(matches!(stream.next().await, Err(EffectError::Custom(_))));
+    });
+  }
 
-      // Error should be propagated immediately
-      assert_eq!(stream.next().await, Err(EffectError::Custom(err)));
+  #[test]
+  fn test_clone() {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+      let stream = EffectStream::<i32, TestError>::new();
+      stream.push(1).await.unwrap();
+
+      let clone = stream.clone();
+      stream.push(2).await.unwrap();
+
+      assert_eq!(clone.next().await, Ok(Some(1)));
+      assert_eq!(clone.next().await, Ok(Some(2)));
+      assert_eq!(clone.next().await, Ok(None));
+    });
+  }
+
+  #[test]
+  fn test_concurrent_access() {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+      let stream = EffectStream::<i32, TestError>::new();
+      let stream_clone = stream.clone();
+
+      let producer = tokio::spawn(async move {
+        for i in 0..5 {
+          stream.push(i).await.unwrap();
+          sleep(Duration::from_millis(10)).await;
+        }
+        stream.close().await.unwrap();
+      });
+
+      let consumer = tokio::spawn(async move {
+        let mut values = Vec::new();
+        while let Ok(Some(value)) = stream_clone.next().await {
+          values.push(value);
+        }
+        values
+      });
+
+      producer.await.unwrap();
+      let values = consumer.await.unwrap();
+      assert_eq!(values, vec![0, 1, 2, 3, 4]);
+    });
+  }
+
+  #[test]
+  fn test_from_iter() {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+      let values = vec![1, 2, 3];
+      let stream = EffectStream::<_, TestError>::from_iter(values.clone());
+
+      for value in values {
+        assert_eq!(stream.next().await, Ok(Some(value)));
+      }
+      assert_eq!(stream.next().await, Ok(None));
     });
   }
 
@@ -489,27 +622,24 @@ mod tests {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
       let stream = EffectStream::<i32, TestError>::new();
-      let stream_clone = stream.clone();
-      let mapped = <EffectStream<_, _> as Functor<_>>::map(stream, |x| x * 2);
+      let mapped = stream.map(|x| x * 2).await;
 
-      stream_clone.push(1).await;
-      stream_clone.push(2).await;
-      stream_clone.close().await;
+      mapped.push(1).await.unwrap();
+      mapped.push(2).await.unwrap();
+      mapped.close().await.unwrap();
 
-      assert_eq!(mapped.next().await, Ok(Some(4)));
       assert_eq!(mapped.next().await, Ok(Some(2)));
+      assert_eq!(mapped.next().await, Ok(Some(4)));
       assert_eq!(mapped.next().await, Ok(None));
     });
   }
 
   #[test]
-  fn test_bind() {
+  fn test_monad_bind() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
       let stream = EffectStream::<i32, TestError>::new();
-      let stream_clone = stream.clone();
-
-      let bound = <EffectStream<_, _> as Monad<_>>::bind(stream, |x| {
+      let bound = <EffectStream<_, _> as Monad<_>>::bind(stream.clone(), |x| {
         let new_stream = EffectStream::new();
         let new_stream_clone = new_stream.clone();
 
@@ -522,11 +652,10 @@ mod tests {
         new_stream
       });
 
-      stream_clone.push(1).await.unwrap();
-      stream_clone.close().await.unwrap();
+      stream.push(1).await.unwrap();
+      stream.close().await.unwrap();
 
-      // Give the spawned task time to complete
-      tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+      sleep(Duration::from_millis(50)).await;
 
       assert_eq!(bound.next().await, Ok(Some(1)));
       assert_eq!(bound.next().await, Ok(Some(2)));
@@ -535,13 +664,64 @@ mod tests {
   }
 
   #[test]
-  fn test_pure() {
+  fn test_empty_stream() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-      let stream = EffectStream::<i32, TestError>::pure(42);
-
-      assert_eq!(stream.next().await, Ok(Some(42)));
+      let stream = EffectStream::<i32, TestError>::new();
+      stream.close().await.unwrap();
       assert_eq!(stream.next().await, Ok(None));
+    });
+  }
+
+  #[test]
+  fn test_error_after_values() {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+      let stream = EffectStream::<i32, TestError>::new();
+      stream.push(1).await.unwrap();
+      stream.push(2).await.unwrap();
+      let err = test_error("test error");
+      stream.set_error(err.clone()).await.unwrap();
+
+      assert_eq!(stream.next().await, Ok(Some(1)));
+      assert_eq!(stream.next().await, Ok(Some(2)));
+      assert!(matches!(stream.next().await, Err(EffectError::Custom(_))));
+    });
+  }
+
+  #[test]
+  fn test_multiple_consumers() {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+      let stream = EffectStream::<i32, TestError>::new();
+      let clone1 = stream.clone();
+      let clone2 = stream.clone();
+
+      stream.push(1).await.unwrap();
+      stream.push(2).await.unwrap();
+      stream.close().await.unwrap();
+
+      assert_eq!(clone1.next().await, Ok(Some(1)));
+      assert_eq!(clone2.next().await, Ok(Some(2)));
+      assert_eq!(clone1.next().await, Ok(None));
+      assert_eq!(clone2.next().await, Ok(None));
+    });
+  }
+
+  #[test]
+  fn test_stream_trait() {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+      let stream = EffectStream::<i32, TestError>::new();
+      let mut stream = Box::pin(stream);
+
+      stream.push(1).await.unwrap();
+      stream.push(2).await.unwrap();
+      stream.close().await.unwrap();
+
+      assert_eq!(stream.next().await, Some(Ok(1)));
+      assert_eq!(stream.next().await, Some(Ok(2)));
+      assert_eq!(stream.next().await, None);
     });
   }
 }
