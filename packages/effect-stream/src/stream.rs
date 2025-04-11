@@ -26,6 +26,7 @@ where
   is_closed: bool,
   error: Option<EffectError<E>>,
   notify: Arc<Notify>,
+  capacity: usize,
 }
 
 /// Type alias for a locked inner stream
@@ -86,6 +87,21 @@ where
     if stream.is_closed {
       return Err(EffectError::Closed);
     }
+    if let Some(err) = &stream.error {
+      return Err(err.clone());
+    }
+    while stream.values.len() >= stream.capacity {
+      let notify = stream.notify.clone();
+      drop(stream);
+      notify.notified().await;
+      stream = self.inner.lock().await;
+      if stream.is_closed {
+        return Err(EffectError::Closed);
+      }
+      if let Some(err) = &stream.error {
+        return Err(err.clone());
+      }
+    }
     stream.values.push(value);
     stream.notify.notify_one();
     Ok(())
@@ -113,7 +129,9 @@ where
     loop {
       let mut stream = self.inner.lock().await;
       if !stream.values.is_empty() {
-        return Ok(Some(stream.values.remove(0)));
+        let value = stream.values.remove(0);
+        stream.notify.notify_one();
+        return Ok(Some(value));
       }
       if let Some(err) = &stream.error {
         return Err(err.clone());
@@ -235,6 +253,12 @@ where
 
     EffectStream { inner }
   }
+
+  pub fn with_capacity(capacity: usize) -> Self {
+    Self {
+      inner: Arc::new(Mutex::new(InnerStream::with_capacity(capacity))),
+    }
+  }
 }
 
 impl<T, E> Stream for EffectStream<T, E>
@@ -296,6 +320,7 @@ where
         error: None,
         is_closed: false,
         notify: Arc::new(Notify::new()),
+        capacity: 10, // Default capacity
       })),
     }
   }
@@ -458,6 +483,17 @@ where
       is_closed: false,
       error: None,
       notify: Arc::new(Notify::new()),
+      capacity: 10, // Default capacity
+    }
+  }
+
+  fn with_capacity(capacity: usize) -> Self {
+    Self {
+      values: Vec::with_capacity(capacity),
+      is_closed: false,
+      error: None,
+      notify: Arc::new(Notify::new()),
+      capacity,
     }
   }
 }
@@ -710,5 +746,117 @@ mod tests {
     assert!(matches!(bound.next().await, Ok(Some(4))));
     assert!(matches!(bound.next().await, Ok(Some(6))));
     assert!(matches!(bound.next().await, Ok(None)));
+  }
+
+  #[tokio::test]
+  async fn test_backpressure() {
+    let stream = EffectStream::<i32, TestError>::with_capacity(10);
+    let stream_clone = stream.clone();
+
+    // Fill the stream to capacity
+    for i in 0..10 {
+      assert!(matches!(stream.push(i).await, Ok(())));
+    }
+
+    // Try to push one more value - should block until space is available
+    let producer = tokio::spawn(async move {
+      assert!(matches!(stream.push(10).await, Ok(())));
+    });
+
+    // Wait a bit to ensure the producer is blocked
+    sleep(Duration::from_millis(50)).await;
+
+    // Consume one value to make space
+    assert!(matches!(stream_clone.next().await, Ok(Some(0))));
+
+    // Producer should now complete
+    producer.await.unwrap();
+
+    // Verify all values are present
+    for i in 1..=10 {
+      assert!(matches!(stream_clone.next().await, Ok(Some(v)) if v == i));
+    }
+  }
+
+  #[tokio::test]
+  async fn test_backpressure_multiple_producers() {
+    let stream = EffectStream::<i32, TestError>::with_capacity(10);
+    let stream_clone = stream.clone();
+
+    // Create multiple producers
+    let mut producers = Vec::new();
+    for i in 0..5 {
+      let stream = stream.clone();
+      producers.push(tokio::spawn(async move {
+        for j in 0..10 {
+          assert!(matches!(stream.push((i * 10 + j) as i32).await, Ok(())));
+        }
+      }));
+    }
+
+    // Create a consumer
+    let consumer = tokio::spawn(async move {
+      let mut values = Vec::new();
+      for _ in 0..50 {
+        if let Ok(Some(value)) = stream_clone.next().await {
+          values.push(value);
+          sleep(Duration::from_millis(10)).await;
+        }
+      }
+      values
+    });
+
+    // Wait for all producers to complete
+    for producer in producers {
+      producer.await.unwrap();
+    }
+
+    // Get the consumed values
+    let mut values = consumer.await.unwrap();
+
+    // Verify we got all values
+    assert_eq!(values.len(), 50);
+    values.sort();
+    for i in 0..50 {
+      assert_eq!(values[i], i as i32);
+    }
+  }
+
+  #[tokio::test]
+  async fn test_backpressure_with_error() {
+    let stream = EffectStream::<i32, TestError>::with_capacity(10);
+    let stream_clone = stream.clone();
+
+    // Fill the stream to capacity
+    for i in 0..10 {
+      assert!(matches!(stream.push(i).await, Ok(())));
+    }
+
+    // Try to push one more value - should block until space is available
+    let producer = tokio::spawn(async move { stream.push(10).await });
+
+    // Wait a bit to ensure the producer is blocked
+    sleep(Duration::from_millis(50)).await;
+
+    // Set an error on the stream
+    let err = test_error("test error");
+    assert!(matches!(stream_clone.set_error(err.clone()).await, Ok(())));
+
+    // Producer should now fail
+    assert!(matches!(
+      producer.await.unwrap(),
+      Err(EffectError::Custom(_))
+    ));
+
+    // Verify we can still consume the values that were pushed
+    for i in 0..10 {
+      assert!(matches!(stream_clone.next().await, Ok(Some(v)) if v == i));
+    }
+
+    // Next read should return the error
+    assert!(matches!(
+      stream_clone.next().await,
+      Err(EffectError::Custom(_))
+    ));
   }
 }
