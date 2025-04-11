@@ -68,11 +68,18 @@ path = "examples/02_advanced_pipeline/main.rs"
 
 [workspace]
 members = [
-    "packages/effect-concurrent",
     "packages/effect-core",
+    "packages/effect-concurrent",
     "packages/effect-derive",
     "packages/effect-resource",
     "packages/effect-stream",
+    "packages/effect-stream-basic",
+    # "packages/effect-stream-file",
+    # "packages/effect-stream-command",
+    # "packages/effect-stream-time",
+    # "packages/effect-stream-data",
+    # "packages/effect-stream-env",
+    # "packages/effect-stream-range",
 ]
 resolver = "2"
 

@@ -1,0 +1,12 @@
+[package]
+name = "effect-stream-basic"
+version = "0.1.0"
+edition = "2021"
+authors = ["StreamWeave"]
+description = "Basic type streams for effect-stream"
+license = "MIT"
+readme = "README.md"
+
+[dependencies]
+effect-stream = { path = "../effect-stream" }
+tokio = { version = "1.36", features = ["full"] }
