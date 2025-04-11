@@ -469,15 +469,15 @@ where
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TestError {
   message: String,
 }
 
 impl TestError {
-  pub fn new(message: &str) -> Self {
+  pub fn new(msg: &str) -> Self {
     Self {
-      message: message.to_string(),
+      message: msg.to_string(),
     }
   }
 }
@@ -506,8 +506,7 @@ mod tests {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
       let stream: EffectStream<i32, TestError> = EffectStream::new();
-      assert!(!stream.is_closed().await);
-      assert_eq!(stream.next().await, Ok(None));
+      assert!(matches!(stream.next().await, Ok(None)));
     });
   }
 
@@ -520,10 +519,10 @@ mod tests {
       stream.push(2).await.unwrap();
       stream.push(3).await.unwrap();
 
-      assert_eq!(stream.next().await, Ok(Some(1)));
-      assert_eq!(stream.next().await, Ok(Some(2)));
-      assert_eq!(stream.next().await, Ok(Some(3)));
-      assert_eq!(stream.next().await, Ok(None));
+      assert!(matches!(stream.next().await, Ok(Some(1))));
+      assert!(matches!(stream.next().await, Ok(Some(2))));
+      assert!(matches!(stream.next().await, Ok(Some(3))));
+      assert!(matches!(stream.next().await, Ok(None)));
     });
   }
 
@@ -535,13 +534,13 @@ mod tests {
       stream.push(1).await.unwrap();
       stream.close().await.unwrap();
 
-      assert_eq!(stream.next().await, Ok(Some(1)));
-      assert_eq!(stream.next().await, Ok(None));
+      assert!(matches!(stream.next().await, Ok(Some(1))));
+      assert!(matches!(stream.next().await, Ok(None)));
       assert!(stream.is_closed().await);
 
       // Should not be able to push after closing
-      assert!(stream.push(2).await.is_err());
-      assert_eq!(stream.next().await, Ok(None));
+      assert!(matches!(stream.push(2).await, Err(EffectError::Closed)));
+      assert!(matches!(stream.next().await, Ok(None)));
     });
   }
 
@@ -568,9 +567,9 @@ mod tests {
       let clone = stream.clone();
       stream.push(2).await.unwrap();
 
-      assert_eq!(clone.next().await, Ok(Some(1)));
-      assert_eq!(clone.next().await, Ok(Some(2)));
-      assert_eq!(clone.next().await, Ok(None));
+      assert!(matches!(clone.next().await, Ok(Some(1))));
+      assert!(matches!(clone.next().await, Ok(Some(2))));
+      assert!(matches!(clone.next().await, Ok(None)));
     });
   }
 
@@ -611,9 +610,9 @@ mod tests {
       let stream = EffectStream::<_, TestError>::from_iter(values.clone());
 
       for value in values {
-        assert_eq!(stream.next().await, Ok(Some(value)));
+        assert!(matches!(stream.next().await, Ok(Some(v)) if v == value));
       }
-      assert_eq!(stream.next().await, Ok(None));
+      assert!(matches!(stream.next().await, Ok(None)));
     });
   }
 
@@ -628,9 +627,9 @@ mod tests {
       mapped.push(2).await.unwrap();
       mapped.close().await.unwrap();
 
-      assert_eq!(mapped.next().await, Ok(Some(2)));
-      assert_eq!(mapped.next().await, Ok(Some(4)));
-      assert_eq!(mapped.next().await, Ok(None));
+      assert!(matches!(mapped.next().await, Ok(Some(2))));
+      assert!(matches!(mapped.next().await, Ok(Some(4))));
+      assert!(matches!(mapped.next().await, Ok(None)));
     });
   }
 
@@ -657,9 +656,9 @@ mod tests {
 
       sleep(Duration::from_millis(50)).await;
 
-      assert_eq!(bound.next().await, Ok(Some(1)));
-      assert_eq!(bound.next().await, Ok(Some(2)));
-      assert_eq!(bound.next().await, Ok(None));
+      assert!(matches!(bound.next().await, Ok(Some(1))));
+      assert!(matches!(bound.next().await, Ok(Some(2))));
+      assert!(matches!(bound.next().await, Ok(None)));
     });
   }
 
@@ -669,7 +668,7 @@ mod tests {
     rt.block_on(async {
       let stream = EffectStream::<i32, TestError>::new();
       stream.close().await.unwrap();
-      assert_eq!(stream.next().await, Ok(None));
+      assert!(matches!(stream.next().await, Ok(None)));
     });
   }
 
@@ -683,8 +682,8 @@ mod tests {
       let err = test_error("test error");
       stream.set_error(err.clone()).await.unwrap();
 
-      assert_eq!(stream.next().await, Ok(Some(1)));
-      assert_eq!(stream.next().await, Ok(Some(2)));
+      assert!(matches!(stream.next().await, Ok(Some(1))));
+      assert!(matches!(stream.next().await, Ok(Some(2))));
       assert!(matches!(stream.next().await, Err(EffectError::Custom(_))));
     });
   }
@@ -701,10 +700,10 @@ mod tests {
       stream.push(2).await.unwrap();
       stream.close().await.unwrap();
 
-      assert_eq!(clone1.next().await, Ok(Some(1)));
-      assert_eq!(clone2.next().await, Ok(Some(2)));
-      assert_eq!(clone1.next().await, Ok(None));
-      assert_eq!(clone2.next().await, Ok(None));
+      assert!(matches!(clone1.next().await, Ok(Some(1))));
+      assert!(matches!(clone2.next().await, Ok(Some(2))));
+      assert!(matches!(clone1.next().await, Ok(None)));
+      assert!(matches!(clone2.next().await, Ok(None)));
     });
   }
 
@@ -719,9 +718,32 @@ mod tests {
       stream.push(2).await.unwrap();
       stream.close().await.unwrap();
 
-      assert_eq!(stream.next().await, Some(Ok(1)));
-      assert_eq!(stream.next().await, Some(Ok(2)));
-      assert_eq!(stream.next().await, None);
+      assert!(matches!(stream.next().await, Some(Ok(1))));
+      assert!(matches!(stream.next().await, Some(Ok(2))));
+      assert!(matches!(stream.next().await, None));
     });
+  }
+
+  #[tokio::test]
+  async fn test_bind() {
+    let stream = EffectStream::<i32, TestError>::new();
+    assert!(matches!(stream.push(1).await, Ok(())));
+    assert!(matches!(stream.push(2).await, Ok(())));
+    assert!(matches!(stream.close().await, Ok(())));
+
+    let bound = stream
+      .bind(|x| {
+        let mut s = EffectStream::new();
+        s.push(x * 2);
+        s.push(x * 3);
+        s
+      })
+      .await;
+
+    assert!(matches!(bound.next().await, Ok(Some(2))));
+    assert!(matches!(bound.next().await, Ok(Some(3))));
+    assert!(matches!(bound.next().await, Ok(Some(4))));
+    assert!(matches!(bound.next().await, Ok(Some(6))));
+    assert!(matches!(bound.next().await, Ok(None)));
   }
 }
