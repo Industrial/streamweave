@@ -8,7 +8,13 @@
 //! - Stream operations and utilities
 
 pub mod error;
+pub mod operator;
+pub mod sink;
+pub mod source;
 pub mod stream;
 
-pub use error::{EffectError, EffectResult};
-pub use stream::EffectStream;
+pub use error::*;
+pub use operator::*;
+pub use sink::*;
+pub use source::*;
+pub use stream::*;
