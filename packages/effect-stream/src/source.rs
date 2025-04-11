@@ -174,24 +174,21 @@ mod tests {
     assert_eq!(stream.next().await.unwrap(), None);
   }
 
-  //   // Test with large number of items
-  //   #[tokio::test]
-  //   async fn test_large_stream() {
-  //     let values: Vec<i32> = (0..1000).collect();
-  //     let source = TestSource::<i32>::new(values.clone(), false);
-  //     let stream: EffectStream<i32, TestError> = source.source().await.unwrap();
+  // Test with large number of items
+  #[tokio::test]
+  async fn test_large_stream() {
+    let values: Vec<i32> = (0..1000).collect();
+    let source = TestSource::<i32>::new(values.clone(), false);
+    let stream: EffectStream<i32, TestError> = source.source().await.unwrap();
 
-  //     // Wait for the stream to be closed
-  //     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    let mut results = Vec::with_capacity(1000);
+    while let Ok(Some(value)) = stream.next().await {
+      results.push(value);
+    }
 
-  //     let mut results = Vec::with_capacity(1000);
-  //     while let Ok(Some(value)) = stream.next().await {
-  //       results.push(value);
-  //     }
-
-  //     assert_eq!(results.len(), 1000);
-  //     for i in 0..1000 {
-  //       assert_eq!(results[i], i as i32);
-  //     }
-  //   }
+    assert_eq!(results.len(), 1000);
+    for i in 0..1000 {
+      assert_eq!(results[i], i as i32);
+    }
+  }
 }
