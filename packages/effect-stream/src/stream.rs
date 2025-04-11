@@ -1,7 +1,5 @@
-use effect_core::{Functor, Monad};
+use effect_core::Monad;
 use futures::{Stream, StreamExt};
-use std::future::Future;
-use std::ops::DerefMut;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -220,7 +218,7 @@ where
         }
         let value = source.values.remove(0);
         drop(source);
-        let mut stream = (*f)(value);
+        let stream = (*f)(value);
         loop {
           match stream.next().await {
             Ok(Some(result)) => {
@@ -494,234 +492,200 @@ impl std::error::Error for TestError {}
 mod tests {
   use super::*;
   use std::time::Duration;
-  use tokio::runtime::Runtime;
   use tokio::time::sleep;
 
   fn test_error(msg: &str) -> TestError {
     TestError::new(msg)
   }
 
-  #[test]
-  fn test_new_stream() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let stream: EffectStream<i32, TestError> = EffectStream::new();
-      assert!(matches!(stream.next().await, Ok(None)));
-    });
+  #[tokio::test]
+  async fn test_new_stream() {
+    let stream: EffectStream<i32, TestError> = EffectStream::new();
+    assert!(matches!(stream.close().await, Ok(())));
+    assert!(matches!(stream.next().await, Ok(None)));
   }
 
-  #[test]
-  fn test_push_and_next() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let stream = EffectStream::<i32, TestError>::new();
-      stream.push(1).await.unwrap();
-      stream.push(2).await.unwrap();
-      stream.push(3).await.unwrap();
+  #[tokio::test]
+  async fn test_push_and_next() {
+    let stream = EffectStream::<i32, TestError>::new();
+    assert!(matches!(stream.push(1).await, Ok(())));
+    assert!(matches!(stream.push(2).await, Ok(())));
+    assert!(matches!(stream.push(3).await, Ok(())));
+    assert!(matches!(stream.close().await, Ok(())));
 
-      assert!(matches!(stream.next().await, Ok(Some(1))));
-      assert!(matches!(stream.next().await, Ok(Some(2))));
-      assert!(matches!(stream.next().await, Ok(Some(3))));
-      assert!(matches!(stream.next().await, Ok(None)));
-    });
+    assert!(matches!(stream.next().await, Ok(Some(1))));
+    assert!(matches!(stream.next().await, Ok(Some(2))));
+    assert!(matches!(stream.next().await, Ok(Some(3))));
+    assert!(matches!(stream.next().await, Ok(None)));
   }
 
-  #[test]
-  fn test_close() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let stream = EffectStream::<i32, TestError>::new();
-      stream.push(1).await.unwrap();
-      stream.close().await.unwrap();
+  #[tokio::test]
+  async fn test_close() {
+    let stream = EffectStream::<i32, TestError>::new();
+    assert!(matches!(stream.push(1).await, Ok(())));
+    assert!(matches!(stream.close().await, Ok(())));
 
-      assert!(matches!(stream.next().await, Ok(Some(1))));
-      assert!(matches!(stream.next().await, Ok(None)));
-      assert!(stream.is_closed().await);
+    assert!(matches!(stream.next().await, Ok(Some(1))));
+    assert!(matches!(stream.next().await, Ok(None)));
+    assert!(stream.is_closed().await);
 
-      // Should not be able to push after closing
-      assert!(matches!(stream.push(2).await, Err(EffectError::Closed)));
-      assert!(matches!(stream.next().await, Ok(None)));
-    });
+    // Should not be able to push after closing
+    assert!(matches!(stream.push(2).await, Err(EffectError::Closed)));
+    assert!(matches!(stream.next().await, Ok(None)));
   }
 
-  #[test]
-  fn test_error_propagation() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let stream = EffectStream::<i32, TestError>::new();
-      let err = test_error("test error");
-      stream.set_error(err.clone()).await.unwrap();
+  #[tokio::test]
+  async fn test_error_propagation() {
+    let stream = EffectStream::<i32, TestError>::new();
+    let err = test_error("test error");
+    assert!(matches!(stream.set_error(err.clone()).await, Ok(())));
+    assert!(matches!(stream.close().await, Ok(())));
 
-      assert!(matches!(stream.next().await, Err(EffectError::Custom(_))));
-      assert!(matches!(stream.next().await, Err(EffectError::Custom(_))));
-    });
+    assert!(matches!(stream.next().await, Err(EffectError::Custom(_))));
+    assert!(matches!(stream.next().await, Err(EffectError::Custom(_))));
   }
 
-  #[test]
-  fn test_clone() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let stream = EffectStream::<i32, TestError>::new();
-      stream.push(1).await.unwrap();
+  #[tokio::test]
+  async fn test_clone() {
+    let stream = EffectStream::<i32, TestError>::new();
+    assert!(matches!(stream.push(1).await, Ok(())));
 
-      let clone = stream.clone();
-      stream.push(2).await.unwrap();
+    let clone = stream.clone();
+    assert!(matches!(stream.push(2).await, Ok(())));
+    assert!(matches!(stream.close().await, Ok(())));
 
-      assert!(matches!(clone.next().await, Ok(Some(1))));
-      assert!(matches!(clone.next().await, Ok(Some(2))));
-      assert!(matches!(clone.next().await, Ok(None)));
-    });
+    assert!(matches!(clone.next().await, Ok(Some(1))));
+    assert!(matches!(clone.next().await, Ok(Some(2))));
+    assert!(matches!(clone.next().await, Ok(None)));
   }
 
-  #[test]
-  fn test_concurrent_access() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let stream = EffectStream::<i32, TestError>::new();
-      let stream_clone = stream.clone();
+  #[tokio::test]
+  async fn test_concurrent_access() {
+    let stream = EffectStream::<i32, TestError>::new();
+    let stream_clone = stream.clone();
 
-      let producer = tokio::spawn(async move {
-        for i in 0..5 {
-          stream.push(i).await.unwrap();
-          sleep(Duration::from_millis(10)).await;
-        }
-        stream.close().await.unwrap();
-      });
-
-      let consumer = tokio::spawn(async move {
-        let mut values = Vec::new();
-        while let Ok(Some(value)) = stream_clone.next().await {
-          values.push(value);
-        }
-        values
-      });
-
-      producer.await.unwrap();
-      let values = consumer.await.unwrap();
-      assert_eq!(values, vec![0, 1, 2, 3, 4]);
-    });
-  }
-
-  #[test]
-  fn test_from_iter() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let values = vec![1, 2, 3];
-      let stream = EffectStream::<_, TestError>::from_iter(values.clone());
-
-      for value in values {
-        assert!(matches!(stream.next().await, Ok(Some(v)) if v == value));
+    let producer = tokio::spawn(async move {
+      for i in 0..5 {
+        assert!(matches!(stream.push(i).await, Ok(())));
+        sleep(Duration::from_millis(10)).await;
       }
-      assert!(matches!(stream.next().await, Ok(None)));
+      assert!(matches!(stream.close().await, Ok(())));
     });
+
+    let consumer = tokio::spawn(async move {
+      let mut values = Vec::new();
+      while let Ok(Some(value)) = stream_clone.next().await {
+        values.push(value);
+      }
+      values
+    });
+
+    producer.await.unwrap();
+    let values = consumer.await.unwrap();
+    assert_eq!(values, vec![0, 1, 2, 3, 4]);
   }
 
-  #[test]
-  fn test_map() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let stream = EffectStream::<i32, TestError>::new();
-      let mapped = stream.map(|x| x * 2).await;
+  #[tokio::test]
+  async fn test_from_iter() {
+    let values = vec![1, 2, 3];
+    let stream = EffectStream::<_, TestError>::from_iter(values.clone());
+    assert!(matches!(stream.close().await, Ok(())));
 
-      mapped.push(1).await.unwrap();
-      mapped.push(2).await.unwrap();
-      mapped.close().await.unwrap();
-
-      assert!(matches!(mapped.next().await, Ok(Some(2))));
-      assert!(matches!(mapped.next().await, Ok(Some(4))));
-      assert!(matches!(mapped.next().await, Ok(None)));
-    });
+    for value in values {
+      assert!(matches!(stream.next().await, Ok(Some(v)) if v == value));
+    }
+    assert!(matches!(stream.next().await, Ok(None)));
   }
 
-  #[test]
-  fn test_monad_bind() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let stream = EffectStream::<i32, TestError>::new();
-      let bound = <EffectStream<_, _> as Monad<_>>::bind(stream.clone(), |x| {
-        let new_stream = EffectStream::new();
-        let new_stream_clone = new_stream.clone();
+  #[tokio::test]
+  async fn test_map() {
+    let stream = EffectStream::<i32, TestError>::new();
+    let mapped = stream.map(|x| x * 2).await;
 
-        tokio::spawn(async move {
-          new_stream_clone.push(x).await.unwrap();
-          new_stream_clone.push(x * 2).await.unwrap();
-          new_stream_clone.close().await.unwrap();
-        });
+    assert!(matches!(mapped.push(1).await, Ok(())));
+    assert!(matches!(mapped.push(2).await, Ok(())));
+    assert!(matches!(mapped.close().await, Ok(())));
 
-        new_stream
+    assert!(matches!(mapped.next().await, Ok(Some(2))));
+    assert!(matches!(mapped.next().await, Ok(Some(4))));
+    assert!(matches!(mapped.next().await, Ok(None)));
+  }
+
+  #[tokio::test]
+  async fn test_monad_bind() {
+    let stream = EffectStream::<i32, TestError>::new();
+    let bound = <EffectStream<_, _> as Monad<_>>::bind(stream.clone(), |x| {
+      let new_stream = EffectStream::new();
+      let new_stream_clone = new_stream.clone();
+
+      tokio::spawn(async move {
+        assert!(matches!(new_stream_clone.push(x).await, Ok(())));
+        assert!(matches!(new_stream_clone.push(x * 2).await, Ok(())));
+        assert!(matches!(new_stream_clone.close().await, Ok(())));
       });
 
-      stream.push(1).await.unwrap();
-      stream.close().await.unwrap();
-
-      sleep(Duration::from_millis(50)).await;
-
-      assert!(matches!(bound.next().await, Ok(Some(1))));
-      assert!(matches!(bound.next().await, Ok(Some(2))));
-      assert!(matches!(bound.next().await, Ok(None)));
+      new_stream
     });
+
+    assert!(matches!(stream.push(1).await, Ok(())));
+    assert!(matches!(stream.close().await, Ok(())));
+
+    sleep(Duration::from_millis(50)).await;
+
+    assert!(matches!(bound.next().await, Ok(Some(1))));
+    assert!(matches!(bound.next().await, Ok(Some(2))));
+    assert!(matches!(bound.next().await, Ok(None)));
   }
 
-  #[test]
-  fn test_empty_stream() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let stream = EffectStream::<i32, TestError>::new();
-      stream.close().await.unwrap();
-      assert!(matches!(stream.next().await, Ok(None)));
-    });
+  #[tokio::test]
+  async fn test_empty_stream() {
+    let stream = EffectStream::<i32, TestError>::new();
+    assert!(matches!(stream.close().await, Ok(())));
+    assert!(matches!(stream.next().await, Ok(None)));
   }
 
-  #[test]
-  fn test_error_after_values() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let stream = EffectStream::<i32, TestError>::new();
-      stream.push(1).await.unwrap();
-      stream.push(2).await.unwrap();
-      let err = test_error("test error");
-      stream.set_error(err.clone()).await.unwrap();
+  #[tokio::test]
+  async fn test_error_after_values() {
+    let stream = EffectStream::<i32, TestError>::new();
+    assert!(matches!(stream.push(1).await, Ok(())));
+    assert!(matches!(stream.push(2).await, Ok(())));
+    let err = test_error("test error");
+    assert!(matches!(stream.set_error(err.clone()).await, Ok(())));
+    assert!(matches!(stream.close().await, Ok(())));
 
-      assert!(matches!(stream.next().await, Ok(Some(1))));
-      assert!(matches!(stream.next().await, Ok(Some(2))));
-      assert!(matches!(stream.next().await, Err(EffectError::Custom(_))));
-    });
+    assert!(matches!(stream.next().await, Ok(Some(1))));
+    assert!(matches!(stream.next().await, Ok(Some(2))));
+    assert!(matches!(stream.next().await, Err(EffectError::Custom(_))));
   }
 
-  #[test]
-  fn test_multiple_consumers() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let stream = EffectStream::<i32, TestError>::new();
-      let clone1 = stream.clone();
-      let clone2 = stream.clone();
+  #[tokio::test]
+  async fn test_multiple_consumers() {
+    let stream = EffectStream::<i32, TestError>::new();
+    let clone1 = stream.clone();
+    let clone2 = stream.clone();
 
-      stream.push(1).await.unwrap();
-      stream.push(2).await.unwrap();
-      stream.close().await.unwrap();
+    assert!(matches!(stream.push(1).await, Ok(())));
+    assert!(matches!(stream.push(2).await, Ok(())));
+    assert!(matches!(stream.close().await, Ok(())));
 
-      assert!(matches!(clone1.next().await, Ok(Some(1))));
-      assert!(matches!(clone2.next().await, Ok(Some(2))));
-      assert!(matches!(clone1.next().await, Ok(None)));
-      assert!(matches!(clone2.next().await, Ok(None)));
-    });
+    assert!(matches!(clone1.next().await, Ok(Some(1))));
+    assert!(matches!(clone2.next().await, Ok(Some(2))));
+    assert!(matches!(clone1.next().await, Ok(None)));
+    assert!(matches!(clone2.next().await, Ok(None)));
   }
 
-  #[test]
-  fn test_stream_trait() {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-      let stream = EffectStream::<i32, TestError>::new();
-      let mut stream = Box::pin(stream);
+  #[tokio::test]
+  async fn test_stream_trait() {
+    let stream = EffectStream::<i32, TestError>::new();
+    let mut stream = Box::pin(stream);
 
-      stream.push(1).await.unwrap();
-      stream.push(2).await.unwrap();
-      stream.close().await.unwrap();
+    assert!(matches!(stream.push(1).await, Ok(())));
+    assert!(matches!(stream.push(2).await, Ok(())));
+    assert!(matches!(stream.close().await, Ok(())));
 
-      assert!(matches!(stream.next().await, Some(Ok(1))));
-      assert!(matches!(stream.next().await, Some(Ok(2))));
-      assert!(matches!(stream.next().await, None));
-    });
+    assert!(matches!(stream.next().await, Some(Ok(1))));
+    assert!(matches!(stream.next().await, Some(Ok(2))));
+    assert!(matches!(stream.next().await, None));
   }
 
   #[tokio::test]
@@ -733,9 +697,13 @@ mod tests {
 
     let bound = stream
       .bind(|x| {
-        let mut s = EffectStream::new();
-        s.push(x * 2);
-        s.push(x * 3);
+        let s = EffectStream::new();
+        let s_clone = s.clone();
+        tokio::spawn(async move {
+          assert!(matches!(s_clone.push(x * 2).await, Ok(())));
+          assert!(matches!(s_clone.push(x * 3).await, Ok(())));
+          assert!(matches!(s_clone.close().await, Ok(())));
+        });
         s
       })
       .await;
