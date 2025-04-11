@@ -1,6 +1,8 @@
 use crate::error::EffectResult;
 use crate::stream::EffectStream;
 use std::future::Future;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 /// A trait for types that can transform an EffectStream
 pub trait EffectStreamOperator<T, E, B>
@@ -22,8 +24,6 @@ mod tests {
   use crate::error::EffectError;
   use std::fmt::Debug;
   use std::pin::Pin;
-  use std::sync::Arc;
-  use tokio::sync::Mutex;
 
   // Test error type
   #[derive(Debug, Clone, PartialEq)]
@@ -112,22 +112,16 @@ mod tests {
 
     let operator = TestOperator::new(|x| x * 2, false);
     let new_stream = operator.transform(stream).await.unwrap();
-    let mut new_stream_clone = new_stream.clone();
 
-    let results = Arc::new(Mutex::new(Vec::new()));
-    let results_clone = results.clone();
+    let mut results = Vec::new();
+    while let Ok(Some(value)) = new_stream.next().await {
+      results.push(value);
+    }
 
-    tokio::spawn(async move {
-      while let Ok(Some(value)) = new_stream_clone.next().await {
-        results_clone.blocking_lock().push(value);
-      }
-    });
-
-    let final_results = results.blocking_lock();
-    assert_eq!(final_results.len(), 3);
-    assert_eq!(final_results[0], 2);
-    assert_eq!(final_results[1], 4);
-    assert_eq!(final_results[2], 6);
+    assert_eq!(results.len(), 3);
+    assert_eq!(results[0], 2);
+    assert_eq!(results[1], 4);
+    assert_eq!(results[2], 6);
   }
 
   // Test with custom types
@@ -156,21 +150,15 @@ mod tests {
       false,
     );
     let new_stream = operator.transform(stream).await.unwrap();
-    let mut new_stream_clone = new_stream.clone();
 
-    let results = Arc::new(Mutex::new(Vec::new()));
-    let results_clone = results.clone();
+    let mut results = Vec::new();
+    while let Ok(Some(value)) = new_stream.next().await {
+      results.push(value);
+    }
 
-    tokio::spawn(async move {
-      while let Ok(Some(value)) = new_stream_clone.next().await {
-        results_clone.blocking_lock().push(value);
-      }
-    });
-
-    let final_results = results.blocking_lock();
-    assert_eq!(final_results.len(), 2);
-    assert_eq!(final_results[0], Point { x: 2, y: 4 });
-    assert_eq!(final_results[1], Point { x: 6, y: 8 });
+    assert_eq!(results.len(), 2);
+    assert_eq!(results[0], Point { x: 2, y: 4 });
+    assert_eq!(results[1], Point { x: 6, y: 8 });
   }
 
   // Test with error handling
@@ -200,22 +188,32 @@ mod tests {
 
     let operator = TestOperator::new(|x| x * 2, false);
     let new_stream = operator.transform(stream).await.unwrap();
-    let mut new_stream_clone = new_stream.clone();
+    let new_stream_clone = new_stream.clone();
 
     let results = Arc::new(Mutex::new(Vec::new()));
-    let results_clone = results.clone();
+    let results_clone1 = results.clone();
+    let results_clone2 = results.clone();
 
-    tokio::spawn(async move {
-      while let Ok(Some(value)) = new_stream_clone.next().await {
-        results_clone.blocking_lock().push(value);
+    let handle1 = tokio::spawn(async move {
+      while let Ok(Some(value)) = new_stream.next().await {
+        results_clone1.lock().await.push(value);
       }
     });
 
-    let final_results = results.blocking_lock();
-    assert_eq!(final_results.len(), 3);
-    assert_eq!(final_results[0], 2);
-    assert_eq!(final_results[1], 4);
-    assert_eq!(final_results[2], 6);
+    let handle2 = tokio::spawn(async move {
+      while let Ok(Some(value)) = new_stream_clone.next().await {
+        results_clone2.lock().await.push(value);
+      }
+    });
+
+    handle1.await.unwrap();
+    handle2.await.unwrap();
+
+    let final_results = results.lock().await;
+    assert_eq!(final_results.len(), 3); // Each value is consumed exactly once
+    assert!(final_results.contains(&2));
+    assert!(final_results.contains(&4));
+    assert!(final_results.contains(&6));
   }
 
   // Test with empty stream
@@ -224,19 +222,14 @@ mod tests {
     let stream = EffectStream::<i32, TestError>::new();
     let operator = TestOperator::new(|x| x * 2, false);
     let new_stream = operator.transform(stream).await.unwrap();
-    let mut new_stream_clone = new_stream.clone();
+    new_stream.close().await.unwrap();
 
-    let results = Arc::new(Mutex::new(Vec::new()));
-    let results_clone = results.clone();
+    let mut results = Vec::new();
+    while let Ok(Some(value)) = new_stream.next().await {
+      results.push(value);
+    }
 
-    tokio::spawn(async move {
-      while let Ok(Some(value)) = new_stream_clone.next().await {
-        results_clone.blocking_lock().push(value);
-      }
-    });
-
-    let final_results = results.blocking_lock();
-    assert_eq!(final_results.len(), 0);
+    assert_eq!(results.len(), 0);
   }
 
   // Test with large number of items
@@ -255,21 +248,15 @@ mod tests {
 
     let operator = TestOperator::new(|x| x * 2, false);
     let new_stream = operator.transform(stream).await.unwrap();
-    let mut new_stream_clone = new_stream.clone();
 
-    let results = Arc::new(Mutex::new(Vec::new()));
-    let results_clone = results.clone();
+    let mut results = Vec::with_capacity(1000);
+    while let Ok(Some(value)) = new_stream.next().await {
+      results.push(value);
+    }
 
-    tokio::spawn(async move {
-      while let Ok(Some(value)) = new_stream_clone.next().await {
-        results_clone.blocking_lock().push(value);
-      }
-    });
-
-    let final_results = results.blocking_lock();
-    assert_eq!(final_results.len(), 1000);
+    assert_eq!(results.len(), 1000);
     for i in 0..1000 {
-      assert_eq!(final_results[i], (i as i32) * 2);
+      assert_eq!(results[i], (i as i32) * 2);
     }
   }
 }

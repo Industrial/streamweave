@@ -99,22 +99,20 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let results = Arc::new(Mutex::new(Vec::new()));
-    let results_clone = results.clone();
+    let mut results = Vec::new();
     let sink = TestSink::new(
       move |x| {
-        results_clone.blocking_lock().push(x);
+        results.push(x);
       },
       false,
     );
 
     sink.consume(stream).await.unwrap();
 
-    let final_results = results.blocking_lock();
-    assert_eq!(final_results.len(), 3);
-    assert_eq!(final_results[0], 1);
-    assert_eq!(final_results[1], 2);
-    assert_eq!(final_results[2], 3);
+    assert_eq!(results.len(), 3);
+    assert_eq!(results[0], 1);
+    assert_eq!(results[1], 2);
+    assert_eq!(results[2], 3);
   }
 
   // Test with custom types
@@ -135,21 +133,19 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let results = Arc::new(Mutex::new(Vec::new()));
-    let results_clone = results.clone();
+    let mut results = Vec::new();
     let sink = TestSink::new(
       move |p: Point| {
-        results_clone.blocking_lock().push(p);
+        results.push(p);
       },
       false,
     );
 
     sink.consume(stream).await.unwrap();
 
-    let final_results = results.blocking_lock();
-    assert_eq!(final_results.len(), 2);
-    assert_eq!(final_results[0], Point { x: 1, y: 2 });
-    assert_eq!(final_results[1], Point { x: 3, y: 4 });
+    assert_eq!(results.len(), 2);
+    assert_eq!(results[0], Point { x: 1, y: 2 });
+    assert_eq!(results[1], Point { x: 3, y: 4 });
   }
 
   // Test with error handling
@@ -177,41 +173,37 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let results = Arc::new(Mutex::new(Vec::new()));
-    let results_clone = results.clone();
+    let mut results = Vec::new();
     let sink = TestSink::new(
       move |x| {
-        results_clone.blocking_lock().push(x);
+        results.push(x);
       },
       false,
     );
 
     sink.consume(stream).await.unwrap();
 
-    let final_results = results.blocking_lock();
-    assert_eq!(final_results.len(), 3);
-    assert_eq!(final_results[0], 1);
-    assert_eq!(final_results[1], 2);
-    assert_eq!(final_results[2], 3);
+    assert_eq!(results.len(), 3);
+    assert_eq!(results[0], 1);
+    assert_eq!(results[1], 2);
+    assert_eq!(results[2], 3);
   }
 
   // Test with empty stream
   #[tokio::test]
   async fn test_empty_stream() {
     let stream = EffectStream::<i32, TestError>::new();
-    let results = Arc::new(Mutex::new(Vec::new()));
-    let results_clone = results.clone();
+    let mut results = Vec::new();
     let sink = TestSink::new(
       move |x| {
-        results_clone.blocking_lock().push(x);
+        results.push(x);
       },
       false,
     );
 
     sink.consume(stream).await.unwrap();
 
-    let final_results = results.blocking_lock();
-    assert_eq!(final_results.len(), 0);
+    assert_eq!(results.len(), 0);
   }
 
   // Test with large number of items
@@ -228,21 +220,19 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let results = Arc::new(Mutex::new(Vec::new()));
-    let results_clone = results.clone();
+    let mut results = Vec::with_capacity(1000);
     let sink = TestSink::new(
       move |x| {
-        results_clone.blocking_lock().push(x);
+        results.push(x);
       },
       false,
     );
 
     sink.consume(stream).await.unwrap();
 
-    let final_results = results.blocking_lock();
-    assert_eq!(final_results.len(), 1000);
+    assert_eq!(results.len(), 1000);
     for i in 0..1000 {
-      assert_eq!(final_results[i], i as i32);
+      assert_eq!(results[i], i as i32);
     }
   }
 }
