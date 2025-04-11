@@ -1,6 +1,8 @@
 use crate::error::EffectResult;
 use crate::stream::EffectStream;
 use std::future::Future;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 /// A trait for types that can consume an EffectStream
 pub trait EffectStreamSink<T, E>
@@ -20,8 +22,6 @@ mod tests {
   use super::*;
   use crate::error::EffectError;
   use std::pin::Pin;
-  use std::sync::Arc;
-  use tokio::sync::Mutex;
 
   // Test error type
   #[derive(Debug, Clone, PartialEq)]
@@ -99,20 +99,28 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let mut results = Vec::new();
+    let results = Arc::new(Mutex::new(Vec::new()));
+    let results_clone = results.clone();
     let sink = TestSink::new(
       move |x| {
-        results.push(x);
+        let results = results_clone.clone();
+        tokio::spawn(async move {
+          results.lock().await.push(x);
+        });
       },
       false,
     );
 
     sink.consume(stream).await.unwrap();
 
-    assert_eq!(results.len(), 3);
-    assert_eq!(results[0], 1);
-    assert_eq!(results[1], 2);
-    assert_eq!(results[2], 3);
+    // Give the spawned tasks time to complete
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+    let final_results = results.lock().await;
+    assert_eq!(final_results.len(), 3);
+    assert_eq!(final_results[0], 1);
+    assert_eq!(final_results[1], 2);
+    assert_eq!(final_results[2], 3);
   }
 
   // Test with custom types
@@ -133,19 +141,27 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let mut results = Vec::new();
+    let results = Arc::new(Mutex::new(Vec::new()));
+    let results_clone = results.clone();
     let sink = TestSink::new(
       move |p: Point| {
-        results.push(p);
+        let results = results_clone.clone();
+        tokio::spawn(async move {
+          results.lock().await.push(p);
+        });
       },
       false,
     );
 
     sink.consume(stream).await.unwrap();
 
-    assert_eq!(results.len(), 2);
-    assert_eq!(results[0], Point { x: 1, y: 2 });
-    assert_eq!(results[1], Point { x: 3, y: 4 });
+    // Give the spawned tasks time to complete
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+    let final_results = results.lock().await;
+    assert_eq!(final_results.len(), 2);
+    assert_eq!(final_results[0], Point { x: 1, y: 2 });
+    assert_eq!(final_results[1], Point { x: 3, y: 4 });
   }
 
   // Test with error handling
@@ -173,37 +189,57 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let mut results = Vec::new();
+    let results = Arc::new(Mutex::new(Vec::new()));
+    let results_clone = results.clone();
     let sink = TestSink::new(
       move |x| {
-        results.push(x);
+        let results = results_clone.clone();
+        tokio::spawn(async move {
+          results.lock().await.push(x);
+        });
       },
       false,
     );
 
     sink.consume(stream).await.unwrap();
 
-    assert_eq!(results.len(), 3);
-    assert_eq!(results[0], 1);
-    assert_eq!(results[1], 2);
-    assert_eq!(results[2], 3);
+    // Give the spawned tasks time to complete
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+    let final_results = results.lock().await;
+    assert_eq!(final_results.len(), 3);
+    assert_eq!(final_results[0], 1);
+    assert_eq!(final_results[1], 2);
+    assert_eq!(final_results[2], 3);
   }
 
   // Test with empty stream
   #[tokio::test]
   async fn test_empty_stream() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut results = Vec::new();
+    let mut stream_clone = stream.clone();
+
+    // Close the stream immediately
+    tokio::spawn(async move {
+      stream_clone.close().await.unwrap();
+    });
+
+    let results = Arc::new(Mutex::new(Vec::new()));
+    let results_clone = results.clone();
     let sink = TestSink::new(
       move |x| {
-        results.push(x);
+        let results = results_clone.clone();
+        tokio::spawn(async move {
+          results.lock().await.push(x);
+        });
       },
       false,
     );
 
     sink.consume(stream).await.unwrap();
 
-    assert_eq!(results.len(), 0);
+    let final_results = results.lock().await;
+    assert_eq!(final_results.len(), 0);
   }
 
   // Test with large number of items
@@ -220,19 +256,27 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let mut results = Vec::with_capacity(1000);
+    let results = Arc::new(Mutex::new(Vec::with_capacity(1000)));
+    let results_clone = results.clone();
     let sink = TestSink::new(
       move |x| {
-        results.push(x);
+        let results = results_clone.clone();
+        tokio::spawn(async move {
+          results.lock().await.push(x);
+        });
       },
       false,
     );
 
     sink.consume(stream).await.unwrap();
 
-    assert_eq!(results.len(), 1000);
+    // Give the spawned tasks time to complete
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+    let final_results = results.lock().await;
+    assert_eq!(final_results.len(), 1000);
     for i in 0..1000 {
-      assert_eq!(results[i], i as i32);
+      assert_eq!(final_results[i], i as i32);
     }
   }
 }
