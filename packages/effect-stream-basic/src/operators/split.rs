@@ -95,7 +95,7 @@ mod tests {
     let stream_clone = stream.clone();
 
     tokio::spawn(async move {
-      for i in vec![1, 2, 3, 4, 5, 6] {
+      for i in [1, 2, 3, 4, 5, 6] {
         stream_clone.push(i).await.unwrap();
       }
       stream_clone.close().await.unwrap();
@@ -141,7 +141,7 @@ mod tests {
     let stream_clone = stream.clone();
 
     tokio::spawn(async move {
-      for s in vec!["hello", "", "world", "", "rust"] {
+      for s in ["hello", "", "world", "", "rust"] {
         stream_clone.push(s.to_string()).await.unwrap();
       }
       stream_clone.close().await.unwrap();
@@ -171,7 +171,7 @@ mod tests {
     let stream_clone = stream.clone();
 
     tokio::spawn(async move {
-      for i in vec![1, 2, 3, 4, 5, 6] {
+      for i in [1, 2, 3, 4, 5, 6] {
         stream_clone.push(i).await.unwrap();
         sleep(Duration::from_millis(1)).await;
       }

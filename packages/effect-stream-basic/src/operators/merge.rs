@@ -98,13 +98,13 @@ mod tests {
   #[tokio::test]
   async fn test_merge_empty_input() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.close().await.unwrap();
     });
 
-    let mut operator = MergeOperator::<i32, TestError>::new();
+    let operator = MergeOperator::<i32, TestError>::new();
     let new_stream = operator.transform(stream).await.unwrap();
 
     let mut results = Vec::new();
@@ -118,9 +118,9 @@ mod tests {
   #[tokio::test]
   async fn test_merge_multiple_streams() {
     let stream1 = EffectStream::<i32, TestError>::new();
-    let mut stream1_clone = stream1.clone();
+    let stream1_clone = stream1.clone();
     let stream2 = EffectStream::<i32, TestError>::new();
-    let mut stream2_clone = stream2.clone();
+    let stream2_clone = stream2.clone();
 
     tokio::spawn(async move {
       for i in 1..=3 {
@@ -154,9 +154,9 @@ mod tests {
   #[tokio::test]
   async fn test_merge_concurrent() {
     let stream1 = EffectStream::<i32, TestError>::new();
-    let mut stream1_clone = stream1.clone();
+    let stream1_clone = stream1.clone();
     let stream2 = EffectStream::<i32, TestError>::new();
-    let mut stream2_clone = stream2.clone();
+    let stream2_clone = stream2.clone();
 
     tokio::spawn(async move {
       for i in 1..=3 {

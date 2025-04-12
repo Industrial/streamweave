@@ -111,7 +111,7 @@ mod tests {
     }
 
     assert!(results.len() <= 5);
-    assert!(results.iter().all(|&x| x >= 1 && x <= 5));
+    assert!(results.iter().all(|&x| (1..=5).contains(&x)));
   }
 
   #[tokio::test]
@@ -218,6 +218,6 @@ mod tests {
 
     let final_results = results.lock().await;
     assert!(final_results.len() <= 6);
-    assert!(final_results.iter().all(|&x| x >= 1 && x <= 6));
+    assert!(final_results.iter().all(|&x| (1..=6).contains(&x)));
   }
 }
