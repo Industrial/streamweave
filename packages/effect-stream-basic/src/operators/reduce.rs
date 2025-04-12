@@ -64,8 +64,13 @@ where
 
 #[cfg(test)]
 mod tests {
+  use std::sync::Arc;
+
   use super::*;
-  use tokio::time::{sleep, Duration};
+  use tokio::{
+    sync::Mutex,
+    time::{sleep, Duration},
+  };
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -81,7 +86,7 @@ mod tests {
   #[tokio::test]
   async fn test_reduce_operator_sum() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=5 {
@@ -104,7 +109,7 @@ mod tests {
   #[tokio::test]
   async fn test_reduce_operator_string_concat() {
     let stream = EffectStream::<String, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for s in vec!["a", "b", "c"] {
@@ -133,7 +138,7 @@ mod tests {
   #[tokio::test]
   async fn test_reduce_operator_with_error() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in vec![2, 3, 4, 5, 6] {
@@ -162,7 +167,7 @@ mod tests {
     }
 
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=5 {
@@ -197,7 +202,7 @@ mod tests {
   #[tokio::test]
   async fn test_reduce_operator_concurrent() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=5 {

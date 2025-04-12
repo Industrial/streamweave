@@ -78,6 +78,8 @@ where
 
 #[cfg(test)]
 mod tests {
+  use futures::stream;
+
   use super::*;
 
   #[derive(Debug, Clone)]

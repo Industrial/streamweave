@@ -79,8 +79,10 @@ where
 
 #[cfg(test)]
 mod tests {
+  use std::sync::Arc;
+
   use super::*;
-  use tokio::time::Duration;
+  use tokio::{sync::Mutex, time::Duration};
 
   #[derive(Debug, Clone)]
   struct TestError(String);

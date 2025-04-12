@@ -92,8 +92,9 @@ where
 
 #[cfg(test)]
 mod tests {
+  use tokio::{sync::Mutex, time::sleep};
+
   use super::*;
-  use tokio::time::sleep;
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -109,7 +110,7 @@ mod tests {
   #[tokio::test]
   async fn test_rate_limit_basic() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=3 {
@@ -132,7 +133,7 @@ mod tests {
   #[tokio::test]
   async fn test_rate_limit_empty_input() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.close().await.unwrap();
@@ -152,7 +153,7 @@ mod tests {
   #[tokio::test]
   async fn test_rate_limit_actual_rate_limit() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=3 {
@@ -175,7 +176,7 @@ mod tests {
   #[tokio::test]
   async fn test_rate_limit_reset() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=2 {
@@ -197,7 +198,7 @@ mod tests {
     sleep(Duration::from_millis(200)).await;
 
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 3..=4 {
@@ -219,7 +220,7 @@ mod tests {
   #[tokio::test]
   async fn test_rate_limit_concurrent() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=3 {

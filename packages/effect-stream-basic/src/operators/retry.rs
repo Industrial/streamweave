@@ -68,8 +68,10 @@ where
 
 #[cfg(test)]
 mod tests {
+  use std::sync::Arc;
+
   use super::*;
-  use tokio::time::Duration;
+  use tokio::{sync::Mutex, time::Duration};
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -85,7 +87,7 @@ mod tests {
   #[tokio::test]
   async fn test_retry_basic() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=3 {
@@ -108,7 +110,7 @@ mod tests {
   #[tokio::test]
   async fn test_retry_empty_input() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.close().await.unwrap();
@@ -128,7 +130,7 @@ mod tests {
   #[tokio::test]
   async fn test_retry_concurrent() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=3 {
