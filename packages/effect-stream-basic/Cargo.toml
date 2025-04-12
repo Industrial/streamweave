@@ -10,3 +10,5 @@ readme = "README.md"
 [dependencies]
 effect-stream = { path = "../effect-stream" }
 tokio = { version = "1.36", features = ["full"] }
+async-trait = "0.1"
+async-stream = "0.3"
