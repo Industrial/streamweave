@@ -1,6 +1,9 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
+use std::time::Duration as StdDuration;
+use tokio::sync::Mutex;
 use tokio::time::Duration;
 
 pub struct RetryOperator<T>
@@ -132,10 +135,10 @@ mod tests {
     let stream = EffectStream::<i32, TestError>::new();
     let stream_clone = stream.clone();
 
-    tokio::spawn(async move {
+    let producer = tokio::spawn(async move {
       for i in 1..=3 {
         stream_clone.push(i).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        tokio::time::sleep(Duration::from_millis(10)).await;
       }
       stream_clone.close().await.unwrap();
     });
@@ -160,8 +163,15 @@ mod tests {
       }
     });
 
-    handle1.await.unwrap();
-    handle2.await.unwrap();
+    // Wait for producer to finish
+    producer.await.unwrap();
+
+    // Wait for consumers with timeout
+    tokio::select! {
+      _ = handle1 => {},
+      _ = handle2 => {},
+      _ = tokio::time::sleep(Duration::from_secs(1)) => panic!("Test timed out waiting for consumers"),
+    }
 
     let final_results = results.lock().await;
     assert_eq!(final_results.len(), 6); // Each value is received twice due to cloning

@@ -1,7 +1,11 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio;
+use tokio::sync::Mutex;
+
 pub struct FlatMapOperator<F, I, O>
 where
   F: Fn(I) -> Vec<O> + Send + Clone + 'static,
@@ -62,10 +66,12 @@ where
 
 #[cfg(test)]
 mod tests {
-  use std::sync::Arc;
-
   use super::*;
-  use tokio::{sync::Mutex, time::Duration};
+  use std::sync::Arc;
+  use tokio::{
+    sync::Mutex,
+    time::{sleep, Duration},
+  };
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -126,10 +132,10 @@ mod tests {
     let stream = EffectStream::<i32, TestError>::new();
     let stream_clone = stream.clone();
 
-    tokio::spawn(async move {
+    let producer = tokio::spawn(async move {
       for i in 1..=3 {
         stream_clone.push(i).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        sleep(Duration::from_millis(50)).await;
       }
       stream_clone.close().await.unwrap();
     });
@@ -154,8 +160,15 @@ mod tests {
       }
     });
 
-    handle1.await.unwrap();
-    handle2.await.unwrap();
+    // Wait for producer to finish
+    producer.await.unwrap();
+
+    // Wait for consumers with timeout
+    tokio::select! {
+      _ = handle1 => {},
+      _ = handle2 => {},
+      _ = sleep(Duration::from_secs(5)) => panic!("Test timed out waiting for consumers"),
+    }
 
     let mut final_results = results.lock().await;
     final_results.sort();

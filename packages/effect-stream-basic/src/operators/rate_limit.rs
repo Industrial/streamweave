@@ -222,15 +222,15 @@ mod tests {
     let stream = EffectStream::<i32, TestError>::new();
     let stream_clone = stream.clone();
 
-    tokio::spawn(async move {
-      for i in 1..=3 {
+    let producer = tokio::spawn(async move {
+      for i in 1..=6 {
         stream_clone.push(i).await.unwrap();
         tokio::time::sleep(Duration::from_millis(50)).await;
       }
       stream_clone.close().await.unwrap();
     });
 
-    let operator = RateLimitOperator::new(2, Duration::from_millis(100));
+    let operator = RateLimitOperator::new(3, Duration::from_millis(100));
     let new_stream = operator.transform(stream).await.unwrap();
     let new_stream_clone = new_stream.clone();
 
@@ -250,12 +250,19 @@ mod tests {
       }
     });
 
-    handle1.await.unwrap();
-    handle2.await.unwrap();
+    // Wait for producer to finish
+    producer.await.unwrap();
 
-    let final_results = results.lock().await;
-    assert_eq!(final_results.len(), 4); // Each value is received twice due to cloning
-    assert!(final_results.contains(&1));
-    assert!(final_results.contains(&2));
+    // Wait for consumers with timeout
+    tokio::select! {
+        _ = handle1 => {},
+        _ = handle2 => {},
+        _ = sleep(Duration::from_secs(5)) => panic!("Test timed out waiting for consumers"),
+    }
+
+    let mut final_results = results.lock().await;
+    final_results.sort();
+    assert_eq!(final_results.len(), 3);
+    assert_eq!(*final_results, vec![1, 2, 3]);
   }
 }

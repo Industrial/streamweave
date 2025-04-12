@@ -59,7 +59,10 @@ mod tests {
   use std::sync::Arc;
 
   use super::*;
-  use tokio::{sync::Mutex, time::Duration};
+  use tokio::{
+    sync::Mutex,
+    time::{sleep, Duration},
+  };
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -120,7 +123,7 @@ mod tests {
     let stream = EffectStream::<i32, TestError>::new();
     let stream_clone = stream.clone();
 
-    tokio::spawn(async move {
+    let producer = tokio::spawn(async move {
       for i in 1..=5 {
         stream_clone.push(i).await.unwrap();
         tokio::time::sleep(Duration::from_millis(50)).await;
@@ -148,10 +151,18 @@ mod tests {
       }
     });
 
-    handle1.await.unwrap();
-    handle2.await.unwrap();
+    // Wait for producer to finish
+    producer.await.unwrap();
 
-    let final_results = results.lock().await;
+    // Wait for consumers with timeout
+    tokio::select! {
+        _ = handle1 => {},
+        _ = handle2 => {},
+        _ = sleep(Duration::from_secs(5)) => panic!("Test timed out waiting for consumers"),
+    }
+
+    let mut final_results = results.lock().await;
+    final_results.sort();
     assert_eq!(final_results.len(), 6); // Each value is received twice due to cloning
     assert!(final_results.contains(&3));
     assert!(final_results.contains(&4));

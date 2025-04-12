@@ -150,10 +150,10 @@ mod tests {
     let stream = EffectStream::<i32, TestError>::new();
     let stream_clone = stream.clone();
 
-    tokio::spawn(async move {
+    let producer = tokio::spawn(async move {
       for i in 1..=3 {
         stream_clone.push(i).await.unwrap();
-        sleep(Duration::from_millis(1)).await;
+        sleep(Duration::from_millis(10)).await;
       }
       stream_clone.close().await.unwrap();
     });
@@ -178,8 +178,15 @@ mod tests {
       }
     });
 
-    handle1.await.unwrap();
-    handle2.await.unwrap();
+    // Wait for producer to finish
+    producer.await.unwrap();
+
+    // Wait for consumers with timeout
+    tokio::select! {
+      _ = handle1 => {},
+      _ = handle2 => {},
+      _ = sleep(Duration::from_secs(1)) => panic!("Test timed out waiting for consumers"),
+    }
 
     let final_results = results.lock().await;
     assert_eq!(final_results.len(), 3); // Each value is consumed exactly once

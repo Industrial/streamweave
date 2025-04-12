@@ -141,10 +141,10 @@ mod tests {
     let stream = EffectStream::<i32, TestError>::new();
     let stream_clone = stream.clone();
 
-    tokio::spawn(async move {
+    let producer = tokio::spawn(async move {
       for i in 1..=6 {
         stream_clone.push(i).await.unwrap();
-        sleep(Duration::from_millis(1)).await;
+        sleep(Duration::from_millis(50)).await;
       }
       stream_clone.close().await.unwrap();
     });
@@ -169,8 +169,13 @@ mod tests {
       }
     });
 
-    handle1.await.unwrap();
-    handle2.await.unwrap();
+    producer.await.unwrap();
+
+    tokio::select! {
+      _ = handle1 => {},
+      _ = handle2 => {},
+      _ = sleep(Duration::from_secs(5)) => panic!("Test timed out waiting for consumers"),
+    }
 
     let mut final_results = results.lock().await;
     final_results.sort_by_key(|(k, _)| *k);

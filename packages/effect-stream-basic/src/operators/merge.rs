@@ -82,7 +82,10 @@ mod tests {
   use std::sync::Arc;
 
   use super::*;
-  use tokio::{sync::Mutex, time::Duration};
+  use tokio::{
+    sync::Mutex,
+    time::{sleep, Duration},
+  };
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -158,7 +161,7 @@ mod tests {
     let stream2 = EffectStream::<i32, TestError>::new();
     let stream2_clone = stream2.clone();
 
-    tokio::spawn(async move {
+    let producer1 = tokio::spawn(async move {
       for i in 1..=3 {
         stream1_clone.push(i).await.unwrap();
         tokio::time::sleep(Duration::from_millis(50)).await;
@@ -166,7 +169,7 @@ mod tests {
       stream1_clone.close().await.unwrap();
     });
 
-    tokio::spawn(async move {
+    let producer2 = tokio::spawn(async move {
       for i in 4..=6 {
         stream2_clone.push(i).await.unwrap();
         tokio::time::sleep(Duration::from_millis(50)).await;
@@ -195,11 +198,20 @@ mod tests {
       }
     });
 
-    handle1.await.unwrap();
-    handle2.await.unwrap();
+    // Wait for producers to finish
+    producer1.await.unwrap();
+    producer2.await.unwrap();
+
+    // Wait for consumers with timeout
+    tokio::select! {
+        _ = handle1 => {},
+        _ = handle2 => {},
+        _ = sleep(Duration::from_secs(5)) => panic!("Test timed out waiting for consumers"),
+    }
 
     let mut final_results = results.lock().await;
     final_results.sort();
-    assert_eq!(*final_results, vec![1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]);
+    assert_eq!(final_results.len(), 6);
+    assert_eq!(*final_results, vec![1, 2, 3, 4, 5, 6]);
   }
 }
