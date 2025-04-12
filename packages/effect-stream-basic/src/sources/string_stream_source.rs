@@ -5,20 +5,24 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-/// Error type for StringStream operations
-#[derive(Debug, Clone)]
-pub struct StringError;
-
 /// A stream source that produces characters from a String
-pub struct StringStreamSource {
+pub struct StringStreamSource<E>
+where
+  E: Send + Sync + Clone + Debug + 'static,
+{
   string: Arc<Mutex<String>>,
+  _phantom: std::marker::PhantomData<E>,
 }
 
-impl StringStreamSource {
+impl<E> StringStreamSource<E>
+where
+  E: Send + Sync + Clone + Debug + 'static,
+{
   /// Create a new stream from a String
   pub fn new(string: String) -> Self {
     Self {
       string: Arc::new(Mutex::new(string)),
+      _phantom: std::marker::PhantomData,
     }
   }
 
@@ -40,14 +44,12 @@ impl StringStreamSource {
   }
 }
 
-impl EffectStreamSource<char, StringError> for StringStreamSource {
-  type Stream = Pin<
-    Box<
-      dyn Future<Output = EffectResult<EffectStream<char, StringError>, StringError>>
-        + Send
-        + 'static,
-    >,
-  >;
+impl<E> EffectStreamSource<char, E> for StringStreamSource<E>
+where
+  E: Send + Sync + Clone + Debug + 'static,
+{
+  type Stream =
+    Pin<Box<dyn Future<Output = EffectResult<EffectStream<char, E>, E>> + Send + 'static>>;
 
   fn source(&self) -> Self::Stream {
     let string = self.string.clone();
@@ -74,9 +76,20 @@ mod tests {
   use super::*;
   use tokio::time::{sleep, Duration};
 
+  #[derive(Debug, Clone)]
+  struct TestError(String);
+
+  impl std::fmt::Display for TestError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      write!(f, "{}", self.0)
+    }
+  }
+
+  impl std::error::Error for TestError {}
+
   #[tokio::test]
   async fn test_string_stream_basic() {
-    let source = StringStreamSource::new("hello".to_string());
+    let source = StringStreamSource::<TestError>::new("hello".to_string());
     let stream = source.source().await.unwrap();
     let mut values = Vec::new();
     while let Ok(Some(value)) = stream.next().await {
@@ -87,7 +100,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_empty() {
-    let source = StringStreamSource::new(String::new());
+    let source = StringStreamSource::<TestError>::new(String::new());
     let stream = source.source().await.unwrap();
     let mut values = Vec::new();
     while let Ok(Some(value)) = stream.next().await {
@@ -98,7 +111,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_from_string_slice() {
-    let source = StringStreamSource::from_string_slice("hello");
+    let source = StringStreamSource::<TestError>::from_string_slice("hello");
     let stream = source.source().await.unwrap();
     let mut values = Vec::new();
     while let Ok(Some(value)) = stream.next().await {
@@ -109,18 +122,18 @@ mod tests {
 
   #[tokio::test]
   async fn test_len_and_is_empty() {
-    let source = StringStreamSource::new("hello".to_string());
+    let source = StringStreamSource::<TestError>::new("hello".to_string());
     assert_eq!(source.len().await, 5);
     assert!(!source.is_empty().await);
 
-    let empty_source = StringStreamSource::new(String::new());
+    let empty_source = StringStreamSource::<TestError>::new(String::new());
     assert_eq!(empty_source.len().await, 0);
     assert!(empty_source.is_empty().await);
   }
 
   #[tokio::test]
   async fn test_string_stream_unicode() {
-    let source = StringStreamSource::new("Hello, 世界! 🌍".to_string());
+    let source = StringStreamSource::<TestError>::new("Hello, 世界! 🌍".to_string());
     let stream = source.source().await.unwrap();
     let mut values = Vec::new();
     while let Ok(Some(value)) = stream.next().await {
@@ -131,7 +144,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_concurrent_access() {
-    let source = StringStreamSource::new("test".to_string());
+    let source = StringStreamSource::<TestError>::new("test".to_string());
 
     // Create multiple streams from the same source
     let stream1 = source.source().await.unwrap();
@@ -163,7 +176,7 @@ mod tests {
   #[tokio::test]
   async fn test_string_stream_large() {
     let large_string = "a".repeat(10000);
-    let source = StringStreamSource::new(large_string.clone());
+    let source = StringStreamSource::<TestError>::new(large_string.clone());
     let stream = source.source().await.unwrap();
     let mut values = Vec::new();
     while let Ok(Some(value)) = stream.next().await {
@@ -175,7 +188,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_delayed_consumption() {
-    let source = StringStreamSource::new("test".to_string());
+    let source = StringStreamSource::<TestError>::new("test".to_string());
     let stream = source.source().await.unwrap();
     let mut values = Vec::new();
 
@@ -190,8 +203,8 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_multiple_sources() {
-    let source1 = StringStreamSource::new("Hello".to_string());
-    let source2 = StringStreamSource::new(", World!".to_string());
+    let source1 = StringStreamSource::<TestError>::new("Hello".to_string());
+    let source2 = StringStreamSource::<TestError>::new(", World!".to_string());
 
     let stream1 = source1.source().await.unwrap();
     let stream2 = source2.source().await.unwrap();

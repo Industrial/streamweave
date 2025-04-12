@@ -12,3 +12,6 @@ effect-stream = { path = "../effect-stream" }
 tokio = { version = "1.36", features = ["full"] }
 async-trait = "0.1"
 async-stream = "0.3"
+futures = "0.3"
+chrono = "0.4"
+rand = "0.8"

@@ -4,20 +4,18 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-/// Error type for StringStream operations
-#[derive(Debug, Clone)]
-pub struct StringError;
-
 /// A sink that collects characters into a String
-pub struct StringStreamSink {
+pub struct StringStreamSink<E> {
   string: Arc<Mutex<String>>,
+  _phantom: std::marker::PhantomData<E>,
 }
 
-impl StringStreamSink {
+impl<E> StringStreamSink<E> {
   /// Create a new sink
   pub fn new() -> Self {
     Self {
       string: Arc::new(Mutex::new(String::new())),
+      _phantom: std::marker::PhantomData,
     }
   }
 
@@ -28,16 +26,19 @@ impl StringStreamSink {
   }
 }
 
-impl Default for StringStreamSink {
+impl<E> Default for StringStreamSink<E> {
   fn default() -> Self {
     Self::new()
   }
 }
 
-impl EffectStreamSink<char, StringError> for StringStreamSink {
-  type Future = Pin<Box<dyn Future<Output = EffectResult<(), StringError>> + Send + 'static>>;
+impl<E> EffectStreamSink<char, E> for StringStreamSink<E>
+where
+  E: Send + Sync + Clone + 'static,
+{
+  type Future = Pin<Box<dyn Future<Output = EffectResult<(), E>> + Send + 'static>>;
 
-  fn consume(&self, stream: EffectStream<char, StringError>) -> Self::Future {
+  fn consume(&self, stream: EffectStream<char, E>) -> Self::Future {
     let stream_clone = stream.clone();
     let string = self.string.clone();
 
@@ -57,9 +58,20 @@ mod tests {
   use super::*;
   use tokio::time::{sleep, Duration};
 
+  #[derive(Debug, Clone)]
+  struct TestError(String);
+
+  impl std::fmt::Display for TestError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      write!(f, "{}", self.0)
+    }
+  }
+
+  impl std::error::Error for TestError {}
+
   #[tokio::test]
   async fn test_string_stream_sink_basic() {
-    let stream = EffectStream::<char, StringError>::new();
+    let stream = EffectStream::<char, TestError>::new();
     let stream_clone = stream.clone();
 
     tokio::spawn(async move {
@@ -71,7 +83,7 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let sink = StringStreamSink::new();
+    let sink = StringStreamSink::<TestError>::new();
     sink.consume(stream).await.unwrap();
     let string = sink.into_string().await;
     assert_eq!(string, "hello");
@@ -79,14 +91,14 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_sink_empty() {
-    let stream = EffectStream::<char, StringError>::new();
+    let stream = EffectStream::<char, TestError>::new();
     let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.close().await.unwrap();
     });
 
-    let sink = StringStreamSink::new();
+    let sink = StringStreamSink::<TestError>::new();
     sink.consume(stream).await.unwrap();
     let string = sink.into_string().await;
     assert_eq!(string, "");
@@ -94,7 +106,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_sink_unicode() {
-    let stream = EffectStream::<char, StringError>::new();
+    let stream = EffectStream::<char, TestError>::new();
     let stream_clone = stream.clone();
 
     tokio::spawn(async move {
@@ -104,7 +116,7 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let sink = StringStreamSink::new();
+    let sink = StringStreamSink::<TestError>::new();
     sink.consume(stream).await.unwrap();
     let string = sink.into_string().await;
     assert_eq!(string, "Hello, 世界! 🌍");
@@ -112,7 +124,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_sink_concurrent() {
-    let stream = EffectStream::<char, StringError>::new();
+    let stream = EffectStream::<char, TestError>::new();
     let stream_clone = stream.clone();
 
     tokio::spawn(async move {
@@ -134,7 +146,7 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let sink = StringStreamSink::new();
+    let sink = StringStreamSink::<TestError>::new();
     sink.consume(stream).await.unwrap();
     let string = sink.into_string().await;
     assert_eq!(string, "Hello, World!");
@@ -142,7 +154,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_sink_large() {
-    let stream = EffectStream::<char, StringError>::new();
+    let stream = EffectStream::<char, TestError>::new();
     let stream_clone = stream.clone();
     let large_string = "a".repeat(10000);
 
@@ -153,7 +165,7 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let sink = StringStreamSink::new();
+    let sink = StringStreamSink::<TestError>::new();
     sink.consume(stream).await.unwrap();
     let string = sink.into_string().await;
     assert_eq!(string.len(), 10000);
@@ -162,7 +174,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_sink_interleaved() {
-    let stream = EffectStream::<char, StringError>::new();
+    let stream = EffectStream::<char, TestError>::new();
     let stream_clone = stream.clone();
 
     tokio::spawn(async move {
@@ -175,7 +187,7 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let sink = StringStreamSink::new();
+    let sink = StringStreamSink::<TestError>::new();
     sink.consume(stream).await.unwrap();
     let string = sink.into_string().await;
     assert_eq!(string, "Hello, World!");
@@ -184,8 +196,8 @@ mod tests {
   #[tokio::test]
   async fn test_string_stream_sink_multiple_consumers() {
     // Create two independent streams
-    let stream1 = EffectStream::<char, StringError>::new();
-    let stream2 = EffectStream::<char, StringError>::new();
+    let stream1 = EffectStream::<char, TestError>::new();
+    let stream2 = EffectStream::<char, TestError>::new();
     let producer_stream1 = stream1.clone();
     let producer_stream2 = stream2.clone();
 
@@ -207,13 +219,13 @@ mod tests {
 
     // Consumer tasks
     let consumer1 = tokio::spawn(async move {
-      let sink = StringStreamSink::new();
+      let sink = StringStreamSink::<TestError>::new();
       sink.consume(stream1).await.unwrap();
       sink.into_string().await
     });
 
     let consumer2 = tokio::spawn(async move {
-      let sink = StringStreamSink::new();
+      let sink = StringStreamSink::<TestError>::new();
       sink.consume(stream2).await.unwrap();
       sink.into_string().await
     });
@@ -229,7 +241,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_sink_error_handling() {
-    let stream = EffectStream::<char, StringError>::new();
+    let stream = EffectStream::<char, TestError>::new();
     let stream_clone = stream.clone();
 
     tokio::spawn(async move {
@@ -241,7 +253,7 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let sink = StringStreamSink::new();
+    let sink = StringStreamSink::<TestError>::new();
     let result = sink.consume(stream).await;
     assert!(result.is_ok());
     let string = sink.into_string().await;
@@ -250,7 +262,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_sink_mixed_unicode() {
-    let stream = EffectStream::<char, StringError>::new();
+    let stream = EffectStream::<char, TestError>::new();
     let stream_clone = stream.clone();
 
     tokio::spawn(async move {
@@ -263,7 +275,7 @@ mod tests {
       stream_clone.close().await.unwrap();
     });
 
-    let sink = StringStreamSink::new();
+    let sink = StringStreamSink::<TestError>::new();
     sink.consume(stream).await.unwrap();
     let string = sink.into_string().await;
     assert_eq!(string, "Hello 你好 🌍 World! 世界 🌎");
@@ -271,7 +283,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_sink_concurrent_mixed() {
-    let stream = EffectStream::<char, StringError>::new();
+    let stream = EffectStream::<char, TestError>::new();
     let producer_stream = stream.clone();
 
     // Single producer writing mixed content
@@ -289,7 +301,7 @@ mod tests {
       producer_stream.close().await.unwrap();
     });
 
-    let sink = StringStreamSink::new();
+    let sink = StringStreamSink::<TestError>::new();
     sink.consume(stream).await.unwrap();
     let string = sink.into_string().await;
     assert_eq!(string, "Hello 世界 🌍");
@@ -297,7 +309,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_string_stream_sink_delayed_consumption() {
-    let stream = EffectStream::<char, StringError>::new();
+    let stream = EffectStream::<char, TestError>::new();
     let stream_clone = stream.clone();
 
     tokio::spawn(async move {
@@ -311,7 +323,7 @@ mod tests {
     // Wait a bit before consuming
     sleep(Duration::from_millis(50)).await;
 
-    let sink = StringStreamSink::new();
+    let sink = StringStreamSink::<TestError>::new();
     sink.consume(stream).await.unwrap();
     let string = sink.into_string().await;
     assert_eq!(string, "Hello, World!");
