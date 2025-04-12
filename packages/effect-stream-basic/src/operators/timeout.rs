@@ -79,7 +79,7 @@ mod tests {
   #[tokio::test]
   async fn test_timeout_basic() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=3 {
@@ -102,7 +102,7 @@ mod tests {
   #[tokio::test]
   async fn test_timeout_empty_input() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.close().await.unwrap();
@@ -122,7 +122,7 @@ mod tests {
   #[tokio::test]
   async fn test_timeout_actual_timeout() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=3 {
@@ -146,7 +146,7 @@ mod tests {
   #[tokio::test]
   async fn test_timeout_concurrent() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=3 {

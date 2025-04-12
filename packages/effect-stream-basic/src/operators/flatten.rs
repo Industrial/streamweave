@@ -20,6 +20,15 @@ where
   }
 }
 
+impl<T> Default for FlattenOperator<T>
+where
+  T: Send + Sync + 'static,
+{
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl<T, E> EffectStreamOperator<Vec<T>, E, T> for FlattenOperator<T>
 where
   T: Send + Sync + Clone + 'static,
@@ -51,7 +60,6 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::stream;
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -67,7 +75,7 @@ mod tests {
   #[tokio::test]
   async fn test_flatten_basic() {
     let stream = EffectStream::<Vec<i32>, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.push(vec![1, 2, 3]).await.unwrap();
@@ -90,7 +98,7 @@ mod tests {
   #[tokio::test]
   async fn test_flatten_empty_input() {
     let stream = EffectStream::<Vec<i32>, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.push(vec![]).await.unwrap();
@@ -112,7 +120,7 @@ mod tests {
   #[tokio::test]
   async fn test_flatten_mixed_input() {
     let stream = EffectStream::<Vec<i32>, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.push(vec![]).await.unwrap();
@@ -137,7 +145,7 @@ mod tests {
   #[tokio::test]
   async fn test_flatten_concurrent() {
     let stream = EffectStream::<Vec<i32>, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.push(vec![1, 2]).await.unwrap();
@@ -151,8 +159,8 @@ mod tests {
 
     let mut results1 = Vec::new();
     let mut results2 = Vec::new();
-    let mut new_stream_clone1 = new_stream.clone();
-    let mut new_stream_clone2 = new_stream.clone();
+    let new_stream_clone1 = new_stream.clone();
+    let new_stream_clone2 = new_stream.clone();
 
     let handle1 = tokio::spawn(async move {
       while let Ok(Some(value)) = new_stream_clone1.next().await {

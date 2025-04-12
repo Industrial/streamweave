@@ -21,6 +21,15 @@ where
   }
 }
 
+impl<T> Default for ZipOperator<T>
+where
+  T: Send + Sync + 'static,
+{
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl<T, E> EffectStreamOperator<Vec<T>, E, Vec<T>> for ZipOperator<T>
 where
   T: Send + Sync + Clone + 'static,
@@ -94,7 +103,7 @@ mod tests {
   #[tokio::test]
   async fn test_zip_basic() {
     let stream = EffectStream::<Vec<i32>, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.push(vec![1, 2, 3]).await.unwrap();
@@ -117,7 +126,7 @@ mod tests {
   #[tokio::test]
   async fn test_zip_empty_input() {
     let stream = EffectStream::<Vec<i32>, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.close().await.unwrap();
@@ -137,7 +146,7 @@ mod tests {
   #[tokio::test]
   async fn test_zip_concurrent() {
     let stream = EffectStream::<Vec<i32>, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.push(vec![1, 2, 3]).await.unwrap();

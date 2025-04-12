@@ -92,7 +92,7 @@ mod tests {
   #[tokio::test]
   async fn test_split_by_even_numbers() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in vec![1, 2, 3, 4, 5, 6] {
@@ -115,7 +115,7 @@ mod tests {
   #[tokio::test]
   async fn test_split_no_splits() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=5 {
@@ -138,7 +138,7 @@ mod tests {
   #[tokio::test]
   async fn test_split_strings() {
     let stream = EffectStream::<String, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for s in vec!["hello", "", "world", "", "rust"] {
@@ -168,7 +168,7 @@ mod tests {
   #[tokio::test]
   async fn test_split_concurrent() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in vec![1, 2, 3, 4, 5, 6] {

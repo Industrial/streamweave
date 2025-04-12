@@ -21,6 +21,15 @@ where
   }
 }
 
+impl<T> Default for SortOperator<T>
+where
+  T: Send + Sync + Ord + 'static,
+{
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl<T, E> EffectStreamOperator<T, E, T> for SortOperator<T>
 where
   T: Send + Sync + Clone + Ord + 'static,
@@ -76,7 +85,7 @@ mod tests {
   #[tokio::test]
   async fn test_sort_basic() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in vec![3, 1, 4, 1, 5, 9] {
@@ -99,7 +108,7 @@ mod tests {
   #[tokio::test]
   async fn test_sort_empty_input() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.close().await.unwrap();
@@ -119,7 +128,7 @@ mod tests {
   #[tokio::test]
   async fn test_sort_concurrent() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in vec![3, 1, 4, 1, 5, 9] {

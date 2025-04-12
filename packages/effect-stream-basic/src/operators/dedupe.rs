@@ -22,6 +22,15 @@ where
   }
 }
 
+impl<T> Default for DedupeOperator<T>
+where
+  T: Send + Sync + Hash + Eq + 'static,
+{
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl<T, E> EffectStreamOperator<T, E, T> for DedupeOperator<T>
 where
   T: Send + Sync + Hash + Eq + Clone + 'static,
@@ -54,7 +63,6 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::stream;
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -70,7 +78,7 @@ mod tests {
   #[tokio::test]
   async fn test_dedupe_basic() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in vec![1, 2, 2, 3, 3, 3, 4] {
@@ -93,7 +101,7 @@ mod tests {
   #[tokio::test]
   async fn test_dedupe_strings() {
     let stream = EffectStream::<String, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for s in vec!["a", "b", "b", "c", "a"] {
@@ -116,7 +124,7 @@ mod tests {
   #[tokio::test]
   async fn test_dedupe_empty() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.close().await.unwrap();
@@ -136,7 +144,7 @@ mod tests {
   #[tokio::test]
   async fn test_dedupe_all_duplicates() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in vec![1, 1, 1, 1] {
@@ -159,7 +167,7 @@ mod tests {
   #[tokio::test]
   async fn test_dedupe_concurrent() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in vec![1, 2, 2, 3, 3, 3, 4] {
@@ -173,8 +181,8 @@ mod tests {
 
     let mut results1 = Vec::new();
     let mut results2 = Vec::new();
-    let mut new_stream_clone1 = new_stream.clone();
-    let mut new_stream_clone2 = new_stream.clone();
+    let new_stream_clone1 = new_stream.clone();
+    let new_stream_clone2 = new_stream.clone();
 
     let handle1 = tokio::spawn(async move {
       while let Ok(Some(value)) = new_stream_clone1.next().await {

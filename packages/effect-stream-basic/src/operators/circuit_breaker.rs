@@ -195,7 +195,7 @@ mod tests {
     let operator = CircuitBreakerOperator::new(2, Duration::from_millis(100));
 
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.push(1).await.unwrap();
