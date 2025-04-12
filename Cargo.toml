@@ -58,13 +58,13 @@ tokio-util = "0.7.14"
 effect-core = { path = "packages/effect-core" }
 effect-derive = { path = "packages/effect-derive" }
 
-[[example]]
-name = "01_basic_pipeline"
-path = "examples/01_basic_pipeline/main.rs"
+# [[example]]
+# name = "01_basic_pipeline"
+# path = "examples/01_basic_pipeline/main.rs"
 
-[[example]]
-name = "02_advanced_pipeline"
-path = "examples/02_advanced_pipeline/main.rs"
+# [[example]]
+# name = "02_advanced_pipeline"
+# path = "examples/02_advanced_pipeline/main.rs"
 
 [workspace]
 members = [
