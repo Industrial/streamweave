@@ -76,7 +76,7 @@ mod tests {
   #[tokio::test]
   async fn test_filter_even_numbers() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=6 {
@@ -99,7 +99,7 @@ mod tests {
   #[tokio::test]
   async fn test_filter_empty_input() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.close().await.unwrap();
@@ -119,7 +119,7 @@ mod tests {
   #[tokio::test]
   async fn test_filter_all_match() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=5 {
@@ -142,7 +142,7 @@ mod tests {
   #[tokio::test]
   async fn test_filter_none_match() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=5 {
@@ -165,7 +165,7 @@ mod tests {
   #[tokio::test]
   async fn test_filter_with_strings() {
     let stream = EffectStream::<String, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for s in ["apple", "banana", "avocado", "cherry"].iter() {
@@ -188,7 +188,7 @@ mod tests {
   #[tokio::test]
   async fn test_filter_concurrent() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=6 {
