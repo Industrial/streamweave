@@ -1,11 +1,9 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
-use futures::{Stream, StreamExt};
 use std::collections::HashSet;
 use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::RwLock;
 use tokio::sync::Mutex;
 
 pub struct DistinctOperator<T>

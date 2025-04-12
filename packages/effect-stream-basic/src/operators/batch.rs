@@ -40,7 +40,7 @@ where
 
     Box::pin(async move {
       let new_stream = EffectStream::<Vec<T>, E>::new();
-      let mut new_stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
         let mut current_batch: Vec<T> = Vec::with_capacity(size);
@@ -86,7 +86,7 @@ mod tests {
   #[tokio::test]
   async fn test_batch_exact_size() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=6 {
@@ -109,7 +109,7 @@ mod tests {
   #[tokio::test]
   async fn test_batch_partial_last_chunk() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=5 {
@@ -132,7 +132,7 @@ mod tests {
   #[tokio::test]
   async fn test_batch_empty_input() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.close().await.unwrap();
@@ -152,7 +152,7 @@ mod tests {
   #[tokio::test]
   async fn test_batch_size_one() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=3 {
@@ -175,7 +175,7 @@ mod tests {
   #[tokio::test]
   async fn test_batch_size_larger_than_input() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=3 {
@@ -198,7 +198,7 @@ mod tests {
   #[tokio::test]
   async fn test_batch_concurrent() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=6 {

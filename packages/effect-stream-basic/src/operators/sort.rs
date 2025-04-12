@@ -33,7 +33,7 @@ where
 
     Box::pin(async move {
       let new_stream = EffectStream::<T, E>::new();
-      let mut new_stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
         let mut items = Vec::new();

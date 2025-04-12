@@ -3,9 +3,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
-use std::sync::Arc;
 use tokio;
-use tokio::sync::Mutex;
 
 pub struct GroupByOperator<F, T, K>
 where
@@ -49,7 +47,7 @@ where
 
     Box::pin(async move {
       let new_stream = EffectStream::<(K, Vec<T>), E>::new();
-      let mut new_stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
         let mut groups = HashMap::new();

@@ -1,9 +1,7 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 use tokio;
-use tokio::sync::Mutex;
 pub struct FlatMapOperator<F, I, O>
 where
   F: Fn(I) -> Vec<O> + Send + Clone + 'static,
@@ -45,7 +43,7 @@ where
 
     Box::pin(async move {
       let new_stream = EffectStream::<O, E>::new();
-      let mut new_stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
         while let Ok(Some(item)) = stream_clone.next().await {

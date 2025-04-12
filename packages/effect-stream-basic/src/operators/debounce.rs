@@ -38,11 +38,11 @@ where
 
     Box::pin(async move {
       let new_stream = EffectStream::<T, E>::new();
-      let mut new_stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
         let mut last_item: Option<T> = None;
-        let mut delay = time::sleep(duration);
+        let delay = time::sleep(duration);
         tokio::pin!(delay);
 
         loop {

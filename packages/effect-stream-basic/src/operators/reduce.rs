@@ -1,9 +1,7 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 use tokio;
-use tokio::sync::Mutex;
 
 pub struct ReduceOperator<T, Acc, F>
 where
@@ -48,7 +46,7 @@ where
 
     Box::pin(async move {
       let new_stream = EffectStream::<Acc, E>::new();
-      let mut new_stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
         let mut acc = initial;

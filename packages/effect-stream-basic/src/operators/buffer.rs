@@ -2,7 +2,6 @@ use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
 use std::future::Future;
 use std::pin::Pin;
 use tokio;
-use tokio::sync::Mutex;
 
 pub struct BufferOperator<T>
 where
@@ -37,7 +36,7 @@ where
 
     Box::pin(async move {
       let new_stream = EffectStream::<T, E>::new();
-      let mut new_stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
         let mut buffer = Vec::with_capacity(capacity);
@@ -66,7 +65,7 @@ mod tests {
   use std::sync::Arc;
 
   use super::*;
-  use tokio::time::Duration;
+  use tokio::{sync::Mutex, time::Duration};
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -82,7 +81,7 @@ mod tests {
   #[tokio::test]
   async fn test_buffer_basic() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=5 {
@@ -105,7 +104,7 @@ mod tests {
   #[tokio::test]
   async fn test_buffer_empty_input() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.close().await.unwrap();
@@ -125,7 +124,7 @@ mod tests {
   #[tokio::test]
   async fn test_buffer_async() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=5 {
@@ -149,7 +148,7 @@ mod tests {
   #[tokio::test]
   async fn test_buffer_concurrent() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=5 {

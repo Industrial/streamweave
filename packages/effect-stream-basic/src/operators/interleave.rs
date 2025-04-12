@@ -42,7 +42,7 @@ where
       let stream_clone = stream.clone();
 
       tokio::spawn(async move {
-        let mut stream_clone = stream_clone;
+        let stream_clone = stream_clone;
         let mut other_clone = other.lock().await;
         let mut first = true;
 

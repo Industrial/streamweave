@@ -1,9 +1,7 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 use tokio;
-use tokio::sync::Mutex;
 
 pub struct SkipOperator<T>
 where
@@ -38,7 +36,7 @@ where
 
     Box::pin(async move {
       let new_stream = EffectStream::<T, E>::new();
-      let mut new_stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
         let mut count = 0;

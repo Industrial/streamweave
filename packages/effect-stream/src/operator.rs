@@ -1,8 +1,6 @@
 use crate::error::EffectResult;
 use crate::stream::EffectStream;
 use std::future::Future;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 /// A trait for types that can transform an EffectStream
 pub trait EffectStreamOperator<T, E, B>
@@ -24,6 +22,8 @@ mod tests {
   use crate::error::EffectError;
   use std::fmt::Debug;
   use std::pin::Pin;
+  use std::sync::Arc;
+  use tokio::sync::Mutex;
 
   // Test error type
   #[derive(Debug, Clone, PartialEq)]
@@ -73,7 +73,7 @@ mod tests {
       Pin<Box<dyn Future<Output = EffectResult<EffectStream<B, E>, E>> + Send + 'static>>;
 
     fn transform(&self, stream: EffectStream<T, E>) -> Self::Future {
-      let mut stream_clone = stream.clone();
+      let stream_clone = stream.clone();
       let f = self.f.clone();
       let should_error = self.should_error;
 
@@ -82,7 +82,7 @@ mod tests {
           Err(TestError("test error".to_string()).into())
         } else {
           let new_stream = EffectStream::<B, E>::new();
-          let mut new_stream_clone = new_stream.clone();
+          let new_stream_clone = new_stream.clone();
 
           tokio::spawn(async move {
             while let Ok(Some(value)) = stream_clone.next().await {
@@ -101,7 +101,7 @@ mod tests {
   #[tokio::test]
   async fn test_primitive_types() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.push(1).await.unwrap();
@@ -134,7 +134,7 @@ mod tests {
     }
 
     let stream = EffectStream::<Point, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.push(Point { x: 1, y: 2 }).await.unwrap();
@@ -177,7 +177,7 @@ mod tests {
   #[tokio::test]
   async fn test_concurrent_access() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.push(1).await.unwrap();
@@ -236,7 +236,7 @@ mod tests {
   #[tokio::test]
   async fn test_large_stream() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
     let values: Vec<i32> = (0..1000).collect();
 
     tokio::spawn(async move {
@@ -255,8 +255,8 @@ mod tests {
     }
 
     assert_eq!(results.len(), 1000);
-    for i in 0..1000 {
-      assert_eq!(results[i], (i as i32) * 2);
+    for (i, &value) in results.iter().enumerate() {
+      assert_eq!(value, (i as i32) * 2);
     }
   }
 }

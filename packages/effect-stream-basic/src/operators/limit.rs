@@ -1,7 +1,7 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
-use futures::{Stream, StreamExt};
 use std::future::Future;
 use std::pin::Pin;
+use tokio;
 
 pub struct LimitOperator<T>
 where
@@ -36,11 +36,11 @@ where
 
     Box::pin(async move {
       let new_stream = EffectStream::<T, E>::new();
-      let mut new_stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
         let mut count = 0;
-        let mut stream_clone = stream_clone;
+        let stream_clone = stream_clone;
 
         while count < limit {
           match stream_clone.next().await {

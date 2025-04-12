@@ -30,6 +30,7 @@ where
     }
   }
 
+  #[allow(dead_code)]
   async fn is_circuit_open(&self) -> bool {
     let failure_count = self.failure_count.load(Ordering::SeqCst);
     if failure_count >= self.failure_threshold {
@@ -49,6 +50,7 @@ where
     }
   }
 
+  #[allow(dead_code)]
   async fn record_failure(&self) {
     self.failure_count.fetch_add(1, Ordering::SeqCst);
     let mut last_failure = self.last_failure_time.write().await;
@@ -72,10 +74,10 @@ where
 
     Box::pin(async move {
       let new_stream = EffectStream::<T, E>::new();
-      let mut new_stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
-        let mut stream_clone = stream_clone;
+        let stream_clone = stream_clone;
         let failure_count = failure_count.clone();
         let last_failure_time = last_failure_time.clone();
 
@@ -121,7 +123,7 @@ mod tests {
     let operator = CircuitBreakerOperator::new(3, Duration::from_millis(100));
 
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.push(1).await.unwrap();
@@ -145,7 +147,7 @@ mod tests {
     let operator = CircuitBreakerOperator::new(3, Duration::from_millis(100));
 
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.close().await.unwrap();
@@ -166,7 +168,7 @@ mod tests {
     let operator = CircuitBreakerOperator::new(2, Duration::from_millis(100));
 
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.push(1).await.unwrap();

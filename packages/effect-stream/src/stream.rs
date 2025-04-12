@@ -718,7 +718,7 @@ mod tests {
 
     assert!(matches!(stream.next().await, Some(Ok(1))));
     assert!(matches!(stream.next().await, Some(Ok(2))));
-    assert!(matches!(stream.next().await, None));
+    assert!(stream.next().await.is_none());
   }
 
   #[tokio::test]
@@ -789,7 +789,7 @@ mod tests {
       let stream = stream.clone();
       producers.push(tokio::spawn(async move {
         for j in 0..10 {
-          assert!(matches!(stream.push((i * 10 + j) as i32).await, Ok(())));
+          assert!(matches!(stream.push(i * 10 + j).await, Ok(())));
         }
       }));
     }
@@ -817,8 +817,8 @@ mod tests {
     // Verify we got all values
     assert_eq!(values.len(), 50);
     values.sort();
-    for i in 0..50 {
-      assert_eq!(values[i], i as i32);
+    for (i, &value) in values.iter().enumerate() {
+      assert_eq!(value, i as i32);
     }
   }
 

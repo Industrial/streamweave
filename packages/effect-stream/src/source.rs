@@ -1,8 +1,6 @@
 use crate::stream::EffectStream;
 use crate::EffectResult;
 use std::future::Future;
-use std::sync::{Arc, Mutex};
-use tokio::sync::Mutex as TokioMutex;
 
 /// A trait for types that can produce an EffectStream
 pub trait EffectStreamSource<T, E>
@@ -22,6 +20,8 @@ mod tests {
   use super::*;
   use crate::error::EffectError;
   use std::pin::Pin;
+  use std::sync::Arc;
+  use tokio::sync::Mutex;
 
   // Test error type
   #[derive(Debug, Clone, PartialEq)]
@@ -135,7 +135,7 @@ mod tests {
     let stream_clone = stream.clone();
 
     // Create a shared results vector
-    let results = Arc::new(TokioMutex::new(Vec::new()));
+    let results = Arc::new(Mutex::new(Vec::new()));
     let results_clone = results.clone();
 
     // Create two concurrent consumers
@@ -187,8 +187,8 @@ mod tests {
     }
 
     assert_eq!(results.len(), 1000);
-    for i in 0..1000 {
-      assert_eq!(results[i], i as i32);
+    for (i, &value) in results.iter().enumerate() {
+      assert_eq!(value, i as i32);
     }
   }
 }

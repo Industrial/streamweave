@@ -3,7 +3,6 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use tokio::time::{Duration, Instant};
 
 pub struct RateLimitOperator<T>
@@ -31,6 +30,7 @@ where
     }
   }
 
+  #[allow(dead_code)]
   async fn check_rate_limit(&self) -> bool {
     let now = Instant::now();
     let mut window_start = self.window_start.write().await;
@@ -65,7 +65,7 @@ where
 
     Box::pin(async move {
       let new_stream = EffectStream::<T, E>::new();
-      let mut new_stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
         while let Ok(Some(item)) = stream_clone.next().await {

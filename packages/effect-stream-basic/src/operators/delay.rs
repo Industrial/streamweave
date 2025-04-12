@@ -1,5 +1,4 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
-use futures::{Stream, StreamExt};
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
@@ -38,7 +37,7 @@ where
 
     Box::pin(async move {
       let new_stream = EffectStream::<T, E>::new();
-      let mut new_stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
         while let Ok(Some(item)) = stream_clone.next().await {

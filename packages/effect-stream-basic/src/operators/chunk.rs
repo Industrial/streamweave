@@ -1,9 +1,7 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 use tokio;
-use tokio::sync::Mutex;
 
 pub struct ChunkOperator<T>
 where
@@ -39,7 +37,7 @@ where
 
     Box::pin(async move {
       let new_stream = EffectStream::<Vec<T>, E>::new();
-      let mut new_stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
         let mut current_chunk = Vec::with_capacity(size);
@@ -63,8 +61,10 @@ where
 
 #[cfg(test)]
 mod tests {
+  use std::sync::Arc;
+
   use super::*;
-  use tokio::time::Duration;
+  use tokio::{sync::Mutex, time::Duration};
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -80,7 +80,7 @@ mod tests {
   #[tokio::test]
   async fn test_chunk_basic() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=5 {
@@ -103,7 +103,7 @@ mod tests {
   #[tokio::test]
   async fn test_chunk_empty_input() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       stream_clone.close().await.unwrap();
@@ -123,7 +123,7 @@ mod tests {
   #[tokio::test]
   async fn test_chunk_concurrent() {
     let stream = EffectStream::<i32, TestError>::new();
-    let mut stream_clone = stream.clone();
+    let stream_clone = stream.clone();
 
     tokio::spawn(async move {
       for i in 1..=5 {
