@@ -1,10 +1,7 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
-use std::time::Duration;
 use tokio;
-use tokio::sync::Mutex;
 
 pub struct FlatMapOperator<F, I, O>
 where

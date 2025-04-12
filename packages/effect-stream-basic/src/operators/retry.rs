@@ -1,9 +1,6 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
-use std::time::Duration as StdDuration;
-use tokio::sync::Mutex;
 use tokio::time::Duration;
 
 pub struct RetryOperator<T>
@@ -71,9 +68,8 @@ where
 
 #[cfg(test)]
 mod tests {
-  use std::sync::Arc;
-
   use super::*;
+  use std::sync::Arc;
   use tokio::{sync::Mutex, time::Duration};
 
   #[derive(Debug, Clone)]
