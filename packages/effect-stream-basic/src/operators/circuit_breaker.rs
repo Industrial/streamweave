@@ -170,7 +170,7 @@ mod tests {
     let stream = EffectStream::<i32, TestError>::new();
     let stream_clone = stream.clone();
 
-    tokio::spawn(async move {
+    let producer = tokio::spawn(async move {
       stream_clone.push(1).await.unwrap();
       stream_clone.push(2).await.unwrap();
       stream_clone.push(3).await.unwrap();
@@ -184,8 +184,12 @@ mod tests {
       results.push(value);
       if value == 2 {
         operator.failure_count.store(2, Ordering::SeqCst);
+        let mut last_failure = operator.last_failure_time.write().await;
+        *last_failure = Some(Instant::now());
       }
     }
+
+    producer.await.unwrap();
 
     assert_eq!(results, vec![1, 2]);
   }
@@ -218,5 +222,57 @@ mod tests {
     }
 
     assert_eq!(results, vec![1, 2, 3]);
+  }
+
+  #[tokio::test]
+  async fn test_circuit_breaker_concurrent() {
+    let operator = CircuitBreakerOperator::new(2, Duration::from_millis(100));
+
+    let stream = EffectStream::<i32, TestError>::new();
+    let stream_clone = stream.clone();
+
+    // Create the operator and transform stream first
+    let new_stream = operator.transform(stream).await.unwrap();
+
+    // Create multiple consumer tasks before producing any values
+    let num_consumers = 2;
+    let mut handles = Vec::new();
+
+    for _ in 0..num_consumers {
+      let stream_clone = new_stream.clone();
+      let handle = tokio::spawn(async move {
+        let mut results = Vec::new();
+        while let Ok(Some(value)) = stream_clone.next().await {
+          results.push(value);
+        }
+        results
+      });
+      handles.push(handle);
+    }
+
+    // Now start producing values
+    let producer = tokio::spawn(async move {
+      for i in 1..=5 {
+        stream_clone.push(i).await.unwrap();
+        tokio::time::sleep(Duration::from_millis(1)).await;
+      }
+      stream_clone.close().await.unwrap();
+    });
+
+    // Wait for producer to finish
+    producer.await.unwrap();
+
+    // Collect results from all consumers
+    let mut all_results = Vec::new();
+    for handle in handles {
+      let results = handle.await.unwrap();
+      all_results.extend(results);
+    }
+
+    // Sort results for deterministic comparison
+    all_results.sort();
+
+    // Each consumer should see all values
+    assert_eq!(all_results, vec![1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
   }
 }

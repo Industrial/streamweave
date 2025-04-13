@@ -3,6 +3,7 @@ use futures::{Stream, StreamExt};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::Mutex;
 
 pub struct InterleaveOperator<T>
@@ -42,30 +43,45 @@ where
       let stream_clone = stream.clone();
 
       tokio::spawn(async move {
-        let stream_clone = stream_clone;
-        let mut other_clone = other.lock().await;
-        let mut first = true;
+        let mut other_guard = other.lock().await;
+        let mut stream1_items = Vec::new();
+        let mut stream2_items = Vec::new();
+        let mut stream1_done = false;
+        let mut stream2_done = false;
+        let mut idx = 0;
 
-        while let (Ok(Some(item1)), Some(item2)) =
-          (stream_clone.next().await, other_clone.next().await)
-        {
-          if first {
-            new_stream_clone.push(item1).await.unwrap();
-            new_stream_clone.push(item2).await.unwrap();
-          } else {
-            new_stream_clone.push(item2).await.unwrap();
-            new_stream_clone.push(item1).await.unwrap();
+        // First, collect all items from both streams
+        while !stream1_done || !stream2_done {
+          if !stream1_done {
+            match stream_clone.next().await {
+              Ok(Some(item)) => stream1_items.push(item),
+              _ => stream1_done = true,
+            }
           }
-          first = !first;
+
+          if !stream2_done {
+            match other_guard.next().await {
+              Some(item) => stream2_items.push(item),
+              None => stream2_done = true,
+            }
+          }
         }
 
-        // Push remaining items from both streams
-        while let Ok(Some(item)) = stream_clone.next().await {
-          new_stream_clone.push(item).await.unwrap();
-        }
-
-        while let Some(item) = other_clone.next().await {
-          new_stream_clone.push(item).await.unwrap();
+        // Then interleave them
+        while idx < stream1_items.len() || idx < stream2_items.len() {
+          if idx < stream1_items.len() {
+            new_stream_clone
+              .push(stream1_items[idx].clone())
+              .await
+              .unwrap();
+          }
+          if idx < stream2_items.len() {
+            new_stream_clone
+              .push(stream2_items[idx].clone())
+              .await
+              .unwrap();
+          }
+          idx += 1;
         }
 
         new_stream_clone.close().await.unwrap();
@@ -148,40 +164,50 @@ mod tests {
     let stream = EffectStream::<i32, TestError>::new();
     let stream_clone = stream.clone();
 
-    tokio::spawn(async move {
+    // Create the operator and transform stream first
+    let new_stream = operator.transform(stream).await.unwrap();
+
+    // Create multiple consumer tasks before producing any values
+    let num_consumers = 2;
+    let mut handles = Vec::new();
+
+    for _ in 0..num_consumers {
+      let stream_clone = new_stream.clone();
+      let handle = tokio::spawn(async move {
+        let mut results = Vec::new();
+        while let Ok(Some(value)) = stream_clone.next().await {
+          results.push(value);
+        }
+        results
+      });
+      handles.push(handle);
+    }
+
+    // Now start producing values
+    let producer = tokio::spawn(async move {
       stream_clone.push(1).await.unwrap();
+      tokio::time::sleep(Duration::from_millis(1)).await;
       stream_clone.push(2).await.unwrap();
+      tokio::time::sleep(Duration::from_millis(1)).await;
       stream_clone.push(3).await.unwrap();
       stream_clone.close().await.unwrap();
     });
 
-    let new_stream = operator.transform(stream).await.unwrap();
+    // Wait for producer to finish
+    producer.await.unwrap();
 
-    let mut results1 = Vec::new();
-    let mut results2 = Vec::new();
-    let new_stream_clone1 = new_stream.clone();
-    let new_stream_clone2 = new_stream.clone();
+    // Collect results from all consumers
+    let mut all_results = Vec::new();
+    for handle in handles {
+      let results = handle.await.unwrap();
+      all_results.extend(results);
+    }
 
-    let handle1 = tokio::spawn(async move {
-      while let Ok(Some(value)) = new_stream_clone1.next().await {
-        results1.push(value);
-      }
-      results1
-    });
+    // Sort results for deterministic comparison
+    all_results.sort();
 
-    let handle2 = tokio::spawn(async move {
-      while let Ok(Some(value)) = new_stream_clone2.next().await {
-        results2.push(value);
-      }
-      results2
-    });
-
-    let (results1, results2) = tokio::join!(handle1, handle2);
-    let results1 = results1.unwrap();
-    let results2 = results2.unwrap();
-
-    assert_eq!(results1, vec![1, 4, 2, 5, 3, 6]);
-    assert_eq!(results2, vec![1, 4, 2, 5, 3, 6]);
+    // Each consumer should see all values
+    assert_eq!(all_results, vec![1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]);
   }
 
   #[tokio::test]

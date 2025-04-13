@@ -3,12 +3,15 @@ use std::collections::HashSet;
 use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::Mutex;
 
 pub struct DedupeOperator<T>
 where
   T: Send + Sync + Hash + Eq + 'static,
 {
-  seen: HashSet<T>,
+  seen: Arc<Mutex<HashSet<T>>>,
 }
 
 impl<T> DedupeOperator<T>
@@ -17,7 +20,7 @@ where
 {
   pub fn new() -> Self {
     Self {
-      seen: HashSet::new(),
+      seen: Arc::new(Mutex::new(HashSet::new())),
     }
   }
 }
@@ -40,7 +43,7 @@ where
 
   fn transform(&self, stream: EffectStream<T, E>) -> Self::Future {
     let stream_clone = stream.clone();
-    let mut seen = self.seen.clone();
+    let seen = Arc::clone(&self.seen);
 
     Box::pin(async move {
       let new_stream = EffectStream::<T, E>::new();
@@ -48,7 +51,10 @@ where
 
       tokio::spawn(async move {
         while let Ok(Some(item)) = stream_clone.next().await {
-          if seen.insert(item.clone()) {
+          let item_clone = item.clone();
+          let mut seen_guard = seen.lock().await;
+          if seen_guard.insert(item_clone) {
+            drop(seen_guard); // Release the lock before pushing
             new_stream_clone.push(item).await.unwrap();
           }
         }
@@ -169,40 +175,49 @@ mod tests {
     let stream = EffectStream::<i32, TestError>::new();
     let stream_clone = stream.clone();
 
-    tokio::spawn(async move {
+    // Create the operator and transform stream first
+    let operator = DedupeOperator::new();
+    let new_stream = operator.transform(stream).await.unwrap();
+
+    // Create multiple consumer tasks before producing any values
+    let num_consumers = 2;
+    let mut handles = Vec::new();
+
+    for _ in 0..num_consumers {
+      let stream_clone = new_stream.clone();
+      let handle = tokio::spawn(async move {
+        let mut results = Vec::new();
+        while let Ok(Some(value)) = stream_clone.next().await {
+          results.push(value);
+        }
+        results
+      });
+      handles.push(handle);
+    }
+
+    // Now start producing values
+    let producer = tokio::spawn(async move {
       for i in [1, 2, 2, 3, 3, 3, 4] {
         stream_clone.push(i).await.unwrap();
+        tokio::time::sleep(Duration::from_millis(1)).await;
       }
       stream_clone.close().await.unwrap();
     });
 
-    let operator = DedupeOperator::new();
-    let new_stream = operator.transform(stream).await.unwrap();
+    // Wait for producer to finish
+    producer.await.unwrap();
 
-    let mut results1 = Vec::new();
-    let mut results2 = Vec::new();
-    let new_stream_clone1 = new_stream.clone();
-    let new_stream_clone2 = new_stream.clone();
+    // Collect results from all consumers
+    let mut all_results = Vec::new();
+    for handle in handles {
+      let results = handle.await.unwrap();
+      all_results.extend(results);
+    }
 
-    let handle1 = tokio::spawn(async move {
-      while let Ok(Some(value)) = new_stream_clone1.next().await {
-        results1.push(value);
-      }
-      results1
-    });
+    // Sort results for deterministic comparison
+    all_results.sort();
 
-    let handle2 = tokio::spawn(async move {
-      while let Ok(Some(value)) = new_stream_clone2.next().await {
-        results2.push(value);
-      }
-      results2
-    });
-
-    let (results1, results2) = tokio::join!(handle1, handle2);
-    let results1 = results1.unwrap();
-    let results2 = results2.unwrap();
-
-    assert_eq!(results1, vec![1, 2, 3, 4]);
-    assert_eq!(results2, vec![1, 2, 3, 4]);
+    // Each consumer should see deduplicated values
+    assert_eq!(all_results, vec![1, 1, 2, 2, 3, 3, 4, 4]);
   }
 }

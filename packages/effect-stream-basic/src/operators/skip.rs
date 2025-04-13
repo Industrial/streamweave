@@ -123,49 +123,49 @@ mod tests {
     let stream = EffectStream::<i32, TestError>::new();
     let stream_clone = stream.clone();
 
+    // Create the operator and transform stream first
+    let operator = SkipOperator::new(2);
+    let new_stream = operator.transform(stream).await.unwrap();
+
+    // Create multiple consumer tasks before producing any values
+    let num_consumers = 2;
+    let mut handles = Vec::new();
+
+    for _ in 0..num_consumers {
+      let stream_clone = new_stream.clone();
+      let handle = tokio::spawn(async move {
+        let mut results = Vec::new();
+        while let Ok(Some(value)) = stream_clone.next().await {
+          results.push(value);
+        }
+        results
+      });
+      handles.push(handle);
+    }
+
+    // Now start producing values
     let producer = tokio::spawn(async move {
       for i in 1..=5 {
         stream_clone.push(i).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(50)).await;
+        tokio::time::sleep(Duration::from_millis(1)).await;
       }
       stream_clone.close().await.unwrap();
-    });
-
-    let operator = SkipOperator::new(2);
-    let new_stream = operator.transform(stream).await.unwrap();
-    let new_stream_clone = new_stream.clone();
-
-    let results = Arc::new(Mutex::new(Vec::new()));
-    let results_clone1 = results.clone();
-    let results_clone2 = results.clone();
-
-    let handle1 = tokio::spawn(async move {
-      while let Ok(Some(value)) = new_stream.next().await {
-        results_clone1.lock().await.push(value);
-      }
-    });
-
-    let handle2 = tokio::spawn(async move {
-      while let Ok(Some(value)) = new_stream_clone.next().await {
-        results_clone2.lock().await.push(value);
-      }
     });
 
     // Wait for producer to finish
     producer.await.unwrap();
 
-    // Wait for consumers with timeout
-    tokio::select! {
-        _ = handle1 => {},
-        _ = handle2 => {},
-        _ = sleep(Duration::from_secs(5)) => panic!("Test timed out waiting for consumers"),
+    // Collect results from all consumers
+    let mut all_results = Vec::new();
+    for handle in handles {
+      let results = handle.await.unwrap();
+      all_results.extend(results);
     }
 
-    let mut final_results = results.lock().await;
-    final_results.sort();
-    assert_eq!(final_results.len(), 6); // Each value is received twice due to cloning
-    assert!(final_results.contains(&3));
-    assert!(final_results.contains(&4));
-    assert!(final_results.contains(&5));
+    // Sort results for deterministic comparison
+    all_results.sort();
+
+    // Each consumer should see the same values after skipping the first 2
+    assert_eq!(all_results, vec![3, 3, 4, 4, 5, 5]);
   }
 }
