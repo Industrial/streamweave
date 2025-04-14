@@ -7,7 +7,7 @@
 - [x] fold/reduce operations
 - [x] zip/zipWith operations
 - [x] scan operations
-- [ ] take/drop operations
+- [x] take/drop operations
 - [ ] partition operations
 - [ ] groupBy operations
 - [ ] distinct operations

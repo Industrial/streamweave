@@ -15,6 +15,7 @@ pub mod non_empty_string;
 pub mod option;
 pub mod result;
 pub mod scannable;
+pub mod takeable;
 pub mod zippable;
 
 pub use applicative::*;
@@ -29,4 +30,5 @@ pub use non_empty_string::*;
 pub use option::*;
 pub use result::*;
 pub use scannable::*;
+pub use takeable::*;
 pub use zippable::*;
