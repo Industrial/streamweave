@@ -14,8 +14,8 @@
 - [x] sliding window operations
 - [x] merge/concat operations
 - [x] interleave operations
-- [ ] buffer operations
-- [ ] throttle/debounce operations
+- [x] buffer operations
+- [x] throttle/debounce operations
 
 ### 2. Layer System
 - [ ] Layer concept for dependency injection and context management

@@ -21,6 +21,7 @@ pub mod partitionable;
 pub mod result;
 pub mod scannable;
 pub mod takeable;
+pub mod throttleable;
 pub mod windowable;
 pub mod zippable;
 
@@ -42,5 +43,6 @@ pub use partitionable::*;
 pub use result::*;
 pub use scannable::*;
 pub use takeable::*;
+pub use throttleable::*;
 pub use windowable::*;
 pub use zippable::*;
