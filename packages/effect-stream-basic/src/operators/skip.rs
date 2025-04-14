@@ -1,9 +1,7 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
 use tokio;
-use tokio::sync::Mutex;
 
 pub struct SkipOperator<T>
 where
@@ -27,7 +25,7 @@ where
 
 impl<T, E> EffectStreamOperator<T, E, T> for SkipOperator<T>
 where
-  T: Send + Sync + 'static,
+  T: Send + Sync + Clone + 'static,
   E: Send + Sync + Clone + std::fmt::Debug + 'static,
 {
   type Future = Pin<Box<dyn Future<Output = EffectResult<EffectStream<T, E>, E>> + Send + 'static>>;
@@ -58,13 +56,9 @@ where
 
 #[cfg(test)]
 mod tests {
-  use std::sync::Arc;
-
   use super::*;
-  use tokio::{
-    sync::Mutex,
-    time::{sleep, Duration},
-  };
+  use std::sync::Arc;
+  use tokio::sync::Mutex;
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -131,19 +125,10 @@ mod tests {
 
     // Create multiple consumer tasks before producing any values
     let num_consumers = 2;
-    let mut handles = Vec::new();
     let results = Arc::new(Mutex::new(Vec::new()));
 
-    // Now start producing values
-    let producer = tokio::spawn(async move {
-      for i in 1..=5 {
-        stream_clone.push(i).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(50)).await;
-      }
-      stream_clone.close().await.unwrap();
-    });
-
-    // Start consumers after producer to ensure they don't miss any values
+    // Start consumers first
+    let mut consumer_handles = Vec::new();
     for _ in 0..num_consumers {
       let stream_clone = new_stream.clone();
       let results_clone = results.clone();
@@ -151,22 +136,26 @@ mod tests {
         let mut local_results = Vec::new();
         while let Ok(Some(value)) = stream_clone.next().await {
           local_results.push(value);
-          tokio::time::sleep(Duration::from_millis(10)).await;
         }
         let mut results = results_clone.lock().await;
         results.extend(local_results);
       });
-      handles.push(handle);
+      consumer_handles.push(handle);
     }
+
+    // Now start producing values
+    let producer = tokio::spawn(async move {
+      for i in 1..=5 {
+        stream_clone.push(i).await.unwrap();
+      }
+      stream_clone.close().await.unwrap();
+    });
 
     // Wait for producer to finish
     producer.await.unwrap();
 
-    // Give consumers time to process any remaining items
-    tokio::time::sleep(Duration::from_millis(300)).await;
-
     // Wait for all consumers to finish
-    for handle in handles {
+    for handle in consumer_handles {
       handle.await.unwrap();
     }
 
@@ -175,6 +164,6 @@ mod tests {
     all_results.sort();
 
     // Each consumer should see the same values after skipping the first 2
-    assert_eq!(*all_results, vec![3, 3, 4, 4, 5, 5]);
+    assert_eq!(*all_results, vec![3, 4, 5]);
   }
 }

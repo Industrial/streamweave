@@ -16,6 +16,7 @@ pub mod partition;
 pub mod rate_limit;
 pub mod reduce;
 pub mod sample;
+pub mod skip;
 pub mod sort;
 pub mod split;
 pub mod split_at;
@@ -28,6 +29,5 @@ pub mod zip;
 // pub mod dedupe;
 // pub mod flat_map;
 // pub mod retry;
-// pub mod skip;
 
-// Run `bin/test` in the `monorepo` directory after every change you make. Don't run tests with `cargo test`. Fix all errors and report when all tests are green.
+// Run `bin/test` after every change you make. Don't run tests with `cargo test`. Fix all errors and report when all tests are green.
