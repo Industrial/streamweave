@@ -16,6 +16,18 @@
 - [x] interleave operations
 - [x] buffer operations
 - [x] throttle/debounce operations
+- [ ] monoid operations (mempty, mappend, mconcat)
+- [ ] semigroup operations (combine)
+- [ ] category theory primitives (id, compose, arr, first, second)
+- [ ] bifunctor operations (bimap, first, second)
+- [ ] contravariant operations (contramap)
+- [ ] comonad operations (extract, duplicate, extend)
+- [ ] alternative/monadplus operations (empty, alt, some, many)
+- [ ] natural transformations (transform)
+- [ ] free monad operations (pure, foldMap, hoist)
+- [ ] profunctor operations (dimap, lmap, rmap)
+- [ ] foldable1/traversable1 operations (fold1, sequence1, toNonEmpty)
+- [ ] monad transformers (lift, run)
 
 ### 2. Layer System
 - [ ] Layer concept for dependency injection and context management
