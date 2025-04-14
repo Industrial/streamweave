@@ -117,10 +117,12 @@
 - [ ] Distributed locks
 - [ ] Lock-free algorithms 
 
-- [ ] Check out RustBelt and K-Rust
+- [ ] Check out https://github.com/viperproject/prusti-dev
+- [ ] Check out https://github.com/creusot-rs/creusot?tab=readme-ov-file
 
 - Ask for each of the files in `effect-core`:
     - Which traits/implementations should be compositions of others in the `packages/*` that haven't been done yet.
+        - Make sure each trait gets their own file.
     - Which basic Rust type system implementations of the trait haven't been done yet.
     - Use PropTest for the tests.
         - Make sure all possible permutations are tested.
