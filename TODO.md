@@ -18,10 +18,10 @@
 - [x] throttle/debounce operations
 - [x] monoid operations (mempty, mappend, mconcat)
 - [x] semigroup operations (combine)
-- [ ] category theory primitives (id, compose, arr, first, second)
-- [ ] bifunctor operations (bimap, first, second)
-- [ ] contravariant operations (contramap)
-- [ ] comonad operations (extract, duplicate, extend)
+- [x] category theory primitives (id, compose, arr, first, second)
+- [x] bifunctor operations (bimap, first, second)
+- [x] contravariant operations (contramap)
+- [x] comonad operations (extract, duplicate, extend)
 - [ ] alternative/monadplus operations (empty, alt, some, many)
 - [ ] natural transformations (transform)
 - [ ] free monad operations (pure, foldMap, hoist)
@@ -120,11 +120,14 @@
 - [ ] Check out https://github.com/viperproject/prusti-dev
 - [ ] Check out https://github.com/creusot-rs/creusot?tab=readme-ov-file
 
-- Ask for each of the files in `effect-core`:
-    - Which traits/implementations should be compositions of others in the `packages/*` that haven't been done yet.
-        - Make sure each trait gets their own file.
-    - Which basic Rust type system implementations of the trait haven't been done yet.
-    - Use PropTest for the tests.
-        - Make sure all possible permutations are tested.
-        - 100% Test Coverage.
-- Run `bin/test` after every change you make. Don't run tests with `cargo test`. Fix all errors and report when all tests are green.
+1. Ask for each of the files in `effect-core`:
+    1.1 Which traits/implementations should be compositions of others in the `packages/*` that haven't been done yet.
+        1.1.1 Make sure each trait and struct gets their own file.
+    1.2 Which basic Rust type system implementations of the trait haven't been done yet.
+    1.3 Use PropTest for the tests.
+        1.4 Make sure all possible permutations are tested.
+        1.5 100% Test Coverage.
+2. Run `bin/test` after every change you make. Don't run tests with `cargo test`. Fix all errors and report when all tests are green.
+3. If everything above leaves no files to be updated, read `TODO.md` and look at the next item and implement that.
+
+For each item above give me the rundown and then apply them.

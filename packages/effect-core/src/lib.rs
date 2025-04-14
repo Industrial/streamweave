@@ -4,8 +4,11 @@
 //! including the `Effect` type and the `Monad` trait.
 
 pub mod applicative;
+pub mod bifunctor;
 pub mod bufferable;
 pub mod category;
+pub mod comonad;
+pub mod contravariant;
 pub mod distinctable;
 pub mod effect;
 pub mod either;
@@ -29,8 +32,11 @@ pub mod windowable;
 pub mod zippable;
 
 pub use applicative::*;
+pub use bifunctor::*;
 pub use bufferable::*;
 pub use category::*;
+pub use comonad::*;
+pub use contravariant::*;
 pub use distinctable::*;
 pub use effect::*;
 pub use either::*;
