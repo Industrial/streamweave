@@ -4,6 +4,7 @@
 //! including the `Effect` type and the `Monad` trait.
 
 pub mod applicative;
+pub mod distinctable;
 pub mod effect;
 pub mod either;
 pub mod filterable;
@@ -21,6 +22,7 @@ pub mod takeable;
 pub mod zippable;
 
 pub use applicative::*;
+pub use distinctable::*;
 pub use effect::*;
 pub use either::*;
 pub use filterable::*;

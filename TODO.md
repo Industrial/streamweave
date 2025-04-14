@@ -9,13 +9,14 @@
 - [x] scan operations
 - [x] take/drop operations
 - [x] partition operations
-- [ ] groupBy operations
-- [ ] distinct operations
+- [x] groupBy operations
+- [x] distinct operations
 - [ ] sliding window operations
 - [ ] merge/concat operations
 - [ ] interleave operations
 - [ ] buffer operations
 - [ ] throttle/debounce operations
+- [ ] Ask for each of the files which traits/implementations should be compositions of others that haven't been done yet.
 - [ ] Ask for each of the files which basic Rust type system implementations of the trait haven't been done yet.
 - [ ] Ask for each of the files if all possible permutations have been tested.
 
