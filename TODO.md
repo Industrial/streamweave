@@ -6,7 +6,7 @@
 - [x] map/flatMap/filter equivalents
 - [x] fold/reduce operations
 - [x] zip/zipWith operations
-- [ ] scan operations
+- [x] scan operations
 - [ ] take/drop operations
 - [ ] partition operations
 - [ ] groupBy operations

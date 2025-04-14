@@ -69,7 +69,7 @@ impl<T: Send + Sync + 'static> Zippable<T> for Vec<T> {
     U: Send + Sync + 'static,
     I: IntoIterator<Item = U>,
   {
-    self.into_iter().zip(other.into_iter()).collect()
+    self.into_iter().zip(other).collect()
   }
 
   fn zip_with<U, F, R, I>(self, other: I, mut f: F) -> Vec<R>
@@ -79,11 +79,7 @@ impl<T: Send + Sync + 'static> Zippable<T> for Vec<T> {
     F: FnMut(T, U) -> R,
     I: IntoIterator<Item = U>,
   {
-    self
-      .into_iter()
-      .zip(other.into_iter())
-      .map(|(a, b)| f(a, b))
-      .collect()
+    self.into_iter().zip(other).map(|(a, b)| f(a, b)).collect()
   }
 }
 
