@@ -73,6 +73,91 @@ impl<A: Send + Sync + 'static + Clone> Applicative<A> for Vec<A> {
 mod tests {
   use super::*;
 
+  // Define a simple applicative for testing
+  #[derive(Debug, PartialEq, Clone)]
+  struct TestApplicative<T>(T);
+
+  impl<T> TestApplicative<T> {
+    fn new(value: T) -> Self {
+      TestApplicative(value)
+    }
+  }
+
+  impl<T: Send + Sync + 'static> Applicative<T> for TestApplicative<T> {
+    type HigherSelf<U: Send + Sync + 'static> = TestApplicative<U>;
+
+    fn pure(value: T) -> Self::HigherSelf<T> {
+      TestApplicative(value)
+    }
+
+    fn ap<B, F>(self, f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
+    where
+      F: FnMut(T) -> B + Send + Sync + 'static,
+      B: Send + Sync + 'static,
+    {
+      let TestApplicative(mut func) = f;
+      let TestApplicative(value) = self;
+      TestApplicative(func(value))
+    }
+  }
+
+  // Test applicative laws
+  #[test]
+  fn test_applicative_laws() {
+    // Identity law: pure id <*> v = v
+    let v = TestApplicative::new(42);
+    let id = TestApplicative::new(|x: i32| x);
+    assert_eq!(v.clone().ap(id), v);
+
+    // Homomorphism law: pure f <*> pure x = pure (f x)
+    let f = |x: i32| x * 2;
+    let x = TestApplicative::new(42);
+    let lhs = x.clone().ap(TestApplicative::new(f));
+    let rhs = TestApplicative::new(f(42));
+    assert_eq!(lhs, rhs);
+
+    // Interchange law: u <*> pure y = pure ($ y) <*> u
+    let u = TestApplicative::new(|x: i32| x * 2);
+    let y = 42;
+    let lhs = TestApplicative::new(y).ap(u.clone());
+    let rhs = TestApplicative::new(84);
+    assert_eq!(lhs, rhs);
+  }
+
+  // Test basic operations
+  #[test]
+  fn test_pure() {
+    let a: TestApplicative<i32> = TestApplicative::pure(42);
+    assert_eq!(a, TestApplicative(42));
+  }
+
+  #[test]
+  fn test_ap() {
+    let a = TestApplicative::new(42);
+    let f = TestApplicative::pure(|x: i32| x * 2);
+    let result = a.ap(f);
+    assert_eq!(result, TestApplicative(84));
+  }
+
+  // Test type conversions
+  #[test]
+  fn test_type_conversions() {
+    let a = TestApplicative::new(42);
+    let f = TestApplicative::pure(|x: i32| x.to_string());
+    let result = a.ap(f);
+    assert_eq!(result, TestApplicative("42".to_string()));
+  }
+
+  // Test composition
+  #[test]
+  fn test_composition() {
+    let a = TestApplicative::new(42);
+    let f1 = TestApplicative::pure(|x: i32| x * 2);
+    let f2 = TestApplicative::pure(|x: i32| x + 1);
+    let result = a.ap(f1).ap(f2);
+    assert_eq!(result, TestApplicative(85));
+  }
+
   mod option_tests {
     use super::*;
 

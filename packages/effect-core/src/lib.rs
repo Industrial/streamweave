@@ -5,6 +5,8 @@
 
 pub mod applicative;
 pub mod effect;
+pub mod either;
+pub mod filterable;
 pub mod functor;
 pub mod monad;
 pub mod non_empty_array;
@@ -14,6 +16,8 @@ pub mod result;
 
 pub use applicative::*;
 pub use effect::*;
+pub use either::*;
+pub use filterable::*;
 pub use functor::*;
 pub use monad::*;
 pub use non_empty_array::*;

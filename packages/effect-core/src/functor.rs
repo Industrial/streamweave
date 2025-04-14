@@ -97,6 +97,69 @@ impl<K: Send + Sync + 'static + Eq + Hash, V: Send + Sync + 'static> Functor<V> 
 mod tests {
   use super::*;
 
+  // Define a simple functor for testing
+  #[derive(Debug, PartialEq, Clone)]
+  struct TestFunctor<T>(T);
+
+  impl<T> TestFunctor<T> {
+    fn new(value: T) -> Self {
+      TestFunctor(value)
+    }
+  }
+
+  impl<T: Send + Sync + 'static> Functor<T> for TestFunctor<T> {
+    type HigherSelf<U: Send + Sync + 'static> = TestFunctor<U>;
+
+    fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+    where
+      F: FnMut(T) -> B + Send + Sync + 'static,
+      B: Send + Sync + 'static,
+    {
+      TestFunctor(f(self.0))
+    }
+  }
+
+  // Test functor laws
+  #[test]
+  fn test_functor_laws() {
+    // Identity law: map id = id
+    let f = TestFunctor::new(42);
+    let id = |x: i32| x;
+    assert_eq!(f.clone().map(id), f);
+
+    // Composition law: map (h . g) = map h . map g
+    let f = TestFunctor::new(42);
+    let g = |x: i32| x * 2;
+    let h = |x: i32| x + 1;
+    let lhs = f.clone().map(move |x| h(g(x)));
+    let rhs = f.map(g).map(h);
+    assert_eq!(lhs, rhs);
+  }
+
+  // Test basic operations
+  #[test]
+  fn test_map() {
+    let f = TestFunctor::new(42);
+    let mapped = f.map(|x| x * 2);
+    assert_eq!(mapped, TestFunctor(84));
+  }
+
+  // Test type conversions
+  #[test]
+  fn test_type_conversions() {
+    let f = TestFunctor::new(42);
+    let mapped = f.map(|x| x.to_string());
+    assert_eq!(mapped, TestFunctor("42".to_string()));
+  }
+
+  // Test composition
+  #[test]
+  fn test_composition() {
+    let f = TestFunctor::new(42);
+    let mapped = f.map(|x| x * 2).map(|x| x + 1);
+    assert_eq!(mapped, TestFunctor(85));
+  }
+
   mod option_tests {
     #[test]
     fn test_some_to_some() {

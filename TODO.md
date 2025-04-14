@@ -3,7 +3,7 @@
 ## Functional Programming Primitives to Implement
 
 ### 1. Core Functional Primitives
-- [ ] map/flatMap/filter equivalents
+- [x] map/flatMap/filter equivalents
 - [ ] fold/reduce operations
 - [ ] zip/zipWith operations
 - [ ] scan operations
