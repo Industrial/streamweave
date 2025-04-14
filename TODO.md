@@ -11,14 +11,11 @@
 - [x] partition operations
 - [x] groupBy operations
 - [x] distinct operations
-- [ ] sliding window operations
-- [ ] merge/concat operations
-- [ ] interleave operations
+- [x] sliding window operations
+- [x] merge/concat operations
+- [x] interleave operations
 - [ ] buffer operations
 - [ ] throttle/debounce operations
-- [ ] Ask for each of the files which traits/implementations should be compositions of others that haven't been done yet.
-- [ ] Ask for each of the files which basic Rust type system implementations of the trait haven't been done yet.
-- [ ] Ask for each of the files if all possible permutations have been tested.
 
 ### 2. Layer System
 - [ ] Layer concept for dependency injection and context management
@@ -108,9 +105,10 @@
 - [ ] Distributed locks
 - [ ] Lock-free algorithms 
 
-
-
 - [ ] Use https://github.com/proptest-rs/proptest for testing
 
-
-Run `bin/test` after every change you make. Don't run tests with `cargo test`. Fix all errors and report when all tests are green.
+- [ ] Implement the next TODO item.
+- [ ] Ask for each of the files which traits/implementations should be compositions of others in the `packages/*` that haven't been done yet.
+- [ ] Ask for each of the files which basic Rust type system implementations of the trait haven't been done yet.
+- [ ] Ask for each of the files if all possible permutations have been tested.
+- [ ] Run `bin/test` after every change you make. Don't run tests with `cargo test`. Fix all errors and report when all tests are green.
