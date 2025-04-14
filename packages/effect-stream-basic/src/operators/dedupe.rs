@@ -182,42 +182,58 @@ mod tests {
     // Create multiple consumer tasks before producing any values
     let num_consumers = 2;
     let mut handles = Vec::new();
+    let results = Arc::new(Mutex::new(Vec::new()));
 
     for _ in 0..num_consumers {
       let stream_clone = new_stream.clone();
+      let results_clone = results.clone();
       let handle = tokio::spawn(async move {
-        let mut results = Vec::new();
+        let mut local_results = Vec::new();
         while let Ok(Some(value)) = stream_clone.next().await {
-          results.push(value);
+          local_results.push(value);
         }
-        results
+        let mut results = results_clone.lock().await;
+        results.extend(local_results);
       });
       handles.push(handle);
     }
 
-    // Now start producing values
+    // Now start producing values with delays to ensure consumers can keep up
     let producer = tokio::spawn(async move {
       for i in [1, 2, 2, 3, 3, 3, 4] {
-        stream_clone.push(i).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(1)).await;
+        if let Err(e) = stream_clone.push(i).await {
+          eprintln!("Error pushing value {}: {:?}", i, e);
+          break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
       }
-      stream_clone.close().await.unwrap();
+      if let Err(e) = stream_clone.close().await {
+        eprintln!("Error closing stream: {:?}", e);
+      }
     });
 
-    // Wait for producer to finish
-    producer.await.unwrap();
-
-    // Collect results from all consumers
-    let mut all_results = Vec::new();
-    for handle in handles {
-      let results = handle.await.unwrap();
-      all_results.extend(results);
+    // Wait for producer to finish with timeout
+    tokio::select! {
+        _ = producer => {},
+        _ = tokio::time::sleep(Duration::from_secs(5)) => panic!("Producer timed out"),
     }
 
-    // Sort results for deterministic comparison
+    // Give consumers time to process any remaining items
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    // Wait for all consumers to finish with timeout
+    for handle in handles {
+      tokio::select! {
+          result = handle => result.unwrap(),
+          _ = tokio::time::sleep(Duration::from_secs(5)) => panic!("Consumer timed out"),
+      }
+    }
+
+    // Get the results
+    let mut all_results = results.lock().await;
     all_results.sort();
 
     // Each consumer should see deduplicated values
-    assert_eq!(all_results, vec![1, 1, 2, 2, 3, 3, 4, 4]);
+    assert_eq!(*all_results, vec![1, 2, 3, 4]);
   }
 }

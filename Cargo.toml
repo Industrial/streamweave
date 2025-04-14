@@ -4,59 +4,41 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# Async runtime and utilities
-tokio = { version = "1.0", features = ["full"] }
-futures = "0.3"
+async-compression = { version = "0.4", features = ["tokio", "gzip", "deflate"] }
+async-stream = "0.3.3"
 async-trait = "0.1"
-
-# HTTP related
-hyper = { version = "1.6", features = ["full"] }
+base64 = "0.22.1"
+bytes = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+effect-core = { path = "packages/effect-core" }
+effect-derive = { path = "packages/effect-derive" }
+futures = "0.3"
 http = "1.0"
 http-body-util = "0.1"
-bytes = "1.0"
-
-# Compression
-async-compression = { version = "0.4", features = ["tokio", "gzip", "deflate"] }
-
-# Serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-
-# JSON Schema validation
-jsonschema = "0.17"
-
-# Time handling
-chrono = { version = "0.4", features = ["serde"] }
-
-# Random number generation
-rand = "0.8"
-
-# Pin utilities
-pin-project = "1.0"
-
-# Resource management
-scopeguard = "1.2"
-
-async-stream = "0.3.3"
+hyper = { version = "1.6", features = ["full"] }
 hyper-tungstenite = "0.13"
 hyper-util = { version = "0.1", features = ["full"] }
+jsonschema = "0.17"
 jsonwebtoken = "9.2"
 mime = "0.3"
 multipart = "0.18"
 num-traits = "0.2.19"
+pin-project = "1.0"
+rand = "0.8"
 regex = "1.10"
+scopeguard = "1.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 serde_urlencoded = "0.7"
 sha2 = "0.10"
 tempfile = "3.10.0"
 thiserror = "1.0.57"
+tokio = { version = "1.0", features = ["full"] }
 tokio-stream = { version = "0.1", features = ["io-util"] }
 tokio-tungstenite = "0.21"
+tokio-util = "0.7.14"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
-base64 = "0.22.1"
-tokio-util = "0.7.14"
-effect-core = { path = "packages/effect-core" }
-effect-derive = { path = "packages/effect-derive" }
 
 # [[example]]
 # name = "01_basic_pipeline"

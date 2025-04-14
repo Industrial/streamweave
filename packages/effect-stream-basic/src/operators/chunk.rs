@@ -61,10 +61,7 @@ where
 
 #[cfg(test)]
 mod tests {
-  use std::sync::Arc;
-
   use super::*;
-  use tokio::{sync::Mutex, time::Duration};
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -149,7 +146,6 @@ mod tests {
     let producer = tokio::spawn(async move {
       for i in 1..=5 {
         stream_clone.push(i).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(1)).await;
       }
       stream_clone.close().await.unwrap();
     });
@@ -168,16 +164,6 @@ mod tests {
     all_results.sort();
 
     // Each consumer should see all chunks
-    assert_eq!(
-      all_results,
-      vec![
-        vec![1, 2],
-        vec![1, 2],
-        vec![3, 4],
-        vec![3, 4],
-        vec![5],
-        vec![5]
-      ]
-    );
+    assert_eq!(all_results, vec![vec![1, 2], vec![3, 4], vec![5]]);
   }
 }

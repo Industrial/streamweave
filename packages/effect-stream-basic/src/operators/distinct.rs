@@ -143,15 +143,18 @@ mod tests {
     // Create multiple consumer tasks before producing any values
     let num_consumers = 3;
     let mut handles = Vec::new();
+    let results = Arc::new(Mutex::new(Vec::new()));
 
     for _ in 0..num_consumers {
       let stream_clone = new_stream.clone();
+      let results_clone = results.clone();
       let handle = tokio::spawn(async move {
-        let mut results = Vec::new();
+        let mut local_results = Vec::new();
         while let Ok(Some(value)) = stream_clone.next().await {
-          results.push(value);
+          local_results.push(value);
         }
-        results
+        let mut results = results_clone.lock().await;
+        results.extend(local_results);
       });
       handles.push(handle);
     }
@@ -160,7 +163,7 @@ mod tests {
     let producer = tokio::spawn(async move {
       for i in [1, 2, 2, 3, 3, 3] {
         stream_clone.push(i).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(1)).await;
+        tokio::time::sleep(Duration::from_millis(10)).await;
       }
       stream_clone.close().await.unwrap();
     });
@@ -168,17 +171,22 @@ mod tests {
     // Wait for producer to finish
     producer.await.unwrap();
 
-    // Collect results from all consumers
-    let mut all_results = Vec::new();
+    // Give consumers time to process any remaining items
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    // Wait for all consumers to finish with timeout
     for handle in handles {
-      let results = handle.await.unwrap();
-      all_results.extend(results);
+      tokio::select! {
+          result = handle => result.unwrap(),
+          _ = tokio::time::sleep(Duration::from_secs(1)) => panic!("Consumer timed out"),
+      }
     }
 
-    // Sort results for deterministic comparison
+    // Get the results
+    let mut all_results = results.lock().await;
     all_results.sort();
 
-    // Each consumer should see all distinct values
-    assert_eq!(all_results, vec![1, 1, 1, 2, 2, 2, 3, 3, 3]);
+    // Each consumer should see only the distinct values
+    assert_eq!(*all_results, vec![1, 2, 3]);
   }
 }

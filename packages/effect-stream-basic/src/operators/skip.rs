@@ -1,7 +1,9 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 use tokio;
+use tokio::sync::Mutex;
 
 pub struct SkipOperator<T>
 where
@@ -130,42 +132,49 @@ mod tests {
     // Create multiple consumer tasks before producing any values
     let num_consumers = 2;
     let mut handles = Vec::new();
-
-    for _ in 0..num_consumers {
-      let stream_clone = new_stream.clone();
-      let handle = tokio::spawn(async move {
-        let mut results = Vec::new();
-        while let Ok(Some(value)) = stream_clone.next().await {
-          results.push(value);
-        }
-        results
-      });
-      handles.push(handle);
-    }
+    let results = Arc::new(Mutex::new(Vec::new()));
 
     // Now start producing values
     let producer = tokio::spawn(async move {
       for i in 1..=5 {
         stream_clone.push(i).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(1)).await;
+        tokio::time::sleep(Duration::from_millis(50)).await;
       }
       stream_clone.close().await.unwrap();
     });
 
+    // Start consumers after producer to ensure they don't miss any values
+    for _ in 0..num_consumers {
+      let stream_clone = new_stream.clone();
+      let results_clone = results.clone();
+      let handle = tokio::spawn(async move {
+        let mut local_results = Vec::new();
+        while let Ok(Some(value)) = stream_clone.next().await {
+          local_results.push(value);
+          tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        let mut results = results_clone.lock().await;
+        results.extend(local_results);
+      });
+      handles.push(handle);
+    }
+
     // Wait for producer to finish
     producer.await.unwrap();
 
-    // Collect results from all consumers
-    let mut all_results = Vec::new();
+    // Give consumers time to process any remaining items
+    tokio::time::sleep(Duration::from_millis(300)).await;
+
+    // Wait for all consumers to finish
     for handle in handles {
-      let results = handle.await.unwrap();
-      all_results.extend(results);
+      handle.await.unwrap();
     }
 
-    // Sort results for deterministic comparison
+    // Get the results
+    let mut all_results = results.lock().await;
     all_results.sort();
 
     // Each consumer should see the same values after skipping the first 2
-    assert_eq!(all_results, vec![3, 3, 4, 4, 5, 5]);
+    assert_eq!(*all_results, vec![3, 3, 4, 4, 5, 5]);
   }
 }

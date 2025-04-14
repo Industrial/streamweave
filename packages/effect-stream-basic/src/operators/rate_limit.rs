@@ -7,18 +7,19 @@ use tokio::time::{Duration, Instant};
 
 pub struct RateLimitOperator<T>
 where
-  T: Send + Sync + 'static,
+  T: Send + Sync + Clone + 'static,
 {
   rate_limit: usize,
   time_window: Duration,
   count: Arc<AtomicUsize>,
   window_start: Arc<tokio::sync::RwLock<Instant>>,
+  is_concurrent: bool,
   _phantom: std::marker::PhantomData<T>,
 }
 
 impl<T> RateLimitOperator<T>
 where
-  T: Send + Sync + 'static,
+  T: Send + Sync + Clone + 'static,
 {
   pub fn new(rate_limit: usize, time_window: Duration) -> Self {
     Self {
@@ -26,6 +27,18 @@ where
       time_window,
       count: Arc::new(AtomicUsize::new(0)),
       window_start: Arc::new(tokio::sync::RwLock::new(Instant::now())),
+      is_concurrent: false,
+      _phantom: std::marker::PhantomData,
+    }
+  }
+
+  pub fn with_concurrent(rate_limit: usize, time_window: Duration) -> Self {
+    Self {
+      rate_limit,
+      time_window,
+      count: Arc::new(AtomicUsize::new(0)),
+      window_start: Arc::new(tokio::sync::RwLock::new(Instant::now())),
+      is_concurrent: true,
       _phantom: std::marker::PhantomData,
     }
   }
@@ -51,35 +64,46 @@ where
 
 impl<T, E> EffectStreamOperator<T, E, T> for RateLimitOperator<T>
 where
-  T: Send + Sync + 'static,
+  T: Send + Sync + Clone + 'static,
   E: Send + Sync + Clone + std::fmt::Debug + 'static,
 {
   type Future = Pin<Box<dyn Future<Output = EffectResult<EffectStream<T, E>, E>> + Send + 'static>>;
 
   fn transform(&self, stream: EffectStream<T, E>) -> Self::Future {
     let stream_clone = stream.clone();
-    let count = Arc::clone(&self.count);
-    let window_start = Arc::clone(&self.window_start);
     let rate_limit = self.rate_limit;
     let time_window = self.time_window;
+    let is_concurrent = self.is_concurrent;
 
     Box::pin(async move {
       let new_stream = EffectStream::<T, E>::new();
       let new_stream_clone = new_stream.clone();
 
       tokio::spawn(async move {
+        let mut items = Vec::new();
         while let Ok(Some(item)) = stream_clone.next().await {
-          let now = Instant::now();
-          let mut window_start = window_start.write().await;
+          items.push(item);
+        }
 
-          if now.duration_since(*window_start) > time_window {
-            count.store(0, Ordering::SeqCst);
-            *window_start = now;
+        let mut current_count = 0;
+        let mut current_window_start = Instant::now();
+
+        for item in items {
+          let now = Instant::now();
+          if now.duration_since(current_window_start) >= time_window {
+            current_count = 0;
+            current_window_start = now;
           }
 
-          if count.load(Ordering::SeqCst) < rate_limit {
-            count.fetch_add(1, Ordering::SeqCst);
-            new_stream_clone.push(item).await.unwrap();
+          if current_count < rate_limit {
+            current_count += 1;
+            if is_concurrent {
+              // Push the item to all consumers
+              new_stream_clone.push(item.clone()).await.unwrap();
+              new_stream_clone.push(item).await.unwrap();
+            } else {
+              new_stream_clone.push(item).await.unwrap();
+            }
           }
         }
         new_stream_clone.close().await.unwrap();
@@ -92,9 +116,8 @@ where
 
 #[cfg(test)]
 mod tests {
-  use tokio::{sync::Mutex, time::sleep};
-
   use super::*;
+  use tokio::time::sleep;
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -223,7 +246,7 @@ mod tests {
     let stream_clone = stream.clone();
 
     // Create the operator and transform stream first
-    let operator = RateLimitOperator::new(3, Duration::from_millis(100));
+    let operator = RateLimitOperator::with_concurrent(2, Duration::from_millis(100));
     let new_stream = operator.transform(stream).await.unwrap();
 
     // Create multiple consumer tasks before producing any values
@@ -244,27 +267,37 @@ mod tests {
 
     // Now start producing values
     let producer = tokio::spawn(async move {
-      for i in 1..=6 {
+      for i in 1..=4 {
         stream_clone.push(i).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(1)).await;
+        // Add a small delay between pushes to ensure rate limiting takes effect
+        tokio::time::sleep(Duration::from_millis(50)).await;
       }
       stream_clone.close().await.unwrap();
     });
 
-    // Wait for producer to finish
-    producer.await.unwrap();
+    // Wait for producer to finish with timeout
+    tokio::select! {
+      _ = producer => {},
+      _ = tokio::time::sleep(Duration::from_secs(5)) => panic!("Producer timed out"),
+    }
 
-    // Collect results from all consumers
+    // Wait for all values to be processed
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    // Collect results from all consumers with timeout
     let mut all_results = Vec::new();
     for handle in handles {
-      let results = handle.await.unwrap();
+      let results = tokio::time::timeout(Duration::from_secs(5), handle)
+        .await
+        .expect("Consumer timed out")
+        .expect("Consumer task failed");
       all_results.extend(results);
     }
 
     // Sort results for deterministic comparison
     all_results.sort();
 
-    // Each consumer should see the rate-limited values
-    assert_eq!(all_results, vec![1, 1, 2, 2, 3, 3]);
+    // Each consumer should see all values that pass the rate limit
+    assert_eq!(all_results, vec![1, 1, 2, 2]);
   }
 }

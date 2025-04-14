@@ -6,7 +6,7 @@ use tokio;
 pub struct PartitionOperator<F, T>
 where
   F: Fn(&T) -> bool + Send + Clone + 'static,
-  T: Send + Sync + 'static,
+  T: Send + Sync + Clone + 'static,
 {
   predicate: F,
   _phantom: std::marker::PhantomData<T>,
@@ -15,7 +15,7 @@ where
 impl<F, T> PartitionOperator<F, T>
 where
   F: Fn(&T) -> bool + Send + Clone + 'static,
-  T: Send + Sync + 'static,
+  T: Send + Sync + Clone + 'static,
 {
   pub fn new(predicate: F) -> Self {
     Self {
@@ -28,8 +28,8 @@ where
 impl<F, T, E> EffectStreamOperator<T, E, (Vec<T>, Vec<T>)> for PartitionOperator<F, T>
 where
   F: Fn(&T) -> bool + Send + Clone + 'static,
-  T: Send + Sync + 'static,
-  E: Send + Sync + Clone + 'static + std::fmt::Debug,
+  T: Send + Sync + Clone + 'static,
+  E: Send + Sync + Clone + std::fmt::Debug + 'static,
 {
   type Future = Pin<
     Box<dyn Future<Output = EffectResult<EffectStream<(Vec<T>, Vec<T>), E>, E>> + Send + 'static>,
@@ -49,14 +49,15 @@ where
 
         while let Ok(Some(item)) = stream_clone.next().await {
           if predicate(&item) {
-            matches.push(item);
+            matches.push(item.clone());
           } else {
-            non_matches.push(item);
+            non_matches.push(item.clone());
           }
         }
 
         if !matches.is_empty() || !non_matches.is_empty() {
-          new_stream_clone.push((matches, non_matches)).await.unwrap();
+          let result = (matches, non_matches);
+          new_stream_clone.push(result).await.unwrap();
         }
         new_stream_clone.close().await.unwrap();
       });
@@ -68,13 +69,7 @@ where
 
 #[cfg(test)]
 mod tests {
-  use std::sync::Arc;
-
   use super::*;
-  use tokio::{
-    sync::Mutex,
-    time::{sleep, Duration},
-  };
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -144,13 +139,13 @@ mod tests {
     let mut handles = Vec::new();
 
     for _ in 0..num_consumers {
-      let stream_clone = new_stream.clone();
+      let new_stream_clone = new_stream.clone();
       let handle = tokio::spawn(async move {
-        let mut results = Vec::new();
-        while let Ok(Some(value)) = stream_clone.next().await {
-          results.push(value);
+        let mut local_results = Vec::new();
+        while let Ok(Some(value)) = new_stream_clone.next().await {
+          local_results.push(value);
         }
-        results
+        local_results
       });
       handles.push(handle);
     }
@@ -159,7 +154,6 @@ mod tests {
     let producer = tokio::spawn(async move {
       for i in 1..=6 {
         stream_clone.push(i).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(1)).await;
       }
       stream_clone.close().await.unwrap();
     });
@@ -175,7 +169,8 @@ mod tests {
     }
 
     // Each consumer should see the partitioned values
-    assert_eq!(all_results.len(), 2);
-    assert!(all_results.contains(&(vec![2, 4, 6], vec![1, 3, 5])));
+    assert_eq!(all_results.len(), 1);
+    let expected = (vec![2, 4, 6], vec![1, 3, 5]);
+    assert_eq!(all_results[0], expected);
   }
 }

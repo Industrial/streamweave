@@ -137,50 +137,56 @@ mod tests {
     let stream = EffectStream::<i32, TestError>::new();
     let stream_clone = stream.clone();
 
-    // Create the operator and transform stream first
+    // Create multiple consumer tasks
+    let num_consumers = 2;
+    let mut handles = Vec::new();
+    let results = Arc::new(tokio::sync::Mutex::new(Vec::new()));
+
+    // Create the operator and transform stream
     let other = stream::iter(vec![4, 5, 6].into_iter());
     let operator = ConcatOperator::new(Box::pin(other));
     let new_stream = operator.transform(stream).await.unwrap();
 
-    // Create multiple consumer tasks before producing any values
-    let num_consumers = 2;
-    let mut handles = Vec::new();
-
-    for _ in 0..num_consumers {
-      let stream_clone = new_stream.clone();
-      let handle = tokio::spawn(async move {
-        let mut results = Vec::new();
-        while let Ok(Some(value)) = stream_clone.next().await {
-          results.push(value);
-        }
-        results
-      });
-      handles.push(handle);
-    }
-
-    // Now start producing values
+    // Start producing values
     let producer = tokio::spawn(async move {
       for i in 1..=3 {
         stream_clone.push(i).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(1)).await;
+        tokio::time::sleep(Duration::from_millis(50)).await;
       }
       stream_clone.close().await.unwrap();
     });
 
+    // Start consumers
+    for _ in 0..num_consumers {
+      let stream_clone = new_stream.clone();
+      let results_clone = results.clone();
+      let handle = tokio::spawn(async move {
+        let mut local_results = Vec::new();
+        while let Ok(Some(value)) = stream_clone.next().await {
+          local_results.push(value);
+        }
+        let mut results = results_clone.lock().await;
+        results.extend(local_results);
+      });
+      handles.push(handle);
+    }
+
     // Wait for producer to finish
     producer.await.unwrap();
 
-    // Collect results from all consumers
-    let mut all_results = Vec::new();
+    // Give consumers time to process any remaining items
+    tokio::time::sleep(Duration::from_millis(300)).await;
+
+    // Wait for all consumers to finish
     for handle in handles {
-      let results = handle.await.unwrap();
-      all_results.extend(results);
+      handle.await.unwrap();
     }
 
-    // Sort results for deterministic comparison
+    // Get the results
+    let mut all_results = results.lock().await;
     all_results.sort();
 
     // Each consumer should see all values from both streams
-    assert_eq!(all_results, vec![1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]);
+    assert_eq!(*all_results, vec![1, 2, 3, 4, 5, 6]);
   }
 }

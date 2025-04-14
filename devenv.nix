@@ -23,6 +23,7 @@
   # Development packages
   packages = with pkgs; [
     # Rust tools
+    cargo-nextest
     clippy
     rust-analyzer
     rustfmt

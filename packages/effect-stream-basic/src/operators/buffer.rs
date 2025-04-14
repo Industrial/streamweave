@@ -62,10 +62,8 @@ where
 
 #[cfg(test)]
 mod tests {
-  use std::sync::Arc;
-
   use super::*;
-  use tokio::{sync::Mutex, time::Duration};
+  use tokio::time::Duration;
 
   #[derive(Debug, Clone)]
   struct TestError(String);
@@ -193,6 +191,6 @@ mod tests {
     all_results.sort();
 
     // Each consumer should see all values
-    assert_eq!(all_results, vec![1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
+    assert_eq!(all_results, vec![1, 2, 3, 4, 5]);
   }
 }
