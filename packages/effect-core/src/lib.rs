@@ -14,6 +14,7 @@ pub mod non_empty_array;
 pub mod non_empty_string;
 pub mod option;
 pub mod result;
+pub mod zippable;
 
 pub use applicative::*;
 pub use effect::*;
@@ -26,3 +27,4 @@ pub use non_empty_array::*;
 pub use non_empty_string::*;
 pub use option::*;
 pub use result::*;
+pub use zippable::*;

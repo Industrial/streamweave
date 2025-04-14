@@ -4,8 +4,8 @@
 
 ### 1. Core Functional Primitives
 - [x] map/flatMap/filter equivalents
-- [ ] fold/reduce operations
-- [ ] zip/zipWith operations
+- [x] fold/reduce operations
+- [x] zip/zipWith operations
 - [ ] scan operations
 - [ ] take/drop operations
 - [ ] partition operations
