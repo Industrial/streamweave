@@ -1,7 +1,6 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
 use std::future::Future;
 use std::pin::Pin;
-use std::time::Duration;
 use tokio;
 
 pub struct LimitOperator<T>
@@ -64,6 +63,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use std::time::Duration;
 
   #[derive(Debug, Clone)]
   struct TestError(String);

@@ -3,7 +3,6 @@ use futures::{Stream, StreamExt};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 
 pub struct InterleaveOperator<T>
@@ -94,9 +93,9 @@ where
 
 #[cfg(test)]
 mod tests {
-  use futures::stream;
-
   use super::*;
+  use futures::stream;
+  use std::time::Duration;
 
   #[derive(Debug, Clone)]
   struct TestError(String);

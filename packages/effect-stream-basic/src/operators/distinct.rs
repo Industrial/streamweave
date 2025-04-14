@@ -4,7 +4,6 @@ use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 
 pub struct DistinctOperator<T>
@@ -76,6 +75,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use std::time::Duration;
 
   #[derive(Debug, Clone)]
   struct TestError(String);

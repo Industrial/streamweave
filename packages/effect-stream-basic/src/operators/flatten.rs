@@ -1,9 +1,6 @@
 use effect_stream::{EffectResult, EffectStream, EffectStreamOperator};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::Mutex;
 
 pub struct FlattenOperator<T>
 where
@@ -63,6 +60,9 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use std::sync::Arc;
+  use std::time::Duration;
+  use tokio::sync::Mutex;
 
   #[derive(Debug, Clone)]
   struct TestError(String);

@@ -3,7 +3,6 @@ use futures::{Stream, StreamExt};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 
 pub struct ConcatOperator<T>
@@ -75,6 +74,7 @@ where
 mod tests {
   use super::*;
   use futures::stream;
+  use std::time::Duration;
 
   #[derive(Debug, Clone)]
   struct TestError(String);

@@ -50,7 +50,7 @@ where
         // Then, push them with delays
         for item in buffer {
           sleep(duration).await;
-          if let Err(_) = new_stream_clone.push(item).await {
+          if (new_stream_clone.push(item).await).is_err() {
             break;
           }
         }
