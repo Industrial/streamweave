@@ -42,9 +42,7 @@ macro_rules! impl_integer_monoid {
   };
 }
 
-impl_integer_monoid!(
-  i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
-);
+impl_integer_monoid!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
 
 // Implement Monoid for floating-point types
 macro_rules! impl_float_monoid {

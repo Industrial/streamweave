@@ -16,8 +16,8 @@
 - [x] interleave operations
 - [x] buffer operations
 - [x] throttle/debounce operations
-- [ ] monoid operations (mempty, mappend, mconcat)
-- [ ] semigroup operations (combine)
+- [x] monoid operations (mempty, mappend, mconcat)
+- [x] semigroup operations (combine)
 - [ ] category theory primitives (id, compose, arr, first, second)
 - [ ] bifunctor operations (bimap, first, second)
 - [ ] contravariant operations (contramap)
@@ -117,10 +117,12 @@
 - [ ] Distributed locks
 - [ ] Lock-free algorithms 
 
-- [ ] Use https://github.com/proptest-rs/proptest for testing
+- [ ] Check out RustBelt and K-Rust
 
-- [ ] Implement the next TODO item.
-- [ ] Ask for each of the files which traits/implementations should be compositions of others in the `packages/*` that haven't been done yet.
-- [ ] Ask for each of the files which basic Rust type system implementations of the trait haven't been done yet.
-- [ ] Ask for each of the files if all possible permutations have been tested.
-- [ ] Run `bin/test` after every change you make. Don't run tests with `cargo test`. Fix all errors and report when all tests are green.
+- Ask for each of the files in `effect-core`:
+    - Which traits/implementations should be compositions of others in the `packages/*` that haven't been done yet.
+    - Which basic Rust type system implementations of the trait haven't been done yet.
+    - Use PropTest for the tests.
+        - Make sure all possible permutations are tested.
+        - 100% Test Coverage.
+- Run `bin/test` after every change you make. Don't run tests with `cargo test`. Fix all errors and report when all tests are green.

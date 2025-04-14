@@ -23,11 +23,19 @@ impl<T: Send + Sync + 'static> Takeable<T> for Option<T> {
     U: Send + Sync + 'static;
 
   fn take(self, n: usize) -> Option<T> {
-    if n == 0 { None } else { self }
+    if n == 0 {
+      None
+    } else {
+      self
+    }
   }
 
   fn drop(self, n: usize) -> Option<T> {
-    if n == 0 { self } else { None }
+    if n == 0 {
+      self
+    } else {
+      None
+    }
   }
 }
 

@@ -5,6 +5,7 @@
 
 pub mod applicative;
 pub mod bufferable;
+pub mod category;
 pub mod distinctable;
 pub mod effect;
 pub mod either;
@@ -29,6 +30,7 @@ pub mod zippable;
 
 pub use applicative::*;
 pub use bufferable::*;
+pub use category::*;
 pub use distinctable::*;
 pub use effect::*;
 pub use either::*;

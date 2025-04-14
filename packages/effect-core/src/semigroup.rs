@@ -22,21 +22,28 @@ impl Semigroup for String {
 }
 
 // Implement Semigroup for integer types
-macro_rules! impl_integer_semigroup {
+macro_rules! impl_semigroup_for_numbers {
     ($($t:ty),*) => {
         $(
             impl Semigroup for $t {
                 fn combine(self, other: Self) -> Self {
-                    self + other
+                    match self.checked_add(other) {
+                        Some(result) => result,
+                        None => {
+                            if other > 0 {
+                                Self::MAX
+                            } else {
+                                Self::MIN
+                            }
+                        }
+                    }
                 }
             }
         )*
-    };
+    }
 }
 
-impl_integer_semigroup!(
-  i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
-);
+impl_semigroup_for_numbers!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
 
 // Implement Semigroup for floating-point types
 macro_rules! impl_float_semigroup {
@@ -75,8 +82,13 @@ mod tests {
 
   #[test]
   fn test_integer_semigroup() {
-    let sum = 1.combine(2);
-    assert_eq!(sum, 3);
+    let a: i32 = i32::MAX - 1;
+    let b: i32 = 2;
+    assert_eq!(a.combine(b), i32::MAX); // Should saturate at MAX instead of overflowing
+
+    let c: i32 = i32::MIN + 1;
+    let d: i32 = -2;
+    assert_eq!(c.combine(d), i32::MIN); // Should saturate at MIN instead of overflowing
   }
 
   #[test]

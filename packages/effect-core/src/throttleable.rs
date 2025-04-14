@@ -39,7 +39,11 @@ impl<T: Clone> Throttleable<T> for Vec<T> {
 
 impl<T: Clone> Throttleable<T> for Option<T> {
   fn throttle(self, _duration: Duration, count: usize) -> Option<T> {
-    if count == 0 { None } else { self }
+    if count == 0 {
+      None
+    } else {
+      self
+    }
   }
 
   fn debounce(self, _duration: Duration) -> Option<T> {
