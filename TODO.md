@@ -8,7 +8,7 @@
 - [x] zip/zipWith operations
 - [x] scan operations
 - [x] take/drop operations
-- [ ] partition operations
+- [x] partition operations
 - [ ] groupBy operations
 - [ ] distinct operations
 - [ ] sliding window operations
@@ -16,6 +16,8 @@
 - [ ] interleave operations
 - [ ] buffer operations
 - [ ] throttle/debounce operations
+- [ ] Ask for each of the files which basic Rust type system implementations of the trait haven't been done yet.
+- [ ] Ask for each of the files if all possible permutations have been tested.
 
 ### 2. Layer System
 - [ ] Layer concept for dependency injection and context management
@@ -104,3 +106,10 @@
 - [ ] Read-write locks
 - [ ] Distributed locks
 - [ ] Lock-free algorithms 
+
+
+
+- [ ] Use https://github.com/proptest-rs/proptest for testing
+
+
+Run `bin/test` after every change you make. Don't run tests with `cargo test`. Fix all errors and report when all tests are green.
