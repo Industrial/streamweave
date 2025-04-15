@@ -166,13 +166,13 @@ mod tests {
     proptest!(|(x: i32, y: i32)| {
       let a = vec![x];
       let b = vec![y];
-      let result = Zippable::zip_with(a, b, |x, y| x * y);
-      assert_eq!(result, vec![x * y]);
+      let result = Zippable::zip_with(a, b, |x, y| x.wrapping_mul(y));
+      assert_eq!(result, vec![x.wrapping_mul(y)]);
 
       let a = vec![x, y];
       let b = vec![x, y];
-      let result = Zippable::zip_with(a, b, |x, y| x * y);
-      assert_eq!(result, vec![x * x, y * y]);
+      let result = Zippable::zip_with(a, b, |x, y| x.wrapping_mul(y));
+      assert_eq!(result, vec![x.wrapping_mul(x), y.wrapping_mul(y)]);
     });
   }
 }

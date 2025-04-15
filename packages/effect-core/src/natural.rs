@@ -319,7 +319,7 @@ mod tests {
   fn test_naturality_vec_to_option() {
     let strategy = any::<i32>();
     proptest!(|(x in strategy)| {
-      let f = |x: i32| x * 2;
+      let f = |x: i32| x.wrapping_mul(2);
 
       // Path 1: map f . transform
       let vec = vec![x];
@@ -339,7 +339,7 @@ mod tests {
   fn test_naturality_vec_to_result() {
     let strategy = any::<i32>();
     proptest!(|(x in strategy)| {
-      let f = |x: i32| x * 2;
+      let f = |x: i32| x.wrapping_mul(2);
 
       // Path 1: map f . transform
       let vec = vec![x];
@@ -359,7 +359,7 @@ mod tests {
   fn test_naturality_option_to_vec() {
     let strategy = any::<i32>();
     proptest!(|(x in strategy)| {
-      let f = |x: i32| x * 2;
+      let f = |x: i32| x.wrapping_mul(2);
 
       // Path 1: map f . transform
       let opt = Some(x);
@@ -379,7 +379,7 @@ mod tests {
   fn test_naturality_result_to_vec() {
     let strategy = any::<i32>();
     proptest!(|(x in strategy)| {
-      let f = |x: i32| x * 2;
+      let f = |x: i32| x.wrapping_mul(2);
 
       // Path 1: map f . transform
       let res: Result<i32, IoError> = Ok(x);
@@ -399,7 +399,7 @@ mod tests {
   fn test_naturality_result_to_option() {
     let strategy = any::<i32>();
     proptest!(|(x in strategy)| {
-      let f = |x: i32| x * 2;
+      let f = |x: i32| x.wrapping_mul(2);
 
       // Path 1: map f . transform
       let res: Result<i32, IoError> = Ok(x);
@@ -419,7 +419,7 @@ mod tests {
   fn test_naturality_option_to_result() {
     let strategy = any::<i32>();
     proptest!(|(x in strategy)| {
-      let f = |x: i32| x * 2;
+      let f = |x: i32| x.wrapping_mul(2);
 
       // Path 1: map f . transform
       let opt = Some(x);
@@ -442,7 +442,7 @@ mod tests {
       let rt = tokio::runtime::Runtime::new().unwrap();
       rt.block_on(async {
         // Test that map f . transform = transform . map f
-        let f = |x: i32| x * 2;
+        let f = |x: i32| x.wrapping_mul(2);
 
         // Path 1: map f . transform
         let opt = Some(x);
@@ -468,7 +468,7 @@ mod tests {
       let rt = tokio::runtime::Runtime::new().unwrap();
       rt.block_on(async {
         // Test that map f . transform = transform . map f
-        let f = |x: i32| x * 2;
+        let f = |x: i32| x.wrapping_mul(2);
 
         // Path 1: map f . transform
         let res: Result<i32, IoError> = Ok(x);
