@@ -3,6 +3,7 @@
 //! This module provides the core types and traits for the effect system,
 //! including the `Effect` type and the `Monad` trait.
 
+pub mod alternative;
 pub mod applicative;
 pub mod bifunctor;
 pub mod bufferable;
@@ -32,6 +33,7 @@ pub mod throttleable;
 pub mod windowable;
 pub mod zippable;
 
+pub use alternative::*;
 pub use applicative::*;
 pub use bifunctor::*;
 pub use bufferable::*;

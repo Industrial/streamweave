@@ -9,8 +9,12 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+use super::bifunctor::Bifunctor;
+use super::category::{Category, Morphism};
 use crate::functor::{Functor, Mappable};
 use crate::monad::Monad;
+use std::marker::PhantomData;
+use std::sync::Arc;
 
 /// A type that represents either a left value or a right value.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -153,9 +157,58 @@ where
   }
 }
 
+impl<L, R> Category for Either<L, R> {
+  type Morphism<A: Send + Sync + 'static, B: Send + Sync + 'static> = Morphism<A, B>;
+
+  fn id<A: Send + Sync + 'static>() -> Self::Morphism<A, A> {
+    Morphism::new(|x| x)
+  }
+
+  fn compose<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
+    f: Self::Morphism<A, B>,
+    g: Self::Morphism<B, C>,
+  ) -> Self::Morphism<A, C> {
+    Morphism::new(move |x| g.apply(f.apply(x)))
+  }
+
+  fn arr<A: Send + Sync + 'static, B: Send + Sync + 'static, F>(f: F) -> Self::Morphism<A, B>
+  where
+    F: Fn(A) -> B + Send + Sync + 'static,
+  {
+    Morphism::new(f)
+  }
+
+  fn first<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
+    f: Self::Morphism<A, B>,
+  ) -> Self::Morphism<(A, C), (B, C)> {
+    Morphism::new(move |(a, c)| (f.apply(a), c))
+  }
+
+  fn second<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
+    f: Self::Morphism<A, B>,
+  ) -> Self::Morphism<(C, A), (C, B)> {
+    Morphism::new(move |(c, a)| (c, f.apply(a)))
+  }
+}
+
+impl<L, R> Bifunctor for Either<L, R> {
+  fn bimap<A, B, C, D, F, G>(f: F, g: G) -> Self::Morphism<(A, B), (C, D)>
+  where
+    A: Send + Sync + 'static,
+    B: Send + Sync + 'static,
+    C: Send + Sync + 'static,
+    D: Send + Sync + 'static,
+    F: Fn(A) -> C + Send + Sync + 'static,
+    G: Fn(B) -> D + Send + Sync + 'static,
+  {
+    Morphism::new(move |(a, b)| (f(a), g(b)))
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
   use std::future::Future;
   use std::pin::Pin;
   use std::task::{Context, Poll};
@@ -307,5 +360,76 @@ mod tests {
 
     let right = Either::<TestFuture<i32>, TestFuture<i32>>::right(TestFuture(99));
     assert_eq!(right.await, Either::Right(99));
+  }
+
+  proptest! {
+    #[test]
+    fn test_either_bifunctor_bimap(a: i32, b: i32) {
+      let f = |x: i32| x.checked_mul(2).unwrap_or(i32::MAX);
+      let g = |x: i32| x.checked_add(1).unwrap_or(i32::MAX);
+      let bimap = <Either<(), ()> as Bifunctor>::bimap(f, g);
+      let expected = (
+        a.checked_mul(2).unwrap_or(i32::MAX),
+        b.checked_add(1).unwrap_or(i32::MAX)
+      );
+      assert_eq!(bimap.apply((a, b)), expected);
+    }
+
+    #[test]
+    fn test_either_bifunctor_first(a: i32, b: i32) {
+      let f = |x: i32| x.checked_mul(2).unwrap_or(i32::MAX);
+      let first = <Either<(), ()> as Bifunctor>::first(f);
+      let expected = (a.checked_mul(2).unwrap_or(i32::MAX), b);
+      assert_eq!(first.apply((a, b)), expected);
+    }
+
+    #[test]
+    fn test_either_bifunctor_second(a: i32, b: i32) {
+      let g = |x: i32| x.checked_add(1).unwrap_or(i32::MAX);
+      let second = <Either<(), ()> as Bifunctor>::second(g);
+      let expected = (a, b.checked_add(1).unwrap_or(i32::MAX));
+      assert_eq!(second.apply((a, b)), expected);
+    }
+
+    #[test]
+    fn test_either_bifunctor_laws(a: i32, b: i32) {
+      let f = |x: i32| x.checked_mul(2).unwrap_or(i32::MAX);
+      let g = |x: i32| x.checked_add(1).unwrap_or(i32::MAX);
+      let h = |x: i32| x.checked_mul(3).unwrap_or(i32::MAX);
+      let k = |x: i32| x.checked_sub(1).unwrap_or(i32::MIN);
+
+      // Test first . second = second . first
+      let first_then_second = |(a, b)| {
+        let first = <Either<(), ()> as Bifunctor>::first(f);
+        let second = <Either<(), ()> as Bifunctor>::second(g);
+        second.apply(first.apply((a, b)))
+      };
+
+      let second_then_first = |(a, b)| {
+        let second = <Either<(), ()> as Bifunctor>::second(g);
+        let first = <Either<(), ()> as Bifunctor>::first(f);
+        first.apply(second.apply((a, b)))
+      };
+
+      let input = (a, b);
+      let result1 = first_then_second(input.clone());
+      let result2 = second_then_first(input);
+      assert_eq!(result1, result2);
+
+      // Test bimap composition
+      let bimap1 = <Either<(), ()> as Bifunctor>::bimap(f, g);
+      let bimap2 = <Either<(), ()> as Bifunctor>::bimap(h, k);
+      let composed = |(a, b)| bimap2.apply(bimap1.apply((a, b)));
+
+      let expected = (
+        a.checked_mul(2)
+          .and_then(|x| x.checked_mul(3))
+          .unwrap_or(i32::MAX),
+        b.checked_add(1)
+          .and_then(|x| x.checked_sub(1))
+          .unwrap_or(i32::MIN)
+      );
+      assert_eq!(composed((a, b)), expected);
+    }
   }
 }

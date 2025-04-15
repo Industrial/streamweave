@@ -69,6 +69,27 @@ impl<A: Send + Sync + 'static + Clone> Applicative<A> for Vec<A> {
   }
 }
 
+// Implementation for Result
+impl<A: Send + Sync + 'static, E: Send + Sync + 'static> Applicative<A> for Result<A, E> {
+  type HigherSelf<U: Send + Sync + 'static> = Result<U, E>;
+
+  fn pure(a: A) -> Self::HigherSelf<A> {
+    Ok(a)
+  }
+
+  fn ap<B, F>(self, f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
+  where
+    F: FnMut(A) -> B + Send + Sync + 'static,
+    B: Send + Sync + 'static,
+  {
+    match (self, f) {
+      (Ok(a), Ok(mut f)) => Ok(f(a)),
+      (Err(e), _) => Err(e),
+      (_, Err(e)) => Err(e),
+    }
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -257,6 +278,51 @@ mod tests {
       let fns = vec![|x: i32| x * 2];
       let result = vec.ap(fns);
       assert_eq!(result, vec![6, 2, 8, 2, 10, 18]);
+    }
+  }
+
+  mod result_tests {
+    use super::*;
+
+    #[test]
+    fn test_ok_with_ok_fn() {
+      let ok: Result<i32, &str> = Ok(42);
+      let ok_fn: Result<fn(i32) -> i32, &str> = Ok(|x: i32| x * 2);
+      let result = ok.ap(ok_fn);
+      assert_eq!(result, Ok(84));
+    }
+
+    #[test]
+    fn test_err_with_ok_fn() {
+      let err: Result<i32, &str> = Err("error");
+      let ok_fn: Result<fn(i32) -> i32, &str> = Ok(|x: i32| x * 2);
+      let result = err.ap(ok_fn);
+      assert_eq!(result, Err("error"));
+    }
+
+    #[test]
+    fn test_ok_with_err_fn() {
+      let ok: Result<i32, &str> = Ok(42);
+      let err_fn: Result<fn(i32) -> i32, &str> = Err("error");
+      let result = ok.ap(err_fn);
+      assert_eq!(result, Err("error"));
+    }
+
+    #[test]
+    fn test_type_conversion() {
+      let ok: Result<i32, &str> = Ok(42);
+      let ok_fn: Result<fn(i32) -> String, &str> = Ok(|x: i32| x.to_string());
+      let result = ok.ap(ok_fn);
+      assert_eq!(result, Ok("42".to_string()));
+    }
+
+    #[test]
+    fn test_composition() {
+      let ok: Result<i32, &str> = Ok(42);
+      let f1: Result<fn(i32) -> i32, &str> = Ok(|x: i32| x * 2);
+      let f2: Result<fn(i32) -> i32, &str> = Ok(|x: i32| x + 1);
+      let result = ok.ap(f1).ap(f2);
+      assert_eq!(result, Ok(85));
     }
   }
 }

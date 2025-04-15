@@ -37,7 +37,7 @@ impl<E: StdError + Send + Sync + 'static> Scope<E> {
   pub async fn run<T, F>(&self, f: F) -> Result<T, E>
   where
     F: FnOnce() -> Effect<T, E>,
-    T: Send + 'static,
+    T: Send + Sync + 'static,
   {
     let result = f().run().await;
     let resources = std::mem::take(&mut *self.resources.lock().unwrap());
@@ -79,7 +79,9 @@ mod tests {
       })
     }));
 
-    let result = scope.run(|| Effect::<i32>::new(async { Ok(42) })).await;
+    let result = scope
+      .run(|| Effect::<i32, IoError>::new(async { Ok(42) }))
+      .await;
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 42);
@@ -101,7 +103,9 @@ mod tests {
     }));
 
     let result = scope
-      .run(|| Effect::<()>::new(async { Err(IoError::new(ErrorKind::Other, "test error")) }))
+      .run(|| {
+        Effect::<(), IoError>::new(async { Err(IoError::new(ErrorKind::Other, "test error")) })
+      })
       .await;
 
     assert!(result.is_err());
@@ -115,7 +119,9 @@ mod tests {
       Effect::new(async { Err(IoError::new(ErrorKind::Other, "resource error")) })
     }));
 
-    let result = scope.run(|| Effect::<i32>::new(async { Ok(42) })).await;
+    let result = scope
+      .run(|| Effect::<i32, IoError>::new(async { Ok(42) }))
+      .await;
 
     assert!(result.is_err());
     let err = result.unwrap_err();
