@@ -122,7 +122,8 @@
 
 1. Ask for each of the files in `effect-core`:
     1.1 Which traits/implementations should be compositions of others in the `packages/*` that haven't been done yet.
-        1.1.1 Make sure each trait and struct gets their own file.
+        1.1.1 Make sure each trait gets their own file.
+        1.1.2 Impl of Trait is implemented in the same file.
     1.2 Which basic Rust type system implementations of the trait haven't been done yet.
     1.3 Use PropTest for the tests.
         1.4 Make sure all possible permutations are tested.

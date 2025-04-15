@@ -6,9 +6,12 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }
 futures = "0.3"
+futures-io = "0.3"
 pin-project = "1.0"
 effect-derive = { path = "../effect-derive" }
 proptest = "1.4.0"
+regex = "1.10.2"
 
 [dev-dependencies]
 proptest = "1.4.0"
+regex = "1.10.2"

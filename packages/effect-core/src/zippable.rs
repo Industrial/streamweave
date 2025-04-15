@@ -85,7 +85,8 @@ impl<T: Send + Sync + 'static> Zippable<T> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use crate::zippable::Zippable;
+  use proptest::prelude::*;
 
   #[test]
   fn test_option_zip() {
@@ -158,5 +159,20 @@ mod tests {
     let b: Option<i32> = None;
     let result = a.zip(b);
     assert_eq!(result, None);
+  }
+
+  #[test]
+  fn test_zippable_laws() {
+    proptest!(|(x: i32, y: i32)| {
+      let a = vec![x];
+      let b = vec![y];
+      let result = Zippable::zip_with(a, b, |x, y| x * y);
+      assert_eq!(result, vec![x * y]);
+
+      let a = vec![x, y];
+      let b = vec![x, y];
+      let result = Zippable::zip_with(a, b, |x, y| x * y);
+      assert_eq!(result, vec![x * x, y * y]);
+    });
   }
 }

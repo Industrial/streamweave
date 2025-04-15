@@ -264,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn test_category_first_second_laws(a: i32, b: i32, c: i32) {
+    fn test_category_first_second_laws(a: i32, b: i32, _c: i32) {
       let f = <Morphism<(), ()> as Category>::arr(|x: i32| x.checked_mul(2).unwrap_or(i32::MAX));
       let g = <Morphism<(), ()> as Category>::arr(|x: i32| x.checked_add(1).unwrap_or(i32::MAX));
 

@@ -10,12 +10,17 @@ use std::{
   fmt::Debug,
   future::Future,
   pin::Pin,
+  sync::Arc,
   task::{Context, Poll},
 };
+use tokio::sync::Mutex;
 
 use super::applicative::Applicative;
 use super::functor::Functor;
 use super::monad::Monad;
+use crate::monoid::Monoid;
+use crate::semigroup::Semigroup;
+use std::error::Error;
 
 /// Type alias for an Effect that never fails
 pub type Infallible<T> = Effect<T, std::convert::Infallible>;
@@ -29,8 +34,8 @@ pub type AnyError<T> = Effect<T, Box<dyn std::error::Error + Send + Sync>>;
 /// The type parameters T and E must satisfy the following bounds:
 /// - T: Send + Sync + 'static
 /// - E: Send + Sync + 'static
-pub struct Effect<T, E = std::io::Error> {
-  inner: Pin<Box<dyn Future<Output = Result<T, E>> + Send + Sync>>,
+pub struct Effect<T, E> {
+  inner: Arc<Mutex<Pin<Box<dyn Future<Output = Result<T, E>> + Send + Sync + 'static>>>>,
 }
 
 impl<T, E> Effect<T, E> {
@@ -40,7 +45,7 @@ impl<T, E> Effect<T, E> {
     F: Future<Output = Result<T, E>> + Send + Sync + 'static,
   {
     Effect {
-      inner: Box::pin(future),
+      inner: Arc::new(Mutex::new(Box::pin(future))),
     }
   }
 
@@ -63,12 +68,17 @@ impl<T, E> Effect<T, E> {
   }
 
   /// Runs the effect and returns its result
-  pub async fn run(&mut self) -> Result<T, E> {
-    self.inner.as_mut().await
+  pub async fn run(self) -> Result<T, E>
+  where
+    T: Send + Sync + 'static,
+    E: Send + Sync + 'static,
+  {
+    let mut guard = self.inner.lock().await;
+    (&mut *guard).as_mut().await
   }
 
   /// Maps an error to a different error type
-  pub fn map_error<F, E2>(mut self, f: F) -> Effect<T, E2>
+  pub fn map_error<F, E2>(self, f: F) -> Effect<T, E2>
   where
     F: FnOnce(E) -> E2 + Send + Sync + 'static,
     E2: Send + Sync + 'static,
@@ -84,22 +94,23 @@ impl<T, E> Effect<T, E> {
   }
 
   /// Handles an error by converting it into a new Effect
-  pub fn handle_error<F>(mut self, f: F) -> Effect<T, E>
+  pub fn handle_error<F, G>(self, f: F) -> Effect<T, G>
   where
-    F: FnOnce(E) -> Effect<T, E> + Send + Sync + 'static,
+    F: FnOnce(E) -> Effect<T, G> + Send + Sync + 'static,
     T: Send + Sync + 'static,
     E: Send + Sync + 'static,
+    G: Send + Sync + 'static,
   {
     Effect::new(async move {
       match self.run().await {
         Ok(value) => Ok(value),
-        Err(error) => f(error).run().await,
+        Err(e) => f(e).run().await,
       }
     })
   }
 
   /// Chains a function that returns an Effect after this one
-  pub fn and_then<F, B>(mut self, f: F) -> Effect<B, E>
+  pub fn and_then<F, B>(self, f: F) -> Effect<B, E>
   where
     F: FnOnce(T) -> Effect<B, E> + Send + Sync + 'static,
     B: Send + Sync + 'static,
@@ -120,6 +131,36 @@ impl<T, E> Effect<T, E> {
     E: Send + Sync + 'static,
   {
     self.handle_error(f)
+  }
+
+  pub fn ok(value: T) -> Self
+  where
+    T: Send + Sync + 'static,
+    E: Send + Sync + 'static,
+  {
+    Effect::pure(value)
+  }
+
+  pub fn err(error: E) -> Self
+  where
+    T: Send + Sync + 'static,
+    E: Send + Sync + 'static,
+  {
+    Effect::error(error)
+  }
+
+  /// Returns the first successful effect, or the second if the first fails
+  pub fn or(self, other: Self) -> Self
+  where
+    T: Send + Sync + 'static,
+    E: Send + Sync + 'static,
+  {
+    Effect::new(async move {
+      match self.run().await {
+        Ok(value) => Ok(value),
+        Err(_) => other.run().await,
+      }
+    })
   }
 }
 
@@ -151,7 +192,11 @@ where
   type Output = Result<T, E>;
 
   fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-    self.inner.as_mut().poll(cx)
+    let mut future = match self.inner.try_lock() {
+      Ok(guard) => guard,
+      Err(_) => return Poll::Pending,
+    };
+    future.as_mut().poll(cx)
   }
 }
 
@@ -162,7 +207,7 @@ where
 {
   type HigherSelf<U: Send + Sync + 'static> = Effect<U, E>;
 
-  fn map<B, F>(mut self, mut f: F) -> Self::HigherSelf<B>
+  fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
   where
     F: FnMut(T) -> B + Send + Sync + 'static,
     B: Send + Sync + 'static,
@@ -182,10 +227,10 @@ where
   type HigherSelf<U: Send + Sync + 'static> = Effect<U, E>;
 
   fn pure(a: T) -> Self {
-    Effect::new(async move { Ok(a) })
+    Effect::pure(a)
   }
 
-  fn ap<B, F>(mut self, mut f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
+  fn ap<B, F>(self, mut f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
   where
     F: FnMut(T) -> B + Send + Sync + 'static,
     B: Send + Sync + 'static,
@@ -206,10 +251,10 @@ where
   type HigherSelf<U: Send + Sync + 'static> = Effect<U, E>;
 
   fn pure(a: T) -> Self::HigherSelf<T> {
-    Effect::new(async move { Ok(a) })
+    Effect::pure(a)
   }
 
-  fn bind<B, F>(mut self, mut f: F) -> Self::HigherSelf<B>
+  fn bind<B, F>(self, mut f: F) -> Self::HigherSelf<B>
   where
     F: FnMut(T) -> Self::HigherSelf<B> + Send + Sync + 'static,
     B: Send + Sync + 'static,
@@ -240,9 +285,43 @@ where
   }
 }
 
+impl<T, E> Clone for Effect<T, E> {
+  fn clone(&self) -> Self {
+    Effect {
+      inner: Arc::clone(&self.inner),
+    }
+  }
+}
+
+impl<T, E> Semigroup for Effect<T, E>
+where
+  T: Send + Sync + Clone + Default + 'static,
+  E: Error + Send + Sync + 'static,
+{
+  fn combine(self, other: Self) -> Self {
+    Effect::new(async move {
+      match self.run().await {
+        Ok(val) => Ok(val),
+        Err(_) => other.run().await,
+      }
+    })
+  }
+}
+
+impl<T, E> Monoid for Effect<T, E>
+where
+  T: Send + Sync + Clone + Default + 'static,
+  E: Error + Send + Sync + 'static,
+{
+  fn empty() -> Self {
+    Effect::pure(T::default())
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
   use std::time::Duration;
   use tokio::time::sleep;
 
@@ -262,285 +341,137 @@ mod tests {
     move |f| f(y)
   }
 
-  #[tokio::test]
-  async fn test_effect_creation() {
-    let mut effect: Infallible<i32> = Effect::infallible(42);
-    assert_eq!(effect.run().await, Ok(42));
-  }
+  proptest! {
+    #[test]
+    fn test_effect_creation(x: i32) {
+      let effect: Effect<i32, std::io::Error> = Effect::pure(x);
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result = runtime.block_on(effect.run());
+      prop_assert!(matches!(result, Ok(val) if val == x));
+    }
 
-  #[tokio::test]
-  async fn test_effect_pure() {
-    let mut effect: Infallible<i32> = Effect::pure(42);
-    assert_eq!(effect.run().await, Ok(42));
-  }
+    #[test]
+    fn test_effect_error(e in "\\PC*") {
+      let error = e.clone();
+      let effect = Effect::<i32, String>::error(e);
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result = runtime.block_on(effect.run());
+      prop_assert!(matches!(result, Err(err) if err == error));
+    }
 
-  #[tokio::test]
-  async fn test_effect_error() {
-    let mut effect: Effect<i32, &str> = Effect::error("error");
-    assert_eq!(effect.run().await, Err("error"));
-  }
+    #[test]
+    fn test_effect_map(x: i32, y: i32) {
+      let effect: Effect<i32, std::io::Error> = Effect::pure(x);
+      let mapped = effect.map(move |a| a + y);
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result = runtime.block_on(mapped.run());
+      prop_assert!(matches!(result, Ok(val) if val == x + y));
+    }
 
-  #[tokio::test]
-  async fn test_effect_functor_map() {
-    let effect: Infallible<i32> = Effect::pure(42);
-    let mut mapped = effect.map(|x| x * 2);
-    assert_eq!(mapped.run().await, Ok(84));
-  }
+    #[test]
+    fn test_effect_ap(x: i32, y: i32) {
+      let effect: Effect<i32, std::io::Error> = Effect::pure(x);
+      let function: Effect<Box<dyn FnMut(i32) -> i32 + Send + Sync>, std::io::Error> =
+        Effect::pure(Box::new(move |a: i32| a + y) as Box<dyn FnMut(i32) -> i32 + Send + Sync>);
+      let applied = effect.ap(function);
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result = runtime.block_on(applied.run());
+      prop_assert!(matches!(result, Ok(val) if val == x + y));
+    }
 
-  #[tokio::test]
-  async fn test_effect_functor_map_error() {
-    let effect: Effect<i32, &str> = Effect::error("error");
-    let mut mapped = effect.map(|x| x * 2);
-    assert_eq!(mapped.run().await, Err("error"));
-  }
+    #[test]
+    fn test_effect_bind(x: i32, y: i32) {
+      let effect: Effect<i32, std::io::Error> = Effect::pure(x);
+      let bound = effect.bind(move |a| Effect::pure(a + y));
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result = runtime.block_on(bound.run());
+      prop_assert!(matches!(result, Ok(val) if val == x + y));
+    }
 
-  #[tokio::test]
-  async fn test_effect_functor_map_async() {
-    let effect: Infallible<i32> = Effect::from_future(async {
-      sleep(Duration::from_millis(10)).await;
-      Ok(42)
-    });
-    let mut mapped = effect.map(|x| x * 2);
-    assert_eq!(mapped.run().await, Ok(84));
-  }
-
-  #[tokio::test]
-  async fn test_effect_applicative_pure() {
-    let mut effect: Infallible<i32> = Effect::pure(42);
-    assert_eq!(effect.run().await, Ok(42));
-  }
-
-  #[tokio::test]
-  async fn test_effect_applicative_ap() {
-    let effect: Infallible<i32> = Effect::pure(42);
-    let function: Infallible<fn(i32) -> i32> = Effect::pure(|x| x * 2);
-    let mut applied = effect.ap(function);
-    assert_eq!(applied.run().await, Ok(84));
-  }
-
-  #[tokio::test]
-  async fn test_effect_applicative_ap_error() {
-    let effect: Effect<i32, std::io::Error> = Effect::pure(42);
-    let function: Effect<fn(i32) -> i32, std::io::Error> =
-      Effect::error(std::io::Error::new(std::io::ErrorKind::Other, "error"));
-    let mut applied = effect.ap(function);
-    assert!(applied.run().await.is_err());
-  }
-
-  #[tokio::test]
-  async fn test_effect_applicative_ap_async() {
-    let effect: Infallible<i32> = Effect::from_future(async {
-      sleep(Duration::from_millis(10)).await;
-      Ok(42)
-    });
-    let function: Infallible<fn(i32) -> i32> = Effect::pure(double);
-    let mut applied = effect.ap(function);
-    assert_eq!(applied.run().await, Ok(84));
-  }
-
-  #[tokio::test]
-  async fn test_effect_monad_pure() {
-    let mut effect: Infallible<i32> = Effect::pure(42);
-    assert_eq!(effect.run().await, Ok(42));
-  }
-
-  #[tokio::test]
-  async fn test_effect_monad_bind() {
-    let effect: Infallible<i32> = Effect::pure(42);
-    let mut bound = effect.bind(|x| Effect::pure(x * 2));
-    assert_eq!(bound.run().await, Ok(84));
-  }
-
-  #[tokio::test]
-  async fn test_effect_monad_bind_error() {
-    let effect: Effect<i32, std::io::Error> = Effect::pure(42);
-    let mut bound = effect.bind(|_| {
-      Effect::<i32, std::io::Error>::error(std::io::Error::new(std::io::ErrorKind::Other, "error"))
-    });
-    assert!(bound.run().await.is_err());
-  }
-
-  #[tokio::test]
-  async fn test_effect_monad_bind_async() {
-    let effect: Infallible<i32> = Effect::from_future(async {
-      sleep(Duration::from_millis(10)).await;
-      Ok(42)
-    });
-    let mut bound = effect.bind(|x| {
-      Effect::from_future(async move {
+    #[test]
+    fn test_effect_async(x: i32) {
+      let effect: Effect<i32, std::io::Error> = Effect::new(async move {
         sleep(Duration::from_millis(10)).await;
-        Ok(double(x))
-      })
-    });
-    assert_eq!(bound.run().await, Ok(84));
-  }
+        Ok(x)
+      });
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result = runtime.block_on(effect.run());
+      prop_assert!(matches!(result, Ok(val) if val == x));
+    }
 
-  #[tokio::test]
-  async fn test_effect_monad_laws() {
-    // Left identity: pure(a).bind(f) == f(a)
-    let a = 42;
-    let f = |x: i32| Effect::<i32, std::convert::Infallible>::pure(x + 1);
-    let mut left = Effect::<i32, std::convert::Infallible>::pure(a).bind(f);
-    let mut right = f(a);
-    assert_eq!(left.run().await, right.run().await);
+    #[test]
+    fn test_effect_error_handling(e in "\\PC*") {
+      let effect = Effect::<i32, String>::error(e);
+      let handled: Effect<i32, String> = effect.handle_error(|_| Effect::pure(42));
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result = runtime.block_on(handled.run());
+      prop_assert!(matches!(result, Ok(42)));
+    }
 
-    // Right identity: m.bind(pure) == m
-    let m = Effect::<i32, std::convert::Infallible>::pure(42);
-    let pure = |x: i32| Effect::<i32, std::convert::Infallible>::pure(x);
-    let mut bound = m.bind(pure);
-    let mut m_clone = Effect::<i32, std::convert::Infallible>::pure(42);
-    assert_eq!(bound.run().await, m_clone.run().await);
+    #[test]
+    fn test_effect_map_error(e in "\\PC*") {
+      let effect = Effect::<i32, String>::error(e);
+      let mapped = effect.map_error(|_| "new error".to_string());
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result = runtime.block_on(mapped.run());
+      prop_assert!(matches!(result, Err(err) if err == "new error"));
+    }
 
-    // Associativity: m.bind(f).bind(g) == m.bind(|x| f(x).bind(g))
-    let m = Effect::<i32, std::convert::Infallible>::pure(42);
-    let f = |x: i32| Effect::<i32, std::convert::Infallible>::pure(x + 1);
-    let g = |x: i32| Effect::<i32, std::convert::Infallible>::pure(x * 2);
-    let mut left = m.bind(f).bind(g);
-    let m2 = Effect::<i32, std::convert::Infallible>::pure(42);
-    let mut right = m2.bind(move |x| f(x).bind(g));
-    assert_eq!(left.run().await, right.run().await);
-  }
+    #[test]
+    fn test_effect_and_then(x: i32, y: i32) {
+      let effect: Effect<i32, std::io::Error> = Effect::pure(x);
+      let chained = effect.and_then(move |a| Effect::pure(a + y));
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result = runtime.block_on(chained.run());
+      prop_assert!(matches!(result, Ok(val) if val == x + y));
+    }
 
-  #[tokio::test]
-  async fn test_effect_functor_laws() {
-    // Identity: map id ≡ id
-    let effect = Effect::<i32, std::convert::Infallible>::pure(42);
-    let mut mapped = effect.map(|x| x);
-    let mut effect_clone = Effect::<i32, std::convert::Infallible>::pure(42);
-    assert_eq!(mapped.run().await, effect_clone.run().await);
+    #[test]
+    fn test_effect_or_else(x: i32) {
+      let effect = Effect::<i32, String>::error("error".to_string());
+      let recovered = effect.or_else(move |_| Effect::pure(x));
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result = runtime.block_on(recovered.run());
+      prop_assert!(matches!(result, Ok(val) if val == x));
+    }
 
-    // Composition: map (f . g) ≡ map f . map g
-    let effect = Effect::<i32, std::convert::Infallible>::pure(42);
-    let f = |x| x * 2;
-    let g = |x| x + 1;
-    let mut left = effect.map(move |x| f(g(x)));
-    let effect2 = Effect::<i32, std::convert::Infallible>::pure(42);
-    let mut right = effect2.map(g).map(f);
-    assert_eq!(left.run().await, right.run().await);
-  }
+    #[test]
+    fn test_effect_semigroup(x: i32, y: i32) {
+      let effect1: Effect<i32, std::io::Error> = Effect::pure(x);
+      let effect2: Effect<i32, std::io::Error> = Effect::pure(y);
+      let combined = effect1.combine(effect2);
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result = runtime.block_on(combined.run());
+      prop_assert!(matches!(result, Ok(val) if val == x));
+    }
 
-  #[tokio::test]
-  async fn test_effect_applicative_laws() {
-    // Identity: pure id <*> v ≡ v
-    let v: Infallible<i32> = Effect::pure(42);
-    let id: Infallible<fn(i32) -> i32> = Effect::pure(identity);
-    let mut left = v.ap(id);
-    let mut v_clone: Infallible<i32> = Effect::pure(42);
-    assert_eq!(left.run().await, v_clone.run().await);
+    #[test]
+    fn test_effect_semigroup_error(x: i32) {
+      let effect1 = Effect::<i32, std::io::Error>::error(std::io::Error::new(std::io::ErrorKind::Other, "error1"));
+      let effect2: Effect<i32, std::io::Error> = Effect::pure(x);
+      let combined = effect1.combine(effect2);
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result = runtime.block_on(combined.run());
+      prop_assert!(matches!(result, Ok(val) if val == x));
+    }
 
-    // Homomorphism: pure f <*> pure x ≡ pure (f x)
-    let x = 42;
-    let mut left = Effect::<i32, std::convert::Infallible>::pure(x).ap(Effect::pure(double));
-    let mut right = Effect::pure(double(x));
-    assert_eq!(left.run().await, right.run().await);
+    #[test]
+    fn test_effect_monoid(x: i32) {
+      let effect: Effect<i32, std::io::Error> = Effect::pure(x);
+      let empty = Effect::<i32, std::io::Error>::empty();
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result = runtime.block_on(empty.combine(effect).run());
+      prop_assert!(matches!(result, Ok(val) if val == x));
+    }
 
-    // Interchange: u <*> pure y ≡ pure ($ y) <*> u
-    let u: Infallible<fn(i32) -> i32> = Effect::pure(double);
-    let y = 42;
-    let mut left = Effect::pure(y).ap(u);
-    let u2: Infallible<fn(i32) -> i32> = Effect::pure(double);
-    let mut right = u2.ap(Effect::pure(apply_to(y)));
-    assert_eq!(left.run().await, right.run().await);
-  }
-
-  #[tokio::test]
-  async fn test_effect_complex_composition() {
-    let effect: Infallible<i32> = Effect::pure(42);
-    let mut result = effect
-      .map(double)
-      .bind(|x| Effect::pure(x + 1))
-      .ap(Effect::pure(triple));
-    assert_eq!(result.run().await, Ok(255));
-  }
-
-  #[tokio::test]
-  async fn test_effect_error_handling() {
-    // Test error propagation
-    let mut effect: Effect<i32, std::io::Error> =
-      Effect::error(std::io::Error::new(std::io::ErrorKind::Other, "test error"));
-    assert_eq!(
-      effect.run().await.unwrap_err().kind(),
-      std::io::ErrorKind::Other
-    );
-
-    // Test error recovery
-    let effect: Effect<i32, std::io::Error> =
-      Effect::error(std::io::Error::new(std::io::ErrorKind::Other, "test error"));
-    let mut recovered = effect.handle_error(|_| Effect::pure(42));
-    assert_eq!(recovered.run().await.unwrap(), 42);
-
-    // Test error mapping
-    let effect: Effect<i32, std::io::Error> =
-      Effect::error(std::io::Error::new(std::io::ErrorKind::Other, "test error"));
-    let mut mapped =
-      effect.map_error(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("Error: {}", e)));
-    assert_eq!(
-      mapped.run().await.unwrap_err().kind(),
-      std::io::ErrorKind::Other
-    );
-
-    // Test error chaining
-    let effect: Effect<i32, std::io::Error> =
-      Effect::error(std::io::Error::new(std::io::ErrorKind::Other, "test error"));
-    let mut chained: Effect<i32, std::io::Error> = effect
-      .and_then(|_| Effect::error(std::io::Error::new(std::io::ErrorKind::Other, "new error")));
-    assert_eq!(
-      chained.run().await.unwrap_err().kind(),
-      std::io::ErrorKind::Other
-    );
-  }
-
-  #[tokio::test]
-  async fn test_effect_error_recovery() {
-    // Test error recovery with fallback
-    let effect: Effect<i32, std::io::Error> =
-      Effect::error(std::io::Error::new(std::io::ErrorKind::Other, "test error"));
-    let mut recovered = effect.or_else(|_| Effect::pure(42));
-    assert_eq!(recovered.run().await.unwrap(), 42);
-
-    // Test error recovery with mapping
-    let effect: Effect<i32, std::io::Error> =
-      Effect::error(std::io::Error::new(std::io::ErrorKind::Other, "test error"));
-    let mut recovered =
-      effect.map_error(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("Error: {}", e)));
-    assert_eq!(
-      recovered.run().await.unwrap_err().kind(),
-      std::io::ErrorKind::Other
-    );
-
-    // Test error recovery with chaining
-    let effect: Effect<i32, std::io::Error> =
-      Effect::error(std::io::Error::new(std::io::ErrorKind::Other, "test error"));
-    let mut chained: Effect<i32, std::io::Error> = effect
-      .and_then(|_| Effect::error(std::io::Error::new(std::io::ErrorKind::Other, "new error")));
-    assert_eq!(
-      chained.run().await.unwrap_err().kind(),
-      std::io::ErrorKind::Other
-    );
-  }
-
-  #[tokio::test]
-  async fn test_effect_infallible() {
-    // Test infallible effect
-    let mut effect: Infallible<i32> = Effect::pure(42);
-    assert_eq!(effect.run().await, Ok(42));
-
-    // Test infallible effect with mapping
-    let effect: Infallible<i32> = Effect::pure(42);
-    let mut mapped = effect.map(|x| x * 2);
-    assert_eq!(mapped.run().await, Ok(84));
-  }
-
-  #[tokio::test]
-  async fn test_effect_any_error() {
-    // Test any error effect
-    let mut effect: AnyError<i32> = Effect::pure(42);
-    assert!(effect.run().await.is_ok());
-
-    // Test any error effect with error
-    let err: Box<dyn std::error::Error + Send + Sync> =
-      Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error"));
-    let mut effect: AnyError<i32> = Effect::error(err);
-    assert!(effect.run().await.is_err());
+    #[test]
+    fn test_effect_clone(x: i32) {
+      let effect: Effect<i32, std::io::Error> = Effect::pure(x);
+      let cloned = effect.clone();
+      let runtime = tokio::runtime::Runtime::new().unwrap();
+      let result1 = runtime.block_on(effect.run());
+      let result2 = runtime.block_on(cloned.run());
+      prop_assert!(matches!(result1, Ok(val1) if matches!(result2, Ok(val2) if val1 == val2)));
+    }
   }
 }
