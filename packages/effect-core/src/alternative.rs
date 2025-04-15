@@ -1,236 +1,163 @@
 use crate::applicative::Applicative;
-use proptest::prelude::*;
+use crate::effect::Effect;
 use std::clone::Clone;
-use std::fmt::Debug;
 use std::marker::Send;
 use std::marker::Sync;
-use std::ops::Deref;
-
-/// Newtype wrapper for Option
-#[derive(Clone, Debug)]
-pub struct OptAlt<T>(Option<T>);
-
-/// Newtype wrapper for Result
-#[derive(Clone, Debug)]
-pub struct ResultAlt<T, E>(Result<T, E>);
-
-/// Newtype wrapper for Vec
-#[derive(Clone, Debug)]
-pub struct VecAlt<T>(Vec<T>);
-
-impl<T: Send + Sync + 'static> Applicative<T> for OptAlt<T> {
-  type HigherSelf<U: Send + Sync + 'static> = OptAlt<U>;
-
-  fn pure(value: T) -> Self::HigherSelf<T> {
-    OptAlt(Some(value))
-  }
-
-  fn ap<B, F>(self, f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
-  where
-    F: FnMut(T) -> B + Send + Sync + 'static,
-    B: Send + Sync + 'static,
-  {
-    OptAlt(self.0.and_then(|a| f.0.map(|mut f| f(a))))
-  }
-}
-
-impl<T: Send + Sync + 'static, E: Send + Sync + 'static> Applicative<T> for ResultAlt<T, E> {
-  type HigherSelf<U: Send + Sync + 'static> = ResultAlt<U, E>;
-
-  fn pure(value: T) -> Self::HigherSelf<T> {
-    ResultAlt(Ok(value))
-  }
-
-  fn ap<B, F>(self, f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
-  where
-    F: FnMut(T) -> B + Send + Sync + 'static,
-    B: Send + Sync + 'static,
-  {
-    ResultAlt(match (self.0, f.0) {
-      (Ok(a), Ok(mut f)) => Ok(f(a)),
-      (Err(e), _) => Err(e),
-      (_, Err(e)) => Err(e),
-    })
-  }
-}
-
-impl<T: Send + Sync + Clone + 'static> Applicative<T> for VecAlt<T> {
-  type HigherSelf<U: Send + Sync + 'static> = VecAlt<U>;
-
-  fn pure(value: T) -> Self::HigherSelf<T> {
-    VecAlt(vec![value])
-  }
-
-  fn ap<B, F>(self, fs: Self::HigherSelf<F>) -> Self::HigherSelf<B>
-  where
-    F: FnMut(T) -> B + Send + Sync + 'static,
-    B: Send + Sync + 'static,
-  {
-    VecAlt(
-      fs.0
-        .into_iter()
-        .flat_map(|mut f| self.0.iter().cloned().map(move |a| f(a)))
-        .collect(),
-    )
-  }
-}
 
 /// The Alternative trait represents types that are both Applicative and Monoid.
 /// It provides operations for choice and repetition.
-pub trait Alternative<T>: Applicative<T> + Clone {
+pub trait Alternative<T>: Applicative<T> {
+  /// The type returned by the many operation
+  type ManyOutput;
+
   /// The empty value for the Alternative type.
   fn empty() -> Self;
 
   /// Combines two Alternative values, choosing the first non-empty one.
   fn alt(self, other: Self) -> Self;
 
-  /// Returns Some if the given predicate holds, otherwise returns empty.
-  fn some<F>(self, f: F) -> Self
-  where
-    F: Fn(&T) -> bool;
-
   /// Returns the value if it's non-empty, otherwise returns empty.
-  fn many(self) -> Self {
+  fn many(self) -> Self::ManyOutput;
+}
+
+impl<T: Send + Sync + 'static> Alternative<T> for Option<T> {
+  type ManyOutput = Self;
+
+  fn empty() -> Self {
+    None
+  }
+
+  fn alt(self, other: Self) -> Self {
+    self.or(other)
+  }
+
+  fn many(self) -> Self::ManyOutput {
     self.alt(Self::empty())
   }
-
-  /// Helper method to unwrap the value
-  fn unwrap(&self) -> &T;
 }
 
-impl<T: Send + Sync + Clone + 'static> Alternative<T> for OptAlt<T> {
+impl<T: Send + Sync + 'static, E: Default + Send + Sync + 'static> Alternative<T> for Result<T, E> {
+  type ManyOutput = Self;
+
   fn empty() -> Self {
-    OptAlt(None)
+    Err(E::default())
   }
 
   fn alt(self, other: Self) -> Self {
-    OptAlt(self.0.or(other.0))
+    self.or(other)
   }
 
-  fn some<F>(self, f: F) -> Self
-  where
-    F: Fn(&T) -> bool,
-  {
-    match &self.0 {
-      Some(value) if f(value) => self,
-      _ => Self::empty(),
-    }
-  }
-
-  fn unwrap(&self) -> &T {
-    self.0.as_ref().unwrap()
+  fn many(self) -> Self::ManyOutput {
+    self.alt(Self::empty())
   }
 }
 
-impl<T: Send + Sync + Clone + 'static, E: Default + Send + Sync + Debug + Clone + 'static>
-  Alternative<T> for ResultAlt<T, E>
-{
+impl<T: Send + Sync + Clone + 'static> Alternative<T> for Vec<T> {
+  type ManyOutput = Self;
+
   fn empty() -> Self {
-    ResultAlt(Err(E::default()))
+    Vec::new()
   }
 
   fn alt(self, other: Self) -> Self {
-    ResultAlt(self.0.or(other.0))
-  }
-
-  fn some<F>(self, f: F) -> Self
-  where
-    F: Fn(&T) -> bool,
-  {
-    match &self.0 {
-      Ok(value) if f(value) => self,
-      _ => Self::empty(),
-    }
-  }
-
-  fn unwrap(&self) -> &T {
-    self.0.as_ref().unwrap()
-  }
-}
-
-impl<T: Send + Sync + Clone + 'static> Alternative<T> for VecAlt<T> {
-  fn empty() -> Self {
-    VecAlt(Vec::new())
-  }
-
-  fn alt(self, other: Self) -> Self {
-    if self.0.is_empty() {
+    if self.is_empty() {
       other
     } else {
       self
     }
   }
 
-  fn some<F>(self, f: F) -> Self
-  where
-    F: Fn(&T) -> bool,
-  {
-    if self.0.iter().any(f) {
-      self
-    } else {
-      Self::empty()
-    }
+  fn many(self) -> Self::ManyOutput {
+    self.alt(Self::empty())
+  }
+}
+
+impl<T: Send + Sync + 'static, E: Default + Send + Sync + 'static> Alternative<T> for Effect<T, E> {
+  type ManyOutput = Self;
+
+  fn empty() -> Self {
+    Effect::new(Box::pin(async { Err(E::default()) }))
   }
 
-  fn unwrap(&self) -> &T {
-    &self.0[0]
+  fn alt(self, other: Self) -> Self {
+    Effect::new(Box::pin(async move {
+      match self.await {
+        Ok(value) => Ok(value),
+        Err(_) => other.await,
+      }
+    }))
+  }
+
+  fn many(self) -> Self::ManyOutput {
+    self.alt(Self::empty())
   }
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
+
+  fn result_strategy() -> impl Strategy<Value = Result<i32, i32>> {
+    prop_oneof![Just(Err(0)), any::<i32>().prop_map(Ok)]
+  }
 
   proptest! {
       #[test]
       fn test_option_alternative_empty(opt: Option<i32>) {
-          let empty = OptAlt::<i32>::empty();
-          assert_eq!(empty.0, None);
-          assert_eq!(OptAlt(opt.clone()).alt(empty).0, opt);
+          let empty = Option::<i32>::empty();
+          assert_eq!(empty, None);
+          assert_eq!(opt.alt(empty), opt);
       }
 
       #[test]
       fn test_option_alternative_alt(opt1: Option<i32>, opt2: Option<i32>) {
-          let result = OptAlt(opt1.clone()).alt(OptAlt(opt2.clone()));
-          assert_eq!(result.0, opt1.or(opt2));
-      }
-
-      #[test]
-      fn test_option_alternative_some(opt: Option<i32>, value: i32) {
-          let result = OptAlt(opt.clone()).some(|x| *x == value);
-          assert_eq!(result.0, if opt == Some(value) { opt } else { None });
+          let result = opt1.alt(opt2);
+          assert_eq!(result, opt1.or(opt2));
       }
 
       #[test]
       fn test_option_alternative_many(opt: Option<i32>) {
-          let result = OptAlt(opt.clone()).many();
-          assert_eq!(result.0, opt.or(None));
+          let result = opt.many();
+          assert_eq!(result, opt.or(None));
       }
 
       #[test]
-      fn test_result_alternative_empty(result: Result<i32, i32>) {
-          let empty = ResultAlt::<i32, i32>::empty();
-          assert_eq!(empty.0, Err(0));
-          assert_eq!(ResultAlt(result.clone()).alt(empty).0, result);
+      fn test_result_alternative_empty(result in result_strategy()) {
+          let empty = Result::<i32, i32>::empty();
+          assert_eq!(empty, Err(0));
+          assert_eq!(result.alt(empty), result);
       }
 
       #[test]
       fn test_result_alternative_alt(result1: Result<i32, i32>, result2: Result<i32, i32>) {
-          let result = ResultAlt(result1.clone()).alt(ResultAlt(result2.clone()));
-          assert_eq!(result.0, result1.or(result2));
+          let result = result1.alt(result2);
+          assert_eq!(result, result1.or(result2));
+      }
+
+      #[test]
+      fn test_result_alternative_many(result: Result<i32, i32>) {
+          let result = result.many();
+          assert_eq!(result, result.or(Err(0)));
       }
 
       #[test]
       fn test_vec_alternative_empty(vec: Vec<i32>) {
-          let empty = VecAlt::<i32>::empty();
-          assert!(empty.0.is_empty());
-          assert_eq!(VecAlt(vec.clone()).alt(empty).0, vec);
+          let empty = Vec::<i32>::empty();
+          assert!(empty.is_empty());
+          assert_eq!(vec.clone().alt(empty), vec);
       }
 
       #[test]
       fn test_vec_alternative_alt(vec1: Vec<i32>, vec2: Vec<i32>) {
-          let result = VecAlt(vec1.clone()).alt(VecAlt(vec2.clone()));
-          assert_eq!(result.0, if vec1.is_empty() { vec2 } else { vec1 });
+          let result = vec1.clone().alt(vec2.clone());
+          assert_eq!(result, if vec1.is_empty() { vec2 } else { vec1 });
+      }
+
+      #[test]
+      fn test_vec_alternative_many(vec: Vec<i32>) {
+          let result = vec.clone().many();
+          assert_eq!(result, if vec.is_empty() { Vec::new() } else { vec });
       }
   }
 }
