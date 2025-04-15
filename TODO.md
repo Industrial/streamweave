@@ -22,8 +22,8 @@
 - [x] bifunctor operations (bimap, first, second)
 - [x] contravariant operations (contramap)
 - [x] comonad operations (extract, duplicate, extend)
-- [ ] alternative/monadplus operations (empty, alt, some, many)
-- [ ] natural transformations (transform)
+- [x] alternative/monadplus operations (empty, alt, some, many)
+- [x] natural transformations (transform)
 - [ ] free monad operations (pure, foldMap, hoist)
 - [ ] profunctor operations (dimap, lmap, rmap)
 - [ ] foldable1/traversable1 operations (fold1, sequence1, toNonEmpty)
@@ -122,9 +122,7 @@
 
 1. Ask for each of the files in `effect-core`:
     1.1 Which traits/implementations should be compositions of others in the `packages/*` that haven't been done yet.
-        1.1.1 Make sure each trait gets their own file.
-        1.1.2 Impl of Trait is implemented in the same file.
-    1.2 Which basic Rust type system implementations of the trait haven't been done yet.
+    1.2 Which basic Rust type system implementations of the trait haven't been done yet. Implement them in the same file that the trait is defined in.
     1.3 Use PropTest for the tests.
         1.4 Make sure all possible permutations are tested.
         1.5 100% Test Coverage.

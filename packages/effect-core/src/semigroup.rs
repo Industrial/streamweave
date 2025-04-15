@@ -1,8 +1,16 @@
 use regex::Regex;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, BinaryHeap, LinkedList, VecDeque};
 use std::error::Error;
+use std::marker::PhantomData;
+use std::mem::ManuallyDrop;
+use std::mem::MaybeUninit;
 use std::net::{IpAddr, SocketAddr};
+use std::net::{Ipv4Addr, Ipv6Addr};
 use std::path::PathBuf;
+use std::pin::Pin;
+use std::ptr::NonNull;
+use std::rc::{Rc, Weak};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 
@@ -35,7 +43,7 @@ macro_rules! impl_integer_semigroup {
     $(
       impl Semigroup for $t {
         fn combine(self, other: Self) -> Self {
-          self.checked_add(other).unwrap_or(Self::MAX)
+          self.wrapping_add(other)
         }
       }
     )*
@@ -165,12 +173,92 @@ where
   }
 }
 
+impl<T: Semigroup> Semigroup for Box<T> {
+  fn combine(self, other: Self) -> Self {
+    Box::new((*self).combine(*other))
+  }
+}
+
+impl<T: Semigroup + Copy> Semigroup for Cell<T> {
+  fn combine(self, other: Self) -> Self {
+    Cell::new(self.get().combine(other.get()))
+  }
+}
+
+impl<T: Semigroup> Semigroup for RefCell<T> {
+  fn combine(self, other: Self) -> Self {
+    RefCell::new(self.into_inner().combine(other.into_inner()))
+  }
+}
+
+impl<T: Semigroup + Clone> Semigroup for Rc<T> {
+  fn combine(self, other: Self) -> Self {
+    Rc::new((*self).clone().combine((*other).clone()))
+  }
+}
+
+impl<T: Semigroup + Clone> Semigroup for Weak<T> {
+  fn combine(self, other: Self) -> Self {
+    if let (Some(this), Some(other)) = (self.upgrade(), other.upgrade()) {
+      Rc::downgrade(&Rc::new((*this).clone().combine((*other).clone())))
+    } else {
+      self
+    }
+  }
+}
+
+impl<T: Semigroup> Semigroup for PhantomData<T> {
+  fn combine(self, _other: Self) -> Self {
+    PhantomData
+  }
+}
+
+impl<T: Semigroup + Clone> Semigroup for Pin<Box<T>> {
+  fn combine(self, other: Self) -> Self {
+    unsafe { Pin::new_unchecked(Box::new((*self).clone().combine((*other).clone()))) }
+  }
+}
+
+impl<T: Semigroup + Clone> Semigroup for NonNull<T> {
+  fn combine(self, other: Self) -> Self {
+    unsafe {
+      let this = self.as_ref();
+      let other = other.as_ref();
+      NonNull::new_unchecked(Box::into_raw(Box::new(this.clone().combine(other.clone()))))
+    }
+  }
+}
+
+impl<T: Semigroup + Copy> Semigroup for ManuallyDrop<T> {
+  fn combine(self, other: Self) -> Self {
+    ManuallyDrop::new(unsafe { *self }.combine(unsafe { *other }))
+  }
+}
+
+impl<T: Semigroup + Copy> Semigroup for MaybeUninit<T> {
+  fn combine(self, other: Self) -> Self {
+    unsafe {
+      let a = self.assume_init();
+      let b = other.assume_init();
+      MaybeUninit::new(a.combine(b))
+    }
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
   use proptest::prelude::*;
   use std::net::{Ipv4Addr, Ipv6Addr};
   use std::sync::Arc;
+  use std::{
+    cell::{Cell, RefCell},
+    marker::PhantomData,
+    mem::ManuallyDrop,
+    pin::Pin,
+    ptr::NonNull,
+    rc::{Rc, Weak},
+  };
 
   // Helper function to test associativity
   fn test_associativity<T: Semigroup + Clone + PartialEq + std::fmt::Debug>(a: T, b: T, c: T) {
@@ -423,6 +511,111 @@ mod tests {
       let test_clone = test.clone();
       let combined = empty.clone().combine(test_clone);
       assert_eq!(*combined.read(), x);
+    }
+
+    #[test]
+    fn test_box_semigroup(x: i32, y: i32, z: i32) {
+      let a = Box::new(x);
+      let b = Box::new(y);
+      let c = Box::new(z);
+      let combined1 = a.clone().combine(b.clone()).combine(c.clone());
+      let combined2 = a.combine(b.combine(c));
+      assert_eq!(combined1, combined2);
+    }
+
+    #[test]
+    fn test_cell_semigroup(x: i32, y: i32, z: i32) {
+      let a = Cell::new(x);
+      let b = Cell::new(y);
+      let c = Cell::new(z);
+      let combined1 = a.clone().combine(b.clone()).combine(c.clone());
+      let combined2 = a.combine(b.combine(c));
+      assert_eq!(combined1.get(), combined2.get());
+    }
+
+    #[test]
+    fn test_refcell_semigroup(x: i32, y: i32, z: i32) {
+      let a = RefCell::new(x);
+      let b = RefCell::new(y);
+      let c = RefCell::new(z);
+      let combined1 = a.clone().combine(b.clone()).combine(c.clone());
+      let combined2 = a.combine(b.combine(c));
+      assert_eq!(combined1.into_inner(), combined2.into_inner());
+    }
+
+    #[test]
+    fn test_rc_semigroup(x: i32, y: i32, z: i32) {
+      let a = Rc::new(x);
+      let b = Rc::new(y);
+      let c = Rc::new(z);
+      let combined1 = a.clone().combine(b.clone()).combine(c.clone());
+      let combined2 = a.combine(b.combine(c));
+      assert_eq!(*combined1, *combined2);
+    }
+
+    #[test]
+    fn test_weak_semigroup(x: i32, y: i32, z: i32) {
+      let a = Rc::downgrade(&Rc::new(x));
+      let b = Rc::downgrade(&Rc::new(y));
+      let c = Rc::downgrade(&Rc::new(z));
+      let combined1 = a.clone().combine(b.clone()).combine(c.clone());
+      let combined2 = a.combine(b.combine(c));
+      assert_eq!(combined1.upgrade(), combined2.upgrade());
+    }
+
+    #[test]
+    fn test_phantomdata_semigroup(_x: i32, _y: i32, _z: i32) {
+      let a: PhantomData<i32> = PhantomData;
+      let b: PhantomData<i32> = PhantomData;
+      let c: PhantomData<i32> = PhantomData;
+      let combined1 = a.combine(b.clone()).combine(c.clone());
+      let combined2 = a.combine(b.combine(c));
+      assert_eq!(std::mem::size_of_val(&combined1), std::mem::size_of_val(&combined2));
+    }
+
+    #[test]
+    fn test_pin_semigroup(x: i32, y: i32, z: i32) {
+      let a = Box::pin(x);
+      let b = Box::pin(y);
+      let c = Box::pin(z);
+      let combined1 = a.clone().combine(b.clone()).combine(c.clone());
+      let combined2 = a.combine(b.combine(c));
+      assert_eq!(*combined1, *combined2);
+    }
+
+    #[test]
+    fn test_nonnull_semigroup(x: i32, y: i32, z: i32) {
+      let a = NonNull::new(Box::into_raw(Box::new(x))).unwrap();
+      let b = NonNull::new(Box::into_raw(Box::new(y))).unwrap();
+      let c = NonNull::new(Box::into_raw(Box::new(z))).unwrap();
+      let combined1 = a.clone().combine(b.clone()).combine(c.clone());
+      let combined2 = a.combine(b.combine(c));
+      unsafe {
+        assert_eq!(*combined1.as_ref(), *combined2.as_ref());
+        // Clean up
+        drop(Box::from_raw(combined1.as_ptr()));
+        drop(Box::from_raw(combined2.as_ptr()));
+      }
+    }
+
+    #[test]
+    fn test_manuallydrop_semigroup(x: i32, y: i32, z: i32) {
+      let a = ManuallyDrop::new(x);
+      let b = ManuallyDrop::new(y);
+      let c = ManuallyDrop::new(z);
+      let combined1 = a.clone().combine(b.clone()).combine(c.clone());
+      let combined2 = a.combine(b.combine(c));
+      assert_eq!(unsafe { *combined1 }, unsafe { *combined2 });
+    }
+
+    #[test]
+    fn test_maybeuninit_semigroup(x: i32, y: i32, z: i32) {
+      let a = MaybeUninit::new(x);
+      let b = MaybeUninit::new(y);
+      let c = MaybeUninit::new(z);
+      let combined1 = a.clone().combine(b.clone()).combine(c.clone());
+      let combined2 = a.combine(b.combine(c));
+      assert_eq!(unsafe { combined1.assume_init() }, unsafe { combined2.assume_init() });
     }
   }
 }
