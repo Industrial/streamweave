@@ -1,12 +1,10 @@
 use regex::Regex;
 use std::cell::{Cell, RefCell};
-use std::collections::{BTreeSet, BinaryHeap, LinkedList, VecDeque};
-use std::error::Error;
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::mem::MaybeUninit;
 use std::net::{IpAddr, SocketAddr};
-use std::net::{Ipv4Addr, Ipv6Addr};
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::ptr::NonNull;
@@ -231,7 +229,7 @@ impl<T: Semigroup + Clone> Semigroup for NonNull<T> {
 
 impl<T: Semigroup + Copy> Semigroup for ManuallyDrop<T> {
   fn combine(self, other: Self) -> Self {
-    ManuallyDrop::new(unsafe { *self }.combine(unsafe { *other }))
+    ManuallyDrop::new({ *self }.combine(*other))
   }
 }
 
@@ -245,19 +243,123 @@ impl<T: Semigroup + Copy> Semigroup for MaybeUninit<T> {
   }
 }
 
+impl<K, V> Semigroup for HashMap<K, V>
+where
+  K: Eq + std::hash::Hash + Send + Sync + Clone + 'static,
+  V: Send + Sync + Clone + 'static,
+{
+  fn combine(mut self, other: Self) -> Self {
+    self.extend(other);
+    self
+  }
+}
+
+impl<T> Semigroup for HashSet<T>
+where
+  T: Eq + std::hash::Hash + Send + Sync + Clone + 'static,
+{
+  fn combine(mut self, other: Self) -> Self {
+    self.extend(other);
+    self
+  }
+}
+
+impl<K, V> Semigroup for BTreeMap<K, V>
+where
+  K: Ord + Send + Sync + Clone + 'static,
+  V: Send + Sync + Clone + 'static,
+{
+  fn combine(mut self, other: Self) -> Self {
+    self.extend(other);
+    self
+  }
+}
+
+impl<T> Semigroup for BTreeSet<T>
+where
+  T: Ord + Send + Sync + Clone + 'static,
+{
+  fn combine(mut self, other: Self) -> Self {
+    self.extend(other);
+    self
+  }
+}
+
+impl<T> Semigroup for LinkedList<T>
+where
+  T: Send + Sync + Clone + 'static,
+{
+  fn combine(mut self, mut other: Self) -> Self {
+    self.append(&mut other);
+    self
+  }
+}
+
+impl<T> Semigroup for BinaryHeap<T>
+where
+  T: Ord + Send + Sync + Clone + 'static,
+{
+  fn combine(mut self, mut other: Self) -> Self {
+    self.append(&mut other);
+    self
+  }
+}
+
+impl<T> Semigroup for VecDeque<T>
+where
+  T: Send + Sync + Clone + 'static,
+{
+  fn combine(mut self, mut other: Self) -> Self {
+    self.append(&mut other);
+    self
+  }
+}
+
+// Implement Semigroup for Arc
+impl<T> Semigroup for Arc<T>
+where
+  T: Semigroup + Send + Sync + Clone + 'static,
+{
+  fn combine(self, other: Self) -> Self {
+    Arc::new((*self).clone().combine((*other).clone()))
+  }
+}
+
+// Implement Semigroup for Mutex
+impl<T> Semigroup for Mutex<T>
+where
+  T: Semigroup + Send + 'static,
+{
+  fn combine(self, other: Self) -> Self {
+    let self_guard = self.into_inner().unwrap();
+    let other_guard = other.into_inner().unwrap();
+    Mutex::new(self_guard.combine(other_guard))
+  }
+}
+
+// Implement Semigroup for RwLock
+impl<T> Semigroup for RwLock<T>
+where
+  T: Semigroup + Send + 'static,
+{
+  fn combine(self, other: Self) -> Self {
+    let self_guard = self.into_inner().unwrap();
+    let other_guard = other.into_inner().unwrap();
+    RwLock::new(self_guard.combine(other_guard))
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
   use proptest::prelude::*;
   use std::net::{Ipv4Addr, Ipv6Addr};
-  use std::sync::Arc;
   use std::{
     cell::{Cell, RefCell},
     marker::PhantomData,
     mem::ManuallyDrop,
-    pin::Pin,
     ptr::NonNull,
-    rc::{Rc, Weak},
+    rc::Rc,
   };
 
   // Helper function to test associativity

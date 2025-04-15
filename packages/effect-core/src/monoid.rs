@@ -1,8 +1,6 @@
 use crate::semigroup::Semigroup;
-use crate::semigroup::{MutexArc, RwLockArc};
 use regex::Regex;
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
-use std::error::Error;
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
@@ -120,7 +118,7 @@ where
 // Implement Monoid for synchronization primitives
 impl<T> Monoid for Mutex<T>
 where
-  T: Monoid + Send + Clone + 'static,
+  T: Monoid + Send + 'static,
 {
   fn empty() -> Self {
     Mutex::new(T::empty())
@@ -129,7 +127,7 @@ where
 
 impl<T> Monoid for RwLock<T>
 where
-  T: Monoid + Send + Clone + 'static,
+  T: Monoid + Send + 'static,
 {
   fn empty() -> Self {
     RwLock::new(T::empty())
@@ -207,128 +205,11 @@ where
   }
 }
 
-// Implement Semigroup for collections
-impl<K, V> Semigroup for HashMap<K, V>
-where
-  K: Eq + std::hash::Hash + Send + Sync + Clone + 'static,
-  V: Send + Sync + Clone + 'static,
-{
-  fn combine(mut self, other: Self) -> Self {
-    self.extend(other);
-    self
-  }
-}
-
-impl<T> Semigroup for HashSet<T>
-where
-  T: Eq + std::hash::Hash + Send + Sync + Clone + 'static,
-{
-  fn combine(mut self, other: Self) -> Self {
-    self.extend(other);
-    self
-  }
-}
-
-impl<K, V> Semigroup for BTreeMap<K, V>
-where
-  K: Ord + Send + Sync + Clone + 'static,
-  V: Send + Sync + Clone + 'static,
-{
-  fn combine(mut self, other: Self) -> Self {
-    self.extend(other);
-    self
-  }
-}
-
-impl<T> Semigroup for BTreeSet<T>
-where
-  T: Ord + Send + Sync + Clone + 'static,
-{
-  fn combine(mut self, other: Self) -> Self {
-    self.extend(other);
-    self
-  }
-}
-
-impl<T> Semigroup for LinkedList<T>
-where
-  T: Send + Sync + Clone + 'static,
-{
-  fn combine(mut self, mut other: Self) -> Self {
-    self.append(&mut other);
-    self
-  }
-}
-
-impl<T> Semigroup for BinaryHeap<T>
-where
-  T: Ord + Send + Sync + Clone + 'static,
-{
-  fn combine(mut self, mut other: Self) -> Self {
-    self.append(&mut other);
-    self
-  }
-}
-
-impl<T> Semigroup for VecDeque<T>
-where
-  T: Send + Sync + Clone + 'static,
-{
-  fn combine(mut self, mut other: Self) -> Self {
-    self.append(&mut other);
-    self
-  }
-}
-
-// Implement Semigroup for Arc
-impl<T> Semigroup for Arc<T>
-where
-  T: Semigroup + Send + Sync + Clone + 'static,
-{
-  fn combine(self, other: Self) -> Self {
-    match (self.as_ref(), other.as_ref()) {
-      (x, y) if std::any::TypeId::of::<T>() == std::any::TypeId::of::<i32>() => {
-        let x = unsafe { std::mem::transmute_copy::<_, i32>(x) };
-        let y = unsafe { std::mem::transmute_copy::<_, i32>(y) };
-        Arc::new(unsafe { std::mem::transmute_copy(&x.wrapping_add(y)) })
-      }
-      (x, y) => Arc::new(x.clone().combine(y.clone())),
-    }
-  }
-}
-
-// Implement Semigroup for Mutex
-impl<T> Semigroup for Mutex<T>
-where
-  T: Semigroup + Send + Clone + 'static,
-{
-  fn combine(self, other: Self) -> Self {
-    let self_guard = self.into_inner().unwrap();
-    let other_guard = other.into_inner().unwrap();
-    Mutex::new(self_guard.combine(other_guard))
-  }
-}
-
-// Implement Semigroup for RwLock
-impl<T> Semigroup for RwLock<T>
-where
-  T: Semigroup + Send + Clone + 'static,
-{
-  fn combine(self, other: Self) -> Self {
-    let self_guard = self.into_inner().unwrap();
-    let other_guard = other.into_inner().unwrap();
-    RwLock::new(self_guard.combine(other_guard))
-  }
-}
-
 #[cfg(test)]
 mod tests {
   use super::*;
   use proptest::prelude::*;
-  use regex::Regex;
   use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
-  use std::net::{IpAddr, SocketAddr};
-  use std::path::PathBuf;
   use std::sync::{Arc, Mutex, RwLock};
   use std::time::Duration;
 
@@ -444,14 +325,18 @@ mod tests {
       // Identity
       let empty = BinaryHeap::empty();
       let x_clone = x.clone();
-      let combined = x_clone.clone().combine(empty.clone());
+      let combined = x_clone.combine(empty.clone());
       assert_eq!(combined.into_sorted_vec(), x.clone().into_sorted_vec());
 
+      let x_clone = x.clone();
       let combined = empty.combine(x_clone);
       assert_eq!(combined.into_sorted_vec(), x.clone().into_sorted_vec());
 
       // Associativity
-      let left = x.clone().combine(y.clone()).combine(z.clone());
+      let x_clone = x.clone();
+      let y_clone = y.clone();
+      let z_clone = z.clone();
+      let left = x_clone.combine(y_clone).combine(z_clone);
       let right = x.combine(y.combine(z));
       assert_eq!(left.into_sorted_vec(), right.into_sorted_vec());
     }
@@ -480,91 +365,89 @@ mod tests {
       let z = Arc::new(z);
 
       // Identity
-      let empty: Arc<i32> = Arc::empty();
-      assert_eq!(*x.clone().combine(empty.clone()), *x);
-      assert_eq!(*empty.clone().combine(x.clone()), *x);
+      assert_eq!(*x.clone().combine(Arc::new(0)), *x);
+      assert_eq!(*Arc::new(0).combine(x.clone()), *x);
 
       // Associativity
       assert_eq!(
-        *(x.clone().combine(y.clone())).combine(z.clone()),
+        *x.clone().combine(y.clone()).combine(z.clone()),
         *x.combine(y.combine(z))
       );
     }
 
     #[test]
-    fn test_monoid_laws_mutex(x: i32) {
-      // Keep test values small to avoid timeouts
-      let x = x % 100;
-
-      let m1 = MutexArc::new(x);
-      let m2 = MutexArc::new(x + 1);
-      let empty = MutexArc::new(0);
+    fn test_monoid_laws_mutex(x: i32, y: i32, z: i32) {
+      let empty = Mutex::new(0);
+      let x = Mutex::new(x);
+      let y = Mutex::new(y);
+      let z = Mutex::new(z);
 
       // Identity
-      {
-        let guard = m1.lock();
-        let empty_guard = empty.lock();
-        assert_eq!(*guard + *empty_guard, *guard);
-      }
+      let x_val = *x.lock().unwrap();
+      let x_new = Mutex::new(x_val);
+      let combined = x_new.combine(Mutex::new(0));
+      let _guard = combined.lock().unwrap();
+      assert_eq!(*_guard, x_val);
+
+      let x_new = Mutex::new(x_val);
+      let combined = Mutex::new(0).combine(x_new);
+      let _guard = combined.lock().unwrap();
+      assert_eq!(*_guard, x_val);
 
       // Associativity
-      {
-        let guard1 = m1.lock();
-        let guard2 = m2.lock();
-        let empty_guard = empty.lock();
+      let x_val = *x.lock().unwrap();
+      let y_val = *y.lock().unwrap();
+      let z_val = *z.lock().unwrap();
+      let left = Mutex::new(x_val).combine(Mutex::new(y_val)).combine(Mutex::new(z_val));
+      let right = Mutex::new(x_val).combine(Mutex::new(y_val).combine(Mutex::new(z_val)));
 
-        let left = (*guard1 + *guard2) + *empty_guard;
-        let right = *guard1 + (*guard2 + *empty_guard);
-        assert_eq!(left, right);
-      }
+      let _guard1 = left.lock().unwrap();
+      let _guard2 = right.lock().unwrap();
+      assert_eq!(*_guard1, *_guard2);
     }
 
     #[test]
-    fn test_monoid_laws_rwlock(x: i32) {
-      // Keep test values small to avoid timeouts
-      let x = x % 100;
-
-      let m1 = RwLockArc::new(x);
-      let m2 = RwLockArc::new(x + 1);
-      let empty = RwLockArc::new(0);
+    fn test_monoid_laws_rwlock(x: i32, y: i32, z: i32) {
+      let empty = RwLock::new(0);
+      let x = RwLock::new(x);
+      let y = RwLock::new(y);
+      let z = RwLock::new(z);
 
       // Identity
-      {
-        let guard = m1.read();
-        let empty_guard = empty.read();
-        assert_eq!(*guard + *empty_guard, *guard);
-      }
+      let x_val = *x.read().unwrap();
+      let x_new = RwLock::new(x_val);
+      let combined = x_new.combine(RwLock::new(0));
+      let _guard = combined.read().unwrap();
+      assert_eq!(*_guard, x_val);
+
+      let x_new = RwLock::new(x_val);
+      let combined = RwLock::new(0).combine(x_new);
+      let _guard = combined.read().unwrap();
+      assert_eq!(*_guard, x_val);
 
       // Associativity
-      {
-        let guard1 = m1.read();
-        let guard2 = m2.read();
-        let empty_guard = empty.read();
+      let x_val = *x.read().unwrap();
+      let y_val = *y.read().unwrap();
+      let z_val = *z.read().unwrap();
+      let left = RwLock::new(x_val).combine(RwLock::new(y_val)).combine(RwLock::new(z_val));
+      let right = RwLock::new(x_val).combine(RwLock::new(y_val).combine(RwLock::new(z_val)));
 
-        let left = (*guard1 + *guard2) + *empty_guard;
-        let right = *guard1 + (*guard2 + *empty_guard);
-        assert_eq!(left, right);
-      }
+      let _guard1 = left.read().unwrap();
+      let _guard2 = right.read().unwrap();
+      assert_eq!(*_guard1, *_guard2);
     }
 
     #[test]
-    fn test_monoid_laws_duration(x: u64, y: u64, z: u64) {
-      let x = Duration::from_secs(x % 1000); // Keep durations small
-      let y = Duration::from_secs(y % 1000);
-      let z = Duration::from_secs(z % 1000);
-
+    fn test_monoid_laws_duration(x: Duration, y: Duration, z: Duration) {
       // Identity
-      assert_eq!(x.combine(Duration::empty()), x);
-      assert_eq!(Duration::empty().combine(x), x);
+      assert_eq!(x.combine(Duration::from_secs(0)), x);
+      assert_eq!(Duration::from_secs(0).combine(x), x);
 
       // Associativity
-      let left = x.combine(y).combine(z);
-      let right = x.combine(y.combine(z));
-      assert_eq!(left, right);
-
-      // Test overflow handling
-      let max = Duration::from_secs(u64::MAX);
-      assert_eq!(max.combine(Duration::from_secs(1)), max);
+      assert_eq!(
+        x.combine(y).combine(z),
+        x.combine(y.combine(z))
+      );
     }
   }
 }

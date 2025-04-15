@@ -120,13 +120,14 @@
 - [ ] Check out https://github.com/viperproject/prusti-dev
 - [ ] Check out https://github.com/creusot-rs/creusot?tab=readme-ov-file
 
-1. Ask for each of the files in `effect-core`:
-    1.1 Which traits/implementations should be compositions of others in the `packages/*` that haven't been done yet.
-    1.2 Which basic Rust type system implementations of the trait haven't been done yet. Implement them in the same file that the trait is defined in.
-    1.3 Use PropTest for the tests.
-        1.4 Make sure all possible permutations are tested.
-        1.5 100% Test Coverage.
-2. Run `bin/test` after every change you make. Don't run tests with `cargo test`. Fix all errors and report when all tests are green.
-3. If everything above leaves no files to be updated, read `TODO.md` and look at the next item and implement that.
+1. First read all files in `effect-core/src/*`.
+2. Ask for each of the files in `effect-core`:
+    2.1 Which traits/implementations should be compositions of others in the `packages/*` that haven't been done yet.
+    2.2 Which basic Rust type system implementations of the trait haven't been done yet. Implement them in the same file that the trait is defined in.
+    2.3 Use PropTest for the tests.
+        2.4 Make sure all possible permutations are tested.
+        2.5 100% Test Coverage.
+3. Run `bin/test` after every change you make. Don't run tests with `cargo test`. Fix all errors and report when all tests are green.
+4. If everything above leaves no files to be updated, read `TODO.md` and look at the next item and implement that.
 
 For each item above give me the rundown and then apply them.
