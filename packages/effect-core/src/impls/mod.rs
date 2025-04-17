@@ -1,5 +1,2 @@
 pub mod compose;
 pub mod morphism;
-
-pub use compose::*;
-pub use morphism::*;
