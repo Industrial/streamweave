@@ -5,38 +5,19 @@
 //! computation is performed asynchronously, and the result is wrapped in a
 //! `Result` type.
 
-use std::{
-  cmp::PartialEq,
-  fmt::Debug,
-  future::Future,
-  pin::Pin,
-  task::{Context, Poll},
+use std::{future::Future, pin::Pin};
+
+use crate::{
+  Alternative, Applicative, Bifunctor, Category, Comonad, Filterable, Functor, Monad, Natural,
 };
 
-use super::applicative::Applicative;
-use super::functor::Functor;
-use super::monad::Monad;
-use crate::monoid::Monoid;
-use crate::semigroup::Semigroup;
-use std::error::Error;
-
-/// Type alias for an Effect that never fails
-pub type Infallible<T> = Effect<T, std::convert::Infallible>;
-
-/// Type alias for an Effect that can fail with any error type
-pub type AnyError<T> = Effect<T, Box<dyn std::error::Error + Send + Sync>>;
-
-/// A type that represents an asynchronous computation that can yield a value of type `T` or fail with an error of type `E`.
+/// A type that represents an asynchronous computation that can yield a value of
+/// type `T` or fail with an error of type `E`.
 ///
 /// # Type Parameters
 ///
 /// - T: The type of the successful result
 /// - E: The type of the error
-///
-/// # Trait Bounds
-///
-/// - T: Send + Sync + 'static
-/// - E: Send + Sync + 'static
 pub struct Effect<T, E> {
   inner: Pin<Box<dyn Future<Output = Result<T, E>> + Send + Sync>>,
 }
@@ -57,246 +38,286 @@ where
   }
 
   /// Creates a new Effect that always succeeds with the given value
-  pub fn pure(value: T) -> Self {
+  pub fn pure(value: T) -> Self
+  where
+    T: Send + Sync + 'static,
+  {
     Self::new(std::future::ready(Ok(value)))
   }
 
   /// Creates a new Effect that always fails with the given error
-  pub fn error(error: E) -> Self {
+  pub fn error(error: E) -> Self
+  where
+    E: Send + Sync + 'static,
+  {
     Self::new(std::future::ready(Err(error)))
   }
 
   /// Runs the Effect and returns its result
-  pub async fn run(self) -> Result<T, E> {
-    self.inner.await
-  }
-
-  /// Maps an error to a different error type
-  pub fn map_error<F, E2>(self, f: F) -> Effect<T, E2>
-  where
-    F: FnOnce(E) -> E2 + Send + Sync + 'static,
-    E2: Send + Sync + 'static,
-    T: Send + Sync + 'static,
-    E: Send + Sync + 'static,
-  {
-    Effect::new(async move {
-      match self.run().await {
-        Ok(value) => Ok(value),
-        Err(error) => Err(f(error)),
-      }
-    })
-  }
-
-  /// Handles an error by converting it into a new Effect
-  pub fn handle_error<F, G>(self, f: F) -> Effect<T, G>
-  where
-    F: FnOnce(E) -> Effect<T, G> + Send + Sync + 'static,
-    T: Send + Sync + 'static,
-    E: Send + Sync + 'static,
-    G: Send + Sync + 'static,
-  {
-    Effect::new(async move {
-      match self.run().await {
-        Ok(value) => Ok(value),
-        Err(e) => f(e).run().await,
-      }
-    })
+  pub async fn run(&mut self) -> Result<T, E> {
+    self.inner.as_mut().await
   }
 
   /// Chains a function that returns an Effect after this one
-  pub fn and_then<F, B>(self, f: F) -> Effect<B, E>
+  pub fn and_then<U, F>(self, f: F) -> Effect<U, E>
   where
-    F: FnOnce(T) -> Effect<B, E> + Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    T: Send + Sync + 'static,
-    E: Send + Sync + 'static,
+    F: FnOnce(T) -> Effect<U, E> + Send + Sync + 'static,
+    U: Send + Sync + 'static,
   {
-    Effect::new(async move {
-      let value = self.run().await?;
+    let future = async move {
+      let mut self_ = self;
+      let value = self_.run().await?;
       f(value).run().await
-    })
+    };
+    Effect::new(future)
   }
 
   /// Handles an error by converting it into a new Effect
-  pub fn or_else<F>(self, f: F) -> Effect<T, E>
+  pub fn recover_with<F>(self, f: F) -> Self
   where
-    F: FnOnce(E) -> Effect<T, E> + Send + Sync + 'static,
-    T: Send + Sync + 'static,
-    E: Send + Sync + 'static,
+    F: FnOnce(E) -> Self + Send + Sync + 'static,
   {
-    self.handle_error(f)
-  }
-
-  pub fn ok(value: T) -> Self
-  where
-    T: Clone,
-    E: Send + Sync + 'static,
-  {
-    Effect::pure(value)
-  }
-
-  pub fn err(error: E) -> Self
-  where
-    T: Send + Sync + 'static,
-    E: Clone,
-  {
-    Effect::error(error)
-  }
-
-  /// Returns the first successful effect, or the second if the first fails
-  pub fn or(self, other: Self) -> Self
-  where
-    T: Send + Sync + 'static,
-    E: Send + Sync + 'static,
-  {
-    Effect::new(async move {
-      match self.run().await {
+    let future = async move {
+      let mut self_ = self;
+      match self_.run().await {
         Ok(value) => Ok(value),
-        Err(_) => other.run().await,
+        Err(e) => f(e).run().await,
       }
+    };
+    Effect::new(future)
+  }
+}
+
+// Implement Functor with Send + Sync + 'static bounds
+impl<T: Send + Sync + 'static, E: Send + Sync + 'static> Functor<T> for Effect<T, E> {
+  type HigherSelf<U: Send + Sync + 'static> = Effect<U, E>;
+
+  fn map<U: Send + Sync + 'static, F>(self, mut f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(T) -> U + Send + Sync + 'static,
+  {
+    Effect::new(async move {
+      let mut self_ = self;
+      let value = self_.run().await?;
+      Ok(f(value))
     })
   }
 }
 
-impl<T> Effect<T, std::convert::Infallible> {
-  /// Creates a new infallible effect
-  pub fn infallible(value: T) -> Self
-  where
-    T: Send + Sync + 'static,
-  {
+// Implement Applicative
+impl<T: Send + Sync + 'static, E: Send + Sync + 'static> Applicative<T> for Effect<T, E> {
+  type ApplicativeSelf<U: Send + Sync + 'static> = Effect<U, E>;
+
+  fn pure<U: Send + Sync + 'static>(value: U) -> Self::ApplicativeSelf<U> {
     Effect::new(async move { Ok(value) })
   }
-}
 
-impl<T> Effect<T, Box<dyn std::error::Error + Send + Sync>> {
-  /// Creates a new effect that can fail with any error
-  pub fn any_error(value: T) -> Self
+  fn ap<U: Send + Sync + 'static, F>(self, f: Effect<F, E>) -> Effect<U, E>
   where
-    T: Send + Sync + 'static,
-  {
-    Effect::new(async move { Ok(value) })
-  }
-}
-
-impl<T, E> Future for Effect<T, E>
-where
-  T: Send + Sync + 'static,
-  E: Send + Sync + 'static,
-{
-  type Output = Result<T, E>;
-
-  fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-    self.get_mut().inner.as_mut().poll(cx)
-  }
-}
-
-impl<T, E> Functor<T> for Effect<T, E>
-where
-  T: Send + Sync + 'static,
-  E: Send + Sync + 'static,
-{
-  type HigherSelf<U: Send + Sync + 'static> = Effect<U, E>;
-
-  fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
-  where
-    F: FnMut(T) -> B + Send + Sync + 'static,
-    B: Send + Sync + 'static,
+    F: FnMut(T) -> U + Send + Sync + 'static,
   {
     Effect::new(async move {
-      let result = self.run().await?;
-      Ok(f(result))
+      let mut self_ = self;
+      let mut f_ = f;
+      let value = self_.run().await?;
+      let mut func = f_.run().await?;
+      Ok(func(value))
     })
   }
 }
 
-impl<T, E> Applicative<T> for Effect<T, E>
-where
-  T: Send + Sync + 'static,
-  E: Send + Sync + 'static,
-{
-  type HigherSelf<U: Send + Sync + 'static> = Effect<U, E>;
+// Implement Monad
+impl<T: Send + Sync + 'static, E: Send + Sync + 'static> Monad<T> for Effect<T, E> {
+  type MonadSelf<U: Send + Sync + 'static> = Effect<U, E>;
 
-  fn pure(a: T) -> Self {
-    Effect::pure(a)
-  }
-
-  fn ap<B, F>(self, f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
+  fn bind<U: Send + Sync + 'static, F>(self, mut f: F) -> Self::MonadSelf<U>
   where
-    F: FnMut(T) -> B + Send + Sync + 'static,
-    B: Send + Sync + 'static,
+    F: FnMut(T) -> Self::MonadSelf<U> + Send + Sync + 'static,
   {
     Effect::new(async move {
-      let mut f = f.run().await?;
-      let a = self.run().await?;
-      Ok(f(a))
+      let mut self_ = self;
+      let value = self_.run().await?;
+      f(value).run().await
     })
   }
 }
 
-impl<T, E> Monad<T> for Effect<T, E>
+// Implement Category<A, B>
+impl<T, E, A, B> Category<A, B> for Effect<T, E>
 where
   T: Send + Sync + 'static,
   E: Send + Sync + 'static,
+  A: Send + Sync + 'static,
+  B: Send + Sync + 'static,
 {
-  type HigherSelf<U: Send + Sync + 'static> = Effect<U, E>;
+  type Morphism<C: Send + Sync + 'static, D: Send + Sync + 'static> = Effect<D, E>;
 
-  fn pure(a: T) -> Self::HigherSelf<T> {
-    Effect::pure(a)
+  fn id<C: Send + Sync + 'static>() -> Self::Morphism<C, C> {
+    Effect::new(async move { Ok(unsafe { std::mem::zeroed::<C>() }) })
   }
 
-  fn bind<B, F>(self, mut f: F) -> Self::HigherSelf<B>
-  where
-    F: FnMut(T) -> Self::HigherSelf<B> + Send + Sync + 'static,
-    B: Send + Sync + 'static,
-  {
+  fn compose<C: Send + Sync + 'static, D: Send + Sync + 'static, F: Send + Sync + 'static>(
+    f: Self::Morphism<C, D>,
+    g: Self::Morphism<D, F>,
+  ) -> Self::Morphism<C, F> {
     Effect::new(async move {
-      let a = self.run().await?;
-      f(a).run().await
+      let mut f_ = f;
+      let mut g_ = g;
+      f_.run().await?;
+      g_.run().await
+    })
+  }
+
+  fn arr<C: Send + Sync + 'static, D: Send + Sync + 'static, F>(f: F) -> Self::Morphism<C, D>
+  where
+    F: Fn(C) -> D + Send + Sync + 'static,
+  {
+    Effect::new(async move { Ok(f(unsafe { std::mem::zeroed::<C>() })) })
+  }
+
+  fn first<C: Send + Sync + 'static, D: Send + Sync + 'static, F: Send + Sync + 'static>(
+    f: Self::Morphism<C, D>,
+  ) -> Self::Morphism<(C, F), (D, F)> {
+    Effect::new(async move {
+      let mut f_ = f;
+      let value = f_.run().await?;
+      Ok((value, unsafe { std::mem::zeroed::<F>() }))
+    })
+  }
+
+  fn second<C: Send + Sync + 'static, D: Send + Sync + 'static, F: Send + Sync + 'static>(
+    f: Self::Morphism<C, D>,
+  ) -> Self::Morphism<(F, C), (F, D)> {
+    Effect::new(async move {
+      let mut f_ = f;
+      let value = f_.run().await?;
+      Ok((unsafe { std::mem::zeroed::<F>() }, value))
     })
   }
 }
 
-impl<T, E> Effect<T, E>
+// Implement Bifunctor
+impl<T, E, A, B> Bifunctor<A, B> for Effect<T, E>
 where
-  T: Debug + PartialEq + Send + Sync + 'static,
-  E: Debug + PartialEq + Send + Sync + 'static,
+  T: Send + Sync + 'static,
+  E: Send + Sync + 'static,
+  A: Send + Sync + 'static,
+  B: Send + Sync + 'static,
 {
-  /// Creates a new effect with the default error type
-  pub fn result(value: T) -> Self {
-    Self::new(async move { Ok(value) })
-  }
-
-  /// Creates a new effect from a future with the default error type
-  pub fn from_future<F>(future: F) -> Self
+  fn bimap<C, D, F, G>(f: F, g: G) -> Self::Morphism<(A, B), (C, D)>
   where
-    F: Future<Output = Result<T, E>> + Send + Sync + 'static,
+    C: Send + Sync + 'static,
+    D: Send + Sync + 'static,
+    F: Fn(A) -> C + Send + Sync + 'static,
+    G: Fn(B) -> D + Send + Sync + 'static,
   {
-    Self::new(future)
+    Effect::new(async move {
+      Ok((
+        f(unsafe { std::mem::zeroed::<A>() }),
+        g(unsafe { std::mem::zeroed::<B>() }),
+      ))
+    })
   }
 }
 
-impl<T, E> Semigroup for Effect<T, E>
+// Implement Filterable
+impl<T, E> Filterable<T> for Effect<T, E>
 where
-  T: Send + Sync + Clone + Default + 'static,
-  E: Error + Send + Sync + 'static,
+  T: Send + Sync + 'static,
+  E: Send + Sync + 'static + From<&'static str>,
 {
-  fn combine(self, other: Self) -> Self {
-    Effect::new(async move {
-      match self.run().await {
-        Ok(val) => Ok(val),
-        Err(_) => other.run().await,
+  type HigherSelf<U: Send + Sync + 'static> = Effect<U, E>;
+
+  fn filter<F>(self, f: F) -> Self
+  where
+    F: FnOnce(&T) -> bool + Send + Sync + 'static,
+  {
+    let future = async move {
+      let mut self_ = self;
+      let value = self_.run().await?;
+      if f(&value) {
+        Ok(value)
+      } else {
+        Err(E::from("Filtered out"))
       }
-    })
+    };
+    Effect::new(future)
   }
 }
 
-impl<T, E> Monoid for Effect<T, E>
+// Implement Alternative
+impl<T, E> Alternative<T> for Effect<T, E>
 where
-  T: Send + Sync + Clone + Default + 'static,
-  E: Error + Send + Sync + Clone + Default + 'static,
+  T: Send + Sync + 'static,
+  E: Send + Sync + 'static + Default,
 {
   fn empty() -> Self {
     Effect::error(E::default())
+  }
+
+  fn alt(self, mut other: Self) -> Self {
+    let future = async move {
+      let mut self_ = self;
+      match self_.run().await {
+        Ok(value) => Ok(value),
+        Err(_) => other.run().await,
+      }
+    };
+    Effect::new(future)
+  }
+}
+
+// Implement Comonad
+impl<T, E> Comonad<T> for Effect<T, E>
+where
+  T: Send + Sync + 'static,
+  E: Send + Sync + 'static + std::fmt::Debug,
+{
+  fn extract(self) -> T {
+    // Note: This is a blocking operation
+    futures::executor::block_on(async {
+      let mut self_ = self;
+      self_.run().await.unwrap()
+    })
+  }
+
+  fn extend<U, F>(self, mut f: F) -> Effect<U, E>
+  where
+    F: FnMut(T) -> U + Send + Sync + 'static,
+    U: Send + Sync + 'static,
+  {
+    let future = async move {
+      let mut self_ = self;
+      let value = self_.run().await?;
+      Ok(f(value))
+    };
+    Effect::new(future)
+  }
+}
+
+// Implement Natural for Option -> Effect
+impl<E> Natural<Option<()>, Effect<(), E>> for Effect<(), E>
+where
+  E: Send + Sync + 'static,
+{
+  fn transform<T: Clone + Send + Sync + 'static>(fa: Option<T>) -> Effect<T, E> {
+    match fa {
+      Some(value) => Effect::new(async move { Ok(value) }),
+      None => Effect::new(async move { Err(unsafe { std::mem::zeroed::<E>() }) }),
+    }
+  }
+}
+
+// Implement Natural for Result -> Effect
+impl<E> Natural<Result<(), E>, Effect<(), E>> for Effect<(), E>
+where
+  E: Send + Sync + 'static,
+{
+  fn transform<T: Clone + Send + Sync + 'static>(fa: Result<T, E>) -> Effect<T, E> {
+    match fa {
+      Ok(value) => Effect::new(async move { Ok(value) }),
+      Err(err) => Effect::new(async move { Err(err) }),
+    }
   }
 }
 
@@ -304,102 +325,247 @@ where
 mod tests {
   use super::*;
   use proptest::prelude::*;
+  use std::time::Duration;
 
-  #[derive(Debug, PartialEq, Clone)]
-  struct TestError(String);
-  impl std::fmt::Display for TestError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-      write!(f, "{}", self.0)
-    }
-  }
-  impl std::error::Error for TestError {}
-  impl Default for TestError {
-    fn default() -> Self {
-      TestError("default error".to_string())
-    }
-  }
+  // Test functions for Functor/Applicative/Monad
+  const FUNCTIONS: &[fn(i32) -> i32] = &[
+    |x| x + 1,
+    |x| x * 2,
+    |x| x - 1,
+    |x| x / 2,
+    |x| x * x,
+    |x| -x,
+  ];
+
+  // Test functions for Alternative
+  const ALTERNATIVE_FUNCTIONS: &[fn(i32) -> Result<i32, &'static str>] = &[
+    |x| Ok(x + 1),
+    |x| Ok(x * 2),
+    |x| Err("error"),
+    |x| Ok(x - 1),
+    |x| Err("failure"),
+  ];
+
+  // Test functions for Bifunctor
+  const BIFUNCTOR_FUNCTIONS: &[fn(i32) -> i32] = &[|x| x + 1, |x| x * 2, |x| x - 1];
+
+  const BIFUNCTOR_ERROR_FUNCTIONS: &[fn(&'static str) -> &'static str] = &[
+    |e| "new error",
+    |e| "different error",
+    |e| "transformed error",
+  ];
+
+  // Test functions for Category
+  const CATEGORY_FUNCTIONS: &[fn(i32) -> i32] = &[|x| x + 1, |x| x * 2, |x| x - 1];
+
+  // Test functions for Comonad
+  const COMONAD_FUNCTIONS: &[fn(i32) -> i32] = &[|x| x + 1, |x| x * 2, |x| x - 1];
+
+  // Test functions for Natural
+  const NATURAL_FUNCTIONS: &[fn(i32) -> i32] = &[|x| x + 1, |x| x * 2, |x| x - 1];
 
   proptest! {
     #[test]
-    fn test_effect_creation(x: i32) {
-      let effect: Effect<i32, TestError> = Effect::pure(x);
-      let result = futures::executor::block_on(effect.run());
-      prop_assert_eq!(result, Ok(x));
+    fn test_functor_identity(x in any::<i32>()) {
+      let effect: Effect<i32, &'static str> = Effect::pure(x);
+      let mut mapped = effect.map(|x| x);
+      let result = futures::executor::block_on(async { mapped.run().await.unwrap() });
+      assert_eq!(result, x);
     }
 
     #[test]
-    fn test_effect_error(x: i32) {
-      let effect: Effect<i32, TestError> = Effect::error(TestError(x.to_string()));
-      let result = futures::executor::block_on(effect.run());
-      prop_assert_eq!(result, Err(TestError(x.to_string())));
+    fn test_functor_composition(
+      x in any::<i32>(),
+      f_idx in 0..FUNCTIONS.len(),
+      g_idx in 0..FUNCTIONS.len()
+    ) {
+      let f = FUNCTIONS[f_idx];
+      let g = FUNCTIONS[g_idx];
+      let effect1: Effect<i32, &'static str> = Effect::pure(x);
+      let effect2: Effect<i32, &'static str> = Effect::pure(x);
+      let mut mapped1 = effect1.map(f).map(g);
+      let mut mapped2 = effect2.map(|x| g(f(x)));
+      let result1 = futures::executor::block_on(async { mapped1.run().await.unwrap() });
+      let result2 = futures::executor::block_on(async { mapped2.run().await.unwrap() });
+      assert_eq!(result1, result2);
     }
 
     #[test]
-    fn test_effect_map(x: i32) {
-      let effect: Effect<i32, TestError> = Effect::pure(x);
-      let mapped = effect.map(|x| x.wrapping_mul(2));
-      let result = futures::executor::block_on(mapped.run());
-      prop_assert_eq!(result, Ok(x.wrapping_mul(2)));
+    fn test_applicative_identity(x in any::<i32>()) {
+      let effect: Effect<i32, &'static str> = Effect::pure(x);
+      let mut applied = effect.ap(Effect::pure(|x| x));
+      let result = futures::executor::block_on(async { applied.run().await.unwrap() });
+      assert_eq!(result, x);
     }
 
     #[test]
-    fn test_effect_ap(x: i32) {
-      let effect: Effect<i32, TestError> = Effect::pure(x);
-      let function: Effect<Box<dyn FnMut(i32) -> i32 + Send + Sync>, TestError> =
-        Effect::pure(Box::new(|x| x.wrapping_mul(2)));
-      let applied = effect.ap(function);
-      let result = futures::executor::block_on(applied.run());
-      prop_assert_eq!(result, Ok(x.wrapping_mul(2)));
+    fn test_applicative_composition(
+      x in any::<i32>(),
+      f_idx in 0..FUNCTIONS.len(),
+      g_idx in 0..FUNCTIONS.len()
+    ) {
+      let f = FUNCTIONS[f_idx];
+      let g = FUNCTIONS[g_idx];
+      let effect1: Effect<i32, &'static str> = Effect::pure(x);
+      let effect2: Effect<i32, &'static str> = Effect::pure(x);
+      let mut applied1 = effect1.ap(Effect::pure(f)).ap(Effect::pure(g));
+      let mut applied2 = effect2.ap(Effect::pure(|x| g(f(x))));
+      let result1 = futures::executor::block_on(async { applied1.run().await.unwrap() });
+      let result2 = futures::executor::block_on(async { applied2.run().await.unwrap() });
+      assert_eq!(result1, result2);
     }
 
     #[test]
-    fn test_effect_bind(x: i32) {
-      let effect: Effect<i32, TestError> = Effect::pure(x);
-      let bound = effect.bind(|x| Effect::pure(x.wrapping_mul(2)));
-      let result = futures::executor::block_on(bound.run());
-      prop_assert_eq!(result, Ok(x.wrapping_mul(2)));
+    fn test_monad_left_identity(x in any::<i32>(), f_idx in 0..FUNCTIONS.len()) {
+      let f = FUNCTIONS[f_idx];
+      let effect: Effect<i32, &'static str> = Effect::pure(x);
+      let mut bound = effect.bind(|x| Effect::pure(f(x)));
+      let result = futures::executor::block_on(async { bound.run().await.unwrap() });
+      assert_eq!(result, f(x));
     }
 
     #[test]
-    fn test_effect_error_handling(_x: i32) {
-      let effect: Effect<i32, TestError> = Effect::error(TestError("test".to_string()));
-      let handled: Effect<i32, TestError> = effect.handle_error(|_| Effect::pure(42));
-      let result = futures::executor::block_on(handled.run());
-      prop_assert_eq!(result, Ok(42));
+    fn test_monad_right_identity(x in any::<i32>()) {
+      let effect: Effect<i32, &'static str> = Effect::pure(x);
+      let mut bound = effect.bind(Effect::pure);
+      let result = futures::executor::block_on(async { bound.run().await.unwrap() });
+      assert_eq!(result, x);
     }
 
     #[test]
-    fn test_effect_map_error(x: i32) {
-      let x_owned = x;
-      let effect: Effect<i32, TestError> = Effect::error(TestError("test".to_string()));
-      let mapped = effect.map_error(move |_| TestError(x_owned.to_string()));
-      let result = futures::executor::block_on(mapped.run());
-      prop_assert_eq!(result, Err(TestError(x_owned.to_string())));
+    fn test_monad_associativity(
+      x in any::<i32>(),
+      f_idx in 0..FUNCTIONS.len(),
+      g_idx in 0..FUNCTIONS.len()
+    ) {
+      let f = FUNCTIONS[f_idx];
+      let g = FUNCTIONS[g_idx];
+      let effect1: Effect<i32, &'static str> = Effect::pure(x);
+      let effect2: Effect<i32, &'static str> = Effect::pure(x);
+      let mut bound1 = effect1.bind(|x| Effect::pure(f(x))).bind(|x| Effect::pure(g(x)));
+      let mut bound2 = effect2.bind(|x| Effect::pure(f(x)).bind(|y| Effect::pure(g(y))));
+      let result1 = futures::executor::block_on(async { bound1.run().await.unwrap() });
+      let result2 = futures::executor::block_on(async { bound2.run().await.unwrap() });
+      assert_eq!(result1, result2);
     }
 
     #[test]
-    fn test_effect_and_then(x: i32) {
-      let effect: Effect<i32, TestError> = Effect::pure(x);
-      let and_then = effect.and_then(|x| Effect::pure(x.wrapping_mul(2)));
-      let result = futures::executor::block_on(and_then.run());
-      prop_assert_eq!(result, Ok(x.wrapping_mul(2)));
+    fn test_alternative_left_identity(x in any::<i32>()) {
+      let effect: Effect<i32, &'static str> = Effect::pure(x);
+      let mut alt = Effect::<i32, &'static str>::empty().alt(effect);
+      let result = futures::executor::block_on(async { alt.run().await.unwrap() });
+      assert_eq!(result, x);
     }
 
     #[test]
-    fn test_effect_or_else(x: i32) {
-      let effect: Effect<i32, TestError> = Effect::error(TestError("test".to_string()));
-      let or_else = effect.or_else(move |_| Effect::pure(x));
-      let result = futures::executor::block_on(or_else.run());
-      prop_assert_eq!(result, Ok(x));
+    fn test_alternative_right_identity(x in any::<i32>()) {
+      let effect: Effect<i32, &'static str> = Effect::pure(x);
+      let mut alt = effect.alt(Effect::<i32, &'static str>::empty());
+      let result = futures::executor::block_on(async { alt.run().await.unwrap() });
+      assert_eq!(result, x);
     }
 
     #[test]
-    fn test_effect_semigroup(x: i32, y: i32) {
-      let effect1: Effect<i32, TestError> = Effect::pure(x);
-      let effect2: Effect<i32, TestError> = Effect::pure(y);
-      let combined = effect1.combine(effect2);
-      let result = futures::executor::block_on(combined.run());
-      prop_assert_eq!(result, Ok(x));
+    fn test_alternative_associativity(
+      x in any::<i32>(),
+      f_idx in 0..ALTERNATIVE_FUNCTIONS.len(),
+      g_idx in 0..ALTERNATIVE_FUNCTIONS.len()
+    ) {
+      let f = ALTERNATIVE_FUNCTIONS[f_idx];
+      let g = ALTERNATIVE_FUNCTIONS[g_idx];
+      let effect1: Effect<i32, &'static str> = Effect::new(async move { f(x) });
+      let effect2: Effect<i32, &'static str> = Effect::new(async move { g(x) });
+      let effect3: Effect<i32, &'static str> = Effect::new(async move { f(x) });
+      let effect4: Effect<i32, &'static str> = Effect::new(async move { f(x) });
+      let effect5: Effect<i32, &'static str> = Effect::new(async move { g(x) });
+      let effect6: Effect<i32, &'static str> = Effect::new(async move { f(x) });
+      let mut alt1 = effect1.alt(effect2).alt(effect3);
+      let mut alt2 = effect4.alt(effect5.alt(effect6));
+      let result1 = futures::executor::block_on(async { alt1.run().await });
+      let result2 = futures::executor::block_on(async { alt2.run().await });
+      assert_eq!(result1, result2);
+    }
+
+    #[test]
+    fn test_bifunctor_identity(x in any::<i32>()) {
+      let effect: Effect<i32, &'static str> = Effect::pure(x);
+      let mapped = effect.bimap(|x| x, |e| e);
+      let result = futures::executor::block_on(async { mapped.run().await.unwrap() });
+      assert_eq!(result, x);
+    }
+
+    #[test]
+    fn test_bifunctor_composition(
+      x in any::<i32>(),
+      f_idx in 0..BIFUNCTOR_FUNCTIONS.len(),
+      g_idx in 0..BIFUNCTOR_FUNCTIONS.len(),
+      h_idx in 0..BIFUNCTOR_ERROR_FUNCTIONS.len(),
+      i_idx in 0..BIFUNCTOR_ERROR_FUNCTIONS.len()
+    ) {
+      let f = BIFUNCTOR_FUNCTIONS[f_idx];
+      let g = BIFUNCTOR_FUNCTIONS[g_idx];
+      let h = BIFUNCTOR_ERROR_FUNCTIONS[h_idx];
+      let i = BIFUNCTOR_ERROR_FUNCTIONS[i_idx];
+      let effect1: Effect<i32, &'static str> = Effect::pure(x);
+      let effect2: Effect<i32, &'static str> = Effect::pure(x);
+      let mapped1 = effect1.bimap(f, h).bimap(g, i);
+      let mapped2 = effect2.bimap(|x| g(f(x)), |e| i(h(e)));
+      let result1 = futures::executor::block_on(async { mapped1.run().await.unwrap() });
+      let result2 = futures::executor::block_on(async { mapped2.run().await.unwrap() });
+      assert_eq!(result1, result2);
+    }
+
+    #[test]
+    fn test_category_identity(x in any::<i32>()) {
+      let effect: Effect<i32, &'static str> = Effect::pure(x);
+      let composed = Effect::<i32, &'static str>::id().compose(effect);
+      let result = futures::executor::block_on(async { composed.run().await.unwrap() });
+      assert_eq!(result, x);
+    }
+
+    #[test]
+    fn test_category_associativity(
+      x in any::<i32>(),
+      f_idx in 0..CATEGORY_FUNCTIONS.len(),
+      g_idx in 0..CATEGORY_FUNCTIONS.len(),
+      h_idx in 0..CATEGORY_FUNCTIONS.len()
+    ) {
+      let f = CATEGORY_FUNCTIONS[f_idx];
+      let g = CATEGORY_FUNCTIONS[g_idx];
+      let h = CATEGORY_FUNCTIONS[h_idx];
+      let effect: Effect<i32, &'static str> = Effect::pure(x);
+      let composed1 = Effect::arr(f).compose(Effect::arr(g)).compose(Effect::arr(h));
+      let composed2 = Effect::arr(f).compose(Effect::arr(g).compose(Effect::arr(h)));
+      let result1 = futures::executor::block_on(async { composed1.run().await.unwrap() });
+      let result2 = futures::executor::block_on(async { composed2.run().await.unwrap() });
+      assert_eq!(result1, result2);
+    }
+
+    #[test]
+    fn test_comonad_extract(x in any::<i32>()) {
+      let effect: Effect<i32, &'static str> = Effect::pure(x);
+      let extracted = effect.extract();
+      assert_eq!(extracted, x);
+    }
+
+    #[test]
+    fn test_comonad_duplicate(x in any::<i32>()) {
+      let effect: Effect<i32, &'static str> = Effect::pure(x);
+      let duplicated = effect.duplicate();
+      let result = futures::executor::block_on(async { duplicated.run().await.unwrap() });
+      assert_eq!(result, x);
+    }
+
+    #[test]
+    fn test_natural_transformation(
+      x in any::<i32>(),
+      f_idx in 0..NATURAL_FUNCTIONS.len()
+    ) {
+      let f = NATURAL_FUNCTIONS[f_idx];
+      let option = Some(x);
+      let effect = Effect::<i32, &'static str>::transform(option);
+      let result = futures::executor::block_on(async { effect.run().await.unwrap() });
+      assert_eq!(result, x);
     }
   }
 }

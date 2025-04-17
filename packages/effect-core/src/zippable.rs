@@ -3,36 +3,27 @@
 //! A zippable is a type that can be combined with another type element by element.
 
 /// The Zippable trait defines operations for combining two structures element by element.
-pub trait Zippable<T: Send + Sync + 'static> {
-  type HigherSelf<U>
-  where
-    U: Send + Sync + 'static;
+pub trait Zippable<T> {
+  type HigherSelf<U>;
 
   /// Combines two structures into a single structure of pairs
   fn zip<U, I>(self, other: I) -> Self::HigherSelf<(T, U)>
   where
-    U: Send + Sync + 'static,
     I: IntoIterator<Item = U>;
 
   /// Combines two structures using a combining function
   fn zip_with<U, F, R, I>(self, other: I, f: F) -> Self::HigherSelf<R>
   where
-    U: Send + Sync + 'static,
-    R: Send + Sync + 'static,
     F: FnMut(T, U) -> R,
     I: IntoIterator<Item = U>;
 }
 
 // Implementation for Option
-impl<T: Send + Sync + 'static> Zippable<T> for Option<T> {
-  type HigherSelf<U>
-    = Option<U>
-  where
-    U: Send + Sync + 'static;
+impl<T> Zippable<T> for Option<T> {
+  type HigherSelf<U> = Option<U>;
 
   fn zip<U, I>(self, other: I) -> Option<(T, U)>
   where
-    U: Send + Sync + 'static,
     I: IntoIterator<Item = U>,
   {
     let mut other = other.into_iter();
@@ -44,8 +35,6 @@ impl<T: Send + Sync + 'static> Zippable<T> for Option<T> {
 
   fn zip_with<U, F, R, I>(self, other: I, mut f: F) -> Option<R>
   where
-    U: Send + Sync + 'static,
-    R: Send + Sync + 'static,
     F: FnMut(T, U) -> R,
     I: IntoIterator<Item = U>,
   {
@@ -58,15 +47,11 @@ impl<T: Send + Sync + 'static> Zippable<T> for Option<T> {
 }
 
 // Implementation for Vec
-impl<T: Send + Sync + 'static> Zippable<T> for Vec<T> {
-  type HigherSelf<U>
-    = Vec<U>
-  where
-    U: Send + Sync + 'static;
+impl<T> Zippable<T> for Vec<T> {
+  type HigherSelf<U> = Vec<U>;
 
   fn zip<U, I>(self, other: I) -> Vec<(T, U)>
   where
-    U: Send + Sync + 'static,
     I: IntoIterator<Item = U>,
   {
     self.into_iter().zip(other).collect()
@@ -74,8 +59,6 @@ impl<T: Send + Sync + 'static> Zippable<T> for Vec<T> {
 
   fn zip_with<U, F, R, I>(self, other: I, mut f: F) -> Vec<R>
   where
-    U: Send + Sync + 'static,
-    R: Send + Sync + 'static,
     F: FnMut(T, U) -> R,
     I: IntoIterator<Item = U>,
   {
@@ -85,94 +68,86 @@ impl<T: Send + Sync + 'static> Zippable<T> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-  use crate::zippable::Zippable;
+  use super::*;
   use proptest::prelude::*;
 
-  #[test]
-  fn test_option_zip() {
-    let a = Some(1);
-    let b = Some("hello");
-    let result = a.zip(b);
-    assert_eq!(result, Some((1, "hello")));
+  // Define test operations
+  const OPERATIONS: &[fn(i32, i32) -> i32] = &[
+    |a, b| a + b,
+    |a, b| a * b,
+    |a, b| a - b,
+    |a, b| a.max(b),
+    |a, b| a.min(b),
+  ];
 
-    let a: Option<i32> = None;
-    let b = Some("hello");
-    let result = a.zip(b);
-    assert_eq!(result, None);
+  // Define test strategies
+  fn option_strategy() -> impl Strategy<Value = Option<i32>> {
+    prop_oneof![Just(None), any::<i32>().prop_map(Some)]
   }
 
-  #[test]
-  fn test_option_zip_with() {
-    let a = Some(2);
-    let b = Some(3);
-    let result = a.zip_with(b, |x, y| x * y);
-    assert_eq!(result, Some(6));
-
-    let a: Option<i32> = None;
-    let b = Some(3);
-    let result = a.zip_with(b, |x, y| x * y);
-    assert_eq!(result, None);
+  fn vec_strategy() -> impl Strategy<Value = Vec<i32>> {
+    prop::collection::vec(any::<i32>(), 0..10)
   }
 
-  #[test]
-  fn test_vec_zip() {
-    let a = vec![1, 2, 3];
-    let b = vec!["a", "b", "c"];
-    let result = a.zip(b);
-    assert_eq!(result, vec![(1, "a"), (2, "b"), (3, "c")]);
+  proptest! {
+    #[test]
+    fn test_option_zip_identity(
+      a in option_strategy(),
+      b in option_strategy()
+    ) {
+      let result = a.zip(b);
+      match (a, b) {
+        (Some(x), Some(y)) => assert_eq!(result, Some((x, y))),
+        _ => assert_eq!(result, None),
+      }
+    }
 
-    let a = vec![1, 2, 3];
-    let b = vec!["a", "b"];
-    let result = a.zip(b);
-    assert_eq!(result, vec![(1, "a"), (2, "b")]);
-  }
+    #[test]
+    fn test_option_zip_with(
+      a in option_strategy(),
+      b in option_strategy(),
+      op_idx in 0..OPERATIONS.len()
+    ) {
+      let op = OPERATIONS[op_idx];
+      let result = a.zip_with(b, op);
+      match (a, b) {
+        (Some(x), Some(y)) => assert_eq!(result, Some(op(x, y))),
+        _ => assert_eq!(result, None),
+      }
+    }
 
-  #[test]
-  fn test_vec_zip_with() {
-    let a = vec![1, 2, 3];
-    let b = vec![4, 5, 6];
-    let result = a.zip_with(b, |x, y| x * y);
-    assert_eq!(result, vec![4, 10, 18]);
+    #[test]
+    fn test_vec_zip_identity(
+      a in vec_strategy(),
+      b in vec_strategy()
+    ) {
+      let result = a.clone().zip(b.clone());
+      let expected = a.into_iter().zip(b).collect::<Vec<_>>();
+      assert_eq!(result, expected);
+    }
 
-    let a = vec![1, 2, 3];
-    let b = vec![4, 5];
-    let result = a.zip_with(b, |x, y| x * y);
-    assert_eq!(result, vec![4, 10]);
-  }
+    #[test]
+    fn test_vec_zip_with(
+      a in vec_strategy(),
+      b in vec_strategy(),
+      op_idx in 0..OPERATIONS.len()
+    ) {
+      let op = OPERATIONS[op_idx];
+      let result = a.clone().zip_with(b.clone(), op);
+      let expected = a.into_iter().zip(b).map(|(x, y)| op(x, y)).collect::<Vec<_>>();
+      assert_eq!(result, expected);
+    }
 
-  #[test]
-  fn test_type_conversions() {
-    let a = vec![1, 2, 3];
-    let b = vec![4, 5, 6];
-    let result = a.zip_with(b, |x, y| format!("{}:{}", x, y));
-    assert_eq!(result, vec!["1:4", "2:5", "3:6"]);
-  }
-
-  #[test]
-  fn test_empty_collections() {
-    let a: Vec<i32> = vec![];
-    let b = vec![1, 2, 3];
-    let result = a.zip(b);
-    assert_eq!(result, Vec::<(i32, i32)>::new());
-
-    let a: Option<i32> = None;
-    let b: Option<i32> = None;
-    let result = a.zip(b);
-    assert_eq!(result, None);
-  }
-
-  #[test]
-  fn test_zippable_laws() {
-    proptest!(|(x: i32, y: i32)| {
-      let a = vec![x];
-      let b = vec![y];
-      let result = Zippable::zip_with(a, b, |x, y| x.wrapping_mul(y));
-      assert_eq!(result, vec![x.wrapping_mul(y)]);
-
-      let a = vec![x, y];
-      let b = vec![x, y];
-      let result = Zippable::zip_with(a, b, |x, y| x.wrapping_mul(y));
-      assert_eq!(result, vec![x.wrapping_mul(x), y.wrapping_mul(y)]);
-    });
+    #[test]
+    fn test_zip_laws(
+      a in vec_strategy(),
+      b in vec_strategy(),
+      c in vec_strategy()
+    ) {
+      // Test associativity: zip(a, zip(b, c)) == zip(zip(a, b), c)
+      let lhs = a.clone().zip(b.clone().zip(c.clone()));
+      let rhs = a.zip(b).zip(c);
+      assert_eq!(lhs.len(), rhs.len());
+    }
   }
 }

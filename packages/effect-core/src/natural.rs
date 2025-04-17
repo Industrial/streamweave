@@ -1,10 +1,8 @@
-use crate::{effect::Effect, functor::Functor};
+use crate::functor::Functor;
 use futures_io::Error as IoError;
 use std::convert::From;
 use std::error::Error;
 use std::fmt;
-use std::fmt::Display;
-use std::io;
 
 /// A natural transformation is a mapping between functors that preserves the structure.
 /// It must satisfy the naturality condition: map f . transform = transform . map f
@@ -109,37 +107,23 @@ where
   }
 }
 
-// Example implementation: Option -> Effect
-impl<E> Natural<Option<()>, Effect<(), E>> for Effect<(), E>
-where
-  E: Error + Send + Sync + From<std::io::Error> + 'static,
-{
-  fn transform<T: Clone + Send + Sync + 'static>(fa: Option<T>) -> Effect<T, E> {
-    match fa {
-      Some(value) => Effect::pure(value),
-      None => Effect::error(E::from(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        "None value",
-      ))),
-    }
-  }
-}
-
-// Example implementation: Result -> Effect
-impl<E: Error + Send + Sync + 'static> Natural<Result<(), E>, Effect<(), E>> for Effect<(), E> {
-  fn transform<T: Clone + Send + Sync + 'static>(fa: Result<T, E>) -> Effect<T, E> {
-    match fa {
-      Ok(value) => Effect::pure(value),
-      Err(e) => Effect::error(e),
-    }
-  }
-}
-
 #[cfg(test)]
 mod tests {
+  use crate::Effect;
+
   use super::*;
   use proptest::prelude::*;
   use std::io::Error as IoError;
+
+  // Define test functions for naturality condition tests
+  const FUNCTIONS: &[fn(i32) -> i32] = &[
+    |x| x + 1,
+    |x| x * 2,
+    |x| x - 1,
+    |x| x / 2,
+    |x| x * x,
+    |x| -x,
+  ];
 
   // Helper function to create test error
   fn test_error(msg: &str) -> IoError {
@@ -164,10 +148,9 @@ mod tests {
     }
   }
 
-  #[test]
-  fn test_vec_to_option() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
+  proptest! {
+    #[test]
+    fn test_vec_to_option(x in any::<i32>()) {
       // Non-empty vector
       let vec = vec![x];
       let opt = <Option<()> as Natural<Vec<()>, Option<()>>>::transform(vec.clone());
@@ -177,13 +160,10 @@ mod tests {
       let empty: Vec<i32> = vec![];
       let opt_empty = <Option<()> as Natural<Vec<()>, Option<()>>>::transform(empty);
       assert_eq!(opt_empty, None);
-    });
-  }
+    }
 
-  #[test]
-  fn test_vec_to_result() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
+    #[test]
+    fn test_vec_to_result(x in any::<i32>()) {
       // Non-empty vector
       let vec = vec![x];
       let res = <Result<(), IoError> as Natural<Vec<()>, Result<(), IoError>>>::transform(vec.clone());
@@ -193,13 +173,10 @@ mod tests {
       let empty: Vec<i32> = vec![];
       let res_empty = <Result<(), IoError> as Natural<Vec<()>, Result<(), IoError>>>::transform(empty);
       assert!(res_empty.is_err());
-    });
-  }
+    }
 
-  #[test]
-  fn test_option_to_vec() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
+    #[test]
+    fn test_option_to_vec(x in any::<i32>()) {
       // Some value
       let opt = Some(x);
       let vec = <Vec<()> as Natural<Option<()>, Vec<()>>>::transform(opt);
@@ -209,13 +186,10 @@ mod tests {
       let none: Option<i32> = None;
       let vec_none = <Vec<()> as Natural<Option<()>, Vec<()>>>::transform(none);
       assert!(vec_none.is_empty());
-    });
-  }
+    }
 
-  #[test]
-  fn test_result_to_vec() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
+    #[test]
+    fn test_result_to_vec(x in any::<i32>()) {
       // Ok value
       let res: Result<i32, IoError> = Ok(x);
       let vec = <Vec<()> as Natural<Result<(), IoError>, Vec<()>>>::transform(res);
@@ -226,13 +200,10 @@ mod tests {
       let res_err: Result<i32, IoError> = Err(err);
       let vec_err = <Vec<()> as Natural<Result<(), IoError>, Vec<()>>>::transform(res_err);
       assert!(vec_err.is_empty());
-    });
-  }
+    }
 
-  #[test]
-  fn test_result_to_option() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
+    #[test]
+    fn test_result_to_option(x in any::<i32>()) {
       // Ok value
       let res: Result<i32, IoError> = Ok(x);
       let opt = <Option<()> as Natural<Result<(), IoError>, Option<()>>>::transform(res);
@@ -243,13 +214,10 @@ mod tests {
       let res_err: Result<i32, IoError> = Err(err);
       let opt_err = <Option<()> as Natural<Result<(), IoError>, Option<()>>>::transform(res_err);
       assert_eq!(opt_err, None);
-    });
-  }
+    }
 
-  #[test]
-  fn test_option_to_result() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
+    #[test]
+    fn test_option_to_result(x in any::<i32>()) {
       // Some value
       let opt = Some(x);
       let res = <Result<(), IoError> as Natural<Option<()>, Result<(), IoError>>>::transform(opt);
@@ -259,49 +227,40 @@ mod tests {
       let none: Option<i32> = None;
       let res_none = <Result<(), IoError> as Natural<Option<()>, Result<(), IoError>>>::transform(none);
       assert!(res_none.is_err());
-    });
-  }
+    }
 
-  #[test]
-  fn test_option_to_effect_some() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
+    #[test]
+    fn test_option_to_effect_some(x in any::<i32>()) {
       let rt = tokio::runtime::Runtime::new().unwrap();
       rt.block_on(async {
         let opt = Some(x);
         let eff = <Effect<_, IoError> as Natural<Option<()>, Effect<(), IoError>>>::transform(opt);
         assert_eq!(eff.run().await.unwrap(), x);
       });
-    });
-  }
+    }
 
-  #[test]
-  fn test_option_to_effect_none() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(async {
-      let opt: Option<i32> = None;
-      let eff = <Effect<_, IoError> as Natural<Option<()>, Effect<(), IoError>>>::transform(opt);
-      assert!(eff.run().await.is_err());
-    });
-  }
+    #[test]
+    fn test_option_to_effect_none(x in any::<i32>()) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(async {
+        let opt: Option<i32> = None;
+        let eff = <Effect<_, IoError> as Natural<Option<()>, Effect<(), IoError>>>::transform(opt);
+        assert!(eff.run().await.is_err());
+      });
+    }
 
-  #[test]
-  fn test_result_to_effect_ok() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
+    #[test]
+    fn test_result_to_effect_ok(x in any::<i32>()) {
       let rt = tokio::runtime::Runtime::new().unwrap();
       rt.block_on(async {
         let res: Result<i32, IoError> = Ok(x);
         let eff = <Effect<_, IoError> as Natural<Result<(), IoError>, Effect<(), IoError>>>::transform(res);
         assert_eq!(eff.run().await.unwrap(), x);
       });
-    });
-  }
+    }
 
-  #[test]
-  fn test_result_to_effect_err() {
-    let strategy = ".*".prop_filter("Empty string is not allowed", |s| !s.is_empty());
-    proptest!(|(msg in strategy)| {
+    #[test]
+    fn test_result_to_effect_err(x in any::<i32>(), msg in ".*".prop_filter("Empty string is not allowed", |s| !s.is_empty())) {
       let rt = tokio::runtime::Runtime::new().unwrap();
       rt.block_on(async {
         let err = test_error(&msg);
@@ -311,15 +270,17 @@ mod tests {
         let err2 = eff.run().await.unwrap_err();
         assert_errors_eq(&err2, &clonable_err.0);
       });
-    });
-  }
+    }
 
-  // Naturality condition tests for new implementations
-  #[test]
-  fn test_naturality_vec_to_option() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
-      let f = |x: i32| x.wrapping_mul(2);
+    // Naturality condition tests for new implementations
+    #[test]
+    fn test_naturality_vec_to_option(
+      x in any::<i32>(),
+      f_idx in 0..FUNCTIONS.len(),
+      g_idx in 0..FUNCTIONS.len()
+    ) {
+      let f = FUNCTIONS[f_idx];
+      let g = FUNCTIONS[g_idx];
 
       // Path 1: map f . transform
       let vec = vec![x];
@@ -332,14 +293,16 @@ mod tests {
       let opt2 = <Option<()> as Natural<Vec<()>, Option<()>>>::transform(mapped_vec);
 
       assert_eq!(mapped1, opt2);
-    });
-  }
+    }
 
-  #[test]
-  fn test_naturality_vec_to_result() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
-      let f = |x: i32| x.wrapping_mul(2);
+    #[test]
+    fn test_naturality_vec_to_result(
+      x in any::<i32>(),
+      f_idx in 0..FUNCTIONS.len(),
+      g_idx in 0..FUNCTIONS.len()
+    ) {
+      let f = FUNCTIONS[f_idx];
+      let g = FUNCTIONS[g_idx];
 
       // Path 1: map f . transform
       let vec = vec![x];
@@ -352,14 +315,16 @@ mod tests {
       let res2 = <Result<(), IoError> as Natural<Vec<()>, Result<(), IoError>>>::transform(mapped_vec);
 
       assert_results_eq(mapped1, res2);
-    });
-  }
+    }
 
-  #[test]
-  fn test_naturality_option_to_vec() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
-      let f = |x: i32| x.wrapping_mul(2);
+    #[test]
+    fn test_naturality_option_to_vec(
+      x in any::<i32>(),
+      f_idx in 0..FUNCTIONS.len(),
+      g_idx in 0..FUNCTIONS.len()
+    ) {
+      let f = FUNCTIONS[f_idx];
+      let g = FUNCTIONS[g_idx];
 
       // Path 1: map f . transform
       let opt = Some(x);
@@ -372,14 +337,16 @@ mod tests {
       let vec2 = <Vec<()> as Natural<Option<()>, Vec<()>>>::transform(mapped_opt);
 
       assert_eq!(mapped1, vec2);
-    });
-  }
+    }
 
-  #[test]
-  fn test_naturality_result_to_vec() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
-      let f = |x: i32| x.wrapping_mul(2);
+    #[test]
+    fn test_naturality_result_to_vec(
+      x in any::<i32>(),
+      f_idx in 0..FUNCTIONS.len(),
+      g_idx in 0..FUNCTIONS.len()
+    ) {
+      let f = FUNCTIONS[f_idx];
+      let g = FUNCTIONS[g_idx];
 
       // Path 1: map f . transform
       let res: Result<i32, IoError> = Ok(x);
@@ -392,14 +359,16 @@ mod tests {
       let vec2 = <Vec<()> as Natural<Result<(), IoError>, Vec<()>>>::transform(mapped_res);
 
       assert_eq!(mapped1, vec2);
-    });
-  }
+    }
 
-  #[test]
-  fn test_naturality_result_to_option() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
-      let f = |x: i32| x.wrapping_mul(2);
+    #[test]
+    fn test_naturality_result_to_option(
+      x in any::<i32>(),
+      f_idx in 0..FUNCTIONS.len(),
+      g_idx in 0..FUNCTIONS.len()
+    ) {
+      let f = FUNCTIONS[f_idx];
+      let g = FUNCTIONS[g_idx];
 
       // Path 1: map f . transform
       let res: Result<i32, IoError> = Ok(x);
@@ -412,14 +381,16 @@ mod tests {
       let opt2 = <Option<()> as Natural<Result<(), IoError>, Option<()>>>::transform(mapped_res);
 
       assert_eq!(mapped1, opt2);
-    });
-  }
+    }
 
-  #[test]
-  fn test_naturality_option_to_result() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
-      let f = |x: i32| x.wrapping_mul(2);
+    #[test]
+    fn test_naturality_option_to_result(
+      x in any::<i32>(),
+      f_idx in 0..FUNCTIONS.len(),
+      g_idx in 0..FUNCTIONS.len()
+    ) {
+      let f = FUNCTIONS[f_idx];
+      let g = FUNCTIONS[g_idx];
 
       // Path 1: map f . transform
       let opt = Some(x);
@@ -432,17 +403,18 @@ mod tests {
       let res2 = <Result<(), IoError> as Natural<Option<()>, Result<(), IoError>>>::transform(mapped_opt);
 
       assert_results_eq(mapped1, res2);
-    });
-  }
+    }
 
-  #[test]
-  fn test_naturality_condition_option() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
+    #[test]
+    fn test_naturality_condition_option(
+      x in any::<i32>(),
+      f_idx in 0..FUNCTIONS.len(),
+      g_idx in 0..FUNCTIONS.len()
+    ) {
       let rt = tokio::runtime::Runtime::new().unwrap();
       rt.block_on(async {
-        // Test that map f . transform = transform . map f
-        let f = |x: i32| x.wrapping_mul(2);
+        let f = FUNCTIONS[f_idx];
+        let g = FUNCTIONS[g_idx];
 
         // Path 1: map f . transform
         let opt = Some(x);
@@ -458,17 +430,18 @@ mod tests {
         let res2 = eff2.run().await;
         assert_results_eq(res1, res2);
       });
-    });
-  }
+    }
 
-  #[test]
-  fn test_naturality_condition_result() {
-    let strategy = any::<i32>();
-    proptest!(|(x in strategy)| {
+    #[test]
+    fn test_naturality_condition_result(
+      x in any::<i32>(),
+      f_idx in 0..FUNCTIONS.len(),
+      g_idx in 0..FUNCTIONS.len()
+    ) {
       let rt = tokio::runtime::Runtime::new().unwrap();
       rt.block_on(async {
-        // Test that map f . transform = transform . map f
-        let f = |x: i32| x.wrapping_mul(2);
+        let f = FUNCTIONS[f_idx];
+        let g = FUNCTIONS[g_idx];
 
         // Path 1: map f . transform
         let res: Result<i32, IoError> = Ok(x);
@@ -484,6 +457,72 @@ mod tests {
         let res2 = eff2.run().await;
         assert_results_eq(res1, res2);
       });
-    });
+    }
+
+    #[test]
+    fn test_vec_to_option_naturality(x in any::<i32>()) {
+      for &f in FUNCTIONS {
+        let vec = vec![x];
+        let transformed = <Option<()> as Natural<Vec<()>, Option<()>>>::transform(vec.clone());
+        let mapped = vec.into_iter().map(f).collect::<Vec<_>>();
+        let transformed_mapped = <Option<()> as Natural<Vec<()>, Option<()>>>::transform(mapped);
+        assert_eq!(transformed.map(f), transformed_mapped);
+      }
+    }
+
+    #[test]
+    fn test_vec_to_result_naturality(x in any::<i32>()) {
+      for &f in FUNCTIONS {
+        let vec = vec![x];
+        let transformed = <Result<(), IoError> as Natural<Vec<()>, Result<(), IoError>>>::transform(vec.clone());
+        let mapped = vec.into_iter().map(f).collect::<Vec<_>>();
+        let transformed_mapped = <Result<(), IoError> as Natural<Vec<()>, Result<(), IoError>>>::transform(mapped);
+        assert_results_eq(transformed.map(f), transformed_mapped);
+      }
+    }
+
+    #[test]
+    fn test_option_to_vec_naturality(x in any::<i32>()) {
+      for &f in FUNCTIONS {
+        let opt = Some(x);
+        let transformed = <Vec<()> as Natural<Option<()>, Vec<()>>>::transform(opt);
+        let mapped = opt.map(f);
+        let transformed_mapped = <Vec<()> as Natural<Option<()>, Vec<()>>>::transform(mapped);
+        assert_eq!(transformed.into_iter().map(f).collect::<Vec<_>>(), transformed_mapped);
+      }
+    }
+
+    #[test]
+    fn test_result_to_vec_naturality(x in any::<i32>()) {
+      for &f in FUNCTIONS {
+        let res: Result<i32, IoError> = Ok(x);
+        let transformed = <Vec<()> as Natural<Result<(), IoError>, Vec<()>>>::transform(res.clone());
+        let mapped = res.map(f);
+        let transformed_mapped = <Vec<()> as Natural<Result<(), IoError>, Vec<()>>>::transform(mapped);
+        assert_eq!(transformed.into_iter().map(f).collect::<Vec<_>>(), transformed_mapped);
+      }
+    }
+
+    #[test]
+    fn test_result_to_option_naturality(x in any::<i32>()) {
+      for &f in FUNCTIONS {
+        let res: Result<i32, IoError> = Ok(x);
+        let transformed = <Option<()> as Natural<Result<(), IoError>, Option<()>>>::transform(res.clone());
+        let mapped = res.map(f);
+        let transformed_mapped = <Option<()> as Natural<Result<(), IoError>, Option<()>>>::transform(mapped);
+        assert_eq!(transformed.map(f), transformed_mapped);
+      }
+    }
+
+    #[test]
+    fn test_option_to_result_naturality(x in any::<i32>()) {
+      for &f in FUNCTIONS {
+        let opt = Some(x);
+        let transformed = <Result<(), IoError> as Natural<Option<()>, Result<(), IoError>>>::transform(opt);
+        let mapped = opt.map(f);
+        let transformed_mapped = <Result<(), IoError> as Natural<Option<()>, Result<(), IoError>>>::transform(mapped);
+        assert_results_eq(transformed.map(f), transformed_mapped);
+      }
+    }
   }
 }

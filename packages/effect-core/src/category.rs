@@ -1,10 +1,16 @@
-use super::bifunctor::Bifunctor;
-use super::contravariant::Contravariant;
-use std::marker::PhantomData;
-use std::sync::Arc;
+use crate::{compose::Compose, morphism::Morphism};
 
-pub trait Category {
-  type Morphism<A: Send + Sync + 'static, B: Send + Sync + 'static>;
+/// A category is a collection of objects and morphisms (arrows) between them.
+///
+/// # Safety
+///
+/// This trait requires that all implementations be thread-safe by default.
+/// This means that:
+/// - The type parameter T must implement Send + Sync + 'static
+/// - The type parameter U must implement Send + Sync + 'static
+/// - The composition function must implement Send + Sync + 'static
+pub trait Category<T: Send + Sync + 'static, U: Send + Sync + 'static> {
+  type Morphism<A: Send + Sync + 'static, B: Send + Sync + 'static>: Send + Sync + 'static;
 
   fn id<A: Send + Sync + 'static>() -> Self::Morphism<A, A>;
 
@@ -26,160 +32,71 @@ pub trait Category {
   ) -> Self::Morphism<(C, A), (C, B)>;
 }
 
-pub struct Morphism<A: Send + Sync + 'static, B: Send + Sync + 'static> {
-  f: Arc<dyn Fn(A) -> B + Send + Sync + 'static>,
-  _phantom: PhantomData<(A, B)>,
-}
+impl<A: Send + Sync + 'static, B: Send + Sync + 'static> Category<A, B> for Morphism<A, B> {
+  type Morphism<C: Send + Sync + 'static, D: Send + Sync + 'static> = Morphism<C, D>;
 
-impl<A: Send + Sync + 'static, B: Send + Sync + 'static> Clone for Morphism<A, B> {
-  fn clone(&self) -> Self {
-    Self {
-      f: self.f.clone(),
-      _phantom: PhantomData,
-    }
+  fn id<C: Send + Sync + 'static>() -> Self::Morphism<C, C> {
+    Morphism::new(|x| x)
   }
-}
 
-impl<A: Send + Sync + 'static, B: Send + Sync + 'static> Morphism<A, B> {
-  pub fn new<F>(f: F) -> Self
+  fn compose<C: Send + Sync + 'static, D: Send + Sync + 'static, E: Send + Sync + 'static>(
+    f: Self::Morphism<C, D>,
+    g: Self::Morphism<D, E>,
+  ) -> Self::Morphism<C, E> {
+    Morphism::new(move |x| g.apply(f.apply(x)))
+  }
+
+  fn arr<C: Send + Sync + 'static, D: Send + Sync + 'static, F>(f: F) -> Self::Morphism<C, D>
   where
-    F: Fn(A) -> B + Send + Sync + 'static,
+    F: Fn(C) -> D + Send + Sync + 'static,
   {
-    Self {
-      f: Arc::new(f),
-      _phantom: PhantomData,
-    }
+    Morphism::new(f)
   }
 
-  pub fn apply(&self, x: A) -> B {
-    (self.f)(x)
+  fn first<C: Send + Sync + 'static, D: Send + Sync + 'static, E: Send + Sync + 'static>(
+    f: Self::Morphism<C, D>,
+  ) -> Self::Morphism<(C, E), (D, E)> {
+    Morphism::new(move |(x, y)| (f.apply(x), y))
+  }
+
+  fn second<C: Send + Sync + 'static, D: Send + Sync + 'static, E: Send + Sync + 'static>(
+    f: Self::Morphism<C, D>,
+  ) -> Self::Morphism<(E, C), (E, D)> {
+    Morphism::new(move |(x, y)| (x, f.apply(y)))
   }
 }
 
-impl Category for Morphism<(), ()> {
-  type Morphism<A: Send + Sync + 'static, B: Send + Sync + 'static> = Morphism<A, B>;
+impl Category<(), ()> for Compose<(), ()> {
+  type Morphism<A: Send + Sync + 'static, B: Send + Sync + 'static> = Compose<A, B>;
 
   fn id<A: Send + Sync + 'static>() -> Self::Morphism<A, A> {
-    Morphism::new(|x| x)
+    Compose::new(|x| x, |x| x)
   }
 
   fn compose<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
     f: Self::Morphism<A, B>,
     g: Self::Morphism<B, C>,
   ) -> Self::Morphism<A, C> {
-    Morphism::new(move |x| g.apply(f.apply(x)))
+    Compose::new(move |x| g.apply(f.apply(x)), |x| x)
   }
 
   fn arr<A: Send + Sync + 'static, B: Send + Sync + 'static, F>(f: F) -> Self::Morphism<A, B>
   where
     F: Fn(A) -> B + Send + Sync + 'static,
   {
-    Morphism::new(f)
+    Compose::new(f, |x| x)
   }
 
   fn first<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
     f: Self::Morphism<A, B>,
   ) -> Self::Morphism<(A, C), (B, C)> {
-    Morphism::new(move |(a, c)| (f.apply(a), c))
+    Compose::new(move |(a, c)| (f.apply(a), c), |x| x)
   }
 
   fn second<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
     f: Self::Morphism<A, B>,
   ) -> Self::Morphism<(C, A), (C, B)> {
-    Morphism::new(move |(c, a)| (c, f.apply(a)))
-  }
-}
-
-impl Bifunctor for Morphism<(), ()> {
-  fn bimap<X, Y, Z, W, F, G>(f: F, g: G) -> Self::Morphism<(X, Y), (Z, W)>
-  where
-    X: Send + Sync + 'static,
-    Y: Send + Sync + 'static,
-    Z: Send + Sync + 'static,
-    W: Send + Sync + 'static,
-    F: Fn(X) -> Z + Send + Sync + 'static,
-    G: Fn(Y) -> W + Send + Sync + 'static,
-  {
-    Morphism::new(move |(x, y)| (f(x), g(y)))
-  }
-}
-
-impl Contravariant for Morphism<(), ()> {
-  fn contramap<A, B, F>(f: F) -> Self::Morphism<B, A>
-  where
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    F: Fn(B) -> A + Send + Sync + 'static,
-  {
-    Morphism::new(f)
-  }
-}
-
-impl<U> Category for Option<U> {
-  type Morphism<A: Send + Sync + 'static, B: Send + Sync + 'static> = Option<B>;
-
-  fn id<A: Send + Sync + 'static>() -> Self::Morphism<A, A> {
-    None
-  }
-
-  fn compose<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
-    f: Self::Morphism<A, B>,
-    g: Self::Morphism<B, C>,
-  ) -> Self::Morphism<A, C> {
-    f.and_then(|_| g)
-  }
-
-  fn arr<A: Send + Sync + 'static, B: Send + Sync + 'static, F>(_f: F) -> Self::Morphism<A, B>
-  where
-    F: Fn(A) -> B + Send + Sync + 'static,
-  {
-    None
-  }
-
-  fn first<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
-    f: Self::Morphism<A, B>,
-  ) -> Self::Morphism<(A, C), (B, C)> {
-    None
-  }
-
-  fn second<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
-    f: Self::Morphism<A, B>,
-  ) -> Self::Morphism<(C, A), (C, B)> {
-    None
-  }
-}
-
-impl<U, E: Send + Sync + Default + 'static> Category for Result<U, E> {
-  type Morphism<A: Send + Sync + 'static, B: Send + Sync + 'static> = Result<B, E>;
-
-  fn id<A: Send + Sync + 'static>() -> Self::Morphism<A, A> {
-    Err(E::default())
-  }
-
-  fn compose<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
-    f: Self::Morphism<A, B>,
-    g: Self::Morphism<B, C>,
-  ) -> Self::Morphism<A, C> {
-    f.and_then(|_| g)
-  }
-
-  fn arr<A: Send + Sync + 'static, B: Send + Sync + 'static, F>(_f: F) -> Self::Morphism<A, B>
-  where
-    F: Fn(A) -> B + Send + Sync + 'static,
-  {
-    Err(E::default())
-  }
-
-  fn first<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
-    f: Self::Morphism<A, B>,
-  ) -> Self::Morphism<(A, C), (B, C)> {
-    Err(E::default())
-  }
-
-  fn second<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
-    f: Self::Morphism<A, B>,
-  ) -> Self::Morphism<(C, A), (C, B)> {
-    Err(E::default())
+    Compose::new(move |(c, a)| (c, f.apply(a)), |x| x)
   }
 }
 
@@ -188,101 +105,173 @@ mod tests {
   use super::*;
   use proptest::prelude::*;
 
+  // Define test functions for i32
+  const I32_FUNCTIONS: &[fn(i32) -> i32] = &[
+    |x| x + 1,
+    |x| x * 2,
+    |x| x - 1,
+    |x| x / 2,
+    |x| x * x,
+    |x| -x,
+  ];
+
+  // Define test functions for String
+  const STRING_FUNCTIONS: &[fn(String) -> String] = &[
+    |s| s + "a",
+    |s| s.repeat(2),
+    |s| s.chars().rev().collect(),
+    |s| s.to_uppercase(),
+    |s| s.to_lowercase(),
+    |s| s.trim().to_string(),
+  ];
+
+  // Define test functions for tuples
+  const TUPLE_FUNCTIONS: &[fn((i32, String)) -> (i32, String)] = &[
+    |(x, s)| (x + 1, s + "a"),
+    |(x, s)| (x * 2, s.repeat(2)),
+    |(x, s)| (x - 1, s.chars().rev().collect()),
+  ];
+
   proptest! {
-    #[test]
-    fn test_category_composition(a: i32) {
-      let f = <Morphism<(), ()> as Category>::arr(|x: i32| x.checked_add(1).unwrap_or(i32::MAX));
-      let g = <Morphism<(), ()> as Category>::arr(|x: i32| x.checked_mul(2).unwrap_or(i32::MAX));
-      let composed = <Morphism<(), ()> as Category>::compose(f, g);
-      let expected = a.checked_add(1)
-        .and_then(|x| x.checked_mul(2))
-        .unwrap_or(i32::MAX);
-      assert_eq!(composed.apply(a), expected);
-    }
+      #[test]
+      fn test_identity_laws_i32(x in any::<i32>()) {
+          let id = <Morphism<i32, i32> as Category<i32, i32>>::id::<i32>();
+          assert_eq!(id.apply(x), x);
+      }
 
-    #[test]
-    fn test_category_identity(a: i32) {
-      let id = <Morphism<(), ()> as Category>::id::<i32>();
-      assert_eq!(id.apply(a), a);
-    }
+      #[test]
+      fn test_identity_laws_string(s in ".*") {
+          let id = <Morphism<String, String> as Category<String, String>>::id::<String>();
+          assert_eq!(id.apply(s.to_string()), s);
+      }
 
-    #[test]
-    fn test_category_laws(a: i32) {
-      // Test identity laws
-      let f = <Morphism<(), ()> as Category>::arr(|x: i32| x.checked_mul(2).unwrap_or(i32::MAX));
-      let id = <Morphism<(), ()> as Category>::id::<i32>();
+      #[test]
+      fn test_identity_laws_tuple(
+          x in any::<i32>(),
+          s in ".*"
+      ) {
+          let id = <Morphism<(i32, String), (i32, String)> as Category<(i32, String), (i32, String)>>::id::<(i32, String)>();
+          let input = (x, s.to_string());
+          assert_eq!(id.apply(input.clone()), input);
+      }
 
-      let f_id = <Morphism<(), ()> as Category>::compose(f.clone(), id.clone());
-      let id_f = <Morphism<(), ()> as Category>::compose(id, f.clone());
+      #[test]
+      fn test_composition_laws_i32(
+          x in any::<i32>(),
+          f_idx in 0..I32_FUNCTIONS.len(),
+          g_idx in 0..I32_FUNCTIONS.len()
+      ) {
+          let f = I32_FUNCTIONS[f_idx];
+          let g = I32_FUNCTIONS[g_idx];
 
-      let expected = a.checked_mul(2).unwrap_or(i32::MAX);
-      assert_eq!(f_id.apply(a), expected);
-      assert_eq!(id_f.apply(a), expected);
+          let morphism_f = <Morphism<i32, i32> as Category<i32, i32>>::arr(f);
+          let morphism_g = <Morphism<i32, i32> as Category<i32, i32>>::arr(g);
 
-      // Test associativity
-      let g = <Morphism<(), ()> as Category>::arr(|x: i32| x.checked_add(1).unwrap_or(i32::MAX));
-      let h = <Morphism<(), ()> as Category>::arr(|x: i32| x.checked_mul(3).unwrap_or(i32::MAX));
+          let composed = <Morphism<i32, i32> as Category<i32, i32>>::compose(morphism_f, morphism_g);
+          assert_eq!(composed.apply(x), g(f(x)));
+      }
 
-      let comp1 = <Morphism<(), ()> as Category>::compose(
-        <Morphism<(), ()> as Category>::compose(f.clone(), g.clone()),
-        h.clone()
-      );
-      let comp2 = <Morphism<(), ()> as Category>::compose(
-        f,
-        <Morphism<(), ()> as Category>::compose(g, h)
-      );
+      #[test]
+      fn test_composition_laws_string(
+          s in ".*",
+          f_idx in 0..STRING_FUNCTIONS.len(),
+          g_idx in 0..STRING_FUNCTIONS.len()
+      ) {
+          let f = STRING_FUNCTIONS[f_idx];
+          let g = STRING_FUNCTIONS[g_idx];
 
-      let expected = a.checked_mul(2)
-        .and_then(|x| x.checked_add(1))
-        .and_then(|x| x.checked_mul(3))
-        .unwrap_or(i32::MAX);
-      assert_eq!(comp1.apply(a), expected);
-      assert_eq!(comp2.apply(a), expected);
-    }
+          let morphism_f = <Morphism<String, String> as Category<String, String>>::arr(f);
+          let morphism_g = <Morphism<String, String> as Category<String, String>>::arr(g);
 
-    #[test]
-    fn test_category_arr(a: i32) {
-      let f = <Morphism<(), ()> as Category>::arr(|x: i32| x.checked_mul(2).unwrap_or(i32::MAX));
-      let expected = a.checked_mul(2).unwrap_or(i32::MAX);
-      assert_eq!(f.apply(a), expected);
-    }
+          let composed = <Morphism<String, String> as Category<String, String>>::compose(morphism_f, morphism_g);
+          assert_eq!(composed.apply(s.to_string()), g(f(s.to_string())));
+      }
 
-    #[test]
-    fn test_category_first(a: i32, b: i32) {
-      let f = <Morphism<(), ()> as Category>::arr(|x: i32| x.checked_mul(2).unwrap_or(i32::MAX));
-      let first = <Morphism<(), ()> as Category>::first(f);
-      let expected = (a.checked_mul(2).unwrap_or(i32::MAX), b);
-      assert_eq!(first.apply((a, b)), expected);
-    }
+      #[test]
+      fn test_first_laws(
+          x in any::<i32>(),
+          s in ".*",
+          f_idx in 0..I32_FUNCTIONS.len()
+      ) {
+          let f = I32_FUNCTIONS[f_idx];
+          let morphism_f = <Morphism<i32, i32> as Category<i32, i32>>::arr(f);
 
-    #[test]
-    fn test_category_second(a: i32, b: i32) {
-      let f = <Morphism<(), ()> as Category>::arr(|x: i32| x.checked_mul(2).unwrap_or(i32::MAX));
-      let second = <Morphism<(), ()> as Category>::second(f);
-      let expected = (a, b.checked_mul(2).unwrap_or(i32::MAX));
-      assert_eq!(second.apply((a, b)), expected);
-    }
+          let first_f = <Morphism<i32, i32> as Category<i32, i32>>::first::<i32, i32, String>(morphism_f);
+          let input = (x, s.to_string());
+          let expected = (f(x), s.to_string());
 
-    #[test]
-    fn test_category_first_second_laws(a: i32, b: i32, _c: i32) {
-      let f = <Morphism<(), ()> as Category>::arr(|x: i32| x.checked_mul(2).unwrap_or(i32::MAX));
-      let g = <Morphism<(), ()> as Category>::arr(|x: i32| x.checked_add(1).unwrap_or(i32::MAX));
+          assert_eq!(first_f.apply(input), expected);
+      }
 
-      // Test first . second = second . first
-      let first_then_second = <Morphism<(), ()> as Category>::compose(
-        <Morphism<(), ()> as Category>::first(f.clone()),
-        <Morphism<(), ()> as Category>::second(g.clone())
-      );
+      #[test]
+      fn test_second_laws(
+          x in any::<i32>(),
+          s in ".*",
+          f_idx in 0..STRING_FUNCTIONS.len()
+      ) {
+          let f = STRING_FUNCTIONS[f_idx];
+          let morphism_f = <Morphism<String, String> as Category<String, String>>::arr(f);
 
-      let second_then_first = <Morphism<(), ()> as Category>::compose(
-        <Morphism<(), ()> as Category>::second(g),
-        <Morphism<(), ()> as Category>::first(f)
-      );
+          let second_f = <Morphism<String, String> as Category<String, String>>::second::<String, String, i32>(morphism_f);
+          let input = (x, s.to_string());
+          let expected = (x, f(s.to_string()));
 
-      let input = (a, b);
-      let result1 = first_then_second.apply(input.clone());
-      let result2 = second_then_first.apply(input);
-      assert_eq!(result1, result2);
-    }
+          assert_eq!(second_f.apply(input), expected);
+      }
+
+      #[test]
+      fn test_arr_laws(
+          x in any::<i32>(),
+          f_idx in 0..I32_FUNCTIONS.len()
+      ) {
+          let f = I32_FUNCTIONS[f_idx];
+          let morphism_f = <Morphism<i32, i32> as Category<i32, i32>>::arr(f);
+          assert_eq!(morphism_f.apply(x), f(x));
+      }
+
+      #[test]
+      fn test_compose_implementation(
+          x in any::<i32>(),
+          f_idx in 0..I32_FUNCTIONS.len(),
+          g_idx in 0..I32_FUNCTIONS.len()
+      ) {
+          let f = I32_FUNCTIONS[f_idx];
+          let g = I32_FUNCTIONS[g_idx];
+
+          let morphism_f = <Compose<i32, i32> as Category<i32, i32>>::arr(f);
+          let morphism_g = <Compose<i32, i32> as Category<i32, i32>>::arr(g);
+
+          let composed = <Compose<i32, i32> as Category<i32, i32>>::compose(morphism_f, morphism_g);
+          assert_eq!(composed.apply(x), g(f(x)));
+      }
+  }
+
+  // Test thread safety explicitly
+  #[test]
+  fn test_thread_safety() {
+    let f = |x: i32| x + 1;
+    let morphism_f = <Morphism<i32, i32> as Category<i32, i32>>::arr(f);
+
+    let handle = std::thread::spawn(move || morphism_f.apply(5));
+    assert_eq!(handle.join().unwrap(), 6);
+  }
+
+  // Test edge cases explicitly
+  #[test]
+  fn test_edge_cases() {
+    // Test with i32::MAX
+    let f = |x: i32| x.checked_add(1).unwrap_or(i32::MAX);
+    let g = |x: i32| x.checked_mul(2).unwrap_or(i32::MAX);
+
+    let morphism_f = <Morphism<i32, i32> as Category<i32, i32>>::arr(f);
+    let morphism_g = <Morphism<i32, i32> as Category<i32, i32>>::arr(g);
+
+    let composed = <Morphism<i32, i32> as Category<i32, i32>>::compose(morphism_f, morphism_g);
+    assert_eq!(composed.apply(i32::MAX - 1), i32::MAX);
+
+    // Test with empty string
+    let f = |s: String| s.len();
+    let morphism_f = <Morphism<String, usize> as Category<String, usize>>::arr(f);
+    assert_eq!(morphism_f.apply("".to_string()), 0);
   }
 }

@@ -7,7 +7,7 @@ use crate::Either;
 
 /// The Partitionable trait defines operations for partitioning elements into two collections.
 pub trait Partitionable<T: Send + Sync + 'static> {
-  type HigherSelf<U>
+  type HigherSelf<U: Send + Sync + 'static>
   where
     U: Send + Sync + 'static;
 
@@ -16,27 +16,25 @@ pub trait Partitionable<T: Send + Sync + 'static> {
   /// while elements that don't satisfy the predicate go into the second collection.
   fn partition<F>(self, f: F) -> (Self::HigherSelf<T>, Self::HigherSelf<T>)
   where
-    F: FnMut(&T) -> bool;
+    F: FnMut(&T) -> bool + Send + Sync + 'static;
 
   /// Partitions elements into two collections based on a mapping function that
   /// produces either left or right values.
-  fn partition_map<L, R, F>(self, f: F) -> (Self::HigherSelf<L>, Self::HigherSelf<R>)
+  fn partition_map<L: Send + Sync + 'static, R: Send + Sync + 'static, F>(
+    self,
+    f: F,
+  ) -> (Self::HigherSelf<L>, Self::HigherSelf<R>)
   where
-    L: Send + Sync + 'static,
-    R: Send + Sync + 'static,
-    F: FnMut(T) -> Either<L, R>;
+    F: FnMut(T) -> Either<L, R> + Send + Sync + 'static;
 }
 
 // Implementation for Option
 impl<T: Send + Sync + 'static> Partitionable<T> for Option<T> {
-  type HigherSelf<U>
-    = Option<U>
-  where
-    U: Send + Sync + 'static;
+  type HigherSelf<U: Send + Sync + 'static> = Option<U>;
 
   fn partition<F>(self, mut f: F) -> (Option<T>, Option<T>)
   where
-    F: FnMut(&T) -> bool,
+    F: FnMut(&T) -> bool + Send + Sync + 'static,
   {
     match self {
       Some(value) => {
@@ -50,11 +48,12 @@ impl<T: Send + Sync + 'static> Partitionable<T> for Option<T> {
     }
   }
 
-  fn partition_map<L, R, F>(self, mut f: F) -> (Option<L>, Option<R>)
+  fn partition_map<L: Send + Sync + 'static, R: Send + Sync + 'static, F>(
+    self,
+    mut f: F,
+  ) -> (Option<L>, Option<R>)
   where
-    L: Send + Sync + 'static,
-    R: Send + Sync + 'static,
-    F: FnMut(T) -> Either<L, R>,
+    F: FnMut(T) -> Either<L, R> + Send + Sync + 'static,
   {
     match self {
       Some(value) => match f(value) {
@@ -68,23 +67,21 @@ impl<T: Send + Sync + 'static> Partitionable<T> for Option<T> {
 
 // Implementation for Vec
 impl<T: Send + Sync + 'static> Partitionable<T> for Vec<T> {
-  type HigherSelf<U>
-    = Vec<U>
-  where
-    U: Send + Sync + 'static;
+  type HigherSelf<U: Send + Sync + 'static> = Vec<U>;
 
   fn partition<F>(self, f: F) -> (Vec<T>, Vec<T>)
   where
-    F: FnMut(&T) -> bool,
+    F: FnMut(&T) -> bool + Send + Sync + 'static,
   {
     self.into_iter().partition(f)
   }
 
-  fn partition_map<L, R, F>(self, mut f: F) -> (Vec<L>, Vec<R>)
+  fn partition_map<L: Send + Sync + 'static, R: Send + Sync + 'static, F>(
+    self,
+    mut f: F,
+  ) -> (Vec<L>, Vec<R>)
   where
-    L: Send + Sync + 'static,
-    R: Send + Sync + 'static,
-    F: FnMut(T) -> Either<L, R>,
+    F: FnMut(T) -> Either<L, R> + Send + Sync + 'static,
   {
     let mut lefts = Vec::new();
     let mut rights = Vec::new();

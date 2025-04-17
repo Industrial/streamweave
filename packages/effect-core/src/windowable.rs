@@ -10,26 +10,20 @@ pub trait Windowable {
 
   /// Creates a sliding window of the specified size over the elements.
   /// Returns a vector of windows, where each window is a vector of elements.
-  fn window(self, size: usize) -> Vec<Vec<Self::HigherSelf>>
-  where
-    Self::HigherSelf: Clone;
+  fn window(self, size: usize) -> Vec<Vec<Self::HigherSelf>>;
 
   /// Creates a sliding window of the specified size over the elements,
   /// applying a function to each window.
   fn window_map<F, R>(self, size: usize, f: F) -> Vec<R>
   where
-    F: Fn(&[Self::HigherSelf]) -> R,
-    Self::HigherSelf: Clone;
+    F: Fn(&[Self::HigherSelf]) -> R;
 }
 
 // Implementation for Vec
-impl<T: Send + Sync + Clone> Windowable for Vec<T> {
+impl<T: Clone> Windowable for Vec<T> {
   type HigherSelf = T;
 
-  fn window(self, size: usize) -> Vec<Vec<T>>
-  where
-    T: Clone,
-  {
+  fn window(self, size: usize) -> Vec<Vec<T>> {
     if size == 0 || size > self.len() {
       return Vec::new();
     }
@@ -38,7 +32,7 @@ impl<T: Send + Sync + Clone> Windowable for Vec<T> {
     let mut deque = VecDeque::with_capacity(size);
 
     for item in self {
-      deque.push_back(item.clone());
+      deque.push_back(item);
       if deque.len() == size {
         windows.push(deque.iter().cloned().collect());
         deque.pop_front();
@@ -51,7 +45,6 @@ impl<T: Send + Sync + Clone> Windowable for Vec<T> {
   fn window_map<F, R>(self, size: usize, f: F) -> Vec<R>
   where
     F: Fn(&[T]) -> R,
-    T: Clone,
   {
     if size == 0 || size > self.len() {
       return Vec::new();
@@ -61,7 +54,7 @@ impl<T: Send + Sync + Clone> Windowable for Vec<T> {
     let mut deque = VecDeque::with_capacity(size);
 
     for item in self {
-      deque.push_back(item.clone());
+      deque.push_back(item);
       if deque.len() == size {
         results.push(f(&deque.make_contiguous()));
         deque.pop_front();
@@ -73,13 +66,10 @@ impl<T: Send + Sync + Clone> Windowable for Vec<T> {
 }
 
 // Implementation for Option
-impl<T: Clone> Windowable for Option<T> {
+impl<T> Windowable for Option<T> {
   type HigherSelf = T;
 
-  fn window(self, size: usize) -> Vec<Vec<T>>
-  where
-    T: Clone,
-  {
+  fn window(self, size: usize) -> Vec<Vec<T>> {
     match self {
       Some(value) if size == 1 => vec![vec![value]],
       _ => Vec::new(),
@@ -89,7 +79,6 @@ impl<T: Clone> Windowable for Option<T> {
   fn window_map<F, R>(self, size: usize, f: F) -> Vec<R>
   where
     F: Fn(&[T]) -> R,
-    T: Clone,
   {
     match self {
       Some(value) if size == 1 => vec![f(&[value])],
@@ -119,8 +108,10 @@ mod tests {
   #[test]
   fn test_vec_window_edge_cases() {
     let v = vec![1, 2, 3];
-    assert_eq!(v.clone().window(0), Vec::<Vec<i32>>::new());
-    assert_eq!(v.clone().window(4), Vec::<Vec<i32>>::new());
+    let v_clone = v.clone();
+    assert_eq!(v_clone.window(0), Vec::<Vec<i32>>::new());
+    let v_clone = v.clone();
+    assert_eq!(v_clone.window(4), Vec::<Vec<i32>>::new());
     assert_eq!(v.window(3), vec![vec![1, 2, 3]]);
   }
 

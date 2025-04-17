@@ -1,28 +1,31 @@
-use crate::applicative::Applicative;
-use crate::effect::Effect;
-use std::clone::Clone;
-use std::marker::Send;
-use std::marker::Sync;
+//! Alternative trait and implementations.
+//!
+//! The Alternative trait represents types that are both Applicative and Monoid.
+//! It provides operations for choice and repetition.
+
+use super::applicative::Applicative;
+use std::marker::PhantomData;
+use std::sync::Arc;
 
 /// The Alternative trait represents types that are both Applicative and Monoid.
 /// It provides operations for choice and repetition.
-pub trait Alternative<T>: Applicative<T> {
-  /// The type returned by the many operation
-  type ManyOutput;
-
+///
+/// # Safety
+///
+/// This trait requires that all implementations be thread-safe by default.
+/// This means that:
+/// - The type parameter T must implement Send + Sync + 'static
+/// - The functions f and g must implement Send + Sync + 'static
+pub trait Alternative<T: Send + Sync + 'static>: Applicative<T> {
   /// The empty value for the Alternative type.
   fn empty() -> Self;
 
   /// Combines two Alternative values, choosing the first non-empty one.
   fn alt(self, other: Self) -> Self;
-
-  /// Returns the value if it's non-empty, otherwise returns empty.
-  fn many(self) -> Self::ManyOutput;
 }
 
+/// Implementation of Alternative for Option.
 impl<T: Send + Sync + 'static> Alternative<T> for Option<T> {
-  type ManyOutput = Self;
-
   fn empty() -> Self {
     None
   }
@@ -30,66 +33,16 @@ impl<T: Send + Sync + 'static> Alternative<T> for Option<T> {
   fn alt(self, other: Self) -> Self {
     self.or(other)
   }
-
-  fn many(self) -> Self::ManyOutput {
-    self.alt(Self::empty())
-  }
 }
 
-impl<T: Send + Sync + 'static, E: Default + Send + Sync + 'static> Alternative<T> for Result<T, E> {
-  type ManyOutput = Self;
-
+/// Implementation of Alternative for Result.
+impl<T: Send + Sync + 'static, E: Send + Sync + 'static> Alternative<T> for Result<T, E> {
   fn empty() -> Self {
-    Err(E::default())
+    Err(Arc::new(PhantomData::<E>))
   }
 
   fn alt(self, other: Self) -> Self {
     self.or(other)
-  }
-
-  fn many(self) -> Self::ManyOutput {
-    self.alt(Self::empty())
-  }
-}
-
-impl<T: Send + Sync + Clone + 'static> Alternative<T> for Vec<T> {
-  type ManyOutput = Self;
-
-  fn empty() -> Self {
-    Vec::new()
-  }
-
-  fn alt(self, other: Self) -> Self {
-    if self.is_empty() {
-      other
-    } else {
-      self
-    }
-  }
-
-  fn many(self) -> Self::ManyOutput {
-    self.alt(Self::empty())
-  }
-}
-
-impl<T: Send + Sync + 'static, E: Default + Send + Sync + 'static> Alternative<T> for Effect<T, E> {
-  type ManyOutput = Self;
-
-  fn empty() -> Self {
-    Effect::new(Box::pin(async { Err(E::default()) }))
-  }
-
-  fn alt(self, other: Self) -> Self {
-    Effect::new(Box::pin(async move {
-      match self.await {
-        Ok(value) => Ok(value),
-        Err(_) => other.await,
-      }
-    }))
-  }
-
-  fn many(self) -> Self::ManyOutput {
-    self.alt(Self::empty())
   }
 }
 
@@ -98,66 +51,97 @@ mod tests {
   use super::*;
   use proptest::prelude::*;
 
-  fn result_strategy() -> impl Strategy<Value = Result<i32, i32>> {
-    prop_oneof![Just(Err(0)), any::<i32>().prop_map(Ok)]
-  }
+  // Define test functions that are easy to reason about and won't cause overflow
+  const FUNCTIONS: &[fn(i32) -> i32] = &[
+    |x| x + 1, // Increment
+    |x| x * 2, // Double
+    |x| x - 1, // Decrement
+    |x| x / 2, // Halve
+    |x| x * x, // Square
+    |x| -x,    // Negate
+  ];
 
   proptest! {
-      #[test]
-      fn test_option_alternative_empty(opt: Option<i32>) {
-          let empty = Option::<i32>::empty();
-          assert_eq!(empty, None);
-          assert_eq!(opt.alt(empty), opt);
-      }
+    #[test]
+    fn test_option_alternative_identity(x in any::<i32>()) {
+      let empty = Option::<i32>::empty();
+      assert_eq!(empty, None);
 
-      #[test]
-      fn test_option_alternative_alt(opt1: Option<i32>, opt2: Option<i32>) {
-          let result = opt1.alt(opt2);
-          assert_eq!(result, opt1.or(opt2));
-      }
+      let some_x = Some(x);
+      assert_eq!(some_x.alt(empty), some_x);
+      assert_eq!(empty.alt(some_x), some_x);
+    }
 
-      #[test]
-      fn test_option_alternative_many(opt: Option<i32>) {
-          let result = opt.many();
-          assert_eq!(result, opt.or(None));
-      }
+    #[test]
+    fn test_option_alternative_composition(
+      x in any::<i32>(),
+      f_idx in 0..FUNCTIONS.len(),
+      g_idx in 0..FUNCTIONS.len()
+    ) {
+      let f = FUNCTIONS[f_idx];
+      let g = FUNCTIONS[g_idx];
 
-      #[test]
-      fn test_result_alternative_empty(result in result_strategy()) {
-          let empty = Result::<i32, i32>::empty();
-          assert_eq!(empty, Err(0));
-          assert_eq!(result.alt(empty), result);
-      }
+      let some_fx = Some(f(x));
+      let some_gx = Some(g(x));
 
-      #[test]
-      fn test_result_alternative_alt(result1: Result<i32, i32>, result2: Result<i32, i32>) {
-          let result = result1.alt(result2);
-          assert_eq!(result, result1.or(result2));
-      }
+      // Test that alt prefers the first non-empty value
+      assert_eq!(some_fx.alt(some_gx), some_fx);
+      assert_eq!(some_gx.alt(some_fx), some_gx);
+    }
 
-      #[test]
-      fn test_result_alternative_many(result: Result<i32, i32>) {
-          let result = result.many();
-          assert_eq!(result, result.or(Err(0)));
-      }
+    #[test]
+    fn test_result_alternative_identity(x in any::<i32>()) {
+      let empty = Result::<i32, &str>::empty();
+      assert!(empty.is_err());
 
-      #[test]
-      fn test_vec_alternative_empty(vec: Vec<i32>) {
-          let empty = Vec::<i32>::empty();
-          assert!(empty.is_empty());
-          assert_eq!(vec.clone().alt(empty), vec);
-      }
+      let ok_x = Ok(x);
+      assert_eq!(ok_x.alt(empty), ok_x);
+      assert_eq!(empty.alt(ok_x), ok_x);
+    }
 
-      #[test]
-      fn test_vec_alternative_alt(vec1: Vec<i32>, vec2: Vec<i32>) {
-          let result = vec1.clone().alt(vec2.clone());
-          assert_eq!(result, if vec1.is_empty() { vec2 } else { vec1 });
-      }
+    #[test]
+    fn test_result_alternative_composition(
+      x in any::<i32>(),
+      f_idx in 0..FUNCTIONS.len(),
+      g_idx in 0..FUNCTIONS.len()
+    ) {
+      let f = FUNCTIONS[f_idx];
+      let g = FUNCTIONS[g_idx];
 
-      #[test]
-      fn test_vec_alternative_many(vec: Vec<i32>) {
-          let result = vec.clone().many();
-          assert_eq!(result, if vec.is_empty() { Vec::new() } else { vec });
-      }
+      let ok_fx = Ok(f(x));
+      let ok_gx = Ok(g(x));
+
+      // Test that alt prefers the first non-empty value
+      assert_eq!(ok_fx.alt(ok_gx), ok_fx);
+      assert_eq!(ok_gx.alt(ok_fx), ok_gx);
+    }
+
+    #[test]
+    fn test_option_alternative_empty_composition(
+      f_idx in 0..FUNCTIONS.len()
+    ) {
+      let empty = Option::<i32>::empty();
+      let f = FUNCTIONS[f_idx];
+
+      // Test that empty.alt(empty) is empty
+      assert_eq!(empty.alt(empty), empty);
+
+      // Test that empty.alt(Some(f(0))) is Some(f(0))
+      assert_eq!(empty.alt(Some(f(0))), Some(f(0)));
+    }
+
+    #[test]
+    fn test_result_alternative_empty_composition(
+      f_idx in 0..FUNCTIONS.len()
+    ) {
+      let empty = Result::<i32, &str>::empty();
+      let f = FUNCTIONS[f_idx];
+
+      // Test that empty.alt(empty) is empty
+      assert!(empty.alt(empty).is_err());
+
+      // Test that empty.alt(Ok(f(0))) is Ok(f(0))
+      assert_eq!(empty.alt(Ok(f(0))), Ok(f(0)));
+    }
   }
 }

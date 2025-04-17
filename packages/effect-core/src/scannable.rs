@@ -4,143 +4,128 @@
 //! producing intermediate results.
 
 /// The Scannable trait defines operations for performing cumulative operations on elements.
-pub trait Scannable<T: Send + Sync + 'static> {
+pub trait Scannable<T: 'static> {
   type HigherSelf<U>
   where
-    U: Send + Sync + 'static;
+    U: 'static;
 
   /// Performs a left scan (fold) operation, producing all intermediate results
   fn scan_left<B, F>(self, init: B, f: F) -> Self::HigherSelf<B>
   where
-    B: Send + Sync + Clone + 'static,
+    B: 'static,
     F: FnMut(B, T) -> B;
 
   /// Performs a right scan (fold) operation, producing all intermediate results
   fn scan_right<B, F>(self, init: B, f: F) -> Self::HigherSelf<B>
   where
-    B: Send + Sync + Clone + 'static,
+    B: 'static,
     F: FnMut(T, B) -> B;
 }
 
 // Implementation for Option
-impl<T: Send + Sync + 'static> Scannable<T> for Option<T> {
+impl<T: 'static> Scannable<T> for Option<T> {
   type HigherSelf<U>
     = Option<U>
   where
-    U: Send + Sync + 'static;
+    U: 'static;
 
   fn scan_left<B, F>(self, init: B, mut f: F) -> Option<B>
   where
-    B: Send + Sync + Clone + 'static,
+    B: 'static,
     F: FnMut(B, T) -> B,
   {
-    self.map(|x| f(init.clone(), x))
+    self.map(|x| f(init, x))
   }
 
   fn scan_right<B, F>(self, init: B, mut f: F) -> Option<B>
   where
-    B: Send + Sync + Clone + 'static,
+    B: 'static,
     F: FnMut(T, B) -> B,
   {
-    self.map(|x| f(x, init.clone()))
-  }
-}
-
-// Implementation for Vec
-impl<T: Send + Sync + 'static> Scannable<T> for Vec<T> {
-  type HigherSelf<U>
-    = Vec<U>
-  where
-    U: Send + Sync + 'static;
-
-  fn scan_left<B, F>(self, init: B, mut f: F) -> Vec<B>
-  where
-    B: Send + Sync + Clone + 'static,
-    F: FnMut(B, T) -> B,
-  {
-    let mut result = Vec::with_capacity(self.len() + 1);
-    result.push(init.clone());
-    let mut acc = init;
-    for x in self {
-      acc = f(acc, x);
-      result.push(acc.clone());
-    }
-    result
-  }
-
-  fn scan_right<B, F>(self, init: B, mut f: F) -> Vec<B>
-  where
-    B: Send + Sync + Clone + 'static,
-    F: FnMut(T, B) -> B,
-  {
-    let mut result = Vec::with_capacity(self.len() + 1);
-    let mut acc = init;
-    result.push(acc.clone());
-    for x in self.into_iter().rev() {
-      acc = f(x, acc);
-      result.push(acc.clone());
-    }
-    result.reverse();
-    result
+    self.map(|x| f(x, init))
   }
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
 
-  #[test]
-  fn test_option_scan_left() {
-    let a = Some(5);
-    let result = a.scan_left(1, |acc, x| acc * x);
-    assert_eq!(result, Some(5));
+  // Define test functions for Option
+  // These functions are chosen to be:
+  // 1. Simple and easy to reason about
+  // 2. Cover basic arithmetic operations
+  // 3. Include min/max operations for comparison
+  // 4. Avoid division to prevent edge cases
+  const OPTION_FUNCTIONS: &[fn(i32, i32) -> i32] = &[
+    |acc, x| acc + x,    // Addition
+    |acc, x| acc * x,    // Multiplication
+    |acc, x| acc - x,    // Subtraction
+    |acc, x| acc.max(x), // Maximum
+    |acc, x| acc.min(x), // Minimum
+  ];
 
-    let a: Option<i32> = None;
-    let result = a.scan_left(1, |acc, x| acc * x);
-    assert_eq!(result, None);
-  }
+  proptest! {
+    #[test]
+    fn test_option_scan_left_identity(x in any::<i32>()) {
+      // Test that scan_left with identity function returns the original value
+      let id = |acc: i32, x: i32| x;
+      let result = Some(x).scan_left(0, id);
+      assert_eq!(result, Some(x));
+    }
 
-  #[test]
-  fn test_option_scan_right() {
-    let a = Some(5);
-    let result = a.scan_right(1, |x, acc| x * acc);
-    assert_eq!(result, Some(5));
+    #[test]
+    fn test_option_scan_left_composition(
+      x in any::<i32>(),
+      f_idx in 0..OPTION_FUNCTIONS.len(),
+      g_idx in 0..OPTION_FUNCTIONS.len()
+    ) {
+      // Test that composing two functions with scan_left is equivalent to
+      // applying the composed function directly
+      let f = OPTION_FUNCTIONS[f_idx];
+      let g = OPTION_FUNCTIONS[g_idx];
+      let result = Some(x).scan_left(0, f).and_then(|y| Some(y).scan_left(0, g));
+      let expected = Some(x).scan_left(0, |acc, x| g(f(acc, x), x));
+      assert_eq!(result, expected);
+    }
 
-    let a: Option<i32> = None;
-    let result = a.scan_right(1, |x, acc| x * acc);
-    assert_eq!(result, None);
-  }
+    #[test]
+    fn test_option_scan_right_identity(x in any::<i32>()) {
+      // Test that scan_right with identity function returns the original value
+      let id = |x: i32, acc: i32| x;
+      let result = Some(x).scan_right(0, id);
+      assert_eq!(result, Some(x));
+    }
 
-  #[test]
-  fn test_vec_scan_left() {
-    let a = vec![1, 2, 3, 4];
-    let result = a.scan_left(0, |acc, x| acc + x);
-    assert_eq!(result, vec![0, 1, 3, 6, 10]);
+    #[test]
+    fn test_option_scan_right_composition(
+      x in any::<i32>(),
+      f_idx in 0..OPTION_FUNCTIONS.len(),
+      g_idx in 0..OPTION_FUNCTIONS.len()
+    ) {
+      // Test that composing two functions with scan_right is equivalent to
+      // applying the composed function directly
+      let f = OPTION_FUNCTIONS[f_idx];
+      let g = OPTION_FUNCTIONS[g_idx];
+      let result = Some(x).scan_right(0, f).and_then(|y| Some(y).scan_right(0, g));
+      let expected = Some(x).scan_right(0, |x, acc| g(x, f(x, acc)));
+      assert_eq!(result, expected);
+    }
 
-    let a: Vec<i32> = vec![];
-    let result = a.scan_left(0, |acc, x| acc + x);
-    assert_eq!(result, vec![0]);
-  }
+    #[test]
+    fn test_option_scan_left_none(init in any::<i32>()) {
+      // Test that scan_left on None returns None
+      let f = |acc: i32, x: i32| acc + x;
+      let result = None::<i32>.scan_left(init, f);
+      assert_eq!(result, None);
+    }
 
-  #[test]
-  fn test_vec_scan_right() {
-    let a = vec![1, 2, 3, 4];
-    let result = a.scan_right(0, |x, acc| x + acc);
-    assert_eq!(result, vec![10, 9, 7, 4, 0]);
-
-    let a: Vec<i32> = vec![];
-    let result = a.scan_right(0, |x, acc| x + acc);
-    assert_eq!(result, vec![0]);
-  }
-
-  #[test]
-  fn test_type_conversions() {
-    let a = vec![1, 2, 3];
-    let result = a.scan_left(String::new(), |acc, x| format!("{}{}", acc, x));
-    assert_eq!(result, vec!["", "1", "12", "123"]);
-
-    let a = vec![1, 2, 3];
-    let result = a.scan_right(String::new(), |x, acc| format!("{}{}", x, acc));
-    assert_eq!(result, vec!["123", "23", "3", ""]);
+    #[test]
+    fn test_option_scan_right_none(init in any::<i32>()) {
+      // Test that scan_right on None returns None
+      let f = |x: i32, acc: i32| x + acc;
+      let result = None::<i32>.scan_right(init, f);
+      assert_eq!(result, None);
+    }
   }
 }

@@ -2,46 +2,50 @@
 //!
 //! An applicative functor is a functor that can apply functions within the functor context.
 
-/// The Applicative trait represents a type that can apply functions within a context.
-pub trait Applicative<T> {
+use crate::functor::Functor;
+use std::sync::{Mutex, RwLock};
+
+/// An applicative functor is a functor that can lift values and apply functions.
+///
+/// # Safety
+///
+/// This trait requires that all implementations be thread-safe by default.
+/// This means that:
+/// - The type parameter T must implement Send + Sync + 'static
+/// - The higher-kinded type ApplicativeSelf<U> must implement Send + Sync + 'static
+/// - The function type F must implement Send + Sync + 'static
+/// - The applied type U must implement Send + Sync + 'static
+pub trait Applicative<T: Send + Sync + 'static>: Functor<T> {
   /// The higher-kinded type that results from applying a function
-  type HigherSelf<U: Send + Sync + 'static>;
+  type ApplicativeSelf<U: Send + Sync + 'static>: Send + Sync + 'static;
 
   /// Lifts a value into the applicative context
-  fn pure(value: T) -> Self::HigherSelf<T>
+  fn pure<U>(value: U) -> Self::ApplicativeSelf<U>
   where
-    T: Send + Sync + 'static;
+    U: Send + Sync + 'static;
 
   /// Applies a function within the applicative context
-  fn ap<B, F>(self, f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
+  fn ap<U, F>(self, f: Self::ApplicativeSelf<F>) -> Self::ApplicativeSelf<U>
   where
-    F: FnMut(T) -> B + Send + Sync + 'static,
-    B: Send + Sync + 'static;
-}
-
-/// A trait for types that can apply functions within a context
-pub trait Applicable<T>: Applicative<T> {}
-
-// Implement Applicable for all types that implement Applicative
-impl<T, A> Applicable<T> for A
-where
-  A: Applicative<T>,
-  T: Send + Sync + 'static,
-{
+    F: FnMut(T) -> U + Send + Sync + 'static,
+    U: Send + Sync + 'static;
 }
 
 // Implementation for Option
-impl<A: Send + Sync + 'static> Applicative<A> for Option<A> {
-  type HigherSelf<U: Send + Sync + 'static> = Option<U>;
+impl<T: Send + Sync + 'static> Applicative<T> for Option<T> {
+  type ApplicativeSelf<U: Send + Sync + 'static> = Option<U>;
 
-  fn pure(a: A) -> Self::HigherSelf<A> {
-    Some(a)
+  fn pure<U>(value: U) -> Self::ApplicativeSelf<U>
+  where
+    U: Send + Sync + 'static,
+  {
+    Some(value)
   }
 
-  fn ap<B, F>(self, f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
+  fn ap<U, F>(self, f: Self::ApplicativeSelf<F>) -> Self::ApplicativeSelf<U>
   where
-    F: FnMut(A) -> B + Send + Sync + 'static,
-    B: Send + Sync + 'static,
+    F: FnMut(T) -> U + Send + Sync + 'static,
+    U: Send + Sync + 'static,
   {
     match (self, f) {
       (Some(a), Some(mut f)) => Some(f(a)),
@@ -51,36 +55,42 @@ impl<A: Send + Sync + 'static> Applicative<A> for Option<A> {
 }
 
 // Implementation for Vec
-impl<A: Send + Sync + 'static + Clone> Applicative<A> for Vec<A> {
-  type HigherSelf<U: Send + Sync + 'static> = Vec<U>;
+impl<T: Send + Sync + 'static> Applicative<T> for Vec<T> {
+  type ApplicativeSelf<U: Send + Sync + 'static> = Vec<U>;
 
-  fn pure(a: A) -> Self::HigherSelf<A> {
-    vec![a]
+  fn pure<U>(value: U) -> Self::ApplicativeSelf<U>
+  where
+    U: Send + Sync + 'static,
+  {
+    vec![value]
   }
 
-  fn ap<B, F>(self, fs: Self::HigherSelf<F>) -> Self::HigherSelf<B>
+  fn ap<U, F>(self, fs: Self::ApplicativeSelf<F>) -> Self::ApplicativeSelf<U>
   where
-    F: FnMut(A) -> B + Send + Sync + 'static,
-    B: Send + Sync + 'static,
+    F: FnMut(T) -> U + Send + Sync + 'static,
+    U: Send + Sync + 'static,
   {
     fs.into_iter()
-      .flat_map(|f| self.iter().cloned().map(f))
+      .flat_map(|mut func| self.clone().into_iter().map(move |x| func(x)))
       .collect()
   }
 }
 
 // Implementation for Result
-impl<A: Send + Sync + 'static, E: Send + Sync + 'static> Applicative<A> for Result<A, E> {
-  type HigherSelf<U: Send + Sync + 'static> = Result<U, E>;
+impl<T: Send + Sync + 'static, E: Send + Sync + 'static> Applicative<T> for Result<T, E> {
+  type ApplicativeSelf<U: Send + Sync + 'static> = Result<U, E>;
 
-  fn pure(a: A) -> Self::HigherSelf<A> {
-    Ok(a)
+  fn pure<U>(value: U) -> Self::ApplicativeSelf<U>
+  where
+    U: Send + Sync + 'static,
+  {
+    Ok(value)
   }
 
-  fn ap<B, F>(self, f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
+  fn ap<U, F>(self, f: Self::ApplicativeSelf<F>) -> Self::ApplicativeSelf<U>
   where
-    F: FnMut(A) -> B + Send + Sync + 'static,
-    B: Send + Sync + 'static,
+    F: FnMut(T) -> U + Send + Sync + 'static,
+    U: Send + Sync + 'static,
   {
     match (self, f) {
       (Ok(a), Ok(mut f)) => Ok(f(a)),
@@ -90,239 +100,193 @@ impl<A: Send + Sync + 'static, E: Send + Sync + 'static> Applicative<A> for Resu
   }
 }
 
+// Implementation for Mutex
+impl<T: Send + Sync + 'static> Applicative<T> for Mutex<T> {
+  type ApplicativeSelf<U: Send + Sync + 'static> = Mutex<U>;
+
+  fn pure<U>(value: U) -> Self::ApplicativeSelf<U>
+  where
+    U: Send + Sync + 'static,
+  {
+    Mutex::new(value)
+  }
+
+  fn ap<U, F>(self, f: Self::ApplicativeSelf<F>) -> Self::ApplicativeSelf<U>
+  where
+    F: FnMut(T) -> U + Send + Sync + 'static,
+    U: Send + Sync + 'static,
+  {
+    let a = self.into_inner().unwrap();
+    let mut func = f.into_inner().unwrap();
+    Mutex::new(func(a))
+  }
+}
+
+// Implementation for RwLock
+impl<T: Send + Sync + 'static> Applicative<T> for RwLock<T> {
+  type ApplicativeSelf<U: Send + Sync + 'static> = RwLock<U>;
+
+  fn pure<U>(value: U) -> Self::ApplicativeSelf<U>
+  where
+    U: Send + Sync + 'static,
+  {
+    RwLock::new(value)
+  }
+
+  fn ap<U, F>(self, f: Self::ApplicativeSelf<F>) -> Self::ApplicativeSelf<U>
+  where
+    F: FnMut(T) -> U + Send + Sync + 'static,
+    U: Send + Sync + 'static,
+  {
+    let a = self.into_inner().unwrap();
+    let mut func = f.into_inner().unwrap();
+    RwLock::new(func(a))
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
+  use std::thread;
 
-  // Define a simple applicative for testing
-  #[derive(Debug, PartialEq, Clone)]
-  struct TestApplicative<T>(T);
+  // Define test functions that implement Debug
+  const FUNCTIONS: &[fn(i32) -> i32] = &[
+    |x| x + 1,
+    |x| x * 2,
+    |x| x - 1,
+    |x| x / 2,
+    |x| x * x,
+    |x| -x,
+  ];
 
-  impl<T> TestApplicative<T> {
-    fn new(value: T) -> Self {
-      TestApplicative(value)
-    }
+  // Test helper for thread safety
+  fn test_thread_safety<F, T>(f: F, input: T) -> T
+  where
+    F: Fn(T) -> T + Send + Sync + 'static,
+    T: Send + Sync + 'static,
+  {
+    let handle = thread::spawn(move || f(input));
+    handle.join().unwrap()
   }
 
-  impl<T: Send + Sync + 'static> Applicative<T> for TestApplicative<T> {
-    type HigherSelf<U: Send + Sync + 'static> = TestApplicative<U>;
+  proptest! {
+      #[test]
+      fn test_option_applicative_identity(x in any::<i32>()) {
+          let id = |x: i32| x;
+          let result = Some(x).ap(Some(id));
+          assert_eq!(result, Some(x));
+      }
 
-    fn pure(value: T) -> Self::HigherSelf<T> {
-      TestApplicative(value)
-    }
+      #[test]
+      fn test_option_applicative_composition(
+          x in any::<i32>(),
+          f_idx in 0..FUNCTIONS.len(),
+          g_idx in 0..FUNCTIONS.len()
+      ) {
+          let f = FUNCTIONS[f_idx];
+          let g = FUNCTIONS[g_idx];
+          let result1 = Some(x).ap(Some(f)).ap(Some(g));
+          let result2 = Some(x).ap(Some(|x| g(f(x))));
+          assert_eq!(result1, result2);
+      }
 
-    fn ap<B, F>(self, f: Self::HigherSelf<F>) -> Self::HigherSelf<B>
-    where
-      F: FnMut(T) -> B + Send + Sync + 'static,
-      B: Send + Sync + 'static,
-    {
-      let TestApplicative(mut func) = f;
-      let TestApplicative(value) = self;
-      TestApplicative(func(value))
-    }
-  }
+      #[test]
+      fn test_vec_applicative_identity(xs in prop::collection::vec(any::<i32>(), 0..100)) {
+          let id = |x: i32| x;
+          let result = xs.clone().ap(vec![id]);
+          assert_eq!(result, xs);
+      }
 
-  // Test applicative laws
-  #[test]
-  fn test_applicative_laws() {
-    // Identity law: pure id <*> v = v
-    let v = TestApplicative::new(42);
-    let id = TestApplicative::new(|x: i32| x);
-    assert_eq!(v.clone().ap(id), v);
+      #[test]
+      fn test_vec_applicative_composition(
+          xs in prop::collection::vec(any::<i32>(), 0..100),
+          f_idx in 0..FUNCTIONS.len(),
+          g_idx in 0..FUNCTIONS.len()
+      ) {
+          let f = FUNCTIONS[f_idx];
+          let g = FUNCTIONS[g_idx];
+          let result1 = xs.clone().ap(vec![f]).ap(vec![g]);
+          let result2 = xs.ap(vec![|x| g(f(x))]);
+          assert_eq!(result1, result2);
+      }
 
-    // Homomorphism law: pure f <*> pure x = pure (f x)
-    let f = |x: i32| x * 2;
-    let x = TestApplicative::new(42);
-    let lhs = x.clone().ap(TestApplicative::new(f));
-    let rhs = TestApplicative::new(f(42));
-    assert_eq!(lhs, rhs);
+      #[test]
+      fn test_result_applicative_identity(x in any::<i32>()) {
+          let id = |x: i32| x;
+          let result: Result<i32, &str> = Ok(x).ap(Ok(id));
+          assert_eq!(result, Ok(x));
+      }
 
-    // Interchange law: u <*> pure y = pure ($ y) <*> u
-    let u = TestApplicative::new(|x: i32| x * 2);
-    let y = 42;
-    let lhs = TestApplicative::new(y).ap(u.clone());
-    let rhs = TestApplicative::new(84);
-    assert_eq!(lhs, rhs);
-  }
+      #[test]
+      fn test_result_applicative_composition(
+          x in any::<i32>(),
+          f_idx in 0..FUNCTIONS.len(),
+          g_idx in 0..FUNCTIONS.len()
+      ) {
+          let f = FUNCTIONS[f_idx];
+          let g = FUNCTIONS[g_idx];
+          let result1: Result<i32, &str> = Ok(x).ap(Ok(f)).ap(Ok(g));
+          let result2 = Ok(x).ap(Ok(|x| g(f(x))));
+          assert_eq!(result1, result2);
+      }
 
-  // Test basic operations
-  #[test]
-  fn test_pure() {
-    let a: TestApplicative<i32> = TestApplicative::pure(42);
-    assert_eq!(a, TestApplicative(42));
-  }
+      #[test]
+      fn test_mutex_applicative_identity(x in any::<i32>()) {
+          let id = |x: i32| x;
+          let result = Mutex::new(x).ap(Mutex::new(id));
+          assert_eq!(*result.lock().unwrap(), x);
+      }
 
-  #[test]
-  fn test_ap() {
-    let a = TestApplicative::new(42);
-    let f = TestApplicative::pure(|x: i32| x * 2);
-    let result = a.ap(f);
-    assert_eq!(result, TestApplicative(84));
-  }
+      #[test]
+      fn test_mutex_applicative_composition(
+          x in any::<i32>(),
+          f_idx in 0..FUNCTIONS.len(),
+          g_idx in 0..FUNCTIONS.len()
+      ) {
+          let f = FUNCTIONS[f_idx];
+          let g = FUNCTIONS[g_idx];
+          let result1 = Mutex::new(x).ap(Mutex::new(f)).ap(Mutex::new(g));
+          let result2 = Mutex::new(x).ap(Mutex::new(|x| g(f(x))));
+          assert_eq!(*result1.lock().unwrap(), *result2.lock().unwrap());
+      }
 
-  // Test type conversions
-  #[test]
-  fn test_type_conversions() {
-    let a = TestApplicative::new(42);
-    let f = TestApplicative::pure(|x: i32| x.to_string());
-    let result = a.ap(f);
-    assert_eq!(result, TestApplicative("42".to_string()));
-  }
+      #[test]
+      fn test_rwlock_applicative_identity(x in any::<i32>()) {
+          let id = |x: i32| x;
+          let result = RwLock::new(x).ap(RwLock::new(id));
+          assert_eq!(*result.read().unwrap(), x);
+      }
 
-  // Test composition
-  #[test]
-  fn test_composition() {
-    let a = TestApplicative::new(42);
-    let f1 = TestApplicative::pure(|x: i32| x * 2);
-    let f2 = TestApplicative::pure(|x: i32| x + 1);
-    let result = a.ap(f1).ap(f2);
-    assert_eq!(result, TestApplicative(85));
-  }
+      #[test]
+      fn test_rwlock_applicative_composition(
+          x in any::<i32>(),
+          f_idx in 0..FUNCTIONS.len(),
+          g_idx in 0..FUNCTIONS.len()
+      ) {
+          let f = FUNCTIONS[f_idx];
+          let g = FUNCTIONS[g_idx];
+          let result1 = RwLock::new(x).ap(RwLock::new(f)).ap(RwLock::new(g));
+          let result2 = RwLock::new(x).ap(RwLock::new(|x| g(f(x))));
+          assert_eq!(*result1.read().unwrap(), *result2.read().unwrap());
+      }
 
-  mod option_tests {
-    use super::*;
+      #[test]
+      fn test_thread_safety_properties(
+          x in any::<i32>(),
+          f_idx in 0..FUNCTIONS.len()
+      ) {
+          let f = FUNCTIONS[f_idx];
+          let result = test_thread_safety(|x| Some(x).ap(Some(f)), x);
+          assert_eq!(result, Some(f(x)));
 
-    #[test]
-    fn test_some_with_some_fn() {
-      let some = Some(42);
-      let some_fn = Some(|x: i32| x * 2);
-      let result = some.ap(some_fn);
-      assert_eq!(result, Some(84));
-    }
+          let xs = vec![x];
+          let result = test_thread_safety(|xs| xs.ap(vec![f]), xs);
+          assert_eq!(result, vec![f(x)]);
 
-    #[test]
-    fn test_none_with_some_fn() {
-      let none: Option<i32> = None;
-      let some_fn = Some(|x: i32| x * 2);
-      let result = none.ap(some_fn);
-      assert_eq!(result, None);
-    }
-
-    #[test]
-    fn test_some_with_none_fn() {
-      let some = Some(42);
-      let none_fn: Option<fn(i32) -> i32> = None;
-      let result = some.ap(none_fn);
-      assert_eq!(result, None);
-    }
-
-    #[test]
-    fn test_type_conversion() {
-      let some = Some(42);
-      let some_fn = Some(|x: i32| x.to_string());
-      let result = some.ap(some_fn);
-      assert_eq!(result, Some("42".to_string()));
-    }
-
-    #[test]
-    fn test_composition() {
-      let some = Some(42);
-      let f1 = Some(|x: i32| x * 2);
-      let f2 = Some(|x: i32| x + 1);
-      let result = some.ap(f1).ap(f2);
-      assert_eq!(result, Some(85));
-    }
-  }
-
-  mod vec_tests {
-    use super::*;
-
-    #[test]
-    fn test_empty_vec() {
-      let empty: Vec<i32> = vec![];
-      let fns: Vec<fn(i32) -> i32> = vec![];
-      let result = empty.ap(fns);
-      let expected: Vec<i32> = vec![];
-      assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn test_single_element() {
-      let vec = vec![42];
-      let fns = vec![|x: i32| x * 2];
-      let result = vec.ap(fns);
-      assert_eq!(result, vec![84]);
-    }
-
-    #[test]
-    fn test_multiple_elements() {
-      let vec = vec![1, 2, 3];
-      let fns = vec![|x: i32| x * 2, |x: i32| x + 1];
-      let result = vec.ap(fns);
-      assert_eq!(result, vec![2, 4, 6, 2, 3, 4]);
-    }
-
-    #[test]
-    fn test_type_conversion() {
-      let vec = vec![1, 2, 3];
-      let fns = vec![|x: i32| x.to_string()];
-      let result = vec.ap(fns);
-      assert_eq!(result, vec!["1", "2", "3"]);
-    }
-
-    #[test]
-    fn test_mutating_closure() {
-      let mut counter = 0;
-      let vec = vec![1, 2, 3];
-      let fns = vec![move |x: i32| {
-        counter += 1;
-        x * counter
-      }];
-      let result = vec.ap(fns);
-      assert_eq!(result, vec![1, 4, 9]);
-    }
-
-    #[test]
-    fn test_ordering_preservation() {
-      let vec = vec![3, 1, 4, 1, 5, 9];
-      let fns = vec![|x: i32| x * 2];
-      let result = vec.ap(fns);
-      assert_eq!(result, vec![6, 2, 8, 2, 10, 18]);
-    }
-  }
-
-  mod result_tests {
-    use super::*;
-
-    #[test]
-    fn test_ok_with_ok_fn() {
-      let ok: Result<i32, &str> = Ok(42);
-      let ok_fn: Result<fn(i32) -> i32, &str> = Ok(|x: i32| x * 2);
-      let result = ok.ap(ok_fn);
-      assert_eq!(result, Ok(84));
-    }
-
-    #[test]
-    fn test_err_with_ok_fn() {
-      let err: Result<i32, &str> = Err("error");
-      let ok_fn: Result<fn(i32) -> i32, &str> = Ok(|x: i32| x * 2);
-      let result = err.ap(ok_fn);
-      assert_eq!(result, Err("error"));
-    }
-
-    #[test]
-    fn test_ok_with_err_fn() {
-      let ok: Result<i32, &str> = Ok(42);
-      let err_fn: Result<fn(i32) -> i32, &str> = Err("error");
-      let result = ok.ap(err_fn);
-      assert_eq!(result, Err("error"));
-    }
-
-    #[test]
-    fn test_type_conversion() {
-      let ok: Result<i32, &str> = Ok(42);
-      let ok_fn: Result<fn(i32) -> String, &str> = Ok(|x: i32| x.to_string());
-      let result = ok.ap(ok_fn);
-      assert_eq!(result, Ok("42".to_string()));
-    }
-
-    #[test]
-    fn test_composition() {
-      let ok: Result<i32, &str> = Ok(42);
-      let f1: Result<fn(i32) -> i32, &str> = Ok(|x: i32| x * 2);
-      let f2: Result<fn(i32) -> i32, &str> = Ok(|x: i32| x + 1);
-      let result = ok.ap(f1).ap(f2);
-      assert_eq!(result, Ok(85));
-    }
+          let r: Result<i32, &str> = Ok(x);
+          let result = test_thread_safety(|r| r.ap(Ok(f)), r);
+          assert_eq!(result, Ok(f(x)));
+      }
   }
 }
