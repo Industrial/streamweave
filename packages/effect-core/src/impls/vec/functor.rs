@@ -17,7 +17,6 @@ impl<T: CloneableThreadSafe> Functor<T> for Vec<T> {
 mod tests {
   use super::*;
   use proptest::prelude::*;
-  use std::fmt::Debug;
 
   // Define test functions with overflow protection
   const INT_FUNCTIONS: &[fn(&i64) -> i64] = &[

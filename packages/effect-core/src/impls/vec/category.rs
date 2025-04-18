@@ -1,4 +1,4 @@
-use crate::{threadsafe::CloneableThreadSafe, traits::Category};
+use crate::{traits::category::Category, types::threadsafe::CloneableThreadSafe};
 use std::sync::Arc;
 
 // A cloneable function wrapper for Vec
@@ -72,8 +72,7 @@ impl<T: CloneableThreadSafe> Category<T, T> for Vec<T> {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use crate::traits::Category;
+  use crate::traits::category::Category;
   use proptest::collection::vec;
   use proptest::prelude::*;
 

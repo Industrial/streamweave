@@ -1,5 +1,3 @@
-mod category;
-mod functor;
-
-pub use category::*;
-pub use functor::*;
+pub mod bifunctor;
+pub mod category;
+pub mod functor;

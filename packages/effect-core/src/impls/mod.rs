@@ -1,6 +1,7 @@
 pub mod arc;
 pub mod boxed;
 pub mod compose;
+pub mod either;
 pub mod future;
 pub mod hashmap;
 pub mod iterator;
@@ -8,4 +9,19 @@ pub mod morphism;
 pub mod option;
 pub mod rc;
 pub mod result;
+pub mod tuple;
 pub mod vec;
+
+pub use arc::*;
+pub use boxed::*;
+pub use compose::*;
+pub use either::*;
+pub use future::*;
+pub use hashmap::*;
+pub use iterator::*;
+pub use morphism::*;
+pub use option::*;
+pub use rc::*;
+pub use result::*;
+pub use tuple::*;
+pub use vec::*;

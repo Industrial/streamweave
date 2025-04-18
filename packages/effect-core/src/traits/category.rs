@@ -1,4 +1,4 @@
-use crate::threadsafe::CloneableThreadSafe;
+use crate::types::threadsafe::CloneableThreadSafe;
 
 /// A category is a collection of objects and morphisms (arrows) between them.
 ///

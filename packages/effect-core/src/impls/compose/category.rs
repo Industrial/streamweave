@@ -1,4 +1,7 @@
-use crate::{compose::Compose, traits::Category, threadsafe::CloneableThreadSafe};
+use crate::{
+  traits::category::Category,
+  types::{compose::Compose, threadsafe::CloneableThreadSafe},
+};
 
 impl<A: CloneableThreadSafe, B: CloneableThreadSafe> Category<A, B> for Compose<A, B> {
   type Morphism<C: CloneableThreadSafe, D: CloneableThreadSafe> = Compose<C, D>;

@@ -1,6 +1,5 @@
+use crate::{types::compose::Compose, types::threadsafe::ThreadSafe};
 use std::sync::Arc;
-
-use crate::{types::compose::Compose, threadsafe::ThreadSafe};
 
 impl<A: ThreadSafe, B: ThreadSafe> Clone for Compose<A, B> {
   fn clone(&self) -> Self {

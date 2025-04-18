@@ -1,4 +1,6 @@
-use crate::{morphism::Morphism, traits::Category, threadsafe::CloneableThreadSafe};
+use crate::{
+  traits::category::Category, types::morphism::Morphism, types::threadsafe::CloneableThreadSafe,
+};
 
 impl<A: CloneableThreadSafe, B: CloneableThreadSafe> Category<A, B> for Morphism<A, B> {
   type Morphism<C: CloneableThreadSafe, D: CloneableThreadSafe> = Morphism<C, D>;

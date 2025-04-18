@@ -1,4 +1,4 @@
-use crate::{threadsafe::CloneableThreadSafe, traits::Category};
+use crate::{traits::category::Category, types::threadsafe::CloneableThreadSafe};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -105,7 +105,7 @@ impl<K: CloneableThreadSafe + Eq + Hash, V: CloneableThreadSafe> Category<V, V> 
 
 #[cfg(test)]
 mod tests {
-  use crate::traits::Category;
+  use crate::traits::category::Category;
   use proptest::prelude::*;
   use std::collections::HashMap;
 

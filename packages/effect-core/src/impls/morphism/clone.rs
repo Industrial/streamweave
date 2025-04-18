@@ -1,4 +1,4 @@
-use crate::{types::morphism::Morphism, threadsafe::ThreadSafe};
+use crate::{types::morphism::Morphism, types::threadsafe::ThreadSafe};
 
 impl<A: ThreadSafe, B: ThreadSafe> Clone for Morphism<A, B> {
   fn clone(&self) -> Self {

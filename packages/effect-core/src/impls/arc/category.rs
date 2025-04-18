@@ -1,5 +1,6 @@
-use crate::{threadsafe::CloneableThreadSafe, traits::Category};
 use std::sync::Arc;
+
+use crate::{traits::category::Category, types::threadsafe::CloneableThreadSafe};
 
 // A cloneable function wrapper for Arc
 #[derive(Clone)]
@@ -68,7 +69,6 @@ impl<T: CloneableThreadSafe> Category<T, T> for Arc<T> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::traits::Category;
   use proptest::prelude::*;
 
   // Define test functions that operate on integers - using i64 instead of i32

@@ -1,4 +1,4 @@
-use crate::{threadsafe::CloneableThreadSafe, traits::Category};
+use crate::{traits::category::Category, types::threadsafe::CloneableThreadSafe};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -104,7 +104,7 @@ impl<T: CloneableThreadSafe + Send + 'static> Category<T, T> for FutureCategory<
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::traits::Category;
+  use crate::traits::category::Category;
 
   // Define test functions that operate on integers - using i64 instead of i32
   // and using checked arithmetic to prevent overflow

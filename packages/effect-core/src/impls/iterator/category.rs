@@ -1,4 +1,4 @@
-use crate::{threadsafe::CloneableThreadSafe, traits::Category};
+use crate::{traits::category::Category, types::threadsafe::CloneableThreadSafe};
 use std::sync::Arc;
 
 // A cloneable function wrapper for Iterator
@@ -127,7 +127,7 @@ impl<T: CloneableThreadSafe + 'static> Category<T, T> for IteratorCategory<T> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::traits::Category;
+  use crate::traits::category::Category;
   use proptest::prelude::*;
 
   // Define test functions that operate on integers - using i64 instead of i32

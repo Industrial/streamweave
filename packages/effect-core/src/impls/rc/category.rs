@@ -1,4 +1,4 @@
-use crate::{threadsafe::CloneableThreadSafe, traits::Category};
+use crate::{traits::category::Category, types::threadsafe::CloneableThreadSafe};
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -69,7 +69,7 @@ impl<T: CloneableThreadSafe> Category<T, T> for Rc<T> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::traits::Category;
+  use crate::traits::category::Category;
   use proptest::prelude::*;
 
   // Define test functions that operate on integers - using i64 instead of i32

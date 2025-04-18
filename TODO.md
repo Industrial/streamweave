@@ -2,23 +2,6 @@
 
 ## Functional Programming Primitives to Implement
 
-### 0. Fixing existing behaviors
-- [ ] Add missing trait descendants to core type classes, make thread-safe and remove all tests for:
-  - Functor descendants:
-    - [x] Foldable - for types that can be folded over
-    - [x] Traversable - for types that can be traversed with an applicative functor
-    - [x] Filterable - for types that can be filtered
-  - Category descendants:
-    - [x] Profunctor - for types that are both covariant and contravariant
-    - [x] Arrow - for types that support arrow operations
-  - Monad descendants:
-    - [x] MonadPlus - for types that support both monadic and alternative operations
-    - [ ] MonadTrans - for monad transformers
-    - [ ] MonadError - for monads that support error handling
-  - Applicative descendants:
-    - [ ] ZipApplicative - for types that support zipping operations
-    - [ ] Selective - for types that support selective application
-
 ### 1. Core Functional Primitives
 - [x] map/flatMap/filter equivalents
 - [x] fold/reduce operations
@@ -137,14 +120,6 @@
 - [ ] Check out https://github.com/viperproject/prusti-dev
 - [ ] Check out https://github.com/creusot-rs/creusot?tab=readme-ov-file
 
-1. First read all files in `effect-core/src/*`.
-2. Ask for each of the files in `effect-core` (skip Monoid and Semigroup and Functor):
-  2.1 Which traits/implementations should be compositions of others in the `packages/*` that haven't been done yet.
-  2.2 Which basic Rust type system implementations of the trait haven't been done yet. Implement them in the same file that the trait is defined in.
-  2.3 Use PropTest for the tests.
-    2.4 Make sure all possible permutations are tested.
-    2.5 100% Test Coverage.
-3. Run `bin/test` after every change you make. Don't run tests with `cargo test`. Fix all errors and report when all tests are green.
-4. If everything above leaves no files to be updated, read `TODO.md` and look at the next item and implement that.
-
-For each item above give me the rundown and then apply them.
+1. Given our current implemented traits, pick a file from _old and move it to the traits.
+2. Remove all the impls and tests and leave only the trait.
+3. For all rust basic types that this trait should have an impl for, including ones not currently covered for any trait in the `impls`, generate impls.
