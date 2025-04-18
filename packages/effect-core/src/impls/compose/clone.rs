@@ -1,10 +1,12 @@
-use crate::Compose;
+use std::sync::Arc;
 
-impl<A: Send + Sync + 'static, B: Send + Sync + 'static> Clone for Compose<A, B> {
+use crate::{types::compose::Compose, threadsafe::ThreadSafe};
+
+impl<A: ThreadSafe, B: ThreadSafe> Clone for Compose<A, B> {
   fn clone(&self) -> Self {
     Self {
-      f: self.f.clone(),
-      g: self.g.clone(),
+      f: Arc::clone(&self.f),
+      g: Arc::clone(&self.g),
     }
   }
 }

@@ -1,6 +1,6 @@
-use crate::Morphism;
+use crate::{types::morphism::Morphism, threadsafe::ThreadSafe};
 
-impl<A: Send + Sync + 'static, B: Send + Sync + 'static> Clone for Morphism<A, B> {
+impl<A: ThreadSafe, B: ThreadSafe> Clone for Morphism<A, B> {
   fn clone(&self) -> Self {
     Self { f: self.f.clone() }
   }

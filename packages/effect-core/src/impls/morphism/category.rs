@@ -1,33 +1,33 @@
-use crate::{morphism::Morphism, traits::Category};
+use crate::{morphism::Morphism, traits::Category, threadsafe::CloneableThreadSafe};
 
-impl<A: Send + Sync + 'static, B: Send + Sync + 'static> Category<A, B> for Morphism<A, B> {
-  type Morphism<C: Send + Sync + 'static, D: Send + Sync + 'static> = Morphism<C, D>;
+impl<A: CloneableThreadSafe, B: CloneableThreadSafe> Category<A, B> for Morphism<A, B> {
+  type Morphism<C: CloneableThreadSafe, D: CloneableThreadSafe> = Morphism<C, D>;
 
-  fn id<C: Send + Sync + 'static>() -> Self::Morphism<C, C> {
+  fn id<C: CloneableThreadSafe>() -> Self::Morphism<C, C> {
     Morphism::new(|x| x)
   }
 
-  fn compose<C: Send + Sync + 'static, D: Send + Sync + 'static, E: Send + Sync + 'static>(
+  fn compose<C: CloneableThreadSafe, D: CloneableThreadSafe, E: CloneableThreadSafe>(
     f: Self::Morphism<C, D>,
     g: Self::Morphism<D, E>,
   ) -> Self::Morphism<C, E> {
     Morphism::new(move |x| g.apply(f.apply(x)))
   }
 
-  fn arr<C: Send + Sync + 'static, D: Send + Sync + 'static, F>(f: F) -> Self::Morphism<C, D>
+  fn arr<C: CloneableThreadSafe, D: CloneableThreadSafe, F>(f: F) -> Self::Morphism<C, D>
   where
-    F: Fn(C) -> D + Send + Sync + 'static,
+    F: for<'a> Fn(&'a C) -> D + CloneableThreadSafe,
   {
-    Morphism::new(f)
+    Morphism::new(move |x| f(&x))
   }
 
-  fn first<C: Send + Sync + 'static, D: Send + Sync + 'static, E: Send + Sync + 'static>(
+  fn first<C: CloneableThreadSafe, D: CloneableThreadSafe, E: CloneableThreadSafe>(
     f: Self::Morphism<C, D>,
   ) -> Self::Morphism<(C, E), (D, E)> {
     Morphism::new(move |(x, y)| (f.apply(x), y))
   }
 
-  fn second<C: Send + Sync + 'static, D: Send + Sync + 'static, E: Send + Sync + 'static>(
+  fn second<C: CloneableThreadSafe, D: CloneableThreadSafe, E: CloneableThreadSafe>(
     f: Self::Morphism<C, D>,
   ) -> Self::Morphism<(E, C), (E, D)> {
     Morphism::new(move |(x, y)| (x, f.apply(y)))
@@ -81,10 +81,10 @@ mod tests {
       let f = I32_FUNCTIONS[f_idx];
       let g = I32_FUNCTIONS[g_idx];
 
-      let morphism_f = <Morphism<i32, i32> as Category<i32, i32>>::arr(f);
-      let morphism_g = <Morphism<i32, i32> as Category<i32, i32>>::arr(g);
+      let morphism_f = <Morphism<i32, i32> as Category<i32, i32>>::arr(move |x: &i32| f(*x));
+      let morphism_g = <Morphism<i32, i32> as Category<i32, i32>>::arr(move |x: &i32| g(*x));
 
-      let composed = <Morphism<i32, i32> as Category<i32, i32>>::compose(morphism_f, morphism_g);
+      let composed = <Morphism<i32, i32> as Category<i32, i32>>::compose::<i32, i32, i32>(morphism_f, morphism_g);
       assert_eq!(composed.apply(x), g(f(x)));
     }
 
@@ -97,10 +97,10 @@ mod tests {
       let f = STRING_FUNCTIONS[f_idx];
       let g = STRING_FUNCTIONS[g_idx];
 
-      let morphism_f = <Morphism<String, String> as Category<String, String>>::arr(f);
-      let morphism_g = <Morphism<String, String> as Category<String, String>>::arr(g);
+      let morphism_f = <Morphism<String, String> as Category<String, String>>::arr(move |x: &String| f(x.clone()));
+      let morphism_g = <Morphism<String, String> as Category<String, String>>::arr(move |x: &String| g(x.clone()));
 
-      let composed = <Morphism<String, String> as Category<String, String>>::compose(morphism_f, morphism_g);
+      let composed = <Morphism<String, String> as Category<String, String>>::compose::<String, String, String>(morphism_f, morphism_g);
       assert_eq!(composed.apply(s.to_string()), g(f(s.to_string())));
     }
 
@@ -111,7 +111,7 @@ mod tests {
       f_idx in 0..I32_FUNCTIONS.len()
     ) {
       let f = I32_FUNCTIONS[f_idx];
-      let morphism_f = <Morphism<i32, i32> as Category<i32, i32>>::arr(f);
+      let morphism_f = <Morphism<i32, i32> as Category<i32, i32>>::arr(move |x: &i32| f(*x));
 
       let first_f = <Morphism<i32, i32> as Category<i32, i32>>::first::<i32, i32, String>(morphism_f);
       let input = (x, s.to_string());
@@ -127,7 +127,7 @@ mod tests {
       f_idx in 0..STRING_FUNCTIONS.len()
     ) {
       let f = STRING_FUNCTIONS[f_idx];
-      let morphism_f = <Morphism<String, String> as Category<String, String>>::arr(f);
+      let morphism_f = <Morphism<String, String> as Category<String, String>>::arr(move |x: &String| f(x.clone()));
 
       let second_f = <Morphism<String, String> as Category<String, String>>::second::<String, String, i32>(morphism_f);
       let input = (x, s.to_string());
@@ -142,7 +142,7 @@ mod tests {
     use std::thread;
 
     let f = |x: i32| x.saturating_add(1);
-    let morphism_f = <Morphism<i32, i32> as Category<i32, i32>>::arr(f);
+    let morphism_f = <Morphism<i32, i32> as Category<i32, i32>>::arr(move |x: &i32| f(*x));
 
     let handles: Vec<_> = (0..10)
       .map(|_| {

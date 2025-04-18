@@ -1,3 +1,5 @@
+use crate::threadsafe::CloneableThreadSafe;
+
 /// A category is a collection of objects and morphisms (arrows) between them.
 ///
 /// # Safety
@@ -7,25 +9,25 @@
 /// - The type parameter T must implement Send + Sync + 'static
 /// - The type parameter U must implement Send + Sync + 'static
 /// - The composition function must implement Send + Sync + 'static
-pub trait Category<T: Send + Sync + 'static, U: Send + Sync + 'static> {
-  type Morphism<A: Send + Sync + 'static, B: Send + Sync + 'static>: Send + Sync + 'static;
+pub trait Category<T: CloneableThreadSafe, U: CloneableThreadSafe> {
+  type Morphism<A: CloneableThreadSafe, B: CloneableThreadSafe>: CloneableThreadSafe;
 
-  fn id<A: Send + Sync + 'static>() -> Self::Morphism<A, A>;
+  fn id<A: CloneableThreadSafe>() -> Self::Morphism<A, A>;
 
-  fn compose<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
+  fn compose<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
     f: Self::Morphism<A, B>,
     g: Self::Morphism<B, C>,
   ) -> Self::Morphism<A, C>;
 
-  fn arr<A: Send + Sync + 'static, B: Send + Sync + 'static, F>(f: F) -> Self::Morphism<A, B>
+  fn arr<A: CloneableThreadSafe, B: CloneableThreadSafe, F>(f: F) -> Self::Morphism<A, B>
   where
-    F: Fn(A) -> B + Send + Sync + 'static;
+    F: for<'a> Fn(&'a A) -> B + CloneableThreadSafe;
 
-  fn first<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
+  fn first<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
     f: Self::Morphism<A, B>,
   ) -> Self::Morphism<(A, C), (B, C)>;
 
-  fn second<A: Send + Sync + 'static, B: Send + Sync + 'static, C: Send + Sync + 'static>(
+  fn second<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
     f: Self::Morphism<A, B>,
   ) -> Self::Morphism<(C, A), (C, B)>;
 }

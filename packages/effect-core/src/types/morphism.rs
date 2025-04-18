@@ -1,13 +1,15 @@
 use std::sync::Arc;
 
-pub struct Morphism<A: Send + Sync + 'static, B: Send + Sync + 'static> {
+use super::threadsafe::ThreadSafe;
+
+pub struct Morphism<A: ThreadSafe, B: ThreadSafe> {
   pub(crate) f: Arc<dyn Fn(A) -> B + Send + Sync>,
 }
 
-impl<A: Send + Sync + 'static, B: Send + Sync + 'static> Morphism<A, B> {
+impl<A: ThreadSafe, B: ThreadSafe> Morphism<A, B> {
   pub fn new<F>(f: F) -> Self
   where
-    F: Fn(A) -> B + Send + Sync + 'static,
+    F: Fn(A) -> B + ThreadSafe,
   {
     Self { f: Arc::new(f) }
   }

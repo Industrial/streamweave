@@ -1,0 +1,213 @@
+use crate::{traits::Category, threadsafe::CloneableThreadSafe};
+use std::sync::Arc;
+
+// A cloneable function wrapper for Arc
+#[derive(Clone)]
+pub struct ArcFn<A, B>(Arc<dyn Fn(Arc<A>) -> Arc<B> + Send + Sync + 'static>);
+
+impl<A, B> ArcFn<A, B> {
+  pub fn new<F>(f: F) -> Self
+  where
+    F: Fn(Arc<A>) -> Arc<B> + Send + Sync + 'static,
+  {
+    ArcFn(Arc::new(f))
+  }
+
+  pub fn apply(&self, a: Arc<A>) -> Arc<B> {
+    (self.0)(a)
+  }
+}
+
+impl<T: CloneableThreadSafe> Category<T, T> for Arc<T> {
+  type Morphism<A: CloneableThreadSafe, B: CloneableThreadSafe> = ArcFn<A, B>;
+
+  fn id<A: CloneableThreadSafe>() -> Self::Morphism<A, A> {
+    ArcFn::new(|x| x)
+  }
+
+  fn compose<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
+    f: Self::Morphism<A, B>,
+    g: Self::Morphism<B, C>,
+  ) -> Self::Morphism<A, C> {
+    ArcFn::new(move |x| g.apply(f.apply(x)))
+  }
+
+  fn arr<A: CloneableThreadSafe, B: CloneableThreadSafe, F>(f: F) -> Self::Morphism<A, B>
+  where
+    F: Fn(&A) -> B + CloneableThreadSafe,
+  {
+    ArcFn::new(move |x| {
+      let inner = &*x; // Borrow the value inside the Arc
+      Arc::new(f(inner)) // Apply the closure
+    })
+  }
+
+  fn first<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
+    f: Self::Morphism<A, B>,
+  ) -> Self::Morphism<(A, C), (B, C)> {
+    ArcFn::new(move |x: Arc<(A, C)>| {
+      let (a, c): &(A, C) = &*x;
+      let a_arc = Arc::new(a.clone());
+      let b = f.apply(a_arc);
+      Arc::new(((*b).clone(), c.clone()))
+    })
+  }
+
+  fn second<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
+    f: Self::Morphism<A, B>,
+  ) -> Self::Morphism<(C, A), (C, B)> {
+    ArcFn::new(move |x: Arc<(C, A)>| {
+      let (c, a): &(C, A) = &*x;
+      let a_arc = Arc::new(a.clone());
+      let b = f.apply(a_arc);
+      Arc::new((c.clone(), (*b).clone()))
+    })
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::traits::Category;
+  use proptest::prelude::*;
+
+  // Define test functions that operate on integers
+  // Each function takes an i32 reference and returns an i32
+  const INT_FUNCTIONS: &[fn(&i32) -> i32] = &[
+    |x| x + 1,
+    |x| x * 2,
+    |x| x - 1,
+    |x| x / 2,
+    |x| x * x,
+    |x| -x,
+  ];
+
+  // Test the identity law: id() . f = f = f . id()
+  proptest! {
+      #[test]
+      fn test_identity_law(
+          x in any::<i32>(),
+          f_idx in 0..INT_FUNCTIONS.len()
+      ) {
+          // Get a function from our array
+          let f = INT_FUNCTIONS[f_idx];
+
+          // Create our Category::arr version of the function
+          let arr_f = <Arc<i32> as Category<i32, i32>>::arr(f);
+
+          // Get the identity morphism
+          let id = <Arc<i32> as Category<i32, i32>>::id();
+
+          // Compose id . f
+          let id_then_f = <Arc<i32> as Category<i32, i32>>::compose(id.clone(), arr_f.clone());
+
+          // Compose f . id
+          let f_then_id = <Arc<i32> as Category<i32, i32>>::compose(arr_f.clone(), id);
+
+          // Apply the input to each composition
+          let x_arc = Arc::new(x);
+          let result_f = arr_f.apply(x_arc.clone());
+          let result_id_then_f = id_then_f.apply(x_arc.clone());
+          let result_f_then_id = f_then_id.apply(x_arc);
+
+          // All should give the same result
+          assert_eq!(*result_f, *result_id_then_f);
+          assert_eq!(*result_f, *result_f_then_id);
+      }
+  }
+
+  // Test the composition law: (f . g) . h = f . (g . h)
+  proptest! {
+      #[test]
+      fn test_composition_law(
+          x in any::<i32>(),
+          f_idx in 0..INT_FUNCTIONS.len(),
+          g_idx in 0..INT_FUNCTIONS.len(),
+          h_idx in 0..INT_FUNCTIONS.len()
+      ) {
+          // Get functions from our array
+          let f = INT_FUNCTIONS[f_idx];
+          let g = INT_FUNCTIONS[g_idx];
+          let h = INT_FUNCTIONS[h_idx];
+
+          // Create Category::arr versions
+          let arr_f = <Arc<i32> as Category<i32, i32>>::arr(f);
+          let arr_g = <Arc<i32> as Category<i32, i32>>::arr(g);
+          let arr_h = <Arc<i32> as Category<i32, i32>>::arr(h);
+
+          // Compose (f . g) . h
+          let fg = <Arc<i32> as Category<i32, i32>>::compose(arr_f.clone(), arr_g.clone());
+          let fg_h = <Arc<i32> as Category<i32, i32>>::compose(fg, arr_h.clone());
+
+          // Compose f . (g . h)
+          let gh = <Arc<i32> as Category<i32, i32>>::compose(arr_g, arr_h);
+          let f_gh = <Arc<i32> as Category<i32, i32>>::compose(arr_f, gh);
+
+          // Apply the input
+          let x_arc = Arc::new(x);
+          let result_fg_h = fg_h.apply(x_arc.clone());
+          let result_f_gh = f_gh.apply(x_arc);
+
+          // Both compositions should give the same result
+          assert_eq!(*result_fg_h, *result_f_gh);
+      }
+  }
+
+  // Test the first combinator
+  proptest! {
+      #[test]
+      fn test_first_combinator(
+          x in any::<i32>(),
+          c in any::<i32>(),
+          f_idx in 0..INT_FUNCTIONS.len()
+      ) {
+          // Get a function from our array
+          let f = INT_FUNCTIONS[f_idx];
+
+          // Create the arr version
+          let arr_f = <Arc<i32> as Category<i32, i32>>::arr(f);
+
+          // Apply first to get a function on pairs
+          let first_f = <Arc<i32> as Category<i32, i32>>::first(arr_f);
+
+          // Create a pair input
+          let pair = Arc::new((x, c));
+
+          // Apply the first combinator
+          let result = first_f.apply(pair);
+
+          // The result should be (f(x), c)
+          assert_eq!(result.0, f(&x));
+          assert_eq!(result.1, c);
+      }
+  }
+
+  // Test the second combinator
+  proptest! {
+      #[test]
+      fn test_second_combinator(
+          x in any::<i32>(),
+          c in any::<i32>(),
+          f_idx in 0..INT_FUNCTIONS.len()
+      ) {
+          // Get a function from our array
+          let f = INT_FUNCTIONS[f_idx];
+
+          // Create the arr version
+          let arr_f = <Arc<i32> as Category<i32, i32>>::arr(f);
+
+          // Apply second to get a function on pairs
+          let second_f = <Arc<i32> as Category<i32, i32>>::second(arr_f);
+
+          // Create a pair input
+          let pair = Arc::new((c, x));
+
+          // Apply the second combinator
+          let result = second_f.apply(pair);
+
+          // The result should be (c, f(x))
+          assert_eq!(result.0, c);
+          assert_eq!(result.1, f(&x));
+      }
+  }
+}

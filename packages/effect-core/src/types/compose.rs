@@ -1,15 +1,17 @@
 use std::sync::Arc;
 
-pub struct Compose<A: Send + Sync + 'static, B: Send + Sync + 'static> {
+use super::threadsafe::ThreadSafe;
+
+pub struct Compose<A: ThreadSafe, B: ThreadSafe> {
   pub(crate) f: Arc<dyn Fn(A) -> B + Send + Sync>,
   pub(crate) g: Arc<dyn Fn(B) -> B + Send + Sync>,
 }
 
-impl<A: Send + Sync + 'static, B: Send + Sync + 'static> Compose<A, B> {
+impl<A: ThreadSafe, B: ThreadSafe> Compose<A, B> {
   pub fn new<F, G>(f: F, g: G) -> Self
   where
-    F: Fn(A) -> B + Send + Sync + 'static,
-    G: Fn(B) -> B + Send + Sync + 'static,
+    F: Fn(A) -> B + ThreadSafe,
+    G: Fn(B) -> B + ThreadSafe,
   {
     Self {
       f: Arc::new(f),
