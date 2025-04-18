@@ -28,3 +28,25 @@ pub trait Functor<T: CloneableThreadSafe>: Category<T, T> {
     F: for<'a> FnMut(&'a T) -> U + CloneableThreadSafe,
     U: CloneableThreadSafe;
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::traits::functor::Functor;
+  use std::fmt::Debug;
+
+  // Testing helper function that verifies the identity law
+  fn test_identity_law<F, T>(functor: F, expected: F::HigherSelf<T>)
+  where
+    F: Functor<T>,
+    T: CloneableThreadSafe + PartialEq + Debug + Clone,
+    F::HigherSelf<T>: PartialEq + Debug,
+  {
+    let id = |x: &T| x.clone();
+    let result = functor.map(id);
+    assert_eq!(result, expected);
+  }
+
+  // Note: The composition law should be tested directly in each implementation
+  // rather than through a helper function due to complex type constraints
+}
