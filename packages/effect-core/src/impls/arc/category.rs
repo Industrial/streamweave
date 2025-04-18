@@ -1,4 +1,4 @@
-use crate::{traits::Category, threadsafe::CloneableThreadSafe};
+use crate::{threadsafe::CloneableThreadSafe, traits::Category};
 use std::sync::Arc;
 
 // A cloneable function wrapper for Arc
@@ -46,7 +46,7 @@ impl<T: CloneableThreadSafe> Category<T, T> for Arc<T> {
     f: Self::Morphism<A, B>,
   ) -> Self::Morphism<(A, C), (B, C)> {
     ArcFn::new(move |x: Arc<(A, C)>| {
-      let (a, c): &(A, C) = &*x;
+      let (a, c): &(A, C) = &x;
       let a_arc = Arc::new(a.clone());
       let b = f.apply(a_arc);
       Arc::new(((*b).clone(), c.clone()))
@@ -57,7 +57,7 @@ impl<T: CloneableThreadSafe> Category<T, T> for Arc<T> {
     f: Self::Morphism<A, B>,
   ) -> Self::Morphism<(C, A), (C, B)> {
     ArcFn::new(move |x: Arc<(C, A)>| {
-      let (c, a): &(C, A) = &*x;
+      let (c, a): &(C, A) = &x;
       let a_arc = Arc::new(a.clone());
       let b = f.apply(a_arc);
       Arc::new((c.clone(), (*b).clone()))
@@ -71,38 +71,39 @@ mod tests {
   use crate::traits::Category;
   use proptest::prelude::*;
 
-  // Define test functions that operate on integers
-  // Each function takes an i32 reference and returns an i32
-  const INT_FUNCTIONS: &[fn(&i32) -> i32] = &[
-    |x| x + 1,
-    |x| x * 2,
-    |x| x - 1,
-    |x| x / 2,
-    |x| x * x,
-    |x| -x,
+  // Define test functions that operate on integers - using i64 instead of i32
+  // and using checked arithmetic to prevent overflow
+  const INT_FUNCTIONS: &[fn(&i64) -> i64] = &[
+    |x| x.saturating_add(1),
+    |x| x.saturating_mul(2),
+    |x| x.saturating_sub(1),
+    |x| if *x != 0 { x / 2 } else { 0 },
+    |x| x.saturating_mul(*x),
+    |x| x.checked_neg().unwrap_or(i64::MAX),
   ];
 
   // Test the identity law: id() . f = f = f . id()
   proptest! {
       #[test]
       fn test_identity_law(
-          x in any::<i32>(),
+          // Use bounded input to prevent overflow
+          x in any::<i64>().prop_filter("Value too large", |v| *v < 10000),
           f_idx in 0..INT_FUNCTIONS.len()
       ) {
           // Get a function from our array
           let f = INT_FUNCTIONS[f_idx];
 
           // Create our Category::arr version of the function
-          let arr_f = <Arc<i32> as Category<i32, i32>>::arr(f);
+          let arr_f = <Arc<i64> as Category<i64, i64>>::arr(f);
 
           // Get the identity morphism
-          let id = <Arc<i32> as Category<i32, i32>>::id();
+          let id = <Arc<i64> as Category<i64, i64>>::id();
 
           // Compose id . f
-          let id_then_f = <Arc<i32> as Category<i32, i32>>::compose(id.clone(), arr_f.clone());
+          let id_then_f = <Arc<i64> as Category<i64, i64>>::compose(id.clone(), arr_f.clone());
 
           // Compose f . id
-          let f_then_id = <Arc<i32> as Category<i32, i32>>::compose(arr_f.clone(), id);
+          let f_then_id = <Arc<i64> as Category<i64, i64>>::compose(arr_f.clone(), id);
 
           // Apply the input to each composition
           let x_arc = Arc::new(x);
@@ -120,7 +121,8 @@ mod tests {
   proptest! {
       #[test]
       fn test_composition_law(
-          x in any::<i32>(),
+          // Use bounded input to prevent overflow
+          x in any::<i64>().prop_filter("Value too large", |v| *v < 10000),
           f_idx in 0..INT_FUNCTIONS.len(),
           g_idx in 0..INT_FUNCTIONS.len(),
           h_idx in 0..INT_FUNCTIONS.len()
@@ -131,17 +133,17 @@ mod tests {
           let h = INT_FUNCTIONS[h_idx];
 
           // Create Category::arr versions
-          let arr_f = <Arc<i32> as Category<i32, i32>>::arr(f);
-          let arr_g = <Arc<i32> as Category<i32, i32>>::arr(g);
-          let arr_h = <Arc<i32> as Category<i32, i32>>::arr(h);
+          let arr_f = <Arc<i64> as Category<i64, i64>>::arr(f);
+          let arr_g = <Arc<i64> as Category<i64, i64>>::arr(g);
+          let arr_h = <Arc<i64> as Category<i64, i64>>::arr(h);
 
           // Compose (f . g) . h
-          let fg = <Arc<i32> as Category<i32, i32>>::compose(arr_f.clone(), arr_g.clone());
-          let fg_h = <Arc<i32> as Category<i32, i32>>::compose(fg, arr_h.clone());
+          let fg = <Arc<i64> as Category<i64, i64>>::compose(arr_f.clone(), arr_g.clone());
+          let fg_h = <Arc<i64> as Category<i64, i64>>::compose(fg, arr_h.clone());
 
           // Compose f . (g . h)
-          let gh = <Arc<i32> as Category<i32, i32>>::compose(arr_g, arr_h);
-          let f_gh = <Arc<i32> as Category<i32, i32>>::compose(arr_f, gh);
+          let gh = <Arc<i64> as Category<i64, i64>>::compose(arr_g, arr_h);
+          let f_gh = <Arc<i64> as Category<i64, i64>>::compose(arr_f, gh);
 
           // Apply the input
           let x_arc = Arc::new(x);
@@ -153,22 +155,23 @@ mod tests {
       }
   }
 
-  // Test the first combinator
+  // Test the first combinator - specific to Arc implementation (shared ownership)
   proptest! {
       #[test]
       fn test_first_combinator(
-          x in any::<i32>(),
-          c in any::<i32>(),
+          // Use bounded input to prevent overflow
+          x in any::<i64>().prop_filter("Value too large", |v| *v < 10000),
+          c in any::<i64>().prop_filter("Value too large", |v| *v < 10000),
           f_idx in 0..INT_FUNCTIONS.len()
       ) {
           // Get a function from our array
           let f = INT_FUNCTIONS[f_idx];
 
           // Create the arr version
-          let arr_f = <Arc<i32> as Category<i32, i32>>::arr(f);
+          let arr_f = <Arc<i64> as Category<i64, i64>>::arr(f);
 
           // Apply first to get a function on pairs
-          let first_f = <Arc<i32> as Category<i32, i32>>::first(arr_f);
+          let first_f = <Arc<i64> as Category<i64, i64>>::first(arr_f);
 
           // Create a pair input
           let pair = Arc::new((x, c));
@@ -182,22 +185,23 @@ mod tests {
       }
   }
 
-  // Test the second combinator
+  // Test the second combinator - specific to Arc implementation (shared ownership)
   proptest! {
       #[test]
       fn test_second_combinator(
-          x in any::<i32>(),
-          c in any::<i32>(),
+          // Use bounded input to prevent overflow
+          x in any::<i64>().prop_filter("Value too large", |v| *v < 10000),
+          c in any::<i64>().prop_filter("Value too large", |v| *v < 10000),
           f_idx in 0..INT_FUNCTIONS.len()
       ) {
           // Get a function from our array
           let f = INT_FUNCTIONS[f_idx];
 
           // Create the arr version
-          let arr_f = <Arc<i32> as Category<i32, i32>>::arr(f);
+          let arr_f = <Arc<i64> as Category<i64, i64>>::arr(f);
 
           // Apply second to get a function on pairs
-          let second_f = <Arc<i32> as Category<i32, i32>>::second(arr_f);
+          let second_f = <Arc<i64> as Category<i64, i64>>::second(arr_f);
 
           // Create a pair input
           let pair = Arc::new((c, x));

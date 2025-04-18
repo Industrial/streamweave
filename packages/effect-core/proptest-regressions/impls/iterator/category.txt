@@ -7,3 +7,4 @@
 cc 008b1b3b85debb0a3c7b43d5d4a92b4631cf76c6b7c783c1ce1a71c97a8cfe5f # shrinks to xs = [1073741824], f_idx = 1, g_idx = 0, h_idx = 0
 cc 5d9f04b2427ed4af910b60327276eef5c36fc5416f32a1696ab26e4cb63f69d5 # shrinks to xs = [1073741824], cs = [0], f_idx = 1
 cc 849b92bf09b35660a33ef7a70a5f6ef750b43999ea00055022f2caa2762be969 # shrinks to xs = [46341], cs = [0], f_idx = 4
+cc f5acc007e5f86e4021db4fa68a3c9663903352a1b0f55a9fe120f87a7ebbd91c # shrinks to xs = [-4611686018427387904], f_idx = 1, g_idx = 5, h_idx = 0

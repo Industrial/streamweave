@@ -8,3 +8,4 @@ cc 82e6b2c2a92eb818087e673a0a65733c0e83fa5fd55a330dde3333d1dc8c7c92 # shrinks to
 cc ad9d30567308ce648d008007cebedf2d1c4e16ef5d60448edd47b45c1bb0aeba # shrinks to x = -46341, f_idx = 4, g_idx = 0, h_idx = 0
 cc 34bd0ce9d5f690c9d02de9410219198eec9880ec808c78a929581ca1fadbc570 # shrinks to x = -46341, c = 0, f_idx = 4
 cc 379784c97e90ae187e3a49a788d1e04accdfbb67ea3195a5d81e6b783a54b585 # shrinks to x = -1073741825, c = 0, f_idx = 1
+cc d2eadddf3d3e594aa93dce3ac1ea361ab4cff25a87aa8984a50d0c18fcf6bc08 # shrinks to x = -4611686018427387905, f_idx = 0, g_idx = 1, h_idx = 5

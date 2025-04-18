@@ -8,3 +8,4 @@ cc a877604e9a5c905ebe57fbd618753878070e1c091b640171d5a4fd2be1181d47 # shrinks to
 cc b3b1c6a761d1b29a04b314481a7e9f93a1342efcd97e8894f5ffc1b160e3b779 # shrinks to val = 46341, err = "", is_ok = true, f_idx = 4
 cc 0601e930346763f416d2fdd124a202f35657395e52200e86c9999fbd833d8106 # shrinks to x = 1073741824, c = 0, err = "", is_ok = true, f_idx = 1
 cc 543d6edb4640da0de31f931496ea34bdf4083fab1260acdb6108766f574a27f5 # shrinks to x = 46341, c = 0, err = "", is_ok = true, f_idx = 4
+cc 60308bb65d1421a2b56006df32027b16d6d14f58072ba222b8553aa6eca34ec6 # shrinks to x = -4611686018427387904, err = "", is_ok = true, f_idx = 1, g_idx = 5, h_idx = 0

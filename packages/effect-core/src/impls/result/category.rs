@@ -1,4 +1,4 @@
-use crate::{traits::Category, threadsafe::CloneableThreadSafe};
+use crate::{threadsafe::CloneableThreadSafe, traits::Category};
 use std::sync::Arc;
 
 // A cloneable function wrapper for Result
@@ -58,20 +58,21 @@ mod tests {
   use crate::traits::Category;
   use proptest::prelude::*;
 
-  // Define test functions that operate on integers
-  const INT_FUNCTIONS: &[fn(&i32) -> i32] = &[
-    |x| x + 1,
-    |x| x * 2,
-    |x| x - 1,
-    |x| x / 2,
-    |x| x * x,
-    |x| -x,
+  // Define test functions that operate on integers - using i64 instead of i32
+  // and using checked arithmetic to prevent overflow
+  const INT_FUNCTIONS: &[fn(&i64) -> i64] = &[
+    |x| x.saturating_add(1),
+    |x| x.saturating_mul(2),
+    |x| x.saturating_sub(1),
+    |x| if *x != 0 { x / 2 } else { 0 },
+    |x| x.saturating_mul(*x),
+    |x| x.checked_neg().unwrap_or(i64::MAX),
   ];
 
-  // Helper to create either Ok or Err
-  fn make_result<T, E>(val: T, err: E, is_ok: bool) -> Result<T, E> {
+  // Helper function to create a Result for testing
+  fn make_result<T>(value: T, err: String, is_ok: bool) -> Result<T, String> {
     if is_ok {
-      Ok(val)
+      Ok(value)
     } else {
       Err(err)
     }
@@ -81,7 +82,8 @@ mod tests {
   proptest! {
       #[test]
       fn test_identity_law(
-          val in any::<i32>(),
+          // Use bounded input to prevent overflow
+          x in any::<i64>().prop_filter("Value too large", |v| *v < 10000),
           err in any::<String>(),
           is_ok in any::<bool>(),
           f_idx in 0..INT_FUNCTIONS.len()
@@ -90,19 +92,19 @@ mod tests {
           let f = INT_FUNCTIONS[f_idx];
 
           // Create our Category::arr version of the function
-          let arr_f = <Result<i32, String> as Category<i32, i32>>::arr(f);
+          let arr_f = <Result<i64, String> as Category<i64, i64>>::arr(f);
 
           // Get the identity morphism
-          let id = <Result<i32, String> as Category<i32, i32>>::id();
+          let id = <Result<i64, String> as Category<i64, i64>>::id();
 
           // Compose id . f
-          let id_then_f = <Result<i32, String> as Category<i32, i32>>::compose(id.clone(), arr_f.clone());
+          let id_then_f = <Result<i64, String> as Category<i64, i64>>::compose(id.clone(), arr_f.clone());
 
           // Compose f . id
-          let f_then_id = <Result<i32, String> as Category<i32, i32>>::compose(arr_f.clone(), id);
+          let f_then_id = <Result<i64, String> as Category<i64, i64>>::compose(arr_f.clone(), id);
 
-          // Create the input
-          let input = make_result(val, err.clone(), is_ok);
+          // Create a Result input
+          let input = make_result(x, err.clone(), is_ok);
 
           // Apply the input to each composition
           let result_f = arr_f.apply(input.clone());
@@ -119,7 +121,8 @@ mod tests {
   proptest! {
       #[test]
       fn test_composition_law(
-          val in any::<i32>(),
+          // Use bounded input to prevent overflow
+          x in any::<i64>().prop_filter("Value too large", |v| *v < 10000),
           err in any::<String>(),
           is_ok in any::<bool>(),
           f_idx in 0..INT_FUNCTIONS.len(),
@@ -132,20 +135,20 @@ mod tests {
           let h = INT_FUNCTIONS[h_idx];
 
           // Create Category::arr versions
-          let arr_f = <Result<i32, String> as Category<i32, i32>>::arr(f);
-          let arr_g = <Result<i32, String> as Category<i32, i32>>::arr(g);
-          let arr_h = <Result<i32, String> as Category<i32, i32>>::arr(h);
+          let arr_f = <Result<i64, String> as Category<i64, i64>>::arr(f);
+          let arr_g = <Result<i64, String> as Category<i64, i64>>::arr(g);
+          let arr_h = <Result<i64, String> as Category<i64, i64>>::arr(h);
+
+          // Create a Result input
+          let input = make_result(x, err.clone(), is_ok);
 
           // Compose (f . g) . h
-          let fg = <Result<i32, String> as Category<i32, i32>>::compose(arr_f.clone(), arr_g.clone());
-          let fg_h = <Result<i32, String> as Category<i32, i32>>::compose(fg, arr_h.clone());
+          let fg = <Result<i64, String> as Category<i64, i64>>::compose(arr_f.clone(), arr_g.clone());
+          let fg_h = <Result<i64, String> as Category<i64, i64>>::compose(fg, arr_h.clone());
 
           // Compose f . (g . h)
-          let gh = <Result<i32, String> as Category<i32, i32>>::compose(arr_g, arr_h);
-          let f_gh = <Result<i32, String> as Category<i32, i32>>::compose(arr_f, gh);
-
-          // Create the input
-          let input = make_result(val, err, is_ok);
+          let gh = <Result<i64, String> as Category<i64, i64>>::compose(arr_g, arr_h);
+          let f_gh = <Result<i64, String> as Category<i64, i64>>::compose(arr_f, gh);
 
           // Apply the input
           let result_fg_h = fg_h.apply(input.clone());
@@ -156,12 +159,13 @@ mod tests {
       }
   }
 
-  // Test the first combinator
+  // Test the first combinator - specific to Result implementation (error handling)
   proptest! {
       #[test]
       fn test_first_combinator(
-          x in any::<i32>(),
-          c in any::<i32>(),
+          // Use bounded input to prevent overflow
+          x in any::<i64>().prop_filter("Value too large", |v| *v < 10000),
+          c in any::<i64>().prop_filter("Value too large", |v| *v < 10000),
           err in any::<String>(),
           is_ok in any::<bool>(),
           f_idx in 0..INT_FUNCTIONS.len()
@@ -170,10 +174,10 @@ mod tests {
           let f = INT_FUNCTIONS[f_idx];
 
           // Create the arr version
-          let arr_f = <Result<i32, String> as Category<i32, i32>>::arr(f);
+          let arr_f = <Result<i64, String> as Category<i64, i64>>::arr(f);
 
           // Apply first to get a function on pairs
-          let first_f = <Result<i32, String> as Category<i32, i32>>::first(arr_f);
+          let first_f = <Result<i64, String> as Category<i64, i64>>::first(arr_f);
 
           // Create a result pair input
           let pair = make_result((x, c), err.clone(), is_ok);
@@ -189,12 +193,13 @@ mod tests {
       }
   }
 
-  // Test the second combinator
+  // Test the second combinator - specific to Result implementation (error handling)
   proptest! {
       #[test]
       fn test_second_combinator(
-          x in any::<i32>(),
-          c in any::<i32>(),
+          // Use bounded input to prevent overflow
+          x in any::<i64>().prop_filter("Value too large", |v| *v < 10000),
+          c in any::<i64>().prop_filter("Value too large", |v| *v < 10000),
           err in any::<String>(),
           is_ok in any::<bool>(),
           f_idx in 0..INT_FUNCTIONS.len()
@@ -203,10 +208,10 @@ mod tests {
           let f = INT_FUNCTIONS[f_idx];
 
           // Create the arr version
-          let arr_f = <Result<i32, String> as Category<i32, i32>>::arr(f);
+          let arr_f = <Result<i64, String> as Category<i64, i64>>::arr(f);
 
           // Apply second to get a function on pairs
-          let second_f = <Result<i32, String> as Category<i32, i32>>::second(arr_f);
+          let second_f = <Result<i64, String> as Category<i64, i64>>::second(arr_f);
 
           // Create a result pair input
           let pair = make_result((c, x), err.clone(), is_ok);

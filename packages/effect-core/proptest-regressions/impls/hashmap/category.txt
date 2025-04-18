@@ -8,3 +8,4 @@ cc 28288e705550a9efa3247f3cd83af3deeba0eb9b204f7c5cfc6ad2073e4caebe # shrinks to
 cc d85d194db2b074b571ec1506d29022a9f997c090d8280eaab93bf13b6705948f # shrinks to map = {"": 1073741824}, f_idx = 1
 cc 9a2fee871ab63d5a05684e533bffba1f20f7379f226e9fbc04649a128f41fe9a # shrinks to keys = [""], xs = [-1073741825], cs = [0], f_idx = 1
 cc bedfe2521818790067fc62d6cd87cb30157c29d77394670231ac2a0f7ea8e77d # shrinks to keys = [""], xs = [-46341], cs = [0], f_idx = 4
+cc 7fc1b3fdfa8d3c80171faf34aa6c0fe805db329424723ef1e6185017a1fd0be5 # shrinks to kvs = {"": -4611686018427387903}, f_idx = 1, g_idx = 1, h_idx = 5

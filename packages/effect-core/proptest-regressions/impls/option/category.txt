@@ -6,3 +6,4 @@
 # everyone who runs the test benefits from these saved cases.
 cc 69c09f768897e6b61b94b8bc9eed6d80224acbc534a110e1fff31f82bb4b9709 # shrinks to opt_val = Some(-46341), f_idx = 4, g_idx = 0, h_idx = 0
 cc ff29be239ffc1ab20c8bc6ce2b6bf0ef721a0947dd57f65d1a570f17031f5e48 # shrinks to x = 46341, c = 0, is_some = true, f_idx = 4
+cc 12e2136c242ed6d3f5943a3a39aca04984324443b5e9ba19024958cb58768a14 # shrinks to x = -4611686018427387904, is_some = true, f_idx = 1, g_idx = 1, h_idx = 5
