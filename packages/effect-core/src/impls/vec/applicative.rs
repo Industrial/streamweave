@@ -163,7 +163,7 @@ mod tests {
       score: i64,
     }
 
-    let names = vec!["Alice", "Bob"];
+    let names = ["Alice", "Bob"];
     let create_person = |name: &&str| {
       let name_owned = name.to_string();
       move |score: &i64| Person {

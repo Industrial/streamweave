@@ -64,7 +64,6 @@ impl<T: CloneableThreadSafe> Category<T, T> for Option<T> {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
   use crate::traits::category::Category;
   use proptest::prelude::*;
 

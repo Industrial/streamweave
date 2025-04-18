@@ -1,6 +1,5 @@
-use effect_core::impls::future::category::{FutureCategory, FutureFn};
+use effect_core::impls::future::category::FutureCategory;
 use effect_core::traits::category::Category;
-use effect_core::types::threadsafe::CloneableThreadSafe;
 use std::future::Future;
 
 fn boxed_future<T: Send + 'static>(value: T) -> Box<dyn Future<Output = T> + Send + Unpin> {

@@ -36,7 +36,7 @@ impl<T: CloneableThreadSafe> Category<T, T> for Vec<T> {
   where
     F: Fn(&A) -> B + CloneableThreadSafe,
   {
-    VecFn::new(move |xs| xs.iter().map(|a| f(a)).collect())
+    VecFn::new(move |xs| xs.iter().map(&f).collect())
   }
 
   fn first<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
@@ -188,7 +188,7 @@ mod tests {
           let result = first_f.apply(pairs);
 
           // Compute the expected result
-          let expected: Vec<(i64, i64)> = xs.iter().map(|x| f(x)).zip(cs.iter().cloned()).collect();
+          let expected: Vec<(i64, i64)> = xs.iter().map(f).zip(cs.iter().cloned()).collect();
 
           // Results should match
           assert_eq!(result, expected);
@@ -225,7 +225,7 @@ mod tests {
           let result = second_f.apply(pairs);
 
           // Compute the expected result
-          let expected: Vec<(i64, i64)> = cs.iter().cloned().zip(xs.iter().map(|x| f(x))).collect();
+          let expected: Vec<(i64, i64)> = cs.iter().cloned().zip(xs.iter().map(f)).collect();
 
           // Results should match
           assert_eq!(result, expected);

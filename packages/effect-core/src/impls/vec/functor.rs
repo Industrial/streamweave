@@ -28,19 +28,6 @@ mod tests {
     |x| x.checked_neg().unwrap_or(i64::MAX),
   ];
 
-  // Helper for creating readable function names in test output
-  fn function_name(idx: usize) -> &'static str {
-    match idx {
-      0 => "add1",
-      1 => "mul2",
-      2 => "sub1",
-      3 => "div2",
-      4 => "square",
-      5 => "negate",
-      _ => "unknown",
-    }
-  }
-
   #[test]
   fn test_identity_law_empty() {
     let vec: Vec<i64> = vec![];

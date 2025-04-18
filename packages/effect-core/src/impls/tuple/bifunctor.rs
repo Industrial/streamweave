@@ -39,42 +39,279 @@ mod tests {
   use super::*;
   use proptest::prelude::*;
 
+  // Define test functions with overflow protection for property-based testing
+  const INT_FUNCTIONS: &[fn(&i32) -> i32] = &[
+    |x| x.saturating_add(1),
+    |x| x.saturating_mul(2),
+    |x| x.saturating_sub(1),
+    |x| if *x != 0 { x / 2 } else { 0 },
+    |x| x.saturating_mul(*x),
+    |x| x.saturating_neg(),
+  ];
+
+  // Test identity law: bimap(id, id) = id
+  #[test]
+  fn test_identity_law() {
+    let pair = (42, 84);
+    let id_a = |x: &i32| *x;
+    let id_b = |x: &i32| *x;
+
+    let result = pair.bimap(id_a, id_b);
+    assert_eq!(result, pair);
+  }
+
+  // Property-based test for identity law
   proptest! {
     #[test]
-    fn test_tuple_bifunctor_laws(a: i32, b: i32) {
-      // Test identity law
+    fn test_identity_law_prop(a in -1000..1000i32, b in -1000..1000i32) {
+      let pair = (a, b);
       let id_a = |x: &i32| *x;
       let id_b = |x: &i32| *x;
-      let tuple = (a, b);
-      let result = tuple.bimap(id_a, id_b);
-      assert_eq!(tuple, result);
 
-      // Test composition law
-      let f1 = |x: &i32| x.saturating_add(1);
-      let f2 = |x: &i32| x.saturating_mul(2);
-      let g1 = |x: &i32| x.saturating_sub(1);
-      let g2 = |x: &i32| x.saturating_div(2);
+      let result = pair.bimap(id_a, id_b);
+      prop_assert_eq!(result, pair);
+    }
+  }
 
-      let f1_clone = f1;
-      let f2_clone = f2;
-      let g1_clone = g1;
-      let g2_clone = g2;
+  // Test composition law: bimap(f1, g1) . bimap(f2, g2) = bimap(f1 . f2, g1 . g2)
+  #[test]
+  fn test_composition_law() {
+    let pair = (5, 10);
 
-      let result1 = tuple.bimap(f1, g1).bimap(f2, g2);
-      let result2 = tuple.bimap(
-        move |x| f2_clone(&f1_clone(x)),
-        move |x| g2_clone(&g1_clone(x))
-      );
+    // Test with all combinations of our test functions
+    for f1_idx in 0..INT_FUNCTIONS.len() {
+      for f2_idx in 0..INT_FUNCTIONS.len() {
+        for g1_idx in 0..INT_FUNCTIONS.len() {
+          for g2_idx in 0..INT_FUNCTIONS.len() {
+            let f1 = INT_FUNCTIONS[f1_idx];
+            let f2 = INT_FUNCTIONS[f2_idx];
+            let g1 = INT_FUNCTIONS[g1_idx];
+            let g2 = INT_FUNCTIONS[g2_idx];
+
+            // First approach: apply bimap twice
+            let intermediate = pair.bimap(f1, g1);
+            let result1 = intermediate.bimap(f2, g2);
+
+            // Second approach: compose the functions, then apply bimap once
+            let f_composed = move |x: &i32| f2(&f1(x));
+            let g_composed = move |x: &i32| g2(&g1(x));
+
+            // Create simple mapping wrappers that satisfy the trait bounds
+            let f_wrapper = |x: &i32| f_composed(x);
+            let g_wrapper = |x: &i32| g_composed(x);
+
+            let result2 = pair.bimap(f_wrapper, g_wrapper);
+
+            // Results should be the same
+            assert_eq!(result1, result2);
+          }
+        }
+      }
+    }
+  }
+
+  // Property-based test for composition law (with a subset of combinations to keep runtime reasonable)
+  proptest! {
+    #[test]
+    fn test_composition_law_prop(
+      a in -100..100i32,
+      b in -100..100i32,
+      f1_idx in 0..INT_FUNCTIONS.len(),
+      f2_idx in 0..INT_FUNCTIONS.len(),
+      g1_idx in 0..INT_FUNCTIONS.len(),
+      g2_idx in 0..INT_FUNCTIONS.len()
+    ) {
+      let pair = (a, b);
+      let f1 = INT_FUNCTIONS[f1_idx];
+      let f2 = INT_FUNCTIONS[f2_idx];
+      let g1 = INT_FUNCTIONS[g1_idx];
+      let g2 = INT_FUNCTIONS[g2_idx];
+
+      // First approach: apply bimap twice
+      let intermediate = pair.bimap(f1, g1);
+      let result1 = intermediate.bimap(f2, g2);
+
+      // Second approach: compose the functions, then apply bimap once
+      let f_composed = move |x: &i32| f2(&f1(x));
+      let g_composed = move |x: &i32| g2(&g1(x));
+
+      // Create simple mapping wrappers that satisfy the trait bounds
+      let f_wrapper = |x: &i32| f_composed(x);
+      let g_wrapper = |x: &i32| g_composed(x);
+
+      let result2 = pair.bimap(f_wrapper, g_wrapper);
+
+      // Results should be the same
+      prop_assert_eq!(result1, result2);
+    }
+  }
+
+  // Test that first and second are derived from bimap correctly
+  #[test]
+  fn test_first_second_derivation() {
+    let pair = (5, 10);
+
+    // For all our test functions
+    for f_idx in 0..INT_FUNCTIONS.len() {
+      let f = INT_FUNCTIONS[f_idx];
+
+      // First using the dedicated method
+      let result1 = pair.first(f);
+
+      // First as a special case of bimap
+      let id_b = |x: &i32| *x;
+      let result2 = pair.bimap(f, id_b);
+
+      // Results should be the same
       assert_eq!(result1, result2);
 
-      // Test that first and second commute
-      let f = |x: &i32| x.saturating_add(1);
-      let g = |x: &i32| x.saturating_mul(2);
+      // Second using the dedicated method
+      let result3 = pair.second(f);
 
-      let first_then_second = tuple.first(f).second(g);
-      let second_then_first = tuple.second(g).first(f);
+      // Second as a special case of bimap
+      let id_a = |x: &i32| *x;
+      let result4 = pair.bimap(id_a, f);
 
-      assert_eq!(first_then_second, second_then_first);
+      // Results should be the same
+      assert_eq!(result3, result4);
     }
+  }
+
+  // Property-based test for first/second derivation
+  proptest! {
+    #[test]
+    fn test_first_second_derivation_prop(
+      a in -1000..1000i32,
+      b in -1000..1000i32,
+      f_idx in 0..INT_FUNCTIONS.len()
+    ) {
+      let pair = (a, b);
+      let f = INT_FUNCTIONS[f_idx];
+
+      // First using the dedicated method
+      let result1 = pair.first(f);
+
+      // First as a special case of bimap
+      let id_b = |x: &i32| *x;
+      let result2 = pair.bimap(f, id_b);
+
+      // Results should be the same
+      prop_assert_eq!(result1, result2);
+
+      // Second using the dedicated method
+      let result3 = pair.second(f);
+
+      // Second as a special case of bimap
+      let id_a = |x: &i32| *x;
+      let result4 = pair.bimap(id_a, f);
+
+      // Results should be the same
+      prop_assert_eq!(result3, result4);
+    }
+  }
+
+  // Test first/second commutativity law: first(f) . second(g) = second(g) . first(f)
+  #[test]
+  fn test_first_second_commutativity() {
+    let pair = (5, 10);
+
+    // Test with all combinations of our test functions
+    for f_idx in 0..INT_FUNCTIONS.len() {
+      for g_idx in 0..INT_FUNCTIONS.len() {
+        let f = INT_FUNCTIONS[f_idx];
+        let g = INT_FUNCTIONS[g_idx];
+
+        // First approach: first(f) then second(g)
+        let first_then_second = pair.first(f).second(g);
+
+        // Second approach: second(g) then first(f)
+        let second_then_first = pair.second(g).first(f);
+
+        // Results should be the same
+        assert_eq!(first_then_second, second_then_first);
+      }
+    }
+  }
+
+  // Property-based test for first/second commutativity
+  proptest! {
+    #[test]
+    fn test_first_second_commutativity_prop(
+      a in -1000..1000i32,
+      b in -1000..1000i32,
+      f_idx in 0..INT_FUNCTIONS.len(),
+      g_idx in 0..INT_FUNCTIONS.len()
+    ) {
+      let pair = (a, b);
+      let f = INT_FUNCTIONS[f_idx];
+      let g = INT_FUNCTIONS[g_idx];
+
+      // First approach: first(f) then second(g)
+      let first_then_second = pair.first(f).second(g);
+
+      // Second approach: second(g) then first(f)
+      let second_then_first = pair.second(g).first(f);
+
+      // Results should be the same
+      prop_assert_eq!(first_then_second, second_then_first);
+    }
+  }
+
+  // Test with different types
+  #[test]
+  fn test_bifunctor_with_different_types() {
+    // String -> Length, Number -> Double
+    let pair = ("hello", 5);
+    let string_len = |s: &&str| s.len();
+    let double = |n: &i32| n * 2;
+
+    let result = pair.bimap(string_len, double);
+    assert_eq!(result, (5, 10));
+
+    // Only transform first component
+    let result = pair.first(string_len);
+    assert_eq!(result, (5, 5));
+
+    // Only transform second component
+    let result = pair.second(double);
+    assert_eq!(result, ("hello", 10));
+  }
+
+  // Test with complex types
+  #[test]
+  fn test_bifunctor_with_complex_types() {
+    // Option types
+    let pair = (Some(5), Some(10));
+    let option_map1 = |opt: &Option<i32>| opt.map(|x| x + 1);
+    let option_map2 = |opt: &Option<i32>| opt.map(|x| x * 2);
+
+    let result = pair.bimap(option_map1, option_map2);
+    assert_eq!(result, (Some(6), Some(20)));
+
+    // Mix of Option and Vec
+    let pair = (Some(42), vec![1, 2, 3]);
+    let option_is_some = |opt: &Option<i32>| opt.is_some();
+    let vec_len = |v: &Vec<i32>| v.len();
+
+    let result = pair.bimap(option_is_some, vec_len);
+    assert_eq!(result, (true, 3));
+  }
+
+  // Test with nested tuples
+  #[test]
+  fn test_bifunctor_with_nested_tuples() {
+    // The outer tuple contains an inner tuple as its first component
+    let nested = ((1, 2), 3);
+
+    // Map the first component (which is a tuple) using another bimap
+    let result = nested.first(|inner_tuple| inner_tuple.bimap(|x| x + 1, |y| y * 2));
+    assert_eq!(result, ((2, 4), 3));
+
+    // The outer tuple contains an inner tuple as its second component
+    let nested = (1, (2, 3));
+
+    // Map the second component (which is a tuple) using another bimap
+    let result = nested.second(|inner_tuple| inner_tuple.bimap(|x| x + 1, |y| y * 2));
+    assert_eq!(result, (1, (3, 6)));
   }
 }
