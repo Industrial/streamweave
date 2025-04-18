@@ -1,2 +1,3 @@
-mod category;
-mod functor;
+pub mod applicative;
+pub mod category;
+pub mod functor;

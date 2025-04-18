@@ -12,16 +12,3 @@ pub mod result;
 pub mod tuple;
 pub mod vec;
 
-pub use arc::*;
-pub use boxed::*;
-pub use compose::*;
-pub use either::*;
-pub use future::*;
-pub use hashmap::*;
-pub use iterator::*;
-pub use morphism::*;
-pub use option::*;
-pub use rc::*;
-pub use result::*;
-pub use tuple::*;
-pub use vec::*;

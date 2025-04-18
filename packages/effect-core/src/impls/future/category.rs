@@ -34,7 +34,8 @@ impl<A, B> FutureFn<A, B> {
 }
 
 // We can't implement traits for Future directly, so we use a dummy type
-pub struct FutureCategory<T>(std::marker::PhantomData<T>);
+#[derive(Clone)]
+pub struct FutureCategory<T>(pub std::marker::PhantomData<T>);
 
 impl<T: CloneableThreadSafe + Send + 'static> Category<T, T> for FutureCategory<T> {
   type Morphism<A: CloneableThreadSafe, B: CloneableThreadSafe> = FutureFn<A, B>;
