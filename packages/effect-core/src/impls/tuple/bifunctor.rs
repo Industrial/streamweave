@@ -97,8 +97,8 @@ mod tests {
             let g_composed = move |x: &i32| g2(&g1(x));
 
             // Create simple mapping wrappers that satisfy the trait bounds
-            let f_wrapper = |x: &i32| f_composed(x);
-            let g_wrapper = |x: &i32| g_composed(x);
+            let f_wrapper = move |x: &i32| f_composed(x);
+            let g_wrapper = move |x: &i32| g_composed(x);
 
             let result2 = pair.bimap(f_wrapper, g_wrapper);
 
@@ -136,8 +136,8 @@ mod tests {
       let g_composed = move |x: &i32| g2(&g1(x));
 
       // Create simple mapping wrappers that satisfy the trait bounds
-      let f_wrapper = |x: &i32| f_composed(x);
-      let g_wrapper = |x: &i32| g_composed(x);
+      let f_wrapper = move |x: &i32| f_composed(x);
+      let g_wrapper = move |x: &i32| g_composed(x);
 
       let result2 = pair.bimap(f_wrapper, g_wrapper);
 

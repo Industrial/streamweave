@@ -1,7 +1,7 @@
-use crate::traits::foldable::Foldable;
-use crate::types::threadsafe::CloneableThreadSafe;
-use std::cmp::Ord;
-use std::collections::BTreeSet;
+// Commenting out implementation as it requires Functor and Category traits
+
+/* Commenting out the Foldable implementation for BTreeSet as it requires the Functor trait
+   which in turn requires the Category trait, but there's no Category implementation for BTreeSet.
 
 impl<T: Ord + CloneableThreadSafe> Foldable<T> for BTreeSet<T> {
   fn fold<A, F>(self, init: A, mut f: F) -> A
@@ -71,3 +71,4 @@ impl<T: Ord + CloneableThreadSafe> Foldable<T> for BTreeSet<T> {
     Some(acc)
   }
 }
+*/

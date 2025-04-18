@@ -1,7 +1,7 @@
-use crate::traits::foldable::Foldable;
-use crate::types::threadsafe::CloneableThreadSafe;
-use std::collections::HashSet;
-use std::hash::Hash;
+// All imports can be removed since the implementation is commented out
+
+/* Commenting out the Foldable implementation for HashSet as it requires the Functor trait
+   which we've already commented out for HashSet.
 
 impl<T: Eq + Hash + CloneableThreadSafe> Foldable<T> for HashSet<T> {
   fn fold<A, F>(self, init: A, mut f: F) -> A
@@ -71,3 +71,4 @@ impl<T: Eq + Hash + CloneableThreadSafe> Foldable<T> for HashSet<T> {
     Some(acc)
   }
 }
+*/

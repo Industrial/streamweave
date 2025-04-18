@@ -36,24 +36,6 @@ mod tests {
     |x| if *x % 2 == 0 { *x } else { *x + 1 }, // Make even
   ];
 
-  // Helper for creating readable function names in test output
-  fn function_name(idx: usize) -> &'static str {
-    match idx {
-      0 => "add1",
-      1 => "mul2",
-      2 => "sub1",
-      3 => "div2",
-      4 => "square",
-      5 => "negate",
-      _ => "unknown",
-    }
-  }
-
-  // Adapter to convert by-reference functions to by-value functions for Option::map
-  fn adapt_fn<T, U>(f: fn(&T) -> U) -> impl FnOnce(T) -> U {
-    move |x| f(&x)
-  }
-
   #[test]
   fn test_identity_law_some() {
     // Choose a reasonable value for testing

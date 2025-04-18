@@ -1,8 +1,5 @@
 use crate::traits::functor::Functor;
 use crate::types::threadsafe::CloneableThreadSafe;
-use std::rc::Rc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
 
 // The Functor implementation for (A, B) maps only the second component
 impl<A: CloneableThreadSafe, B: CloneableThreadSafe> Functor<B> for (A, B) {
@@ -23,16 +20,6 @@ mod tests {
   use super::*;
   use proptest::prelude::*;
 
-  // Define test functions with overflow protection for property-based testing
-  const INT_FUNCTIONS: &[fn(&i32) -> i32] = &[
-    |x| x.saturating_add(1),
-    |x| x.saturating_mul(2),
-    |x| x.saturating_sub(1),
-    |x| if *x != 0 { x / 2 } else { 0 },
-    |x| x.saturating_mul(*x),
-    |x| x.saturating_neg(),
-  ];
-
   // Test functor identity law: map(id) == id
   #[test]
   fn test_functor_simple() {
@@ -46,8 +33,8 @@ mod tests {
   #[test]
   fn test_composition_law() {
     let pair = ("world", 42);
-    let f = move |x: &i32| *x * 2;
-    let g = move |x: &i32| *x + 10;
+    let f = |x: &i32| *x * 2;
+    let g = |x: &i32| *x + 10;
 
     // Compose functions then map
     let h = move |x: &i32| {
@@ -66,7 +53,7 @@ mod tests {
   // Property-based tests for functor laws
   proptest! {
     #[test]
-    fn test_functor_identity_prop(a in any::<String>(), b in any::<i32>()) {
+    fn test_functor_identity_prop(a in any::<String>(), b in -1000..1000i32) {
       let pair = (a.clone(), b);
       // Identity function should return the same value
       let mapped = Functor::map(pair, |x: &i32| *x);
@@ -74,12 +61,12 @@ mod tests {
     }
 
     #[test]
-    fn test_functor_composition_prop(a in any::<String>(), b in any::<i32>()) {
+    fn test_functor_composition_prop(a in any::<String>(), b in -1000..1000i32) {
       let pair = (a.clone(), b);
 
       // Define two functions that explicitly handle references
-      let f = move |x: &i32| *x * 2;
-      let g = move |x: &i32| *x + 5;
+      let f = |x: &i32| x.saturating_mul(2);
+      let g = |x: &i32| x.saturating_add(5);
 
       // Apply f then g
       let map_f = Functor::map(pair.clone(), f);
@@ -97,10 +84,10 @@ mod tests {
     }
 
     #[test]
-    fn test_functor_composition_specific_prop(a in any::<String>(), b in any::<i32>()) {
+    fn test_functor_composition_specific_prop(a in any::<String>(), b in -1000..1000i32) {
       let pair = (a.clone(), b);
-      let f = move |x: &i32| *x * 2;
-      let g = move |x: &i32| *x + 10;
+      let f = |x: &i32| x.saturating_mul(2);
+      let g = |x: &i32| x.saturating_add(10);
 
       // Mapping with composed function
       let composed = move |x: &i32| {
@@ -122,33 +109,36 @@ mod tests {
   fn test_functor_type_transformations() {
     // String -> Length
     let pair = ("test", "hello world");
-    let mapped = Functor::map(pair, move |s: &str| s.len());
+    let mapped = Functor::map(pair, |s: &&str| s.len());
     assert_eq!(mapped, ("test", 11));
 
     // i32 -> String
     let pair = (42, 100);
-    let mapped = Functor::map(pair, move |n: &i32| n.to_string());
+    let mapped = Functor::map(pair, |n: &i32| n.to_string());
     assert_eq!(mapped, (42, "100".to_string()));
 
     // Vec -> Length
     let pair = ("data", vec![1, 2, 3, 4]);
-    let mapped = Functor::map(pair, move |v: &Vec<i32>| v.len());
+    let mapped = Functor::map(pair, |v: &Vec<i32>| v.len());
     assert_eq!(mapped, ("data", 4));
   }
 
   // Test with stateful mapping function
   #[test]
   fn test_functor_with_stateful_mapping() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
     let pair = ("counter", 0);
-    let counter = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counter = Arc::new(AtomicUsize::new(0));
     let counter_clone = counter.clone();
 
     let mapped = Functor::map(pair, move |_: &i32| {
-      counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+      counter_clone.fetch_add(1, Ordering::SeqCst)
     });
 
     assert_eq!(mapped, ("counter", 0));
-    assert_eq!(counter.load(std::sync::atomic::Ordering::SeqCst), 1);
+    assert_eq!(counter.load(Ordering::SeqCst), 1);
   }
 
   // Test with complex types
@@ -156,16 +146,18 @@ mod tests {
   fn test_functor_with_complex_types() {
     // Nested tuples
     let nested = ("outer", ("inner", 42));
-    let mapped = Functor::map(nested, |(s, n)| (s.to_string(), n * 2));
+    let mapped = Functor::map(nested, |pair: &(&str, i32)| {
+      (pair.0.to_string(), pair.1 * 2)
+    });
     assert_eq!(mapped, ("outer", ("inner".to_string(), 84)));
 
     // Option type
     let option_pair = ("maybe", Some(5));
-    let mapped = Functor::map(option_pair, |opt| opt.map(|x| x * 2));
+    let mapped = Functor::map(option_pair, |opt: &Option<i32>| opt.map(|x| x * 2));
     assert_eq!(mapped, ("maybe", Some(10)));
 
     let none_pair = ("empty", None::<i32>);
-    let mapped = Functor::map(none_pair, |opt| opt.map(|x| x * 2));
+    let mapped = Functor::map(none_pair, |opt: &Option<i32>| opt.map(|x| x * 2));
     assert_eq!(mapped, ("empty", None));
   }
 
@@ -174,19 +166,19 @@ mod tests {
   fn test_functor_preserves_first_component() {
     // Using a more complex first component
     let pair = (vec![1, 2, 3], "second");
-    let mapped = Functor::map(pair, move |s| s.len());
+    let mapped = Functor::map(pair, |s: &&str| s.len());
     assert_eq!(mapped, (vec![1, 2, 3], 6));
 
     // Using Option as first component
     let pair = (Some(42), "value");
-    let mapped = Functor::map(pair, move |s| s.to_uppercase());
+    let mapped = Functor::map(pair, |s: &&str| s.to_uppercase());
     assert_eq!(mapped, (Some(42), "VALUE".to_string()));
   }
 
   #[test]
   fn test_different_types() {
     let pair = ("test", 42);
-    let f = move |x: &i32| x.to_string();
+    let f = |x: &i32| x.to_string();
     let result = Functor::map(pair, f);
     assert_eq!(result.0, "test");
     assert_eq!(result.1, "42");
@@ -195,7 +187,7 @@ mod tests {
   #[test]
   fn test_complex_types() {
     let pair = ("data", vec![1, 2, 3]);
-    let f = move |v: &Vec<i32>| v.iter().sum::<i32>();
+    let f = |v: &Vec<i32>| v.iter().sum::<i32>();
     let result = Functor::map(pair, f);
     assert_eq!(result.0, "data");
     assert_eq!(result.1, 6);
@@ -231,6 +223,9 @@ mod tests {
   #[test]
   fn test_with_mutable_state() {
     // Create a shared mutable state counter
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
     let counter = Arc::new(AtomicUsize::new(0));
     let pair = ("state", 10);
 

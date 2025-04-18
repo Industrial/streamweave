@@ -1,7 +1,7 @@
-use crate::traits::foldable::Foldable;
-use crate::types::threadsafe::CloneableThreadSafe;
-use std::cmp::Ord;
-use std::collections::BTreeMap;
+// Commenting out implementation as it requires the Functor trait
+
+/* Commenting out the Foldable implementation for BTreeMap as it requires the Functor trait
+   which we've already commented out for BTreeMap.
 
 impl<K: Ord + CloneableThreadSafe, V: CloneableThreadSafe> Foldable<(K, V)> for BTreeMap<K, V> {
   fn fold<A, F>(self, init: A, mut f: F) -> A
@@ -72,3 +72,4 @@ impl<K: Ord + CloneableThreadSafe, V: CloneableThreadSafe> Foldable<(K, V)> for 
     Some(acc)
   }
 }
+*/

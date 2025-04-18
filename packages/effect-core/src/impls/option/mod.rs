@@ -1,4 +1,4 @@
-// pub mod applicative;
+pub mod applicative;
 pub mod bifunctor;
 pub mod category;
 pub mod foldable;

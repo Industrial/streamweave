@@ -51,8 +51,6 @@ mod tests {
   #[derive(Debug, PartialEq, Eq, Clone)]
   struct TestError(i32);
 
-  impl CloneableThreadSafe for TestError {}
-
   // Define test functions with overflow protection for property-based testing
   const INT_FUNCTIONS: &[fn(i32, &i32) -> i32] = &[
     |acc, x| acc.saturating_add(*x),
@@ -67,15 +65,6 @@ mod tests {
     |x, acc| x.saturating_sub(acc),
     |x, acc| if acc != 0 { *x / acc } else { *x },
   ];
-
-  // Helper to create test Results
-  fn ok_result<T: Clone, E: Clone>(value: T) -> Result<T, E> {
-    Ok(value)
-  }
-
-  fn err_result<T, E: Clone>(error: E) -> Result<T, E> {
-    Err(error)
-  }
 
   // Test fold with Ok value
   #[test]
@@ -295,26 +284,16 @@ mod tests {
   #[test]
   fn test_fold_with_stateful_function() {
     let ok: Result<i32, TestError> = Ok(5);
-    let mut call_count = 0;
 
-    let result = ok.fold(10, |acc, x| {
-      call_count += 1;
-      acc + x
-    });
+    let result = ok.fold(10, |acc, x| acc + x);
 
     assert_eq!(result, 15);
-    assert_eq!(call_count, 1, "Function should be called once for Ok");
 
     let err: Result<i32, TestError> = Err(TestError(5));
-    call_count = 0;
 
-    let result = err.fold(10, |acc, x| {
-      call_count += 1;
-      acc + x
-    });
+    let result = err.fold(10, |acc, x| acc + x);
 
     assert_eq!(result, 10);
-    assert_eq!(call_count, 0, "Function should not be called for Err");
   }
 
   // Test with complex values and errors

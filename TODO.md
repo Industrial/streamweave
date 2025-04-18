@@ -121,7 +121,7 @@
 - [ ] Check out https://github.com/creusot-rs/creusot?tab=readme-ov-file
 
 ## Tests
-Run the tests for Functor for Tuple and fix issues. Keep going until all tests pass.
+Run the tests and fix issues. Keep going until all tests pass.
 
 ## Tasks.md
 1. In the traits directory, create a TASKS.md file or empty it. This file will contain the "state" of the tasks that are left to complete.

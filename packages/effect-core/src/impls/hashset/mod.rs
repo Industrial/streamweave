@@ -1,3 +1,3 @@
-// pub mod category;
-// pub mod foldable;
-// pub mod functor;
+pub mod category;
+pub mod foldable;
+pub mod functor;
