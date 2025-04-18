@@ -1,1 +1,3 @@
-pub mod category;
+mod category;
+
+pub use category::*;
