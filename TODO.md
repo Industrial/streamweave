@@ -4,9 +4,9 @@
 
 ### 0. Missing Trait Implementations
 #### Semigroup
-- [ ] `char` - Using character concatenation
-- [ ] `Box<T> where T: Semigroup` - Delegating to inner type
-- [ ] `Arc<T> where T: Semigroup` - Delegating to inner type
+- [x] `char` - Using character concatenation
+- [x] `Box<T> where T: Semigroup` - Delegating to inner type
+- [x] `Arc<T> where T: Semigroup` - Delegating to inner type
 - [ ] `Rc<T> where T: Semigroup` - Delegating to inner type
 - [ ] `Cow<'_, T> where T: Semigroup + ToOwned` - Delegating to inner type
 
