@@ -37,8 +37,6 @@ mod tests {
     // For Err values, we expect the Err to be preserved
     let a: Result<i32, &str> = Err("error");
     let empty: Result<i32, &str> = Monoid::empty();
-    // The semigroup implementation prioritizes Ok values, so empty (which is Ok) will win
-    // over Err. This is consistent with Result's typical behavior.
     assert_eq!(empty.combine(a), a);
   }
 
@@ -52,8 +50,6 @@ mod tests {
     // For Err values, we expect the Err to be preserved
     let a: Result<i32, &str> = Err("error");
     let empty: Result<i32, &str> = Monoid::empty();
-    // The semigroup implementation prioritizes Ok values, so empty (which is Ok) will win
-    // over Err. This is consistent with Result's typical behavior.
     assert_eq!(a.combine(empty), a);
   }
 
@@ -97,7 +93,7 @@ mod tests {
     fn test_with_error() {
       let err: Result<i32, &str> = Err("error");
       let empty: Result<i32, &str> = Monoid::empty();
-      // The semigroup implementation prioritizes Ok values, so empty (which is Ok) will win
+      // Err values should be preserved when combined with empty()
       assert_eq!(empty.combine(err), err);
       assert_eq!(err.combine(empty), err);
     }

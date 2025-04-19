@@ -146,17 +146,25 @@ mod tests {
 
     #[test]
     fn prop_f64_associativity(
-      a in any::<f64>().prop_filter("Not normal", |v| v.is_normal()),
-      b in any::<f64>().prop_filter("Not normal", |v| v.is_normal()),
-      c in any::<f64>().prop_filter("Not normal", |v| v.is_normal())
+      // Filter out extremely large values (magnitude > 1e200) and non-normal values to avoid precision issues
+      a in any::<f64>().prop_filter("Not normal or too large", |v| v.is_normal() && v.abs() < 1e200),
+      b in any::<f64>().prop_filter("Not normal or too large", |v| v.is_normal() && v.abs() < 1e200),
+      c in any::<f64>().prop_filter("Not normal or too large", |v| v.is_normal() && v.abs() < 1e200)
     ) {
       // For floating-point, we need to account for epsilon differences
       let left = a.combine(b).combine(c);
       let right = a.combine(b.combine(c));
 
-      // Using an epsilon appropriate for f64 precision
-      let epsilon = 1e-12;
-      prop_assert!((left - right).abs() < epsilon);
+      // Using a relative epsilon based on the magnitude of the values
+      let max_abs = a.abs().max(b.abs()).max(c.abs());
+      let epsilon = max_abs * 1e-12;
+
+      // Ensure we have a reasonable minimum epsilon even for very small values
+      let epsilon = epsilon.max(1e-12);
+
+      prop_assert!((left - right).abs() < epsilon,
+                  "left={}, right={}, diff={}, epsilon={}",
+                  left, right, (left - right).abs(), epsilon);
     }
 
     // Test for commutativity (a feature of addition, not required for semigroups in general)

@@ -4,8 +4,8 @@ use crate::types::threadsafe::CloneableThreadSafe;
 // We need a single implementation for Result<T, E>
 // that works for all cases. Similar to Option, we can't have specialized implementations.
 //
-// The implementation prioritizes Ok values over Err, and for two Ok values,
-// it just keeps the first one (basic .or() behavior of Result)
+// The implementation prioritizes Err values over Ok, and for two Ok values,
+// it combines them using the Semigroup implementation of T.
 
 impl<T, E> Semigroup for Result<T, E>
 where
@@ -15,8 +15,8 @@ where
   fn combine(self, other: Self) -> Self {
     match (self, other) {
       (Ok(a), Ok(b)) => Ok(a.combine(b)),
-      (Ok(a), Err(_)) => Ok(a),
-      (Err(_), Ok(b)) => Ok(b),
+      (Ok(_), Err(e)) => Err(e),
+      (Err(e), Ok(_)) => Err(e),
       (Err(e), Err(_)) => Err(e),
     }
   }
@@ -35,15 +35,15 @@ mod tests {
     let b: Result<i32, &str> = Ok(10);
     assert_eq!(a.combine(b), Ok(15));
 
-    // Left Ok, Right Err - left value should win
+    // Left Ok, Right Err - right value (Err) should win
     let a: Result<i32, &str> = Ok(5);
     let b: Result<i32, &str> = Err("error");
-    assert_eq!(a.combine(b), Ok(5));
+    assert_eq!(a.combine(b), Err("error"));
 
-    // Left Err, Right Ok - right value should win
+    // Left Err, Right Ok - left value (Err) should win
     let a: Result<i32, &str> = Err("error");
     let b: Result<i32, &str> = Ok(10);
-    assert_eq!(a.combine(b), Ok(10));
+    assert_eq!(a.combine(b), Err("error"));
 
     // Both Err - first error should win
     let a: Result<i32, &str> = Err("error1");
@@ -134,11 +134,11 @@ mod tests {
         // Two Ok values should combine their content - use wrapping_add to avoid overflow
         prop_assert_eq!(ok_a.combine(ok_b), Ok(a.wrapping_add(b)));
 
-        // Ok + Err = Ok
-        prop_assert_eq!(ok_a.combine(err), ok_a);
+        // Ok + Err = Err
+        prop_assert_eq!(ok_a.combine(err), err);
 
-        // Err + Ok = Ok
-        prop_assert_eq!(err.combine(ok_b), ok_b);
+        // Err + Ok = Err
+        prop_assert_eq!(err.combine(ok_b), err);
       }
     }
   }

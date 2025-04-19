@@ -176,6 +176,13 @@
 - [ ] Check out https://github.com/viperproject/prusti-dev
 - [ ] Check out https://github.com/creusot-rs/creusot?tab=readme-ov-file
 
+## TODO
+- For each TODO item:
+  - Implement it.
+  - Add 100% covering tests for all permutations.
+  - Fix any issues and keep running the tests until all tests are green.
+  - Make a git commit (use --no-verify).
+
 ## Tests
 - Generate 100% covering tests for all permutations.
 - Run the tests for this module only.
