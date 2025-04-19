@@ -14,18 +14,18 @@ mod tests {
 
   #[test]
   fn test_empty() {
-    assert_eq!(bool::empty(), false);
+    assert!(!bool::empty());
   }
 
   #[test]
   fn test_empty_is_identity() {
     // Test that empty() is a left identity
-    assert_eq!(bool::empty().combine(false), false);
-    assert_eq!(bool::empty().combine(true), true);
+    assert!(!bool::empty().combine(false));
+    assert!(bool::empty().combine(true));
 
     // Test that empty() is a right identity
-    assert_eq!(false.combine(bool::empty()), false);
-    assert_eq!(true.combine(bool::empty()), true);
+    assert!(!false.combine(bool::empty()));
+    assert!(true.combine(bool::empty()));
   }
 
   #[test]
@@ -38,27 +38,27 @@ mod tests {
   fn test_mconcat_with_values() {
     // All false values should yield false
     let all_false = vec![false, false, false];
-    assert_eq!(bool::mconcat(all_false), false);
+    assert!(!bool::mconcat(all_false));
 
     // Any true value should yield true due to OR operation
     let with_true = vec![false, true, false];
-    assert_eq!(bool::mconcat(with_true), true);
+    assert!(bool::mconcat(with_true));
 
     let all_true = vec![true, true, true];
-    assert_eq!(bool::mconcat(all_true), true);
+    assert!(bool::mconcat(all_true));
   }
 
   #[test]
   fn test_all_combine_permutations() {
     // Test all possible permutations of combine for bool (true, false)
     // true ⊕ true
-    assert_eq!(true.combine(true), true);
+    assert!(true.combine(true));
     // true ⊕ false
-    assert_eq!(true.combine(false), true);
+    assert!(true.combine(false));
     // false ⊕ true
-    assert_eq!(false.combine(true), true);
+    assert!(false.combine(true));
     // false ⊕ false
-    assert_eq!(false.combine(false), false);
+    assert!(!false.combine(false));
   }
 
   #[test]

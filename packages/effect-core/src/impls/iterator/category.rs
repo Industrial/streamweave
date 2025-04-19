@@ -252,7 +252,7 @@ mod tests {
           let result = collect_iter(first_f.apply(boxed_iter(pairs.clone().into_iter())));
 
           // Compute the expected result
-          let expected: Vec<(i64, i64)> = xs.iter().map(|x| f(x)).zip(cs.iter().cloned()).collect();
+          let expected: Vec<(i64, i64)> = xs.iter().map(f).zip(cs.iter().cloned()).collect();
 
           // Results should match
           assert_eq!(result, expected);
@@ -289,7 +289,7 @@ mod tests {
           let result = collect_iter(second_f.apply(boxed_iter(pairs.clone().into_iter())));
 
           // Compute the expected result
-          let expected: Vec<(i64, i64)> = cs.iter().cloned().zip(xs.iter().map(|x| f(x))).collect();
+          let expected: Vec<(i64, i64)> = cs.iter().cloned().zip(xs.iter().map(f)).collect();
 
           // Results should match
           assert_eq!(result, expected);

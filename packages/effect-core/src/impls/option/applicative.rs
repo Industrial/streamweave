@@ -41,13 +41,13 @@ mod tests {
   fn test_identity_law() {
     let value = Some(42i64);
     let id_fn = Option::<i64>::pure(|x: &i64| *x);
-    let result = value.clone().ap(id_fn);
+    let result = value.ap(id_fn);
     assert_eq!(result, value);
 
     // Test with None
     let none: Option<i64> = None;
     let id_fn = Option::<i64>::pure(|x: &i64| *x);
-    let result = none.clone().ap(id_fn);
+    let result = none.ap(id_fn);
     assert_eq!(result, none);
   }
 
@@ -102,7 +102,7 @@ mod tests {
     let u = Some(|x: &i64| x * 2);
 
     // Left side: u <*> pure(y)
-    let left = Option::<i64>::pure(y).ap(u.clone());
+    let left = Option::<i64>::pure(y).ap(u);
 
     // We'll just test that the left side is what we expect
     assert_eq!(left, Some(84)); // 42 * 2 = 84
@@ -115,7 +115,7 @@ mod tests {
     fn test_identity_law_prop(x in -1000..1000i64, is_some in proptest::bool::ANY) {
       let value = if is_some { Some(x) } else { None };
       let id_fn = Option::<i64>::pure(|x: &i64| *x);
-      let result = value.clone().ap(id_fn);
+      let result = value.ap(id_fn);
 
       prop_assert_eq!(result, value);
     }
@@ -171,13 +171,10 @@ mod tests {
       let u = if is_u_some { Some(f) } else { None };
 
       // Left side: u <*> pure(y)
-      let left = Option::<i64>::pure(y).ap(u.clone());
+      let left = Option::<i64>::pure(y).ap(u);
 
       // Expected result
-      let expected = match u {
-        Some(f) => Some(f(&y)),
-        None => None
-      };
+      let expected = u.map(|f| f(&y));
 
       prop_assert_eq!(left, expected);
     }
@@ -197,8 +194,8 @@ mod tests {
     let add = |x: &i32, y: &i32| x + y;
 
     // Apply the parsing
-    let parsed1 = input1.and_then(|s| parse_int(s));
-    let parsed2 = input2.and_then(|s| parse_int(s));
+    let parsed1 = input1.and_then(&parse_int);
+    let parsed2 = input2.and_then(&parse_int);
 
     // Use match to manually compute what ap would do
     let result = match (parsed1, parsed2) {
@@ -212,8 +209,8 @@ mod tests {
     let input1 = Some("10");
     let input2 = None;
 
-    let parsed1 = input1.and_then(|s| parse_int(s));
-    let parsed2 = input2.and_then(|s| parse_int(s));
+    let parsed1 = input1.and_then(&parse_int);
+    let parsed2 = input2.and_then(&parse_int);
 
     let result = match (parsed1, parsed2) {
       (Some(x), Some(y)) => Some(add(&x, &y)),
@@ -226,8 +223,8 @@ mod tests {
     let input1 = Some("10");
     let input2 = Some("not_a_number");
 
-    let parsed1 = input1.and_then(|s| parse_int(s));
-    let parsed2 = input2.and_then(|s| parse_int(s));
+    let parsed1 = input1.and_then(&parse_int);
+    let parsed2 = input2.and_then(parse_int);
 
     let result = match (parsed1, parsed2) {
       (Some(x), Some(y)) => Some(add(&x, &y)),
@@ -340,9 +337,9 @@ mod tests {
     let add3_opt = Some(add3);
 
     // Apply each function in sequence
-    let applied1 = val.clone().ap(add1_opt.clone());
-    let applied2 = applied1.ap(add2_opt.clone());
-    let applied3 = applied2.ap(add3_opt.clone());
+    let applied1 = val.ap(add1_opt);
+    let applied2 = applied1.ap(add2_opt);
+    let applied3 = applied2.ap(add3_opt);
 
     // Expected: 0 + 1 = 1, then 1 + 2 = 3, then 3 + 3 = 6
     assert_eq!(applied1, Some(1));

@@ -28,11 +28,11 @@ mod tests {
   fn test_left_identity() {
     // With None
     let none: Option<i32> = None;
-    assert_eq!(Option::<i32>::empty().combine(none.clone()), none);
+    assert_eq!(Option::<i32>::empty().combine(none), none);
 
     // With Some
     let some = Some(42);
-    assert_eq!(Option::<i32>::empty().combine(some.clone()), some);
+    assert_eq!(Option::<i32>::empty().combine(some), some);
 
     // With String
     let some_string = Some("hello".to_string());
@@ -47,11 +47,11 @@ mod tests {
   fn test_right_identity() {
     // With None
     let none: Option<i32> = None;
-    assert_eq!(none.clone().combine(Option::<i32>::empty()), none);
+    assert_eq!(none.combine(Option::<i32>::empty()), none);
 
     // With Some
     let some = Some(42);
-    assert_eq!(some.clone().combine(Option::<i32>::empty()), some);
+    assert_eq!(some.combine(Option::<i32>::empty()), some);
 
     // With String
     let some_string = Some("hello".to_string());
@@ -99,13 +99,13 @@ mod tests {
     // Test that empty is a left identity
     #[test]
     fn prop_left_identity(x in prop::option::of(1..100i32)) {
-      prop_assert_eq!(Option::<i32>::empty().combine(x.clone()), x);
+      prop_assert_eq!(Option::<i32>::empty().combine(x), x);
     }
 
     // Test that empty is a right identity
     #[test]
     fn prop_right_identity(x in prop::option::of(1..100i32)) {
-      prop_assert_eq!(x.clone().combine(Option::<i32>::empty()), x);
+      prop_assert_eq!(x.combine(Option::<i32>::empty()), x);
     }
 
     // Test that mconcat is equivalent to fold
@@ -120,8 +120,8 @@ mod tests {
     #[test]
     fn prop_empty_commutativity(x in prop::option::of(1..100i32)) {
       prop_assert_eq!(
-        Option::<i32>::empty().combine(x.clone()),
-        x.clone().combine(Option::<i32>::empty())
+        Option::<i32>::empty().combine(x),
+        x.combine(Option::<i32>::empty())
       );
     }
   }

@@ -63,7 +63,7 @@ mod tests {
       let value: Result<i32, i32> = if success { Ok(a) } else { Err(e) };
 
       // Identity law: bimap(id, id) = id
-      let id_mapped = value.clone().bimap(id_i32, id_err);
+      let id_mapped = value.bimap(id_i32, id_err);
       assert_eq!(id_mapped, value);
 
       // Composition law:
@@ -73,8 +73,8 @@ mod tests {
       let g1_clone = g1;
       let g2_clone = g2;
 
-      let composed1 = value.clone().bimap(f1, g1).bimap(f2, g2);
-      let composed2 = value.clone().bimap(
+      let composed1 = value.bimap(f1, g1).bimap(f2, g2);
+      let composed2 = value.bimap(
         move |x| f2_clone(&f1_clone(x)),
         move |x| g2_clone(&g1_clone(x))
       );
@@ -82,8 +82,8 @@ mod tests {
 
       // First/Second Commutativity law:
       // first(f).second(g) = second(g).first(f)
-      let first_then_second = value.clone().first(f1).second(g1);
-      let second_then_first = value.clone().second(g1).first(f1);
+      let first_then_second = value.first(f1).second(g1);
+      let second_then_first = value.second(g1).first(f1);
       assert_eq!(first_then_second, second_then_first);
     }
   }

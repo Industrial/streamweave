@@ -46,7 +46,7 @@ mod tests {
     // Test identity law
     let id_a = |x: &i32| *x;
     let id_b = |_: &()| ();
-    let result = opt.clone().bimap(id_a, id_b);
+    let result = opt.bimap(id_a, id_b);
     assert_eq!(opt, result);
 
     // Test composition law
@@ -60,8 +60,8 @@ mod tests {
     let g1_clone = g1;
     let g2_clone = g2;
 
-    let result1 = opt.clone().bimap(f1, g1).bimap(f2, g2);
-    let result2 = opt.clone().bimap(
+    let result1 = opt.bimap(f1, g1).bimap(f2, g2);
+    let result2 = opt.bimap(
       move |x| f2_clone(&f1_clone(x)),
       move |x| g2_clone(&g1_clone(x)),
     );
@@ -71,8 +71,8 @@ mod tests {
     let f = |x: &i32| x.saturating_add(1);
     let g = |_: &()| ();
 
-    let first_then_second = opt.clone().first(f).second(g);
-    let second_then_first = opt.clone().second(g).first(f);
+    let first_then_second = opt.first(f).second(g);
+    let second_then_first = opt.second(g).first(f);
 
     assert_eq!(first_then_second, second_then_first);
   }
@@ -108,17 +108,17 @@ mod tests {
 
     // String conversion
     let string_fn = |x: &i32| x.to_string();
-    let result = opt.clone().first(string_fn);
+    let result = opt.first(string_fn);
     assert_eq!(result, Some("10".to_string()));
 
     // Boolean transformation
     let bool_fn = |x: &i32| *x > 5;
-    let result = opt.clone().first(bool_fn);
+    let result = opt.first(bool_fn);
     assert_eq!(result, Some(true));
 
     // Option transformation (creating nested options)
     let option_fn = |x: &i32| Some(*x * 2);
-    let result = opt.clone().first(option_fn);
+    let result = opt.first(option_fn);
     assert_eq!(result, Some(Some(20)));
 
     // None should propagate regardless of function

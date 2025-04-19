@@ -115,8 +115,8 @@ mod tests {
           let input = make_option(x, is_some);
 
           // Apply the input to each composition
-          let result_f = arr_f.apply(input.clone());
-          let result_id_then_f = id_then_f.apply(input.clone());
+          let result_f = arr_f.apply(input);
+          let result_id_then_f = id_then_f.apply(input);
           let result_f_then_id = f_then_id.apply(input);
 
           // All should give the same result
@@ -158,7 +158,7 @@ mod tests {
           let f_gh = <Option<i64> as Category<i64, i64>>::compose(arr_f, gh);
 
           // Apply the input
-          let result_fg_h = fg_h.apply(input.clone());
+          let result_fg_h = fg_h.apply(input);
           let result_f_gh = f_gh.apply(input);
 
           // Both compositions should give the same result
@@ -189,7 +189,7 @@ mod tests {
           let pair = make_option((x, c), is_some);
 
           // Apply the first combinator
-          let result = first_f.apply(pair.clone());
+          let result = first_f.apply(pair);
 
           // The expected result
           let expected = pair.map(|(a, c)| (f(&a), c));
@@ -222,7 +222,7 @@ mod tests {
           let pair = make_option((c, x), is_some);
 
           // Apply the second combinator
-          let result = second_f.apply(pair.clone());
+          let result = second_f.apply(pair);
 
           // The expected result
           let expected = pair.map(|(c, a)| (c, f(&a)));

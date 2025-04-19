@@ -2,6 +2,62 @@
 
 ## Functional Programming Primitives to Implement
 
+### 0. Missing Trait Implementations
+#### Semigroup
+- [ ] `char` - Using character concatenation
+- [ ] `Box<T> where T: Semigroup` - Delegating to inner type
+- [ ] `Arc<T> where T: Semigroup` - Delegating to inner type
+- [ ] `Rc<T> where T: Semigroup` - Delegating to inner type
+- [ ] `Cow<'_, T> where T: Semigroup + ToOwned` - Delegating to inner type
+
+#### Monoid
+- [ ] `char` - With empty as a space or null character
+- [ ] `Box<T> where T: Monoid` - Delegating to inner type
+- [ ] `Arc<T> where T: Monoid` - Delegating to inner type
+- [ ] `Rc<T> where T: Monoid` - Delegating to inner type
+- [ ] `Cow<'_, T> where T: Monoid + ToOwned` - Delegating to inner type
+
+#### Category
+- [ ] `BTreeMap<K, V>` - Based on key lookup and value identity
+- [ ] `BTreeSet<T>` - Based on set membership
+- [ ] `LinkedList<T>` - For element identity and sequence operations
+- [ ] `VecDeque<T>` - For element identity and sequence operations
+- [ ] `String` - For string operations
+- [ ] `char` - For character transformations
+- [ ] `&str` - For string slice operations
+- [ ] `Cow<'_, T> where T: Category` - Delegating to inner type
+
+#### Functor
+- [ ] `Rc<T>` - Similar to the implementation for `Arc<T>`
+- [ ] `VecDeque<T>` - For mapping over elements
+- [ ] `LinkedList<T>` - For mapping over elements
+- [ ] `BTreeSet<T>` - For mapping set elements
+- [ ] `Cow<'_, T> where T: Functor` - Delegating to inner type
+
+#### Foldable
+- [ ] `VecDeque<T>` - For folding operations
+- [ ] `LinkedList<T>` - For folding over linked lists
+- [ ] `HashMap<K, V>` - For folding over key-value pairs (implementation exists but is commented out)
+- [ ] `String` - For folding over characters
+- [ ] `Rc<T>` - Similar to the implementation for `Arc<T>`
+- [ ] `Cow<'_, T> where T: Foldable` - Delegating to inner type
+
+#### Applicative
+- [ ] `HashMap<K, V>` - For applying functions to map values
+- [ ] `BTreeMap<K, V>` - For applying functions to map values
+- [ ] `Rc<T>` - Similar to the implementation for `Arc<T>`
+- [ ] `VecDeque<T>` - For sequence-based applicative operations
+- [ ] `LinkedList<T>` - For sequence-based applicative operations
+- [ ] `Cow<'_, T> where T: Applicative` - Delegating to inner type
+
+#### Bifunctor
+- [ ] `HashMap<K, V>` - For mapping over both keys and values
+- [ ] `BTreeMap<K, V>` - For mapping over both keys and values
+- [ ] `Rc<(A, B)>` - Wrapping tuple bifunctor
+- [ ] `Arc<(A, B)>` - Wrapping tuple bifunctor
+- [ ] `Box<(A, B)>` - Wrapping tuple bifunctor
+- [ ] `Cow<'_, (A, B)>` - For borrowed or owned tuples
+
 ### 1. Core Functional Primitives
 - [x] map/flatMap/filter equivalents
 - [x] fold/reduce operations

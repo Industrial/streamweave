@@ -81,7 +81,7 @@ mod tests {
     let tuple = ((1, 2), (3, 4));
     let empty = <((i32, i32), (i32, i32))>::empty();
 
-    assert_eq!(empty.combine(tuple.clone()), tuple);
+    assert_eq!(empty.combine(tuple), tuple);
     assert_eq!(tuple.combine(empty), tuple);
   }
 
@@ -95,7 +95,7 @@ mod tests {
     ) {
       let tuple = (a, b);
       let empty = <(i32, i32)>::empty();
-      prop_assert_eq!(empty.combine(tuple.clone()), tuple);
+      prop_assert_eq!(empty.combine(tuple), tuple);
     }
 
     // Test right identity: a.combine(empty()) = a
@@ -106,7 +106,7 @@ mod tests {
     ) {
       let tuple = (a, b);
       let empty = <(i32, i32)>::empty();
-      prop_assert_eq!(tuple.clone().combine(empty), tuple);
+      prop_assert_eq!(tuple.combine(empty), tuple);
     }
 
     // Test that mconcat is equivalent to folding with combine

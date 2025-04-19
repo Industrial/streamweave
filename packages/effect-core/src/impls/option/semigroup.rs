@@ -122,7 +122,7 @@ mod tests {
       a in prop::option::of(1..100i32),
       b in prop::option::of(1..100i32)
     ) {
-      let combined = a.clone().combine(b.clone());
+      let combined = a.combine(b);
 
       match (a, b, combined) {
         (Some(val_a), _, Some(result)) => prop_assert_eq!(val_a, result),

@@ -67,30 +67,21 @@ mod tests {
     let b: Result<i32, &str> = Ok(2);
     let c: Result<i32, &str> = Ok(3);
 
-    assert_eq!(
-      a.clone().combine(b.clone()).combine(c.clone()),
-      a.clone().combine(b.clone().combine(c.clone()))
-    );
+    assert_eq!(a.combine(b).combine(c), a.combine(b.combine(c)));
 
     // Mix of Ok and Err
     let a: Result<i32, &str> = Ok(1);
     let b: Result<i32, &str> = Err("error");
     let c: Result<i32, &str> = Ok(3);
 
-    assert_eq!(
-      a.clone().combine(b.clone()).combine(c.clone()),
-      a.clone().combine(b.clone().combine(c.clone()))
-    );
+    assert_eq!(a.combine(b).combine(c), a.combine(b.combine(c)));
 
     // All Err
     let a: Result<i32, &str> = Err("error1");
     let b: Result<i32, &str> = Err("error2");
     let c: Result<i32, &str> = Err("error3");
 
-    assert_eq!(
-      a.clone().combine(b.clone()).combine(c.clone()),
-      a.clone().combine(b.clone().combine(c.clone()))
-    );
+    assert_eq!(a.combine(b).combine(c), a.combine(b.combine(c)));
   }
 
   // Test with bool
@@ -115,8 +106,8 @@ mod tests {
         let ok_c: Result<i32, &str> = Ok(c);
 
         prop_assert_eq!(
-          ok_a.clone().combine(ok_b.clone()).combine(ok_c.clone()),
-          ok_a.clone().combine(ok_b.clone().combine(ok_c.clone()))
+          ok_a.combine(ok_b).combine(ok_c),
+          ok_a.combine(ok_b.combine(ok_c))
         );
       }
 
@@ -128,8 +119,8 @@ mod tests {
         let ok_c: Result<i32, &str> = Ok(c);
 
         prop_assert_eq!(
-          ok_a.clone().combine(err_b.clone()).combine(ok_c.clone()),
-          ok_a.clone().combine(err_b.clone().combine(ok_c.clone()))
+          ok_a.combine(err_b).combine(ok_c),
+          ok_a.combine(err_b.combine(ok_c))
         );
       }
 
@@ -141,13 +132,13 @@ mod tests {
         let err: Result<i32, &str> = Err("error");
 
         // Two Ok values should combine their content - use wrapping_add to avoid overflow
-        prop_assert_eq!(ok_a.clone().combine(ok_b.clone()), Ok(a.wrapping_add(b)));
+        prop_assert_eq!(ok_a.combine(ok_b), Ok(a.wrapping_add(b)));
 
         // Ok + Err = Ok
-        prop_assert_eq!(ok_a.clone().combine(err.clone()), ok_a.clone());
+        prop_assert_eq!(ok_a.combine(err), ok_a);
 
         // Err + Ok = Ok
-        prop_assert_eq!(err.clone().combine(ok_b.clone()), ok_b.clone());
+        prop_assert_eq!(err.combine(ok_b), ok_b);
       }
     }
   }

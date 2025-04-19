@@ -354,7 +354,7 @@ mod tests {
     // Concatenate strings
     let concat = strings.clone().fold(String::new(), |mut acc, s| {
       if !acc.is_empty() {
-        acc.push_str(" ");
+        acc.push(' ');
       }
       acc.push_str(s);
       acc

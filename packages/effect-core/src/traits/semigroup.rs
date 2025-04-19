@@ -40,7 +40,7 @@ pub mod tests {
       proptest! {
         #[test]
         fn $test_name(a in $strategy.clone(), b in $strategy.clone(), c in $strategy) {
-          crate::traits::semigroup::tests::test_associativity(a, b, c);
+          $crate::traits::semigroup::tests::test_associativity(a, b, c);
         }
       }
     };

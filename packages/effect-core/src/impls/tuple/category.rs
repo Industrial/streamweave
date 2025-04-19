@@ -74,7 +74,7 @@ mod tests {
   fn test_identity_law() {
     let x = 42i64;
 
-    for f_idx in 0..INT_FUNCTIONS.len() {
+    (0..INT_FUNCTIONS.len()).for_each(|f_idx| {
       let f = INT_FUNCTIONS[f_idx];
 
       // Create our Category::arr version of the function
@@ -97,7 +97,7 @@ mod tests {
       // All should give the same result
       assert_eq!(result_f, result_id_then_f);
       assert_eq!(result_f, result_f_then_id);
-    }
+    });
   }
 
   // Property-based test for identity law
@@ -137,9 +137,9 @@ mod tests {
   fn test_composition_law() {
     let x = 42i64;
 
-    for f_idx in 0..INT_FUNCTIONS.len() {
-      for g_idx in 0..INT_FUNCTIONS.len() {
-        for h_idx in 0..INT_FUNCTIONS.len() {
+    (0..INT_FUNCTIONS.len()).for_each(|f_idx| {
+      (0..INT_FUNCTIONS.len()).for_each(|g_idx| {
+        (0..INT_FUNCTIONS.len()).for_each(|h_idx| {
           let f = INT_FUNCTIONS[f_idx];
           let g = INT_FUNCTIONS[g_idx];
           let h = INT_FUNCTIONS[h_idx];
@@ -163,9 +163,9 @@ mod tests {
 
           // Both compositions should give the same result
           assert_eq!(result_fg_h, result_f_gh);
-        }
-      }
-    }
+        });
+      });
+    });
   }
 
   // Property-based test for composition law (with a subset of combinations to keep runtime reasonable)
@@ -209,7 +209,7 @@ mod tests {
     let x = 42i64;
     let c = 10i64;
 
-    for f_idx in 0..INT_FUNCTIONS.len() {
+    (0..INT_FUNCTIONS.len()).for_each(|f_idx| {
       let f = INT_FUNCTIONS[f_idx];
 
       // Create the arr version
@@ -226,7 +226,7 @@ mod tests {
 
       // Results should match
       assert_eq!(result, expected);
-    }
+    });
   }
 
   // Test the second combinator
@@ -235,7 +235,7 @@ mod tests {
     let x = 42i64;
     let c = 10i64;
 
-    for f_idx in 0..INT_FUNCTIONS.len() {
+    (0..INT_FUNCTIONS.len()).for_each(|f_idx| {
       let f = INT_FUNCTIONS[f_idx];
 
       // Create the arr version
@@ -252,7 +252,7 @@ mod tests {
 
       // Results should match
       assert_eq!(result, expected);
-    }
+    });
   }
 
   // Test the first/second commutativity law: first(f) . second(g) = second(g) . first(f)
@@ -260,8 +260,8 @@ mod tests {
   fn test_first_second_commutativity() {
     let pair = (42i64, 10i64);
 
-    for f_idx in 0..INT_FUNCTIONS.len() {
-      for g_idx in 0..INT_FUNCTIONS.len() {
+    (0..INT_FUNCTIONS.len()).for_each(|f_idx| {
+      (0..INT_FUNCTIONS.len()).for_each(|g_idx| {
         let f = INT_FUNCTIONS[f_idx];
         let g = INT_FUNCTIONS[g_idx];
 
@@ -290,8 +290,8 @@ mod tests {
 
         // Results should be the same
         assert_eq!(result1, result2);
-      }
-    }
+      });
+    });
   }
 
   // Test with different types that conform to the Category<B, B> constraint

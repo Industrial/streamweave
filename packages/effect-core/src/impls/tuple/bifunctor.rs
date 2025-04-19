@@ -79,10 +79,10 @@ mod tests {
     let pair = (5, 10);
 
     // Test with all combinations of our test functions
-    for f1_idx in 0..INT_FUNCTIONS.len() {
-      for f2_idx in 0..INT_FUNCTIONS.len() {
-        for g1_idx in 0..INT_FUNCTIONS.len() {
-          for g2_idx in 0..INT_FUNCTIONS.len() {
+    (0..INT_FUNCTIONS.len()).for_each(|f1_idx| {
+      (0..INT_FUNCTIONS.len()).for_each(|f2_idx| {
+        (0..INT_FUNCTIONS.len()).for_each(|g1_idx| {
+          (0..INT_FUNCTIONS.len()).for_each(|g2_idx| {
             let f1 = INT_FUNCTIONS[f1_idx];
             let f2 = INT_FUNCTIONS[f2_idx];
             let g1 = INT_FUNCTIONS[g1_idx];
@@ -104,10 +104,10 @@ mod tests {
 
             // Results should be the same
             assert_eq!(result1, result2);
-          }
-        }
-      }
-    }
+          });
+        });
+      });
+    });
   }
 
   // Property-based test for composition law (with a subset of combinations to keep runtime reasonable)
@@ -152,7 +152,7 @@ mod tests {
     let pair = (5, 10);
 
     // For all our test functions
-    for f_idx in 0..INT_FUNCTIONS.len() {
+    (0..INT_FUNCTIONS.len()).for_each(|f_idx| {
       let f = INT_FUNCTIONS[f_idx];
 
       // First using the dedicated method
@@ -174,7 +174,7 @@ mod tests {
 
       // Results should be the same
       assert_eq!(result3, result4);
-    }
+    });
   }
 
   // Property-based test for first/second derivation
@@ -216,8 +216,8 @@ mod tests {
     let pair = (5, 10);
 
     // Test with all combinations of our test functions
-    for f_idx in 0..INT_FUNCTIONS.len() {
-      for g_idx in 0..INT_FUNCTIONS.len() {
+    (0..INT_FUNCTIONS.len()).for_each(|f_idx| {
+      (0..INT_FUNCTIONS.len()).for_each(|g_idx| {
         let f = INT_FUNCTIONS[f_idx];
         let g = INT_FUNCTIONS[g_idx];
 
@@ -229,8 +229,8 @@ mod tests {
 
         // Results should be the same
         assert_eq!(first_then_second, second_then_first);
-      }
-    }
+      });
+    });
   }
 
   // Property-based test for first/second commutativity

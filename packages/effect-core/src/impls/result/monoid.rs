@@ -32,14 +32,14 @@ mod tests {
     // empty().combine(a) = a
     let a: Result<i32, &str> = Ok(5);
     let empty: Result<i32, &str> = Monoid::empty();
-    assert_eq!(empty.combine(a.clone()), a);
+    assert_eq!(empty.combine(a), a);
 
     // For Err values, we expect the Err to be preserved
     let a: Result<i32, &str> = Err("error");
     let empty: Result<i32, &str> = Monoid::empty();
     // The semigroup implementation prioritizes Ok values, so empty (which is Ok) will win
     // over Err. This is consistent with Result's typical behavior.
-    assert_eq!(empty.combine(a.clone()), Ok(0));
+    assert_eq!(empty.combine(a), a);
   }
 
   #[test]
@@ -47,14 +47,14 @@ mod tests {
     // a.combine(empty()) = a
     let a: Result<i32, &str> = Ok(5);
     let empty: Result<i32, &str> = Monoid::empty();
-    assert_eq!(a.clone().combine(empty), a);
+    assert_eq!(a.combine(empty), a);
 
     // For Err values, we expect the Err to be preserved
     let a: Result<i32, &str> = Err("error");
     let empty: Result<i32, &str> = Monoid::empty();
     // The semigroup implementation prioritizes Ok values, so empty (which is Ok) will win
     // over Err. This is consistent with Result's typical behavior.
-    assert_eq!(a.clone().combine(empty), Ok(0));
+    assert_eq!(a.combine(empty), a);
   }
 
   #[test]
@@ -64,8 +64,8 @@ mod tests {
 
     let a: Result<bool, &str> = Ok(true);
     let empty: Result<bool, &str> = Monoid::empty();
-    assert_eq!(a.clone().combine(empty.clone()), a);
-    assert_eq!(empty.combine(a), Ok(true));
+    assert_eq!(a.combine(empty), a);
+    assert_eq!(empty.combine(a), a);
   }
 
   // Property-based tests
@@ -80,7 +80,7 @@ mod tests {
       fn prop_left_identity(a in any::<i32>()) {
         let ok_a: Result<i32, &str> = Ok(a);
         let empty: Result<i32, &str> = Monoid::empty();
-        prop_assert_eq!(empty.combine(ok_a.clone()), ok_a);
+        prop_assert_eq!(empty.combine(ok_a), ok_a);
       }
 
       // Test right identity: a.combine(empty()) = a
@@ -88,7 +88,7 @@ mod tests {
       fn prop_right_identity(a in any::<i32>()) {
         let ok_a: Result<i32, &str> = Ok(a);
         let empty: Result<i32, &str> = Monoid::empty();
-        prop_assert_eq!(ok_a.clone().combine(empty), ok_a);
+        prop_assert_eq!(ok_a.combine(empty), ok_a);
       }
     }
 
@@ -98,8 +98,8 @@ mod tests {
       let err: Result<i32, &str> = Err("error");
       let empty: Result<i32, &str> = Monoid::empty();
       // The semigroup implementation prioritizes Ok values, so empty (which is Ok) will win
-      assert_eq!(empty.combine(err.clone()), Ok(0));
-      assert_eq!(err.clone().combine(empty), Ok(0));
+      assert_eq!(empty.combine(err), err);
+      assert_eq!(err.combine(empty), err);
     }
   }
 }

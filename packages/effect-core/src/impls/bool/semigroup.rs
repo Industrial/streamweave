@@ -16,10 +16,10 @@ mod tests {
   #[test]
   fn test_combine_truth_table() {
     // Test all possible combinations
-    assert_eq!(false.combine(false), false);
-    assert_eq!(false.combine(true), true);
-    assert_eq!(true.combine(false), true);
-    assert_eq!(true.combine(true), true);
+    assert!(!false.combine(false));
+    assert!(false.combine(true));
+    assert!(true.combine(false));
+    assert!(true.combine(true));
   }
 
   #[test]

@@ -127,7 +127,7 @@ mod tests {
       let option = Some(x);
 
       // Apply f then g using our Functor trait's map implementation
-      let result1 = Functor::map(option.clone(), f);
+      let result1 = Functor::map(option, f);
       let result1 = Functor::map(result1, g);
 
       // Apply composition of f and g
@@ -148,7 +148,7 @@ mod tests {
       let option: Option<i64> = None;
 
       // Apply f then g using our Functor trait's map implementation
-      let result1 = Functor::map(option.clone(), f);
+      let result1 = Functor::map(option, f);
       let result1 = Functor::map(result1, g);
 
       // Apply composition of f and g
@@ -171,7 +171,7 @@ mod tests {
       let option = Some(x);
 
       // Apply f then g
-      let result1 = Functor::map(option.clone(), f);
+      let result1 = Functor::map(option, f);
       let result1 = Functor::map(result1, g);
 
       // Apply composition of f and g

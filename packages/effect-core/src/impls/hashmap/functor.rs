@@ -211,8 +211,8 @@ mod tests {
     map.insert("c", 3);
 
     // Using a Vec to track mapped values - safer than mutable counter
-    let values = vec![1, 2, 3];
-    let mut used = vec![false, false, false];
+    let values = [1, 2, 3];
+    let mut used = [false, false, false];
 
     let result = map.map(move |x| {
       let idx = values.iter().position(|v| v == x).unwrap();

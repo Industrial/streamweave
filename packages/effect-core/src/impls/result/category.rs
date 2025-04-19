@@ -185,7 +185,7 @@ mod tests {
           let result = first_f.apply(pair.clone());
 
           // The expected result
-          let expected = pair.and_then(|(a, c)| Ok((f(&a), c)));
+          let expected = pair.map(|(a, c)| (f(&a), c));
 
           // Results should match
           assert_eq!(result, expected);
@@ -219,7 +219,7 @@ mod tests {
           let result = second_f.apply(pair.clone());
 
           // The expected result
-          let expected = pair.and_then(|(c, a)| Ok((c, f(&a))));
+          let expected = pair.map(|(c, a)| (c, f(&a)));
 
           // Results should match
           assert_eq!(result, expected);
