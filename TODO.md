@@ -121,7 +121,14 @@
 - [ ] Check out https://github.com/creusot-rs/creusot?tab=readme-ov-file
 
 ## Tests
-Run the tests and fix issues. Keep going until all tests pass.
+- Generate 100% covering tests for all permutations.
+- Run the tests for this module only.
+- Fix any issues and keep running the tests until all tests are green.
+
+## Now
+1. Given our current implemented traits, pick a file from _old and move it to the traits.
+2. Remove all the impls and tests and leave only the trait.
+3. For all rust basic types that this trait should have an impl for, including ones not currently covered for any trait in the `impls`, implement those without tests.
 
 ## Tasks.md
 1. In the traits directory, create a TASKS.md file or empty it. This file will contain the "state" of the tasks that are left to complete.
