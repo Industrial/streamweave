@@ -4,6 +4,7 @@ pub mod bool;
 pub mod boxed;
 pub mod btreemap;
 pub mod btreeset;
+pub mod char;
 pub mod compose;
 pub mod duration;
 pub mod either;
