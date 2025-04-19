@@ -1,4 +1,3 @@
-
 /// A type representing a value of one of two possible types (a disjoint union).
 ///
 /// This is similar to `Result<T, E>` but without the semantic meaning of success/error.
