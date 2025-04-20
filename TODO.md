@@ -10,7 +10,7 @@
 ### Arc<T>
 - [x] Semigroup (where T: Semigroup) - Delegating to inner type
 - [x] Monoid (where T: Monoid) - Delegating to inner type
-- [ ] Bifunctor for Arc<(A, B)> - Wrapping tuple bifunctor
+- [x] Bifunctor for Arc<(A, B)> - Wrapping tuple bifunctor
 
 ### Rc<T>
 - [x] Semigroup - Implemented as LocalSemigroup in local module (not thread-safe)
