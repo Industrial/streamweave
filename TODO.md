@@ -5,7 +5,7 @@
 ### Box<T>
 - [x] Semigroup (where T: Semigroup) - Delegating to inner type
 - [x] Monoid (where T: Monoid) - Delegating to inner type
-- [ ] Bifunctor for Box<(A, B)> - Wrapping tuple bifunctor
+- [x] Bifunctor for Box<(A, B)> - Wrapping tuple bifunctor
 
 ### Arc<T>
 - [x] Semigroup (where T: Semigroup) - Delegating to inner type
