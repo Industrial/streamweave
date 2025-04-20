@@ -15,7 +15,7 @@
 - [ ] `Box<T> where T: Monoid` - Delegating to inner type
 - [ ] `Arc<T> where T: Monoid` - Delegating to inner type
 - [ ] `Rc<T> where T: Monoid` - Delegating to inner type
-- [ ] `Cow<'_, T> where T: Monoid + ToOwned` - Delegating to inner type
+- [x] `Cow<'_, T> where T: Monoid + ToOwned` - Delegating to inner type
 
 #### Category
 - [ ] `BTreeMap<K, V>` - Based on key lookup and value identity
