@@ -18,7 +18,6 @@ pub mod morphism;
 pub mod numeric;
 pub mod option;
 pub mod pathbuf;
-pub mod rc;
 pub mod result;
 pub mod str;
 pub mod string;

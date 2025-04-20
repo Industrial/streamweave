@@ -12,14 +12,6 @@
 - [x] Monoid (where T: Monoid) - Delegating to inner type
 - [x] Bifunctor for Arc<(A, B)> - Wrapping tuple bifunctor
 
-### Rc<T>
-- [x] Semigroup - Implemented as LocalSemigroup in local module (not thread-safe)
-- [x] Monoid - Delegating to inner type
-- [ ] Functor - Similar to the implementation for Arc<T>
-- [ ] Foldable - Similar to the implementation for Arc<T>
-- [ ] Applicative - Similar to the implementation for Arc<T>
-- [ ] Bifunctor for Rc<(A, B)> - Wrapping tuple bifunctor
-
 ### Cow<'_, T>
 - [x] Semigroup (where T: Semigroup + ToOwned) - Delegating to inner type
 - [x] Monoid (where T: Monoid + ToOwned) - Delegating to inner type
