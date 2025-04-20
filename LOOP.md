@@ -7,7 +7,7 @@ Your objective is to **fully implement each task end-to-end**, with clean, test-
 
 ---
 
-### 🟡 Step 1: Interpret the TODO
+### 🟡 Step 1: Interpret the TODO and the git state.
 
 **Goal**: Fully understand what the TODO requires before you code.
 

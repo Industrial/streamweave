@@ -7,8 +7,8 @@
 - [x] `char` - Using character concatenation
 - [x] `Box<T> where T: Semigroup` - Delegating to inner type
 - [x] `Arc<T> where T: Semigroup` - Delegating to inner type
-- [ ] `Rc<T> where T: Semigroup` - Delegating to inner type
-- [ ] `Cow<'_, T> where T: Semigroup + ToOwned` - Delegating to inner type
+- [x] `Rc<T> where T: Semigroup` - Implemented as LocalSemigroup in local module (not thread-safe)
+- [x] `Cow<'_, T> where T: Semigroup + ToOwned` - Delegating to inner type
 
 #### Monoid
 - [ ] `char` - With empty as a space or null character

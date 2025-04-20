@@ -6,6 +6,7 @@ pub mod btreemap;
 pub mod btreeset;
 pub mod char;
 pub mod compose;
+pub mod cow;
 pub mod duration;
 pub mod either;
 pub mod future;
