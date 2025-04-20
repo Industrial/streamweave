@@ -87,7 +87,7 @@ impl<K: Clone + Ord + CloneableThreadSafe, V: CloneableThreadSafe> Category<V, V
 
       // Apply f to each group
       let mut result = BTreeMap::new();
-      for group_idx in 0..cs.len() {
+      (0..cs.len()).for_each(|group_idx| {
         // Collect entries for this group
         let mut a_map = BTreeMap::new();
         for (entry_idx, g_idx) in &group_indices {
@@ -105,7 +105,7 @@ impl<K: Clone + Ord + CloneableThreadSafe, V: CloneableThreadSafe> Category<V, V
         for (k, b) in b_map {
           result.insert(k, (b, c.clone()));
         }
-      }
+      });
 
       result
     })
@@ -142,7 +142,7 @@ impl<K: Clone + Ord + CloneableThreadSafe, V: CloneableThreadSafe> Category<V, V
 
       // Apply f to each group
       let mut result = BTreeMap::new();
-      for group_idx in 0..cs.len() {
+      (0..cs.len()).for_each(|group_idx| {
         // Collect entries for this group
         let mut a_map = BTreeMap::new();
         for (entry_idx, g_idx) in &group_indices {
@@ -160,7 +160,7 @@ impl<K: Clone + Ord + CloneableThreadSafe, V: CloneableThreadSafe> Category<V, V
         for (k, b) in b_map {
           result.insert(k, (c.clone(), b));
         }
-      }
+      });
 
       result
     })

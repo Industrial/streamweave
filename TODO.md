@@ -19,13 +19,14 @@
 
 #### Category
 - [x] `BTreeMap<K, V>` - Using BTreeMapCategory proxy with vector-based grouping
-- [ ] `BTreeSet<T>` - Based on set membership
+- [x] `char` - For character transformations
+- [x] `&str` - For string slice operations
+- [x] `String` - For string operations
+- [x] `i32`, `i64`, `f32`, `f64` - For numeric transformations
 - [ ] `LinkedList<T>` - For element identity and sequence operations
 - [ ] `VecDeque<T>` - For element identity and sequence operations
-- [ ] `String` - For string operations
-- [ ] `char` - For character transformations
-- [ ] `&str` - For string slice operations
 - [ ] `Cow<'_, T> where T: Category` - Delegating to inner type
+- [ ] `BTreeSet<T>` - Based on set membership
 
 #### Functor
 - [ ] `Rc<T>` - Similar to the implementation for `Arc<T>`

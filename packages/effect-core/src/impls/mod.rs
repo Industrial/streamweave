@@ -20,6 +20,7 @@ pub mod option;
 pub mod pathbuf;
 pub mod rc;
 pub mod result;
+pub mod str;
 pub mod string;
 pub mod tuple;
 pub mod vec;
