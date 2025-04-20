@@ -1,9 +1,12 @@
 # LOOP.md
 ## LLM Execution Protocol for TODO Tasks
 
-You are an autonomous software development agent executing TODO items defined in `TODO.md`.
+You are an autonomous software development agent executing TODO items defined in
+`TODO.md`.
 
-Your objective is to **fully implement each task end-to-end**, with clean, test-covered code and a successful commit. Follow these steps in order for each unchecked TODO item.
+Your objective is to **fully implement each task end-to-end**, with clean,
+test-covered code and a successful commit. Follow these steps in order for each
+unchecked TODO item.
 
 ---
 

@@ -1,82 +1,88 @@
 use crate::traits::monoid::Monoid;
+use crate::traits::semigroup::Semigroup;
 
 impl Monoid for char {
   fn empty() -> Self {
-    // Using space as the empty value for char
-    ' '
+    // For chars, Semigroup implementation returns the second char
+    // So any empty() character will not be preserved when combined
+    // We use a character '\0' as a consistent representation of empty
+    '\0'
   }
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::traits::semigroup::Semigroup;
   use proptest::prelude::*;
 
   #[test]
   fn test_empty() {
-    let empty_char = char::empty();
-    assert_eq!(empty_char, ' ');
+    assert_eq!(char::empty(), '\0');
   }
 
   #[test]
-  fn test_left_identity() {
-    // Since our semigroup implementation returns the second char,
-    // combining empty with a char will return the char
+  fn test_identity() {
+    // Since our Semigroup implementation returns the second char,
+    // empty().combine(a) == a, but a.combine(empty()) == empty()
     let a = 'a';
-    let empty = char::empty();
-    assert_eq!(empty.combine(a), a);
+
+    // Left identity: empty().combine(a) = a
+    assert_eq!(char::empty().combine(a), a);
+
+    // Right "identity": With our Semigroup impl, a.combine(empty()) = empty()
+    assert_eq!(a.combine(char::empty()), char::empty());
   }
 
   #[test]
-  fn test_right_identity() {
-    // According to our semigroup implementation, a.combine(empty) returns empty
-    // This is not a true identity, but it's the best we can do with our implementation
-    let a = 'a';
-    let empty = char::empty();
-    assert_eq!(a.combine(empty), empty);
+  fn test_with_unicode() {
+    // Test with Unicode characters - same identity behavior
+    let unicode = '汉';
+
+    // Left identity: empty().combine(unicode) = unicode
+    assert_eq!(char::empty().combine(unicode), unicode);
+
+    // Right "identity": With our Semigroup impl, unicode.combine(empty()) = empty()
+    assert_eq!(unicode.combine(char::empty()), char::empty());
   }
 
   #[test]
   fn test_mconcat() {
-    // Test mconcat with a list of chars
-    let chars = vec!['a', 'b', 'c'];
-
-    // With our implementation, mconcat will return the last char in the collection,
-    // or the empty char if the collection is empty
-    assert_eq!(Monoid::mconcat(chars), 'c');
-
+    // Test mconcat with an empty iterator
     let empty_vec: Vec<char> = vec![];
-    assert_eq!(Monoid::mconcat(empty_vec), ' ');
+    assert_eq!(char::mconcat(empty_vec), char::empty());
+
+    // Test mconcat with a non-empty iterator
+    let chars = vec!['a', 'b', 'c'];
+    let result = char::mconcat(chars);
+    assert_eq!(result, 'c'); // Since combine returns the second char, we should get the last one
   }
 
-  // Property-based tests
   proptest! {
-    // Test left identity: empty().combine(a) = a
     #[test]
-    fn prop_left_identity(a in any::<char>()) {
-      prop_assert_eq!(char::empty().combine(a), a);
+    fn prop_identity_law(c in any::<char>()) {
+      // With our Semigroup impl, the left identity law holds but right doesn't
+      // Left identity: empty().combine(c) = c
+      prop_assert_eq!(char::empty().combine(c), c);
+
+      // Right combine: c.combine(empty()) = empty()
+      prop_assert_eq!(c.combine(char::empty()), char::empty());
     }
 
-    // Test right identity behavior
     #[test]
-    fn prop_right_identity_behavior(a in any::<char>()) {
-      // This checks our implementation's behavior, though it's not a true identity
-      prop_assert_eq!(a.combine(char::empty()), ' ');
+    fn prop_mconcat_single_element(c in any::<char>()) {
+      // Test that mconcat with a single element returns that element
+      let chars = vec![c];
+      prop_assert_eq!(char::mconcat(chars), c);
     }
 
-    // Test that mconcat on a list of chars follows our combine behavior
     #[test]
-    fn prop_mconcat_behavior(
-      chars in proptest::collection::vec(any::<char>(), 0..10)
+    fn prop_mconcat_multiple_elements(
+      elements in proptest::collection::vec(any::<char>(), 1..10)
     ) {
-      let expected = if chars.is_empty() {
-        char::empty()
-      } else {
-        *chars.last().unwrap()
-      };
-
-      prop_assert_eq!(Monoid::mconcat(chars), expected);
+      // Test that mconcat returns the last element (due to our combine implementation)
+      if !elements.is_empty() {
+        prop_assert_eq!(char::mconcat(elements.clone()), *elements.last().unwrap());
+      }
     }
   }
 }

@@ -11,10 +11,10 @@
 - [x] `Cow<'_, T> where T: Semigroup + ToOwned` - Delegating to inner type
 
 #### Monoid
-- [ ] `char` - With empty as a space or null character
-- [ ] `Box<T> where T: Monoid` - Delegating to inner type
-- [ ] `Arc<T> where T: Monoid` - Delegating to inner type
-- [ ] `Rc<T> where T: Monoid` - Delegating to inner type
+- [x] `char` - With empty as a space or null character
+- [x] `Box<T> where T: Monoid` - Delegating to inner type
+- [x] `Arc<T> where T: Monoid` - Delegating to inner type
+- [x] `Rc<T> where T: Monoid` - Delegating to inner type
 - [x] `Cow<'_, T> where T: Monoid + ToOwned` - Delegating to inner type
 
 #### Category
@@ -175,29 +175,3 @@
 
 - [ ] Check out https://github.com/viperproject/prusti-dev
 - [ ] Check out https://github.com/creusot-rs/creusot?tab=readme-ov-file
-
-## TODO
-- For each TODO item:
-  - Implement it.
-  - Add 100% covering tests for all permutations.
-  - Fix any issues and keep running the tests until all tests are green.
-  - Make a git commit (use --no-verify).
-
-## Tests
-- Generate 100% covering tests for all permutations.
-- Run the tests for this module only.
-- Fix any issues and keep running the tests until all tests are green.
-
-## Now
-1. Given our current implemented traits, pick a file from _old and move it to the traits.
-2. Remove all the impls and tests and leave only the trait.
-3. For all rust basic types that this trait should have an impl for, including ones not currently covered for any trait in the `impls`, implement those without tests.
-
-## Tasks.md
-1. In the traits directory, create a TASKS.md file or empty it. This file will contain the "state" of the tasks that are left to complete.
-2. Inside the TASKS.md file you will put:
-    1. [ ] Given our current implemented traits, pick a file from _old and move it to the traits.
-    2. [ ] Remove all the impls and tests and leave only the trait.
-3. For all rust basic types that this trait should have an impl for, including ones not currently covered for any trait in the `impls`, add a to-do entry with `[ ]` to the TASKS.md file. This file should not include unit tests (yet).
-    3.1 For each entry you generated, add a sub-task that will tell the LLM to use `TEST.md` for adding 100% coverage of all permutations of the implementation.
-4. When everything has been completed, you should complete all to-do items one by one.
