@@ -52,6 +52,61 @@ impl Category<String, String> for String {
   }
 }
 
+/// A wrapper type for String to implement Category<char, char>
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CharCategory;
+
+/// A cloneable function wrapper for characters
+#[derive(Clone)]
+pub struct CharFn<A, B>(Arc<dyn Fn(A) -> B + Send + Sync + 'static>);
+
+impl<A, B> CharFn<A, B> {
+  pub fn new<F>(f: F) -> Self
+  where
+    F: Fn(A) -> B + Send + Sync + 'static,
+  {
+    CharFn(Arc::new(f))
+  }
+
+  pub fn apply(&self, a: A) -> B {
+    (self.0)(a)
+  }
+}
+
+impl Category<char, char> for CharCategory {
+  type Morphism<A: CloneableThreadSafe, B: CloneableThreadSafe> = CharFn<A, B>;
+
+  fn id<A: CloneableThreadSafe>() -> Self::Morphism<A, A> {
+    CharFn::new(|x| x)
+  }
+
+  fn compose<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
+    f: Self::Morphism<A, B>,
+    g: Self::Morphism<B, C>,
+  ) -> Self::Morphism<A, C> {
+    CharFn::new(move |x| g.apply(f.apply(x)))
+  }
+
+  fn arr<A: CloneableThreadSafe, B: CloneableThreadSafe, F>(f: F) -> Self::Morphism<A, B>
+  where
+    F: for<'a> Fn(&'a A) -> B + CloneableThreadSafe,
+  {
+    CharFn::new(move |x| f(&x))
+  }
+
+  fn first<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
+    f: Self::Morphism<A, B>,
+  ) -> Self::Morphism<(A, C), (B, C)> {
+    CharFn::new(move |(a, c)| (f.apply(a), c))
+  }
+
+  fn second<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
+    f: Self::Morphism<A, B>,
+  ) -> Self::Morphism<(C, A), (C, B)> {
+    CharFn::new(move |(c, a)| (c, f.apply(a)))
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -147,5 +202,30 @@ mod tests {
       let expected = upper_fn.apply(trim_fn.apply(test_string));
       prop_assert_eq!(composed_result, expected);
     }
+  }
+
+  // Tests for CharCategory
+  #[test]
+  fn test_char_category_identity() {
+    let id = <CharCategory as Category<char, char>>::id();
+    assert_eq!(id.apply('a'), 'a');
+  }
+
+  #[test]
+  fn test_char_category_composition() {
+    let to_uppercase =
+      <CharCategory as Category<char, char>>::arr(|c: &char| c.to_uppercase().next().unwrap_or(*c));
+    // Creating but not using is_vowel here, but keeping for future tests
+    let _is_vowel =
+      <CharCategory as Category<char, char>>::arr(|c: &char| "aeiouAEIOU".contains(*c));
+
+    // Compose the two functions
+    let is_uppercase_vowel = <CharCategory as Category<char, char>>::compose(
+      to_uppercase,
+      CharFn::new(|c| "AEIOU".contains(c)),
+    );
+
+    assert_eq!(is_uppercase_vowel.apply('a'), true);
+    assert_eq!(is_uppercase_vowel.apply('b'), false);
   }
 }

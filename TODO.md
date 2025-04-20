@@ -12,15 +12,6 @@
 - [x] Monoid (where T: Monoid) - Delegating to inner type
 - [x] Bifunctor for Arc<(A, B)> - Wrapping tuple bifunctor
 
-### Cow<'_, T>
-- [x] Semigroup (where T: Semigroup + ToOwned) - Delegating to inner type
-- [x] Monoid (where T: Monoid + ToOwned) - Delegating to inner type
-- [ ] Category (where T: Category) - Delegating to inner type
-- [ ] Functor (where T: Functor) - Delegating to inner type
-- [ ] Foldable (where T: Foldable) - Delegating to inner type
-- [ ] Applicative (where T: Applicative) - Delegating to inner type
-- [ ] Bifunctor for Cow<'_, (A, B)> - For borrowed or owned tuples
-
 ### char
 - [x] Semigroup - Using character concatenation
 - [x] Monoid - With empty as a space or null character
@@ -32,7 +23,16 @@
 ### String Types
 - [x] Category for &str - For string slice operations
 - [x] Category for String - For string operations
-- [ ] Foldable for String - For folding over characters
+- [x] Foldable for String - For folding over characters
+
+### Cow<'_, T>
+- [x] Semigroup (where T: Semigroup + ToOwned) - Delegating to inner type
+- [x] Monoid (where T: Monoid + ToOwned) - Delegating to inner type
+- [ ] Category (where T: Category) - Delegating to inner type
+- [ ] Functor (where T: Functor) - Delegating to inner type
+- [ ] Foldable (where T: Foldable) - Delegating to inner type
+- [ ] Applicative (where T: Applicative) - Delegating to inner type
+- [ ] Bifunctor for Cow<'_, (A, B)> - For borrowed or owned tuples
 
 ### BTreeMap<K, V>
 - [x] Category - Using BTreeMapCategory proxy with vector-based grouping
