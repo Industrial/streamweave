@@ -1,5 +1,4 @@
 use crate::traits::monoid::Monoid;
-use crate::traits::semigroup::Semigroup;
 
 impl Monoid for char {
   fn empty() -> Self {
@@ -13,6 +12,7 @@ impl Monoid for char {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::traits::semigroup::Semigroup;
   use proptest::prelude::*;
 
   #[test]

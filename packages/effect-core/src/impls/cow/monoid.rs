@@ -13,7 +13,7 @@ impl Monoid for Cow<'static, str> {
 // Generic implementation for Cow<'static, T> where T: Monoid
 impl<T> Monoid for Cow<'static, T>
 where
-  T: Monoid + ToOwned + ?Sized,
+  T: Monoid + ToOwned,
   <T as ToOwned>::Owned: Monoid + CloneableThreadSafe,
 {
   fn empty() -> Self {

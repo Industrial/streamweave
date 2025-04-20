@@ -1,5 +1,4 @@
 use crate::traits::monoid::Monoid;
-use crate::traits::semigroup::Semigroup;
 use std::sync::Arc;
 
 impl<T> Monoid for Arc<T>
@@ -15,6 +14,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::traits::semigroup::Semigroup;
   use proptest::prelude::*;
 
   #[test]

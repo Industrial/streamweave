@@ -35,7 +35,7 @@ impl Semigroup for Cow<'static, str> {
 // Generic implementation for Cow<'static, T> where T: Semigroup
 impl<T> Semigroup for Cow<'static, T>
 where
-  T: Semigroup + ToOwned + ?Sized,
+  T: Semigroup + ToOwned,
   <T as ToOwned>::Owned: Semigroup + CloneableThreadSafe,
 {
   fn combine(self, other: Self) -> Self {
