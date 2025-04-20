@@ -4,6 +4,5 @@
 //! including the `Effect` type and the `Monad` trait.
 
 pub mod impls;
-pub mod local;
 pub mod traits;
 pub mod types;
