@@ -1,0 +1,197 @@
+//@version=6
+strategy("EMA Crossover (Short Focus with Trailing Stop)", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=100)
+
+// ===== Input Groups =====
+// Moving Average Settings
+var g_mas = "Moving Average Settings"
+shortEMALength = input.int(47, "Short EMA Length", group=g_mas)
+midEMALength = input.int(86, "Middle EMA Length", group=g_mas)
+longEMALength = input.int(57, "Long EMA Length", group=g_mas)
+sma100Length = input.int(100, "SMA 100 Length", group=g_mas)
+sma200Length = input.int(200, "SMA 200 Length", group=g_mas)
+
+// ATR and Stop Loss Settings
+var g_atr = "ATR and Stop Loss Settings"
+atrLength = input.int(37, "ATR Length", group=g_atr)
+initialStopMultiplier = input.float(0.25, "Initial Stop ATR Multiplier", group=g_atr)
+
+// Trailing Stop Settings
+var g_trail = "Trailing Stop Settings"
+trailOffsetPts = input.float(4.25, "Trail Offset Points", group=g_trail)
+trail = input.float(15, "Trail Amount", group=g_trail)
+
+// Position Settings
+var g_pos = "Position Settings"
+positionSize = input.float(1.0, "Position Size", group=g_pos)
+
+// ===== Alert Settings =====
+var g_alert = "Alert Settings"
+// The exchange, kucoin futures.
+alert_exchange = input.string("kucoinfutures", "Exchange", group=g_alert)
+
+// These are the names for futures on kucoin, except for BTC which is XBTUSDTM,
+// so we won't use that market.
+alert_symbol_suffix = input.string("M", "Symbol Suffix", group=g_alert)
+alert_symbol = syminfo.ticker + alert_symbol_suffix
+
+// The leverage to use for the alert.
+alert_leverage = input.string("1", "Leverage", group=g_alert)
+
+// The leverage type to use for the alert.
+alert_leverage_type = input.string("isolated", "Leverage Type", options=["isolated", "cross"], group=g_alert)
+
+// The quantity to use for the alert.
+alert_entry_quantity = input.string("50%", "Entry Quantity", group=g_alert)
+alert_exit_quantity = input.string("100%", "Exit Quantity", group=g_alert)
+
+// HFT Optimized Settings
+var g_hft = "HFT Optimized Settings"
+// Order type settings
+entry_order_type = input.string("limit", "Entry Order Type", options=["limit", "market"], group=g_hft)
+exit_order_type = input.string("market", "Exit Order Type", options=["limit", "market"], tooltip="Consider using market orders for exits to ensure execution", group=g_hft)
+alert_post_only = input.bool(true, "Post Only (Maker Orders)", group=g_hft)
+alert_price_offset_pct = input.float(0.05, "Limit Price Offset %", minval=0.01, maxval=1.0, step=0.01, group=g_hft)
+exit_offset_pct = input.float(0.03, "Exit Price Offset % (if limit)", minval=0.01, maxval=1.0, step=0.01, tooltip="Smaller offset for exits to increase fill probability", group=g_hft)
+
+// Time settings
+alert_tif = input.string("GTT", "Time In Force", options=["GTC", "GTT", "IOC", "FOK"], tooltip="GTC = Good Till Canceled, GTT = Good Till Time, IOC = Immediate or Cancel, FOK = Fill or Kill", group=g_hft)
+alert_expiration = input.int(60, "Order Expiration (seconds)", minval=1, maxval=3600, group=g_hft)
+alert_auto_cancel = input.bool(true, "Auto Cancel Unfilled Orders", group=g_hft)
+alert_cancel_after = input.int(15, "Cancel After (seconds)", minval=1, maxval=300, group=g_hft)
+
+// Exit safety settings
+exit_safety_timeout = input.int(5, "Exit Safety Timeout (seconds)", minval=1, maxval=60, tooltip="Convert unfilled exit limit orders to market orders after this many seconds", group=g_hft)
+use_exit_safety = input.bool(true, "Use Exit Safety Net", tooltip="Automatically convert unfilled exit limit orders to market orders after timeout", group=g_hft)
+
+// Other settings
+alert_max_slippage = input.float(0.1, "Maximum Slippage %", minval=0.01, maxval=5.0, step=0.01, group=g_hft)
+use_limit_in_strategy = input.bool(true, "Use Limit Orders in Strategy", tooltip="When enabled, the strategy will use limit orders with the defined price offset", group=g_hft)
+
+// Calculate EMAs
+shortEMA = ta.ema(close, shortEMALength)
+midEMA = ta.ema(close, midEMALength)
+longEMA = ta.ema(close, longEMALength)
+
+// Calculate SMAs
+sma100 = ta.sma(close, sma100Length)
+sma200 = ta.sma(close, sma200Length)
+
+// Calculate ATR for dynamic stops
+atr = ta.atr(atrLength)
+
+// Trading state variables
+var float entryPrice = 0.0
+var float highestHigh = 0.0
+var float lowestLow = 0.0
+var float trailingStop = na
+
+// Trading state conditions
+notTrading = strategy.position_size == 0
+tradingLong = strategy.position_size > 0
+tradingShort = strategy.position_size < 0
+
+// Plot EMAs and SMAs
+plot(shortEMA, title="Short EMA", color=color.blue)
+plot(midEMA, title="Middle EMA", color=color.red)
+plot(longEMA, title="Long EMA", color=color.green)
+plot(sma100, title="100 SMA", color=color.purple)
+plot(sma200, title="200 SMA", color=color.orange)
+
+// ENTRY CONDITIONS (Fast & Real-Time Execution)
+longCondition  = shortEMA >= longEMA and strategy.position_size <= 0
+shortCondition = shortEMA <= longEMA and strategy.position_size >= 0
+
+// EXIT CONDITIONS
+exitLong  = shortEMA < longEMA  // Exit long when Short EMA falls below Long EMA
+exitShort = shortEMA > midEMA   // Exit short when Short EMA rises above Middle EMA
+
+// Calculate limit prices with offset
+longLimitPrice = close * (1 - alert_price_offset_pct/100)  // Buy slightly lower than current price
+shortLimitPrice = close * (1 + alert_price_offset_pct/100) // Sell slightly higher than current price
+
+// Calculate exit limit prices with tighter offset
+longExitLimitPrice = close * (1 + exit_offset_pct/100)  // Sell slightly higher for long exits
+shortExitLimitPrice = close * (1 - exit_offset_pct/100) // Buy slightly lower for short exits
+
+// Plot limit prices
+plot(longCondition ? longLimitPrice : na, "Long Limit Price", color=color.new(color.blue, 50), style=plot.style_circles, linewidth=2)
+plot(shortCondition ? shortLimitPrice : na, "Short Limit Price", color=color.new(color.red, 50), style=plot.style_circles, linewidth=2)
+plot(exitLong and exit_order_type == "limit" ? longExitLimitPrice : na, "Long Exit Limit", color=color.new(color.purple, 50), style=plot.style_circles, linewidth=2)
+plot(exitShort and exit_order_type == "limit" ? shortExitLimitPrice : na, "Short Exit Limit", color=color.new(color.orange, 50), style=plot.style_circles, linewidth=2)
+
+// Build optimized alert message for entries
+getEntryAlertMessage() =>
+    string tifParam = alert_tif
+    string postOnly = alert_post_only ? "true" : "false" 
+    string autoCancel = alert_auto_cancel ? "true" : "false"
+    string timestamp = str.tostring(timenow)
+    "e=" + alert_exchange + " s=" + alert_symbol + " t=" + entry_order_type + " post_only=" + postOnly + " tif=" + tifParam + " exp=" + str.tostring(alert_expiration) + " auto_cancel=" + autoCancel + " cancel_after=" + str.tostring(alert_cancel_after) + " l=" + alert_leverage + " lt=" + alert_leverage_type + " max_slippage=" + str.tostring(alert_max_slippage) + " timestamp=" + timestamp
+
+// Build optimized alert message for exits
+getExitAlertMessage() =>
+    string useExitSafety = use_exit_safety ? "true" : "false"
+    string timestamp = str.tostring(timenow)
+    "e=" + alert_exchange + " s=" + alert_symbol + " t=" + exit_order_type + (exit_order_type == "limit" ? " safety_timeout=" + str.tostring(exit_safety_timeout) + " use_safety=" + useExitSafety : "") + " l=" + alert_leverage + " lt=" + alert_leverage_type + " max_slippage=" + str.tostring(alert_max_slippage) + " timestamp=" + timestamp
+
+// EXECUTE LONG
+if (longCondition)
+    strategy.close("Short")
+    entryPrice := close
+    highestHigh := high
+    trailingStop := close - (atr * initialStopMultiplier)
+    long_entry_message = "long_entry_message " + getEntryAlertMessage() + " b=long" + " q=" + alert_entry_quantity + " price=" + str.tostring(longLimitPrice)
+    if (use_limit_in_strategy and entry_order_type == "limit")
+        strategy.entry("Long", strategy.long, limit=longLimitPrice, alert_message=long_entry_message)
+    else
+        strategy.entry("Long", strategy.long, alert_message=long_entry_message)
+
+// EXECUTE SHORT
+if (shortCondition)
+    strategy.close("Long")
+    entryPrice := close
+    lowestLow := low
+    trailingStop := close + (atr * initialStopMultiplier)
+    short_entry_message = "short_entry_message " + getEntryAlertMessage() + " b=short" + " q=" + alert_entry_quantity + " price=" + str.tostring(shortLimitPrice)
+    if (use_limit_in_strategy and entry_order_type == "limit")
+        strategy.entry("Short", strategy.short, limit=shortLimitPrice, alert_message=short_entry_message)
+    else
+        strategy.entry("Short", strategy.short, alert_message=short_entry_message)
+
+// Trailing Stop for Longs
+if (strategy.position_size > 0)
+    long_exit_trail_message = "long_exit_message " + getExitAlertMessage() + " b=long c=position" + " q=" + alert_exit_quantity + " price=" + str.tostring(high - trail)
+    strategy.exit("Long Trail Exit", from_entry="Long", trail_offset=trailOffsetPts, trail_price=high - trail, alert_message=long_exit_trail_message)
+
+// Trailing Stop for Shorts
+if (strategy.position_size < 0)
+    short_exit_trail_message = "short_exit_message " + getExitAlertMessage() + " b=short c=position" + " q=" + alert_exit_quantity + " price=" + str.tostring(low + trail)
+    strategy.exit("Short Trail Exit", from_entry="Short", trail_offset=trailOffsetPts, trail_price=low + trail, alert_message=short_exit_trail_message)
+
+// EXIT STRATEGY
+if (exitLong)
+    long_exit_message = "long_exit_message " + getExitAlertMessage() + " b=long c=position" + " q=" + alert_exit_quantity + (exit_order_type == "limit" ? " price=" + str.tostring(longExitLimitPrice) : " price=" + str.tostring(close))
+    
+    if (use_limit_in_strategy and exit_order_type == "limit")
+        strategy.exit("Long Exit", from_entry="Long", limit=longExitLimitPrice, alert_message=long_exit_message)
+    else
+        strategy.close("Long", alert_message=long_exit_message)
+        
+    entryPrice := 0.0
+    highestHigh := 0.0
+    trailingStop := na
+
+if (exitShort)
+    short_exit_message = "short_exit_message " + getExitAlertMessage() + " b=short c=position" + " q=" + alert_exit_quantity + (exit_order_type == "limit" ? " price=" + str.tostring(shortExitLimitPrice) : " price=" + str.tostring(close))
+    
+    if (use_limit_in_strategy and exit_order_type == "limit")
+        strategy.exit("Short Exit", from_entry="Short", limit=shortExitLimitPrice, alert_message=short_exit_message)
+    else
+        strategy.close("Short", alert_message=short_exit_message)
+        
+    entryPrice := 0.0
+    lowestLow := 0.0
+    trailingStop := na
+
+// Plot trailing stop
+plot(tradingLong ? trailingStop : na, "Trailing Stop Long", color=color.red, style=plot.style_linebr)
+plot(tradingShort ? trailingStop : na, "Trailing Stop Short", color=color.red, style=plot.style_linebr)
