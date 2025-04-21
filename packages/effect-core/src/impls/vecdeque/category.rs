@@ -20,6 +20,7 @@ impl<A, B> VecDequeFn<A, B> {
 }
 
 /// A proxy struct to implement Category for VecDeque
+#[derive(Clone, Copy)]
 pub struct VecDequeCategory;
 
 impl<T, U> Category<T, U> for VecDequeCategory
