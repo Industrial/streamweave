@@ -49,8 +49,8 @@
 - [x] Category for VecDeque<T> - For element identity and sequence operations
 - [x] Category for BTreeSet<T> - Based on set membership
 - [x] Functor for VecDeque<T> - For mapping over elements
-- [ ] Functor for LinkedList<T> - For mapping over elements
-- [ ] Functor for BTreeSet<T> - For mapping set elements
+- [x] Functor for LinkedList<T> - For mapping over elements
+- [x] Functor for BTreeSet<T> - For mapping set elements
 - [ ] Foldable for VecDeque<T> - For folding operations
 - [ ] Foldable for LinkedList<T> - For folding over linked lists
 - [ ] Applicative for VecDeque<T> - For sequence-based applicative operations

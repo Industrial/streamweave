@@ -20,6 +20,7 @@ impl<A, B> LinkedListFn<A, B> {
 }
 
 /// A proxy struct to implement Category for LinkedList
+#[derive(Clone, Copy)]
 pub struct LinkedListCategory;
 
 impl<T, U> Category<T, U> for LinkedListCategory

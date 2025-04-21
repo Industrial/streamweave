@@ -20,6 +20,7 @@ impl<A, B> BTreeSetFn<A, B> {
 }
 
 /// A proxy struct to implement Category for BTreeSet
+#[derive(Clone, Copy)]
 pub struct BTreeSetCategory;
 
 impl<T, U> Category<T, U> for BTreeSetCategory
