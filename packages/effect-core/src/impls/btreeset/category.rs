@@ -74,7 +74,7 @@ mod tests {
 
   /// Helper function to create a BTreeSet from a Vec
   fn to_btreeset<T: Ord + Clone>(v: Vec<T>) -> BTreeSet<T> {
-    BTreeSet::from_iter(v.into_iter())
+    BTreeSet::from_iter(v)
   }
 
   /// Helper function to get the union of two sets
@@ -95,14 +95,6 @@ mod tests {
       }
     }
     result
-  }
-
-  /// Helper function to map elements in a BTreeSet
-  fn map_elements<T: Ord + Clone, U: Ord + Clone, F: Fn(&T) -> U>(
-    set: &BTreeSet<T>,
-    f: F,
-  ) -> BTreeSet<U> {
-    set.iter().map(|x| f(x)).collect()
   }
 
   /// Helper function to filter elements in a BTreeSet

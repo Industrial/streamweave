@@ -28,7 +28,7 @@
 ### Cow<'_, T>
 - [x] Semigroup (where T: Semigroup + ToOwned) - Delegating to inner type
 - [x] Monoid (where T: Monoid + ToOwned) - Delegating to inner type
-- [ ] Category (where T: Category) - Delegating to inner type
+- [x] Category (where T: Category) - Delegating to inner type
 - [ ] Functor (where T: Functor) - Delegating to inner type (implementation uses CowMapper and CowVecFunctor wrapper types)
 - [ ] Foldable (where T: Foldable) - Delegating to inner type
 - [ ] Applicative (where T: Applicative) - Delegating to inner type
@@ -47,7 +47,7 @@
 ### Collections
 - [x] Category for LinkedList<T> - For element identity and sequence operations
 - [x] Category for VecDeque<T> - For element identity and sequence operations
-- [ ] Category for BTreeSet<T> - Based on set membership
+- [x] Category for BTreeSet<T> - Based on set membership
 - [ ] Functor for VecDeque<T> - For mapping over elements
 - [ ] Functor for LinkedList<T> - For mapping over elements
 - [ ] Functor for BTreeSet<T> - For mapping set elements
