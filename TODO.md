@@ -29,7 +29,7 @@
 - [x] Semigroup (where T: Semigroup + ToOwned) - Delegating to inner type
 - [x] Monoid (where T: Monoid + ToOwned) - Delegating to inner type
 - [x] Category (where T: Category) - Delegating to inner type
-- [ ] Functor (where T: Functor) - Delegating to inner type (implementation uses CowMapper and CowVecFunctor wrapper types)
+- [x] Functor (where T: Functor) - Delegating to inner type (implementation uses CowMapper and CowVecFunctor wrapper types)
 - [ ] Foldable (where T: Foldable) - Delegating to inner type
 - [ ] Applicative (where T: Applicative) - Delegating to inner type
 - [ ] Bifunctor for Cow<'_, (A, B)> - For borrowed or owned tuples

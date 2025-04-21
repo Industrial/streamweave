@@ -5,16 +5,16 @@ use std::collections::VecDeque;
 
 // Implement Functor for VecDequeCategory, not for VecDeque directly
 impl<T: CloneableThreadSafe> Functor<T> for VecDequeCategory {
-  type HigherSelf<U: CloneableThreadSafe> = VecDequeCategory;
+  type HigherSelf<U: CloneableThreadSafe> = VecDeque<U>;
 
   fn map<U, F>(self, _f: F) -> Self::HigherSelf<U>
   where
     F: for<'a> FnMut(&'a T) -> U + CloneableThreadSafe,
     U: CloneableThreadSafe,
   {
-    // This is a placeholder implementation since VecDequeCategory is just a proxy type
-    // The actual mapping happens via the Category impl when using arr and apply
-    VecDequeCategory
+    // This is a placeholder implementation since mapping
+    // is done through the extension trait
+    VecDeque::new()
   }
 }
 
