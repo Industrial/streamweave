@@ -53,5 +53,5 @@
 - [x] Functor for BTreeSet<T> - For mapping set elements
 - [ ] Foldable for VecDeque<T> - For folding operations
 - [ ] Foldable for LinkedList<T> - For folding over linked lists
-- [ ] Applicative for VecDeque<T> - For sequence-based applicative operations
+- [x] Applicative for VecDeque<T> - For sequence-based applicative operations
 - [ ] Applicative for LinkedList<T> - For sequence-based applicative operations
