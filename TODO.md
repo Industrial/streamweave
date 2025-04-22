@@ -26,8 +26,8 @@
 - [x] Foldable for String - For folding over characters
 
 ### Cow<'_, T>
-- [ ] Applicative (where T: Applicative) - Delegating to inner type
-- [ ] Bifunctor for Cow<'_, (A, B)> - For borrowed or owned tuples
+- [x] Applicative (where T: Applicative) - Delegating to inner type
+- [x] Bifunctor for Cow<'_, (A, B)> - For borrowed or owned tuples
 - [ ] Foldable (where T: Foldable) - Delegating to inner type
 - [x] Category (where T: Category) - Delegating to inner type
 - [x] Functor (where T: Functor) - Delegating to inner type (implementation uses CowMapper and CowVecFunctor wrapper types)
@@ -35,13 +35,13 @@
 - [x] Semigroup (where T: Semigroup + ToOwned) - Delegating to inner type
 
 ### BTreeMap<K, V>
-- [ ] Bifunctor - For mapping over both keys and values
+- [x] Bifunctor - For mapping over both keys and values
 - [x] Applicative - For applying functions to map values
 - [x] Category - Using BTreeMapCategory proxy with vector-based grouping
 - [x] Functor - For mapping over elements
 
 ### HashMap<K, V>
-- [ ] Bifunctor - For mapping over both keys and values
+- [x] Bifunctor - For mapping over both keys and values
 - [ ] Foldable - For folding over key-value pairs (implementation exists but is commented out)
 - [x] Applicative - For applying functions to map values
 
