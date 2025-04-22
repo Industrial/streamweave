@@ -23,7 +23,8 @@ impl<K, A, B> BTreeMapFn<K, A, B> {
 
 // Create a dummy type just to represent the BTreeMap category
 // This is similar to the approach used for IteratorCategory
-pub struct BTreeMapCategory<K, V>(std::marker::PhantomData<(K, V)>);
+#[derive(Clone, Copy)]
+pub struct BTreeMapCategory<K, V>(pub std::marker::PhantomData<(K, V)>);
 
 // Implement a specialization of Category trait for the case where:
 // 1. The keys are Ord (required for BTreeMap)

@@ -1,32 +1,62 @@
+use crate::impls::btreemap::category::BTreeMapCategory;
 use crate::traits::applicative::Applicative;
 use crate::types::threadsafe::CloneableThreadSafe;
-use std::collections::HashMap;
-use std::hash::Hash;
+use std::collections::BTreeMap;
+use std::marker::PhantomData;
 
-/// Implementation of Applicative for HashMap.
+/// Implementation of Applicative for BTreeMapCategory.
 ///
-/// For HashMaps, we interpret:
-/// - `pure(x)` as an empty HashMap, since we can't create a map with a value without a key
-/// - `ap` as applying functions from one HashMap to values in another HashMap where keys match
-impl<K, A> Applicative<A> for HashMap<K, A>
+/// For BTreeMaps, we interpret:
+/// - `pure(x)` as an empty BTreeMap, since we can't create a map with a value without a key
+/// - `ap` as applying functions from one BTreeMap to values in another BTreeMap where keys match
+impl<K, A> Applicative<A> for BTreeMapCategory<K, A>
 where
-  K: Eq + Hash + Clone + CloneableThreadSafe,
+  K: Ord + Clone + CloneableThreadSafe,
   A: CloneableThreadSafe,
 {
   fn pure<B>(_value: B) -> Self::HigherSelf<B>
   where
     B: CloneableThreadSafe,
   {
-    // For HashMaps, pure produces an empty map since we can't create a map with a value without a key
-    HashMap::new()
+    // For BTreeMapCategory, pure returns a proxy type that will eventually produce an empty map
+    BTreeMapCategory(PhantomData)
   }
 
-  fn ap<B, F>(self, fs: Self::HigherSelf<F>) -> Self::HigherSelf<B>
+  fn ap<B, F>(self, _fs: Self::HigherSelf<F>) -> Self::HigherSelf<B>
   where
     F: for<'a> FnMut(&'a A) -> B + CloneableThreadSafe,
     B: CloneableThreadSafe,
   {
-    let mut result = HashMap::new();
+    // This is a placeholder implementation for the proxy type
+    BTreeMapCategory(PhantomData)
+  }
+}
+
+/// Extension trait to make BTreeMap applicative operations more ergonomic
+pub trait BTreeMapApplicativeExt<K, A>
+where
+  K: Ord + Clone + CloneableThreadSafe,
+  A: CloneableThreadSafe,
+{
+  /// Apply a BTreeMap of functions to a BTreeMap of values
+  fn ap<B, F>(self, fs: BTreeMap<K, F>) -> BTreeMap<K, B>
+  where
+    F: for<'a> FnMut(&'a A) -> B + CloneableThreadSafe,
+    B: CloneableThreadSafe;
+}
+
+/// Implementation of the extension trait for BTreeMap
+impl<K, A> BTreeMapApplicativeExt<K, A> for BTreeMap<K, A>
+where
+  K: Ord + Clone + CloneableThreadSafe,
+  A: CloneableThreadSafe,
+{
+  fn ap<B, F>(self, fs: BTreeMap<K, F>) -> BTreeMap<K, B>
+  where
+    F: for<'a> FnMut(&'a A) -> B + CloneableThreadSafe,
+    B: CloneableThreadSafe,
+  {
+    let mut result = BTreeMap::new();
 
     // For each key that exists in both self and fs, apply the function to the value
     for (k, v) in self {
@@ -45,10 +75,10 @@ mod tests {
   use super::*;
   use proptest::prelude::*;
 
-  // Helper to create a HashMap from key-value pairs
-  fn to_hashmap<K, V>(entries: Vec<(K, V)>) -> HashMap<K, V>
+  // Helper to create a BTreeMap from key-value pairs
+  fn to_btreemap<K, V>(entries: Vec<(K, V)>) -> BTreeMap<K, V>
   where
-    K: Eq + Hash,
+    K: Ord,
   {
     entries.into_iter().collect()
   }
@@ -78,14 +108,14 @@ mod tests {
   }
 
   // Identity law: pure(id) <*> v = v
-  // Note: For HashMap, since pure produces an empty map, this test verifies
+  // Note: For BTreeMap, since pure produces an empty map, this test verifies
   // that applying an empty map of functions results in an empty map
   #[test]
   fn test_empty_map_ap() {
-    let map = to_hashmap(vec![("a", 1), ("b", 2), ("c", 3)]);
+    let map = to_btreemap(vec![("a", 1), ("b", 2), ("c", 3)]);
 
     // Empty map of functions
-    let empty_fs: HashMap<&str, IdentityFn> = HashMap::new();
+    let empty_fs: BTreeMap<&str, IdentityFn> = BTreeMap::new();
 
     // An empty map of functions applied to any map should result in an empty map
     let result = map.ap(empty_fs);
@@ -95,17 +125,17 @@ mod tests {
   // Test map with matching keys
   #[test]
   fn test_ap_with_matching_keys() {
-    let map = to_hashmap(vec![("a", 1), ("b", 2), ("c", 3)]);
+    let map = to_btreemap(vec![("a", 1), ("b", 2), ("c", 3)]);
 
     // Create functions to apply to each value
-    let mut functions: HashMap<&str, IdentityFn> = HashMap::new();
+    let mut functions: BTreeMap<&str, IdentityFn> = BTreeMap::new();
     functions.insert("a", double);
     functions.insert("b", add_ten);
     functions.insert("c", square);
 
     let result = map.ap(functions);
 
-    let expected = to_hashmap(vec![
+    let expected = to_btreemap(vec![
       ("a", 2),  // 1 * 2
       ("b", 12), // 2 + 10
       ("c", 9),  // 3 * 3
@@ -117,16 +147,16 @@ mod tests {
   // Test with partial key overlap
   #[test]
   fn test_ap_with_partial_overlap() {
-    let map = to_hashmap(vec![("a", 1), ("b", 2), ("c", 3)]);
+    let map = to_btreemap(vec![("a", 1), ("b", 2), ("c", 3)]);
 
-    let mut functions: HashMap<&str, IdentityFn> = HashMap::new();
+    let mut functions: BTreeMap<&str, IdentityFn> = BTreeMap::new();
     functions.insert("a", double);
     functions.insert("c", add_ten);
     functions.insert("d", square); // no match in map
 
     let result = map.ap(functions);
 
-    let expected = to_hashmap(vec![
+    let expected = to_btreemap(vec![
       ("a", 2), // 1 * 2
       ("c", 13), // 3 + 10
                 // "b" and "d" are not in the result
@@ -135,20 +165,20 @@ mod tests {
     assert_eq!(result, expected);
   }
 
-  // Type conversion test - Using explicit type annotation for the HashMap
+  // Type conversion test - Using explicit type annotation for the BTreeMap
   #[test]
   fn test_ap_with_type_conversion() {
-    let map = to_hashmap(vec![("a", 1), ("b", 2), ("c", 3)]);
+    let map = to_btreemap(vec![("a", 1), ("b", 2), ("c", 3)]);
 
     // Use explicit type annotation to avoid closure type mismatches
-    let mut functions: HashMap<&str, StringFn> = HashMap::new();
+    let mut functions: BTreeMap<&str, StringFn> = BTreeMap::new();
     functions.insert("a", to_string);
     functions.insert("b", format_number);
     functions.insert("c", format_value);
 
     let result = map.ap(functions);
 
-    let expected = to_hashmap(vec![
+    let expected = to_btreemap(vec![
       ("a", "1".to_string()),
       ("b", "Number: 2".to_string()),
       ("c", "3 is the value".to_string()),
@@ -157,21 +187,20 @@ mod tests {
     assert_eq!(result, expected);
   }
 
-  // Test key ordering behavior (HashMap specific)
+  // Test ordered key behavior (BTreeMap specific)
   #[test]
   fn test_ordered_keys() {
-    let map = to_hashmap(vec![("c", 3), ("a", 1), ("b", 2)]);
+    let map = to_btreemap(vec![("c", 3), ("a", 1), ("b", 2)]);
 
-    let mut functions: HashMap<&str, IdentityFn> = HashMap::new();
+    let mut functions: BTreeMap<&str, IdentityFn> = BTreeMap::new();
     functions.insert("c", double);
     functions.insert("a", double);
     functions.insert("b", double);
 
     let result = map.ap(functions);
 
-    // Collect keys and sort them for deterministic comparison
-    let mut keys: Vec<&&str> = result.keys().collect();
-    keys.sort();
+    // Keys should be in sorted order in a BTreeMap
+    let keys: Vec<_> = result.keys().collect();
     assert_eq!(keys, vec![&"a", &"b", &"c"]);
   }
 
@@ -192,13 +221,13 @@ mod tests {
       #[test]
       fn prop_ap_preserves_input_keys(
           // Generate small maps with string keys and integer values
-          kvs in proptest::collection::hash_map(
+          kvs in proptest::collection::btree_map(
               proptest::string::string_regex("[a-z]{1,5}").unwrap(),
               0i32..10,
               1..5
           ),
           // Generate similar maps for function identifiers
-          fns in proptest::collection::hash_map(
+          fns in proptest::collection::btree_map(
               proptest::string::string_regex("[a-z]{1,5}").unwrap(),
               prop::sample::select(vec![
                   TestFunc::AddOne,
@@ -209,7 +238,7 @@ mod tests {
           )
       ) {
           // Convert function identifiers to actual function pointers
-          let mut functions: HashMap<String, IdentityFn> = HashMap::new();
+          let mut functions: BTreeMap<String, IdentityFn> = BTreeMap::new();
           for (k, func_id) in fns {
               let func = match func_id {
                   TestFunc::AddOne => add_one,
