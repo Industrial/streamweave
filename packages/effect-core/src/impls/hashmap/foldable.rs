@@ -2,62 +2,82 @@
 // It requires a Functor implementation first
 // To be uncommented once the Functor implementation is added
 
-/*
 use crate::traits::foldable::Foldable;
-use crate::traits::functor::Functor;
 use crate::types::threadsafe::CloneableThreadSafe;
 use std::collections::HashMap;
+use std::hash::Hash;
 
-impl<K, V>
-  Foldable<V>
-  for HashMap<K, V>
+impl<K, V> Foldable<V> for HashMap<K, V>
 where
-  K: Eq + std::hash::Hash + CloneableThreadSafe,
+  K: Eq + Hash + CloneableThreadSafe,
   V: CloneableThreadSafe,
 {
   fn fold<A, F>(self, init: A, mut f: F) -> A
   where
-    F: FnMut(A, &V) -> A + CloneableThreadSafe,
     A: CloneableThreadSafe,
+    F: for<'b> FnMut(A, &'b V) -> A + CloneableThreadSafe,
   {
-    self.into_iter().fold(init, |acc, (_, v)| f(acc, &v))
+    let mut acc = init;
+    for (_, v) in self {
+      acc = f(acc, &v);
+    }
+    acc
   }
 
   fn fold_right<A, F>(self, init: A, mut f: F) -> A
   where
-    F: FnMut(&V, A) -> A + CloneableThreadSafe,
     A: CloneableThreadSafe,
+    F: for<'b> FnMut(&'b V, A) -> A + CloneableThreadSafe,
   {
-    let mut values: Vec<V> = self.into_iter().map(|(_, v)| v).collect();
-    values.reverse();
-    values.iter().fold(init, |acc, v| f(v, acc))
+    // Note: HashMap iteration order is not guaranteed, but we'll convert
+    // to Vec for consistency with other fold_right implementations
+    let vec: Vec<_> = self.into_iter().collect();
+    let mut acc = init;
+    for (_, v) in vec.into_iter().rev() {
+      acc = f(&v, acc);
+    }
+    acc
   }
 
   fn reduce<F>(self, mut f: F) -> Option<V>
   where
-    F: FnMut(&V, &V) -> V + CloneableThreadSafe,
+    F: for<'b, 'c> FnMut(&'b V, &'c V) -> V + CloneableThreadSafe,
   {
-    let mut values: Vec<V> = self.into_iter().map(|(_, v)| v).collect();
-    if values.is_empty() {
+    if self.is_empty() {
       return None;
     }
 
-    let first = values.remove(0);
-    Some(values.iter().fold(first, |acc, v| f(&acc, v)))
+    let mut iter = self.into_iter();
+    let (_, first) = iter.next().unwrap();
+    let mut acc = first;
+
+    for (_, v) in iter {
+      acc = f(&acc, &v);
+    }
+
+    Some(acc)
   }
 
   fn reduce_right<F>(self, mut f: F) -> Option<V>
   where
-    F: FnMut(&V, &V) -> V + CloneableThreadSafe,
+    F: for<'b, 'c> FnMut(&'b V, &'c V) -> V + CloneableThreadSafe,
   {
-    let mut values: Vec<V> = self.into_iter().map(|(_, v)| v).collect();
-    if values.is_empty() {
+    if self.is_empty() {
       return None;
     }
 
-    values.reverse();
-    let first = values.remove(0);
-    Some(values.iter().fold(first, |acc, v| f(v, &acc)))
+    // Convert to Vec for reverse iteration
+    let vec: Vec<_> = self.into_iter().collect();
+    let mut rev_iter = vec.into_iter().rev();
+
+    let (_, first) = rev_iter.next().unwrap();
+    let mut acc = first;
+
+    for (_, v) in rev_iter {
+      acc = f(&v, &acc);
+    }
+
+    Some(acc)
   }
 }
 
@@ -67,85 +87,98 @@ mod tests {
   use std::collections::HashMap;
 
   #[test]
-  fn test_fold() {
-    let mut map = HashMap::new();
-    map.insert("one", 1);
-    map.insert("two", 2);
-    map.insert("three", 3);
+  fn test_empty_map() {
+    let map: HashMap<i32, String> = HashMap::new();
+    let result = map.fold(0, |acc, _| acc + 1);
+    assert_eq!(result, 0);
 
-    let sum = Foldable::fold(map, 0, |acc, v| acc + v);
-    assert_eq!(sum, 6);
+    let map: HashMap<i32, String> = HashMap::new();
+    let result = map.reduce(|a, _| a.clone());
+    assert_eq!(result, None);
   }
 
   #[test]
-  fn test_fold_right() {
+  fn test_single_element() {
     let mut map = HashMap::new();
-    map.insert("one", 1);
-    map.insert("two", 2);
-    map.insert("three", 3);
+    map.insert(1, "one".to_string());
 
-    let sum = Foldable::fold_right(map, 0, |v, acc| acc + v);
-    assert_eq!(sum, 6);
+    let result = map.clone().fold(0, |acc, _| acc + 1);
+    assert_eq!(result, 1);
+
+    let result = map.clone().reduce(|a, _| a.clone());
+    assert_eq!(result, Some("one".to_string()));
   }
 
   #[test]
-  fn test_reduce() {
+  fn test_multiple_elements() {
     let mut map = HashMap::new();
-    map.insert("one", 1);
-    map.insert("two", 2);
-    map.insert("three", 3);
+    map.insert(1, "one".to_string());
+    map.insert(2, "two".to_string());
+    map.insert(3, "three".to_string());
 
-    let sum = Foldable::reduce(map, |a, b| a + b).unwrap();
-    assert_eq!(sum, 6);
+    // Count elements
+    let result = map.clone().fold(0, |acc, _| acc + 1);
+    assert_eq!(result, 3);
+
+    // Concatenate strings
+    let result = map.clone().fold(String::new(), |mut acc, v| {
+      if !acc.is_empty() {
+        acc.push_str(", ");
+      }
+      acc.push_str(v);
+      acc
+    });
+
+    // Since HashMap order is not guaranteed, we need to check all permutations
+    let permutations = vec![
+      "one, two, three",
+      "one, three, two",
+      "two, one, three",
+      "two, three, one",
+      "three, one, two",
+      "three, two, one",
+    ];
+    assert!(permutations.contains(&result.as_str()));
   }
 
   #[test]
-  fn test_reduce_right() {
+  fn test_fold_with_custom_accumulator() {
     let mut map = HashMap::new();
-    map.insert("one", 1);
-    map.insert("two", 2);
-    map.insert("three", 3);
+    map.insert("apple", 5);
+    map.insert("banana", 10);
+    map.insert("cherry", 15);
 
-    let sum = Foldable::reduce_right(map, |a, b| a + b).unwrap();
-    assert_eq!(sum, 6);
+    // Sum the values
+    let result = map.clone().fold(0, |acc, v| acc + v);
+    assert_eq!(result, 30);
+
+    // Create a vector of values
+    let result = map.clone().fold(Vec::new(), |mut acc, v| {
+      acc.push(*v);
+      acc.sort();
+      acc
+    });
+    assert_eq!(result, vec![5, 10, 15]);
   }
 
-  proptest! {
-    #[test]
-    fn prop_fold_sum(entries in proptest::collection::hash_map(
-      proptest::string::string_regex("[a-z]{1,10}").unwrap(),
-      0i8..10,
-      0..10
-    )) {
-      let map = entries.clone();
+  #[test]
+  fn test_reduce_with_concatenation() {
+    let mut map = HashMap::new();
+    map.insert(1, "Hello".to_string());
+    map.insert(2, "World".to_string());
 
-      // Calculate expected sum directly
-      let expected_sum: i32 = entries.values().map(|&v| v as i32).sum();
+    // Combine values
+    let result = map.reduce(|v1, v2| format!("{} {}", v1, v2));
 
-      // Calculate sum using fold
-      let actual_sum = Foldable::fold(map, 0i32, |acc: i32, &v| acc + v as i32);
-
-      // Verify results
-      prop_assert_eq!(actual_sum, expected_sum);
-    }
-
-    #[test]
-    fn prop_fold_right_sum(entries in proptest::collection::hash_map(
-      proptest::string::string_regex("[a-z]{1,10}").unwrap(),
-      0i8..10,
-      0..10
-    )) {
-      let map = entries.clone();
-
-      // Calculate expected sum directly
-      let expected_sum: i32 = entries.values().map(|&v| v as i32).sum();
-
-      // Calculate sum using fold_right
-      let actual_sum = Foldable::fold_right(map, 0i32, |&v, acc: i32| acc + v as i32);
-
-      // Verify results
-      prop_assert_eq!(actual_sum, expected_sum);
+    match result {
+      Some(value) => {
+        assert!(
+          value == "Hello World" || value == "World Hello",
+          "Expected 'Hello World' or 'World Hello', got '{}'",
+          value
+        );
+      }
+      None => panic!("Expected Some, got None"),
     }
   }
 }
-*/

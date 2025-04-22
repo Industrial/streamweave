@@ -28,7 +28,7 @@
 ### Cow<'_, T>
 - [x] Applicative (where T: Applicative) - Delegating to inner type
 - [x] Bifunctor for Cow<'_, (A, B)> - For borrowed or owned tuples
-- [ ] Foldable (where T: Foldable) - Delegating to inner type
+- [x] Foldable (where T: Foldable) - Delegating to inner type
 - [x] Category (where T: Category) - Delegating to inner type
 - [x] Functor (where T: Functor) - Delegating to inner type (implementation uses CowMapper and CowVecFunctor wrapper types)
 - [x] Monoid (where T: Monoid + ToOwned) - Delegating to inner type
@@ -42,12 +42,12 @@
 
 ### HashMap<K, V>
 - [x] Bifunctor - For mapping over both keys and values
-- [ ] Foldable - For folding over key-value pairs (implementation exists but is commented out)
+- [x] Foldable - For folding over key-value pairs (implementation exists but is commented out)
 - [x] Applicative - For applying functions to map values
 
 ### Collections
-- [ ] Foldable for LinkedList<T> - For folding over linked lists
-- [ ] Foldable for VecDeque<T> - For folding operations
+- [x] Foldable for LinkedList<T> - For folding over linked lists
+- [x] Foldable for VecDeque<T> - For folding operations
 - [x] Applicative for LinkedList<T> - For sequence-based applicative operations
 - [x] Applicative for VecDeque<T> - For sequence-based applicative operations
 - [x] Category for BTreeSet<T> - Based on set membership
