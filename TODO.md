@@ -54,4 +54,4 @@
 - [ ] Foldable for VecDeque<T> - For folding operations
 - [ ] Foldable for LinkedList<T> - For folding over linked lists
 - [x] Applicative for VecDeque<T> - For sequence-based applicative operations
-- [ ] Applicative for LinkedList<T> - For sequence-based applicative operations
+- [x] Applicative for LinkedList<T> - For sequence-based applicative operations
