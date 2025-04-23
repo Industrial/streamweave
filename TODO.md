@@ -1,58 +1,63 @@
-# EffectRust TODO List (Transposed)
+# Migration Plan: _old to traits/impls
 
-## Types to Implement
+## Overview
+This document outlines the plan to migrate code from the `_old` directory to the modern `traits` and `impls` structure.
 
-### Box<T>
-- [x] Bifunctor for Box<(A, B)> - Wrapping tuple bifunctor
-- [x] Monoid (where T: Monoid) - Delegating to inner type
-- [x] Semigroup (where T: Semigroup) - Delegating to inner type
+## Current Structure
+- Files in `_old` contain both trait definitions and implementations
+- Modern structure separates traits (`packages/effect-core/src/traits`) and implementations (`packages/effect-core/src/impls`)
 
-### Arc<T>
-- [x] Bifunctor for Arc<(A, B)> - Wrapping tuple bifunctor
-- [x] Monoid (where T: Monoid) - Delegating to inner type
-- [x] Semigroup (where T: Semigroup) - Delegating to inner type
+## Migration Steps
 
-### char
-- [x] Category - For character transformations
-- [x] Monoid - With empty as a space or null character
-- [x] Semigroup - Using character concatenation
+### 1. Traits Migration
+For each file in `_old`:
+- [ ] Extract trait definition
+- [ ] Update to use `CloneableThreadSafe` instead of `Send + Sync + 'static`
+- [ ] Create corresponding file in `traits/` directory
+- [ ] Update trait definition to match modern style
+- [ ] Add to `traits/mod.rs` exports
 
-### Numeric Types
-- [x] Category for i32, i64, f32, f64 - For numeric transformations
+### 2. Implementations Migration
+For each implementation in the original files:
+- [ ] Identify the type being implemented
+- [ ] Create/update directory in `impls/` for that type if it doesn't exist
+- [ ] Create corresponding implementation file (e.g., `functor.rs`) in that directory
+- [ ] Update implementation to use the new trait
+- [ ] Add to type's `mod.rs` exports
 
-### String Types
-- [x] Category for &str - For string slice operations
-- [x] Category for String - For string operations
-- [x] Foldable for String - For folding over characters
+## Traits to Migrate
+- [x] alternative.rs
+  - [x] Trait definition (traits/alternative.rs)
+  - [x] Option implementation (impls/option/alternative.rs)
+  - [x] Result implementation (impls/result/alternative.rs)
+- [x] arrow.rs 
+  - [x] Trait definition (traits/arrow.rs)
+  - [x] Morphism implementation (impls/morphism/arrow.rs)
+- [ ] bufferable.rs
+- [ ] comonad.rs
+- [ ] contravariant.rs
+- [ ] distinctable.rs
+- [ ] effect.rs
+- [ ] either.rs
+- [ ] filterable.rs
+- [ ] function.rs
+- [ ] groupable.rs
+- [ ] interleaveable.rs
+- [ ] monad.rs
+- [ ] monad_plus.rs
+- [ ] natural.rs
+- [ ] pair.rs
+- [ ] partitionable.rs
+- [ ] profunctor.rs
+- [ ] scannable.rs
+- [ ] takeable.rs
+- [ ] throttleable.rs
+- [ ] traversable.rs
+- [ ] windowable.rs
+- [ ] zippable.rs
 
-### Cow<'_, T>
-- [x] Applicative (where T: Applicative) - Delegating to inner type
-- [x] Bifunctor for Cow<'_, (A, B)> - For borrowed or owned tuples
-- [x] Foldable (where T: Foldable) - Delegating to inner type
-- [x] Category (where T: Category) - Delegating to inner type
-- [x] Functor (where T: Functor) - Delegating to inner type (implementation uses CowMapper and CowVecFunctor wrapper types)
-- [x] Monoid (where T: Monoid + ToOwned) - Delegating to inner type
-- [x] Semigroup (where T: Semigroup + ToOwned) - Delegating to inner type
-
-### BTreeMap<K, V>
-- [x] Bifunctor - For mapping over both keys and values
-- [x] Applicative - For applying functions to map values
-- [x] Category - Using BTreeMapCategory proxy with vector-based grouping
-- [x] Functor - For mapping over elements
-
-### HashMap<K, V>
-- [x] Bifunctor - For mapping over both keys and values
-- [x] Foldable - For folding over key-value pairs (implementation exists but is commented out)
-- [x] Applicative - For applying functions to map values
-
-### Collections
-- [x] Foldable for LinkedList<T> - For folding over linked lists
-- [x] Foldable for VecDeque<T> - For folding operations
-- [x] Applicative for LinkedList<T> - For sequence-based applicative operations
-- [x] Applicative for VecDeque<T> - For sequence-based applicative operations
-- [x] Category for BTreeSet<T> - Based on set membership
-- [x] Category for LinkedList<T> - For element identity and sequence operations
-- [x] Category for VecDeque<T> - For element identity and sequence operations
-- [x] Functor for BTreeSet<T> - For mapping set elements
-- [x] Functor for LinkedList<T> - For mapping over elements
-- [x] Functor for VecDeque<T> - For mapping over elements
+## Implementation Notes
+- Follow existing patterns for trait definitions
+- Ensure thread safety with CloneableThreadSafe
+- Maintain property-based tests
+- Update imports to match new structure
