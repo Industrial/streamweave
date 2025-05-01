@@ -30,9 +30,9 @@ For each implementation in the original files:
   - [x] Trait definition (traits/alternative.rs)
   - [x] Option implementation (impls/option/alternative.rs)
   - [x] Result implementation (impls/result/alternative.rs)
-- [x] arrow.rs 
-  - [x] Trait definition (traits/arrow.rs)
-  - [x] Morphism implementation (impls/morphism/arrow.rs)
+- [ ] arrow.rs 
+  - [ ] Trait definition (traits/arrow.rs)
+  - [ ] Morphism implementation (impls/morphism/arrow.rs)
 - [ ] bufferable.rs
 - [ ] comonad.rs
 - [ ] contravariant.rs
