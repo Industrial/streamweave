@@ -1,40 +1,93 @@
-# IMPLEMENTED.md
+# TODO.md
 
-## Implemented
+- [ ] Monad
+  - [x] Option - Clear monadic semantics with and_then
+    - [x] 🟡 Step 1: Interpret the TODO and the git state
+    - [x] 📝 Step 2: Create an Implementation Plan
+      - Create `src/impls/option/monad.rs` with the implementation of the `Monad` trait for `Option<A>`
+      - Implement `bind` to use the standard library's `Option::and_then`
+      - Update `src/impls/option/mod.rs` to export the new module
+      - Create comprehensive tests for the monad laws: left identity, right identity, and associativity
+      - Include tests for common usage patterns with Option monad
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 8: Document the Changes
+  - [ ] Result - Error handling monad
+    - [ ] 🟡 Step 1: Interpret the TODO and the git state
+    - [ ] 📝 Step 2: Create an Implementation Plan
+    - [ ] 🔨 Step 3: Implement the Feature or Fix
+    - [ ] ✅ Step 4: Write Exhaustive Tests
+    - [ ] 🧪 Step 5: Run the Test Suite
+    - [ ] 🧹 Step 6: Self-Review & Clean Up
+    - [ ] 📚 Step 8: Document the Changes
+  - [ ] Future - Async operations monad
+    - [ ] 🟡 Step 1: Interpret the TODO and the git state
+    - [ ] 📝 Step 2: Create an Implementation Plan
+    - [ ] 🔨 Step 3: Implement the Feature or Fix
+    - [ ] ✅ Step 4: Write Exhaustive Tests
+    - [ ] 🧪 Step 5: Run the Test Suite
+    - [ ] 🧹 Step 6: Self-Review & Clean Up
+    - [ ] 📚 Step 8: Document the Changes
+  - [ ] Vec - Collection monad
+    - [ ] 🟡 Step 1: Interpret the TODO and the git state
+    - [ ] 📝 Step 2: Create an Implementation Plan
+    - [ ] 🔨 Step 3: Implement the Feature or Fix
+    - [ ] ✅ Step 4: Write Exhaustive Tests
+    - [ ] 🧪 Step 5: Run the Test Suite
+    - [ ] 🧹 Step 6: Self-Review & Clean Up
+    - [ ] 📚 Step 8: Document the Changes
+  - [ ] Either - Functional error handling
+    - [ ] 🟡 Step 1: Interpret the TODO and the git state
+    - [ ] 📝 Step 2: Create an Implementation Plan
+    - [ ] 🔨 Step 3: Implement the Feature or Fix
+    - [ ] ✅ Step 4: Write Exhaustive Tests
+    - [ ] 🧪 Step 5: Run the Test Suite
+    - [ ] 🧹 Step 6: Self-Review & Clean Up
+    - [ ] 📚 Step 8: Document the Changes
+  - [ ] Box - The Identity monad for boxed values
+    - [ ] 🟡 Step 1: Interpret the TODO and the git state
+    - [ ] 📝 Step 2: Create an Implementation Plan
+    - [ ] 🔨 Step 3: Implement the Feature or Fix
+    - [ ] ✅ Step 4: Write Exhaustive Tests
+    - [ ] 🧪 Step 5: Run the Test Suite
+    - [ ] 🧹 Step 6: Self-Review & Clean Up
+    - [ ] 📚 Step 8: Document the Changes
+  - [ ] Arc - Thread-safe shared ownership monad
+    - [ ] 🟡 Step 1: Interpret the TODO and the git state
+    - [ ] 📝 Step 2: Create an Implementation Plan
+    - [ ] 🔨 Step 3: Implement the Feature or Fix
+    - [ ] ✅ Step 4: Write Exhaustive Tests
+    - [ ] 🧪 Step 5: Run the Test Suite
+    - [ ] 🧹 Step 6: Self-Review & Clean Up
+    - [ ] 📚 Step 8: Document the Changes
+  - [ ] VecDeque - Similar to Vec, but with different performance characteristics
+    - [ ] 🟡 Step 1: Interpret the TODO and the git state
+    - [ ] 📝 Step 2: Create an Implementation Plan
+    - [ ] 🔨 Step 3: Implement the Feature or Fix
+    - [ ] ✅ Step 4: Write Exhaustive Tests
+    - [ ] 🧪 Step 5: Run the Test Suite
+    - [ ] 🧹 Step 6: Self-Review & Clean Up
+    - [ ] 📚 Step 8: Document the Changes
+  - [ ] LinkedList - Similar to Vec, for completeness
+    - [ ] 🟡 Step 1: Interpret the TODO and the git state
+    - [ ] 📝 Step 2: Create an Implementation Plan
+    - [ ] 🔨 Step 3: Implement the Feature or Fix
+    - [ ] ✅ Step 4: Write Exhaustive Tests
+    - [ ] 🧪 Step 5: Run the Test Suite
+    - [ ] 🧹 Step 6: Self-Review & Clean Up
+    - [ ] 📚 Step 8: Document the Changes
+  - [ ] HashMap/BTreeMap - For key-based operations
+    - [ ] 🟡 Step 1: Interpret the TODO and the git state
+    - [ ] 📝 Step 2: Create an Implementation Plan
+    - [ ] 🔨 Step 3: Implement the Feature or Fix
+    - [ ] ✅ Step 4: Write Exhaustive Tests
+    - [ ] 🧪 Step 5: Run the Test Suite
+    - [ ] 🧹 Step 6: Self-Review & Clean Up
+    - [ ] 📚 Step 8: Document the Changes
 
-```graphviz
-digraph EffectCoreTraits {
-    // Traits
-    Semigroup -> Monoid
-    Category -> Functor
-    Functor -> Applicative
-    Applicative -> Alternative
-    Functor -> Foldable
-
-    // Types (not inheritance, but usage/implementation)
-    ThreadSafe [shape=box]
-    CloneableThreadSafe [shape=box]
-    Compose [shape=box]
-    Either [shape=box]
-    Morphism [shape=box]
-
-    // Trait requirements for types (dotted lines)
-    Functor -> CloneableThreadSafe [style=dotted, label="T: "]
-    Applicative -> CloneableThreadSafe [style=dotted, label="A: "]
-    Foldable -> CloneableThreadSafe [style=dotted, label="T: "]
-    Category -> CloneableThreadSafe [style=dotted, label="T,U: "]
-    Bifunctor -> CloneableThreadSafe [style=dotted, label="A,B: "]
-
-    // Types implement traits (dashed lines)
-    Morphism -> Category [style=dashed, label="impl"]
-    Morphism -> Functor [style=dashed, label="impl"]
-    Compose -> Functor [style=dashed, label="impl"]
-    Either -> Bifunctor [style=dashed, label="impl"]
-}
-```
-
-## TODO
-
+## Graph
 ```graphviz
 digraph EffectCoreFull {
     // Implemented cluster
@@ -46,6 +99,7 @@ digraph EffectCoreFull {
         Functor -> Applicative
         Applicative -> Alternative
         Functor -> Foldable
+        Applicative -> Monad
         ThreadSafe [shape=box]
         CloneableThreadSafe [shape=box]
         Compose [shape=box]
@@ -56,6 +110,7 @@ digraph EffectCoreFull {
         Foldable -> CloneableThreadSafe [style=dotted, label="T: "]
         Category -> CloneableThreadSafe [style=dotted, label="T,U: "]
         Bifunctor -> CloneableThreadSafe [style=dotted, label="A,B: "]
+        Monad -> CloneableThreadSafe [style=dotted, label="A: "]
         Morphism -> Category [style=dashed, label="impl"]
         Morphism -> Functor [style=dashed, label="impl"]
         Compose -> Functor [style=dashed, label="impl"]
@@ -94,9 +149,9 @@ digraph EffectCoreFull {
     contravariant -> Category [label="relates"]
     effect -> Compose [label="core idea"]
     function -> Morphism [label="related"]
-    monad -> Applicative [label="implemented as"]
+    monad -> Monad [label="implemented as", color=blue]
     monad_plus -> Alternative [label="would combine"]
-    monad_plus -> Applicative [label="would combine"]
+    monad_plus -> Monad [label="would combine"]
     natural -> Functor [label="relates"]
     pair -> Bifunctor [label="handled in"]
     pair -> Category [label="handled in"]
