@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-devenv shell cargo nextest run -- --workspace
+devenv shell cargo nextest run --workspace

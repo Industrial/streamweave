@@ -16,7 +16,6 @@ impl<T: CloneableThreadSafe, E: CloneableThreadSafe> Alternative<T> for Result<T
 mod tests {
   use super::*;
   use proptest::prelude::*;
-  use std::fmt::Debug;
 
   // Define test functions that are safe to use with property testing
   fn increment(x: &i32) -> i32 {

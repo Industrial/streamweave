@@ -121,7 +121,6 @@ where
 
 #[cfg(test)]
 mod tests {
-  use super::*;
   use crate::impls::cow::foldable::CowFoldableExt;
   use std::borrow::Cow;
 
