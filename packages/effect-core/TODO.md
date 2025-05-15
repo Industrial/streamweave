@@ -53,14 +53,23 @@
     - [x] 🧪 Step 5: Run the Test Suite
     - [x] 🧹 Step 6: Self-Review & Clean Up
     - [x] 📚 Step 7: Document the Changes
-  - [ ] Either - Functional error handling
-    - [ ] 🟡 Step 1: Interpret the TODO and the git state
-    - [ ] 📝 Step 2: Create an Implementation Plan
-    - [ ] 🔨 Step 3: Implement the Feature or Fix
-    - [ ] ✅ Step 4: Write Exhaustive Tests
-    - [ ] 🧪 Step 5: Run the Test Suite
-    - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 7: Document the Changes
+  - [x] Either - Functional error handling
+    - [x] 🟡 Step 1: Interpret the TODO and the git state
+    - [x] 📝 Step 2: Create an Implementation Plan
+      - First implement `Functor` for `Either<L, R>`, making it a right-biased functor
+      - Then implement `Applicative` for `Either<L, R>` with:
+        - `pure` that wraps values in `Either::Right`
+        - `ap` that applies functions inside `Either::Right` to values inside `Either::Right`
+      - Implement `Monad` for `Either<L, R>` with:
+        - `bind` that works on the right value and propagates left values unchanged
+      - Update `src/impls/either/mod.rs` to export the new modules
+      - Create comprehensive tests for all monad laws, right-biased behavior, and error propagation
+      - Ensure proper documentation of the Either monad's behavior in error handling
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 7: Document the Changes
   - [ ] Box - The Identity monad for boxed values
     - [ ] 🟡 Step 1: Interpret the TODO and the git state
     - [ ] 📝 Step 2: Create an Implementation Plan
