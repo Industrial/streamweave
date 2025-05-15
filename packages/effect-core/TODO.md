@@ -1,6 +1,6 @@
 # TODO.md
 
-- [ ] Filterable
+- [x] Filterable
   - [x] Define the core trait in `src/traits/filterable.rs`
     - [x] 🟡 Step 1: Interpret the TODO and the git state
       - The Filterable trait represents an abstraction for types that can have their elements filtered based on a predicate
@@ -62,22 +62,22 @@
     - [x] 🧪 Step 5: Run the Test Suite
     - [x] 🧹 Step 6: Self-Review & Clean Up
     - [x] 📚 Step 7: Document the Changes
-  - [ ] HashMap/BTreeMap - Key-value mapping filterable
-    - [ ] 🟡 Step 1: Interpret the TODO and the git state
-    - [ ] 📝 Step 2: Create an Implementation Plan
-    - [ ] 🔨 Step 3: Implement the Feature or Fix
-    - [ ] ✅ Step 4: Write Exhaustive Tests
-    - [ ] 🧪 Step 5: Run the Test Suite
-    - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 7: Document the Changes
-  - [ ] Iterator - Streaming filterable
-    - [ ] 🟡 Step 1: Interpret the TODO and the git state
-    - [ ] 📝 Step 2: Create an Implementation Plan
-    - [ ] 🔨 Step 3: Implement the Feature or Fix
-    - [ ] ✅ Step 4: Write Exhaustive Tests
-    - [ ] 🧪 Step 5: Run the Test Suite
-    - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 7: Document the Changes
+  - [x] HashMap/BTreeMap - Key-value mapping filterable
+    - [x] 🟡 Step 1: Interpret the TODO and the git state
+    - [x] 📝 Step 2: Create an Implementation Plan
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 7: Document the Changes
+  - [x] Iterator - Streaming filterable
+    - [x] 🟡 Step 1: Interpret the TODO and the git state
+    - [x] 📝 Step 2: Create an Implementation Plan
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 7: Document the Changes
 - [ ] Comonad
   - [ ] Define the core trait in `src/traits/comonad.rs`
     - [ ] 🟡 Step 1: Interpret the TODO and the git state

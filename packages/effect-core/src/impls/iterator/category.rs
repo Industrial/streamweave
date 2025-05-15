@@ -22,7 +22,13 @@ impl<A, B> IterFn<A, B> {
 
 // This is a dummy type just to represent the Iterator category
 // We can't directly implement traits for the Iterator trait itself
-pub struct IteratorCategory<T>(std::marker::PhantomData<T>);
+pub struct IteratorCategory<T>(pub std::marker::PhantomData<T>);
+
+impl<T> Clone for IteratorCategory<T> {
+  fn clone(&self) -> Self {
+    IteratorCategory(std::marker::PhantomData)
+  }
+}
 
 impl<T: CloneableThreadSafe + 'static> Category<T, T> for IteratorCategory<T> {
   type Morphism<A: CloneableThreadSafe + 'static, B: CloneableThreadSafe + 'static> = IterFn<A, B>;
@@ -121,6 +127,20 @@ impl<T: CloneableThreadSafe + 'static> Category<T, T> for IteratorCategory<T> {
       // Create the result iterator by zipping
       Box::new(c_vec.into_iter().zip(b_vec).take(len))
     })
+  }
+}
+
+impl<T: CloneableThreadSafe + 'static> crate::traits::functor::Functor<T> for IteratorCategory<T> {
+  type HigherSelf<U: CloneableThreadSafe> = IteratorCategory<U>;
+
+  fn map<U, F>(self, _f: F) -> Self::HigherSelf<U>
+  where
+    F: for<'a> FnMut(&'a T) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+  {
+    // This is just a type-level implementation
+    // The actual mapping happens through the Category::arr functionality
+    IteratorCategory(std::marker::PhantomData)
   }
 }
 
