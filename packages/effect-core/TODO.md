@@ -1,7 +1,7 @@
 # TODO.md
 
 - [ ] Filterable
-  - [ ] Define the core trait in `src/traits/filterable.rs`
+  - [x] Define the core trait in `src/traits/filterable.rs`
     - [x] 🟡 Step 1: Interpret the TODO and the git state
       - The Filterable trait represents an abstraction for types that can have their elements filtered based on a predicate
       - This extends the concept of Functor by allowing selective mapping and filtering
@@ -17,27 +17,27 @@
       - Create comprehensive documentation with clear examples
       - Define Filterable laws: identity, composition, and compatibility with Functor
       - Export the trait in `src/traits/mod.rs`
-    - [ ] 🔨 Step 3: Implement the Feature or Fix
-    - [ ] ✅ Step 4: Write Exhaustive Tests
-    - [ ] 🧪 Step 5: Run the Test Suite
-    - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 7: Document the Changes
-  - [ ] Option - For filtering optional values
-    - [ ] 🟡 Step 1: Interpret the TODO and the git state
-    - [ ] 📝 Step 2: Create an Implementation Plan
-    - [ ] 🔨 Step 3: Implement the Feature or Fix
-    - [ ] ✅ Step 4: Write Exhaustive Tests
-    - [ ] 🧪 Step 5: Run the Test Suite
-    - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 7: Document the Changes
-  - [ ] Result - For filtering error handling flows
-    - [ ] 🟡 Step 1: Interpret the TODO and the git state
-    - [ ] 📝 Step 2: Create an Implementation Plan
-    - [ ] 🔨 Step 3: Implement the Feature or Fix
-    - [ ] ✅ Step 4: Write Exhaustive Tests
-    - [ ] 🧪 Step 5: Run the Test Suite
-    - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 7: Document the Changes
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 7: Document the Changes
+  - [x] Option - For filtering optional values
+    - [x] 🟡 Step 1: Interpret the TODO and the git state
+    - [x] 📝 Step 2: Create an Implementation Plan
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 7: Document the Changes
+  - [x] Result - For filtering error handling flows
+    - [x] 🟡 Step 1: Interpret the TODO and the git state
+    - [x] 📝 Step 2: Create an Implementation Plan
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 7: Document the Changes
   - [ ] Vec - Filterable collection
     - [ ] 🟡 Step 1: Interpret the TODO and the git state
     - [ ] 📝 Step 2: Create an Implementation Plan
