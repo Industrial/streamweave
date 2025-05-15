@@ -1,13 +1,43 @@
+//! Provides the [`Compose`] struct for composing two functions in a thread-safe, type-safe manner.
+//!
+//! [`Compose`] allows you to combine two functions, `f` and `g`, such that the result of `f` is passed to `g`.
+//! Both functions are required to be thread-safe, and the composition is stored using `Arc` for safe sharing across threads.
+
 use std::sync::Arc;
 
 use super::threadsafe::ThreadSafe;
 
+/// A composable pair of functions, allowing the composition of two thread-safe functions.
+///
+/// The first function `f` maps from `A` to `B`, and the second function `g` maps from `B` to `B`.
+/// Both functions are stored as `Arc<dyn Fn + Send + Sync>`, making them safe to share between threads.
+///
+/// # Type Parameters
+/// - `A`: Input type, must implement [`ThreadSafe`].
+/// - `B`: Output type, must implement [`ThreadSafe`].
+///
+/// # Examples
+/// ```
+/// use effect_core::types::compose::Compose;
+/// let add_one = |x: i32| x + 1;
+/// let double = |x: i32| x * 2;
+/// let composed = Compose::new(add_one, double);
+/// assert_eq!(composed.apply(3), 8); // double(add_one(3)) = 8
+/// ```
 pub struct Compose<A: ThreadSafe, B: ThreadSafe> {
   pub(crate) f: Arc<dyn Fn(A) -> B + Send + Sync>,
   pub(crate) g: Arc<dyn Fn(B) -> B + Send + Sync>,
 }
 
 impl<A: ThreadSafe, B: ThreadSafe> Compose<A, B> {
+  /// Creates a new [`Compose`] from two thread-safe functions.
+  ///
+  /// # Arguments
+  /// * `f` - The first function, mapping from `A` to `B`.
+  /// * `g` - The second function, mapping from `B` to `B`.
+  ///
+  /// # Returns
+  /// A new [`Compose`] instance that applies `f` and then `g`.
   pub fn new<F, G>(f: F, g: G) -> Self
   where
     F: Fn(A) -> B + ThreadSafe,
@@ -19,6 +49,13 @@ impl<A: ThreadSafe, B: ThreadSafe> Compose<A, B> {
     }
   }
 
+  /// Applies the composed functions to the input value.
+  ///
+  /// # Arguments
+  /// * `x` - The input value of type `A`.
+  ///
+  /// # Returns
+  /// The result of applying `f` to `x`, then `g` to the result.
   pub fn apply(&self, x: A) -> B {
     (self.g)((self.f)(x))
   }

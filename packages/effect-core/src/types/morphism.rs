@@ -1,12 +1,38 @@
+//! Provides the [`Morphism`] struct for representing a thread-safe, type-safe function from `A` to `B`.
+//!
+//! [`Morphism`] is a wrapper around a function, stored as an `Arc<dyn Fn + Send + Sync>`, allowing safe sharing and invocation across threads.
+//! It is useful for abstracting over function composition and morphisms in category theory-inspired code.
+
 use std::sync::Arc;
 
 use super::threadsafe::ThreadSafe;
 
+/// A thread-safe, type-safe wrapper for a function from `A` to `B`.
+///
+/// The function is stored as an `Arc<dyn Fn(A) -> B + Send + Sync>`, making it safe to clone and share between threads.
+///
+/// # Type Parameters
+/// - `A`: Input type, must implement [`ThreadSafe`].
+/// - `B`: Output type, must implement [`ThreadSafe`].
+///
+/// # Examples
+/// ```
+/// use effect_core::types::morphism::Morphism;
+/// let add_one = Morphism::new(|x: i32| x + 1);
+/// assert_eq!(add_one.apply(2), 3);
+/// ```
 pub struct Morphism<A: ThreadSafe, B: ThreadSafe> {
   pub(crate) f: Arc<dyn Fn(A) -> B + Send + Sync>,
 }
 
 impl<A: ThreadSafe, B: ThreadSafe> Morphism<A, B> {
+  /// Creates a new [`Morphism`] from a thread-safe function.
+  ///
+  /// # Arguments
+  /// * `f` - The function to wrap, mapping from `A` to `B`.
+  ///
+  /// # Returns
+  /// A new [`Morphism`] instance.
   pub fn new<F>(f: F) -> Self
   where
     F: Fn(A) -> B + ThreadSafe,
@@ -14,6 +40,13 @@ impl<A: ThreadSafe, B: ThreadSafe> Morphism<A, B> {
     Self { f: Arc::new(f) }
   }
 
+  /// Applies the morphism to the input value.
+  ///
+  /// # Arguments
+  /// * `x` - The input value of type `A`.
+  ///
+  /// # Returns
+  /// The result of applying the wrapped function to `x`.
   pub fn apply(&self, x: A) -> B {
     (self.f)(x)
   }

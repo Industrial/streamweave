@@ -1,6 +1,24 @@
+//! Provides the [`Either`] enum for representing a value of one of two possible types.
+//!
+//! [`Either`] is a general-purpose sum type, similar to `Result<T, E>` but without the semantic meaning of success or error.
+//! It is useful for representing computations or data that may take one of two forms.
+
 /// A type representing a value of one of two possible types (a disjoint union).
 ///
 /// This is similar to `Result<T, E>` but without the semantic meaning of success/error.
+///
+/// # Type Parameters
+/// - `L`: The type of the left variant.
+/// - `R`: The type of the right variant.
+///
+/// # Examples
+/// ```
+/// use effect_core::types::either::Either;
+/// let left: Either<i32, &str> = Either::left(42);
+/// let right: Either<i32, &str> = Either::right("hello");
+/// assert!(left.is_left());
+/// assert!(right.is_right());
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Either<L, R> {
   /// The left variant of the Either type
@@ -11,11 +29,17 @@ pub enum Either<L, R> {
 
 impl<L, R> Either<L, R> {
   /// Creates a new `Either::Left` value.
+  ///
+  /// # Arguments
+  /// * `value` - The value to store in the left variant.
   pub fn left(value: L) -> Self {
     Either::Left(value)
   }
 
   /// Creates a new `Either::Right` value.
+  ///
+  /// # Arguments
+  /// * `value` - The value to store in the right variant.
   pub fn right(value: R) -> Self {
     Either::Right(value)
   }
@@ -31,6 +55,12 @@ impl<L, R> Either<L, R> {
   }
 
   /// Maps the left value using the given function, leaving a right value untouched.
+  ///
+  /// # Arguments
+  /// * `f` - The function to apply to the left value.
+  ///
+  /// # Returns
+  /// A new `Either` with the mapped left value, or the original right value.
   pub fn map_left<U, F>(self, f: F) -> Either<U, R>
   where
     F: FnOnce(L) -> U,
@@ -42,6 +72,12 @@ impl<L, R> Either<L, R> {
   }
 
   /// Maps the right value using the given function, leaving a left value untouched.
+  ///
+  /// # Arguments
+  /// * `f` - The function to apply to the right value.
+  ///
+  /// # Returns
+  /// A new `Either` with the mapped right value, or the original left value.
   pub fn map_right<U, F>(self, f: F) -> Either<L, U>
   where
     F: FnOnce(R) -> U,
@@ -53,6 +89,13 @@ impl<L, R> Either<L, R> {
   }
 
   /// Applies one of two functions depending on whether this is a Left or Right value.
+  ///
+  /// # Arguments
+  /// * `f` - Function to apply if this is a Left value.
+  /// * `g` - Function to apply if this is a Right value.
+  ///
+  /// # Returns
+  /// The result of applying the appropriate function to the contained value.
   pub fn either<U, F, G>(self, f: F, g: G) -> U
   where
     F: FnOnce(L) -> U,

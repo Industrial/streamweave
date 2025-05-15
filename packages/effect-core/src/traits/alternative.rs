@@ -1,8 +1,14 @@
+//! Provides the [`Alternative`] trait for types that support choice and repetition in an applicative context.
+//!
+//! The [`Alternative`] trait is used for types that are both [`Applicative`] and monoidal, supporting operations like `empty` and `alt` for combining values.
+//! It is commonly used for types that represent computations with failure or choice, such as `Option` or `Result`.
+
 use crate::traits::applicative::Applicative;
 use crate::types::threadsafe::CloneableThreadSafe;
 
-/// The Alternative trait represents types that are both Applicative and Monoid.
-/// It provides operations for choice and repetition.
+/// Trait for types that are both [`Applicative`] and monoidal, supporting choice and repetition.
+///
+/// The [`Alternative`] trait provides operations for combining values (`alt`) and representing an empty value (`empty`).
 ///
 /// # Laws
 ///
@@ -11,15 +17,13 @@ use crate::types::threadsafe::CloneableThreadSafe;
 /// 3. Distributivity for Applicative: `ap(alt(f, g), x) == alt(ap(f, x), ap(g, x))`
 /// 4. Distributivity for pure: `alt(pure(x), pure(y)) == pure(alt(x, y))`
 ///
-/// # Safety
+/// # Thread Safety
 ///
-/// This trait requires that all implementations be thread-safe by default.
-/// This means that:
-/// - The type parameter T must implement CloneableThreadSafe
+/// All implementations must be thread-safe. The type parameter `T` must implement [`CloneableThreadSafe`].
 pub trait Alternative<T: CloneableThreadSafe>: Applicative<T> {
-  /// The empty value for the Alternative type.
+  /// Returns the empty value for the type.
   fn empty() -> Self;
 
-  /// Combines two Alternative values, choosing the first non-empty one.
+  /// Combines two values, choosing the first non-empty one.
   fn alt(self, other: Self) -> Self;
 }

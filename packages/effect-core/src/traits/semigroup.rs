@@ -1,7 +1,21 @@
+//! Provides the [`Semigroup`] trait for types that form a semigroup under an associative binary operation.
+//!
+//! The [`Semigroup`] trait is a fundamental algebraic abstraction for types that can be combined using an associative operation.
+//! It is used as a base for more advanced abstractions like [`Monoid`].
+
 use crate::types::threadsafe::CloneableThreadSafe;
 
-/// A trait for types that form a semigroup under some operation.
-/// A semigroup is a type with an associative binary operation.
+/// Trait for types that form a semigroup under some operation.
+///
+/// A semigroup is a type with an associative binary operation (`combine`).
+///
+/// # Laws
+///
+/// 1. Associativity: `combine(combine(x, y), z) == combine(x, combine(y, z))`
+///
+/// # Thread Safety
+///
+/// All implementations must be thread-safe. The type must implement [`CloneableThreadSafe`].
 pub trait Semigroup: CloneableThreadSafe {
   /// Combines two values using the semigroup operation.
   fn combine(self, other: Self) -> Self;
