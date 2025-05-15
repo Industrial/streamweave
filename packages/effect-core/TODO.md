@@ -13,31 +13,46 @@
     - [x] ✅ Step 4: Write Exhaustive Tests
     - [x] 🧪 Step 5: Run the Test Suite
     - [x] 🧹 Step 6: Self-Review & Clean Up
-    - [x] 📚 Step 8: Document the Changes
-  - [ ] Result - Error handling monad
-    - [ ] 🟡 Step 1: Interpret the TODO and the git state
-    - [ ] 📝 Step 2: Create an Implementation Plan
-    - [ ] 🔨 Step 3: Implement the Feature or Fix
-    - [ ] ✅ Step 4: Write Exhaustive Tests
-    - [ ] 🧪 Step 5: Run the Test Suite
-    - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 8: Document the Changes
-  - [ ] Future - Async operations monad
-    - [ ] 🟡 Step 1: Interpret the TODO and the git state
-    - [ ] 📝 Step 2: Create an Implementation Plan
-    - [ ] 🔨 Step 3: Implement the Feature or Fix
-    - [ ] ✅ Step 4: Write Exhaustive Tests
-    - [ ] 🧪 Step 5: Run the Test Suite
-    - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 8: Document the Changes
-  - [ ] Vec - Collection monad
-    - [ ] 🟡 Step 1: Interpret the TODO and the git state
-    - [ ] 📝 Step 2: Create an Implementation Plan
-    - [ ] 🔨 Step 3: Implement the Feature or Fix
-    - [ ] ✅ Step 4: Write Exhaustive Tests
-    - [ ] 🧪 Step 5: Run the Test Suite
-    - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 8: Document the Changes
+    - [x] 📚 Step 7: Document the Changes
+  - [x] Result - Error handling monad
+    - [x] 🟡 Step 1: Interpret the TODO and the git state
+    - [x] 📝 Step 2: Create an Implementation Plan
+      - Create `src/impls/result/monad.rs` to implement the Monad trait for `Result<T, E>`
+      - Implement `bind` using Result's `and_then` functionality
+      - Ensure correct error type propagation
+      - Update `src/impls/result/mod.rs` to export the monad module
+      - Create comprehensive tests for monad laws and error handling behavior
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 7: Document the Changes
+  - [x] Future - Async operations monad
+    - [x] 🟡 Step 1: Interpret the TODO and the git state
+    - [x] 📝 Step 2: Create an Implementation Plan
+      - Create `src/impls/future/monad.rs` to implement the Monad trait for `Future<Output = T>`
+      - Implement `bind` using Future's async/await mechanism to chain futures
+      - Add proper ThreadSafe constraints for async code
+      - Update `src/impls/future/mod.rs` to export the monad module
+      - Create tests for monad laws and async operation behavior
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 7: Document the Changes
+  - [x] Vec - Collection monad
+    - [x] 🟡 Step 1: Interpret the TODO and the git state
+    - [x] 📝 Step 2: Create an Implementation Plan
+      - Create `src/impls/vec/monad.rs` to implement the Monad trait for `Vec<T>`
+      - Implement `bind` that applies a function to each element and flattens the results
+      - Update `src/impls/vec/mod.rs` to export the monad module
+      - Create comprehensive tests for monad laws and collection-specific behavior 
+      - Add property-based tests for flatten behavior and other collection operations
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 7: Document the Changes
   - [ ] Either - Functional error handling
     - [ ] 🟡 Step 1: Interpret the TODO and the git state
     - [ ] 📝 Step 2: Create an Implementation Plan
@@ -45,7 +60,7 @@
     - [ ] ✅ Step 4: Write Exhaustive Tests
     - [ ] 🧪 Step 5: Run the Test Suite
     - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 8: Document the Changes
+    - [ ] 📚 Step 7: Document the Changes
   - [ ] Box - The Identity monad for boxed values
     - [ ] 🟡 Step 1: Interpret the TODO and the git state
     - [ ] 📝 Step 2: Create an Implementation Plan
@@ -53,7 +68,7 @@
     - [ ] ✅ Step 4: Write Exhaustive Tests
     - [ ] 🧪 Step 5: Run the Test Suite
     - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 8: Document the Changes
+    - [ ] 📚 Step 7: Document the Changes
   - [ ] Arc - Thread-safe shared ownership monad
     - [ ] 🟡 Step 1: Interpret the TODO and the git state
     - [ ] 📝 Step 2: Create an Implementation Plan
@@ -61,7 +76,7 @@
     - [ ] ✅ Step 4: Write Exhaustive Tests
     - [ ] 🧪 Step 5: Run the Test Suite
     - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 8: Document the Changes
+    - [ ] 📚 Step 7: Document the Changes
   - [ ] VecDeque - Similar to Vec, but with different performance characteristics
     - [ ] 🟡 Step 1: Interpret the TODO and the git state
     - [ ] 📝 Step 2: Create an Implementation Plan
@@ -69,7 +84,7 @@
     - [ ] ✅ Step 4: Write Exhaustive Tests
     - [ ] 🧪 Step 5: Run the Test Suite
     - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 8: Document the Changes
+    - [ ] 📚 Step 7: Document the Changes
   - [ ] LinkedList - Similar to Vec, for completeness
     - [ ] 🟡 Step 1: Interpret the TODO and the git state
     - [ ] 📝 Step 2: Create an Implementation Plan
@@ -77,7 +92,7 @@
     - [ ] ✅ Step 4: Write Exhaustive Tests
     - [ ] 🧪 Step 5: Run the Test Suite
     - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 8: Document the Changes
+    - [ ] 📚 Step 7: Document the Changes
   - [ ] HashMap/BTreeMap - For key-based operations
     - [ ] 🟡 Step 1: Interpret the TODO and the git state
     - [ ] 📝 Step 2: Create an Implementation Plan
@@ -85,7 +100,7 @@
     - [ ] ✅ Step 4: Write Exhaustive Tests
     - [ ] 🧪 Step 5: Run the Test Suite
     - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 8: Document the Changes
+    - [ ] 📚 Step 7: Document the Changes
 
 ## Graph
 ```graphviz

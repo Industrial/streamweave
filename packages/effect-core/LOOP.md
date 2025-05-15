@@ -87,25 +87,10 @@ Apply final cleanups:
 
 ---
 
-### 📚 Step 8: Document the Changes
+### 📚 Step 7: Document the Changes
 
 **Goal**: Ensure the changes are well-documented for future maintenance.
 
 - Generate documentation for the Traits and Types. The Implementations don't get documentation.
 - If this is a significant feature, consider updating the README or user guides
 - Note any follow-up work that should be captured as new TODOs
-
-### 🟢 Step 7: Commit the Code
-
-**Goal**: Finalize the work, leave the project in a clean and correct state.
-
-1. **Create a Git commit** with a clear message:
-   - Start with the TODO item name
-   - Include a brief description of what was implemented/fixed
-   - Reference any related issues
-
-2. **Mark the TODO as complete** in `TODO.md`:
-   - Change `[ ]` to `[x]` for the completed item
-   - Add a completion date if applicable
-
----
