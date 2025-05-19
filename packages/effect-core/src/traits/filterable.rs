@@ -82,4 +82,4 @@ pub trait Filterable<A: CloneableThreadSafe>: Functor<A> + Sized {
     let mut predicate = predicate; // Create a mutable binding
     self.filter_map(move |x| if predicate(x) { Some(x.clone()) } else { None })
   }
-} 
+}

@@ -79,30 +79,30 @@
     - [x] 🧹 Step 6: Self-Review & Clean Up
     - [x] 📚 Step 7: Document the Changes
 - [ ] Comonad
-  - [ ] Define the core trait in `src/traits/comonad.rs`
-    - [ ] 🟡 Step 1: Interpret the TODO and the git state
-    - [ ] 📝 Step 2: Create an Implementation Plan
-    - [ ] 🔨 Step 3: Implement the Feature or Fix
-    - [ ] ✅ Step 4: Write Exhaustive Tests
-    - [ ] 🧪 Step 5: Run the Test Suite
-    - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 7: Document the Changes
-  - [ ] Identity (Box) - Trivial comonad
-    - [ ] 🟡 Step 1: Interpret the TODO and the git state
-    - [ ] 📝 Step 2: Create an Implementation Plan
-    - [ ] 🔨 Step 3: Implement the Feature or Fix
-    - [ ] ✅ Step 4: Write Exhaustive Tests
-    - [ ] 🧪 Step 5: Run the Test Suite
-    - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 7: Document the Changes
-  - [ ] NonEmpty collections (Vec, LinkedList) - Non-empty list comonad
-    - [ ] 🟡 Step 1: Interpret the TODO and the git state
-    - [ ] 📝 Step 2: Create an Implementation Plan
-    - [ ] 🔨 Step 3: Implement the Feature or Fix
-    - [ ] ✅ Step 4: Write Exhaustive Tests
-    - [ ] 🧪 Step 5: Run the Test Suite
-    - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 7: Document the Changes
+  - [x] Define the core trait in `src/traits/comonad.rs`
+    - [x] 🟡 Step 1: Interpret the TODO and the git state
+    - [x] 📝 Step 2: Create an Implementation Plan
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 7: Document the Changes
+  - [x] Identity (Box) - Trivial comonad
+    - [x] 🟡 Step 1: Interpret the TODO and the git state
+    - [x] 📝 Step 2: Create an Implementation Plan
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 7: Document the Changes
+  - [x] NonEmpty collections (Vec, LinkedList) - Non-empty list comonad
+    - [x] 🟡 Step 1: Interpret the TODO and the git state
+    - [x] 📝 Step 2: Create an Implementation Plan
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 7: Document the Changes
   - [ ] Zipper - Focused element with context
     - [ ] 🟡 Step 1: Interpret the TODO and the git state
     - [ ] 📝 Step 2: Create an Implementation Plan
@@ -111,14 +111,14 @@
     - [ ] 🧪 Step 5: Run the Test Suite
     - [ ] 🧹 Step 6: Self-Review & Clean Up
     - [ ] 📚 Step 7: Document the Changes
-  - [ ] Store - Environment comonad
-    - [ ] 🟡 Step 1: Interpret the TODO and the git state
-    - [ ] 📝 Step 2: Create an Implementation Plan
-    - [ ] 🔨 Step 3: Implement the Feature or Fix
-    - [ ] ✅ Step 4: Write Exhaustive Tests
-    - [ ] 🧪 Step 5: Run the Test Suite
-    - [ ] 🧹 Step 6: Self-Review & Clean Up
-    - [ ] 📚 Step 7: Document the Changes
+  - [x] Store - Environment comonad
+    - [x] 🟡 Step 1: Interpret the TODO and the git state
+    - [x] 📝 Step 2: Create an Implementation Plan
+    - [x] 🔨 Step 3: Implement the Feature or Fix
+    - [x] ✅ Step 4: Write Exhaustive Tests
+    - [x] 🧪 Step 5: Run the Test Suite
+    - [x] 🧹 Step 6: Self-Review & Clean Up
+    - [x] 📚 Step 7: Document the Changes
 - [ ] Traversable
   - [ ] Define the core trait in `src/traits/traversable.rs`
     - [ ] 🟡 Step 1: Interpret the TODO and the git state

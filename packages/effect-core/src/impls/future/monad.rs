@@ -50,7 +50,9 @@ mod tests {
   }
 
   // Helper to create a cloneable boxed future
-  fn cloneable_future<T: Clone + Send + Sync + 'static>(value: T) -> Box<dyn Future<Output = T> + Send + Unpin> {
+  fn cloneable_future<T: Clone + Send + Sync + 'static>(
+    value: T,
+  ) -> Box<dyn Future<Output = T> + Send + Unpin> {
     Box::new(CloneableFuture(Arc::new(value)))
   }
 
@@ -84,7 +86,7 @@ mod tests {
     let a = 42i64;
     let add_one_fn = create_add_one();
     let add_one_fn_clone = add_one_fn.clone();
-    
+
     // Create the bind function from add_one_fn
     let bind_fn = create_bind_fn(add_one_fn);
 
@@ -106,7 +108,7 @@ mod tests {
     let m = 42i64;
     let m_future = cloneable_future(m);
     let m_future_clone = cloneable_future(m);
-    
+
     // Create the bind function with pure
     let pure_fn = <FutureCategory<i64> as Category<i64, i64>>::id();
     let bind_fn = FutureFn::new(move |future_a| {
@@ -134,17 +136,17 @@ mod tests {
     let m = 42i64;
     let m_future = cloneable_future(m);
     let m_future_clone = cloneable_future(m);
-    
+
     // Create function f: x -> x + 1
     let f_fn = create_add_one();
-    
+
     // Create function g: x -> x * 2
     let g_fn = create_double();
-    
+
     // Create bind functions
     let bind_f = create_bind_fn(f_fn.clone());
     let bind_f_clone = bind_f.clone();
-    
+
     let bind_g = create_bind_fn(g_fn.clone());
     let bind_g_clone = bind_g.clone();
 
@@ -177,12 +179,12 @@ mod tests {
     // Test adding 1, doubling, then dividing 100 by the result
     let m = 10i64;
     let m_future = cloneable_future(m);
-    
+
     // Create the functions
     let add_one_fn = create_add_one();
     let double_fn = create_double();
     let safe_div_fn = create_safe_div();
-    
+
     // Create bind functions
     let bind_add = create_bind_fn(add_one_fn);
     let bind_double = create_bind_fn(double_fn);
@@ -201,4 +203,4 @@ mod tests {
   // We don't include proptest for this module since testing Future monad laws
   // properly requires running an async runtime, which is better handled in the normal tests.
   // The standard tests above already cover all the monad laws comprehensively.
-} 
+}

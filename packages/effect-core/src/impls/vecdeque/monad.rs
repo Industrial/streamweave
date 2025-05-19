@@ -33,7 +33,7 @@ pub trait VecDequeMonadExt<A: CloneableThreadSafe> {
   where
     F: for<'a> FnMut(&'a A) -> VecDeque<B> + CloneableThreadSafe,
     B: CloneableThreadSafe;
-    
+
   fn flat_map<B, F>(self, f: F) -> VecDeque<B>
   where
     F: for<'a> FnMut(&'a A) -> VecDeque<B> + CloneableThreadSafe,
@@ -53,7 +53,7 @@ impl<A: CloneableThreadSafe> VecDequeMonadExt<A> for VecDeque<A> {
     }
     result
   }
-  
+
   fn flat_map<B, F>(self, f: F) -> VecDeque<B>
   where
     F: for<'a> FnMut(&'a A) -> VecDeque<B> + CloneableThreadSafe,
@@ -114,7 +114,7 @@ mod tests {
     m.push_back(1);
     m.push_back(2);
     m.push_back(3);
-    
+
     let left = m.clone().bind(|x| VecDeque::<i64>::pure(*x));
     let right = m;
 
@@ -123,7 +123,7 @@ mod tests {
     // Also test with empty deque
     let empty: VecDeque<i64> = VecDeque::new();
     let left = empty.clone().bind(|x| VecDeque::<i64>::pure(*x));
-    
+
     assert_eq!(left, empty);
   }
 
@@ -133,12 +133,12 @@ mod tests {
     let mut m = VecDeque::new();
     m.push_back(5);
     m.push_back(10);
-    
+
     let f = add_one_to_many;
     let g = multiply_by;
 
     let left = m.clone().bind(f).bind(g);
-    
+
     let right = m.bind(|x| {
       let f_result = add_one_to_many(x);
       f_result.bind(multiply_by)
@@ -149,12 +149,12 @@ mod tests {
     // Also test with empty deque
     let empty: VecDeque<i64> = VecDeque::new();
     let left = empty.clone().bind(f).bind(g);
-    
+
     let right = empty.bind(|x| {
       let f_result = add_one_to_many(x);
       f_result.bind(multiply_by)
     });
-    
+
     assert_eq!(left, right);
   }
 
@@ -176,7 +176,7 @@ mod tests {
 
     // 1 -> [2, 3], 2 -> [3, 4], then each multiplied by 2 and 3
     let result = m.bind(add_one_to_many).bind(multiply_by);
-    
+
     let mut expected = VecDeque::new();
     // From 1 -> 2 -> 4, 6
     expected.push_back(4);
@@ -190,7 +190,7 @@ mod tests {
     // From 2 -> 4 -> 8, 12
     expected.push_back(8);
     expected.push_back(12);
-    
+
     assert_eq!(result, expected);
   }
 
@@ -202,25 +202,25 @@ mod tests {
     m.push_back(0);
     m.push_back(3);
     m.push_back(5);
-    
+
     // Should filter out negative and zero values
     let result = m.clone().bind(filter_positive);
-    
+
     let mut expected = VecDeque::new();
     expected.push_back(3);
     expected.push_back(5);
-    
+
     assert_eq!(result, expected);
-    
+
     // Chain with another operation
     let result = m.bind(filter_positive).bind(multiply_by);
-    
+
     let mut expected = VecDeque::new();
     expected.push_back(6);
     expected.push_back(9);
     expected.push_back(10);
     expected.push_back(15);
-    
+
     assert_eq!(result, expected);
   }
 
@@ -230,11 +230,11 @@ mod tests {
     let mut m = VecDeque::new();
     m.push_back(1);
     m.push_back(2);
-    
+
     // flat_map should behave the same as bind
     let bind_result = m.clone().bind(add_one_to_many);
     let flat_map_result = m.flat_map(add_one_to_many);
-    
+
     assert_eq!(bind_result, flat_map_result);
   }
 
@@ -245,7 +245,7 @@ mod tests {
     fn prop_left_identity(a in -100..100i64) {
       let left = VecDeque::<i64>::pure(a).bind(add_one_to_many);
       let right = add_one_to_many(&a);
-      
+
       prop_assert_eq!(left, right);
     }
 
@@ -256,10 +256,10 @@ mod tests {
       for x in xs.clone() {
         m.push_back(x);
       }
-      
+
       let left = m.clone().bind(|x| VecDeque::<i64>::pure(*x));
       let right = m;
-      
+
       prop_assert_eq!(left, right);
     }
 
@@ -270,20 +270,20 @@ mod tests {
       for x in xs {
         m.push_back(x);
       }
-      
+
       let f = add_one_to_many;
       let g = multiply_by;
-      
+
       let left = m.clone().bind(f).bind(g);
-      
+
       let right = m.bind(|x| {
         let f_result = add_one_to_many(x);
         f_result.bind(multiply_by)
       });
-      
+
       prop_assert_eq!(left, right);
     }
-    
+
     // Test that bind with a function returning an empty VecDeque for all inputs produces an empty VecDeque
     #[test]
     fn prop_empty_result(xs in prop::collection::vec(-100..100i64, 0..5)) {
@@ -291,12 +291,12 @@ mod tests {
       for x in xs {
         m.push_back(x);
       }
-      
+
       let empty_fn = |_: &i64| VecDeque::<i64>::new();
-      
+
       prop_assert_eq!(m.bind(empty_fn), VecDeque::<i64>::new());
     }
-    
+
     // Test that filtering works consistently
     #[test]
     fn prop_filtering(xs in prop::collection::vec(-100..100i64, 0..10)) {
@@ -304,9 +304,9 @@ mod tests {
       for x in xs.clone() {
         m.push_back(x);
       }
-      
+
       let result = m.bind(filter_positive);
-      
+
       // Manually filter the original vector and create a VecDeque
       let mut expected = VecDeque::new();
       for x in xs {
@@ -314,8 +314,8 @@ mod tests {
           expected.push_back(x);
         }
       }
-      
+
       prop_assert_eq!(result, expected);
     }
   }
-} 
+}

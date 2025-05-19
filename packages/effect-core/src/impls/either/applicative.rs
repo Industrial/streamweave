@@ -66,7 +66,8 @@ mod tests {
     let x = "hello".to_string();
     let f = |s: &String| s.len();
 
-    let left = Either::<i32, String>::pure(x.clone()).ap(Either::<i32, fn(&String) -> usize>::pure(f));
+    let left =
+      Either::<i32, String>::pure(x.clone()).ap(Either::<i32, fn(&String) -> usize>::pure(f));
     let right = Either::<i32, usize>::pure(f(&x));
 
     assert_eq!(left, right);
@@ -81,7 +82,9 @@ mod tests {
     let left = Either::<i32, String>::pure(y.clone()).ap(u.clone());
 
     let apply_y = move |f: &fn(&String) -> usize| f(&y);
-    let right = u.ap(Either::<i32, fn(&fn(&String) -> usize) -> usize>::pure(apply_y));
+    let right = u.ap(Either::<i32, fn(&fn(&String) -> usize) -> usize>::pure(
+      apply_y,
+    ));
 
     assert_eq!(left, right);
   }
@@ -157,7 +160,7 @@ mod tests {
       let id_fn = |x: &i32| *x;
       let id_wrapped = Either::<i32, fn(&i32) -> i32>::pure(id_fn);
       let result = either.clone().ap(id_wrapped);
-      
+
       prop_assert_eq!(result, either);
     }
 
@@ -188,4 +191,4 @@ mod tests {
       prop_assert_eq!(result, Either::Left(left_value));
     }
   }
-} 
+}

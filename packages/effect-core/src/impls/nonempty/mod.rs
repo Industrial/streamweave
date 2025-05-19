@@ -1,0 +1,8 @@
+pub mod applicative;
+pub mod category;
+pub mod comonad;
+pub mod filterable;
+pub mod foldable;
+pub mod functor;
+pub mod monad;
+pub mod semigroup;

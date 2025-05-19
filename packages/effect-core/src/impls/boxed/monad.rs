@@ -47,7 +47,7 @@ mod tests {
   fn test_right_identity() {
     let m = Box::new(42i32);
     let pure_fn = |x: &i32| Box::<i32>::pure(*x);
-    
+
     let result = m.clone().bind(pure_fn);
     assert_eq!(*result, *m);
   }
@@ -60,11 +60,9 @@ mod tests {
     let g = |x: &i32| Box::new(x * 2);
 
     let left = m.clone().bind(f).bind(g);
-    
-    let right = m.bind(move |x| {
-      f(x).bind(g)
-    });
-    
+
+    let right = m.bind(move |x| f(x).bind(g));
+
     assert_eq!(*left, *right);
     assert_eq!(*left, 12); // (5+1)*2
   }
@@ -73,12 +71,13 @@ mod tests {
   #[test]
   fn test_bind_chaining() {
     let m = Box::new(10i32);
-    
+
     // Chain operations
-    let result = m.bind(|x| Box::new(x + 1))
-                  .bind(|x| Box::new(x * 2))
-                  .bind(|x| Box::new(x - 5));
-                  
+    let result = m
+      .bind(|x| Box::new(x + 1))
+      .bind(|x| Box::new(x * 2))
+      .bind(|x| Box::new(x - 5));
+
     assert_eq!(*result, 17); // ((10+1)*2)-5 = 17
   }
 
@@ -87,9 +86,9 @@ mod tests {
   fn test_closure_capturing() {
     let factor = 3;
     let m = Box::new(5i32);
-    
+
     let result = m.bind(move |x| Box::new(x * factor));
-    
+
     assert_eq!(*result, 15); // 5*3 = 15
   }
 
@@ -97,11 +96,11 @@ mod tests {
   #[test]
   fn test_flat_map() {
     let m = Box::new(10i32);
-    
+
     // flat_map should behave the same as bind
     let bind_result = m.clone().bind(|x| Box::new(x + 5));
     let flat_map_result = m.flat_map(|x| Box::new(x + 5));
-    
+
     assert_eq!(*bind_result, *flat_map_result);
   }
 
@@ -111,63 +110,63 @@ mod tests {
     #[test]
     fn prop_left_identity(a in -100..100i32) {
       let f = |x: &i32| Box::new(x.saturating_add(10));
-      
+
       let left = Box::<i32>::pure(a).bind(f);
       let right = f(&a);
-      
+
       prop_assert_eq!(*left, *right);
     }
-    
+
     // Right identity law
     #[test]
     fn prop_right_identity(x in -100..100i32) {
       let m = Box::new(x);
       let pure_fn = |y: &i32| Box::<i32>::pure(*y);
-      
+
       let result = m.clone().bind(pure_fn);
       prop_assert_eq!(*result, x);
     }
-    
+
     // Associativity law
     #[test]
     fn prop_associativity(x in -100..100i32) {
       let m = Box::new(x);
-      
+
       let f = |y: &i32| Box::new(y.saturating_add(1));
       let g = |y: &i32| Box::new(y.saturating_mul(2));
-      
+
       let left = m.clone().bind(f).bind(g);
       let right = m.bind(move |y| f(y).bind(g));
-      
+
       prop_assert_eq!(*left, *right);
     }
-    
+
     // Test with various operations
     #[test]
     fn prop_bind_operations(x in -100..100i32, y in -10..10i32, z in -5..5i32) {
       // Avoid division by zero
       let z_safe = if z == 0 { 1 } else { z };
-      
+
       let m = Box::new(x);
-      
+
       let result = m.bind(move |a| Box::new(a.saturating_add(y)))
                     .bind(move |a| Box::new(a.saturating_mul(z_safe)))
                     .bind(move |a| Box::new(a.saturating_sub(1)));
-                    
+
       let expected = ((x.saturating_add(y)).saturating_mul(z_safe)).saturating_sub(1);
       prop_assert_eq!(*result, expected);
     }
-    
+
     // Test flat_map equivalence
     #[test]
     fn prop_flat_map_equiv_bind(x in -100..100i32) {
       let m = Box::new(x);
       let f = |y: &i32| Box::new(y.saturating_add(10));
-      
+
       let bind_result = m.clone().bind(f);
       let flat_map_result = m.flat_map(f);
-      
+
       prop_assert_eq!(*bind_result, *flat_map_result);
     }
   }
-} 
+}

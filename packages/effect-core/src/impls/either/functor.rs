@@ -66,7 +66,7 @@ mod tests {
   fn test_map_preserves_left() {
     let left: Either<i32, String> = Either::Left(42);
     let mapped = left.map(|x: &String| x.len());
-    
+
     assert_eq!(mapped, Either::Left(42));
   }
 
@@ -74,7 +74,7 @@ mod tests {
   fn test_map_transforms_right() {
     let right: Either<i32, String> = Either::Right("hello".to_string());
     let mapped = right.map(|x: &String| x.len());
-    
+
     assert_eq!(mapped, Either::Right(5));
   }
 
@@ -104,7 +104,7 @@ mod tests {
 
       let mapped1 = either.clone().map(f).map(g);
       let mapped2 = either.clone().map(move |x| g(&f(x)));
-      
+
       prop_assert_eq!(mapped1, mapped2);
     }
 
@@ -112,7 +112,7 @@ mod tests {
     fn prop_map_preserves_left(left_value: i32) {
       let left: Either<i32, i32> = Either::Left(left_value);
       let mapped = left.map(|x: &i32| x.saturating_add(10));
-      
+
       prop_assert_eq!(mapped, Either::Left(left_value));
     }
 
@@ -120,8 +120,8 @@ mod tests {
     fn prop_map_transforms_right(right_value: i32) {
       let right: Either<i32, i32> = Either::Right(right_value);
       let mapped = right.map(|x: &i32| x.saturating_add(10));
-      
+
       prop_assert_eq!(mapped, Either::Right(right_value.saturating_add(10)));
     }
   }
-} 
+}

@@ -43,7 +43,7 @@ pub trait Monad<A: CloneableThreadSafe>: Applicative<A> {
   /// The core monadic bind operation, also known as "flatMap" or ">>=" in Haskell.
   ///
   /// Applies a function that returns a monadic value to this monadic value and flattens the result.
-  /// 
+  ///
   /// This is the fundamental operation for sequencing computations that return values in a context.
   /// It allows for the composition of operations where each operation depends on the result of the previous one.
   ///
