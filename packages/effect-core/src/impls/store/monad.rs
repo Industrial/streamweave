@@ -85,115 +85,56 @@ mod tests {
     assert_eq!(result.peek_at(&8), 20);
   }
 
-  // Property-based tests
-  proptest! {
-      #[test]
-      fn prop_left_identity_law(x in any::<i32>(), pos in any::<i32>()) {
-          // Left identity: pure(a).bind(f) == f(a)
+  proptest::proptest! {
+      #![proptest_config(proptest::test_runner::Config::default())]#[test]fn prop_left_identity_law(x in(any::<i32>()),pos in(any::<i32>())){
           let pure_x = create_test_store(x);
-
-          // Create a function that returns a Store
-          // Copy values instead of using references
           let pos_clone = pos.clone();
-          let f = move |n: &i32| {
-              let n_val = *n; // Copy the i32 value
+          let f = move|n: &i32|{
+              let n_val =  *n;
               let pos_val = pos_clone.clone();
-              // This function creates a Store that adds position to the input value
-              // For any input n_val, it returns a Store that produces n_val + position for any query
-              Store::new(move |_: &i32| n_val, pos_val)
+              Store::new(move|_: &i32|n_val,pos_val)
           };
-
-          // Left side: pure(x).bind(f)
           let left = pure_x.clone().bind(f.clone());
-
-          // Right side: f(x)
           let right = f(&x);
-
-          // Compare results
-          prop_assert_eq!(left.extract(), right.extract());
-          prop_assert_eq!(left.peek_at(&10), right.peek_at(&10));
-      }
-
-      #[test]
-      fn prop_right_identity_law(pos in any::<i32>()) {
-          // Right identity: m.bind(pure) == m
-          let store = Store::new(|x: &i32| x.wrapping_mul(2), pos);
-
-          // Define a function that lifts its input to a Store
-          // pure_fn should create a constant store that always returns the input value
-          let pure_fn = |x: &i32| create_test_store(*x);
-
-          // Left side: store.bind(pure)
+          prop_assert_eq!(left.extract(),right.extract());
+          prop_assert_eq!(left.peek_at(&10),right.peek_at(&10));
+      }#[test]fn prop_right_identity_law(pos in(any::<i32>())){
+          let store = Store::new(|x: &i32|x.wrapping_mul(2),pos);
+          let pure_fn =  |x: &i32|create_test_store(*x);
           let left = store.clone().bind(pure_fn);
-
-          // The correct behavior of this law depends on how bind is implemented
-          // Based on our implementation, bind first gets the value at position 'pos'
-          // (which is pos*2), then creates a constant store that always returns pos*2
-          // This isn't the same as the original store which returns x*2 for each position x
-
-          // Check the extract value (at 'pos')
           let left_at_pos = left.extract();
           let store_at_pos = store.extract();
-
-          // This should be equal
-          prop_assert_eq!(left_at_pos, store_at_pos);
-
-          // For other positions, we need to account for the way bind works
-          // Let's test by checking how the Monad laws are satisfied for the specific case of
-          // Store<i32, i32> where the value at position pos is pos*2
-          // Note: We skip this assertion because the right identity law has a different
-          // interpretation with Store due to its spatial structure
-          // prop_assert_eq!(left.peek_at(&10), store.peek_at(&10));
-      }
-
-      #[test]
-      fn prop_associativity_law(pos in any::<i32>()) {
-          // Associativity: m.bind(f).bind(g) == m.bind(|x| f(x).bind(g))
-          let store = Store::new(|x: &i32| x.wrapping_mul(2), pos);
-
-          // Define f and g with value copies instead of references
+          prop_assert_eq!(left_at_pos,store_at_pos);
+      }#[test]fn prop_associativity_law(pos in(any::<i32>())){
+          let store = Store::new(|x: &i32|x.wrapping_mul(2),pos);
           let pos1 = pos.clone();
           let pos2 = pos.clone();
-
-          // Redefine f and g to avoid reference issues
-          let f = move |x: &i32| {
-              let x_val = *x; // Copy the i32 value
+          let f = move|x: &i32|{
+              let x_val =  *x;
               let pos_val = pos1.clone();
-              // Create a Store that adds the position to the input value
-              Store::new(move |p: &i32| x_val, pos_val)
+              Store::new(move|_p: &i32|x_val,pos_val)
           };
-
-          let g = move |x: &i32| {
-              let x_val = *x; // Copy the i32 value
+          let g = move|x: &i32|{
+              let x_val =  *x;
               let pos_val = pos2.clone();
-              // Create a Store that multiplies the input value by 3
-              Store::new(move |_: &i32| x_val.wrapping_mul(3), pos_val)
+              Store::new(move|_: &i32|x_val.wrapping_mul(3),pos_val)
           };
-
-          // Clone things to avoid lifetime issues
           let store_clone1 = store.clone();
           let store_clone2 = store.clone();
           let f_clone1 = f.clone();
           let f_clone2 = f.clone();
           let g_clone1 = g.clone();
           let g_clone2 = g.clone();
-
-          // Left side: m.bind(f).bind(g)
           let left = store_clone1.bind(f_clone1).bind(g_clone1);
-
-          // Right side: m.bind(|x| f(x).bind(g))
-          let composed = move |x: &i32| {
-              let x_val = *x; // Copy the i32 value
+          let composed = move|x: &i32|{
+              let x_val =  *x;
               let inner_f = f_clone2.clone();
               let inner_g = g_clone2.clone();
               inner_f(&x_val).bind(inner_g)
           };
-
           let right = store_clone2.bind(composed);
-
-          // Compare results
-          prop_assert_eq!(left.extract(), right.extract());
-          prop_assert_eq!(left.peek_at(&10), right.peek_at(&10));
+          prop_assert_eq!(left.extract(),right.extract());
+          prop_assert_eq!(left.peek_at(&10),right.peek_at(&10));
       }
   }
 }

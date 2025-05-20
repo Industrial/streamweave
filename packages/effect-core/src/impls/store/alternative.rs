@@ -42,11 +42,6 @@ mod tests {
   use super::*;
   use proptest::prelude::*;
 
-  // Helper function for tests
-  fn create_test_store<B: CloneableThreadSafe>(value: B) -> Store<i32, B> {
-    Store::new(move |_: &i32| value.clone(), 0)
-  }
-
   #[test]
   fn test_empty() {
     // Create an empty store

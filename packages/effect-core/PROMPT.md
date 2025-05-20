@@ -1,44 +1,17 @@
-# Task Implementation: [Task Name from TODO.md]
+# Check
+You and I both have an IQ of 200. We are expert Rust programmers.
 
 I'm implementing a functional programming library in Rust called "effect-core"
-that provides abstractions from category theory. I need help implementing the
-following task from my TODO.md following my LOOP.md protocol:
+that provides abstractions from category theory.
 
-## Current Task
-[Copy exact task description from TODO.md]
+Run the command `cargo check` and fix the first error. After every fix, run the
+command again and continue until no errors or warnings are left.
 
-## Project Context
-- This library implements traits for functional abstractions (Functor,
-Applicative, Monad, etc.)
-- All implementations must be thread-safe with CloneableThreadSafe constraints
-- Mathematical laws must be properly defined and tested with proptest
-- Current implementation status: [brief summary of what's already implemented
-related to this task]
+# Test
+You and I both have an IQ of 200. We are expert Rust programmers.
 
-## Specific Guidance
-- Follow mathematical definitions from category theory for this abstraction
-- Ensure proper thread-safety through CloneableThreadSafe constraints
-- Ensure implementations are generic and reusable across types
-- Use Arc<dyn Fn> patterns for closures that need to outlive their scope
-- Property tests should verify all laws for this abstraction
+I'm implementing a functional programming library in Rust called "effect-core"
+that provides abstractions from category theory.
 
-## Current Progress
-[If continuing work] I've completed steps [X,Y,Z] from LOOP.md. The current code
-is:
-```[code if applicable]```
-
-## Required Output
-Please complete the implementation following the LOOP.md process starting from
-[current step], including:
-1. [List specific steps needed from LOOP.md]
-2. ...
-
-Focus on mathematical correctness and comprehensive test coverage. Document all
-traits and types clearly with examples.
-```
-
-This template provides the essential context about your project's requirements,
-the mathematical nature of the work, and explicitly instructs the LLM to follow
-your LOOP process. The structured approach ensures all important aspects of
-functional programming implementation are covered while maintaining the
-mathematical rigor and thread-safety requirements of your project.
+Run the command `cargo test` and fix the first error. After every fix, run the
+command again and continue until no errors or warnings are left.
