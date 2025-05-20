@@ -18,6 +18,7 @@ pub mod morphism;
 pub mod nonempty;
 pub mod numeric;
 pub mod option;
+pub mod pair;
 pub mod pathbuf;
 pub mod result;
 pub mod store;
