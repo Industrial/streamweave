@@ -24,10 +24,7 @@ impl<A: CloneableThreadSafe, B: CloneableThreadSafe> Arrow<A, B> for Compose<A, 
     f: Self::Morphism<A, B>,
     g: Self::Morphism<C, D>,
   ) -> Self::Morphism<(A, C), (B, D)> {
-    Compose::new(
-      move |(a, c)| (f.apply(a), g.apply(c)),
-      |x| x,
-    )
+    Compose::new(move |(a, c)| (f.apply(a), g.apply(c)), |x| x)
   }
 
   fn fanout<C: CloneableThreadSafe>(
@@ -64,10 +61,10 @@ mod tests {
   fn test_arrow_creation() {
     let f = |x: i32| x + 1;
     let arrow_f = <Compose<i32, i32> as Arrow<i32, i32>>::arrow(f);
-    
+
     let input = 5;
     let result = arrow_f.apply(input);
-    
+
     assert_eq!(result, 6);
   }
 
@@ -75,15 +72,15 @@ mod tests {
   fn test_split() {
     let f = |x: i32| x + 1;
     let g = |x: i32| x * 2;
-    
+
     let arrow_f = <Compose<i32, i32> as Arrow<i32, i32>>::arrow(f);
     let arrow_g = <Compose<i32, i32> as Arrow<i32, i32>>::arrow(g);
-    
+
     let split = <Compose<i32, i32> as Arrow<i32, i32>>::split::<i32, i32, (), ()>(arrow_f, arrow_g);
-    
+
     let input = (5, 10);
     let result = split.apply(input);
-    
+
     assert_eq!(result, (6, 20)); // (5+1, 10*2)
   }
 
@@ -91,15 +88,15 @@ mod tests {
   fn test_fanout() {
     let f = |x: i32| x + 1;
     let g = |x: i32| x * 2;
-    
+
     let arrow_f = <Compose<i32, i32> as Arrow<i32, i32>>::arrow(f);
     let arrow_g = <Compose<i32, i32> as Arrow<i32, i32>>::arrow(g);
-    
+
     let fanout = <Compose<i32, i32> as Arrow<i32, i32>>::fanout(arrow_f, arrow_g);
-    
+
     let input = 5;
     let result = fanout.apply(input);
-    
+
     assert_eq!(result, (6, 10)); // (5+1, 5*2)
   }
 
@@ -140,22 +137,22 @@ mod tests {
     let identity = |x: i32| x;
     let arrow_id = <Compose<i32, i32> as Arrow<i32, i32>>::arrow(identity);
     let category_id = <Compose<i32, i32> as Category<i32, i32>>::id();
-    
+
     let x = 42;
     assert_eq!(arrow_id.apply(x), category_id.apply(x));
-    
+
     // Test law: arrow(f >>> g) = arrow(f) >>> arrow(g)
     let f = |x: i32| x + 1;
     let g = |x: i32| x * 2;
     let fg = move |x: i32| g(f(x));
-    
+
     let arrow_f = <Compose<i32, i32> as Arrow<i32, i32>>::arrow(f);
     let arrow_g = <Compose<i32, i32> as Arrow<i32, i32>>::arrow(g);
     let arrow_fg = <Compose<i32, i32> as Arrow<i32, i32>>::arrow(fg);
-    
+
     let composed = <Compose<i32, i32> as Category<i32, i32>>::compose(arrow_f, arrow_g);
-    
+
     let x = 5;
     assert_eq!(arrow_fg.apply(x), composed.apply(x));
   }
-} 
+}

@@ -50,9 +50,7 @@ impl<L: CloneableThreadSafe, R: CloneableThreadSafe> Arrow<R, R> for Either<L, R
       (Either::Left(l), _) => Either::Left(l),
       (_, Either::Left(l)) => Either::Left(l),
       (Either::Right(f_fn), Either::Right(g_fn)) => {
-        let fanout_fn = Arc::new(move |r: &R| {
-          (f_fn(r), g_fn(r))
-        });
+        let fanout_fn = Arc::new(move |r: &R| (f_fn(r), g_fn(r)));
         Either::Right(fanout_fn)
       }
     }
@@ -185,55 +183,65 @@ mod tests {
   #[test]
   fn test_either_category_arrow() {
     type EC = EitherCategory<String>;
-    
+
     let add_one = EC::arrow(|x: String| x + "a");
     let result = add_one.apply(&"hello".to_string());
-    
+
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), "helloa");
   }
-  
+
   #[test]
   fn test_either_category_split() {
     type EC = EitherCategory<String>;
-    
+
     let add_a = EC::arrow(|x: String| x + "a");
     let add_b = EC::arrow(|x: String| x + "b");
-    
+
     let split = EC::split::<String, String, (), ()>(add_a, add_b);
     let result = split.apply(&("hello".to_string(), "world".to_string()));
-    
+
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), ("helloa".to_string(), "worldb".to_string()));
+    assert_eq!(
+      result.unwrap(),
+      ("helloa".to_string(), "worldb".to_string())
+    );
   }
-  
+
   #[test]
   fn test_either_category_fanout() {
     type EC = EitherCategory<String>;
-    
+
     let add_a = EC::arrow(|x: String| x + "a");
     let add_b = EC::arrow(|x: String| x + "b");
-    
+
     let fanout = EC::fanout(add_a, add_b);
     let result = fanout.apply(&"hello".to_string());
-    
+
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), ("helloa".to_string(), "hellob".to_string()));
+    assert_eq!(
+      result.unwrap(),
+      ("helloa".to_string(), "hellob".to_string())
+    );
   }
-  
+
   #[test]
   fn test_either_category_left_propagation() {
     type EC = EitherCategory<String>;
-    
+
     let left = EitherFunction::<String, String, String>::left("error".to_string());
     let right = EC::arrow(|x: String| x + "a");
-    
+
     let split = EC::split::<String, String, (), ()>(left.clone(), right.clone());
-    assert!(split.apply(&("hello".to_string(), "world".to_string())).is_err());
-    
+    assert!(split
+      .apply(&("hello".to_string(), "world".to_string()))
+      .is_err());
+
     let split2 = EC::split::<String, String, (), ()>(right.clone(), left.clone());
-    assert!(split2.apply(&("hello".to_string(), "world".to_string())).is_err());
-    
+    assert!(split2
+      .apply(&("hello".to_string(), "world".to_string()))
+      .is_err());
+
     let fanout = EC::fanout(left, right);
     assert!(fanout.apply(&"hello".to_string()).is_err());
   }
@@ -244,21 +252,21 @@ mod tests {
   fn test_arrow_law_split_preserves_arrows() {
     // Arrow law: split preserves arrows
     // split(arr(f), arr(g)) = arr(\(x,y) -> (f x, g y))
-    
+
     let f = |x: i32| x + 10;
     let g = |y: i32| y * 2;
-    
+
     let arrow_f = Either::<String, i32>::arrow(f);
     let arrow_g = Either::<String, i32>::arrow(g);
-    
+
     let split_arrows = Either::<String, i32>::split::<i32, i32, (), ()>(arrow_f, arrow_g);
-    
+
     let combined_fn = move |pair: (i32, i32)| (f(pair.0), g(pair.1));
     let arrow_combined = Either::<String, (i32, i32)>::arrow(combined_fn);
-    
+
     // Test by applying both arrows to the same input
     let input = (5, 7);
-    
+
     match (split_arrows, arrow_combined) {
       (Either::Right(split_fn), Either::Right(combined_fn)) => {
         assert_eq!(split_fn(&input), combined_fn(&input));
@@ -266,4 +274,4 @@ mod tests {
       _ => panic!("Expected Right variants for both arrows"),
     }
   }
-} 
+}

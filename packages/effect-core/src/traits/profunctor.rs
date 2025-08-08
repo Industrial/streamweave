@@ -21,60 +21,60 @@ use crate::types::threadsafe::CloneableThreadSafe;
 ///
 /// All implementations must be thread-safe. The type parameters must implement [`CloneableThreadSafe`].
 pub trait Profunctor<A: CloneableThreadSafe, B: CloneableThreadSafe>: Sized {
-    /// The associated higher-kinded type representation of this profunctor with different type parameters.
-    type HigherSelf<C: CloneableThreadSafe, D: CloneableThreadSafe>: Profunctor<C, D>;
+  /// The associated higher-kinded type representation of this profunctor with different type parameters.
+  type HigherSelf<C: CloneableThreadSafe, D: CloneableThreadSafe>: Profunctor<C, D>;
 
-    /// Maps over both input and output types simultaneously.
-    ///
-    /// This applies a function to the input before this profunctor is applied,
-    /// and applies a function to the output after this profunctor is applied.
-    ///
-    /// # Arguments
-    ///
-    /// * `f` - A function that maps from type `C` to type `A` (contravariant mapping).
-    /// * `g` - A function that maps from type `B` to type `D` (covariant mapping).
-    ///
-    /// # Returns
-    ///
-    /// A new profunctor from `C` to `D`.
-    fn dimap<C: CloneableThreadSafe, D: CloneableThreadSafe, F, G>(
-        self,
-        f: F,
-        g: G,
-    ) -> Self::HigherSelf<C, D>
-    where
-        F: Fn(C) -> A + CloneableThreadSafe,
-        G: Fn(B) -> D + CloneableThreadSafe;
+  /// Maps over both input and output types simultaneously.
+  ///
+  /// This applies a function to the input before this profunctor is applied,
+  /// and applies a function to the output after this profunctor is applied.
+  ///
+  /// # Arguments
+  ///
+  /// * `f` - A function that maps from type `C` to type `A` (contravariant mapping).
+  /// * `g` - A function that maps from type `B` to type `D` (covariant mapping).
+  ///
+  /// # Returns
+  ///
+  /// A new profunctor from `C` to `D`.
+  fn dimap<C: CloneableThreadSafe, D: CloneableThreadSafe, F, G>(
+    self,
+    f: F,
+    g: G,
+  ) -> Self::HigherSelf<C, D>
+  where
+    F: Fn(C) -> A + CloneableThreadSafe,
+    G: Fn(B) -> D + CloneableThreadSafe;
 
-    /// Maps over only the input type (contravariant mapping).
-    ///
-    /// # Arguments
-    ///
-    /// * `f` - A function that maps from type `C` to type `A`.
-    ///
-    /// # Returns
-    ///
-    /// A new profunctor from `C` to `B`.
-    fn lmap<C: CloneableThreadSafe, F>(self, f: F) -> Self::HigherSelf<C, B>
-    where
-        F: Fn(C) -> A + CloneableThreadSafe,
-    {
-        self.dimap(f, |x| x)
-    }
+  /// Maps over only the input type (contravariant mapping).
+  ///
+  /// # Arguments
+  ///
+  /// * `f` - A function that maps from type `C` to type `A`.
+  ///
+  /// # Returns
+  ///
+  /// A new profunctor from `C` to `B`.
+  fn lmap<C: CloneableThreadSafe, F>(self, f: F) -> Self::HigherSelf<C, B>
+  where
+    F: Fn(C) -> A + CloneableThreadSafe,
+  {
+    self.dimap(f, |x| x)
+  }
 
-    /// Maps over only the output type (covariant mapping).
-    ///
-    /// # Arguments
-    ///
-    /// * `g` - A function that maps from type `B` to type `D`.
-    ///
-    /// # Returns
-    ///
-    /// A new profunctor from `A` to `D`.
-    fn rmap<D: CloneableThreadSafe, G>(self, g: G) -> Self::HigherSelf<A, D>
-    where
-        G: Fn(B) -> D + CloneableThreadSafe,
-    {
-        self.dimap(|x| x, g)
-    }
-} 
+  /// Maps over only the output type (covariant mapping).
+  ///
+  /// # Arguments
+  ///
+  /// * `g` - A function that maps from type `B` to type `D`.
+  ///
+  /// # Returns
+  ///
+  /// A new profunctor from `A` to `D`.
+  fn rmap<D: CloneableThreadSafe, G>(self, g: G) -> Self::HigherSelf<A, D>
+  where
+    G: Fn(B) -> D + CloneableThreadSafe,
+  {
+    self.dimap(|x| x, g)
+  }
+}

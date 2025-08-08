@@ -1,5 +1,5 @@
-use crate::{traits::arrow::Arrow, types::threadsafe::CloneableThreadSafe};
 use crate::impls::result::category::ResultFn;
+use crate::{traits::arrow::Arrow, types::threadsafe::CloneableThreadSafe};
 
 impl<T: CloneableThreadSafe, E: CloneableThreadSafe> Arrow<T, T> for Result<T, E> {
   fn arrow<A: CloneableThreadSafe, B: CloneableThreadSafe, F>(f: F) -> Self::Morphism<A, B>
@@ -19,12 +19,10 @@ impl<T: CloneableThreadSafe, E: CloneableThreadSafe> Arrow<T, T> for Result<T, E
     g: Self::Morphism<A, B>,
   ) -> Self::Morphism<(T, A), (T, B)> {
     ResultFn::new(move |pair: Result<(T, A), E>| {
-      pair.and_then(|(x, y)| {
-        match (f.apply(Ok(x)), g.apply(Ok(y))) {
-          (Ok(new_x), Ok(new_y)) => Ok((new_x, new_y)),
-          (Err(e), _) => Err(e),
-          (_, Err(e)) => Err(e),
-        }
+      pair.and_then(|(x, y)| match (f.apply(Ok(x)), g.apply(Ok(y))) {
+        (Ok(new_x), Ok(new_y)) => Ok((new_x, new_y)),
+        (Err(e), _) => Err(e),
+        (_, Err(e)) => Err(e),
       })
     })
   }
@@ -34,13 +32,13 @@ impl<T: CloneableThreadSafe, E: CloneableThreadSafe> Arrow<T, T> for Result<T, E
     g: Self::Morphism<T, C>,
   ) -> Self::Morphism<T, (T, C)> {
     ResultFn::new(move |x: Result<T, E>| {
-      x.and_then(|value| {
-        match (f.apply(Ok(value.clone())), g.apply(Ok(value))) {
+      x.and_then(
+        |value| match (f.apply(Ok(value.clone())), g.apply(Ok(value))) {
           (Ok(b), Ok(c)) => Ok((b, c)),
           (Err(e), _) => Err(e),
           (_, Err(e)) => Err(e),
-        }
-      })
+        },
+      )
     })
   }
 }
@@ -185,17 +183,25 @@ mod tests {
     let arrow_f = <Result<i64, String> as Arrow<i64, i64>>::arrow(f);
     let arrow_g = <Result<i64, String> as Arrow<i64, i64>>::arrow(g);
 
-    let split_arrows = <Result<i64, String> as Arrow<i64, i64>>::split::<i64, i64, (), ()>(arrow_f, arrow_g);
+    let split_arrows =
+      <Result<i64, String> as Arrow<i64, i64>>::split::<i64, i64, (), ()>(arrow_f, arrow_g);
 
     let combined_fn = move |pair: (i64, i64)| (f(pair.0), g(pair.1));
-    let arrow_combined = <Result<(i64, i64), String> as Arrow<(i64, i64), (i64, i64)>>::arrow(combined_fn);
+    let arrow_combined =
+      <Result<(i64, i64), String> as Arrow<(i64, i64), (i64, i64)>>::arrow(combined_fn);
 
     // Test with Ok value
     let input_ok = Ok((5, 7));
-    assert_eq!(split_arrows.apply(input_ok.clone()), arrow_combined.apply(input_ok));
+    assert_eq!(
+      split_arrows.apply(input_ok.clone()),
+      arrow_combined.apply(input_ok)
+    );
 
     // Test with Err value
     let input_err = Err("test error".to_string());
-    assert_eq!(split_arrows.apply(input_err.clone()), arrow_combined.apply(input_err));
+    assert_eq!(
+      split_arrows.apply(input_err.clone()),
+      arrow_combined.apply(input_err)
+    );
   }
-} 
+}

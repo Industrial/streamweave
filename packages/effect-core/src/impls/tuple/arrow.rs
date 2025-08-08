@@ -140,11 +140,11 @@ mod tests {
       let duplicate = <(i32, i64) as Arrow<i64, i64>>::arrow(|x: i64| (x, x));
       let split_arrows = <(i32, i64) as Arrow<i64, i64>>::split::<i64, i64, (), ()>(arrow_f, arrow_g);
       let compose_result = <(i32, i64) as Category<i64, i64>>::compose(duplicate, split_arrows);
-      
+
       // Test with specific input
       let result1 = fanout_arrows.apply(x);
       let result2 = compose_result.apply(x);
-      
+
       // Both approaches should yield the same result
       prop_assert_eq!(result1, result2);
     }
@@ -156,22 +156,22 @@ mod tests {
     let identity = |x: i64| x;
     let arrow_id = <(i32, i64) as Arrow<i64, i64>>::arrow(identity);
     let category_id = <(i32, i64) as Category<i64, i64>>::id();
-    
+
     let x = 42;
     assert_eq!(arrow_id.apply(x), category_id.apply(x));
-    
+
     // Test law: arr(f >>> g) = arr(f) >>> arr(g)
     let f = |x: i64| x + 1;
     let g = |x: i64| x * 2;
     let fg = move |x: i64| g(f(x));
-    
+
     let arrow_f = <(i32, i64) as Arrow<i64, i64>>::arrow(f);
     let arrow_g = <(i32, i64) as Arrow<i64, i64>>::arrow(g);
     let arrow_fg = <(i32, i64) as Arrow<i64, i64>>::arrow(fg);
-    
+
     let composed = <(i32, i64) as Category<i64, i64>>::compose(arrow_f, arrow_g);
-    
+
     let x = 5;
     assert_eq!(arrow_fg.apply(x), composed.apply(x));
   }
-} 
+}

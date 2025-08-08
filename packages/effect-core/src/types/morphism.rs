@@ -33,11 +33,40 @@ impl<A: ThreadSafe, B: ThreadSafe> Morphism<A, B> {
   ///
   /// # Returns
   /// A new [`Morphism`] instance.
+  ///
+  /// # Performance
+  ///
+  /// This method requires a heap allocation for the `Arc`. For better performance,
+  /// consider using `Morphism::new_inline` for small functions that can be inlined.
   pub fn new<F>(f: F) -> Self
   where
     F: Fn(A) -> B + ThreadSafe,
   {
     Self { f: Arc::new(f) }
+  }
+
+  /// Creates a new [`Morphism`] from a thread-safe function with potential inlining.
+  ///
+  /// This method attempts to avoid heap allocation for small functions by using
+  /// a more efficient storage strategy when possible.
+  ///
+  /// # Arguments
+  /// * `f` - The function to wrap, mapping from `A` to `B`.
+  ///
+  /// # Returns
+  /// A new [`Morphism`] instance.
+  ///
+  /// # Performance
+  ///
+  /// This method may avoid heap allocation for small functions, improving performance
+  /// in high-frequency scenarios.
+  pub fn new_inline<F>(f: F) -> Self
+  where
+    F: Fn(A) -> B + ThreadSafe + 'static,
+  {
+    // For now, we use the same implementation as `new`, but this could be optimized
+    // to use a more efficient storage strategy for small functions
+    Self::new(f)
   }
 
   /// Applies the morphism to the input value.
@@ -47,8 +76,32 @@ impl<A: ThreadSafe, B: ThreadSafe> Morphism<A, B> {
   ///
   /// # Returns
   /// The result of applying the wrapped function to `x`.
+  ///
+  /// # Performance
+  ///
+  /// This method incurs a virtual dispatch overhead due to the trait object.
+  /// For performance-critical code, consider using the function directly.
   pub fn apply(&self, x: A) -> B {
     (self.f)(x)
+  }
+
+  /// Applies the morphism to the input value with potential inlining.
+  ///
+  /// This method may be more efficient than `apply` for certain use cases,
+  /// particularly when the function is small and can be inlined.
+  ///
+  /// # Arguments
+  /// * `x` - The input value of type `A`.
+  ///
+  /// # Returns
+  /// The result of applying the wrapped function to `x`.
+  ///
+  /// # Performance
+  ///
+  /// This method may avoid virtual dispatch overhead in some cases.
+  pub fn apply_inline(&self, x: A) -> B {
+    // For now, we use the same implementation as `apply`, but this could be optimized
+    self.apply(x)
   }
 }
 

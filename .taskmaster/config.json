@@ -1,0 +1,51 @@
+{
+	"project": {
+		"name": "streamweave",
+		"description": "Composable, async, stream-first computation in pure Rust",
+		"root": ".",
+		"language": "rust"
+	},
+	"ai": {
+		"default_model": "claude-3-5-sonnet-20241022",
+		"research_model": "claude-3-5-sonnet-20241022",
+		"max_tokens": 4000,
+		"temperature": 0.1
+	},
+	"tasks": {
+		"default_status": "pending",
+		"auto_expand": true,
+		"complexity_threshold": 5,
+		"max_subtasks": 10
+	},
+	"workflow": {
+		"auto_commit": false,
+		"require_tests": true,
+		"require_documentation": true,
+		"follow_rust_conventions": true
+	},
+	"integration": {
+		"git": true,
+		"cargo": true,
+		"rust_analyzer": true,
+		"pre_commit": true
+	},
+	"paths": {
+		"tasks_file": ".taskmaster/tasks/tasks.json",
+		"docs_dir": ".taskmaster/docs",
+		"research_dir": ".taskmaster/docs/research",
+		"reports_dir": ".taskmaster/reports"
+	},
+	"rules": {
+		"rust": {
+			"code_style": "rustfmt",
+			"linting": "clippy",
+			"testing": "cargo test",
+			"documentation": "cargo doc"
+		},
+		"git": {
+			"commit_message_format": "conventional",
+			"branch_naming": "feature/task-{id}",
+			"require_tests_passing": true
+		}
+	}
+}

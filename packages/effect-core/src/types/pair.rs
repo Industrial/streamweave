@@ -33,57 +33,57 @@ use std::sync::Arc;
 /// ```
 #[derive(Clone)]
 pub struct Pair<A: CloneableThreadSafe, B: CloneableThreadSafe> {
-    f: Arc<dyn Fn(A) -> B + Send + Sync + 'static>,
-    g: Arc<dyn Fn(B) -> A + Send + Sync + 'static>,
-    _phantom: PhantomData<(A, B)>,
+  f: Arc<dyn Fn(A) -> B + Send + Sync + 'static>,
+  g: Arc<dyn Fn(B) -> A + Send + Sync + 'static>,
+  _phantom: PhantomData<(A, B)>,
 }
 
 impl<A: CloneableThreadSafe, B: CloneableThreadSafe> Pair<A, B> {
-    /// Creates a new `Pair` with the given forward and backward functions.
-    ///
-    /// # Arguments
-    ///
-    /// * `f` - The forward function that maps from `A` to `B`.
-    /// * `g` - The backward function that maps from `B` to `A`.
-    ///
-    /// # Returns
-    ///
-    /// A new `Pair<A, B>` containing the provided functions.
-    pub fn new<F, G>(f: F, g: G) -> Self
-    where
-        F: Fn(A) -> B + Send + Sync + 'static,
-        G: Fn(B) -> A + Send + Sync + 'static,
-    {
-        Self {
-            f: Arc::new(f),
-            g: Arc::new(g),
-            _phantom: PhantomData,
-        }
+  /// Creates a new `Pair` with the given forward and backward functions.
+  ///
+  /// # Arguments
+  ///
+  /// * `f` - The forward function that maps from `A` to `B`.
+  /// * `g` - The backward function that maps from `B` to `A`.
+  ///
+  /// # Returns
+  ///
+  /// A new `Pair<A, B>` containing the provided functions.
+  pub fn new<F, G>(f: F, g: G) -> Self
+  where
+    F: Fn(A) -> B + Send + Sync + 'static,
+    G: Fn(B) -> A + Send + Sync + 'static,
+  {
+    Self {
+      f: Arc::new(f),
+      g: Arc::new(g),
+      _phantom: PhantomData,
     }
+  }
 
-    /// Applies the forward function to transform from type `A` to type `B`.
-    ///
-    /// # Arguments
-    ///
-    /// * `x` - A value of type `A` to transform.
-    ///
-    /// # Returns
-    ///
-    /// A value of type `B` resulting from applying the forward function.
-    pub fn apply(&self, x: A) -> B {
-        (self.f)(x)
-    }
+  /// Applies the forward function to transform from type `A` to type `B`.
+  ///
+  /// # Arguments
+  ///
+  /// * `x` - A value of type `A` to transform.
+  ///
+  /// # Returns
+  ///
+  /// A value of type `B` resulting from applying the forward function.
+  pub fn apply(&self, x: A) -> B {
+    (self.f)(x)
+  }
 
-    /// Applies the backward function to transform from type `B` to type `A`.
-    ///
-    /// # Arguments
-    ///
-    /// * `y` - A value of type `B` to transform.
-    ///
-    /// # Returns
-    ///
-    /// A value of type `A` resulting from applying the backward function.
-    pub fn unapply(&self, y: B) -> A {
-        (self.g)(y)
-    }
-} 
+  /// Applies the backward function to transform from type `B` to type `A`.
+  ///
+  /// # Arguments
+  ///
+  /// * `y` - A value of type `B` to transform.
+  ///
+  /// # Returns
+  ///
+  /// A value of type `A` resulting from applying the backward function.
+  pub fn unapply(&self, y: B) -> A {
+    (self.g)(y)
+  }
+}

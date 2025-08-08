@@ -40,6 +40,9 @@
 
     # Added from the code block
     cargo-watch
+
+    # TaskMaster AI dependencies
+    bun
   ];
 
   # Pre-commit hooks
@@ -72,6 +75,19 @@
   enterShell = ''
     echo "🦀 Running initial cargo build..."
     cargo build
+
+    echo "🤖 Setting up TaskMaster AI with Bun..."
+    if [ ! -d ".taskmaster" ]; then
+      echo "Initializing TaskMaster AI..."
+      bunx taskmaster-ai init --yes
+    fi
+
+    echo "✅ Development environment ready!"
+    echo "📋 Available commands:"
+    echo "  - bunx taskmaster-ai tasks          # List all tasks"
+    echo "  - bunx taskmaster-ai next           # Get next task to work on"
+    echo "  - bunx taskmaster-ai add 'task'     # Add new task"
+    echo "  - bunx taskmaster-ai research 'query' # Research with AI"
   '';
 
   processes = {
