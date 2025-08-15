@@ -2,6 +2,28 @@ use crate::impls::string::category::CharCategory;
 use crate::traits::functor::Functor;
 use crate::types::threadsafe::CloneableThreadSafe;
 
+// Implement Functor<char> for String directly to support Comonad
+impl Functor<char> for String {
+  type HigherSelf<U: CloneableThreadSafe> = Vec<U>;
+
+  fn map<U, F>(self, mut f: F) -> Self::HigherSelf<U>
+  where
+    F: for<'a> FnMut(&'a char) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+  {
+    self.chars().map(|c| f(&c)).collect()
+  }
+
+  fn map_owned<U, F>(self, mut f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(char) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    self.chars().map(|c| f(c)).collect()
+  }
+}
+
 // Implement Functor<U> for CharCategory for all U to satisfy the HigherSelf constraint
 impl<U: CloneableThreadSafe> Functor<U> for CharCategory {
   type HigherSelf<V: CloneableThreadSafe> = CharCategory;

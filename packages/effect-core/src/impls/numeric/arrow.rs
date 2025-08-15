@@ -42,7 +42,6 @@ impl_numeric_arrow!(i32, i64, f32, f64);
 
 #[cfg(test)]
 mod tests {
-  use super::*;
   use crate::traits::arrow::Arrow;
   use crate::traits::category::Category;
   use proptest::prelude::*;

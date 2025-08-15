@@ -32,7 +32,6 @@ impl Arrow<char, char> for char {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
   use crate::traits::arrow::Arrow;
   use crate::traits::category::Category;
   use proptest::prelude::*;

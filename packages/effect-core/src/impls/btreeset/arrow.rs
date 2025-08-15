@@ -32,11 +32,10 @@ impl<T: CloneableThreadSafe, U: CloneableThreadSafe> Arrow<T, U> for BTreeSetCat
 
 #[cfg(test)]
 mod tests {
-  use super::*;
   use crate::traits::arrow::Arrow;
   use crate::traits::category::Category;
   use proptest::prelude::*;
-  use std::collections::BTreeSet;
+  use crate::impls::btreeset::arrow::BTreeSetCategory;
 
   #[test]
   fn test_arrow_creation() {

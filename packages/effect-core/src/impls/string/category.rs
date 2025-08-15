@@ -52,6 +52,41 @@ impl Category<String, String> for String {
   }
 }
 
+// Implement Category<char, char> for String to support Functor<char>
+impl Category<char, char> for String {
+  type Morphism<A: CloneableThreadSafe, B: CloneableThreadSafe> = CharFn<A, B>;
+
+  fn id<A: CloneableThreadSafe>() -> Self::Morphism<A, A> {
+    CharFn::new(|x| x)
+  }
+
+  fn compose<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
+    f: Self::Morphism<A, B>,
+    g: Self::Morphism<B, C>,
+  ) -> Self::Morphism<A, C> {
+    CharFn::new(move |x| g.apply(f.apply(x)))
+  }
+
+  fn arr<A: CloneableThreadSafe, B: CloneableThreadSafe, F>(f: F) -> Self::Morphism<A, B>
+  where
+    F: for<'a> Fn(&'a A) -> B + CloneableThreadSafe,
+  {
+    CharFn::new(move |x| f(&x))
+  }
+
+  fn first<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
+    f: Self::Morphism<A, B>,
+  ) -> Self::Morphism<(A, C), (B, C)> {
+    CharFn::new(move |(a, c)| (f.apply(a), c))
+  }
+
+  fn second<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
+    f: Self::Morphism<A, B>,
+  ) -> Self::Morphism<(C, A), (C, B)> {
+    CharFn::new(move |(c, a)| (c, f.apply(a)))
+  }
+}
+
 /// A wrapper type for String to implement Category<char, char>
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CharCategory;
