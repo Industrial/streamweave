@@ -1,6 +1,6 @@
+use super::category::PathBufFn;
 use crate::traits::arrow::Arrow;
 use crate::types::threadsafe::CloneableThreadSafe;
-use super::category::PathBufFn;
 use std::path::PathBuf;
 
 impl Arrow<PathBuf, PathBuf> for PathBuf {
@@ -54,7 +54,7 @@ mod tests {
   fn test_arrow_laws() {
     // Test that arrow() creates the same result as arr() for compatible functions
     let input = PathBuf::from("/test/path");
-    
+
     let f_arrow = PathBuf::arrow(|x: PathBuf| {
       let mut new_path = x;
       new_path.set_extension("txt");
@@ -65,10 +65,10 @@ mod tests {
       new_path.set_extension("txt");
       new_path
     });
-    
+
     let result_arrow = f_arrow.apply(input.clone());
     let result_arr = f_arr.apply(input);
-    
+
     assert_eq!(result_arrow, result_arr);
   }
 
@@ -80,10 +80,10 @@ mod tests {
       new_path
     });
     let g = PathBuf::arrow(|x: i32| x + 1);
-    
+
     let split_fn = PathBuf::split::<i32, i32, i32, i32>(f, g);
     let input = (PathBuf::from("/test/path"), 10);
-    
+
     let result = split_fn.apply(input);
     assert_eq!(result, (PathBuf::from("/test/path.txt"), 11));
   }
@@ -96,12 +96,15 @@ mod tests {
       new_path
     });
     let g = PathBuf::arrow(|x: PathBuf| x.to_string_lossy().to_string());
-    
+
     let fanout_fn = PathBuf::fanout(f, g);
     let input = PathBuf::from("/test/path");
-    
+
     let result = fanout_fn.apply(input);
-    assert_eq!(result, (PathBuf::from("/test/path.txt"), "/test/path".to_string()));
+    assert_eq!(
+      result,
+      (PathBuf::from("/test/path.txt"), "/test/path".to_string())
+    );
   }
 
   proptest! {
@@ -116,12 +119,12 @@ mod tests {
         new_path
       });
       let g = PathBuf::arrow(|x: i32| x.saturating_add(1));
-      
+
       let split_fn = PathBuf::split::<i32, i32, i32, i32>(f, g);
       let input = (p.clone(), y);
-      
+
       let result = split_fn.apply(input);
-      
+
       // Check that the transformation is correct
       let mut expected_path = p.clone();
       expected_path.set_extension("txt");
@@ -139,12 +142,12 @@ mod tests {
         new_path
       });
       let g = PathBuf::arrow(|x: PathBuf| x.to_string_lossy().to_string());
-      
+
       let fanout_fn = PathBuf::fanout(f, g);
       let input = p.clone();
-      
+
       let result = fanout_fn.apply(input);
-      
+
       // Check that the transformation is correct
       let mut expected_path = p.clone();
       expected_path.set_extension("txt");
@@ -152,4 +155,4 @@ mod tests {
       assert_eq!(result.1, p.to_string_lossy().to_string());
     }
   }
-} 
+}

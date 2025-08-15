@@ -220,7 +220,7 @@ mod tests {
       // Verify operations complete successfully (len() is always >= 0)
       // Verify operations complete successfully (len() is always >= 0)
       // Verify operations complete successfully (len() is always >= 0)
-      
+
       // Note: This is a simplified composition law test
       // In a full composition law test, we would need to implement proper function composition
       // For now, we just verify the operations complete without error

@@ -1,6 +1,6 @@
+use super::category::VecFn;
 use crate::traits::arrow::Arrow;
 use crate::types::threadsafe::CloneableThreadSafe;
-use super::category::VecFn;
 
 impl<T: CloneableThreadSafe> Arrow<T, T> for Vec<T> {
   fn arrow<C: CloneableThreadSafe, D: CloneableThreadSafe, F>(f: F) -> Self::Morphism<C, D>
@@ -68,13 +68,13 @@ mod tests {
   fn test_arrow_laws() {
     // Test that arrow() creates the same result as arr() for compatible functions
     let xs = vec![1, 2, 3];
-    
+
     let f_arrow = Vec::<i32>::arrow(|x: i32| x * 2);
     let f_arr = Vec::<i32>::arr(|x: &i32| x * 2);
-    
+
     let result_arrow = f_arrow.apply(xs.clone());
     let result_arr = f_arr.apply(xs);
-    
+
     assert_eq!(result_arrow, result_arr);
   }
 
@@ -82,11 +82,11 @@ mod tests {
   fn test_split() {
     let f = Vec::<i32>::arrow(|x: i32| x * 2);
     let g = Vec::<i32>::arrow(|x: i32| x + 1);
-    
+
     let split_fn = Vec::<i32>::split::<i32, i32, i32, i32>(f, g);
     let input = vec![(1, 10), (2, 20), (3, 30)];
     let result = split_fn.apply(input);
-    
+
     assert_eq!(result, vec![(2, 11), (4, 21), (6, 31)]);
   }
 
@@ -94,11 +94,11 @@ mod tests {
   fn test_fanout() {
     let f = Vec::<i32>::arrow(|x: i32| x * 2);
     let g = Vec::<i32>::arrow(|x: i32| x + 1);
-    
+
     let fanout_fn = Vec::<i32>::fanout(f, g);
     let input = vec![1, 2, 3];
     let result = fanout_fn.apply(input);
-    
+
     assert_eq!(result, vec![(2, 2), (4, 3), (6, 4)]);
   }
 
@@ -109,14 +109,14 @@ mod tests {
     ) {
       let f = Vec::<i32>::arrow(|x: i32| x.saturating_mul(2));
       let g = Vec::<i32>::arrow(|x: i32| x.saturating_add(1));
-      
+
       let split_fn = Vec::<i32>::split::<i32, i32, i32, i32>(f, g);
       let input: Vec<(i32, i32)> = xs.iter().map(|&x| (x, x.saturating_mul(10))).collect();
       let result = split_fn.apply(input.clone());
-      
+
       // Check that the structure is preserved
       assert_eq!(result.len(), input.len());
-      
+
       // Check that the transformation is correct
       for (i, (x, y)) in input.iter().enumerate() {
         let (expected_x, expected_y) = result[i];
@@ -131,13 +131,13 @@ mod tests {
     ) {
       let f = Vec::<i32>::arrow(|x: i32| x.saturating_mul(2));
       let g = Vec::<i32>::arrow(|x: i32| x.saturating_add(1));
-      
+
       let fanout_fn = Vec::<i32>::fanout(f, g);
       let result = fanout_fn.apply(xs.clone());
-      
+
       // Check that the structure is preserved
       assert_eq!(result.len(), xs.len());
-      
+
       // Check that the transformation is correct
       for (i, x) in xs.iter().enumerate() {
         let (expected_x, expected_y) = result[i];
@@ -146,4 +146,4 @@ mod tests {
       }
     }
   }
-} 
+}

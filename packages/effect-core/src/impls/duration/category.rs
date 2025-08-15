@@ -86,7 +86,10 @@ mod tests {
     let expected = g.apply(f.apply(d));
 
     assert_eq!(f_then_g.apply(d), expected);
-    assert_eq!(f_then_g.apply(Duration::from_secs(5)), Duration::from_secs(11)); // (5*2)+1 = 11
+    assert_eq!(
+      f_then_g.apply(Duration::from_secs(5)),
+      Duration::from_secs(11)
+    ); // (5*2)+1 = 11
   }
 
   #[test]
@@ -192,4 +195,4 @@ mod tests {
       assert_eq!(result.1, d.saturating_mul(2));
     }
   }
-} 
+}

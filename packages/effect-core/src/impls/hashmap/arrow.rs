@@ -1,6 +1,6 @@
+use super::category::HashMapFn;
 use crate::traits::arrow::Arrow;
 use crate::types::threadsafe::CloneableThreadSafe;
-use super::category::HashMapFn;
 use std::collections::HashMap;
 use std::hash::Hash;
 
@@ -91,7 +91,7 @@ mod tests {
     let mut input = HashMap::new();
     input.insert("a".to_string(), 1);
     input.insert("b".to_string(), 2);
-    
+
     let result = f.apply(input);
     assert_eq!(result.get("a"), Some(&2));
     assert_eq!(result.get("b"), Some(&4));
@@ -103,13 +103,13 @@ mod tests {
     let mut input = HashMap::new();
     input.insert("a".to_string(), 1);
     input.insert("b".to_string(), 2);
-    
+
     let f_arrow = HashMap::<String, i32>::arrow(|x: i32| x * 2);
     let f_arr = HashMap::<String, i32>::arr(|x: &i32| x * 2);
-    
+
     let result_arrow = f_arrow.apply(input.clone());
     let result_arr = f_arr.apply(input);
-    
+
     assert_eq!(result_arrow, result_arr);
   }
 
@@ -117,12 +117,12 @@ mod tests {
   fn test_split() {
     let f = HashMap::<String, i32>::arrow(|x: i32| x * 2);
     let g = HashMap::<String, i32>::arrow(|x: i32| x + 1);
-    
+
     let split_fn = HashMap::<String, i32>::split::<i32, i32, i32, i32>(f, g);
     let mut input = HashMap::new();
     input.insert("a".to_string(), (1, 10));
     input.insert("b".to_string(), (2, 20));
-    
+
     let result = split_fn.apply(input);
     assert_eq!(result.get("a"), Some(&(2, 11)));
     assert_eq!(result.get("b"), Some(&(4, 21)));
@@ -132,12 +132,12 @@ mod tests {
   fn test_fanout() {
     let f = HashMap::<String, i32>::arrow(|x: i32| x * 2);
     let g = HashMap::<String, i32>::arrow(|x: i32| x + 1);
-    
+
     let fanout_fn = HashMap::<String, i32>::fanout(f, g);
     let mut input = HashMap::new();
     input.insert("a".to_string(), 1);
     input.insert("b".to_string(), 2);
-    
+
     let result = fanout_fn.apply(input);
     assert_eq!(result.get("a"), Some(&(2, 2)));
     assert_eq!(result.get("b"), Some(&(4, 3)));
@@ -150,17 +150,17 @@ mod tests {
     ) {
       let f = HashMap::<String, i32>::arrow(|x: i32| x.saturating_mul(2));
       let g = HashMap::<String, i32>::arrow(|x: i32| x.saturating_add(1));
-      
+
       let split_fn = HashMap::<String, i32>::split::<i32, i32, i32, i32>(f, g);
       let input: HashMap<String, (i32, i32)> = xs.iter()
         .map(|(k, v)| (k.clone(), (*v, v.saturating_mul(10))))
         .collect();
-      
+
       let result = split_fn.apply(input.clone());
-      
+
       // Check that the structure is preserved
       assert_eq!(result.len(), input.len());
-      
+
       // Check that the transformation is correct
       for (k, (v, c)) in input.iter() {
         if let Some((expected_v, expected_c)) = result.get(k) {
@@ -176,17 +176,17 @@ mod tests {
     ) {
       let f = HashMap::<String, i32>::arrow(|x: i32| x.saturating_mul(2));
       let g = HashMap::<String, i32>::arrow(|x: i32| x.saturating_add(1));
-      
+
       let fanout_fn = HashMap::<String, i32>::fanout(f, g);
       let input: HashMap<String, i32> = xs.iter()
         .map(|(k, v)| (k.clone(), *v))
         .collect();
-      
+
       let result = fanout_fn.apply(input.clone());
-      
+
       // Check that the structure is preserved
       assert_eq!(result.len(), input.len());
-      
+
       // Check that the transformation is correct
       for (k, v) in input.iter() {
         if let Some((expected_v, expected_c)) = result.get(k) {
@@ -196,4 +196,4 @@ mod tests {
       }
     }
   }
-} 
+}

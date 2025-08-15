@@ -95,4 +95,4 @@ mod tests {
     // The last element should be an empty string
     assert_eq!(&extended[extended.len() - 1], "");
   }
-} 
+}

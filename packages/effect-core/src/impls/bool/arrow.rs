@@ -1,6 +1,6 @@
+use super::category::BoolFn;
 use crate::traits::arrow::Arrow;
 use crate::types::threadsafe::CloneableThreadSafe;
-use super::category::BoolFn;
 
 impl Arrow<bool, bool> for bool {
   fn arrow<C: CloneableThreadSafe, D: CloneableThreadSafe, F>(f: F) -> Self::Morphism<C, D>
@@ -48,13 +48,13 @@ mod tests {
   fn test_arrow_laws() {
     // Test that arrow() creates the same result as arr() for compatible functions
     let input = true;
-    
+
     let f_arrow = bool::arrow(|x: bool| !x);
     let f_arr = bool::arr(|x: &bool| !x);
-    
+
     let result_arrow = f_arrow.apply(input);
     let result_arr = f_arr.apply(input);
-    
+
     assert_eq!(result_arrow, result_arr);
   }
 
@@ -62,10 +62,10 @@ mod tests {
   fn test_split() {
     let f = bool::arrow(|x: bool| !x);
     let g = bool::arrow(|x: i32| x + 1);
-    
+
     let split_fn = bool::split::<i32, i32, i32, i32>(f, g);
     let input = (true, 10);
-    
+
     let result = split_fn.apply(input);
     assert_eq!(result, (false, 11));
   }
@@ -74,10 +74,10 @@ mod tests {
   fn test_fanout() {
     let f = bool::arrow(|x: bool| !x);
     let g = bool::arrow(|x: bool| x.to_string());
-    
+
     let fanout_fn = bool::fanout(f, g);
     let input = true;
-    
+
     let result = fanout_fn.apply(input);
     assert_eq!(result, (false, "true".to_string()));
   }
@@ -90,12 +90,12 @@ mod tests {
     ) {
       let f = bool::arrow(|x: bool| !x);
       let g = bool::arrow(|x: i32| x.saturating_add(1));
-      
+
       let split_fn = bool::split::<i32, i32, i32, i32>(f, g);
       let input = (b, y);
-      
+
       let result = split_fn.apply(input);
-      
+
       // Check that the transformation is correct
       assert_eq!(result.0, !b);
       assert_eq!(result.1, y.saturating_add(1));
@@ -107,15 +107,15 @@ mod tests {
     ) {
       let f = bool::arrow(|x: bool| !x);
       let g = bool::arrow(|x: bool| x.to_string());
-      
+
       let fanout_fn = bool::fanout(f, g);
       let input = b;
-      
+
       let result = fanout_fn.apply(input);
-      
+
       // Check that the transformation is correct
       assert_eq!(result.0, !b);
       assert_eq!(result.1, b.to_string());
     }
   }
-} 
+}

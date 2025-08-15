@@ -1,7 +1,7 @@
 use crate::traits::category::Category;
 use crate::types::threadsafe::CloneableThreadSafe;
-use std::sync::Arc;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 /// A cloneable function wrapper for PathBuf
 #[derive(Clone)]
@@ -211,4 +211,4 @@ mod tests {
       assert_eq!(result.1, expected_path);
     }
   }
-} 
+}

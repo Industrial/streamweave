@@ -101,10 +101,8 @@ mod tests {
     let result1 = Comonad::extend(result1, g);
 
     // Apply composed extension
-    let result2 = Comonad::extend(comonad, move |w| {
-      g(Comonad::extend(w, f))
-    });
+    let result2 = Comonad::extend(comonad, move |w| g(Comonad::extend(w, f)));
 
     assert_eq!(result1, result2);
   }
-} 
+}

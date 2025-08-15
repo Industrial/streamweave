@@ -103,4 +103,4 @@ mod tests {
     // Test that both produce different but valid results
     assert_ne!(result1, result2);
   }
-} 
+}
