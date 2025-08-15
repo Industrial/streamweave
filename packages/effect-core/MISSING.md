@@ -84,7 +84,7 @@ This document catalogs all missing Rust types and missing trait implementations 
 #### Implement `arrow` trait for Collection Types
 - [x] Implement `arrow` trait for `vec`
 - [x] Implement `arrow` trait for `vecdeque`
-- [ ] Implement `arrow` trait for `hashmap`
+- [x] Implement `arrow` trait for `hashmap`
 - [ ] Implement `arrow` trait for `btreemap`
 - [ ] Implement `arrow` trait for `hashset`
 - [ ] Implement `arrow` trait for `btreeset`
