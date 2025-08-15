@@ -156,25 +156,6 @@ mod tests {
     v.into_iter().collect()
   }
 
-  /// Helper function to reverse a VecDeque
-  fn reverse<T: Clone>(deque: &VecDeque<T>) -> VecDeque<T> {
-    let mut result = VecDeque::with_capacity(deque.len());
-    for item in deque.iter().rev() {
-      result.push_back(item.clone());
-    }
-    result
-  }
-
-  /// Helper function to filter elements in a VecDeque
-  fn filter_even(deque: &VecDeque<i32>) -> VecDeque<i32> {
-    deque.iter().filter(|&x| x % 2 == 0).cloned().collect()
-  }
-
-  /// Helper function to map elements in a VecDeque
-  fn double_elements(deque: &VecDeque<i32>) -> VecDeque<i32> {
-    deque.iter().map(|x| x * 2).collect()
-  }
-
   #[test]
   fn test_identity_law() {
     // Create a test VecDeque

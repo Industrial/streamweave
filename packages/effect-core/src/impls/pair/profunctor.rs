@@ -38,16 +38,6 @@ mod tests {
   use super::*;
   use proptest::prelude::*;
 
-  // Define test functions that are safe and avoid overflow
-  const FUNCTIONS: &[fn(i32) -> i32] = &[
-    |x| x.saturating_add(1),
-    |x| x.saturating_mul(2),
-    |x| x.saturating_sub(1),
-    |x| if x != 0 { x / 2 } else { 0 },
-    |x| x.saturating_mul(x),
-    |x| x.checked_neg().unwrap_or(i32::MAX),
-  ];
-
   #[test]
   fn test_profunctor_dimap() {
     let pair = Pair::new(
