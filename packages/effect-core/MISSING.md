@@ -87,15 +87,15 @@ This document catalogs all missing Rust types and missing trait implementations 
 - [x] Implement `arrow` trait for `hashmap`
 - [x] Implement `arrow` trait for `btreemap`
 - [x] Implement `arrow` trait for `btreeset`
-- [ ] Implement `arrow` trait for `hashset`
-- [ ] Implement `arrow` trait for `linkedlist`
-- [ ] Implement `arrow` trait for `string`
-- [ ] Implement `arrow` trait for `str`
-- [ ] Implement `arrow` trait for `numeric`
-- [ ] Implement `arrow` trait for `char`
-- [ ] Implement `arrow` trait for `bool`
-- [ ] Implement `arrow` trait for `duration`
-- [ ] Implement `arrow` trait for `pathbuf`
+- [x] Implement `arrow` trait for `linkedlist`
+- [x] Implement `arrow` trait for `string`
+- [x] Implement `arrow` trait for `str`
+- [x] Implement `arrow` trait for `numeric`
+- [x] Implement `arrow` trait for `char`
+- [ ] Implement `arrow` trait for `hashset` (requires fixing Category implementation first)
+- [ ] Implement `arrow` trait for `bool` (requires Category implementation first)
+- [ ] Implement `arrow` trait for `duration` (requires Category implementation first)
+- [ ] Implement `arrow` trait for `pathbuf` (requires Category implementation first)
 
 #### Implement `clone` trait for Consistency
 - [ ] Implement `clone` trait for `option`
