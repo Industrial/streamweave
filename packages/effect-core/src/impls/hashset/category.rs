@@ -1,34 +1,41 @@
-use std::collections::HashSet;
+use crate::traits::category::Category;
+use crate::types::threadsafe::CloneableThreadSafe;
 use std::sync::Arc;
 
-// A cloneable function wrapper for HashSet
+/// A morphism for HashSet<T> that represents transformations from one type to another
 #[derive(Clone)]
-pub struct HashSetFn<A, B>(Arc<dyn Fn(HashSet<A>) -> HashSet<B> + Send + Sync + 'static>);
+pub struct HashSetFn<A, B>(Arc<dyn Fn(A) -> B + Send + Sync + 'static>);
 
 impl<A, B> HashSetFn<A, B> {
   pub fn new<F>(f: F) -> Self
   where
-    F: Fn(HashSet<A>) -> HashSet<B> + Send + Sync + 'static,
+    F: Fn(A) -> B + Send + Sync + 'static,
   {
     HashSetFn(Arc::new(f))
   }
 
-  pub fn apply(&self, a: HashSet<A>) -> HashSet<B> {
+  pub fn apply(&self, a: A) -> B {
     (self.0)(a)
   }
 }
 
-/* Commenting out the Category implementation for HashSet as it requires constraints
-   that are incompatible with the trait definition. This implementation would need a
-   more flexible trait definition to work properly.
+/// A proxy struct to implement Category for HashSet
+#[derive(Clone, Copy)]
+pub struct HashSetCategory;
 
-impl<T: Eq + Hash + CloneableThreadSafe> Category<T, T> for HashSet<T> {
+impl<T, U> Category<T, U> for HashSetCategory
+where
+  T: CloneableThreadSafe,
+  U: CloneableThreadSafe,
+{
   type Morphism<A: CloneableThreadSafe, B: CloneableThreadSafe> = HashSetFn<A, B>;
 
+  /// The identity morphism for HashSet - returns the input unchanged
   fn id<A: CloneableThreadSafe>() -> Self::Morphism<A, A> {
     HashSetFn::new(|x| x)
   }
 
+  /// Compose two morphisms f: A -> B and g: B -> C to get a morphism A -> C
   fn compose<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
     f: Self::Morphism<A, B>,
     g: Self::Morphism<B, C>,
@@ -36,161 +43,160 @@ impl<T: Eq + Hash + CloneableThreadSafe> Category<T, T> for HashSet<T> {
     HashSetFn::new(move |x| g.apply(f.apply(x)))
   }
 
+  /// Lift a regular function to a morphism
   fn arr<A: CloneableThreadSafe, B: CloneableThreadSafe, F>(f: F) -> Self::Morphism<A, B>
   where
     F: for<'a> Fn(&'a A) -> B + CloneableThreadSafe,
   {
-    HashSetFn::new(move |set: HashSet<A>| set.iter().map(|a| f(a)).collect())
+    HashSetFn::new(move |x| f(&x))
   }
 
+  /// Create a morphism that applies f to the first component of a pair
   fn first<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
     f: Self::Morphism<A, B>,
-  ) -> Self::Morphism<(A, C), (B, C)>
-  where
-    A: Eq + Hash,
-    B: Eq + Hash,
-    C: Eq + Hash,
-    (A, C): Eq + Hash,
-    (B, C): Eq + Hash,
-  {
-    HashSetFn::new(move |set: HashSet<(A, C)>| {
-      let mut result = HashSet::new();
-
-      // Group by C
-      let mut c_groups: std::collections::HashMap<C, HashSet<A>> = std::collections::HashMap::new();
-
-      for (a, c) in set {
-        c_groups.entry(c).or_insert_with(HashSet::new).insert(a);
-      }
-
-      // Apply f to each group
-      for (c, a_set) in c_groups {
-        let b_set = f.apply(a_set);
-
-        // Create pairs
-        for b in b_set {
-          result.insert((b, c.clone()));
-        }
-      }
-
-      result
-    })
+  ) -> Self::Morphism<(A, C), (B, C)> {
+    HashSetFn::new(move |(a, c)| (f.apply(a), c))
   }
 
+  /// Create a morphism that applies f to the second component of a pair
   fn second<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
     f: Self::Morphism<A, B>,
-  ) -> Self::Morphism<(C, A), (C, B)>
-  where
-    A: Eq + Hash,
-    B: Eq + Hash,
-    C: Eq + Hash,
-    (C, A): Eq + Hash,
-    (C, B): Eq + Hash,
-  {
-    HashSetFn::new(move |set: HashSet<(C, A)>| {
-      let mut result = HashSet::new();
-
-      // Group by C
-      let mut c_groups: std::collections::HashMap<C, HashSet<A>> = std::collections::HashMap::new();
-
-      for (c, a) in set {
-        c_groups.entry(c).or_insert_with(HashSet::new).insert(a);
-      }
-
-      // Apply f to each group
-      for (c, a_set) in c_groups {
-        let b_set = f.apply(a_set);
-
-        // Create pairs
-        for b in b_set {
-          result.insert((c.clone(), b));
-        }
-      }
-
-      result
-    })
+  ) -> Self::Morphism<(C, A), (C, B)> {
+    HashSetFn::new(move |(c, a)| (c, f.apply(a)))
   }
 }
-*/
 
 #[cfg(test)]
 mod tests {
-  // Empty test module - all tests are commented out
-  // Commenting out tests since the implementation is also commented out
-  /*
+  use super::*;
+  use proptest::prelude::*;
+
   #[test]
-  fn test_id() {
-    let set = HashSet::from([1, 2, 3]);
-    let id = <HashSet<i32> as Category<i32, i32>>::id();
-    let result = id.apply(set.clone());
-    assert_eq!(result, set);
+  fn test_identity_law() {
+    let s = 5;
+    let id = <HashSetCategory as Category<i32, i32>>::id();
+
+    assert_eq!(id.apply(s), s);
   }
 
   #[test]
-  fn test_arr() {
-    let set = HashSet::from([1, 2, 3]);
-    let f = |x: &i32| x + 1;
-    let arr_f = <HashSet<i32> as Category<i32, i32>>::arr(f);
-    let result = arr_f.apply(set);
+  fn test_composition_law() {
+    let s = 5;
 
-    let expected = HashSet::from([2, 3, 4]);
-    assert_eq!(result, expected);
+    let f = <HashSetCategory as Category<i32, i32>>::arr(|x: &i32| x + 1);
+    let g = <HashSetCategory as Category<i32, i32>>::arr(|x: &i32| x * 2);
+
+    let f_then_g = <HashSetCategory as Category<i32, i32>>::compose(f.clone(), g.clone());
+    let expected = g.apply(f.apply(s));
+
+    assert_eq!(f_then_g.apply(s), expected);
+    assert_eq!(f_then_g.apply(3), 8); // (3+1)*2 = 8
   }
 
   #[test]
-  fn test_compose() {
-    let set = HashSet::from([1, 2, 3]);
-
+  fn test_arr_law() {
+    let s = 5;
     let f = |x: &i32| x + 1;
-    let g = |x: &i32| x * 2;
+    let arr_f = <HashSetCategory as Category<i32, i32>>::arr(f);
 
-    let arr_f = <HashSet<i32> as Category<i32, i32>>::arr(f);
-    let arr_g = <HashSet<i32> as Category<i32, i32>>::arr(g);
+    let result = arr_f.apply(s);
+    let expected = 6;
 
-    let composed = <HashSet<i32> as Category<i32, i32>>::compose(arr_f, arr_g);
-    let result = composed.apply(set);
-
-    // Expected: (1+1)*2, (2+1)*2, (3+1)*2
-    let expected = HashSet::from([4, 6, 8]);
     assert_eq!(result, expected);
   }
 
   #[test]
   fn test_first() {
-    let mut set = HashSet::new();
-    set.insert((1, "a"));
-    set.insert((2, "b"));
+    let s = (1, "a");
+    let f = <HashSetCategory as Category<i32, i32>>::arr(|x: &i32| x + 1);
+    let first_f = <HashSetCategory as Category<i32, i32>>::first(f);
 
-    let f = |x: &i32| x + 1;
-    let arr_f = <HashSet<i32> as Category<i32, i32>>::arr(f);
-    let first_f = <HashSet<i32> as Category<i32, i32>>::first(arr_f);
-
-    let result = first_f.apply(set);
-
-    let mut expected = HashSet::new();
-    expected.insert((2, "a"));
-    expected.insert((3, "b"));
+    let result = first_f.apply(s);
+    let expected = (2, "a");
 
     assert_eq!(result, expected);
   }
 
   #[test]
   fn test_second() {
-    let mut set = HashSet::new();
-    set.insert(("a", 1));
-    set.insert(("b", 2));
+    let s = ("a", 1);
+    let f = <HashSetCategory as Category<i32, i32>>::arr(|x: &i32| x + 1);
+    let second_f = <HashSetCategory as Category<i32, i32>>::second(f);
 
-    let f = |x: &i32| x + 1;
-    let arr_f = <HashSet<i32> as Category<i32, i32>>::arr(f);
-    let second_f = <HashSet<i32> as Category<i32, i32>>::second(arr_f);
-
-    let result = second_f.apply(set);
-
-    let mut expected = HashSet::new();
-    expected.insert(("a", 2));
-    expected.insert(("b", 3));
+    let result = second_f.apply(s);
+    let expected = ("a", 2);
 
     assert_eq!(result, expected);
   }
-  */
+
+  proptest! {
+    #[test]
+    fn prop_identity_preserves_structure(
+      x in any::<i32>()
+    ) {
+      let id = <HashSetCategory as Category<i32, i32>>::id();
+      let result = id.apply(x);
+
+      assert_eq!(result, x);
+    }
+
+    #[test]
+    fn prop_composition_preserves_structure(
+      x in any::<i32>()
+    ) {
+      let f = <HashSetCategory as Category<i32, i32>>::arr(|x: &i32| x.saturating_add(1));
+      let g = <HashSetCategory as Category<i32, i32>>::arr(|x: &i32| x.saturating_mul(2));
+
+      let f_then_g = <HashSetCategory as Category<i32, i32>>::compose(f, g);
+      let result = f_then_g.apply(x);
+
+      // Check that the transformation is correct
+      assert_eq!(result, (x.saturating_add(1)).saturating_mul(2));
+    }
+
+    #[test]
+    fn prop_arr_preserves_structure(
+      x in any::<i32>()
+    ) {
+      let f = |x: &i32| x.saturating_add(1);
+      let arr_f = <HashSetCategory as Category<i32, i32>>::arr(f);
+
+      let result = arr_f.apply(x);
+
+      // Check that the transformation is correct
+      assert_eq!(result, x.saturating_add(1));
+    }
+
+    #[test]
+    fn prop_first_preserves_structure(
+      x in any::<i32>(),
+      c in any::<String>()
+    ) {
+      let f = <HashSetCategory as Category<i32, i32>>::arr(|x: &i32| x.saturating_add(1));
+      let first_f = <HashSetCategory as Category<i32, i32>>::first(f);
+
+      let input = (x, c.clone());
+      let result = first_f.apply(input);
+
+      // Check that the transformation is correct
+      assert_eq!(result.0, x.saturating_add(1));
+      assert_eq!(result.1, c);
+    }
+
+    #[test]
+    fn prop_second_preserves_structure(
+      c in any::<String>(),
+      x in any::<i32>()
+    ) {
+      let f = <HashSetCategory as Category<i32, i32>>::arr(|x: &i32| x.saturating_add(1));
+      let second_f = <HashSetCategory as Category<i32, i32>>::second(f);
+
+      let input = (c.clone(), x);
+      let result = second_f.apply(input);
+
+      // Check that the transformation is correct
+      assert_eq!(result.0, c);
+      assert_eq!(result.1, x.saturating_add(1));
+    }
+  }
 }

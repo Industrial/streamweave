@@ -92,7 +92,7 @@ This document catalogs all missing Rust types and missing trait implementations 
 - [x] Implement `arrow` trait for `str`
 - [x] Implement `arrow` trait for `numeric`
 - [x] Implement `arrow` trait for `char`
-- [ ] Implement `arrow` trait for `hashset` (requires fixing Category implementation first)
+- [x] **Fix HashSet Category implementation to enable Arrow trait** - ✅ **COMPLETED** - Created `HashSetCategory` proxy struct, fixed type parameter constraints, simplified morphism types, properly implemented `first` and `second` methods, and restored test suite. The Arrow trait is now implemented for HashSet.
 - [ ] Implement `arrow` trait for `bool` (requires Category implementation first)
 - [ ] Implement `arrow` trait for `duration` (requires Category implementation first)
 - [ ] Implement `arrow` trait for `pathbuf` (requires Category implementation first)
