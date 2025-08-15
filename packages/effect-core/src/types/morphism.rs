@@ -21,6 +21,7 @@ use super::threadsafe::ThreadSafe;
 /// let add_one = Morphism::new(|x: i32| x + 1);
 /// assert_eq!(add_one.apply(2), 3);
 /// ```
+#[derive(Clone)]
 pub struct Morphism<A: ThreadSafe, B: ThreadSafe> {
   pub(crate) f: Arc<dyn Fn(A) -> B + Send + Sync>,
 }

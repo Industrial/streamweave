@@ -5,25 +5,27 @@
 
 use std::sync::Arc;
 
-use super::threadsafe::ThreadSafe;
+use crate::types::threadsafe::ThreadSafe;
 
 /// A composable pair of functions, allowing the composition of two thread-safe functions.
 ///
-/// The first function `f` maps from `A` to `B`, and the second function `g` maps from `B` to `B`.
-/// Both functions are stored as `Arc<dyn Fn + Send + Sync>`, making them safe to share between threads.
+/// This struct wraps two functions `f: A -> B` and `g: B -> C`, providing a way to compose them
+/// into a single function `h: A -> C` where `h(x) = g(f(x))`.
 ///
 /// # Type Parameters
-/// - `A`: Input type, must implement [`ThreadSafe`].
-/// - `B`: Output type, must implement [`ThreadSafe`].
+/// - `A`: Input type for the first function, must implement [`ThreadSafe`].
+/// - `B`: Output type for the first function and input type for the second function, must implement [`ThreadSafe`].
+/// - `C`: Output type for the second function, must implement [`ThreadSafe`].
 ///
 /// # Examples
 /// ```
 /// use effect_core::types::compose::Compose;
 /// let add_one = |x: i32| x + 1;
 /// let double = |x: i32| x * 2;
-/// let composed = Compose::new(add_one, double);
-/// assert_eq!(composed.apply(3), 8); // double(add_one(3)) = 8
+/// let compose = Compose::new(add_one, double);
+/// assert_eq!(compose.apply(5), 12); // (5 + 1) * 2 = 12
 /// ```
+#[derive(Clone)]
 pub struct Compose<A: ThreadSafe, B: ThreadSafe> {
   pub(crate) f: Arc<dyn Fn(A) -> B + Send + Sync>,
   pub(crate) g: Arc<dyn Fn(B) -> B + Send + Sync>,

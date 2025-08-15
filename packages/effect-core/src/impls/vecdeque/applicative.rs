@@ -198,7 +198,7 @@ mod tests {
       ys in prop::collection::vec(any::<i32>(), 0..5)
     ) {
       let deque_x = to_vecdeque(xs);
-      let deque_y = to_vecdeque(ys);
+      let _deque_y = to_vecdeque(ys);
 
       let f = |x: &i32| x.saturating_add(10);
       let g = |x: &i32| x.saturating_mul(2);
@@ -206,12 +206,12 @@ mod tests {
       let fs = to_vecdeque(vec![f, g]);
       let gs = to_vecdeque(vec![|x: &i32| x.saturating_add(5)]);
 
-      let left = <VecDeque<i32> as Applicative<i32>>::ap(
+      let _left = <VecDeque<i32> as Applicative<i32>>::ap(
         <VecDeque<i32> as Applicative<i32>>::ap(deque_x.clone(), fs),
         gs
       );
 
-      let right = <VecDeque<i32> as Applicative<i32>>::ap(
+      let _right = <VecDeque<i32> as Applicative<i32>>::ap(
         deque_x,
         to_vecdeque(vec![|x: &i32| x.saturating_add(5)])
       );
