@@ -16,6 +16,17 @@ impl<T: CloneableThreadSafe> Functor<T> for LinkedListCategory {
     // The actual mapping happens via the Category impl when using arr and apply
     LinkedListCategory
   }
+
+  fn map_owned<U, F>(self, _f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(T) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    // This is a placeholder implementation since LinkedListCategory is just a proxy type
+    // The actual mapping happens via the Category impl when using arr and apply
+    LinkedListCategory
+  }
 }
 
 // Extension trait to make LinkedList mapping more ergonomic

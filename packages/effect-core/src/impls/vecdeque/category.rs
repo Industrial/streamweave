@@ -1,20 +1,21 @@
 use crate::traits::category::Category;
 use crate::types::threadsafe::CloneableThreadSafe;
+use std::collections::VecDeque;
 use std::sync::Arc;
 
 /// A morphism for VecDeque<T> that represents transformations from one type to another
 #[derive(Clone)]
-pub struct VecDequeFn<A, B>(Arc<dyn Fn(A) -> B + Send + Sync + 'static>);
+pub struct VecDequeFn<A, B>(Arc<dyn Fn(VecDeque<A>) -> VecDeque<B> + Send + Sync + 'static>);
 
 impl<A, B> VecDequeFn<A, B> {
   pub fn new<F>(f: F) -> Self
   where
-    F: Fn(A) -> B + Send + Sync + 'static,
+    F: Fn(VecDeque<A>) -> VecDeque<B> + Send + Sync + 'static,
   {
     VecDequeFn(Arc::new(f))
   }
 
-  pub fn apply(&self, a: A) -> B {
+  pub fn apply(&self, a: VecDeque<A>) -> VecDeque<B> {
     (self.0)(a)
   }
 }
@@ -48,21 +49,100 @@ where
   where
     F: for<'a> Fn(&'a A) -> B + CloneableThreadSafe,
   {
-    VecDequeFn::new(move |x| f(&x))
+    VecDequeFn::new(move |x| x.iter().map(|a| f(a)).collect())
   }
 
   /// Create a morphism that applies f to the first component of a pair
   fn first<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
     f: Self::Morphism<A, B>,
   ) -> Self::Morphism<(A, C), (B, C)> {
-    VecDequeFn::new(move |(a, c)| (f.apply(a), c))
+    VecDequeFn::new(move |xs: VecDeque<(A, C)>| {
+      let mut result = VecDeque::new();
+      for (a, c) in xs {
+        let mut a_deque = VecDeque::new();
+        a_deque.push_back(a);
+        let b_deque = f.apply(a_deque);
+        for b in b_deque {
+          result.push_back((b, c.clone()));
+        }
+      }
+      result
+    })
   }
 
   /// Create a morphism that applies f to the second component of a pair
   fn second<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
     f: Self::Morphism<A, B>,
   ) -> Self::Morphism<(C, A), (C, B)> {
-    VecDequeFn::new(move |(c, a)| (c, f.apply(a)))
+    VecDequeFn::new(move |xs: VecDeque<(C, A)>| {
+      let mut result = VecDeque::new();
+      for (c, a) in xs {
+        let mut a_deque = VecDeque::new();
+        a_deque.push_back(a);
+        let b_deque = f.apply(a_deque);
+        for b in b_deque {
+          result.push_back((c.clone(), b));
+        }
+      }
+      result
+    })
+  }
+}
+
+// Direct implementation of Category<T, T> for VecDeque<T>
+impl<T: CloneableThreadSafe> Category<T, T> for VecDeque<T> {
+  type Morphism<A: CloneableThreadSafe, B: CloneableThreadSafe> = VecDequeFn<A, B>;
+
+  fn id<A: CloneableThreadSafe>() -> Self::Morphism<A, A> {
+    VecDequeFn::new(|x| x)
+  }
+
+  fn compose<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
+    f: Self::Morphism<A, B>,
+    g: Self::Morphism<B, C>,
+  ) -> Self::Morphism<A, C> {
+    VecDequeFn::new(move |x| g.apply(f.apply(x)))
+  }
+
+  fn arr<A: CloneableThreadSafe, B: CloneableThreadSafe, F>(f: F) -> Self::Morphism<A, B>
+  where
+    F: for<'a> Fn(&'a A) -> B + CloneableThreadSafe,
+  {
+    VecDequeFn::new(move |x| x.iter().map(|a| f(a)).collect())
+  }
+
+  fn first<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
+    f: Self::Morphism<A, B>,
+  ) -> Self::Morphism<(A, C), (B, C)> {
+    VecDequeFn::new(move |xs: VecDeque<(A, C)>| {
+      let mut result = VecDeque::new();
+      for (a, c) in xs {
+        let mut a_deque = VecDeque::new();
+        a_deque.push_back(a);
+        let b_deque = f.apply(a_deque);
+        for b in b_deque {
+          result.push_back((b, c.clone()));
+        }
+      }
+      result
+    })
+  }
+
+  fn second<A: CloneableThreadSafe, B: CloneableThreadSafe, C: CloneableThreadSafe>(
+    f: Self::Morphism<A, B>,
+  ) -> Self::Morphism<(C, A), (C, B)> {
+    VecDequeFn::new(move |xs: VecDeque<(C, A)>| {
+      let mut result = VecDeque::new();
+      for (c, a) in xs {
+        let mut a_deque = VecDeque::new();
+        a_deque.push_back(a);
+        let b_deque = f.apply(a_deque);
+        for b in b_deque {
+          result.push_back((c.clone(), b));
+        }
+      }
+      result
+    })
   }
 }
 
@@ -70,7 +150,6 @@ where
 mod tests {
   use super::*;
   use proptest::prelude::*;
-  use std::collections::VecDeque;
 
   /// Helper function to convert a Vec to a VecDeque
   fn to_vecdeque<T: Clone>(v: Vec<T>) -> VecDeque<T> {
@@ -112,13 +191,13 @@ mod tests {
   }
 
   #[test]
-  fn test_composition_law() {
+  fn test_composition() {
     // Create a test VecDeque
-    let deque = to_vecdeque(vec![1, 2, 3, 4]);
+    let deque = to_vecdeque(vec![1, 2, 3, 4, 5]);
 
-    // Create two morphisms: filter even numbers, then double them
-    let f = <VecDequeCategory as Category<VecDeque<i32>, VecDeque<i32>>>::arr(filter_even);
-    let g = <VecDequeCategory as Category<VecDeque<i32>, VecDeque<i32>>>::arr(double_elements);
+    // Create two morphisms
+    let f = <VecDequeCategory as Category<i32, i32>>::arr(|x: &i32| x * 2);
+    let g = <VecDequeCategory as Category<i32, i32>>::arr(|x: &i32| x + 1);
 
     // Compose them
     let f_then_g =
@@ -128,14 +207,9 @@ mod tests {
     let result = f_then_g.apply(deque.clone());
 
     // Manually verify the expected result
-    let filtered = filter_even(&deque);
-    let expected = double_elements(&filtered);
+    let expected: VecDeque<i32> = deque.iter().map(|x| (x * 2) + 1).collect();
 
     assert_eq!(result, expected);
-
-    // The result should be [4, 8] (even numbers doubled)
-    let expected_manual = to_vecdeque(vec![4, 8]);
-    assert_eq!(result, expected_manual);
   }
 
   #[test]
@@ -147,15 +221,25 @@ mod tests {
     let value = "test".to_string();
 
     // Create a morphism and its "first" version
-    let f = <VecDequeCategory as Category<VecDeque<i32>, VecDeque<i32>>>::arr(double_elements);
-    let first_f = <VecDequeCategory as Category<VecDeque<i32>, VecDeque<i32>>>::first(f);
+    let f = <VecDequeCategory as Category<i32, i32>>::arr(|x: &i32| x * 2);
+    let first_f = <VecDequeCategory as Category<i32, i32>>::first(f);
 
-    // Apply the first morphism to a pair
-    let result = first_f.apply((deque.clone(), value.clone()));
+    // Create pairs
+    let mut pairs = VecDeque::new();
+    for item in deque {
+      pairs.push_back((item, value.clone()));
+    }
+
+    // Apply the first morphism to pairs
+    let result = first_f.apply(pairs);
 
     // Verify the result
-    assert_eq!(result.0, double_elements(&deque));
-    assert_eq!(result.1, value);
+    let mut expected_result = VecDeque::new();
+    for x in vec![2, 4] {
+      // 1*2, 2*2
+      expected_result.push_back((x, value.clone()));
+    }
+    assert_eq!(result, expected_result);
   }
 
   #[test]
@@ -167,15 +251,25 @@ mod tests {
     let value = "test".to_string();
 
     // Create a morphism and its "second" version
-    let f = <VecDequeCategory as Category<VecDeque<i32>, VecDeque<i32>>>::arr(double_elements);
-    let second_f = <VecDequeCategory as Category<VecDeque<i32>, VecDeque<i32>>>::second(f);
+    let f = <VecDequeCategory as Category<i32, i32>>::arr(|x: &i32| x * 2);
+    let second_f = <VecDequeCategory as Category<i32, i32>>::second(f);
 
-    // Apply the second morphism to a pair
-    let result = second_f.apply((value.clone(), deque.clone()));
+    // Create pairs
+    let mut pairs = VecDeque::new();
+    for item in deque {
+      pairs.push_back((value.clone(), item));
+    }
+
+    // Apply the second morphism to pairs
+    let result = second_f.apply(pairs);
 
     // Verify the result
-    assert_eq!(result.0, value);
-    assert_eq!(result.1, double_elements(&deque));
+    let mut expected_result = VecDeque::new();
+    for x in vec![2, 4] {
+      // 1*2, 2*2
+      expected_result.push_back((value.clone(), x));
+    }
+    assert_eq!(result, expected_result);
   }
 
   #[test]
@@ -184,14 +278,14 @@ mod tests {
     let deque = to_vecdeque(vec![1, 2, 3]);
 
     // Create a morphism using arr
-    let double_morphism =
-      <VecDequeCategory as Category<VecDeque<i32>, VecDeque<i32>>>::arr(double_elements);
+    let double_morphism = <VecDequeCategory as Category<i32, i32>>::arr(|x: &i32| x * 2);
 
     // Apply the morphism
     let result = double_morphism.apply(deque.clone());
 
     // Verify the result
-    assert_eq!(result, double_elements(&deque));
+    let expected: VecDeque<i32> = deque.iter().map(|x| x * 2).collect();
+    assert_eq!(result, expected);
   }
 
   #[test]
@@ -200,9 +294,9 @@ mod tests {
     let deque = to_vecdeque(vec![1, 2, 3]);
 
     // Create morphisms
-    let f = <VecDequeCategory as Category<VecDeque<i32>, VecDeque<i32>>>::arr(filter_even);
-    let g = <VecDequeCategory as Category<VecDeque<i32>, VecDeque<i32>>>::arr(double_elements);
-    let h = <VecDequeCategory as Category<VecDeque<i32>, VecDeque<i32>>>::arr(reverse);
+    let f = <VecDequeCategory as Category<i32, i32>>::arr(|x: &i32| x * 2);
+    let g = <VecDequeCategory as Category<i32, i32>>::arr(|x: &i32| x + 1);
+    let h = <VecDequeCategory as Category<i32, i32>>::arr(|x: &i32| *x);
 
     // Test associativity: (f . g) . h = f . (g . h)
     let fg =
@@ -225,14 +319,9 @@ mod tests {
     // Create a test VecDeque with strings
     let deque = to_vecdeque(vec!["hello".to_string(), "world".to_string()]);
 
-    // Create a function that transforms strings
-    fn to_uppercase(deque: &VecDeque<String>) -> VecDeque<String> {
-      deque.iter().map(|s| s.to_uppercase()).collect()
-    }
-
     // Create a morphism using arr
     let uppercase_morphism =
-      <VecDequeCategory as Category<VecDeque<String>, VecDeque<String>>>::arr(to_uppercase);
+      <VecDequeCategory as Category<String, String>>::arr(|s: &String| s.to_uppercase());
 
     // Apply the morphism
     let result = uppercase_morphism.apply(deque.clone());
@@ -262,8 +351,8 @@ mod tests {
       let deque: VecDeque<i32> = elements.clone().into_iter().collect();
 
       // Create morphisms
-      let f = <VecDequeCategory as Category<VecDeque<i32>, VecDeque<i32>>>::arr(filter_even);
-      let g = <VecDequeCategory as Category<VecDeque<i32>, VecDeque<i32>>>::arr(double_elements);
+      let f = <VecDequeCategory as Category<i32, i32>>::arr(|x: &i32| x * 2);
+      let g = <VecDequeCategory as Category<i32, i32>>::arr(|x: &i32| x + 1);
 
       // Compose and apply
       let composed = <VecDequeCategory as Category<VecDeque<i32>, VecDeque<i32>>>::compose(f.clone(), g.clone());

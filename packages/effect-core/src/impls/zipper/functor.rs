@@ -19,6 +19,19 @@ impl<A: CloneableThreadSafe> Functor<A> for Zipper<A> {
       right: self.right.into_iter().map(|a| f(&a)).collect(),
     }
   }
+
+  fn map_owned<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+  where
+    F: FnMut(A) -> B + CloneableThreadSafe,
+    B: CloneableThreadSafe,
+    Self: Sized,
+  {
+    Zipper {
+      left: self.left.into_iter().map(|a| f(a)).collect(),
+      focus: f(self.focus),
+      right: self.right.into_iter().map(|a| f(a)).collect(),
+    }
+  }
 }
 
 #[cfg(test)]

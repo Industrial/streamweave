@@ -5,15 +5,26 @@ use std::marker::PhantomData;
 
 // We need to implement Functor for FutureCategory<A>, not for FutureFn directly
 impl<A: CloneableThreadSafe + Send + 'static> Functor<A> for FutureCategory<A> {
-  type HigherSelf<B: CloneableThreadSafe> = FutureCategory<B>;
+  type HigherSelf<U: CloneableThreadSafe> = FutureCategory<U>;
 
-  fn map<B, F>(self, _f: F) -> Self::HigherSelf<B>
+  fn map<U, F>(self, _f: F) -> Self::HigherSelf<U>
   where
-    F: for<'a> FnMut(&'a A) -> B + CloneableThreadSafe,
-    B: CloneableThreadSafe + Send + 'static,
+    F: for<'a> FnMut(&'a A) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
   {
-    // This is a bit of a dummy implementation since FutureCategory doesn't actually store data
-    // It relies on the Category implementation for FutureCategory to actually do the mapping
+    // This is a placeholder implementation since FutureCategory is just a proxy type
+    // The actual mapping happens via the Category impl when using arr and apply
+    FutureCategory(PhantomData)
+  }
+
+  fn map_owned<U, F>(self, _f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(A) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    // This is a placeholder implementation since FutureCategory is just a proxy type
+    // The actual mapping happens via the Category impl when using arr and apply
     FutureCategory(PhantomData)
   }
 }

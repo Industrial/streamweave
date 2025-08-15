@@ -11,6 +11,15 @@ impl<T: CloneableThreadSafe> Functor<T> for Vec<T> {
   {
     self.into_iter().map(|x| f(&x)).collect()
   }
+
+  fn map_owned<U, F>(self, mut f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(T) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    self.into_iter().map(|x| f(x)).collect()
+  }
 }
 
 #[cfg(test)]

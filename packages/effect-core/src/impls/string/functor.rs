@@ -2,17 +2,29 @@ use crate::impls::string::category::CharCategory;
 use crate::traits::functor::Functor;
 use crate::types::threadsafe::CloneableThreadSafe;
 
-impl Functor<char> for CharCategory {
-  type HigherSelf<U: CloneableThreadSafe> = Vec<U>;
+// Implement Functor<U> for CharCategory for all U to satisfy the HigherSelf constraint
+impl<U: CloneableThreadSafe> Functor<U> for CharCategory {
+  type HigherSelf<V: CloneableThreadSafe> = CharCategory;
 
-  fn map<U, F>(self, _f: F) -> Self::HigherSelf<U>
+  fn map<V, F>(self, _f: F) -> Self::HigherSelf<V>
   where
-    F: for<'a> FnMut(&'a char) -> U + CloneableThreadSafe,
-    U: CloneableThreadSafe,
+    F: for<'a> FnMut(&'a U) -> V + CloneableThreadSafe,
+    V: CloneableThreadSafe,
   {
-    // This is a dummy implementation since CharCategory is just a marker type
-    // We don't actually have characters in it to map over
-    Vec::new()
+    // This is a placeholder implementation since CharCategory is just a proxy type
+    // The actual mapping happens via the Category impl when using arr and apply
+    CharCategory
+  }
+
+  fn map_owned<V, F>(self, _f: F) -> Self::HigherSelf<V>
+  where
+    F: FnMut(U) -> V + CloneableThreadSafe,
+    V: CloneableThreadSafe,
+    Self: Sized,
+  {
+    // This is a placeholder implementation since CharCategory is just a proxy type
+    // The actual mapping happens via the Category impl when using arr and apply
+    CharCategory
   }
 }
 

@@ -3,15 +3,23 @@ use crate::types::threadsafe::CloneableThreadSafe;
 
 // The Functor implementation for (A, B) maps only the second component
 impl<A: CloneableThreadSafe, B: CloneableThreadSafe> Functor<B> for (A, B) {
-  type HigherSelf<T: CloneableThreadSafe> = (A, T);
+  type HigherSelf<U: CloneableThreadSafe> = (A, U);
 
-  fn map<C, F>(self, mut f: F) -> Self::HigherSelf<C>
+  fn map<U, F>(self, mut f: F) -> Self::HigherSelf<U>
   where
-    F: for<'a> FnMut(&'a B) -> C + CloneableThreadSafe,
-    C: CloneableThreadSafe,
+    F: for<'a> FnMut(&'a B) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
   {
-    let (a, b) = self;
-    (a, f(&b))
+    (self.0, f(&self.1))
+  }
+
+  fn map_owned<U, F>(self, mut f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(B) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    (self.0, f(self.1))
   }
 }
 

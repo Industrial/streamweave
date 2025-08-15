@@ -24,6 +24,18 @@ impl<L: CloneableThreadSafe, R: CloneableThreadSafe> Functor<R> for Either<L, R>
       Either::Right(r) => Either::Right(f(&r)),
     }
   }
+
+  fn map_owned<U, F>(self, mut f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(R) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    match self {
+      Either::Left(l) => Either::Left(l),
+      Either::Right(r) => Either::Right(f(r)),
+    }
+  }
 }
 
 #[cfg(test)]

@@ -10,9 +10,22 @@ impl<A: CloneableThreadSafe> Functor<A> for NonEmpty<A> {
     F: for<'a> FnMut(&'a A) -> U + CloneableThreadSafe,
     U: CloneableThreadSafe,
   {
-    let head = f(&self.head);
-    let tail = self.tail.into_iter().map(|a| f(&a)).collect();
-    NonEmpty { head, tail }
+    NonEmpty {
+      head: f(&self.head),
+      tail: self.tail.into_iter().map(|x| f(&x)).collect(),
+    }
+  }
+
+  fn map_owned<U, F>(self, mut f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(A) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    NonEmpty {
+      head: f(self.head),
+      tail: self.tail.into_iter().map(|x| f(x)).collect(),
+    }
   }
 }
 

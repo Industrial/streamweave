@@ -1,64 +1,55 @@
-use crate::impls::vecdeque::category::VecDequeCategory;
-use crate::traits::filterable::Filterable;
-use crate::types::threadsafe::CloneableThreadSafe;
 use std::collections::VecDeque;
 
-// Implement Filterable for VecDequeCategory, not for VecDeque directly
-impl<A: CloneableThreadSafe> Filterable<A> for VecDequeCategory {
+use crate::traits::filterable::Filterable;
+use crate::types::threadsafe::CloneableThreadSafe;
+
+// Implement Filterable for VecDeque<T>
+impl<T: CloneableThreadSafe> Filterable<T> for VecDeque<T> {
   type Filtered<B: CloneableThreadSafe> = VecDeque<B>;
 
-  fn filter_map<B, F>(self, _f: F) -> Self::Filtered<B>
+  fn filter<F>(self, mut predicate: F) -> Self
   where
-    F: for<'a> FnMut(&'a A) -> Option<B> + CloneableThreadSafe,
+    F: for<'a> FnMut(&'a T) -> bool + CloneableThreadSafe,
+  {
+    self.into_iter().filter(|x| predicate(x)).collect()
+  }
+
+  fn filter_map<B, F>(self, mut f: F) -> VecDeque<B>
+  where
+    F: for<'a> FnMut(&'a T) -> Option<B> + CloneableThreadSafe,
     B: CloneableThreadSafe,
   {
-    // This is a placeholder implementation since filtering
-    // is done through the extension trait
-    VecDeque::new()
+    self.into_iter().filter_map(|x| f(&x)).collect()
   }
 }
 
-// Extension trait to make VecDeque filtering more ergonomic
+// Extension trait to make VecDeque filterable operations more ergonomic
 pub trait VecDequeFilterableExt<T: CloneableThreadSafe> {
+  fn filter<F>(self, predicate: F) -> VecDeque<T>
+  where
+    F: for<'a> FnMut(&'a T) -> bool + CloneableThreadSafe;
+
   fn filter_map<B, F>(self, f: F) -> VecDeque<B>
   where
     F: for<'a> FnMut(&'a T) -> Option<B> + CloneableThreadSafe,
     B: CloneableThreadSafe;
-
-  fn filter<F>(self, predicate: F) -> VecDeque<T>
-  where
-    F: for<'a> FnMut(&'a T) -> bool + CloneableThreadSafe,
-    T: Clone;
 }
 
 // Implement the extension trait for VecDeque
 impl<T: CloneableThreadSafe> VecDequeFilterableExt<T> for VecDeque<T> {
-  fn filter_map<B, F>(mut self, mut f: F) -> VecDeque<B>
+  fn filter<F>(self, mut predicate: F) -> VecDeque<T>
+  where
+    F: for<'a> FnMut(&'a T) -> bool + CloneableThreadSafe,
+  {
+    self.into_iter().filter(|x| predicate(x)).collect()
+  }
+
+  fn filter_map<B, F>(self, mut f: F) -> VecDeque<B>
   where
     F: for<'a> FnMut(&'a T) -> Option<B> + CloneableThreadSafe,
     B: CloneableThreadSafe,
   {
-    let mut result = VecDeque::with_capacity(self.len());
-    while let Some(item) = self.pop_front() {
-      if let Some(mapped) = f(&item) {
-        result.push_back(mapped);
-      }
-    }
-    result
-  }
-
-  fn filter<F>(mut self, mut predicate: F) -> VecDeque<T>
-  where
-    F: for<'a> FnMut(&'a T) -> bool + CloneableThreadSafe,
-    T: Clone,
-  {
-    let mut result = VecDeque::with_capacity(self.len());
-    while let Some(item) = self.pop_front() {
-      if predicate(&item) {
-        result.push_back(item);
-      }
-    }
-    result
+    self.into_iter().filter_map(|x| f(&x)).collect()
   }
 }
 
@@ -67,194 +58,171 @@ mod tests {
   use super::*;
   use proptest::prelude::*;
 
-  #[test]
-  fn test_filter_map_empty() {
-    let deque: VecDeque<i32> = VecDeque::new();
-    let f = |x: &i32| if *x > 10 { Some(x.to_string()) } else { None };
-
-    let result = deque.filter_map(f);
-    assert_eq!(result, VecDeque::<String>::new());
-  }
-
-  #[test]
-  fn test_filter_map_all_some() {
-    let mut deque = VecDeque::new();
-    deque.push_back(20);
-    deque.push_back(30);
-    deque.push_back(40);
-
-    let f = |x: &i32| if *x > 10 { Some(x.to_string()) } else { None };
-
-    let result = deque.filter_map(f);
-
-    let mut expected = VecDeque::new();
-    expected.push_back("20".to_string());
-    expected.push_back("30".to_string());
-    expected.push_back("40".to_string());
-
-    assert_eq!(result, expected);
-  }
-
-  #[test]
-  fn test_filter_map_some_none() {
-    let mut deque = VecDeque::new();
-    deque.push_back(5);
-    deque.push_back(15);
-    deque.push_back(25);
-
-    let f = |x: &i32| if *x > 10 { Some(x.to_string()) } else { None };
-
-    let result = deque.filter_map(f);
-
-    let mut expected = VecDeque::new();
-    expected.push_back("15".to_string());
-    expected.push_back("25".to_string());
-
-    assert_eq!(result, expected);
-  }
-
-  #[test]
-  fn test_filter_map_all_none() {
-    let mut deque = VecDeque::new();
-    deque.push_back(1);
-    deque.push_back(2);
-    deque.push_back(3);
-
-    let f = |x: &i32| if *x > 10 { Some(x.to_string()) } else { None };
-
-    let result = deque.filter_map(f);
-    assert_eq!(result, VecDeque::<String>::new());
+  // Helper function to convert a Vec to a VecDeque
+  fn to_vecdeque<T: Clone>(v: Vec<T>) -> VecDeque<T> {
+    v.into_iter().collect()
   }
 
   #[test]
   fn test_filter_empty() {
     let deque: VecDeque<i32> = VecDeque::new();
-    let predicate = |x: &i32| *x > 10;
-
-    let result = deque.filter(predicate);
-    assert_eq!(result, VecDeque::<i32>::new());
+    let predicate = |x: &i32| *x > 0;
+    let result = Filterable::filter(deque, predicate);
+    assert_eq!(result, VecDeque::new());
   }
 
   #[test]
   fn test_filter_all_pass() {
-    let mut deque = VecDeque::new();
-    deque.push_back(20);
-    deque.push_back(30);
-    deque.push_back(40);
-
-    let predicate = |x: &i32| *x > 10;
-
-    let result = deque.clone().filter(predicate);
-    assert_eq!(result, deque);
+    let deque = to_vecdeque(vec![1, 2, 3, 4, 5]);
+    let predicate = |x: &i32| *x > 0;
+    let result = Filterable::filter(deque, predicate);
+    assert_eq!(result, to_vecdeque(vec![1, 2, 3, 4, 5]));
   }
 
   #[test]
   fn test_filter_some_pass() {
-    let mut deque = VecDeque::new();
-    deque.push_back(5);
-    deque.push_back(15);
-    deque.push_back(25);
-
-    let predicate = |x: &i32| *x > 10;
-
-    let result = deque.filter(predicate);
-
-    let mut expected = VecDeque::new();
-    expected.push_back(15);
-    expected.push_back(25);
-
-    assert_eq!(result, expected);
+    let deque = to_vecdeque(vec![1, -2, 3, -4, 5]);
+    let predicate = |x: &i32| *x > 0;
+    let result = Filterable::filter(deque, predicate);
+    assert_eq!(result, to_vecdeque(vec![1, 3, 5]));
   }
 
   #[test]
   fn test_filter_none_pass() {
-    let mut deque = VecDeque::new();
-    deque.push_back(1);
-    deque.push_back(2);
-    deque.push_back(3);
+    let deque = to_vecdeque(vec![-1, -2, -3, -4, -5]);
+    let predicate = |x: &i32| *x > 0;
+    let result = Filterable::filter(deque, predicate);
+    assert_eq!(result, VecDeque::new());
+  }
 
-    let predicate = |x: &i32| *x > 10;
+  #[test]
+  fn test_filter_map_identity() {
+    let deque = to_vecdeque(vec![Some(1), Some(2), Some(3)]);
+    let identity = |x: &Option<i32>| *x;
+    let result: VecDeque<i32> = Filterable::filter_map(deque, identity);
+    assert_eq!(result, to_vecdeque(vec![1, 2, 3]));
+  }
 
-    let result = deque.filter(predicate);
-    assert_eq!(result, VecDeque::<i32>::new());
+  #[test]
+  fn test_filter_map_with_none() {
+    let deque = to_vecdeque(vec![Some(1), None, Some(3)]);
+    let identity = |x: &Option<i32>| *x;
+    let result = Filterable::filter_map(deque, identity);
+    assert_eq!(result, to_vecdeque(vec![1, 3]));
+  }
+
+  #[test]
+  fn test_filter_map_composition() {
+    let deque = to_vecdeque(vec![1, 2, 3, 4, 5]);
+    let f = |x: &i32| if *x % 2 == 0 { Some(*x * 2) } else { None };
+    let g = |x: &i32| if *x > 10 { Some(*x) } else { None };
+
+    let result1 = Filterable::filter_map(Filterable::filter_map(deque.clone(), f), g);
+    let result2 = Filterable::filter_map(deque, move |val| {
+      let f_result = f(val);
+      if let Some(x) = f_result {
+        g(&x)
+      } else {
+        None
+      }
+    });
+
+    assert_eq!(result1, result2);
+  }
+
+  #[test]
+  fn test_filter_vs_filter_map() {
+    let deque = to_vecdeque(vec![1, 2, 3, 4, 5]);
+    let predicate = |x: &i32| *x % 2 == 0;
+
+    let result1 = Filterable::filter(deque.clone(), predicate);
+    let result2 = Filterable::filter_map(
+      deque,
+      move |val| {
+        if predicate(val) {
+          Some(*val)
+        } else {
+          None
+        }
+      },
+    );
+
+    assert_eq!(result1, result2);
+  }
+
+  #[test]
+  fn test_filter_with_strings() {
+    let deque = to_vecdeque(vec![
+      "hello".to_string(),
+      "world".to_string(),
+      "test".to_string(),
+    ]);
+    let predicate = |s: &String| s.len() > 4;
+    let result = Filterable::filter(deque, predicate);
+    assert_eq!(
+      result,
+      to_vecdeque(vec!["hello".to_string(), "world".to_string()])
+    );
+  }
+
+  #[test]
+  fn test_filter_map_with_strings() {
+    let deque = to_vecdeque(vec![
+      "hello".to_string(),
+      "world".to_string(),
+      "test".to_string(),
+    ]);
+    let f = |s: &String| if s.len() > 4 { Some(s.len()) } else { None };
+    let result = Filterable::filter_map(deque, f);
+    assert_eq!(result, to_vecdeque(vec![5, 5]));
   }
 
   // Property-based tests
   proptest! {
     #[test]
-    fn prop_identity_law(xs in prop::collection::vec(any::<i32>(), 0..100)) {
-      // Identity law: filter_map(Some) == self
-      let deque: VecDeque<i32> = xs.clone().into_iter().collect();
-      let identity = |val: &i32| Some(*val);
+    fn prop_filter_preserves_order(
+      xs in prop::collection::vec(any::<i32>(), 0..100)
+    ) {
+      let deque = to_vecdeque(xs.clone());
+      let predicate = |x: &i32| *x > 0;
+      let result = Filterable::filter(deque, predicate);
 
-      let result: VecDeque<i32> = deque.filter_map(identity);
-      let expected: VecDeque<i32> = xs.into_iter().collect();
-
-      prop_assert_eq!(result, expected);
+      // Check that the order is preserved
+      let expected: Vec<i32> = xs.into_iter().filter(|&x| x > 0).collect();
+      prop_assert_eq!(result, to_vecdeque(expected));
     }
 
     #[test]
-    fn prop_annihilation_law(xs in prop::collection::vec(any::<i32>(), 0..100)) {
-      // Annihilation law: filter_map(|_| None) == empty
-      let deque: VecDeque<i32> = xs.into_iter().collect();
-      let none_fn = |_: &i32| None::<i32>;
+    fn prop_filter_map_preserves_order(
+      xs in prop::collection::vec(any::<i32>(), 0..100)
+    ) {
+      let deque = to_vecdeque(xs.clone());
+      let f = |x: &i32| if *x > 0 { Some(x.saturating_mul(2)) } else { None };
+      let result = Filterable::filter_map(deque, f);
 
-      let result = deque.filter_map(none_fn);
-      prop_assert_eq!(result, VecDeque::<i32>::new());
+      // Check that the order is preserved
+      let expected: Vec<i32> = xs.into_iter().filter_map(|x| if x > 0 { Some(x.saturating_mul(2)) } else { None }).collect();
+      prop_assert_eq!(result, to_vecdeque(expected));
     }
 
     #[test]
-    fn prop_distributivity_law(xs in prop::collection::vec(any::<i32>(), 0..100), limit in 1..100i32) {
-      // Distributivity law: filter_map(f).filter_map(g) == filter_map(|x| f(x).and_then(g))
-      let deque: VecDeque<i32> = xs.into_iter().collect();
-
-      // Define filter functions
-      let f = |val: &i32| if val.abs() % 2 == 0 { Some(*val) } else { None };
-      let g = move |val: &i32| if val.abs() < limit { Some(val.to_string()) } else { None };
-
-      // Apply filters sequentially
-      let deque_clone = deque.clone();
-      let result1 = deque_clone.filter_map(f).filter_map(g);
-
-      // Apply composed filter
-      let result2 = deque.filter_map(move |val| {
-        f(val).and_then(|v| g(&v))
-      });
-
-      prop_assert_eq!(result1, result2);
+    fn prop_filter_empty_result(
+      xs in prop::collection::vec(any::<i32>(), 0..100)
+    ) {
+      let deque = to_vecdeque(xs);
+      let predicate = |_: &i32| false;
+      let result = Filterable::filter(deque, predicate);
+      prop_assert_eq!(result, VecDeque::new());
     }
 
     #[test]
-    fn prop_filter_consistent_with_filter_map(xs in prop::collection::vec(any::<i32>(), 0..100), threshold in 1..100i32) {
-      // filter(p) == filter_map(|x| if p(x) { Some(x) } else { None })
-      let deque: VecDeque<i32> = xs.into_iter().collect();
-      let deque_clone = deque.clone();
-
-      let predicate = move |val: &i32| val.abs() < threshold;
-
-      let result1 = deque.filter(predicate);
-      let result2 = deque_clone.filter_map(move |val| {
-        if predicate(val) { Some(*val) } else { None }
-      });
-
-      prop_assert_eq!(result1, result2);
-    }
-
-    #[test]
-    fn prop_preserves_order(xs in prop::collection::vec(any::<i32>(), 0..100)) {
-      // Filtering should preserve the order of elements
-      let deque: VecDeque<i32> = xs.iter().cloned().collect();
-      let predicate = |val: &i32| val % 2 == 0;
-
-      let mut manual_result = VecDeque::new();
-      for x in xs {
-        if predicate(&x) {
-          manual_result.push_back(x);
-        }
-      }
-
-      let result = deque.filter(predicate);
-      prop_assert_eq!(result, manual_result);
+    fn prop_filter_map_empty_result(
+      xs in prop::collection::vec(any::<i32>(), 0..100)
+    ) {
+      let deque = to_vecdeque(xs);
+      let f = |_: &i32| None::<i32>;
+      let result = Filterable::filter_map(deque, f);
+      prop_assert_eq!(result, VecDeque::new());
     }
   }
 }

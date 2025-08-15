@@ -8,18 +8,23 @@ where
   K: Eq + Hash + Clone + CloneableThreadSafe,
   A: CloneableThreadSafe,
 {
-  type HigherSelf<B: CloneableThreadSafe> = HashMap<K, B>;
+  type HigherSelf<U: CloneableThreadSafe> = HashMap<K, U>;
 
-  fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+  fn map<U, F>(self, mut f: F) -> Self::HigherSelf<U>
   where
-    F: for<'a> FnMut(&'a A) -> B + CloneableThreadSafe,
-    B: CloneableThreadSafe,
+    F: for<'a> FnMut(&'a A) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
   {
-    let mut result = HashMap::with_capacity(self.len());
-    for (k, a) in self {
-      result.insert(k.clone(), f(&a));
-    }
-    result
+    self.into_iter().map(|(k, v)| (k, f(&v))).collect()
+  }
+
+  fn map_owned<U, F>(self, mut f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(A) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    self.into_iter().map(|(k, v)| (k, f(v))).collect()
   }
 }
 

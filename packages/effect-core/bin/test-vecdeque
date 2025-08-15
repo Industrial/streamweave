@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+# Focused test runner for VecDeque implementations
+echo "Testing VecDeque implementations..."
+
+# Test compilation first
+echo "Checking compilation..."
+cargo check --lib 2>/dev/null
+if [ $? -ne 0 ]; then
+    echo "❌ Compilation failed"
+    exit 1
+fi
+echo "✅ Compilation successful"
+
+# Test VecDeque functor specifically
+echo "Testing VecDeque functor..."
+cargo test impls::vecdeque::functor::tests::test_identity_law_prop --lib 2>/dev/null
+if [ $? -eq 0 ]; then
+    echo "✅ VecDeque functor identity law test passed"
+else
+    echo "❌ VecDeque functor identity law test failed"
+fi
+
+# Test all VecDeque tests
+echo "Testing all VecDeque implementations..."
+cargo test impls::vecdeque --lib 2>/dev/null
+if [ $? -eq 0 ]; then
+    echo "✅ All VecDeque tests passed"
+else
+    echo "❌ Some VecDeque tests failed"
+fi
+
+echo "VecDeque testing complete!" 

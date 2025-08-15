@@ -11,6 +11,15 @@ impl<T: CloneableThreadSafe> Functor<T> for Box<T> {
   {
     Box::new(f(&*self))
   }
+
+  fn map_owned<U, F>(self, mut f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(T) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    Box::new(f(*self))
+  }
 }
 
 #[cfg(test)]

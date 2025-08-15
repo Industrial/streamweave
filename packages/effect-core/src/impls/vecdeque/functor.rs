@@ -1,20 +1,26 @@
-use crate::impls::vecdeque::category::VecDequeCategory;
 use crate::traits::functor::Functor;
 use crate::types::threadsafe::CloneableThreadSafe;
 use std::collections::VecDeque;
 
-// Implement Functor for VecDequeCategory, not for VecDeque directly
-impl<T: CloneableThreadSafe> Functor<T> for VecDequeCategory {
+// Implement Functor directly for VecDeque<T>
+impl<T: CloneableThreadSafe> Functor<T> for VecDeque<T> {
   type HigherSelf<U: CloneableThreadSafe> = VecDeque<U>;
 
-  fn map<U, F>(self, _f: F) -> Self::HigherSelf<U>
+  fn map<U, F>(self, mut f: F) -> Self::HigherSelf<U>
   where
     F: for<'a> FnMut(&'a T) -> U + CloneableThreadSafe,
     U: CloneableThreadSafe,
   {
-    // This is a placeholder implementation since mapping
-    // is done through the extension trait
-    VecDeque::new()
+    self.into_iter().map(|x| f(&x)).collect()
+  }
+
+  fn map_owned<U, F>(self, mut f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(T) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    self.into_iter().map(|x| f(x)).collect()
   }
 }
 
@@ -48,31 +54,31 @@ mod tests {
   }
 
   // Define test functions with overflow protection
-  const INT_FUNCTIONS: &[fn(&i64) -> i64] = &[
+  const INT_FUNCTIONS: &[fn(&i32) -> i32] = &[
     |x| x.saturating_add(1),
     |x| x.saturating_mul(2),
     |x| x.saturating_sub(1),
     |x| if *x != 0 { x / 2 } else { 0 },
     |x| x.saturating_mul(*x),
-    |x| x.checked_neg().unwrap_or(i64::MAX),
+    |x| x.checked_neg().unwrap_or(i32::MAX),
   ];
 
   #[test]
   fn test_identity_law_empty() {
-    let vecdeque: VecDeque<i64> = VecDeque::new();
-    let id = |x: &i64| *x;
-    let result = vecdeque.map(id);
+    let vecdeque: VecDeque<i32> = VecDeque::new();
+    let id = |x: &i32| *x;
+    let result = <VecDeque<i32> as Functor<i32>>::map(vecdeque, id);
 
     // Identity law for empty vector
-    assert_eq!(result, VecDeque::<i64>::new());
+    assert_eq!(result, VecDeque::<i32>::new());
   }
 
   #[test]
   fn test_identity_law_nonempty() {
     let xs = to_vecdeque(vec![1, 2, 3]);
     let vecdeque = xs.clone();
-    let id = |x: &i64| *x;
-    let result = vecdeque.map(id);
+    let id = |x: &i32| *x;
+    let result = <VecDeque<i32> as Functor<i32>>::map(vecdeque, id);
 
     // Identity law: functor.map(id) == functor
     assert_eq!(result, xs);
@@ -83,14 +89,11 @@ mod tests {
 
     #[test]
     fn test_identity_law_prop(
-      xs in prop::collection::vec(
-        any::<i64>().prop_filter("Value too large", |v| *v < 10000),
-        0..5
-      )
+      xs in prop::collection::vec(any::<i32>(), 0..5)
     ) {
       let vecdeque = to_vecdeque(xs.clone());
-      let id = |x: &i64| *x;
-      let result = vecdeque.map(id);
+      let id = |x: &i32| *x;
+      let result = <VecDeque<i32> as Functor<i32>>::map(vecdeque, id);
 
       // Identity law: functor.map(id) == functor
       prop_assert_eq!(result, to_vecdeque(xs));
@@ -101,70 +104,95 @@ mod tests {
       f_idx in 0..INT_FUNCTIONS.len(),
       g_idx in 0..INT_FUNCTIONS.len()
     ) {
+      let vecdeque: VecDeque<i32> = VecDeque::new();
       let f = INT_FUNCTIONS[f_idx];
       let g = INT_FUNCTIONS[g_idx];
-      let vecdeque: VecDeque<i64> = VecDeque::new();
-
-      // Create move closures to avoid borrowing
-      let f_captured = f;
-      let g_captured = g;
 
       // Apply f then g
-      let result1 = vecdeque.clone().map(f_captured).map(g_captured);
+      let result1 = <VecDeque<i32> as Functor<i32>>::map(
+        <VecDeque<i32> as Functor<i32>>::map(vecdeque.clone(), f),
+        g
+      );
 
-      // Apply composition of f and g
-      let result2 = vecdeque.map(move |x| g_captured(&f_captured(x)));
+      // Apply g ∘ f directly
+      let result2 = <VecDeque<i32> as Functor<i32>>::map(vecdeque, move |x| g(&f(x)));
 
-      // Composition law: functor.map(f).map(g) == functor.map(g ∘ f)
       prop_assert_eq!(result1, result2);
     }
 
     #[test]
     fn test_composition_law_nonempty(
       xs in prop::collection::vec(
-        any::<i64>().prop_filter("Value too large", |v| *v < 10000),
+        any::<i32>(),
         1..5
       ),
       f_idx in 0..INT_FUNCTIONS.len(),
       g_idx in 0..INT_FUNCTIONS.len()
     ) {
-      let vecdeque = to_vecdeque(xs.clone());
+      let vecdeque = to_vecdeque(xs);
       let f = INT_FUNCTIONS[f_idx];
       let g = INT_FUNCTIONS[g_idx];
 
-      // Create move closures to avoid borrowing
-      let f_captured = f;
-      let g_captured = g;
-
       // Apply f then g
-      let result1 = vecdeque.clone().map(f_captured).map(g_captured);
+      let result1 = <VecDeque<i32> as Functor<i32>>::map(
+        <VecDeque<i32> as Functor<i32>>::map(vecdeque.clone(), f),
+        g
+      );
 
-      // Apply composition of f and g
-      let result2 = vecdeque.clone().map(move |x| g_captured(&f_captured(x)));
+      // Apply g ∘ f directly
+      let result2 = <VecDeque<i32> as Functor<i32>>::map(vecdeque, move |x| g(&f(x)));
 
-      // Composition law: functor.map(f).map(g) == functor.map(g ∘ f)
       prop_assert_eq!(result1, result2);
     }
 
-    // Implementation-specific test: element-wise operations
     #[test]
-    fn test_element_wise_mapping(
+    fn test_map_with_simple_function(
       xs in prop::collection::vec(
-        any::<i64>().prop_filter("Value too large", |v| *v < 10000),
-        1..5
-      ),
-      f_idx in 0..INT_FUNCTIONS.len()
+        any::<i32>(),
+        0..5
+      )
     ) {
       let vecdeque = to_vecdeque(xs.clone());
-      let f = INT_FUNCTIONS[f_idx];
-      let result = vecdeque.clone().map(f);
+      let f = |x: &i32| x.saturating_add(1);
+      let result = <VecDeque<i32> as Functor<i32>>::map(vecdeque, f);
 
-      // Verify element-wise mapping
-      prop_assert_eq!(result.len(), vecdeque.len());
+      let expected: Vec<i32> = xs.iter().map(|x| x.saturating_add(1)).collect();
+      prop_assert_eq!(result, to_vecdeque(expected));
+    }
 
-      for (i, x) in xs.iter().enumerate() {
-        prop_assert_eq!(result.get(i).unwrap(), &f(x));
-      }
+    #[test]
+    fn test_map_preserves_length(
+      xs in prop::collection::vec(
+        any::<i32>(),
+        0..5
+      )
+    ) {
+      let vecdeque = to_vecdeque(xs.clone());
+      let f = |x: &i32| x.saturating_mul(2);
+      let result = <VecDeque<i32> as Functor<i32>>::map(vecdeque, f);
+
+      prop_assert_eq!(result.len(), xs.len());
+    }
+
+    #[test]
+    fn test_map_with_complex_function(
+      xs in prop::collection::vec(
+        any::<i32>(),
+        0..5
+      )
+    ) {
+      let vecdeque = to_vecdeque(xs.clone());
+      let f = |x: &i32| {
+        let doubled = x.saturating_mul(2);
+        if doubled > 0 { doubled.saturating_add(1) } else { doubled.saturating_sub(1) }
+      };
+      let result = <VecDeque<i32> as Functor<i32>>::map(vecdeque, f);
+
+      let expected: Vec<i32> = xs.iter().map(|x| {
+        let doubled = x.saturating_mul(2);
+        if doubled > 0 { doubled.saturating_add(1) } else { doubled.saturating_sub(1) }
+      }).collect();
+      prop_assert_eq!(result, to_vecdeque(expected));
     }
   }
 }

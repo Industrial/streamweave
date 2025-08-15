@@ -11,6 +11,15 @@ impl<T: CloneableThreadSafe> Functor<T> for Option<T> {
   {
     self.map(|x| f(&x))
   }
+
+  fn map_owned<U, F>(self, mut f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(T) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    self.map(|x| f(x))
+  }
 }
 
 #[cfg(test)]

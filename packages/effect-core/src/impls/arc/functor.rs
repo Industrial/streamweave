@@ -3,14 +3,24 @@ use crate::types::threadsafe::CloneableThreadSafe;
 use std::sync::Arc;
 
 impl<A: CloneableThreadSafe> Functor<A> for Arc<A> {
-  type HigherSelf<B: CloneableThreadSafe> = Arc<B>;
+  type HigherSelf<U: CloneableThreadSafe> = Arc<U>;
 
-  fn map<B, F>(self, mut f: F) -> Self::HigherSelf<B>
+  fn map<U, F>(self, mut f: F) -> Self::HigherSelf<U>
   where
-    F: for<'a> FnMut(&'a A) -> B + CloneableThreadSafe,
-    B: CloneableThreadSafe,
+    F: for<'a> FnMut(&'a A) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
   {
-    Arc::new(f(&self))
+    Arc::new(f(&*self))
+  }
+
+  fn map_owned<U, F>(self, mut f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(A) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    // We need to clone the Arc to get ownership of the inner value
+    Arc::new(f((*self).clone()))
   }
 }
 

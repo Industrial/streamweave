@@ -73,6 +73,16 @@ where
     // The actual mapping happens when using the extension trait
     CowFunctor::new()
   }
+
+  fn map_owned<U, F>(self, _f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(T) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    // The actual mapping happens when using the extension trait
+    CowFunctor::new()
+  }
 }
 
 /// A wrapper struct to store a mapping function for Cow values

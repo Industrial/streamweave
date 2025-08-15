@@ -9,21 +9,22 @@
 //! values. This is similar to the Vec monad, but with the performance
 //! characteristics of a double-ended queue.
 
-use crate::impls::vecdeque::category::VecDequeCategory;
 use crate::traits::monad::Monad;
 use crate::types::threadsafe::CloneableThreadSafe;
 use std::collections::VecDeque;
 
-// Implement Monad for VecDequeCategory, not for VecDeque directly
-impl<A: CloneableThreadSafe> Monad<A> for VecDequeCategory {
-  fn bind<B, F>(self, _f: F) -> Self::HigherSelf<B>
+// Implement Monad for VecDeque<T>
+impl<A: CloneableThreadSafe> Monad<A> for VecDeque<A> {
+  fn bind<B, F>(self, mut f: F) -> Self::HigherSelf<B>
   where
     F: for<'a> FnMut(&'a A) -> Self::HigherSelf<B> + CloneableThreadSafe,
     B: CloneableThreadSafe,
   {
-    // This is a placeholder implementation since binding
-    // is done through the extension trait
-    VecDeque::new()
+    let mut result = VecDeque::new();
+    for a in self {
+      result.extend(f(&a));
+    }
+    result
   }
 }
 
@@ -59,7 +60,7 @@ impl<A: CloneableThreadSafe> VecDequeMonadExt<A> for VecDeque<A> {
     F: for<'a> FnMut(&'a A) -> VecDeque<B> + CloneableThreadSafe,
     B: CloneableThreadSafe,
   {
-    self.bind(f)
+    <VecDeque<A> as Monad<A>>::bind(self, f)
   }
 }
 
@@ -101,7 +102,7 @@ mod tests {
     let a = 42i64;
     let f = add_one_to_many;
 
-    let left = VecDeque::<i64>::pure(a).bind(f);
+    let left = <VecDeque<i64> as Monad<i64>>::bind(VecDeque::<i64>::pure(a), f);
     let right = f(&a);
 
     assert_eq!(left, right);
@@ -115,14 +116,14 @@ mod tests {
     m.push_back(2);
     m.push_back(3);
 
-    let left = m.clone().bind(|x| VecDeque::<i64>::pure(*x));
+    let left = <VecDeque<i64> as Monad<i64>>::bind(m.clone(), |x| VecDeque::<i64>::pure(*x));
     let right = m;
 
     assert_eq!(left, right);
 
     // Also test with empty deque
     let empty: VecDeque<i64> = VecDeque::new();
-    let left = empty.clone().bind(|x| VecDeque::<i64>::pure(*x));
+    let left = <VecDeque<i64> as Monad<i64>>::bind(empty.clone(), |x| VecDeque::<i64>::pure(*x));
 
     assert_eq!(left, empty);
   }
@@ -137,22 +138,24 @@ mod tests {
     let f = add_one_to_many;
     let g = multiply_by;
 
-    let left = m.clone().bind(f).bind(g);
+    let left =
+      <VecDeque<i64> as Monad<i64>>::bind(<VecDeque<i64> as Monad<i64>>::bind(m.clone(), f), g);
 
-    let right = m.bind(|x| {
+    let right = <VecDeque<i64> as Monad<i64>>::bind(m, |x| {
       let f_result = add_one_to_many(x);
-      f_result.bind(multiply_by)
+      <VecDeque<i64> as Monad<i64>>::bind(f_result, multiply_by)
     });
 
     assert_eq!(left, right);
 
     // Also test with empty deque
     let empty: VecDeque<i64> = VecDeque::new();
-    let left = empty.clone().bind(f).bind(g);
+    let left =
+      <VecDeque<i64> as Monad<i64>>::bind(<VecDeque<i64> as Monad<i64>>::bind(empty.clone(), f), g);
 
-    let right = empty.bind(|x| {
+    let right = <VecDeque<i64> as Monad<i64>>::bind(empty, |x| {
       let f_result = add_one_to_many(x);
-      f_result.bind(multiply_by)
+      <VecDeque<i64> as Monad<i64>>::bind(f_result, multiply_by)
     });
 
     assert_eq!(left, right);
@@ -164,7 +167,10 @@ mod tests {
     let empty: VecDeque<i64> = VecDeque::new();
     let f = add_one_to_many;
 
-    assert_eq!(empty.bind(f), VecDeque::new());
+    assert_eq!(
+      <VecDeque<i64> as Monad<i64>>::bind(empty, f),
+      VecDeque::new()
+    );
   }
 
   // Test chaining operations with bind
@@ -175,7 +181,10 @@ mod tests {
     m.push_back(2);
 
     // 1 -> [2, 3], 2 -> [3, 4], then each multiplied by 2 and 3
-    let result = m.bind(add_one_to_many).bind(multiply_by);
+    let result = <VecDeque<i64> as Monad<i64>>::bind(
+      <VecDeque<i64> as Monad<i64>>::bind(m, add_one_to_many),
+      multiply_by,
+    );
 
     let mut expected = VecDeque::new();
     // From 1 -> 2 -> 4, 6
@@ -204,7 +213,7 @@ mod tests {
     m.push_back(5);
 
     // Should filter out negative and zero values
-    let result = m.clone().bind(filter_positive);
+    let result = <VecDeque<i64> as Monad<i64>>::bind(m.clone(), filter_positive);
 
     let mut expected = VecDeque::new();
     expected.push_back(3);
@@ -213,7 +222,10 @@ mod tests {
     assert_eq!(result, expected);
 
     // Chain with another operation
-    let result = m.bind(filter_positive).bind(multiply_by);
+    let result = <VecDeque<i64> as Monad<i64>>::bind(
+      <VecDeque<i64> as Monad<i64>>::bind(m, filter_positive),
+      multiply_by,
+    );
 
     let mut expected = VecDeque::new();
     expected.push_back(6);
@@ -232,8 +244,8 @@ mod tests {
     m.push_back(2);
 
     // flat_map should behave the same as bind
-    let bind_result = m.clone().bind(add_one_to_many);
-    let flat_map_result = m.flat_map(add_one_to_many);
+    let bind_result = <VecDeque<i64> as Monad<i64>>::bind(m.clone(), add_one_to_many);
+    let flat_map_result = <VecDeque<i64> as VecDequeMonadExt<i64>>::flat_map(m, add_one_to_many);
 
     assert_eq!(bind_result, flat_map_result);
   }
@@ -243,7 +255,7 @@ mod tests {
     // Left identity law
     #[test]
     fn prop_left_identity(a in -100..100i64) {
-      let left = VecDeque::<i64>::pure(a).bind(add_one_to_many);
+      let left = <VecDeque<i64> as Monad<i64>>::bind(VecDeque::<i64>::pure(a), add_one_to_many);
       let right = add_one_to_many(&a);
 
       prop_assert_eq!(left, right);
@@ -257,7 +269,7 @@ mod tests {
         m.push_back(x);
       }
 
-      let left = m.clone().bind(|x| VecDeque::<i64>::pure(*x));
+      let left = <VecDeque<i64> as Monad<i64>>::bind(m.clone(), |x| VecDeque::<i64>::pure(*x));
       let right = m;
 
       prop_assert_eq!(left, right);
@@ -274,11 +286,14 @@ mod tests {
       let f = add_one_to_many;
       let g = multiply_by;
 
-      let left = m.clone().bind(f).bind(g);
+      let left = <VecDeque<i64> as Monad<i64>>::bind(
+        <VecDeque<i64> as Monad<i64>>::bind(m.clone(), f),
+        g
+      );
 
-      let right = m.bind(|x| {
+      let right = <VecDeque<i64> as Monad<i64>>::bind(m, |x| {
         let f_result = add_one_to_many(x);
-        f_result.bind(multiply_by)
+        <VecDeque<i64> as Monad<i64>>::bind(f_result, multiply_by)
       });
 
       prop_assert_eq!(left, right);
@@ -294,7 +309,7 @@ mod tests {
 
       let empty_fn = |_: &i64| VecDeque::<i64>::new();
 
-      prop_assert_eq!(m.bind(empty_fn), VecDeque::<i64>::new());
+      prop_assert_eq!(<VecDeque<i64> as Monad<i64>>::bind(m, empty_fn), VecDeque::<i64>::new());
     }
 
     // Test that filtering works consistently
@@ -305,7 +320,7 @@ mod tests {
         m.push_back(x);
       }
 
-      let result = m.bind(filter_positive);
+      let result = <VecDeque<i64> as Monad<i64>>::bind(m, filter_positive);
 
       // Manually filter the original vector and create a VecDeque
       let mut expected = VecDeque::new();

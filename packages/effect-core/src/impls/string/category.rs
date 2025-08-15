@@ -73,7 +73,8 @@ impl<A, B> CharFn<A, B> {
   }
 }
 
-impl Category<char, char> for CharCategory {
+// Implement Category<U, U> for CharCategory for all U to satisfy Functor constraints
+impl<U: CloneableThreadSafe> Category<U, U> for CharCategory {
   type Morphism<A: CloneableThreadSafe, B: CloneableThreadSafe> = CharFn<A, B>;
 
   fn id<A: CloneableThreadSafe>() -> Self::Morphism<A, A> {

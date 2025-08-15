@@ -21,6 +21,17 @@ where
     // The actual mapping happens via the Category impl when using arr and apply
     BTreeMapCategory(PhantomData)
   }
+
+  fn map_owned<U, F>(self, _f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(V) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    // This is a placeholder implementation since BTreeMapCategory is just a proxy type
+    // The actual mapping happens via the Category impl when using arr and apply
+    BTreeMapCategory(PhantomData)
+  }
 }
 
 // Extension trait to make BTreeMap mapping more ergonomic

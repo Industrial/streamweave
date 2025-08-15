@@ -11,13 +11,30 @@ impl<S: CloneableThreadSafe, A: CloneableThreadSafe> Functor<A> for Store<S, A> 
     F: for<'a> FnMut(&'a A) -> U + CloneableThreadSafe,
     U: CloneableThreadSafe,
   {
-    // Create a new peek function that applies f to the result of the original peek
-    let original_peek = self.peek;
-    // Need to convert FnMut to Fn for Arc compatibility
-    let f = move |a: &A| (f.clone())(a);
-
+    let f = Arc::new(std::sync::Mutex::new(f));
     Store {
-      peek: Arc::new(move |s: &S| f(&(original_peek)(s))),
+      peek: Arc::new(move |s| {
+        let a = (self.peek)(s);
+        let mut f_guard = f.lock().unwrap();
+        f_guard(&a)
+      }),
+      pos: self.pos,
+    }
+  }
+
+  fn map_owned<U, F>(self, f: F) -> Self::HigherSelf<U>
+  where
+    F: FnMut(A) -> U + CloneableThreadSafe,
+    U: CloneableThreadSafe,
+    Self: Sized,
+  {
+    let f = Arc::new(std::sync::Mutex::new(f));
+    Store {
+      peek: Arc::new(move |s| {
+        let a = (self.peek)(s);
+        let mut f_guard = f.lock().unwrap();
+        f_guard(a)
+      }),
       pos: self.pos,
     }
   }

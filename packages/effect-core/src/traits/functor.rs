@@ -45,8 +45,5 @@ pub trait Functor<T: CloneableThreadSafe>: Category<T, T> {
   where
     F: FnMut(T) -> U + CloneableThreadSafe,
     U: CloneableThreadSafe,
-  {
-    // Default implementation that converts to the reference-based version
-    self.map(|x| f(x.clone()))
-  }
+    Self: Sized;
 }

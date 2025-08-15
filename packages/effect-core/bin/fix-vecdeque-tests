@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+# Script to fix all VecDeque test issues systematically
+
+echo "🔧 Fixing VecDeque test issues..."
+
+# Function to fix a specific file
+fix_file() {
+    local file=$1
+    echo "Fixing $file..."
+    
+    # Remove restrictive filters that cause "Too many local rejects"
+    sed -i 's/any::<i32>()\.prop_filter("Value too large", |v| \*v > -[0-9]* && \*v < [0-9]*)/any::<i32>()/g' "$file"
+    
+    # Fix function call issues (g(f(x)) -> g(&f(x)))
+    sed -i 's/|x| g(f(x))/move |x| g(\&f(x))/g' "$file"
+    
+    echo "✅ Fixed $file"
+}
+
+# Fix all VecDeque test files
+echo "Fixing VecDeque functor tests..."
+fix_file "src/impls/vecdeque/functor.rs"
+
+echo "Fixing VecDeque applicative tests..."
+fix_file "src/impls/vecdeque/applicative.rs"
+
+echo "Fixing VecDeque filterable tests..."
+fix_file "src/impls/vecdeque/filterable.rs"
+
+echo "Fixing VecDeque foldable tests..."
+fix_file "src/impls/vecdeque/foldable.rs"
+
+echo "🔍 Testing compilation..."
+cargo check --lib
+if [ $? -eq 0 ]; then
+    echo "✅ Compilation successful"
+else
+    echo "❌ Compilation failed"
+    exit 1
+fi
+
+echo "🧪 Running VecDeque tests..."
+cargo test impls::vecdeque --lib
+if [ $? -eq 0 ]; then
+    echo "✅ All VecDeque tests passed!"
+else
+    echo "❌ Some VecDeque tests still failing"
+    exit 1
+fi
+
+echo "🎉 VecDeque test fixes complete!" 
