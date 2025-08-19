@@ -62,3 +62,6 @@ path = "examples/01_basic_pipeline/main.rs"
 [[example]]
 name = "02_advanced_pipeline"
 path = "examples/02_advanced_pipeline/main.rs"
+
+[dev-dependencies]
+proptest = "1.4"

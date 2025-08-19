@@ -4,7 +4,7 @@ use crate::error::{
 use crate::traits::{input::Input, output::Output};
 use async_trait::async_trait;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TransformerConfig<T: std::fmt::Debug + Clone + Send + Sync> {
   pub error_strategy: ErrorStrategy<T>,
   pub name: Option<String>,
