@@ -25,8 +25,8 @@
     # Rust tools
     clippy
     rust-analyzer
+    rustc
     rustfmt
-    sea-orm-cli
     wasm-bindgen-cli
     wasm-pack
 
@@ -42,28 +42,37 @@
   ];
 
   # Pre-commit hooks
-  pre-commit.hooks = {
-    # Rust checks
-    cargo-check.enable = true;
-    clippy.enable = true;
-    rustfmt.enable = true;
+  git-hooks = {
+    hooks = {
+      cargo-check = {
+        enable = true;
+      };
 
-    # Build check
-    build = {
-      enable = true;
-      name = "cargo-build";
-      description = "Check if project builds successfully";
-      entry = "cargo build";
-      pass_filenames = false;
-    };
+      clippy = {
+        enable = true;
+      };
 
-    # Test
-    test = {
-      enable = true;
-      name = "cargo-test";
-      description = "Run cargo tests";
-      entry = "cargo test";
-      pass_filenames = false;
+      rustfmt = {
+        enable = true;
+      };
+
+      # Build check
+      build = {
+        enable = true;
+        name = "cargo-build";
+        description = "Check if project builds successfully";
+        entry = "cargo build";
+        pass_filenames = false;
+      };
+
+      # Test
+      test = {
+        enable = true;
+        name = "cargo-test";
+        description = "Run cargo tests";
+        entry = "cargo test";
+        pass_filenames = false;
+      };
     };
   };
 
@@ -74,6 +83,8 @@
   '';
 
   processes = {
-    cargo-watch.exec = "cargo watch -x check -x test";
+    cargo-watch = {
+      exec = "cargo watch -x check -x test";
+    };
   };
 }

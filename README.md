@@ -194,27 +194,3 @@ let (_, consumer) = PipelineBuilder::new()
 
 assert_eq!(consumer.collected, vec!["1", "2", "3"]);
 ```
-
-## 🌐 WASM Support
-
-🚧 **Planned**: StreamWeave is designed to compile cleanly to WebAssembly (WASM).
-- Use it for streaming pipelines in the browser or server
-- Works with `wasm-bindgen`, `wasm-pack`, or `wasmer`
-
-## 📚 Philosophy
-
-StreamWeave is built on the belief that:
-
-- **Streams are the natural shape of computation**
-- **Rust's type system is the configuration language**
-- **The best DSL is no DSL**
-
-## 🧠 Contributions Welcome
-
-StreamWeave is actively developed. Contributions, feedback, and experimentation are
-very welcome. Current focus areas:
-
-1. Implementing fan-out/fan-in operations
-2. Creating reusable pipeline components
-3. Adding WASM examples and documentation
-4. Implementing additional specialized transformers and consumers
