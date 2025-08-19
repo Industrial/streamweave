@@ -13,6 +13,8 @@
         "rust-analyzer"
         "rustc"
         "rustfmt"
+        # "llvm-tools-preview"
+        "llvm-tools"
       ];
       targets = [
         "wasm32-unknown-unknown"
@@ -39,6 +41,10 @@
 
     # Added from the code block
     cargo-watch
+
+    # # LLVM tools for coverage testing
+    # llvmPackages_18.llvm
+    # llvmPackages_18.libclang
   ];
 
   # Pre-commit hooks
