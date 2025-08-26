@@ -188,7 +188,7 @@ mod tests {
 
   #[test]
   fn test_transformer_config() {
-    let mut transformer = TestTransformer::<i32>::new().with_config(
+    let transformer = TestTransformer::<i32>::new().with_config(
       TransformerConfig::default()
         .with_name("test_transformer".to_string())
         .with_error_strategy(ErrorStrategy::Skip),
@@ -206,7 +206,7 @@ mod tests {
 
   #[test]
   fn test_transformer_error_handling() {
-    let mut transformer = TestTransformer::<i32>::new()
+    let transformer = TestTransformer::<i32>::new()
       .with_config(TransformerConfig::default().with_error_strategy(ErrorStrategy::Skip));
 
     let error = StreamError {
@@ -268,7 +268,7 @@ mod tests {
 
   #[test]
   fn test_custom_error_handler() {
-    let mut transformer = TestTransformer::<i32>::new().with_config(
+    let transformer = TestTransformer::<i32>::new().with_config(
       TransformerConfig::default()
         .with_error_strategy(ErrorStrategy::new_custom(|_| ErrorAction::Skip)),
     );

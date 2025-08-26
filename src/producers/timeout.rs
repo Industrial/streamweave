@@ -157,7 +157,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut producer = TimeoutProducer::new(Duration::from_millis(100), "test message")
+    let producer = TimeoutProducer::new(Duration::from_millis(100), "test message")
       .with_error_strategy(ErrorStrategy::Skip)
       .with_name("test_producer".to_string());
 

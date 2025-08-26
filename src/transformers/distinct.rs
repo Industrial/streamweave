@@ -152,7 +152,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = DistinctTransformer::new()
+    let transformer = DistinctTransformer::new()
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 

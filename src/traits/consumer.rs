@@ -417,7 +417,7 @@ mod tests {
 
   #[test]
   fn test_custom_error_handler() {
-    let mut consumer = CollectorConsumer::<i32>::new().with_config(ConsumerConfig {
+    let consumer = CollectorConsumer::<i32>::new().with_config(ConsumerConfig {
       error_strategy: ErrorStrategy::new_custom(|_| ErrorAction::Skip),
       name: "test_consumer".to_string(),
     });
@@ -452,7 +452,7 @@ mod tests {
 
   #[test]
   fn test_different_error_types() {
-    let mut consumer = CollectorConsumer::<i32>::new();
+    let consumer = CollectorConsumer::<i32>::new();
     let error = StreamError {
       source: Box::new(DifferentError("different error".to_string())),
       context: ErrorContext {
@@ -513,7 +513,7 @@ mod tests {
   #[tokio::test]
   async fn test_stream_backpressure() {
     let mut consumer = CollectorConsumer::<i32>::new();
-    let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+    let (tx, rx) = tokio::sync::mpsc::channel(1);
     let stream = Box::pin(tokio_stream::wrappers::ReceiverStream::new(rx));
     let handle = tokio::spawn(async move {
       consumer.consume(stream).await;
@@ -532,7 +532,7 @@ mod tests {
   #[tokio::test]
   async fn test_stream_timeout() {
     let mut consumer = CollectorConsumer::<i32>::new();
-    let (tx, rx) = tokio::sync::mpsc::channel(1);
+    let (_tx, rx) = tokio::sync::mpsc::channel(1);
     let stream = Box::pin(tokio_stream::wrappers::ReceiverStream::new(rx));
     let handle = tokio::spawn(async move {
       tokio::time::timeout(

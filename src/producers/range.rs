@@ -175,7 +175,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut producer = RangeProducer::new(0, 5, 1)
+    let producer = RangeProducer::new(0, 5, 1)
       .with_error_strategy(ErrorStrategy::Skip)
       .with_name("test_producer".to_string());
 

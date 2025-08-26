@@ -175,7 +175,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = GroupByTransformer::new(|x: &i32| x % 2)
+    let transformer = GroupByTransformer::new(|x: &i32| x % 2)
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 
@@ -219,7 +219,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_group_by_transformer_single_group() {
-    let mut transformer = GroupByTransformer::new(|x: &i32| 0);
+    let mut transformer = GroupByTransformer::new(|_x: &i32| 0);
     let input = stream::iter(vec![1, 2, 3, 4, 5]);
     let boxed_input = Box::pin(input);
 
@@ -552,7 +552,7 @@ mod tests {
 
     #[test]
     fn test_group_by_transformer_key_function_properties(
-      values in prop::collection::vec(0..100i32, 0..20)
+      _values in prop::collection::vec(0..100i32, 0..20)
     ) {
       // Test that grouping by a constant function produces one group
       let transformer = GroupByTransformer::<fn(&i32) -> i32, i32, i32>::new(|_| 42);

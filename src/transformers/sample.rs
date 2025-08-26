@@ -231,7 +231,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = SampleTransformer::new(0.5)
+    let transformer = SampleTransformer::new(0.5)
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 

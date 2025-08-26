@@ -147,7 +147,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = DelayTransformer::new(Duration::from_millis(100))
+    let transformer = DelayTransformer::new(Duration::from_millis(100))
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 

@@ -184,7 +184,7 @@ mod tests {
 
   #[test]
   fn test_producer_config() {
-    let mut producer = TestProducer::new(vec![1, 2, 3]).with_config(
+    let producer = TestProducer::new(vec![1, 2, 3]).with_config(
       ProducerConfig::default()
         .with_name("test_producer".to_string())
         .with_error_strategy(ErrorStrategy::Skip),
@@ -198,7 +198,7 @@ mod tests {
 
   #[test]
   fn test_producer_error_handling() {
-    let mut producer = TestProducer::new(vec![1, 2, 3])
+    let producer = TestProducer::new(vec![1, 2, 3])
       .with_config(ProducerConfig::default().with_error_strategy(ErrorStrategy::Skip));
     let error = StreamError {
       source: Box::new(TestError("test error".to_string())),
@@ -227,7 +227,7 @@ mod tests {
 
   #[test]
   fn test_different_error_strategies() {
-    let mut producer = TestProducer::new(vec![1, 2, 3])
+    let producer = TestProducer::new(vec![1, 2, 3])
       .with_config(ProducerConfig::default().with_error_strategy(ErrorStrategy::Stop));
     let error = StreamError {
       source: Box::new(TestError("test error".to_string())),
@@ -245,7 +245,7 @@ mod tests {
     };
     assert!(matches!(producer.handle_error(&error), ErrorAction::Stop));
 
-    let mut producer =
+    let producer =
       producer.with_config(ProducerConfig::default().with_error_strategy(ErrorStrategy::Retry(3)));
     assert!(matches!(producer.handle_error(&error), ErrorAction::Retry));
   }

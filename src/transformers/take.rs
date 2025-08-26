@@ -272,7 +272,7 @@ mod tests {
   // Test take with skip error strategy
   #[tokio::test]
   async fn test_take_with_skip_error_strategy() {
-    let mut transformer = TakeTransformer::<i32>::new(2)
+    let transformer = TakeTransformer::<i32>::new(2)
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("skip_transformer".to_string());
 
@@ -284,7 +284,7 @@ mod tests {
   // Test take with empty name
   #[tokio::test]
   async fn test_take_with_empty_name() {
-    let mut transformer = TakeTransformer::<i32>::new(2).with_name("".to_string());
+    let transformer = TakeTransformer::<i32>::new(2).with_name("".to_string());
 
     let config = transformer.config();
     assert_eq!(config.name(), Some("".to_string()));
@@ -294,7 +294,7 @@ mod tests {
   #[tokio::test]
   async fn test_take_with_very_long_name() {
     let long_name = "a".repeat(1000);
-    let mut transformer = TakeTransformer::<i32>::new(2).with_name(long_name.clone());
+    let transformer = TakeTransformer::<i32>::new(2).with_name(long_name.clone());
 
     let config = transformer.config();
     assert_eq!(config.name(), Some(long_name));
@@ -304,7 +304,7 @@ mod tests {
   #[tokio::test]
   async fn test_take_with_unicode_name() {
     let unicode_name = "🚀火箭🚀".to_string();
-    let mut transformer = TakeTransformer::<i32>::new(2).with_name(unicode_name.clone());
+    let transformer = TakeTransformer::<i32>::new(2).with_name(unicode_name.clone());
 
     let config = transformer.config();
     assert_eq!(config.name(), Some(unicode_name));
@@ -314,7 +314,7 @@ mod tests {
   #[tokio::test]
   async fn test_take_with_special_characters_name() {
     let special_name = "!@#$%^&*()_+-=[]{}|;':\",./<>?".to_string();
-    let mut transformer = TakeTransformer::<i32>::new(2).with_name(special_name.clone());
+    let transformer = TakeTransformer::<i32>::new(2).with_name(special_name.clone());
 
     let config = transformer.config();
     assert_eq!(config.name(), Some(special_name));

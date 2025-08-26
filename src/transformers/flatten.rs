@@ -126,7 +126,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = FlattenTransformer::new()
+    let transformer = FlattenTransformer::new()
       .with_error_strategy(ErrorStrategy::<Vec<i32>>::Skip)
       .with_name("test_transformer".to_string());
 

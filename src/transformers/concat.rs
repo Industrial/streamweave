@@ -141,7 +141,7 @@ mod tests {
   #[tokio::test]
   async fn test_error_handling_strategies() {
     let other = stream::iter(vec![4]);
-    let mut transformer = ConcatTransformer::new(Box::pin(other))
+    let transformer = ConcatTransformer::new(Box::pin(other))
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 

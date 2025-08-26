@@ -139,7 +139,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = ChunkTransformer::new(2)
+    let transformer = ChunkTransformer::new(2)
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 
@@ -266,7 +266,7 @@ mod tests {
   #[tokio::test]
   async fn test_chunk_with_custom_error_strategy() {
     let custom_handler = |_error: &StreamError<i32>| ErrorAction::Skip;
-    let mut transformer = ChunkTransformer::<i32>::new(2)
+    let transformer = ChunkTransformer::<i32>::new(2)
       .with_error_strategy(ErrorStrategy::new_custom(custom_handler))
       .with_name("custom_transformer".to_string());
 
@@ -277,7 +277,7 @@ mod tests {
   // Test chunk with retry error strategy
   #[tokio::test]
   async fn test_chunk_with_retry_error_strategy() {
-    let mut transformer = ChunkTransformer::<i32>::new(2)
+    let transformer = ChunkTransformer::<i32>::new(2)
       .with_error_strategy(ErrorStrategy::<i32>::Retry(3))
       .with_name("retry_transformer".to_string());
 
@@ -289,7 +289,7 @@ mod tests {
   // Test chunk with stop error strategy
   #[tokio::test]
   async fn test_chunk_with_stop_error_strategy() {
-    let mut transformer = ChunkTransformer::<i32>::new(2)
+    let transformer = ChunkTransformer::<i32>::new(2)
       .with_error_strategy(ErrorStrategy::<i32>::Stop)
       .with_name("stop_transformer".to_string());
 
@@ -301,7 +301,7 @@ mod tests {
   // Test chunk with skip error strategy
   #[tokio::test]
   async fn test_chunk_with_skip_error_strategy() {
-    let mut transformer = ChunkTransformer::<i32>::new(2)
+    let transformer = ChunkTransformer::<i32>::new(2)
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("skip_transformer".to_string());
 
@@ -313,7 +313,7 @@ mod tests {
   // Test chunk with empty name
   #[tokio::test]
   async fn test_chunk_with_empty_name() {
-    let mut transformer = ChunkTransformer::<i32>::new(2).with_name("".to_string());
+    let transformer = ChunkTransformer::<i32>::new(2).with_name("".to_string());
 
     let config = transformer.config();
     assert_eq!(config.name(), Some("".to_string()));
@@ -323,7 +323,7 @@ mod tests {
   #[tokio::test]
   async fn test_chunk_with_very_long_name() {
     let long_name = "a".repeat(1000);
-    let mut transformer = ChunkTransformer::<i32>::new(2).with_name(long_name.clone());
+    let transformer = ChunkTransformer::<i32>::new(2).with_name(long_name.clone());
 
     let config = transformer.config();
     assert_eq!(config.name(), Some(long_name));
@@ -333,7 +333,7 @@ mod tests {
   #[tokio::test]
   async fn test_chunk_with_unicode_name() {
     let unicode_name = "🚀火箭🚀".to_string();
-    let mut transformer = ChunkTransformer::<i32>::new(2).with_name(unicode_name.clone());
+    let transformer = ChunkTransformer::<i32>::new(2).with_name(unicode_name.clone());
 
     let config = transformer.config();
     assert_eq!(config.name(), Some(unicode_name));
@@ -343,7 +343,7 @@ mod tests {
   #[tokio::test]
   async fn test_chunk_with_special_characters_name() {
     let special_name = "!@#$%^&*()_+-=[]{}|;':\",./<>?".to_string();
-    let mut transformer = ChunkTransformer::<i32>::new(2).with_name(special_name.clone());
+    let transformer = ChunkTransformer::<i32>::new(2).with_name(special_name.clone());
 
     let config = transformer.config();
     assert_eq!(config.name(), Some(special_name));

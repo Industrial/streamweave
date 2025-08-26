@@ -209,7 +209,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = ReduceTransformer::new(0, |acc, x| acc + x)
+    let transformer = ReduceTransformer::new(0, |acc, x| acc + x)
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 

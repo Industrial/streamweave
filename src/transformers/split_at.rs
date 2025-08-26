@@ -560,7 +560,7 @@ mod tests {
 
     #[test]
     fn test_split_at_transformer_splitting_properties(
-      values in prop::collection::vec(0..100i32, 0..50)
+      _values in prop::collection::vec(0..100i32, 0..50)
     ) {
       // Test that the transformer can handle this data structure
       let transformer = SplitAtTransformer::<i32>::new(2);

@@ -155,7 +155,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = SortTransformer::new()
+    let transformer = SortTransformer::new()
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 
@@ -539,7 +539,7 @@ mod tests {
 
     #[test]
     fn test_sort_transformer_sorting_properties(
-      values in prop::collection::vec(0..100i32, 0..50)
+      _values in prop::collection::vec(0..100i32, 0..50)
     ) {
       // Test that the transformer can handle this data structure
       let transformer = SortTransformer::<i32>::new();

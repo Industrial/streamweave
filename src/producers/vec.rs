@@ -144,7 +144,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut producer = VecProducer::new(vec![1, 2, 3])
+    let producer = VecProducer::new(vec![1, 2, 3])
       .with_error_strategy(ErrorStrategy::Skip)
       .with_name("test_producer".to_string());
 

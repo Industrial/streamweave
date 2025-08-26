@@ -154,7 +154,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = ZipTransformer::new()
+    let transformer = ZipTransformer::new()
       .with_error_strategy(ErrorStrategy::<Vec<i32>>::Skip)
       .with_name("test_transformer".to_string());
 
@@ -545,8 +545,8 @@ mod tests {
 
     #[test]
     fn test_zip_transformer_vector_processing(
-      vector_count in 0..10usize,
-      elements_per_vector in 0..10usize
+      _vector_count in 0..10usize,
+      _elements_per_vector in 0..10usize
     ) {
       // Test that the transformer can handle this data structure
       let transformer = ZipTransformer::<i32>::new();
