@@ -49,7 +49,7 @@ where
     self
   }
 
-  async fn is_circuit_open(&self) -> bool {
+  async fn _is_circuit_open(&self) -> bool {
     let failure_count = self.failure_count.load(Ordering::SeqCst);
     if failure_count >= self.failure_threshold {
       let last_failure = self.last_failure_time.read().await;
@@ -68,7 +68,7 @@ where
     }
   }
 
-  async fn record_failure(&self) {
+  async fn _record_failure(&self) {
     self.failure_count.fetch_add(1, Ordering::SeqCst);
     let mut last_failure = self.last_failure_time.write().await;
     *last_failure = Some(Instant::now());
@@ -99,14 +99,14 @@ where
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let failure_count = self.failure_count.clone();
     let last_failure_time = self.last_failure_time.clone();
-    let failure_threshold = self.failure_threshold;
-    let reset_timeout = self.reset_timeout;
+    let _failure_threshold = self.failure_threshold;
+    let _reset_timeout = self.reset_timeout;
 
     Box::pin(
       input
         .map(move |item| {
           let failure_count = failure_count.clone();
-          let last_failure_time = last_failure_time.clone();
+          let _last_failure_time = last_failure_time.clone();
           async move {
             failure_count.store(0, Ordering::SeqCst);
             item

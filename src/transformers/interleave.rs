@@ -5,7 +5,7 @@ use crate::traits::{
   transformer::{Transformer, TransformerConfig},
 };
 use async_trait::async_trait;
-use futures::{Stream, StreamExt};
+use futures::Stream;
 use std::pin::Pin;
 
 pub struct InterleaveTransformer<T>

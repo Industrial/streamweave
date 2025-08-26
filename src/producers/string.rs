@@ -3,7 +3,7 @@ use crate::traits::{
   output::Output,
   producer::{Producer, ProducerConfig},
 };
-use futures::{Stream, StreamExt};
+use futures::Stream;
 use std::pin::Pin;
 
 pub struct StringProducer {

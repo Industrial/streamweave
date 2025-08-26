@@ -3,13 +3,13 @@ use crate::traits::{
   output::Output,
   producer::{Producer, ProducerConfig},
 };
-use futures::{Stream, StreamExt};
+use futures::Stream;
 use std::pin::Pin;
 use std::process::Stdio;
-use std::sync::Arc;
+
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::{Child, Command};
-use tokio_stream::wrappers::LinesStream;
+use tokio::process::Command;
+
 
 pub struct CommandProducer {
   command: String,
@@ -46,7 +46,7 @@ impl Producer for CommandProducer {
   fn produce(&mut self) -> Self::OutputStream {
     let command_str = self.command.clone();
     let args = self.args.clone();
-    let config = self.config.clone();
+    let _config = self.config.clone();
 
     // Create a stream that first spawns the command and then yields its output
     let stream = async_stream::stream! {

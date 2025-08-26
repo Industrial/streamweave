@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
-use tokio::sync::mpsc::{Receiver, Sender, channel};
+use tokio::sync::mpsc::Sender;
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::traits::{
@@ -101,6 +101,7 @@ where
 mod tests {
   use super::*;
   use futures::stream;
+  use tokio::sync::mpsc::{channel, Receiver};
 
   #[tokio::test]
   async fn test_channel_consumer_basic() {

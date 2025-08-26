@@ -48,7 +48,7 @@ where
     self
   }
 
-  async fn check_rate_limit(&self) -> Result<(), StreamError<T>> {
+  async fn _check_rate_limit(&self) -> Result<(), StreamError<T>> {
     let now = Instant::now();
     let mut window_start = self.window_start.write().await;
 

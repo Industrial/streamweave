@@ -4,7 +4,7 @@ use crate::traits::{
   output::Output,
   transformer::{Transformer, TransformerConfig},
 };
-use async_stream::stream;
+
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;

@@ -1,10 +1,6 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::traits::input::Input;
 use async_trait::async_trait;
-use futures::StreamExt;
-use std::pin::Pin;
-use std::sync::{Arc, Mutex};
-use tokio_stream::Stream;
 
 #[derive(Debug, Clone)]
 pub struct ConsumerConfig<T: std::fmt::Debug + Clone + Send + Sync> {

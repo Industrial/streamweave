@@ -4,7 +4,7 @@ use crate::traits::{
   producer::{Producer, ProducerConfig},
 };
 use async_trait::async_trait;
-use futures::{Stream, StreamExt};
+use futures::Stream;
 use std::pin::Pin;
 
 pub struct ArrayProducer<T: Send + Sync + 'static + Clone + std::fmt::Debug, const N: usize> {

@@ -7,7 +7,7 @@ use crate::traits::{
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::collections::HashSet;
-use std::fmt::Debug;
+
 use std::hash::Hash;
 use std::pin::Pin;
 
@@ -64,7 +64,7 @@ where
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     Box::pin(
-      futures::stream::unfold((input, self.seen.clone()), |mut state| async move {
+      futures::stream::unfold((input, self.seen.clone()), |state| async move {
         let (mut input, mut seen) = state;
 
         match input.next().await {

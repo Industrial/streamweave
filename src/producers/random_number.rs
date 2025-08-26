@@ -58,7 +58,7 @@ impl Producer for RandomNumberProducer {
     let range = self.range.clone();
     let interval_duration = self.interval;
     let count = self.count;
-    let mut rng = StdRng::from_entropy();
+    let rng = StdRng::from_entropy();
 
     let initial_state = (rng, range, time::interval(interval_duration));
 

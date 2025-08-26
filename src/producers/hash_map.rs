@@ -7,7 +7,7 @@ use futures::{Stream, stream};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::pin::Pin;
-use std::sync::Arc;
+
 
 pub struct HashMapProducer<K, V>
 where

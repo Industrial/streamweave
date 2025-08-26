@@ -8,7 +8,7 @@ use async_stream;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
-use tokio::time::{Duration, Instant, timeout};
+use tokio::time::Duration;
 
 pub struct TimeoutTransformer<T: std::fmt::Debug + Clone + Send + Sync + 'static> {
   duration: Duration,

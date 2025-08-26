@@ -10,9 +10,9 @@ pub struct Complete<P, T, C>(PhantomData<(P, T, C)>);
 
 // Pipeline builder with state and error handling
 pub struct PipelineBuilder<State> {
-  producer_stream: Option<Box<dyn std::any::Any + Send + 'static>>,
+  _producer_stream: Option<Box<dyn std::any::Any + Send + 'static>>,
   transformer_stream: Option<Box<dyn std::any::Any + Send + 'static>>,
-  consumer: Option<Box<dyn std::any::Any + Send + 'static>>,
+  _consumer: Option<Box<dyn std::any::Any + Send + 'static>>,
   error_strategy: ErrorStrategy<()>,
   _state: State,
 }
@@ -28,9 +28,9 @@ where
   T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
   C::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
-  producer_stream: Option<P::OutputStream>,
+  _producer_stream: Option<P::OutputStream>,
   transformer_stream: Option<T::OutputStream>,
-  consumer: Option<C>,
+  _consumer: Option<C>,
   error_strategy: ErrorStrategy<()>,
 }
 
@@ -38,9 +38,9 @@ where
 impl PipelineBuilder<Empty> {
   pub fn new() -> Self {
     PipelineBuilder {
-      producer_stream: None,
+      _producer_stream: None,
       transformer_stream: None,
-      consumer: None,
+      _consumer: None,
       error_strategy: ErrorStrategy::Stop,
       _state: Empty,
     }
@@ -58,12 +58,12 @@ impl PipelineBuilder<Empty> {
     P::OutputStream: 'static,
   {
     let stream = producer.produce();
-    self.producer_stream = Some(Box::new(stream));
+    self._producer_stream = Some(Box::new(stream));
 
     PipelineBuilder {
-      producer_stream: self.producer_stream,
+      _producer_stream: self._producer_stream,
       transformer_stream: None,
-      consumer: None,
+      _consumer: None,
       error_strategy: self.error_strategy,
       _state: HasProducer(PhantomData),
     }
@@ -92,7 +92,7 @@ where
     T::OutputStream: 'static,
   {
     let producer_stream = self
-      .producer_stream
+      ._producer_stream
       .take()
       .unwrap()
       .downcast::<P::OutputStream>()
@@ -102,9 +102,9 @@ where
     self.transformer_stream = Some(Box::new(transformer_stream));
 
     PipelineBuilder {
-      producer_stream: None,
+      _producer_stream: None,
       transformer_stream: self.transformer_stream,
-      consumer: None,
+      _consumer: None,
       error_strategy: self.error_strategy,
       _state: HasTransformer(PhantomData),
     }
@@ -140,15 +140,15 @@ where
     self.transformer_stream = Some(Box::new(new_stream));
 
     PipelineBuilder {
-      producer_stream: None,
+      _producer_stream: None,
       transformer_stream: self.transformer_stream,
-      consumer: None,
+      _consumer: None,
       error_strategy: self.error_strategy,
       _state: HasTransformer(PhantomData),
     }
   }
 
-  pub fn consumer<C>(mut self, consumer: C) -> Pipeline<P, T, C>
+  pub fn _consumer<C>(mut self, consumer: C) -> Pipeline<P, T, C>
   where
     C: Consumer + 'static,
     C::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
@@ -162,9 +162,9 @@ where
       .unwrap();
 
     Pipeline {
-      producer_stream: None,
+      _producer_stream: None,
       transformer_stream: Some(*transformer_stream),
-      consumer: Some(consumer),
+      _consumer: Some(consumer),
       error_strategy: self.error_strategy,
     }
   }
@@ -185,7 +185,7 @@ where
     self
   }
 
-  async fn handle_error(&self, error: StreamError<()>) -> Result<ErrorAction, PipelineError<()>> {
+  async fn _handle_error(&self, error: StreamError<()>) -> Result<ErrorAction, PipelineError<()>> {
     match &self.error_strategy {
       ErrorStrategy::Stop => Ok(ErrorAction::Stop),
       ErrorStrategy::Skip => Ok(ErrorAction::Skip),
@@ -205,7 +205,7 @@ where
     C::InputStream: From<T::OutputStream>,
   {
     let transformer_stream = self.transformer_stream.take().unwrap();
-    let mut consumer = self.consumer.take().unwrap();
+    let mut consumer = self._consumer.take().unwrap();
 
     consumer.consume(transformer_stream.into()).await;
     Ok(((), consumer))

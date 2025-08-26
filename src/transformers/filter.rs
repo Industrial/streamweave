@@ -67,7 +67,7 @@ where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    let mut predicate = self.predicate.clone();
+    let predicate = self.predicate.clone();
     Box::pin(input.filter(move |item| {
       let mut predicate = predicate.clone();
       futures::future::ready(predicate(item))

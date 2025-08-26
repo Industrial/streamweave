@@ -10,7 +10,7 @@ use futures::{Stream, StreamExt};
 use std::pin::Pin;
 use std::time::Duration;
 use tokio::time;
-use tokio::time::timeout;
+
 
 pub struct DebounceTransformer<T>
 where
@@ -70,7 +70,7 @@ where
 
     Box::pin(async_stream::stream! {
       let mut last_item: Option<T> = None;
-      let mut delay = time::sleep(duration);
+      let delay = time::sleep(duration);
       tokio::pin!(delay);
 
       let mut input = input;

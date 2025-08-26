@@ -91,8 +91,8 @@ where
     let backoff = self.backoff;
 
     Box::pin(input.then(move |item| {
-      let max_retries = max_retries;
-      let backoff = backoff;
+      let _max_retries = max_retries;
+      let _backoff = backoff;
       async move {
         // For now, just pass through items without actual retry logic
         // This is a placeholder implementation - real retry logic would need

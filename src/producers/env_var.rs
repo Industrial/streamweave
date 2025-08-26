@@ -4,10 +4,7 @@ use crate::traits::{
   producer::{Producer, ProducerConfig},
 };
 use futures::{Stream, stream};
-use std::collections::HashMap;
-use std::env;
 use std::pin::Pin;
-use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct EnvVarProducer {
@@ -54,7 +51,7 @@ impl Output for EnvVarProducer {
 
 impl Producer for EnvVarProducer {
   fn produce(&mut self) -> Self::OutputStream {
-    let config = self.config.clone();
+    let _config = self.config.clone();
     let vars = match &self.filter {
       Some(filter) => {
         let vars: Vec<_> = filter
