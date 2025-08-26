@@ -117,7 +117,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_hash_set_consumer_empty_input() {
-    let consumer = HashSetConsumer::new();
+    let mut consumer = HashSetConsumer::new();
     let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
