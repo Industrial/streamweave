@@ -150,7 +150,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = SplitAtTransformer::new(2)
+    let transformer = SplitAtTransformer::new(2)
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 

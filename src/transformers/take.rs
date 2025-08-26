@@ -260,7 +260,7 @@ mod tests {
   // Test take with stop error strategy
   #[tokio::test]
   async fn test_take_with_stop_error_strategy() {
-    let mut transformer = TakeTransformer::<i32>::new(2)
+    let transformer = TakeTransformer::<i32>::new(2)
       .with_error_strategy(ErrorStrategy::<i32>::Stop)
       .with_name("stop_transformer".to_string());
 
