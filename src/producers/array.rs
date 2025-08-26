@@ -158,7 +158,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_array_producer_with_error() {
-    let mut producer = ArrayProducer::new([1, 2, 3]);
+    let producer = ArrayProducer::new([1, 2, 3]);
     let error = StreamError::new(
       Box::new(TestError("test error".to_string())),
       ErrorContext {
@@ -179,7 +179,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut producer = ArrayProducer::new([1, 2, 3])
+    let producer = ArrayProducer::new([1, 2, 3])
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_producer".to_string());
 

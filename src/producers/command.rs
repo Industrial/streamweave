@@ -174,7 +174,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut producer = CommandProducer::new("echo", vec!["test"])
+    let producer = CommandProducer::new("echo", vec!["test"])
       .with_error_strategy(ErrorStrategy::Skip)
       .with_name("test_producer".to_string());
 

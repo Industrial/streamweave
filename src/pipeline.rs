@@ -666,7 +666,7 @@ mod tests {
       let transformer = DoubleTransformer::new();
       let consumer = CollectConsumer::new();
 
-      let pipeline = PipelineBuilder::new()
+      let _pipeline = PipelineBuilder::new()
         .producer(producer)
         .transformer(transformer)
         ._consumer(consumer);
@@ -697,9 +697,9 @@ mod tests {
       values in prop::collection::vec(-50..50i32, 0..20)
     ) {
       // Test that multiple transformers can be chained
-      let producer = NumberProducer::new(values.clone());
-      let transformer1 = DoubleTransformer::new();
-      let transformer2 = AddTransformer::new(10);
+      let _producer = NumberProducer::new(values.clone());
+      let _transformer1 = DoubleTransformer::new();
+      let _transformer2 = AddTransformer::new(10);
 
       // We can't easily test the full pipeline in proptest, but we can verify
       // that transformers can be created and chained
@@ -770,8 +770,8 @@ mod tests {
     let pipeline2 = builder2._consumer(consumer2);
 
     // Both pipelines should work independently
-    let ((), mut consumer1) = pipeline1.run().await.unwrap();
-    let ((), mut consumer2) = pipeline2.run().await.unwrap();
+    let ((), consumer1) = pipeline1.run().await.unwrap();
+    let ((), consumer2) = pipeline2.run().await.unwrap();
 
     assert_eq!(consumer1.items, vec![2, 4, 6]);
     assert_eq!(consumer2.items, vec![2, 4, 6]);

@@ -148,7 +148,6 @@ mod tests {
   use super::*;
   use futures::StreamExt;
   use futures::stream;
-  use tokio::time::sleep;
 
   #[tokio::test]
   async fn test_debounce_basic() {

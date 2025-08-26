@@ -129,8 +129,8 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let (tx, rx) = tokio::sync::mpsc::channel(10);
-    let mut producer = ChannelProducer::new(rx)
+    let (_tx, rx) = tokio::sync::mpsc::channel(10);
+    let producer = ChannelProducer::new(rx)
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_producer".to_string());
 

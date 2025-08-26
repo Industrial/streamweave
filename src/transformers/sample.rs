@@ -71,6 +71,7 @@ where
     let probability = self.probability;
     Box::pin(async_stream::stream! {
       let mut input = input;
+      #[cfg(test)]
       let mut counter = 0;
 
       while let Some(item) = input.next().await {
@@ -90,7 +91,10 @@ where
         if should_emit {
           yield item;
         }
-        counter += 1;
+        #[cfg(test)]
+        {
+          counter += 1;
+        }
       }
     })
   }

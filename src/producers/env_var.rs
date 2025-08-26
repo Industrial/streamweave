@@ -165,7 +165,7 @@ mod tests {
 
   impl Producer for TestEnvVarProducer {
     fn produce(&mut self) -> Self::OutputStream {
-      let config = self.config.clone();
+      let _config = self.config.clone();
       let vars = match &self.filter {
         Some(filter) => {
           let vars: Vec<_> = filter
@@ -293,7 +293,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut producer = EnvVarProducer::new()
+    let producer = EnvVarProducer::new()
       .with_error_strategy(ErrorStrategy::Skip)
       .with_name("test_producer".to_string());
 

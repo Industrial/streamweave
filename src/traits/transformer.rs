@@ -115,11 +115,9 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::error::{ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError};
+  use crate::error::{ErrorAction, ErrorContext, ErrorStrategy, StreamError};
   use futures::StreamExt;
-  use std::fmt;
   use std::pin::Pin;
-  use std::sync::{Arc, Mutex};
   use tokio_stream::Stream;
 
   // Test error type

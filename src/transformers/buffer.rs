@@ -113,8 +113,6 @@ mod tests {
   use super::*;
   use futures::StreamExt;
   use futures::stream;
-  use std::time::Duration;
-  use tokio::time::sleep;
 
   #[tokio::test]
   async fn test_buffer_basic() {
