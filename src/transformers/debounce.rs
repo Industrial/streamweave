@@ -11,7 +11,6 @@ use std::pin::Pin;
 use std::time::Duration;
 use tokio::time;
 
-
 pub struct DebounceTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,

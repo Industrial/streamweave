@@ -9,7 +9,6 @@ use futures::{Stream, StreamExt};
 use std::collections::VecDeque;
 use std::pin::Pin;
 
-
 pub struct WindowTransformer<T: std::fmt::Debug + Clone + Send + Sync + 'static> {
   size: usize,
   config: TransformerConfig<T>,

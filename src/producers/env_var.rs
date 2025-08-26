@@ -119,7 +119,9 @@ mod tests {
   use super::*;
   use futures::StreamExt;
   use proptest::prelude::*;
-  use std::sync::Mutex;
+  use std::collections::HashMap;
+  use std::env;
+  use std::sync::{Arc, Mutex};
 
   // Global state for environment variable testing
   static ENV_LOCK: Mutex<()> = Mutex::new(());

@@ -134,7 +134,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_during_consumption() {
-    let mut consumer = CommandConsumer::new("echo".to_string(), vec![])
+    let consumer = CommandConsumer::new("echo".to_string(), vec![])
       .with_error_strategy(ErrorStrategy::<&str>::Skip)
       .with_name("test_consumer".to_string());
 

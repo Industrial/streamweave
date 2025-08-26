@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .transformer(RateLimitTransformer::new(1, Duration::from_secs(1)))
     .transformer(CircuitBreakerTransformer::new(3, Duration::from_secs(5)))
     .transformer(RetryTransformer::new(3, Duration::from_millis(100)))
-    .consumer(
+    ._consumer(
       FileConsumer::new(output_file.path().to_str().unwrap().to_string())
         .with_error_strategy(ErrorStrategy::<String>::Stop),
     )

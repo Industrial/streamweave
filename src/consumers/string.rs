@@ -134,7 +134,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut consumer = StringConsumer::new()
+    let consumer = StringConsumer::new()
       .with_error_strategy(ErrorStrategy::<String>::Skip)
       .with_name("test_consumer".to_string());
 

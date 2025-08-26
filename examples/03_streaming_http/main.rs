@@ -107,7 +107,7 @@ async fn process_request_through_streamweave(
         }
       },
     ))
-    .consumer(consumer)
+    ._consumer(consumer)
     .run()
     .await
     .unwrap();

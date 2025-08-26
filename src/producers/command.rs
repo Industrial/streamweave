@@ -10,7 +10,6 @@ use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
-
 pub struct CommandProducer {
   command: String,
   args: Vec<String>,

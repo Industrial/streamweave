@@ -8,7 +8,6 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::pin::Pin;
 
-
 pub struct HashMapProducer<K, V>
 where
   K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,

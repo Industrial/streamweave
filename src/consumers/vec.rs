@@ -140,7 +140,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut consumer = VecConsumer::new()
+    let consumer = VecConsumer::new()
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_consumer".to_string());
 

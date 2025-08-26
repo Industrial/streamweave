@@ -124,7 +124,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut transformer = TakeTransformer::new(3)
+    let transformer = TakeTransformer::new(3)
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_transformer".to_string());
 
@@ -237,7 +237,7 @@ mod tests {
   #[tokio::test]
   async fn test_take_with_custom_error_strategy() {
     let custom_handler = |_error: &StreamError<i32>| ErrorAction::Skip;
-    let mut transformer = TakeTransformer::<i32>::new(2)
+    let transformer = TakeTransformer::<i32>::new(2)
       .with_error_strategy(ErrorStrategy::new_custom(custom_handler))
       .with_name("custom_transformer".to_string());
 
@@ -248,7 +248,7 @@ mod tests {
   // Test take with retry error strategy
   #[tokio::test]
   async fn test_take_with_retry_error_strategy() {
-    let mut transformer = TakeTransformer::<i32>::new(2)
+    let transformer = TakeTransformer::<i32>::new(2)
       .with_error_strategy(ErrorStrategy::<i32>::Retry(3))
       .with_name("retry_transformer".to_string());
 

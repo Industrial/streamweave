@@ -106,7 +106,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_array_consumer_basic() {
-    let consumer = ArrayConsumer::<i32, 3>::new();
+    let mut consumer = ArrayConsumer::<i32, 3>::new();
     let input = stream::iter(vec![1, 2, 3]);
     let boxed_input = Box::pin(input);
 

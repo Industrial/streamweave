@@ -101,7 +101,7 @@ where
 mod tests {
   use super::*;
   use futures::stream;
-  use tokio::sync::mpsc::{channel, Receiver};
+  use tokio::sync::mpsc::{Receiver, channel};
 
   #[tokio::test]
   async fn test_channel_consumer_basic() {

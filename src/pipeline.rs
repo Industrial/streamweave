@@ -440,7 +440,7 @@ mod tests {
       .transformer(transformer2)
       ._consumer(consumer);
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     // First transformer: [1,2,3] -> [2,4,6]
     // Second transformer: [2,4,6] -> [12,14,16]
     assert_eq!(consumer.items, vec![12, 14, 16]);
@@ -459,7 +459,7 @@ mod tests {
       ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::Retry(3));
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
   }
 
@@ -477,7 +477,7 @@ mod tests {
       ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::new_custom(custom_handler));
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
   }
 
@@ -494,7 +494,7 @@ mod tests {
       ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::Retry(5));
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
   }
 
@@ -511,7 +511,7 @@ mod tests {
       ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::Skip);
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
   }
 
@@ -528,7 +528,7 @@ mod tests {
       ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::Stop);
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
   }
 
@@ -544,8 +544,8 @@ mod tests {
       .transformer(transformer)
       ._consumer(consumer);
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
-    assert_eq!(consumer.items, vec![]);
+    let ((), consumer) = pipeline.run().await.unwrap();
+    assert_eq!(consumer.items, Vec::<i32>::new());
   }
 
   // Test pipeline with single element
@@ -560,7 +560,7 @@ mod tests {
       .transformer(transformer)
       ._consumer(consumer);
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![84]);
   }
 
@@ -577,7 +577,7 @@ mod tests {
       .transformer(transformer)
       ._consumer(consumer);
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     let expected: Vec<i32> = (1..=100).map(|x| x * 2).collect();
     assert_eq!(consumer.items, expected);
   }
@@ -594,7 +594,7 @@ mod tests {
       .transformer(transformer)
       ._consumer(consumer);
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![-2, -4, -6]);
   }
 
@@ -610,7 +610,7 @@ mod tests {
       .transformer(transformer)
       ._consumer(consumer);
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![0, 2, 4]);
   }
 
@@ -630,7 +630,7 @@ mod tests {
       .transformer(transformer3) // [3,5,7,9,11] -> [6,10,14,18,22]
       ._consumer(consumer);
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![6, 10, 14, 18, 22]);
   }
 
@@ -651,7 +651,7 @@ mod tests {
     let pipeline = builder_with_transformer._consumer(consumer);
 
     // Verify the pipeline works
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
   }
 
@@ -721,7 +721,7 @@ mod tests {
       ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::Retry(usize::MAX));
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
   }
 
@@ -738,7 +738,7 @@ mod tests {
       .transformer(transformer)
       ._consumer(consumer);
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     // Verify we got 3 items with expected values
     assert_eq!(consumer.items.len(), 3);
     assert_eq!(consumer.items[0], 2000000000); // 1000000000 * 2
@@ -789,7 +789,7 @@ mod tests {
       .transformer(transformer)
       ._consumer(consumer);
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
 
     // Verify that all items are of the expected type and value
     for (i, &item) in consumer.items.iter().enumerate() {
@@ -810,7 +810,7 @@ mod tests {
       .transformer(transformer)
       ._consumer(consumer);
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
   }
 
@@ -828,7 +828,7 @@ mod tests {
       ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::new_custom(custom_handler));
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
   }
 
@@ -846,7 +846,7 @@ mod tests {
       ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::new_custom(custom_handler));
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
   }
 
@@ -864,7 +864,7 @@ mod tests {
       ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::new_custom(custom_handler));
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
   }
 
@@ -879,7 +879,7 @@ mod tests {
       .transformer(transformer)
       ._consumer(consumer);
 
-    let ((), mut consumer) = pipeline.run().await.unwrap();
+    let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
   }
 }
