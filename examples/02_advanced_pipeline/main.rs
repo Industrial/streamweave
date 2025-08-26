@@ -1,7 +1,7 @@
 use std::time::Duration;
 use streamweave::{
   consumers::file::FileConsumer,
-  error::{ErrorContext, ErrorStrategy, StreamError},
+  error::ErrorStrategy,
   pipeline::PipelineBuilder,
   producers::file::FileProducer,
   transformers::{
@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // 6. Uses circuit breaker to handle failures
   // 7. Retries failed operations up to 3 times
   // 8. Writes results to another file
-  let pipeline = PipelineBuilder::new()
+  let _pipeline = PipelineBuilder::new()
     .producer(FileProducer::new(
       input_file.path().to_str().unwrap().to_string(),
     ))

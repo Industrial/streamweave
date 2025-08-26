@@ -10,10 +10,12 @@ futures = "0.3"
 async-trait = "0.1"
 
 # HTTP related
+axum = { version = "0.8", features = ["macros"] }
 hyper = { version = "1.6", features = ["full"] }
 http = "1.0"
 http-body-util = "0.1"
 bytes = "1.0"
+tower-http = { version = "0.5", features = ["cors"] }
 
 # Compression
 async-compression = { version = "0.4", features = ["tokio", "gzip", "deflate"] }
@@ -62,6 +64,10 @@ path = "examples/01_basic_pipeline/main.rs"
 [[example]]
 name = "02_advanced_pipeline"
 path = "examples/02_advanced_pipeline/main.rs"
+
+[[example]]
+name = "03_streaming_http"
+path = "examples/03_streaming_http/main.rs"
 
 [dev-dependencies]
 proptest = "1.4"

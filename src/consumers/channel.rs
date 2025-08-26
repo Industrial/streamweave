@@ -3,9 +3,7 @@ use futures::{Stream, StreamExt};
 use std::pin::Pin;
 use tokio::sync::mpsc::{Receiver, Sender, channel};
 
-use crate::error::{
-  ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineStage, StreamError,
-};
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::traits::{
   consumer::{Consumer, ConsumerConfig},
   input::Input,
