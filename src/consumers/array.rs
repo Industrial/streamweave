@@ -119,7 +119,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_array_consumer_empty_input() {
-    let consumer = ArrayConsumer::<i32, 3>::new();
+    let mut consumer = ArrayConsumer::<i32, 3>::new();
     let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
@@ -177,7 +177,7 @@ mod tests {
     assert_eq!(action, ErrorAction::Skip);
 
     // Test that Stop strategy halts consumption
-    let mut consumer = consumer.with_error_strategy(ErrorStrategy::<i32>::Stop);
+    let consumer = consumer.with_error_strategy(ErrorStrategy::<i32>::Stop);
     let action = consumer.handle_error(&StreamError {
       source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
       context: ErrorContext {
