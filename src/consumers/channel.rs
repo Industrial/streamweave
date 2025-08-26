@@ -149,7 +149,7 @@ mod tests {
   #[tokio::test]
   async fn test_error_handling_strategies() {
     let (tx, _rx) = channel(10);
-    let mut consumer = ChannelConsumer::new(tx)
+    let consumer = ChannelConsumer::new(tx)
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_consumer".to_string());
 
@@ -161,7 +161,7 @@ mod tests {
   #[tokio::test]
   async fn test_error_handling_during_consumption() {
     let (tx, _rx) = channel(10);
-    let mut consumer = ChannelConsumer::new(tx)
+    let consumer = ChannelConsumer::new(tx)
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_consumer".to_string());
 
