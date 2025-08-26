@@ -156,7 +156,7 @@ mod tests {
     assert_eq!(action, ErrorAction::Skip);
 
     // Test that Stop strategy halts consumption
-    let mut consumer = consumer.with_error_strategy(ErrorStrategy::<&str>::Stop);
+    let consumer = consumer.with_error_strategy(ErrorStrategy::<&str>::Stop);
     let action = consumer.handle_error(&StreamError {
       source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
       context: ErrorContext {
