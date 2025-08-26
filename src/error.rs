@@ -246,7 +246,7 @@ mod tests {
 
     let strategy = ErrorStrategy::<i32>::new_custom(|_| ErrorAction::Skip);
     let cloned = strategy.clone();
-    let error: StreamError<i32> = StreamError {
+    let _error: StreamError<i32> = StreamError {
       source: Box::new(StringError("test".to_string())),
       context: ErrorContext::default(),
       component: ComponentInfo::default(),

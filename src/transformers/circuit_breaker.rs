@@ -240,19 +240,19 @@ mod tests {
     let transformer = CircuitBreakerTransformer::<i32>::new(2, Duration::from_millis(100));
 
     // Initially circuit should be closed
-    assert!(!transformer.is_circuit_open().await);
+    assert!(!transformer._is_circuit_open().await);
 
     // Record one failure
-    transformer.record_failure().await;
-    assert!(!transformer.is_circuit_open().await);
+    transformer._record_failure().await;
+    assert!(!transformer._is_circuit_open().await);
 
     // Record second failure (threshold reached)
-    transformer.record_failure().await;
-    assert!(transformer.is_circuit_open().await);
+    transformer._record_failure().await;
+    assert!(transformer._is_circuit_open().await);
 
     // Wait for reset timeout
     sleep(Duration::from_millis(150)).await;
-    assert!(!transformer.is_circuit_open().await);
+    assert!(!transformer._is_circuit_open().await);
   }
 
   #[tokio::test]
@@ -261,13 +261,13 @@ mod tests {
 
     assert_eq!(transformer.failure_count.load(Ordering::SeqCst), 0);
 
-    transformer.record_failure().await;
+    transformer._record_failure().await;
     assert_eq!(transformer.failure_count.load(Ordering::SeqCst), 1);
 
-    transformer.record_failure().await;
+    transformer._record_failure().await;
     assert_eq!(transformer.failure_count.load(Ordering::SeqCst), 2);
 
-    transformer.record_failure().await;
+    transformer._record_failure().await;
     assert_eq!(transformer.failure_count.load(Ordering::SeqCst), 3);
   }
 
@@ -275,14 +275,14 @@ mod tests {
   async fn test_circuit_breaker_failure_threshold_edge_cases() {
     // Test with threshold 0
     let transformer = CircuitBreakerTransformer::<i32>::new(0, Duration::from_millis(100));
-    assert!(transformer.is_circuit_open().await);
+    assert!(transformer._is_circuit_open().await);
 
     // Test with threshold 1
     let transformer = CircuitBreakerTransformer::<i32>::new(1, Duration::from_millis(100));
-    assert!(!transformer.is_circuit_open().await);
+    assert!(!transformer._is_circuit_open().await);
 
-    transformer.record_failure().await;
-    assert!(transformer.is_circuit_open().await);
+    transformer._record_failure().await;
+    assert!(transformer._is_circuit_open().await);
   }
 
   #[tokio::test]
@@ -290,16 +290,16 @@ mod tests {
     let transformer = CircuitBreakerTransformer::<i32>::new(1, Duration::from_millis(50));
 
     // Record failure to open circuit
-    transformer.record_failure().await;
-    assert!(transformer.is_circuit_open().await);
+    transformer._record_failure().await;
+    assert!(transformer._is_circuit_open().await);
 
     // Wait less than reset timeout
     sleep(Duration::from_millis(25)).await;
-    assert!(transformer.is_circuit_open().await);
+    assert!(transformer._is_circuit_open().await);
 
     // Wait for reset timeout
     sleep(Duration::from_millis(50)).await;
-    assert!(!transformer.is_circuit_open().await);
+    assert!(!transformer._is_circuit_open().await);
   }
 
   #[tokio::test]
@@ -308,16 +308,16 @@ mod tests {
 
     // Record multiple failures
     for i in 0..5 {
-      transformer.record_failure().await;
+      transformer._record_failure().await;
       assert_eq!(transformer.failure_count.load(Ordering::SeqCst), i + 1);
     }
 
     // Circuit should be open
-    assert!(transformer.is_circuit_open().await);
+    assert!(transformer._is_circuit_open().await);
 
     // Wait for reset
     sleep(Duration::from_millis(150)).await;
-    assert!(!transformer.is_circuit_open().await);
+    assert!(!transformer._is_circuit_open().await);
     assert_eq!(transformer.failure_count.load(Ordering::SeqCst), 0);
   }
 
@@ -439,7 +439,7 @@ mod tests {
     for _ in 0..5 {
       let transformer = Arc::clone(&transformer);
       handles.push(tokio::spawn(async move {
-        transformer.record_failure().await;
+        transformer._record_failure().await;
       }));
     }
 
@@ -450,23 +450,23 @@ mod tests {
 
     // Check final failure count
     assert_eq!(transformer.failure_count.load(Ordering::SeqCst), 5);
-    assert!(transformer.is_circuit_open().await);
+    assert!(transformer._is_circuit_open().await);
   }
 
   #[tokio::test]
   async fn test_circuit_breaker_different_data_types() {
     // Test with u64
     let transformer_u64 = CircuitBreakerTransformer::<u64>::new(2, Duration::from_millis(100));
-    assert!(!transformer_u64.is_circuit_open().await);
+    assert!(!transformer_u64._is_circuit_open().await);
 
     // Test with String
     let transformer_string =
       CircuitBreakerTransformer::<String>::new(2, Duration::from_millis(100));
-    assert!(!transformer_string.is_circuit_open().await);
+    assert!(!transformer_string._is_circuit_open().await);
 
     // Test with f64
     let transformer_f64 = CircuitBreakerTransformer::<f64>::new(2, Duration::from_millis(100));
-    assert!(!transformer_f64.is_circuit_open().await);
+    assert!(!transformer_f64._is_circuit_open().await);
   }
 
   #[tokio::test]
@@ -474,18 +474,18 @@ mod tests {
     let transformer = CircuitBreakerTransformer::<i32>::new(2, Duration::from_millis(50));
 
     // Record failures to open circuit
-    transformer.record_failure().await;
-    transformer.record_failure().await;
-    assert!(transformer.is_circuit_open().await);
+    transformer._record_failure().await;
+    transformer._record_failure().await;
+    assert!(transformer._is_circuit_open().await);
 
     // Wait for reset
     sleep(Duration::from_millis(100)).await;
-    assert!(!transformer.is_circuit_open().await);
+    assert!(!transformer._is_circuit_open().await);
     assert_eq!(transformer.failure_count.load(Ordering::SeqCst), 0);
 
     // Record another failure
-    transformer.record_failure().await;
-    assert!(!transformer.is_circuit_open().await);
+    transformer._record_failure().await;
+    assert!(!transformer._is_circuit_open().await);
   }
 
   // Property-based tests using proptest
@@ -568,18 +568,18 @@ mod tests {
   async fn test_circuit_breaker_edge_cases() {
     // Test with very large failure threshold
     let transformer = CircuitBreakerTransformer::<i32>::new(1000, Duration::from_millis(100));
-    assert!(!transformer.is_circuit_open().await);
+    assert!(!transformer._is_circuit_open().await);
 
     // Test with very small reset timeout
     let transformer = CircuitBreakerTransformer::<i32>::new(1, Duration::from_millis(1));
-    assert!(!transformer.is_circuit_open().await);
+    assert!(!transformer._is_circuit_open().await);
 
-    transformer.record_failure().await;
-    assert!(transformer.is_circuit_open().await);
+    transformer._record_failure().await;
+    assert!(transformer._is_circuit_open().await);
 
     // Circuit should reset very quickly
     sleep(Duration::from_millis(10)).await;
-    assert!(!transformer.is_circuit_open().await);
+    assert!(!transformer._is_circuit_open().await);
   }
 
   #[tokio::test]
@@ -594,7 +594,7 @@ mod tests {
     assert_eq!(result, vec![1, 2, 3, 4, 5]);
 
     // Circuit should still be closed after successful processing
-    assert!(!transformer.is_circuit_open().await);
+    assert!(!transformer._is_circuit_open().await);
   }
 
   #[tokio::test]
@@ -608,13 +608,13 @@ mod tests {
     assert_eq!(result1, vec![1, 2]);
 
     // Record failures to open circuit
-    transformer.record_failure().await;
-    transformer.record_failure().await;
-    assert!(transformer.is_circuit_open().await);
+    transformer._record_failure().await;
+    transformer._record_failure().await;
+    assert!(transformer._is_circuit_open().await);
 
     // Wait for reset
     sleep(Duration::from_millis(150)).await;
-    assert!(!transformer.is_circuit_open().await);
+    assert!(!transformer._is_circuit_open().await);
 
     // Second use after reset
     let input2 = stream::iter(vec![3, 4]);

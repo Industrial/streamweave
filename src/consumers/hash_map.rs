@@ -136,7 +136,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut consumer = HashMapConsumer::new()
+    let consumer = HashMapConsumer::new()
       .with_error_strategy(ErrorStrategy::<(i32, &str)>::Skip)
       .with_name("test_consumer".to_string());
 

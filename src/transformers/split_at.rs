@@ -240,7 +240,7 @@ mod tests {
     let (first, second) = &result[0];
     // Since index 10 > length 3, the first part should contain all elements and second should be empty
     assert_eq!(first, &vec![1, 2, 3]);
-    assert_eq!(second, &vec![]);
+    assert_eq!(second, &Vec::<i32>::new());
   }
 
   #[tokio::test]
@@ -634,7 +634,7 @@ mod tests {
     assert_eq!(result.len(), 1);
     let (first, second) = &result[0];
     assert_eq!(first, &vec![5, 3, 1]);
-    assert_eq!(second, &vec![]);
+    assert_eq!(second, &Vec::<i32>::new());
   }
 
   #[tokio::test]

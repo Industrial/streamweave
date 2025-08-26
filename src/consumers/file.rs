@@ -147,7 +147,7 @@ mod tests {
   async fn test_error_handling_strategies() {
     let temp_file = NamedTempFile::new().unwrap();
     let path = temp_file.path().to_str().unwrap().to_string();
-    let mut consumer = FileConsumer::new(path)
+    let consumer = FileConsumer::new(path)
       .with_error_strategy(ErrorStrategy::<String>::Skip)
       .with_name("test_consumer".to_string());
 

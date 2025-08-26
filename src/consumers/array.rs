@@ -106,7 +106,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_array_consumer_basic() {
-    let mut consumer = ArrayConsumer::<i32, 3>::new();
+    let consumer = ArrayConsumer::<i32, 3>::new();
     let input = stream::iter(vec![1, 2, 3]);
     let boxed_input = Box::pin(input);
 
@@ -119,7 +119,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_array_consumer_empty_input() {
-    let mut consumer = ArrayConsumer::<i32, 3>::new();
+    let consumer = ArrayConsumer::<i32, 3>::new();
     let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
 
@@ -144,7 +144,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut consumer = ArrayConsumer::<i32, 3>::new()
+    let consumer = ArrayConsumer::<i32, 3>::new()
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_consumer".to_string());
 
@@ -155,7 +155,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_during_consumption() {
-    let mut consumer = ArrayConsumer::<i32, 3>::new()
+    let consumer = ArrayConsumer::<i32, 3>::new()
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
       .with_name("test_consumer".to_string());
 

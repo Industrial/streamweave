@@ -438,7 +438,7 @@ mod tests {
       .producer(producer)
       .transformer(transformer1)
       .transformer(transformer2)
-      .consumer(consumer);
+      ._consumer(consumer);
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
     // First transformer: [1,2,3] -> [2,4,6]
@@ -456,7 +456,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer)
+      ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::Retry(3));
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
@@ -474,7 +474,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer)
+      ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::new_custom(custom_handler));
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
@@ -491,7 +491,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer)
+      ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::Retry(5));
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
@@ -508,7 +508,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer)
+      ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::Skip);
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
@@ -525,7 +525,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer)
+      ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::Stop);
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
@@ -542,7 +542,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer);
+      ._consumer(consumer);
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![]);
@@ -558,7 +558,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer);
+      ._consumer(consumer);
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![84]);
@@ -575,7 +575,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer);
+      ._consumer(consumer);
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
     let expected: Vec<i32> = (1..=100).map(|x| x * 2).collect();
@@ -592,7 +592,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer);
+      ._consumer(consumer);
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![-2, -4, -6]);
@@ -608,7 +608,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer);
+      ._consumer(consumer);
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![0, 2, 4]);
@@ -628,7 +628,7 @@ mod tests {
       .transformer(transformer1) // [1,2,3,4,5] -> [2,4,6,8,10]
       .transformer(transformer2) // [2,4,6,8,10] -> [3,5,7,9,11]
       .transformer(transformer3) // [3,5,7,9,11] -> [6,10,14,18,22]
-      .consumer(consumer);
+      ._consumer(consumer);
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![6, 10, 14, 18, 22]);
@@ -669,7 +669,7 @@ mod tests {
       let pipeline = PipelineBuilder::new()
         .producer(producer)
         .transformer(transformer)
-        .consumer(consumer);
+        ._consumer(consumer);
 
       // We can't easily test async functions in proptest, but we can verify
       // that the pipeline can be constructed with various inputs
@@ -718,7 +718,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer)
+      ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::Retry(usize::MAX));
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
@@ -736,7 +736,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer);
+      ._consumer(consumer);
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
     // Verify we got 3 items with expected values
@@ -787,7 +787,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer);
+      ._consumer(consumer);
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
 
@@ -808,7 +808,7 @@ mod tests {
       .with_error_strategy(ErrorStrategy::Skip)
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer);
+      ._consumer(consumer);
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
@@ -825,7 +825,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer)
+      ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::new_custom(custom_handler));
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
@@ -843,7 +843,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer)
+      ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::new_custom(custom_handler));
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
@@ -861,7 +861,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer)
+      ._consumer(consumer)
       .with_error_strategy(ErrorStrategy::new_custom(custom_handler));
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
@@ -877,7 +877,7 @@ mod tests {
     let pipeline = PipelineBuilder::new()
       .producer(producer)
       .transformer(transformer)
-      .consumer(consumer);
+      ._consumer(consumer);
 
     let ((), mut consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
