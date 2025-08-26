@@ -648,7 +648,7 @@ mod tests {
 
     // Test HasTransformer -> Pipeline
     let consumer = CollectConsumer::new();
-    let pipeline = builder_with_transformer.consumer(consumer);
+    let pipeline = builder_with_transformer._consumer(consumer);
 
     // Verify the pipeline works
     let ((), mut consumer) = pipeline.run().await.unwrap();
@@ -761,13 +761,13 @@ mod tests {
     let consumer2 = CollectConsumer::new();
 
     // Clone the builder state before consuming
-    let pipeline1 = builder.consumer(consumer1);
+    let pipeline1 = builder._consumer(consumer1);
 
     // Create a new builder for the second consumer
     let builder2 = PipelineBuilder::new()
       .producer(producer.clone())
       .transformer(transformer.clone());
-    let pipeline2 = builder2.consumer(consumer2);
+    let pipeline2 = builder2._consumer(consumer2);
 
     // Both pipelines should work independently
     let ((), mut consumer1) = pipeline1.run().await.unwrap();
