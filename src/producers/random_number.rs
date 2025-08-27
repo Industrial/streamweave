@@ -218,7 +218,7 @@ mod tests {
 
   #[test]
   fn test_error_handling_strategies() {
-    let mut producer = RandomNumberProducer::new(Range { start: 0, end: 100 })
+    let producer = RandomNumberProducer::new(Range { start: 0, end: 100 })
       .with_error_strategy(ErrorStrategy::Skip)
       .with_name("test_producer".to_string());
 

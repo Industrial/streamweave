@@ -221,7 +221,6 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> Error for PipelineError<T> {
 mod tests {
   use super::*;
   use std::error::Error;
-  use std::fmt;
 
   #[test]
   fn test_error_action() {

@@ -176,7 +176,7 @@ mod tests {
     let mut set = HashSet::new();
     set.insert("test");
 
-    let mut producer = HashSetProducer::new(set)
+    let producer = HashSetProducer::new(set)
       .with_error_strategy(ErrorStrategy::Skip)
       .with_name("test_producer".to_string());
 

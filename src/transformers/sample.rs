@@ -7,6 +7,7 @@ use crate::traits::{
 use async_stream;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
+#[allow(unused_imports)]
 use rand::Rng;
 use std::pin::Pin;
 

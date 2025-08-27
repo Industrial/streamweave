@@ -185,7 +185,7 @@ mod tests {
     let mut map = HashMap::new();
     map.insert("test", 42);
 
-    let mut producer = HashMapProducer::new(map)
+    let producer = HashMapProducer::new(map)
       .with_error_strategy(ErrorStrategy::Skip)
       .with_name("test_producer".to_string());
 

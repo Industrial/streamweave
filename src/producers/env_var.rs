@@ -133,22 +133,6 @@ mod tests {
   }
 
   impl TestEnvVarProducer {
-    fn new() -> Self {
-      Self {
-        filter: None,
-        env_vars: None,
-        config: ProducerConfig::default(),
-      }
-    }
-
-    fn with_vars(vars: Vec<String>) -> Self {
-      Self {
-        filter: Some(vars),
-        env_vars: None,
-        config: ProducerConfig::default(),
-      }
-    }
-
     fn with_mock_env(env_vars: HashMap<String, String>) -> Self {
       Self {
         filter: None,
@@ -349,7 +333,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_env_var_producer_with_error_strategy() {
-    let mut producer = EnvVarProducer::new().with_error_strategy(ErrorStrategy::Retry(3));
+    let producer = EnvVarProducer::new().with_error_strategy(ErrorStrategy::Retry(3));
 
     assert_eq!(producer.config.error_strategy(), ErrorStrategy::Retry(3));
 
@@ -535,7 +519,7 @@ mod tests {
   #[tokio::test]
   async fn test_env_var_producer_custom_error_handler() {
     let custom_handler = |_error: &StreamError<(String, String)>| ErrorAction::Skip;
-    let mut producer =
+    let producer =
       EnvVarProducer::new().with_error_strategy(ErrorStrategy::new_custom(custom_handler));
 
     let error = StreamError {
@@ -565,8 +549,8 @@ mod tests {
   proptest! {
     #[test]
     fn test_env_var_producer_properties(
-      var_names in prop::collection::vec(prop::string::string_regex("[A-Z_][A-Z0-9_]*").unwrap(), 0..10),
-      var_values in prop::collection::vec(prop::string::string_regex(".*").unwrap(), 0..10),
+      _var_names in prop::collection::vec(prop::string::string_regex("[A-Z_][A-Z0-9_]*").unwrap(), 0..10),
+      _var_values in prop::collection::vec(prop::string::string_regex(".*").unwrap(), 0..10),
       custom_name in prop::option::of(prop::string::string_regex("[a-zA-Z_][a-zA-Z0-9_]*").unwrap())
     ) {
       // Test that producer can be created with various configurations
@@ -604,7 +588,7 @@ mod tests {
       retry_count in 0..10usize,
       error_retries in 0..15usize
     ) {
-      let mut producer = EnvVarProducer::new()
+      let producer = EnvVarProducer::new()
         .with_error_strategy(ErrorStrategy::Retry(retry_count));
 
       let error = StreamError {

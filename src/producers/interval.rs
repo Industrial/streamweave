@@ -119,7 +119,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut producer = IntervalProducer::new(Duration::from_millis(10))
+    let producer = IntervalProducer::new(Duration::from_millis(10))
       .with_error_strategy(ErrorStrategy::Skip)
       .with_name("test_producer".to_string());
 

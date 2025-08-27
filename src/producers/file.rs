@@ -146,7 +146,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
-    let mut producer = FileProducer::new("test.txt".to_string())
+    let producer = FileProducer::new("test.txt".to_string())
       .with_error_strategy(ErrorStrategy::Skip)
       .with_name("test_producer".to_string());
 

@@ -9,18 +9,7 @@ pub trait Input {
 mod tests {
   use super::*;
   use futures::{StreamExt, stream};
-  use std::fmt;
   use std::pin::Pin;
-
-  // Test error type
-  #[derive(Debug)]
-  struct TestError(String);
-
-  impl fmt::Display for TestError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-      write!(f, "Test error: {}", self.0)
-    }
-  }
 
   // Test implementation using Vec<i32>
   struct VecInput {
