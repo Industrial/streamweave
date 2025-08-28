@@ -1,144 +1,31 @@
 use axum::{
   Router,
   body::Body,
-  extract::Request,
+  extract::{Path, Request},
   http::StatusCode,
-  response::Response,
-  routing::{get, post},
+  response::{Html, Response},
+  routing::get,
 };
-use bytes::Bytes;
-use serde::{Deserialize, Serialize};
-
 use std::net::SocketAddr;
 use tokio;
 use tower_http::cors::CorsLayer;
 
 use streamweave::{
-  consumers::http_response::{
-    HttpResponseConsumer, ResponseChunk, StreamWeaveHttpResponse, StreamingHttpResponseConsumer,
-  },
+  consumers::http_response::{ResponseChunk, StreamingHttpResponseConsumer},
   pipeline::PipelineBuilder,
-  producers::http_request::{
-    HttpRequestProducer, StreamWeaveHttpRequest, StreamWeaveHttpRequestChunk,
-    StreamingHttpRequestProducer,
-  },
+  producers::http_request::{StreamWeaveHttpRequestChunk, StreamingHttpRequestProducer},
   transformers::{backpressure::BackpressureTransformer, map::MapTransformer},
 };
 
-#[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
-struct RequestData {
-  message: String,
-  count: Option<i32>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct ResponseData {
-  status: String,
-  echo: String,
-  processed_count: i32,
-  timestamp: String,
-}
-
-// StreamWeave pipeline processor for HTTP requests (buffered mode)
-async fn process_request_through_streamweave(
-  req: Request,
-) -> Result<Response<Body>, (StatusCode, String)> {
-  println!("🚀 Processing request through StreamWeave pipeline (buffered mode)");
-
-  // Create StreamWeave pipeline
-  let (consumer, response_receiver) = HttpResponseConsumer::new();
-
-  let _pipeline = PipelineBuilder::new()
-    .producer(HttpRequestProducer::from_axum_request(req).await)
-    .transformer(MapTransformer::new(
-      |streamweave_req: StreamWeaveHttpRequest| {
-        // Transform StreamWeave HTTP request into response
-        let path = streamweave_req.uri().path();
-        let method = streamweave_req.method().as_str();
-
-        println!("  📥 Processing: {} {} (buffered)", method, path);
-
-        match (method, path) {
-          ("GET", "/health") => {
-            let response_data = ResponseData {
-              status: "healthy".to_string(),
-              echo: "Server is running".to_string(),
-              processed_count: 1,
-              timestamp: chrono::Utc::now().to_rfc3339(),
-            };
-
-            let body = serde_json::to_string(&response_data).unwrap();
-            StreamWeaveHttpResponse::ok(Bytes::from(body)).with_content_type("application/json")
-          }
-
-          ("POST", "/echo") => {
-            let body_str = String::from_utf8_lossy(&streamweave_req.body);
-
-            let response_data = ResponseData {
-              status: "success".to_string(),
-              echo: format!("Echo: {}", body_str),
-              processed_count: body_str.len() as i32,
-              timestamp: chrono::Utc::now().to_rfc3339(),
-            };
-
-            let body = serde_json::to_string(&response_data).unwrap();
-            StreamWeaveHttpResponse::ok(Bytes::from(body)).with_content_type("application/json")
-          }
-
-          ("GET", "/api/status") => {
-            let response_data = ResponseData {
-              status: "operational".to_string(),
-              echo: "API is operational".to_string(),
-              processed_count: 1,
-              timestamp: chrono::Utc::now().to_rfc3339(),
-            };
-
-            let body = serde_json::to_string(&response_data).unwrap();
-            StreamWeaveHttpResponse::ok(Bytes::from(body)).with_content_type("application/json")
-          }
-
-          _ => {
-            let response_data = ResponseData {
-              status: "error".to_string(),
-              echo: "Endpoint not found".to_string(),
-              processed_count: 0,
-              timestamp: chrono::Utc::now().to_rfc3339(),
-            };
-
-            let body = serde_json::to_string(&response_data).unwrap();
-            StreamWeaveHttpResponse::not_found(Bytes::from(body))
-              .with_content_type("application/json")
-          }
-        }
-      },
-    ))
-    ._consumer(consumer)
-    .run()
-    .await
-    .unwrap();
-
-  // Get the response from the pipeline
-  match response_receiver.await {
-    Ok(streamweave_response) => {
-      println!("  📤 Pipeline completed successfully");
-      Ok(streamweave_response.into_axum_response())
-    }
-    Err(_) => {
-      println!("  ❌ Pipeline failed to produce response");
-      Err((
-        StatusCode::INTERNAL_SERVER_ERROR,
-        "Pipeline error".to_string(),
-      ))
-    }
-  }
-}
-
-// NEW: StreamWeave pipeline processor for HTTP requests (streaming mode)
+// StreamWeave pipeline processor for streaming HTTP requests
 async fn process_request_through_streamweave_streaming(
   req: Request,
 ) -> Result<Response<Body>, (StatusCode, String)> {
   println!("🚀 Processing request through StreamWeave pipeline (streaming mode)");
+
+  // Extract the path from the request to determine the response type
+  let path = req.uri().path().to_string();
+  let is_echo_request = path.starts_with("/streaming/echo/");
 
   // Create streaming StreamWeave pipeline
   let (consumer, mut chunk_receiver) = StreamingHttpResponseConsumer::new();
@@ -197,6 +84,100 @@ async fn process_request_through_streamweave_streaming(
     }
   }
 
+  // Handle echo requests specially
+  if is_echo_request {
+    // Extract the message from the path
+    let message = path.trim_start_matches("/streaming/echo/");
+    let html_content = format!(
+      r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamWeave Streaming Echo</title>
+    <style>
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            text-align: center;
+        }}
+        .container {{
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }}
+        h1 {{
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }}
+        .echo-message {{
+            font-size: 3em;
+            font-weight: bold;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }}
+        .info {{
+            font-size: 1.1em;
+            opacity: 0.9;
+            margin-top: 30px;
+        }}
+        .timestamp {{
+            font-size: 0.9em;
+            opacity: 0.7;
+            margin-top: 20px;
+        }}
+        .streaming-badge {{
+            background: rgba(255, 255, 255, 0.3);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            margin-top: 20px;
+            display: inline-block;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 StreamWeave Streaming Echo</h1>
+        <div class="echo-message">{}</div>
+        <div class="info">
+            <p>This response was generated by StreamWeave's <strong>streaming</strong> HTTP pipeline</p>
+            <p>Route parameter: <code>/streaming/echo/{}</code></p>
+            <p>Processed through the streaming pipeline with backpressure control</p>
+        </div>
+        <div class="streaming-badge">🚀 STREAMING PIPELINE</div>
+        <div class="timestamp">
+            Generated at: {}
+        </div>
+    </div>
+</body>
+</html>"#,
+      message.to_uppercase(),
+      message,
+      chrono::Utc::now()
+        .format("%Y-%m-%d %H:%M:%S UTC")
+        .to_string()
+    );
+
+    return Ok(
+      Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "text/html; charset=utf-8")
+        .body(Body::from(html_content))
+        .unwrap(),
+    );
+  }
+
   // Convert chunks to streaming body - use a simple approach for now
   let body = if body_chunks.is_empty() {
     Body::from("No data")
@@ -212,62 +193,258 @@ async fn process_request_through_streamweave_streaming(
   // Set default status if none was set
   let response_builder = response_builder.status(StatusCode::OK);
 
-  // Set default content type
-  let response_builder = response_builder.header("content-type", "application/octet-stream");
+  // Set default content type based on the path
+  let content_type = if path.contains("json") {
+    "application/json"
+  } else if path.contains("xml") {
+    "application/xml"
+  } else if path.contains("text") || path.contains("echo") {
+    "text/plain; charset=utf-8"
+  } else {
+    "text/plain; charset=utf-8"
+  };
+
+  let response_builder = response_builder.header("content-type", content_type);
 
   Ok(response_builder.body(body).unwrap())
 }
 
-// Health check endpoint
-async fn health_check() -> Response<Body> {
-  let response_data = ResponseData {
-    status: "healthy".to_string(),
-    echo: "Direct health check".to_string(),
-    processed_count: 1,
-    timestamp: chrono::Utc::now().to_rfc3339(),
-  };
+// Echo endpoint with route parameter - returns HTML page
+async fn echo_route(Path(message): Path<String>) -> Html<String> {
+  let html_content = format!(
+    r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamWeave Echo</title>
+    <style>
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }}
+        .container {{
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }}
+        h1 {{
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }}
+        .echo-message {{
+            font-size: 3em;
+            font-weight: bold;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }}
+        .info {{
+            font-size: 1.1em;
+            opacity: 0.9;
+            margin-top: 30px;
+        }}
+        .timestamp {{
+            font-size: 0.9em;
+            opacity: 0.7;
+            margin-top: 20px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 StreamWeave Echo</h1>
+        <div class="echo-message">{}</div>
+        <div class="info">
+            <p>This response was generated by StreamWeave's streaming HTTP pipeline</p>
+            <p>Route parameter: <code>/echo/{}</code></p>
+        </div>
+        <div class="timestamp">
+            Generated at: {}
+        </div>
+    </div>
+</body>
+</html>"#,
+    message.to_uppercase(),
+    message,
+    chrono::Utc::now()
+      .format("%Y-%m-%d %H:%M:%S UTC")
+      .to_string()
+  );
 
-  let body = serde_json::to_string(&response_data).unwrap();
-  Response::builder()
-    .status(StatusCode::OK)
-    .header("content-type", "application/json")
-    .body(Body::from(body))
-    .unwrap()
+  Html(html_content)
+}
+
+// Health check endpoint
+async fn health_check() -> Html<String> {
+  let html_content = r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamWeave Health Check</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            text-align: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .status {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .info {
+            font-size: 1.1em;
+            opacity: 0.9;
+            margin-top: 30px;
+        }
+        .timestamp {
+            font-size: 0.9em;
+            opacity: 0.7;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 StreamWeave Health Check</h1>
+        <div class="status">✅ HEALTHY</div>
+        <div class="info">
+            <p>StreamWeave HTTP streaming server is running successfully</p>
+            <p>All systems operational</p>
+        </div>
+        <div class="timestamp">
+            Checked at: "#
+    .to_string()
+    + &chrono::Utc::now()
+      .format("%Y-%m-%d %H:%M:%S UTC")
+      .to_string()
+    + r#"
+        </div>
+    </div>
+</body>
+</html>"#;
+
+  Html(html_content)
+}
+
+// API status endpoint
+async fn api_status() -> Html<String> {
+  let html_content = r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamWeave API Status</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            text-align: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .status {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .info {
+            font-size: 1.1em;
+            opacity: 0.9;
+            margin-top: 30px;
+        }
+        .timestamp {
+            font-size: 0.9em;
+            opacity: 0.7;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📡 StreamWeave API Status</h1>
+        <div class="status">🚀 OPERATIONAL</div>
+        <div class="info">
+            <p>StreamWeave HTTP streaming API is fully operational</p>
+            <p>Ready to process streaming requests</p>
+        </div>
+        <div class="timestamp">
+            Status checked at: "#
+    .to_string()
+    + &chrono::Utc::now()
+      .format("%Y-%m-%d %H:%M:%S UTC")
+      .to_string()
+    + r#"
+        </div>
+    </div>
+</body>
+</html>"#;
+
+  Html(html_content)
 }
 
 #[tokio::main]
 async fn main() {
   println!("🚀 StreamWeave HTTP Streaming Server");
   println!("📡 Built with Axum + StreamWeave");
-  println!("🔄 Now with TRUE STREAMING capabilities!");
+  println!("🔄 Streaming-only architecture - no buffering!");
   println!();
 
   // Build our application with routes
   let app = Router::new()
     .route("/health", get(health_check))
-    .route("/echo", post(process_request_through_streamweave))
-    .route("/api/status", get(process_request_through_streamweave))
-    .route(
-      "/streamweave/{*path}",
-      post(process_request_through_streamweave),
-    )
-    .route(
-      "/streamweave/{*path}",
-      get(process_request_through_streamweave),
-    )
-    // NEW: Streaming endpoints
-    .route(
-      "/streaming/echo",
-      post(process_request_through_streamweave_streaming),
-    )
-    .route(
-      "/streaming/api/status",
-      get(process_request_through_streamweave_streaming),
-    )
-    .route(
-      "/streaming/{*path}",
-      post(process_request_through_streamweave_streaming),
-    )
+    .route("/echo/{message}", get(echo_route))
+    .route("/api/status", get(api_status))
     .route(
       "/streaming/{*path}",
       get(process_request_through_streamweave_streaming),
@@ -278,29 +455,21 @@ async fn main() {
   let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
   println!("🌐 Server starting on {}", addr);
   println!("📋 Available endpoints:");
-  println!("   GET  /health                    - Direct health check");
-  println!("   POST /echo                      - Echo endpoint (buffered via StreamWeave)");
-  println!("   GET  /api/status                - API status (buffered via StreamWeave)");
-  println!("   ANY  /streamweave/*             - Any path via StreamWeave pipeline (buffered)");
+  println!("   GET  /health                    - Health check page");
+  println!("   GET  /echo/:message             - Echo endpoint with route parameter");
+  println!("   GET  /api/status                - API status page");
+  println!("   GET  /streaming/*               - Streaming endpoint via StreamWeave pipeline");
   println!();
-  println!("🔄 NEW STREAMING ENDPOINTS:");
-  println!("   POST /streaming/echo            - Echo endpoint (TRUE STREAMING via StreamWeave)");
-  println!("   GET  /streaming/api/status     - API status (TRUE STREAMING via StreamWeave)");
-  println!(
-    "   ANY  /streaming/*               - Any path via StreamWeave pipeline (TRUE STREAMING)"
-  );
+  println!("🔗 Test endpoints:");
+  println!("   Browser: http://localhost:3000/health");
+  println!("   Browser: http://localhost:3000/echo/hello");
+  println!("   Browser: http://localhost:3000/api/status");
+  println!("   Browser: http://localhost:3000/streaming/test");
   println!();
-  println!("🔗 Test buffered mode:");
-  println!("   curl -X POST http://localhost:3000/echo -d 'Hello World'");
-  println!();
-  println!("🔗 Test streaming mode:");
-  println!("   curl -X POST http://localhost:3000/streaming/echo -d 'Hello Streaming World'");
-  println!();
-  println!("🎉 The streaming endpoints now process requests as true streams!");
-  println!("   - No more buffering entire bodies in memory");
-  println!("   - Backpressure control with configurable buffer sizes");
-  println!("   - Chunked transfer encoding support");
-  println!("   - Memory-efficient processing of large payloads");
+  println!("🎉 All endpoints now use GET requests for easy browser testing!");
+  println!("   - Echo endpoint takes route parameters like /echo/abcd");
+  println!("   - Returns beautiful HTML pages with the echoed message");
+  println!("   - Streaming pipeline available at /streaming/*");
 
   let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
   println!("✅ Server listening on {}", addr);
