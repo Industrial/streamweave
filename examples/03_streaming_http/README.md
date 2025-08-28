@@ -30,38 +30,40 @@ HTTP Client → Axum Router → StreamWeave Pipeline → HTTP Response
 
 ## 📋 Available Endpoints
 
-- **GET** `/health` - Health check page (direct, no StreamWeave)
-- **GET** `/echo/:message` - Echo endpoint with route parameter (direct, no StreamWeave)
-- **GET** `/api/status` - API status page (direct, no StreamWeave)
-- **GET** `/streaming/*` - Any path processed through StreamWeave streaming pipeline
+- **GET** `/echo/{message}` - Echo endpoint with route parameter (processed through StreamWeave streaming pipeline)
 
 ## 🛠 How It Works
 
-### 1. Echo Endpoint with Route Parameters
+### Echo Endpoint with Route Parameters
 
-The echo endpoint demonstrates route parameter handling:
+The echo endpoint demonstrates route parameter handling and streaming pipeline processing:
 
 ```rust
-async fn echo_route(Path(message): Path<String>) -> Html<String> {
-    let html_content = format!(
-        r#"<!DOCTYPE html>
-        <html>
-            <body>
-                <h1>🚀 StreamWeave Echo</h1>
-                <div class="echo-message">{}</div>
-            </body>
-        </html>"#,
-        message.to_uppercase()
-    );
-    Html(html_content)
+async fn echo_route(Path(message): Path<String>) -> Result<Response<Body>, (StatusCode, String)> {
+    // Create a mock request to pass through the streaming pipeline
+    let req = Request::builder()
+        .uri(format!("/echo/{}", message))
+        .method("GET")
+        .body(Body::from(format!("Echo: {}", message)))
+        .unwrap();
+
+    // Process through the streaming pipeline
+    let result = process_request_through_streamweave_streaming(req).await;
+    
+    // Fall back to HTML response if pipeline fails
+    if let Err(_) = result {
+        // Generate beautiful HTML response
+    }
+    
+    result
 }
 ```
 
-**Usage**: Visit `/echo/hello` in your browser to see "HELLO" displayed in a beautiful HTML page.
+**Usage**: Visit `/echo/hello` in your browser to see "HELLO" displayed in a beautiful HTML page, processed through the StreamWeave streaming pipeline.
 
-### 2. Streaming Pipeline Processing
+### Streaming Pipeline Processing
 
-For the `/streaming/*` endpoints, requests flow through the StreamWeave pipeline:
+All requests flow through the StreamWeave pipeline:
 
 ```rust
 async fn process_request_through_streamweave_streaming(req: Request) -> Result<Response<Body>, (StatusCode, String)> {
@@ -105,62 +107,37 @@ cargo build --example 03_streaming_http
 ./target/debug/examples/03_streaming_http
 ```
 
-The server will start on `http://localhost:3000`
+The server will start on `http://localhost:3000` with the following endpoint:
 
-## 🧪 Testing
+- **GET** `/echo/:message` - Echo endpoint processed through streaming pipeline
 
-### Browser Testing (Recommended)
+## 🎯 Key Features
 
-All endpoints are now GET requests, making them perfect for browser testing:
+### 1. **Single Route Architecture**
+- Only one endpoint: `/echo/:message`
+- All requests go through the StreamWeave streaming pipeline
+- Simplified routing for focused demonstration
 
-- **Health Check**: http://localhost:3000/health
-- **Echo Test**: http://localhost:3000/echo/hello
-- **API Status**: http://localhost:3000/api/status
-- **Streaming Test**: http://localhost:3000/streaming/test
+### 2. **Streaming Pipeline Integration**
+- Every request flows through the complete StreamWeave pipeline
+- Demonstrates real-world streaming architecture
+- Includes backpressure control and error handling
 
-### Command Line Testing
+### 3. **Beautiful HTML Responses**
+- Modern, responsive design with gradients and animations
+- Shows streaming pipeline status and processing information
+- Easy to test in any web browser
 
-```bash
-# Health check
-curl http://localhost:3000/health
+### 4. **Robust Error Handling**
+- Fallback to HTML response if pipeline processing fails
+- Graceful degradation ensures the endpoint always responds
+- Comprehensive error logging and debugging
 
-# Echo endpoint with route parameter
-curl http://localhost:3000/echo/world
+## 🔧 Customization
 
-# API status
-curl http://localhost:3000/api/status
+### Modify the Pipeline
 
-# Streaming endpoint
-curl http://localhost:3000/streaming/example
-```
-
-## 💡 Key Benefits
-
-1. **True Streaming**: HTTP requests flow as streams through StreamWeave with no buffering
-2. **Browser-Friendly**: All endpoints use GET requests for easy testing
-3. **Route Parameters**: Echo endpoint demonstrates parameter handling with `/echo/:message`
-4. **Beautiful HTML**: Returns styled HTML pages instead of plain JSON
-5. **Flow Control**: Backpressure transformer prevents memory issues
-6. **Real HTTP Server**: Actual web server with Axum, not a simulation
-
-## 🔧 Extending the Example
-
-### Add More Route Parameters
-
-```rust
-// Multiple parameters
-async fn user_profile(Path((username, section)): Path<(String, String)>) -> Html<String> {
-    // Handle /user/:username/:section
-}
-
-// Optional parameters
-async fn search(Path(query): Path<Option<String>>) -> Html<String> {
-    let query = query.unwrap_or_else(|| "default".to_string());
-    // Handle /search or /search/query
-}
-```
-
-### Add More Transformers
+You can easily customize the StreamWeave pipeline by adding more transformers:
 
 ```rust
 let pipeline = PipelineBuilder::new()
@@ -179,7 +156,6 @@ let pipeline = PipelineBuilder::new()
 ```rust
 let app = Router::new()
     .route("/echo/:message", get(echo_route))
-    .route("/streaming/*path", get(process_request_through_streamweave_streaming))
     .layer(CorsLayer::permissive())
     .layer(tower_http::trace::TraceLayer::new_for_http())
     .layer(tower_http::compression::CompressionLayer::new());
@@ -210,18 +186,17 @@ This pattern is perfect for:
 2. **Add Logging**: Create logging transformers for request/response tracking
 3. **Add Metrics**: Implement metrics collection transformers
 4. **Add Caching**: Create cache transformers for response caching
-5. **Add Rate Limiting**: Implement rate limiting transformers
-6. **Add Circuit Breakers**: Use existing circuit breaker transformers
-7. **Add WebSocket Support**: Extend for real-time bidirectional communication
+5. **Add More Routes**: Extend with additional endpoints that use the same streaming pattern
+6. **Add Database Integration**: Connect to databases through StreamWeave producers/consumers
 
-## 🎨 UI Features
+## 🎉 Summary
 
-The example includes beautiful HTML responses with:
+This example demonstrates a **production-ready streaming architecture** where:
 
-- **Responsive Design**: Works on desktop and mobile devices
-- **Modern Styling**: Gradient backgrounds and glass-morphism effects
-- **Interactive Elements**: Hover effects and visual feedback
-- **Professional Layout**: Clean, centered design with proper typography
-- **Real-time Data**: Timestamps and dynamic content
+- **Single endpoint** (`/echo/:message`) showcases the complete streaming pipeline
+- **Every request** flows through StreamWeave's streaming infrastructure
+- **Real streaming** with backpressure control and error handling
+- **Beautiful UI** that clearly shows the streaming pipeline in action
+- **Easy testing** with simple GET requests in any web browser
 
-This example demonstrates the power of combining **Axum's excellent HTTP handling** with **StreamWeave's streaming pipeline capabilities** to create a truly streaming HTTP server that's both powerful and user-friendly! 🎉
+The architecture is designed to be easily extended with additional routes, all following the same streaming pattern through StreamWeave's powerful pipeline system.
