@@ -1,3 +1,10 @@
 pub mod array_consumer;
 pub mod channel_consumer;
 pub mod command_consumer;
+pub mod console_consumer;
+pub mod file_consumer;
+pub mod hash_map_consumer;
+pub mod hash_set_consumer;
+pub mod http_response_consumer;
+pub mod string_consumer;
+pub mod vec_consumer;
