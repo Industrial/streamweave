@@ -17,11 +17,16 @@ use streamweave::{
   transformers::{backpressure::BackpressureTransformer, map::MapTransformer},
 };
 
-// StreamWeave pipeline processor for streaming HTTP requests
-async fn process_request_through_streamweave_streaming(
-  req: Request,
-) -> Result<Response<Body>, (StatusCode, String)> {
-  println!("🚀 Processing request through StreamWeave pipeline (streaming mode)");
+// Echo endpoint with route parameter - now uses streaming implementation
+async fn echo_route(Path(message): Path<String>) -> Result<Response<Body>, (StatusCode, String)> {
+  println!("🔄 Processing echo request for message: {}", message);
+
+  // Create a mock request to pass through the streaming pipeline
+  let req = Request::builder()
+    .uri(format!("/echo/{}", message))
+    .method("GET")
+    .body(Body::from(format!("Echo: {}", message)))
+    .unwrap();
 
   // Create streaming StreamWeave pipeline
   let (consumer, mut chunk_receiver) = StreamingHttpResponseConsumer::new();
@@ -98,22 +103,7 @@ async fn process_request_through_streamweave_streaming(
   // Set default content type
   let response_builder = response_builder.header("content-type", "text/plain; charset=utf-8");
 
-  Ok(response_builder.body(body).unwrap())
-}
-
-// Echo endpoint with route parameter - now uses streaming implementation
-async fn echo_route(Path(message): Path<String>) -> Result<Response<Body>, (StatusCode, String)> {
-  println!("🔄 Processing echo request for message: {}", message);
-
-  // Create a mock request to pass through the streaming pipeline
-  let req = Request::builder()
-    .uri(format!("/echo/{}", message))
-    .method("GET")
-    .body(Body::from(format!("Echo: {}", message)))
-    .unwrap();
-
-  // Process through the streaming pipeline (this demonstrates the streaming capability)
-  let _pipeline_result = process_request_through_streamweave_streaming(req).await;
+  let _pipeline_result = response_builder.body(body).unwrap();
 
   // Always return the HTML response to show the streaming pipeline was used
   let html_content = format!(
