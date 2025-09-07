@@ -1,52 +1,8 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::traits::{
-  consumer::{Consumer, ConsumerConfig},
-  input::Input,
-};
+use crate::structs::command_consumer::CommandConsumer;
+use crate::traits::consumer::{Consumer, ConsumerConfig};
 use async_trait::async_trait;
-use futures::{Stream, StreamExt};
-use std::pin::Pin;
-use tokio::process::Command;
-
-pub struct CommandConsumer<T>
-where
-  T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
-{
-  command: Option<Command>,
-  config: ConsumerConfig<T>,
-}
-
-impl<T> CommandConsumer<T>
-where
-  T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
-{
-  pub fn new(command: String, args: Vec<String>) -> Self {
-    let mut cmd = Command::new(command);
-    cmd.args(args);
-    Self {
-      command: Some(cmd),
-      config: ConsumerConfig::default(),
-    }
-  }
-
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
-    self.config.error_strategy = strategy;
-    self
-  }
-
-  pub fn with_name(mut self, name: String) -> Self {
-    self.config.name = name;
-    self
-  }
-}
-
-impl<T> Input for CommandConsumer<T>
-where
-  T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
-{
-  type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
-}
+use futures::StreamExt;
 
 #[async_trait]
 impl<T> Consumer for CommandConsumer<T>
@@ -101,6 +57,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
   use futures::stream;
 
   #[tokio::test]
@@ -181,7 +138,7 @@ mod tests {
     assert_eq!(info.name, "");
     assert_eq!(
       info.type_name,
-      "streamweave::consumers::command::CommandConsumer<alloc::string::String>"
+      "streamweave::structs::command_consumer::CommandConsumer<alloc::string::String>"
     );
   }
 
@@ -192,7 +149,7 @@ mod tests {
     assert_eq!(context.component_name, "");
     assert_eq!(
       context.component_type,
-      "streamweave::consumers::command::CommandConsumer<alloc::string::String>"
+      "streamweave::structs::command_consumer::CommandConsumer<alloc::string::String>"
     );
     assert_eq!(context.item, Some("test".to_string()));
   }
