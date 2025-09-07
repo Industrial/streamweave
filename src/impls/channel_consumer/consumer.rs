@@ -1,51 +1,8 @@
-use async_trait::async_trait;
-use futures::{Stream, StreamExt};
-use std::pin::Pin;
-use tokio::sync::mpsc::Sender;
-
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::traits::{
-  consumer::{Consumer, ConsumerConfig},
-  input::Input,
-};
-
-pub struct ChannelConsumer<T>
-where
-  T: std::fmt::Debug + Clone + Send + Sync + 'static,
-{
-  channel: Option<Sender<T>>,
-  config: ConsumerConfig<T>,
-}
-
-impl<T> ChannelConsumer<T>
-where
-  T: std::fmt::Debug + Clone + Send + Sync + 'static,
-{
-  pub fn new(sender: Sender<T>) -> Self {
-    Self {
-      channel: Some(sender),
-      config: ConsumerConfig::default(),
-    }
-  }
-
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
-    self.config.error_strategy = strategy;
-    self
-  }
-
-  pub fn with_name(mut self, name: String) -> Self {
-    self.config.name = name;
-    self
-  }
-}
-
-impl<T> Input for ChannelConsumer<T>
-where
-  T: std::fmt::Debug + Clone + Send + Sync + 'static,
-{
-  type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
-}
+use crate::structs::channel_consumer::ChannelConsumer;
+use crate::traits::consumer::{Consumer, ConsumerConfig};
+use async_trait::async_trait;
+use futures::StreamExt;
 
 #[async_trait]
 impl<T> Consumer for ChannelConsumer<T>
@@ -100,8 +57,9 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
   use futures::stream;
-  use tokio::sync::mpsc::{Receiver, channel};
+  use tokio::sync::mpsc::{Receiver, Sender, channel};
 
   #[tokio::test]
   async fn test_channel_consumer_basic() {
@@ -210,7 +168,7 @@ mod tests {
     assert_eq!(info.name, "test_consumer");
     assert_eq!(
       info.type_name,
-      "streamweave::consumers::channel::ChannelConsumer<i32>"
+      "streamweave::structs::channel_consumer::ChannelConsumer<i32>"
     );
   }
 
@@ -223,7 +181,7 @@ mod tests {
     assert_eq!(context.component_name, "test_consumer");
     assert_eq!(
       context.component_type,
-      "streamweave::consumers::channel::ChannelConsumer<i32>"
+      "streamweave::structs::channel_consumer::ChannelConsumer<i32>"
     );
     assert_eq!(context.item, Some(42));
   }
