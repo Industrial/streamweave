@@ -1,5 +1,5 @@
-use super::ArrayConsumer;
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+use crate::structs::array_consumer::ArrayConsumer;
 use crate::traits::consumer::{Consumer, ConsumerConfig};
 use async_trait::async_trait;
 use futures::StreamExt;
@@ -56,6 +56,7 @@ where
 mod tests {
   use super::*;
   use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+  use futures::stream;
 
   #[tokio::test]
   async fn test_error_handling_strategies() {
@@ -118,7 +119,7 @@ mod tests {
     assert_eq!(info.name, "test_consumer");
     assert_eq!(
       info.type_name,
-      "streamweave::impls::array_consumer::ArrayConsumer<i32, 3>"
+      "streamweave::structs::array_consumer::ArrayConsumer<i32, 3>"
     );
   }
 
@@ -130,8 +131,46 @@ mod tests {
     assert_eq!(context.component_name, "test_consumer");
     assert_eq!(
       context.component_type,
-      "streamweave::impls::array_consumer::ArrayConsumer<i32, 3>"
+      "streamweave::structs::array_consumer::ArrayConsumer<i32, 3>"
     );
     assert_eq!(context.item, Some(42));
+  }
+
+  #[tokio::test]
+  async fn test_array_consumer_basic() {
+    let mut consumer = ArrayConsumer::<i32, 3>::new();
+    let input = stream::iter(vec![1, 2, 3]);
+    let boxed_input = Box::pin(input);
+
+    consumer.consume(boxed_input).await;
+    let array = consumer.into_array();
+    assert_eq!(array[0], Some(1));
+    assert_eq!(array[1], Some(2));
+    assert_eq!(array[2], Some(3));
+  }
+
+  #[tokio::test]
+  async fn test_array_consumer_empty_input() {
+    let mut consumer = ArrayConsumer::<i32, 3>::new();
+    let input = stream::iter(Vec::<i32>::new());
+    let boxed_input = Box::pin(input);
+
+    consumer.consume(boxed_input).await;
+    let array = consumer.into_array();
+    assert_eq!(array[0], None);
+    assert_eq!(array[1], None);
+    assert_eq!(array[2], None);
+  }
+
+  #[tokio::test]
+  async fn test_array_consumer_capacity_exceeded() {
+    let mut consumer = ArrayConsumer::<i32, 2>::new();
+    let input = stream::iter(vec![1, 2, 3]);
+    let boxed_input = Box::pin(input);
+
+    consumer.consume(boxed_input).await;
+    let array = consumer.into_array();
+    assert_eq!(array[0], Some(1));
+    assert_eq!(array[1], Some(2));
   }
 }

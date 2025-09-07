@@ -1,2 +1,10 @@
-// Re-export ArrayConsumer from impls module
-pub use crate::impls::array_consumer::ArrayConsumer;
+use crate::traits::consumer::ConsumerConfig;
+
+pub struct ArrayConsumer<T, const N: usize>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
+  pub array: [Option<T>; N],
+  pub index: usize,
+  pub config: ConsumerConfig<T>,
+}
