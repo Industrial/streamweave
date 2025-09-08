@@ -1,6 +1,9 @@
 use streamweave::{
-  consumers::console::ConsoleConsumer, pipeline::PipelineBuilder, producers::range::RangeProducer,
-  transformers::map::MapTransformer,
+  pipeline::PipelineBuilder,
+  structs::{
+    consumers::console::ConsoleConsumer, producers::range::RangeProducer,
+    transformers::map::MapTransformer,
+  },
 };
 
 #[tokio::main]

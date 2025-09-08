@@ -11,10 +11,12 @@ use tokio;
 use tower_http::cors::CorsLayer;
 
 use streamweave::{
-  consumers::http_response::{ResponseChunk, StreamingHttpResponseConsumer},
   pipeline::PipelineBuilder,
-  producers::http_request::{StreamWeaveHttpRequestChunk, StreamingHttpRequestProducer},
-  transformers::{backpressure::BackpressureTransformer, map::MapTransformer},
+  structs::{
+    consumers::http_response::{ResponseChunk, StreamingHttpResponseConsumer},
+    producers::http_request::{StreamWeaveHttpRequestChunk, StreamingHttpRequestProducer},
+    transformers::{backpressure::BackpressureTransformer, map::MapTransformer},
+  },
 };
 
 // Echo endpoint with route parameter - now uses streaming implementation
