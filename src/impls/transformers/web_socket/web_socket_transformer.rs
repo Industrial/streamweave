@@ -2,6 +2,12 @@ use crate::error::ErrorStrategy;
 use crate::structs::transformers::web_socket::{WebSocketMessage, WebSocketTransformer};
 use crate::traits::transformer::TransformerConfig;
 
+impl Default for WebSocketTransformer {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl WebSocketTransformer {
   pub fn new() -> Self {
     Self {

@@ -9,7 +9,7 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug, const N: usize> Produce
 {
   fn produce(&mut self) -> Self::OutputStream {
     let array = self.array.clone();
-    Box::pin(futures::stream::iter(array.into_iter()))
+    Box::pin(futures::stream::iter(array))
   }
 
   fn set_config_impl(&mut self, config: ProducerConfig<T>) {

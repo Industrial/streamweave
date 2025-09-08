@@ -5,7 +5,7 @@ use futures::stream;
 
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Producer for VecProducer<T> {
   fn produce(&mut self) -> Self::OutputStream {
-    let stream = stream::iter(self.data.clone().into_iter());
+    let stream = stream::iter(self.data.clone());
     Box::pin(stream)
   }
 

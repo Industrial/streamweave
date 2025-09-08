@@ -2,6 +2,12 @@ use crate::error::ErrorStrategy;
 use crate::structs::consumers::string::StringConsumer;
 use crate::traits::consumer::ConsumerConfig;
 
+impl Default for StringConsumer {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl StringConsumer {
   pub fn new() -> Self {
     Self {

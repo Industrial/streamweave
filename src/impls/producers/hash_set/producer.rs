@@ -10,7 +10,7 @@ where
 {
   fn produce(&mut self) -> Self::OutputStream {
     let data = self.data.clone();
-    Box::pin(stream::iter(data.into_iter()))
+    Box::pin(stream::iter(data))
   }
 
   fn set_config_impl(&mut self, config: ProducerConfig<T>) {

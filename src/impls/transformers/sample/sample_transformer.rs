@@ -9,7 +9,7 @@ where
 {
   pub fn new(probability: f64) -> Self {
     assert!(
-      probability >= 0.0 && probability <= 1.0,
+      (0.0..=1.0).contains(&probability),
       "Probability must be between 0 and 1"
     );
     Self {

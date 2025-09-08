@@ -13,7 +13,7 @@ where
     Box::pin(
       input
         .ready_chunks(self.buffer_size)
-        .flat_map(|chunks| futures::stream::iter(chunks)),
+        .flat_map(futures::stream::iter),
     )
   }
 

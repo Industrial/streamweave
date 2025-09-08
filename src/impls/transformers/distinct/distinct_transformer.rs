@@ -4,6 +4,15 @@ use crate::traits::transformer::TransformerConfig;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
+impl<T> Default for DistinctTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+{
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl<T> DistinctTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,

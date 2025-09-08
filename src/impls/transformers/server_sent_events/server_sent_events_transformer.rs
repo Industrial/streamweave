@@ -2,6 +2,12 @@ use crate::error::ErrorStrategy;
 use crate::structs::transformers::server_sent_events::ServerSentEventsTransformer;
 use crate::traits::transformer::TransformerConfig;
 
+impl Default for ServerSentEventsTransformer {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl ServerSentEventsTransformer {
   pub fn new() -> Self {
     Self {

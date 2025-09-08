@@ -42,10 +42,7 @@ where
 
     if self.count.load(std::sync::atomic::Ordering::SeqCst) >= self.rate_limit {
       Err(crate::error::StreamError::new(
-        Box::new(std::io::Error::new(
-          std::io::ErrorKind::Other,
-          "Rate limit exceeded",
-        )),
+        Box::new(std::io::Error::other("Rate limit exceeded")),
         crate::error::ErrorContext {
           timestamp: chrono::Utc::now(),
           item: None,

@@ -9,11 +9,14 @@ pub enum ErrorAction {
   Retry,
 }
 
+// Type alias for the complex custom error handler function
+type CustomErrorHandler<T> = Arc<dyn Fn(&StreamError<T>) -> ErrorAction + Send + Sync>;
+
 pub enum ErrorStrategy<T: std::fmt::Debug + Clone + Send + Sync> {
   Stop,
   Skip,
   Retry(usize),
-  Custom(Arc<dyn Fn(&StreamError<T>) -> ErrorAction + Send + Sync>),
+  Custom(CustomErrorHandler<T>),
 }
 
 impl<T: std::fmt::Debug + Clone + Send + Sync> Clone for ErrorStrategy<T> {

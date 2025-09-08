@@ -3,6 +3,15 @@ use crate::structs::transformers::flatten::FlattenTransformer;
 use crate::traits::transformer::TransformerConfig;
 use std::marker::PhantomData;
 
+impl<T> Default for FlattenTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl<T> FlattenTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,

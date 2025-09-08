@@ -14,7 +14,8 @@ use streamweave::{
   pipeline::PipelineBuilder,
   structs::{
     consumers::http_response::{ResponseChunk, StreamingHttpResponseConsumer},
-    producers::http_request::{StreamWeaveHttpRequestChunk, StreamingHttpRequestProducer},
+    http::http_request_chunk::StreamWeaveHttpRequestChunk,
+    producers::http_request::StreamingHttpRequestProducer,
     transformers::{backpressure::BackpressureTransformer, map::MapTransformer},
   },
 };

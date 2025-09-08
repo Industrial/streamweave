@@ -10,10 +10,10 @@ use tokio::io::AsyncWriteExt;
 impl Consumer for FileConsumer {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     // Create file once at the start
-    if self.file.is_none() {
-      if let Ok(file) = File::create(&self.path).await {
-        self.file = Some(file);
-      }
+    if self.file.is_none()
+      && let Ok(file) = File::create(&self.path).await
+    {
+      self.file = Some(file);
     }
 
     while let Some(value) = stream.next().await {
@@ -29,10 +29,10 @@ impl Consumer for FileConsumer {
     }
 
     // Final flush after stream is consumed
-    if let Some(file) = &mut self.file {
-      if let Err(e) = file.flush().await {
-        eprintln!("Failed to flush file: {}", e);
-      }
+    if let Some(file) = &mut self.file
+      && let Err(e) = file.flush().await
+    {
+      eprintln!("Failed to flush file: {}", e);
     }
   }
 

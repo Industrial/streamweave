@@ -7,7 +7,8 @@ use std::pin::Pin;
 impl Producer for EnvVarProducer {
   fn produce(&mut self) -> Self::OutputStream {
     let _config = self.config.clone();
-    let vars = match &self.filter {
+
+    (match &self.filter {
       Some(filter) => {
         let vars: Vec<_> = filter
           .iter()
@@ -19,8 +20,7 @@ impl Producer for EnvVarProducer {
         let vars: Vec<_> = std::env::vars().collect();
         Box::pin(stream::iter(vars))
       }
-    };
-    vars
+    }) as _
   }
 
   fn set_config_impl(&mut self, config: ProducerConfig<(String, String)>) {

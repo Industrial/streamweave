@@ -1,7 +1,7 @@
-use crate::structs::producers::http_request::{
-  HttpRequestProducer, StreamWeaveHttpRequest, StreamWeaveHttpRequestChunk,
-  StreamingHttpRequestProducer,
+use crate::structs::http::{
+  http_request::StreamWeaveHttpRequest, http_request_chunk::StreamWeaveHttpRequestChunk,
 };
+use crate::structs::producers::http_request::{HttpRequestProducer, StreamingHttpRequestProducer};
 use crate::traits::output::Output;
 use futures::Stream;
 use std::pin::Pin;

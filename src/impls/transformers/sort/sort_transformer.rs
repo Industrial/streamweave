@@ -3,6 +3,15 @@ use crate::structs::transformers::sort::SortTransformer;
 use crate::traits::transformer::TransformerConfig;
 use std::marker::PhantomData;
 
+impl<T> Default for SortTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static + Ord,
+{
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl<T> SortTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static + Ord,

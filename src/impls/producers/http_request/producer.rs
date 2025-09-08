@@ -1,7 +1,8 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::structs::producers::http_request::{
-  HttpRequestProducer, StreamWeaveHttpRequestChunk, StreamingHttpRequestProducer,
+use crate::structs::http::{
+  connection_info::ConnectionInfo, http_request_chunk::StreamWeaveHttpRequestChunk,
 };
+use crate::structs::producers::http_request::{HttpRequestProducer, StreamingHttpRequestProducer};
 use crate::traits::producer::{Producer, ProducerConfig};
 use async_trait::async_trait;
 use futures::stream;
@@ -68,14 +69,23 @@ impl Producer for StreamingHttpRequestProducer {
 
     // Create a new stream that processes the body stream
     Box::pin(stream::once(async move {
+      // Create a default connection info for producer usage
+      let connection_info = ConnectionInfo::new(
+        "127.0.0.1:8080".parse().unwrap(),
+        "0.0.0.0:3000".parse().unwrap(),
+        http::Version::HTTP_11,
+      );
+
       // For now, we'll just create a single chunk with the method/uri/headers
       // In a real implementation, this would process the actual body stream
-      StreamWeaveHttpRequestChunk {
+      StreamWeaveHttpRequestChunk::new(
         method,
         uri,
         headers,
-        chunk: bytes::Bytes::from("Streaming request body"),
-      }
+        bytes::Bytes::from("Streaming request body"),
+        connection_info,
+        true, // is_final
+      )
     }))
   }
 

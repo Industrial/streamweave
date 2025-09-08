@@ -28,7 +28,7 @@ where
           None => None,
         }
       })
-      .filter_map(|x| futures::future::ready(x)),
+      .filter_map(futures::future::ready),
     )
   }
 

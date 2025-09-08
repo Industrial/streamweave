@@ -2,6 +2,15 @@ use crate::error::ErrorStrategy;
 use crate::structs::consumers::vec::VecConsumer;
 use crate::traits::consumer::ConsumerConfig;
 
+impl<T> Default for VecConsumer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl<T> VecConsumer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,

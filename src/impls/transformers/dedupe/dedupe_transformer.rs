@@ -4,6 +4,15 @@ use crate::traits::transformer::TransformerConfig;
 use std::collections::HashSet;
 use std::hash::Hash;
 
+impl<T> Default for DedupeTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
+{
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl<T> DedupeTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,

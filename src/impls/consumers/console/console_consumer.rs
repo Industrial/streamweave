@@ -2,6 +2,15 @@ use crate::error::ErrorStrategy;
 use crate::structs::consumers::console::ConsoleConsumer;
 use crate::traits::consumer::ConsumerConfig;
 
+impl<T> Default for ConsoleConsumer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
+{
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl<T> ConsoleConsumer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,

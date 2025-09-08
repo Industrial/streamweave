@@ -47,10 +47,10 @@ impl StreamWeaveHttpResponse {
   }
 
   pub fn with_header(mut self, key: &str, value: &str) -> Self {
-    if let Ok(key) = key.parse::<http::header::HeaderName>() {
-      if let Ok(value) = value.parse::<http::header::HeaderValue>() {
-        self.headers.insert(key, value);
-      }
+    if let Ok(key) = key.parse::<http::header::HeaderName>()
+      && let Ok(value) = value.parse::<http::header::HeaderValue>()
+    {
+      self.headers.insert(key, value);
     }
     self
   }

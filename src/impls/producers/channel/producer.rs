@@ -9,10 +9,7 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Producer for ChannelPro
   fn produce(&mut self) -> Self::OutputStream {
     let rx = std::mem::replace(&mut self.rx, mpsc::channel(1).1);
     Box::pin(futures::stream::unfold(rx, |mut rx| async move {
-      match rx.recv().await {
-        Some(item) => Some((item, rx)),
-        None => None,
-      }
+      rx.recv().await.map(|item| (item, rx))
     }))
   }
 

@@ -13,6 +13,7 @@ pub mod filter;
 pub mod flat_map;
 pub mod flatten;
 pub mod group_by;
+pub mod http_router;
 pub mod interleave;
 pub mod limit;
 pub mod map;

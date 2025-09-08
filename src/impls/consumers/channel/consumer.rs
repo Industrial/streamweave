@@ -12,10 +12,10 @@ where
   async fn consume(&mut self, input: Self::InputStream) -> () {
     let mut stream = input;
     while let Some(value) = stream.next().await {
-      if let Some(sender) = &self.channel {
-        if let Err(e) = sender.send(value).await {
-          eprintln!("Failed to send value to channel: {}", e);
-        }
+      if let Some(sender) = &self.channel
+        && let Err(e) = sender.send(value).await
+      {
+        eprintln!("Failed to send value to channel: {}", e);
       }
     }
   }

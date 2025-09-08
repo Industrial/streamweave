@@ -2,6 +2,15 @@ use crate::error::ErrorStrategy;
 use crate::structs::consumers::array::ArrayConsumer;
 use crate::traits::consumer::ConsumerConfig;
 
+impl<T, const N: usize> Default for ArrayConsumer<T, N>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl<T, const N: usize> ArrayConsumer<T, N>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,

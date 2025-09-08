@@ -10,7 +10,7 @@ where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-    Box::pin(input.flat_map(|vec| futures::stream::iter(vec)))
+    Box::pin(input.flat_map(futures::stream::iter))
   }
 
   fn set_config_impl(&mut self, config: TransformerConfig<Vec<T>>) {

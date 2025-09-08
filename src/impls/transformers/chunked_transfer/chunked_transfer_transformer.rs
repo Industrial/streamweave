@@ -3,6 +3,12 @@ use crate::structs::transformers::chunked_transfer::ChunkedTransferTransformer;
 use crate::traits::transformer::TransformerConfig;
 use bytes::Bytes;
 
+impl Default for ChunkedTransferTransformer {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 impl ChunkedTransferTransformer {
   pub fn new() -> Self {
     Self {
