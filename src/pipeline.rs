@@ -1,5 +1,5 @@
 use crate::error::{ErrorAction, ErrorStrategy, PipelineError, StreamError};
-use crate::traits::{consumer::Consumer, producer::Producer, transformer::Transformer};
+use crate::{consumer::Consumer, producer::Producer, transformer::Transformer};
 use std::marker::PhantomData;
 
 // State types for the builder
@@ -215,10 +215,10 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::traits::{
+  use crate::{
     consumer::{Consumer, ConsumerConfig},
     input::Input,
-    output::Output,
+    output::{Output},
     producer::{Producer, ProducerConfig},
     transformer::{Transformer, TransformerConfig},
   };

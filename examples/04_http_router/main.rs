@@ -1,15 +1,14 @@
 use http::Method;
 use std::collections::HashMap;
 use std::sync::Arc;
+use futures::StreamExt;
 use streamweave::{
-  structs::{
-    http::{
-      http_handler::HttpHandler, http_request_chunk::StreamWeaveHttpRequestChunk,
-      http_response::StreamWeaveHttpResponse, route_pattern::RoutePattern,
-    },
-    transformers::http_router::HttpRouterTransformer,
+  http::{
+    http_handler::HttpHandler, http_request_chunk::StreamWeaveHttpRequestChunk,
+    http_response::StreamWeaveHttpResponse, route_pattern::RoutePattern,
   },
-  traits::transformer::TransformerConfig,
+  transformers::http_router::transformer::HttpRouterTransformer,
+  transformer::{Transformer, TransformerConfig},
 };
 
 /// Example HTTP handler that returns a simple response
@@ -104,13 +103,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let not_found_handler = Arc::new(NotFoundHandler);
 
   // Build the HTTP router transformer
-  let router = HttpRouterTransformer::new()
-    .add_route(hello_route, "hello".to_string(), hello_handler)
-    .add_route(user_route, "user".to_string(), user_handler)
-    .add_route(api_route, "api".to_string(), api_handler.clone())
-    .add_route(post_route, "api_post".to_string(), api_handler)
-    .with_fallback_handler(not_found_handler)
-    .with_config(TransformerConfig::default().with_name("http_router".to_string()));
+  let mut router = HttpRouterTransformer::new()
+    .add_route(hello_route, "hello".to_string(), hello_handler)?
+    .add_route(user_route, "user".to_string(), user_handler)?
+    .add_route(api_route, "api".to_string(), api_handler.clone())?
+    .add_route(post_route, "api_post".to_string(), api_handler)?
+    .with_fallback_handler(not_found_handler);
+  
+  router.set_config(TransformerConfig::default().with_name("http_router".to_string()));
 
   // Create test requests
   let test_requests = vec![
@@ -125,46 +125,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("\n📝 Testing HTTP Router Transformer");
   println!("===================================");
 
-  // Process each test request
+  // Process each test request using the transformer
   for (i, request) in test_requests.into_iter().enumerate() {
     println!("\n--- Test {} ---", i + 1);
     println!("Request: {} {}", request.method, request.path());
 
-    // Find the matching route
-    let (handler_id, path_params) = match router.find_route(&request.method, request.path()) {
-      Some((id, params)) => (id, params),
-      None => {
-        println!("❌ No route found - using fallback handler");
-        let response = router
-          .fallback_handler
-          .as_ref()
-          .unwrap()
-          .handle(request)
-          .await;
-        println!(
-          "Response: {} - {}",
-          response.status,
-          String::from_utf8_lossy(&response.body)
-        );
-        continue;
-      }
-    };
+    // Create a simple input stream with just this request
+    let input_stream = futures::stream::iter(vec![request]);
+    let mut output_stream = router.transform(Box::pin(input_stream));
 
-    println!("✅ Route found: {}", handler_id);
-    println!("Path parameters: {:?}", path_params);
-
-    // Set path parameters and get handler
-    let mut request_with_params = request;
-    request_with_params.set_path_params(path_params);
-
-    let handler = router.handlers.get(&handler_id).unwrap();
-    let response = handler.handle(request_with_params).await;
-
-    println!(
-      "Response: {} - {}",
-      response.status,
-      String::from_utf8_lossy(&response.body)
-    );
+    // Process the response
+    if let Some(response) = output_stream.next().await {
+      println!(
+        "Response: {} - {}",
+        response.status,
+        String::from_utf8_lossy(&response.body)
+      );
+    } else {
+      println!("❌ No response generated");
+    }
   }
 
   println!("\n🎉 HTTP Router Transformer example completed successfully!");
@@ -195,7 +174,7 @@ fn create_test_request(
     uri,
     http::HeaderMap::new(),
     bytes::Bytes::new(),
-    streamweave::structs::http::connection_info::ConnectionInfo::new(
+    streamweave::http::connection_info::ConnectionInfo::new(
       SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
       SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 3000),
       http::Version::HTTP_11,

@@ -1,5 +1,11 @@
+pub mod consumer;
+pub mod consumers;
 pub mod error;
-pub mod impls;
+pub mod http;
+pub mod input;
+pub mod output;
 pub mod pipeline;
-pub mod structs;
-pub mod traits;
+pub mod producer;
+pub mod producers;
+pub mod transformer;
+pub mod transformers;

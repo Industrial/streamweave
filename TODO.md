@@ -16,9 +16,9 @@ This document outlines the components needed to make StreamWeave the primary arc
 
 ---
 
-## 1. HTTP Router Transformer
+## 1. HTTP Router Transformer ✅ COMPLETED
 
-**Priority: HIGH** | **Estimated Effort: 3-4 days**
+**Priority: HIGH** | **Estimated Effort: 3-4 days** | **Status: COMPLETED**
 
 ### Context
 A transformer that handles HTTP routing logic, replacing Axum's router functionality. This is the core component that will determine which handler pipeline to execute based on the request path and method.
@@ -65,9 +65,9 @@ pub trait HttpHandler: Send + Sync {
 
 ---
 
-## 2. HTTP Middleware System
+## 2. HTTP Middleware System ✅ COMPLETED
 
-**Priority: HIGH** | **Estimated Effort: 2-3 days**
+**Priority: HIGH** | **Estimated Effort: 2-3 days** | **Status: COMPLETED**
 
 ### Context
 A collection of transformers that implement common HTTP middleware patterns, allowing for composable request/response processing.

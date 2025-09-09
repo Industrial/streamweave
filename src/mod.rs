@@ -1,9 +1,9 @@
-pub mod config;
+pub mod consumer;
 pub mod consumers;
 pub mod error;
+pub mod http;
+pub mod input;
 pub mod pipeline;
+pub mod producer;
 pub mod producers;
-pub mod testing;
-pub mod traits;
-pub mod transformers;
-pub mod utils;
+pub mod transformer;

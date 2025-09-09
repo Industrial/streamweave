@@ -12,12 +12,10 @@ use tower_http::cors::CorsLayer;
 
 use streamweave::{
   pipeline::PipelineBuilder,
-  structs::{
-    consumers::http_response::{ResponseChunk, StreamingHttpResponseConsumer},
-    http::http_request_chunk::StreamWeaveHttpRequestChunk,
-    producers::http_request::StreamingHttpRequestProducer,
-    transformers::{backpressure::BackpressureTransformer, map::MapTransformer},
-  },
+  consumers::http_response::http_response_consumer::{ResponseChunk, StreamingHttpResponseConsumer},
+  http::http_request_chunk::StreamWeaveHttpRequestChunk,
+  producers::http_request::http_request_producer::StreamingHttpRequestProducer,
+  transformers::{backpressure::backpressure_transformer::BackpressureTransformer, map::map_transformer::MapTransformer},
 };
 
 // Echo endpoint with route parameter - now uses streaming implementation

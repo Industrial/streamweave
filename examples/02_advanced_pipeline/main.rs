@@ -2,13 +2,14 @@ use std::time::Duration;
 use streamweave::{
   error::ErrorStrategy,
   pipeline::PipelineBuilder,
-  structs::{
-    consumers::file::FileConsumer,
-    producers::file::FileProducer,
-    transformers::{
-      batch::BatchTransformer, circuit_breaker::CircuitBreakerTransformer, map::MapTransformer,
-      rate_limit::RateLimitTransformer, retry::RetryTransformer,
-    },
+  consumers::file::file_consumer::FileConsumer,
+  producers::file::file_producer::FileProducer,
+  transformers::{
+    batch::batch_transformer::BatchTransformer, 
+    circuit_breaker::circuit_breaker_transformer::CircuitBreakerTransformer, 
+    map::map_transformer::MapTransformer,
+    rate_limit::rate_limit_transformer::RateLimitTransformer, 
+    retry::retry_transformer::RetryTransformer,
   },
 };
 use tempfile::NamedTempFile;
