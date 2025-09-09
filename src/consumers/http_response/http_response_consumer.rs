@@ -1,118 +1,15 @@
 use crate::consumer::ConsumerConfig;
 use crate::error::ErrorStrategy;
-use axum::body::Body;
-use axum::response::Response;
-use bytes::Bytes;
-use http::{HeaderMap, StatusCode};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+use crate::http::http_response::StreamWeaveHttpResponse;
+
+/// HTTP response consumer for handling single responses
 #[derive(Debug, Clone)]
-pub struct StreamWeaveHttpResponse {
-  pub status: StatusCode,
-  pub headers: HeaderMap,
-  pub body: Bytes,
-}
-
-impl StreamWeaveHttpResponse {
-  pub fn new(status: StatusCode, headers: HeaderMap, body: Bytes) -> Self {
-    Self {
-      status,
-      headers,
-      body,
-    }
-  }
-
-  pub fn ok(body: Bytes) -> Self {
-    Self {
-      status: StatusCode::OK,
-      headers: HeaderMap::new(),
-      body,
-    }
-  }
-
-  pub fn not_found(body: Bytes) -> Self {
-    Self {
-      status: StatusCode::NOT_FOUND,
-      headers: HeaderMap::new(),
-      body,
-    }
-  }
-
-  pub fn internal_server_error(body: Bytes) -> Self {
-    Self {
-      status: StatusCode::INTERNAL_SERVER_ERROR,
-      headers: HeaderMap::new(),
-      body,
-    }
-  }
-
-  pub fn with_header(mut self, key: &str, value: &str) -> Self {
-    if let Ok(key) = key.parse::<http::header::HeaderName>()
-      && let Ok(value) = value.parse::<http::header::HeaderValue>()
-    {
-      self.headers.insert(key, value);
-    }
-    self
-  }
-
-  pub fn with_content_type(self, content_type: &str) -> Self {
-    self.with_header("content-type", content_type)
-  }
-
-  pub fn into_axum_response(self) -> Response<Body> {
-    let mut response = Response::builder()
-      .status(self.status)
-      .body(Body::from(self.body))
-      .unwrap();
-
-    // Copy headers
-    for (key, value) in self.headers {
-      if let Some(key) = key {
-        response.headers_mut().insert(key, value);
-      }
-    }
-
-    response
-  }
-}
-
-// New streaming response types
-#[derive(Debug, Clone)]
-pub enum ResponseChunk {
-  Header(StatusCode, HeaderMap),
-  Body(Bytes),
-  End,
-  Error(StatusCode, String),
-}
-
-impl ResponseChunk {
-  pub fn header(status: StatusCode, headers: HeaderMap) -> Self {
-    Self::Header(status, headers)
-  }
-
-  pub fn body(data: Bytes) -> Self {
-    Self::Body(data)
-  }
-
-  pub fn end() -> Self {
-    Self::End
-  }
-
-  pub fn error(status: StatusCode, message: String) -> Self {
-    Self::Error(status, message)
-  }
-}
-
 pub struct HttpResponseConsumer {
   pub response_sender: Arc<Mutex<Option<tokio::sync::oneshot::Sender<StreamWeaveHttpResponse>>>>,
   pub config: ConsumerConfig<StreamWeaveHttpResponse>,
-}
-
-// New streaming response consumer
-pub struct StreamingHttpResponseConsumer {
-  pub chunk_sender: tokio::sync::mpsc::Sender<ResponseChunk>,
-  pub config: ConsumerConfig<ResponseChunk>,
 }
 
 impl HttpResponseConsumer {
@@ -139,34 +36,62 @@ impl HttpResponseConsumer {
   }
 }
 
-impl StreamingHttpResponseConsumer {
-  pub fn new() -> (Self, tokio::sync::mpsc::Receiver<ResponseChunk>) {
-    let (tx, rx) = tokio::sync::mpsc::channel(100); // Buffer size of 100 chunks
-    let consumer = Self {
-      chunk_sender: tx,
-      config: ConsumerConfig::default(),
-    };
-    (consumer, rx)
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use bytes::Bytes;
+
+  #[tokio::test]
+  async fn test_http_response_consumer_new() {
+    let (consumer, receiver) = HttpResponseConsumer::new();
+
+    // Send a test response
+    let response = StreamWeaveHttpResponse::ok(Bytes::from("test"));
+    let sender = consumer.response_sender.lock().await.take().unwrap();
+    let _ = sender.send(response.clone());
+
+    // Receive the response
+    let received = receiver.await.unwrap();
+    assert_eq!(received.status, response.status);
+    assert_eq!(received.body, response.body);
   }
 
-  pub fn with_buffer_size(
-    buffer_size: usize,
-  ) -> (Self, tokio::sync::mpsc::Receiver<ResponseChunk>) {
-    let (tx, rx) = tokio::sync::mpsc::channel(buffer_size);
-    let consumer = Self {
-      chunk_sender: tx,
-      config: ConsumerConfig::default(),
-    };
-    (consumer, rx)
+  #[test]
+  fn test_with_error_strategy() {
+    use crate::error::ErrorAction;
+    let strategy = ErrorStrategy::<StreamWeaveHttpResponse>::new_custom(|_| ErrorAction::Skip);
+    let (consumer, _) = HttpResponseConsumer::new();
+    let consumer = consumer.with_error_strategy(strategy.clone());
+
+    assert_eq!(consumer.config.error_strategy, strategy);
   }
 
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<ResponseChunk>) -> Self {
-    self.config.error_strategy = strategy;
-    self
+  #[test]
+  fn test_with_name() {
+    let name = "test_consumer".to_string();
+    let (consumer, _) = HttpResponseConsumer::new();
+    let consumer = consumer.with_name(name.clone());
+
+    assert_eq!(consumer.config.name, name);
   }
 
-  pub fn with_name(mut self, name: String) -> Self {
-    self.config.name = name;
-    self
+  #[tokio::test]
+  async fn test_response_processing() {
+    // Test different response types
+    let responses = vec![
+      StreamWeaveHttpResponse::ok(Bytes::from("success")),
+      StreamWeaveHttpResponse::not_found(Bytes::from("not found")),
+      StreamWeaveHttpResponse::internal_server_error(Bytes::from("error")),
+    ];
+
+    for expected_response in responses {
+      let (consumer, receiver) = HttpResponseConsumer::new();
+      let sender = consumer.response_sender.lock().await.take().unwrap();
+      let _ = sender.send(expected_response.clone());
+
+      let received = receiver.await.unwrap();
+      assert_eq!(received.status, expected_response.status);
+      assert_eq!(received.body, expected_response.body);
+    }
   }
 }

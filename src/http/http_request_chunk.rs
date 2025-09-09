@@ -1,6 +1,7 @@
 use bytes::Bytes;
 use http::{HeaderMap, Method, Uri};
 use std::collections::HashMap;
+use uuid::Uuid;
 
 use crate::http::connection_info::ConnectionInfo;
 
@@ -15,6 +16,8 @@ pub struct StreamWeaveHttpRequestChunk {
   pub query_params: HashMap<String, String>,
   pub connection_info: ConnectionInfo,
   pub is_final: bool,
+  pub request_id: Uuid,
+  pub connection_id: Uuid,
 }
 
 impl StreamWeaveHttpRequestChunk {
@@ -25,6 +28,8 @@ impl StreamWeaveHttpRequestChunk {
     chunk: Bytes,
     connection_info: ConnectionInfo,
     is_final: bool,
+    request_id: Uuid,
+    connection_id: Uuid,
   ) -> Self {
     let path_params = HashMap::new();
     let query_params = Self::parse_query_params(&uri);
@@ -38,6 +43,8 @@ impl StreamWeaveHttpRequestChunk {
       query_params,
       connection_info,
       is_final,
+      request_id,
+      connection_id,
     }
   }
 
@@ -102,6 +109,8 @@ mod tests {
         Version::HTTP_11,
       ),
       false,
+      Uuid::new_v4(),
+      Uuid::new_v4(),
     );
 
     assert_eq!(chunk.method, Method::POST);

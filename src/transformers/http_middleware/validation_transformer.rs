@@ -741,6 +741,7 @@ mod tests {
   };
   use http::HeaderMap;
   use http::{Method, Uri, Version};
+  use uuid::Uuid;
 
   fn create_test_request(headers: HeaderMap, body: &[u8]) -> StreamWeaveHttpRequestChunk {
     let connection_info = ConnectionInfo::new(
@@ -756,6 +757,8 @@ mod tests {
       body.to_vec().into(),
       connection_info,
       true,
+      Uuid::new_v4(),
+      Uuid::new_v4(),
     )
   }
 

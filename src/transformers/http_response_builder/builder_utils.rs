@@ -738,7 +738,8 @@ mod tests {
       .build();
 
     assert!(response.is_success());
-    let body = String::from_utf8_lossy(&response.body());
+    let body_bytes = response.body();
+    let body = String::from_utf8_lossy(&body_bytes);
     assert!(body.contains("<!DOCTYPE html>"));
     assert!(body.contains("<title>My Page</title>"));
     assert!(body.contains("<h1>Hello</h1>"));
@@ -870,7 +871,8 @@ mod tests {
       .build();
 
     assert!(response.is_success());
-    let body = String::from_utf8_lossy(&response.body());
+    let body_bytes = response.body();
+    let body = String::from_utf8_lossy(&body_bytes);
     assert!(body.contains("stack_trace"));
   }
 
@@ -881,7 +883,8 @@ mod tests {
       .build();
 
     assert!(response.is_success());
-    let body = String::from_utf8_lossy(&response.body());
+    let body_bytes = response.body();
+    let body = String::from_utf8_lossy(&body_bytes);
     assert!(!body.contains("stack_trace"));
   }
 
@@ -893,7 +896,8 @@ mod tests {
 
     // Should fallback to simple error format
     assert!(response.is_success());
-    let body = String::from_utf8_lossy(&response.body());
+    let body_bytes = response.body();
+    let body = String::from_utf8_lossy(&body_bytes);
     assert!(body.contains("400"));
   }
 
@@ -1050,7 +1054,8 @@ mod tests {
       .build();
 
     assert!(response.is_success());
-    let body = String::from_utf8_lossy(&response.body());
+    let body_bytes = response.body();
+    let body = String::from_utf8_lossy(&body_bytes);
     assert!(body.contains("Test & Page"));
     assert!(body.contains("Hello & World"));
   }
@@ -1067,7 +1072,8 @@ mod tests {
     let response = ErrorResponseBuilder::bad_request("错误消息 🚀").build();
 
     assert!(response.is_success());
-    let body = String::from_utf8_lossy(&response.body());
+    let body_bytes = response.body();
+    let body = String::from_utf8_lossy(&body_bytes);
     assert!(body.contains("错误消息"));
   }
 }

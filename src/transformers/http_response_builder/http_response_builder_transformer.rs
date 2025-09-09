@@ -153,6 +153,10 @@ impl HttpResponseBuilderTransformer {
         });
         Bytes::from(error_json.to_string())
       }
+      ResponseData::Stream { .. } => {
+        // For streaming responses, return a placeholder
+        Bytes::from("Streaming response not yet implemented")
+      }
     };
 
     let mut headers = response_data.headers().clone();
@@ -745,7 +749,7 @@ mod tests {
     // Test that config is set correctly
     let _config = transformer.get_config_impl();
 
-    let mut_config = transformer.get_config_mut_impl();
+    let _mut_config = transformer.get_config_mut_impl();
     // Test that we can get mutable config
     let _mut_config = transformer.get_config_mut_impl();
   }

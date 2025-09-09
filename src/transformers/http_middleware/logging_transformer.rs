@@ -430,6 +430,7 @@ mod tests {
   };
   use http::{HeaderMap, Method, Uri, Version};
   use std::str::FromStr;
+  use uuid::Uuid;
 
   fn create_test_request(
     method: Method,
@@ -449,6 +450,8 @@ mod tests {
       bytes::Bytes::from("test body"),
       connection_info,
       true,
+      Uuid::new_v4(),
+      Uuid::new_v4(),
     )
   }
 

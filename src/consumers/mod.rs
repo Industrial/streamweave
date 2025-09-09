@@ -6,5 +6,7 @@ pub mod file;
 pub mod hash_map;
 pub mod hash_set;
 pub mod http_response;
+pub mod http_server_response;
+pub mod streaming_http_response;
 pub mod string;
 pub mod vec;

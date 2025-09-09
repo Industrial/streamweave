@@ -84,17 +84,17 @@
 //! - CORS and security headers
 
 pub mod builder_utils;
+pub mod http_response_builder_transformer;
 pub mod response_data;
-pub mod transformer;
 
 // Re-export the main types for convenience
 pub use builder_utils::{
   ErrorResponseBuilder, HtmlResponseBuilder, JsonResponseBuilder, TextResponseBuilder, responses,
 };
-pub use response_data::ResponseData;
-pub use transformer::{
+pub use http_response_builder_transformer::{
   CorsConfig, HttpResponseBuilderConfig, HttpResponseBuilderTransformer, ResponseBuilderError,
 };
+pub use response_data::ResponseData;
 
 #[cfg(test)]
 mod tests {

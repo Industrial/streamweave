@@ -2,7 +2,7 @@ use bytes::Bytes;
 use http::{HeaderMap, StatusCode};
 
 /// Streaming response chunk for processing
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ResponseChunk {
   Header(StatusCode, HeaderMap),
   Body(Bytes),

@@ -43,11 +43,11 @@ HTTP Request → Router Transformer → Handler → Response Builder → HTTP Re
 use streamweave::{
     http::{HttpHandler, RoutePattern, StreamWeaveHttpRequestChunk, StreamWeaveHttpResponse},
     transformers::{
-        http_router::transformer::HttpRouterTransformer,
+        http_router::http_router_transformer::HttpRouterTransformer,
         http_response_builder::{
             response_data::ResponseData,
             builder_utils::{JsonResponseBuilder, HtmlResponseBuilder, responses},
-            transformer::HttpResponseBuilderTransformer,
+            http_response_builder_transformer::HttpResponseBuilderTransformer,
         },
     },
     transformer::TransformerConfig,
@@ -149,7 +149,7 @@ Security headers include:
 ## CORS Configuration
 
 ```rust
-use streamweave::transformers::http_response_builder::transformer::CorsConfig;
+use streamweave::transformers::http_response_builder::http_response_builder_transformer::CorsConfig;
 
 let cors_config = CorsConfig {
     allowed_origins: vec!["https://example.com".to_string()],

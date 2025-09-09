@@ -6,6 +6,7 @@ pub mod file;
 pub mod hash_map;
 pub mod hash_set;
 pub mod http_request;
+pub mod http_server_producer;
 pub mod interval;
 pub mod random_number;
 pub mod range;

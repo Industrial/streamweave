@@ -1,17 +1,39 @@
-use super::http_response_consumer::HttpResponseConsumer;
-// StreamWeaveHttpResponse is used in trait bounds
+use super::response_chunk::ResponseChunk;
+use super::streaming_http_response_consumer::StreamingHttpResponseConsumer;
 use crate::consumer::{Consumer, ConsumerConfig};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use async_trait::async_trait;
 use futures::StreamExt;
 
 #[async_trait]
-impl Consumer for HttpResponseConsumer {
+impl Consumer for StreamingHttpResponseConsumer {
   async fn consume(&mut self, mut stream: Self::InputStream) {
-    if let Some(response) = stream.next().await {
-      let mut sender = self.response_sender.lock().await;
-      if let Some(tx) = sender.take() {
-        let _ = tx.send(response);
+    while let Some(chunk) = stream.next().await {
+      match chunk {
+        ResponseChunk::Header(status, headers) => {
+          // Send response headers
+          let _ = self
+            .chunk_sender
+            .send(ResponseChunk::Header(status, headers))
+            .await;
+        }
+        ResponseChunk::Body(data) => {
+          // Send response body chunk
+          let _ = self.chunk_sender.send(ResponseChunk::Body(data)).await;
+        }
+        ResponseChunk::End => {
+          // Signal end of response
+          let _ = self.chunk_sender.send(ResponseChunk::End).await;
+          break;
+        }
+        ResponseChunk::Error(status, message) => {
+          // Send error response
+          let _ = self
+            .chunk_sender
+            .send(ResponseChunk::Error(status, message))
+            .await;
+          break;
+        }
       }
     }
   }

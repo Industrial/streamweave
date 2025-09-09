@@ -305,6 +305,7 @@ mod tests {
   };
   use http::{HeaderMap, Method, Uri, Version};
   use std::collections::HashMap;
+  use uuid::Uuid;
 
   fn create_test_request(headers: HeaderMap) -> StreamWeaveHttpRequestChunk {
     let connection_info = ConnectionInfo::new(
@@ -320,6 +321,8 @@ mod tests {
       bytes::Bytes::new(),
       connection_info,
       true,
+      Uuid::new_v4(),
+      Uuid::new_v4(),
     )
   }
 

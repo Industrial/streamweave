@@ -84,7 +84,9 @@ impl Producer for StreamingHttpRequestProducer {
         headers,
         bytes::Bytes::from("Streaming request body"),
         connection_info,
-        true, // is_final
+        true,                 // is_final
+        uuid::Uuid::new_v4(), // request_id
+        uuid::Uuid::new_v4(), // connection_id
       )
     }))
   }

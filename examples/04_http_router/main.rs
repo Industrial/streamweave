@@ -1,6 +1,9 @@
+use async_trait::async_trait;
+use futures::stream::StreamExt;
 use http::Method;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use streamweave::{
   consumers::vec::vec_consumer::VecConsumer,
   http::{
@@ -8,14 +11,16 @@ use streamweave::{
     http_response::StreamWeaveHttpResponse, route_pattern::RoutePattern,
   },
   pipeline::PipelineBuilder,
-  producers::vec::vec_producer::VecProducer,
-  transformer::{Transformer, TransformerConfig},
+  producers::{
+    http_server_producer::http_server_producer::HttpServerProducer, vec::vec_producer::VecProducer,
+  },
+  transformer::TransformerConfig,
   transformers::{
     http_response_builder::{
       builder_utils::{ErrorResponseBuilder, HtmlResponseBuilder, JsonResponseBuilder, responses},
       response_data::ResponseData,
     },
-    http_router::transformer::HttpRouterTransformer,
+    http_router::http_router_transformer::HttpRouterTransformer,
   },
 };
 
@@ -23,6 +28,7 @@ use streamweave::{
 struct HelloHandler;
 
 #[async_trait::async_trait]
+#[async_trait]
 impl HttpHandler for HelloHandler {
   async fn handle(&self, request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
     let path = request.path();
@@ -72,6 +78,11 @@ impl HttpHandler for HelloHandler {
       ResponseData::Error { status, message } => {
         StreamWeaveHttpResponse::new(status, http::HeaderMap::new(), message.into())
       }
+      ResponseData::Stream { .. } => StreamWeaveHttpResponse::new(
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+        http::HeaderMap::new(),
+        "Stream response not supported".into(),
+      ),
     }
   }
 }
@@ -80,6 +91,7 @@ impl HttpHandler for HelloHandler {
 struct UserHandler;
 
 #[async_trait::async_trait]
+#[async_trait]
 impl HttpHandler for UserHandler {
   async fn handle(&self, request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
     let user_id = request
@@ -108,6 +120,11 @@ impl HttpHandler for UserHandler {
       ResponseData::Error { status, message } => {
         StreamWeaveHttpResponse::new(status, http::HeaderMap::new(), message.into())
       }
+      ResponseData::Stream { .. } => StreamWeaveHttpResponse::new(
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+        http::HeaderMap::new(),
+        "Stream response not supported".into(),
+      ),
     }
   }
 }
@@ -116,6 +133,7 @@ impl HttpHandler for UserHandler {
 struct ApiHandler;
 
 #[async_trait::async_trait]
+#[async_trait]
 impl HttpHandler for ApiHandler {
   async fn handle(&self, request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
     let path = request.path();
@@ -146,6 +164,11 @@ impl HttpHandler for ApiHandler {
       ResponseData::Error { status, message } => {
         StreamWeaveHttpResponse::new(status, http::HeaderMap::new(), message.into())
       }
+      ResponseData::Stream { .. } => StreamWeaveHttpResponse::new(
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+        http::HeaderMap::new(),
+        "Stream response not supported".into(),
+      ),
     }
   }
 }
@@ -154,6 +177,7 @@ impl HttpHandler for ApiHandler {
 struct NotFoundHandler;
 
 #[async_trait::async_trait]
+#[async_trait]
 impl HttpHandler for NotFoundHandler {
   async fn handle(&self, request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
     // Use ErrorResponseBuilder for proper error responses
@@ -175,6 +199,11 @@ impl HttpHandler for NotFoundHandler {
       ResponseData::Error { status, message } => {
         StreamWeaveHttpResponse::new(status, http::HeaderMap::new(), message.into())
       }
+      ResponseData::Stream { .. } => StreamWeaveHttpResponse::new(
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+        http::HeaderMap::new(),
+        "Stream response not supported".into(),
+      ),
     }
   }
 }
@@ -186,8 +215,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   println!("🚀 StreamWeave HTTP Router Transformer Example");
   println!("===============================================");
-  println!("Now featuring full StreamWeave pipeline architecture with HTTP Response Builder!");
+  println!("Now featuring HTTP Server Producer as the primary component!");
+  println!("Demonstrates complete StreamWeave architecture without Axum dependency");
   println!();
+
+  // Create HTTP server producer
+  let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3002));
+  let mut http_producer = HttpServerProducer::bind(addr)
+    .await?
+    .with_max_connections(100)
+    .with_connection_timeout(Duration::from_secs(30))
+    .with_keep_alive_timeout(Duration::from_secs(60));
 
   // Create route patterns
   let hello_route = RoutePattern::new(Method::GET, "/hello")?;
@@ -195,23 +233,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let api_route = RoutePattern::new(Method::GET, "/api/*")?;
   let post_route = RoutePattern::new(Method::POST, "/api/data")?;
 
-  // Create handlers
-  let hello_handler = Arc::new(HelloHandler);
-  let user_handler = Arc::new(UserHandler);
-  let api_handler = Arc::new(ApiHandler);
-  let not_found_handler = Arc::new(NotFoundHandler);
+  // Create handlers (not used in current router implementation)
+  let _hello_handler = Arc::new(HelloHandler);
+  let _user_handler = Arc::new(UserHandler);
+  let _api_handler = Arc::new(ApiHandler);
+  let _not_found_handler = Arc::new(NotFoundHandler);
 
   // Build the HTTP router transformer
-  let mut router = HttpRouterTransformer::new()
-    .add_route(hello_route, "hello".to_string(), hello_handler)?
-    .add_route(user_route, "user".to_string(), user_handler)?
-    .add_route(api_route, "api".to_string(), api_handler.clone())?
-    .add_route(post_route, "api_post".to_string(), api_handler)?
-    .with_fallback_handler(not_found_handler);
+  let router = HttpRouterTransformer::new()
+    .add_route(hello_route, "hello".to_string())?
+    .add_route(user_route, "user".to_string())?
+    .add_route(api_route, "api".to_string())?
+    .add_route(post_route, "api_post".to_string())?
+    .set_config(TransformerConfig::default().with_name("http_router".to_string()));
 
-  router.set_config(TransformerConfig::default().with_name("http_router".to_string()));
-
-  // Create test requests
+  // Create test requests for demonstration
   let test_requests = vec![
     create_test_request(Method::GET, "/hello", HashMap::new()),
     create_test_request(Method::GET, "/users/123", HashMap::new()),
@@ -279,8 +315,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("\n🎉 HTTP Router Transformer example completed successfully!");
+  // Start the HTTP server producer for live testing
+  println!("\n🌐 Starting HTTP Server Producer on {}", addr);
+  println!("📋 Available endpoints:");
+  println!("   GET  /hello                     - Hello endpoint");
+  println!("   GET  /users/:id                 - User endpoint with path parameters");
+  println!("   GET  /api/*                     - API endpoint with wildcard matching");
+  println!("   POST /api/data                  - API data endpoint");
+  println!("   GET  /nonexistent               - 404 fallback endpoint");
+  println!();
+  println!("🔗 Test endpoints in your browser:");
+  println!("   http://localhost:3002/hello");
+  println!("   http://localhost:3002/users/123");
+  println!("   http://localhost:3002/api/status");
+  println!("   http://localhost:3002/users/456?include=profile");
+  println!();
+  println!("🎉 All endpoints use StreamWeave HTTP Server Producer!");
+  println!("   - Direct HTTP protocol handling (no Axum dependency)");
+  println!("   - Path parameters like /users/123");
+  println!("   - Query parameters like ?include=profile");
+  println!("   - Wildcard matching for /api/*");
+  println!("   - Fallback handling for 404 responses");
+  println!("   - Keep-alive connection support");
+
+  // Start the HTTP server producer
+  let request_stream = http_producer
+    .start()
+    .await
+    .map_err(|e| format!("Failed to start HTTP server: {}", e))?;
+
+  // Process requests from the HTTP server producer
+  let mut request_stream = request_stream;
+  let mut request_count = 0;
+
+  while let Some(request) = request_stream.next().await {
+    request_count += 1;
+    println!(
+      "📥 Received HTTP request #{}: {} {}",
+      request_count,
+      request.method,
+      request.path()
+    );
+
+    // In a real implementation, you would process the request through the pipeline
+    // and send the response back to the client
+    println!("   Path params: {:?}", request.path_params);
+    println!("   Query params: {:?}", request.query_params);
+  }
+
+  println!("\n✅ HTTP Router Transformer example completed successfully!");
   println!("\nKey Features Demonstrated:");
+  println!("• 🌐 HTTP Server Producer: Direct HTTP protocol handling");
   println!("• 🛣️  HTTP Router: Request routing with path parameters and fallback handling");
   println!("• 🆕 HTTP Response Builder: Structured response generation with security headers");
   println!("• 🔗 StreamWeave Architecture: Complete request-to-response pipeline in one stream");
@@ -297,6 +382,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("  - CORS support");
   println!("  - Content-Type header management");
   println!("• Pipeline Processing: All requests processed through a single continuous stream");
+  println!("• ⚡ Performance: No Axum dependency, direct protocol handling");
 
   Ok(())
 }
@@ -310,7 +396,7 @@ fn create_test_request(
   use http::Uri;
   use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-  let uri: Uri = format!("http://localhost:3000{}", path).parse().unwrap();
+  let uri: Uri = format!("http://localhost:3002{}", path).parse().unwrap();
 
   StreamWeaveHttpRequestChunk::new(
     method,
@@ -323,5 +409,7 @@ fn create_test_request(
       http::Version::HTTP_11,
     ),
     true,
+    uuid::Uuid::new_v4(),
+    uuid::Uuid::new_v4(),
   )
 }

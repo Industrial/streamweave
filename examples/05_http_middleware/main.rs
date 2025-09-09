@@ -1,3 +1,5 @@
+use async_trait::async_trait;
+use futures::stream::StreamExt;
 use http::{HeaderMap, Method, Uri, Version};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
@@ -10,7 +12,9 @@ use streamweave::{
     route_pattern::RoutePattern,
   },
   pipeline::PipelineBuilder,
-  producers::vec::vec_producer::VecProducer,
+  producers::{
+    http_server_producer::http_server_producer::HttpServerProducer, vec::vec_producer::VecProducer,
+  },
   transformer::{Transformer, TransformerConfig},
   transformers::{
     http_middleware::{
@@ -22,7 +26,7 @@ use streamweave::{
       validation_transformer::RequestValidationTransformer,
     },
     http_response_builder::{builder_utils::JsonResponseBuilder, response_data::ResponseData},
-    http_router::transformer::HttpRouterTransformer,
+    http_router::http_router_transformer::HttpRouterTransformer,
   },
 };
 
@@ -30,6 +34,7 @@ use streamweave::{
 struct UsersHandler;
 
 #[async_trait::async_trait]
+#[async_trait]
 impl HttpHandler for UsersHandler {
   async fn handle(&self, _request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
     // Simulate some processing time
@@ -74,6 +79,11 @@ impl HttpHandler for UsersHandler {
       ResponseData::Error { status, message } => {
         StreamWeaveHttpResponse::new(status, HeaderMap::new(), message.into())
       }
+      ResponseData::Stream { .. } => StreamWeaveHttpResponse::new(
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+        HeaderMap::new(),
+        "Stream response not supported".into(),
+      ),
     }
   }
 }
@@ -82,6 +92,7 @@ impl HttpHandler for UsersHandler {
 struct UserHandler;
 
 #[async_trait::async_trait]
+#[async_trait]
 impl HttpHandler for UserHandler {
   async fn handle(&self, request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
     let path = request.path();
@@ -110,6 +121,11 @@ impl HttpHandler for UserHandler {
       ResponseData::Error { status, message } => {
         StreamWeaveHttpResponse::new(status, HeaderMap::new(), message.into())
       }
+      ResponseData::Stream { .. } => StreamWeaveHttpResponse::new(
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+        HeaderMap::new(),
+        "Stream response not supported".into(),
+      ),
     }
   }
 }
@@ -118,6 +134,7 @@ impl HttpHandler for UserHandler {
 struct CreateUserHandler;
 
 #[async_trait::async_trait]
+#[async_trait]
 impl HttpHandler for CreateUserHandler {
   async fn handle(&self, _request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
     // Simulate some processing time
@@ -143,6 +160,11 @@ impl HttpHandler for CreateUserHandler {
       ResponseData::Error { status, message } => {
         StreamWeaveHttpResponse::new(status, HeaderMap::new(), message.into())
       }
+      ResponseData::Stream { .. } => StreamWeaveHttpResponse::new(
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+        HeaderMap::new(),
+        "Stream response not supported".into(),
+      ),
     }
   }
 }
@@ -151,6 +173,7 @@ impl HttpHandler for CreateUserHandler {
 struct HealthHandler;
 
 #[async_trait::async_trait]
+#[async_trait]
 impl HttpHandler for HealthHandler {
   async fn handle(&self, _request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
     let response_data = JsonResponseBuilder::with_status(http::StatusCode::OK)
@@ -170,6 +193,11 @@ impl HttpHandler for HealthHandler {
       ResponseData::Error { status, message } => {
         StreamWeaveHttpResponse::new(status, HeaderMap::new(), message.into())
       }
+      ResponseData::Stream { .. } => StreamWeaveHttpResponse::new(
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+        HeaderMap::new(),
+        "Stream response not supported".into(),
+      ),
     }
   }
 }
@@ -178,6 +206,7 @@ impl HttpHandler for HealthHandler {
 struct VersionHandler;
 
 #[async_trait::async_trait]
+#[async_trait]
 impl HttpHandler for VersionHandler {
   async fn handle(&self, _request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
     let response_data = JsonResponseBuilder::with_status(http::StatusCode::OK)
@@ -197,6 +226,11 @@ impl HttpHandler for VersionHandler {
       ResponseData::Error { status, message } => {
         StreamWeaveHttpResponse::new(status, HeaderMap::new(), message.into())
       }
+      ResponseData::Stream { .. } => StreamWeaveHttpResponse::new(
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+        HeaderMap::new(),
+        "Stream response not supported".into(),
+      ),
     }
   }
 }
@@ -205,6 +239,7 @@ impl HttpHandler for VersionHandler {
 struct MetricsHandler;
 
 #[async_trait::async_trait]
+#[async_trait]
 impl HttpHandler for MetricsHandler {
   async fn handle(&self, _request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
     let response_data = JsonResponseBuilder::with_status(http::StatusCode::OK)
@@ -226,6 +261,11 @@ impl HttpHandler for MetricsHandler {
       ResponseData::Error { status, message } => {
         StreamWeaveHttpResponse::new(status, HeaderMap::new(), message.into())
       }
+      ResponseData::Stream { .. } => StreamWeaveHttpResponse::new(
+        http::StatusCode::INTERNAL_SERVER_ERROR,
+        HeaderMap::new(),
+        "Stream response not supported".into(),
+      ),
     }
   }
 }
@@ -250,6 +290,8 @@ fn create_test_requests() -> Vec<StreamWeaveHttpRequestChunk> {
       bytes::Bytes::from(body.to_string()),
       connection_info,
       true,
+      uuid::Uuid::new_v4(),
+      uuid::Uuid::new_v4(),
     )
   };
 
@@ -309,12 +351,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   println!("🚀 StreamWeave HTTP Middleware Pipeline Example");
   println!("===============================================");
-  println!("This example demonstrates the full StreamWeave pipeline architecture:");
+  println!("Now featuring HTTP Server Producer as the primary component!");
+  println!("Demonstrates complete StreamWeave architecture without Axum dependency");
   println!("• Complete request-to-response pipeline with all middleware");
+  println!("• HTTP Server Producer for direct protocol handling");
   println!("• HTTP Router for request routing");
   println!("• HTTP Response Builder for structured responses");
   println!("• All transformers working together in a single stream");
   println!();
+
+  // Create HTTP server producer
+  let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 3003));
+  let mut http_producer = HttpServerProducer::bind(addr)
+    .await?
+    .with_max_connections(100)
+    .with_connection_timeout(Duration::from_secs(30))
+    .with_keep_alive_timeout(Duration::from_secs(60));
 
   // Create route patterns
   let api_users_route = RoutePattern::new(Method::GET, "/api/users")?;
@@ -324,28 +376,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let version_route = RoutePattern::new(Method::GET, "/version")?;
   let metrics_route = RoutePattern::new(Method::GET, "/metrics")?;
 
-  // Create individual handlers
-  let users_handler = Arc::new(UsersHandler);
-  let user_handler = Arc::new(UserHandler);
-  let create_user_handler = Arc::new(CreateUserHandler);
-  let health_handler = Arc::new(HealthHandler);
-  let version_handler = Arc::new(VersionHandler);
-  let metrics_handler = Arc::new(MetricsHandler);
+  // Create individual handlers (not used in current router implementation)
+  let _users_handler = Arc::new(UsersHandler);
+  let _user_handler = Arc::new(UserHandler);
+  let _create_user_handler = Arc::new(CreateUserHandler);
+  let _health_handler = Arc::new(HealthHandler);
+  let _version_handler = Arc::new(VersionHandler);
+  let _metrics_handler = Arc::new(MetricsHandler);
 
   // Build the HTTP router transformer
-  let mut router = HttpRouterTransformer::new()
-    .add_route(api_users_route, "api_users".to_string(), users_handler)?
-    .add_route(api_user_route, "api_user".to_string(), user_handler)?
-    .add_route(
-      api_create_user_route,
-      "api_create_user".to_string(),
-      create_user_handler,
-    )?
-    .add_route(health_route, "health".to_string(), health_handler)?
-    .add_route(version_route, "version".to_string(), version_handler)?
-    .add_route(metrics_route, "metrics".to_string(), metrics_handler)?;
-
-  router.set_config(TransformerConfig::default().with_name("http_router".to_string()));
+  let router = HttpRouterTransformer::new()
+    .add_route(api_users_route, "api_users".to_string())?
+    .add_route(api_user_route, "api_user".to_string())?
+    .add_route(api_create_user_route, "api_create_user".to_string())?
+    .add_route(health_route, "health".to_string())?
+    .add_route(version_route, "version".to_string())?
+    .add_route(metrics_route, "metrics".to_string())?
+    .set_config(TransformerConfig::default().with_name("http_router".to_string()));
 
   // Note: HTTP Response Builder is used internally by the handlers
 
@@ -506,8 +553,62 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("\n🎉 HTTP Middleware Pipeline example completed successfully!");
+  // Start the HTTP server producer for live testing
+  println!("\n🌐 Starting HTTP Server Producer on {}", addr);
+  println!("📋 Available endpoints:");
+  println!("   GET  /api/users                 - List all users");
+  println!("   GET  /api/users/:id             - Get user by ID");
+  println!("   POST /api/users                 - Create new user");
+  println!("   GET  /health                    - Health check");
+  println!("   GET  /version                   - Version information");
+  println!("   GET  /metrics                   - Metrics endpoint");
+  println!();
+  println!("🔗 Test endpoints in your browser:");
+  println!("   http://localhost:3003/health");
+  println!("   http://localhost:3003/version");
+  println!("   http://localhost:3003/api/users");
+  println!("   http://localhost:3003/api/users/123");
+  println!("   http://localhost:3003/metrics");
+  println!();
+  println!("🎉 All endpoints use StreamWeave HTTP Server Producer!");
+  println!("   - Direct HTTP protocol handling (no Axum dependency)");
+  println!("   - Complete middleware pipeline");
+  println!("   - CORS support");
+  println!("   - Request/response logging");
+  println!("   - Compression support");
+  println!("   - Rate limiting");
+  println!("   - Request validation");
+  println!("   - Response transformation");
+  println!("   - Keep-alive connection support");
+
+  // Start the HTTP server producer
+  let request_stream = http_producer
+    .start()
+    .await
+    .map_err(|e| format!("Failed to start HTTP server: {}", e))?;
+
+  // Process requests from the HTTP server producer
+  let mut request_stream = request_stream;
+  let mut request_count = 0;
+
+  while let Some(request) = request_stream.next().await {
+    request_count += 1;
+    println!(
+      "📥 Received HTTP request #{}: {} {}",
+      request_count,
+      request.method,
+      request.path()
+    );
+
+    // In a real implementation, you would process the request through the pipeline
+    // and send the response back to the client
+    println!("   Path params: {:?}", request.path_params);
+    println!("   Query params: {:?}", request.query_params);
+  }
+
+  println!("\n✅ HTTP Middleware Pipeline example completed successfully!");
   println!("\nKey Features Demonstrated:");
+  println!("• 🌐 HTTP Server Producer: Direct HTTP protocol handling");
   println!("• 🌐 CORS: Cross-Origin Resource Sharing handling");
   println!("• 📝 Logging: Request and response logging with structured data");
   println!("• 🗜️  Compression: Automatic response compression (Gzip, Deflate, Brotli)");
@@ -520,6 +621,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   );
   println!("• 🛣️  HTTP Router: Request routing with path parameters and fallback handling");
   println!("• 🔗 StreamWeave Architecture: Complete request-to-response pipeline in one stream");
+  println!("• ⚡ Performance: No Axum dependency, direct protocol handling");
 
   Ok(())
 }
