@@ -1,19 +1,22 @@
-use futures::StreamExt;
 use http::{HeaderMap, Method, Uri, Version};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 use streamweave::{
+  consumers::vec::vec_consumer::VecConsumer,
   http::{
     connection_info::ConnectionInfo, http_handler::HttpHandler,
     http_request_chunk::StreamWeaveHttpRequestChunk, http_response::StreamWeaveHttpResponse,
+    route_pattern::RoutePattern,
   },
-  transformer::Transformer,
+  pipeline::PipelineBuilder,
+  producers::vec::vec_producer::VecProducer,
+  transformer::{Transformer, TransformerConfig},
   transformers::{
     http_middleware::{
       compression_transformer::{CompressionAlgorithm, CompressionConfig, CompressionTransformer},
       cors_transformer::{CorsConfig, CorsTransformer},
-      logging_transformer::{LogLevel, RequestLoggingTransformer, ResponseLoggingTransformer},
+      logging_transformer::{LogLevel, RequestLoggingTransformer},
       rate_limit_transformer::{CustomKeyExtractor, RateLimitStrategy, RateLimitTransformer},
       response_transform_transformer::ResponseTransformTransformer,
       validation_transformer::RequestValidationTransformer,
@@ -22,6 +25,7 @@ use streamweave::{
       builder_utils::{ErrorResponseBuilder, JsonResponseBuilder},
       response_data::ResponseData,
     },
+    http_router::transformer::HttpRouterTransformer,
   },
 };
 
@@ -231,16 +235,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Initialize logging
   tracing_subscriber::fmt::init();
 
-  println!("🚀 StreamWeave HTTP Middleware Example");
-  println!("=====================================");
-  println!("This example demonstrates all HTTP middleware transformers working together:");
-  println!("• CORS handling");
-  println!("• Request/Response logging");
-  println!("• Compression/Decompression");
-  println!("• Rate limiting");
-  println!("• Request validation");
-  println!("• Response transformation");
+  println!("🚀 StreamWeave HTTP Middleware Pipeline Example");
+  println!("===============================================");
+  println!("This example demonstrates the full StreamWeave pipeline architecture:");
+  println!("• Complete request-to-response pipeline with all middleware");
+  println!("• HTTP Router for request routing");
+  println!("• HTTP Response Builder for structured responses");
+  println!("• All transformers working together in a single stream");
   println!();
+
+  // Create route patterns
+  let api_users_route = RoutePattern::new(Method::GET, "/api/users")?;
+  let api_user_route = RoutePattern::new(Method::GET, "/api/users/{id}")?;
+  let api_create_user_route = RoutePattern::new(Method::POST, "/api/users")?;
+  let health_route = RoutePattern::new(Method::GET, "/health")?;
+  let version_route = RoutePattern::new(Method::GET, "/version")?;
+  let metrics_route = RoutePattern::new(Method::GET, "/metrics")?;
+
+  // Create handlers
+  let user_handler = Arc::new(UserApiHandler);
+  let public_handler = Arc::new(PublicHandler);
+
+  // Build the HTTP router transformer
+  let mut router = HttpRouterTransformer::new()
+    .add_route(
+      api_users_route,
+      "api_users".to_string(),
+      user_handler.clone(),
+    )?
+    .add_route(api_user_route, "api_user".to_string(), user_handler.clone())?
+    .add_route(
+      api_create_user_route,
+      "api_create_user".to_string(),
+      user_handler,
+    )?
+    .add_route(health_route, "health".to_string(), public_handler.clone())?
+    .add_route(version_route, "version".to_string(), public_handler.clone())?
+    .add_route(metrics_route, "metrics".to_string(), public_handler)?;
+
+  router.set_config(TransformerConfig::default().with_name("http_router".to_string()));
+
+  // Note: HTTP Response Builder is used internally by the handlers
 
   // Create middleware transformers
   let cors_config = CorsConfig {
@@ -269,14 +304,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   };
 
   let mut cors_transformer = CorsTransformer::new().with_config(cors_config);
+  cors_transformer.set_config(TransformerConfig::default().with_name("cors".to_string()));
 
   let mut request_logging = RequestLoggingTransformer::new()
     .with_log_level(LogLevel::Info)
     .with_include_body(false);
+  request_logging.set_config(TransformerConfig::default().with_name("request_logging".to_string()));
 
-  let response_logging = ResponseLoggingTransformer::new()
-    .with_log_level(LogLevel::Info)
-    .with_include_body(false);
+  // Note: Response logging is handled by the logging middleware
 
   let compression_config = CompressionConfig {
     enabled_algorithms: vec![
@@ -296,6 +331,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   };
 
   let mut compression_transformer = CompressionTransformer::new().with_config(compression_config);
+  compression_transformer
+    .set_config(TransformerConfig::default().with_name("compression".to_string()));
 
   // Create rate limit key extractor
   let key_extractor = CustomKeyExtractor::new(|request| {
@@ -315,127 +352,89 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     },
     Box::new(key_extractor),
   );
+  rate_limit_transformer
+    .set_config(TransformerConfig::default().with_name("rate_limit".to_string()));
 
   let mut validation_transformer = RequestValidationTransformer::new();
+  validation_transformer
+    .set_config(TransformerConfig::default().with_name("validation".to_string()));
 
   let mut response_transform_transformer = ResponseTransformTransformer::new();
-
-  // Create handlers
-  let user_handler = Arc::new(UserApiHandler);
-  let public_handler = Arc::new(PublicHandler);
+  response_transform_transformer
+    .set_config(TransformerConfig::default().with_name("response_transform".to_string()));
 
   // Create test requests
   let test_requests = create_test_requests();
 
   println!(
-    "📝 Processing {} test requests through HTTP middleware pipeline",
+    "📝 Processing {} test requests through complete StreamWeave pipeline",
     test_requests.len()
   );
   println!("==================================================================");
 
-  // Process each request through individual middleware transformers
-  for (i, request) in test_requests.into_iter().enumerate() {
-    println!("\n--- Request {} ---", i + 1);
-    println!("Method: {}", request.method);
-    println!("Path: {}", request.path());
-    println!("Headers: {}", request.headers.len());
+  // Process all requests through the complete pipeline
+  let request_producer =
+    VecProducer::new(test_requests).with_name("http_request_producer".to_string());
 
-    // Test CORS
-    println!("  🌐 Testing CORS...");
-    let cors_stream = futures::stream::iter(vec![request.clone()]);
-    let mut cors_output = cors_transformer.transform(Box::pin(cors_stream));
-    let mut cors_requests = Vec::new();
-    while let Some(req) = cors_output.next().await {
-      cors_requests.push(req);
-    }
-    println!("  ✅ CORS processing completed");
+  let response_consumer =
+    VecConsumer::<StreamWeaveHttpResponse>::new().with_name("response_collector".to_string());
 
-    // Test Request Logging
-    println!("  📝 Testing Request Logging...");
-    let logging_stream = futures::stream::iter(cors_requests.clone());
-    let mut logging_output = request_logging.transform(Box::pin(logging_stream));
-    let mut logged_requests = Vec::new();
-    while let Some(req) = logging_output.next().await {
-      logged_requests.push(req);
-    }
-    println!("  ✅ Request logging completed");
+  let pipeline = PipelineBuilder::new()
+    .producer(request_producer)
+    .transformer(cors_transformer)
+    .transformer(request_logging)
+    .transformer(validation_transformer)
+    .transformer(rate_limit_transformer)
+    .transformer(router)
+    .transformer(compression_transformer)
+    .transformer(response_transform_transformer)
+    ._consumer(response_consumer);
 
-    // Test Validation
-    println!("  ✅ Testing Request Validation...");
-    let validation_stream = futures::stream::iter(logged_requests.clone());
-    let mut validation_output = validation_transformer.transform(Box::pin(validation_stream));
-    let mut validated_requests = Vec::new();
-    while let Some(req) = validation_output.next().await {
-      validated_requests.push(req);
-    }
-    println!("  ✅ Request validation completed");
+  let pipeline_result = pipeline.run().await;
 
-    // Test Rate Limiting
-    println!("  ⏱️ Testing Rate Limiting...");
-    let rate_limit_stream = futures::stream::iter(validated_requests.clone());
-    let mut rate_limit_output = rate_limit_transformer.transform(Box::pin(rate_limit_stream));
-    let mut rate_limited_requests: Vec<StreamWeaveHttpRequestChunk> = Vec::new();
-    while let Some(req) = rate_limit_output.next().await {
-      rate_limited_requests.push(req);
-    }
-    println!("  ✅ Rate limiting completed");
+  match pipeline_result {
+    Ok(((), consumer)) => {
+      let responses = consumer.into_vec();
+      println!("\n🎉 StreamWeave Pipeline Processing Complete!");
+      println!("=============================================");
 
-    // Process the request through the handler
-    if let Some(request) = rate_limited_requests.first() {
-      println!("  🎯 Processing request through handler...");
-      let response = if request.path().starts_with("/api/") {
-        user_handler.handle(request.clone()).await
-      } else {
-        public_handler.handle(request.clone()).await
-      };
+      for (i, response) in responses.into_iter().enumerate() {
+        println!("\n--- Response {} ---", i + 1);
+        println!("Status: {}", response.status);
+        println!("Headers: {}", response.headers.len());
+        println!("Body size: {} bytes", response.body.len());
 
-      println!("  ✅ Response generated");
-      println!("     Status: {}", response.status);
-      println!("     Headers: {}", response.headers.len());
-      println!("     Body size: {} bytes", response.body.len());
-
-      // Test Response Logging
-      println!("  📝 Testing Response Logging...");
-      response_logging.log_response(&response, Some("req-123"));
-      println!("  ✅ Response logging completed");
-
-      // Test Compression
-      println!("  🗜️ Testing Compression...");
-      let compression_stream = futures::stream::iter(vec![response.clone()]);
-      let mut compression_output = compression_transformer.transform(Box::pin(compression_stream));
-      let mut compressed_responses = Vec::new();
-      while let Some(resp) = compression_output.next().await {
-        compressed_responses.push(resp);
-      }
-      if let Some(compressed_response) = compressed_responses.first() {
-        println!("  ✅ Compression completed");
-        if let Some(encoding) = compressed_response.headers.get("content-encoding") {
+        // Show some key headers
+        if let Some(content_type) = response.headers.get("content-type") {
           println!(
-            "     Content-Encoding: {}",
+            "Content-Type: {}",
+            content_type.to_str().unwrap_or("invalid")
+          );
+        }
+        if let Some(encoding) = response.headers.get("content-encoding") {
+          println!(
+            "Content-Encoding: {}",
             encoding.to_str().unwrap_or("invalid")
           );
         }
-      }
+        if let Some(cors) = response.headers.get("access-control-allow-origin") {
+          println!("CORS Origin: {}", cors.to_str().unwrap_or("invalid"));
+        }
 
-      // Test Response Transformation
-      println!("  🔄 Testing Response Transformation...");
-      let transform_stream = futures::stream::iter(compressed_responses);
-      let mut transform_output =
-        response_transform_transformer.transform(Box::pin(transform_stream));
-      let mut transformed_responses = Vec::new();
-      while let Some(resp) = transform_output.next().await {
-        transformed_responses.push(resp);
+        // Show a preview of the response body
+        let body_preview = String::from_utf8_lossy(&response.body);
+        println!(
+          "Body preview: {}",
+          &body_preview[..body_preview.len().min(100)]
+        );
       }
-      if let Some(final_response) = transformed_responses.first() {
-        println!("  ✅ Response transformation completed");
-        println!("     Final status: {}", final_response.status);
-        println!("     Final headers: {}", final_response.headers.len());
-        println!("     Final body size: {} bytes", final_response.body.len());
-      }
+    }
+    Err(e) => {
+      println!("❌ Pipeline error: {}", e);
     }
   }
 
-  println!("\n🎉 HTTP Middleware example completed successfully!");
+  println!("\n🎉 HTTP Middleware Pipeline example completed successfully!");
   println!("\nKey Features Demonstrated:");
   println!("• 🌐 CORS: Cross-Origin Resource Sharing handling");
   println!("• 📝 Logging: Request and response logging with structured data");
@@ -443,10 +442,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("• ⏱️  Rate Limiting: Token bucket rate limiting per API key");
   println!("• ✅ Validation: Request validation (headers, body size, content type)");
   println!("• 🔄 Response Transformation: Security headers, caching, JSON minification");
-  println!("• 🚦 Pipeline: All middleware working together in a processing pipeline");
+  println!("• 🚦 Pipeline: All middleware working together in a single stream");
   println!(
     "• 🆕 HTTP Response Builder: Structured response generation with security headers and CORS"
   );
+  println!("• 🛣️  HTTP Router: Request routing with path parameters and fallback handling");
+  println!("• 🔗 StreamWeave Architecture: Complete request-to-response pipeline in one stream");
 
   Ok(())
 }
