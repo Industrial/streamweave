@@ -1,5 +1,5 @@
-use crate::transformers::zip::zip_transformer::ZipTransformer;
 use crate::input::Input;
+use crate::transformers::zip::zip_transformer::ZipTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

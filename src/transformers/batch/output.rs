@@ -1,5 +1,5 @@
-use crate::transformers::batch::batch_transformer::BatchTransformer;
 use crate::output::Output;
+use crate::transformers::batch::batch_transformer::BatchTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

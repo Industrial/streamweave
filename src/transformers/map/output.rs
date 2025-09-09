@@ -1,5 +1,5 @@
-use crate::transformers::map::map_transformer::MapTransformer;
 use crate::output::Output;
+use crate::transformers::map::map_transformer::MapTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

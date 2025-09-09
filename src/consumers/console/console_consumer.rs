@@ -1,5 +1,5 @@
-use crate::error::ErrorStrategy;
 use crate::consumer::ConsumerConfig;
+use crate::error::ErrorStrategy;
 
 pub struct ConsoleConsumer<T>
 where

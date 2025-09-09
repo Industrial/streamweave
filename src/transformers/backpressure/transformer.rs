@@ -1,6 +1,6 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::transformers::backpressure::backpressure_transformer::BackpressureTransformer;
 use crate::transformer::{Transformer, TransformerConfig};
+use crate::transformers::backpressure::backpressure_transformer::BackpressureTransformer;
 use async_trait::async_trait;
 use futures::StreamExt;
 

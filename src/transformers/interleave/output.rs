@@ -1,5 +1,5 @@
-use crate::transformers::interleave::interleave_transformer::InterleaveTransformer;
 use crate::output::Output;
+use crate::transformers::interleave::interleave_transformer::InterleaveTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

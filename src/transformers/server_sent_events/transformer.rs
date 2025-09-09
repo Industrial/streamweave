@@ -1,8 +1,6 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::transformers::server_sent_events::server_sent_events_transformer::{
-  ServerSentEventsTransformer,
-};
 use crate::transformer::{Transformer, TransformerConfig};
+use crate::transformers::server_sent_events::server_sent_events_transformer::ServerSentEventsTransformer;
 use async_trait::async_trait;
 use futures::StreamExt;
 
@@ -61,16 +59,13 @@ impl Transformer for ServerSentEventsTransformer {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::transformers::server_sent_events::server_sent_events_transformer::SSEMessage;
   use futures::StreamExt;
   use tokio_stream::wrappers::ReceiverStream;
-  use crate::transformers::server_sent_events::server_sent_events_transformer::{
-    SSEMessage,
-  };
 
   #[test]
   fn test_sse_message_creation() {
-    let message =
-      SSEMessage::new("Hello World".to_string());
+    let message = SSEMessage::new("Hello World".to_string());
     assert_eq!(message.data, "Hello World");
     assert!(message.event.is_none());
     assert!(message.id.is_none());
@@ -79,35 +74,28 @@ mod tests {
 
   #[test]
   fn test_sse_message_with_event() {
-    let message =
-      SSEMessage::new("Hello World".to_string())
-        .with_event("message".to_string());
+    let message = SSEMessage::new("Hello World".to_string()).with_event("message".to_string());
     assert_eq!(message.event, Some("message".to_string()));
   }
 
   #[test]
   fn test_sse_message_with_id() {
-    let message =
-      SSEMessage::new("Hello World".to_string())
-        .with_id("123".to_string());
+    let message = SSEMessage::new("Hello World".to_string()).with_id("123".to_string());
     assert_eq!(message.id, Some("123".to_string()));
   }
 
   #[test]
   fn test_sse_message_with_retry() {
-    let message =
-      SSEMessage::new("Hello World".to_string())
-        .with_retry(5000);
+    let message = SSEMessage::new("Hello World".to_string()).with_retry(5000);
     assert_eq!(message.retry, Some(5000));
   }
 
   #[test]
   fn test_sse_message_format() {
-    let message =
-      SSEMessage::new("Hello World".to_string())
-        .with_event("message".to_string())
-        .with_id("123".to_string())
-        .with_retry(5000);
+    let message = SSEMessage::new("Hello World".to_string())
+      .with_event("message".to_string())
+      .with_id("123".to_string())
+      .with_retry(5000);
 
     let formatted = message.to_sse_format();
     assert!(formatted.contains("event: message"));
@@ -126,9 +114,7 @@ mod tests {
     let mut output = transformer.transform(input);
 
     // Send SSE message
-    let message =
-      SSEMessage::new("Hello World".to_string())
-        .with_event("message".to_string());
+    let message = SSEMessage::new("Hello World".to_string()).with_event("message".to_string());
     tx.send(message.clone()).await.unwrap();
     drop(tx);
 

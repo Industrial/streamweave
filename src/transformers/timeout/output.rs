@@ -1,5 +1,5 @@
-use crate::transformers::timeout::timeout_transformer::TimeoutTransformer;
 use crate::output::Output;
+use crate::transformers::timeout::timeout_transformer::TimeoutTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

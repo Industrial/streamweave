@@ -1,5 +1,5 @@
-use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use super::range_producer::RangeProducer;
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::producer::{Producer, ProducerConfig};
 use futures::stream;
 use num_traits::Num;

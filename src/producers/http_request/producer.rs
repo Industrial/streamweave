@@ -1,8 +1,8 @@
+use super::http_request_producer::{HttpRequestProducer, StreamingHttpRequestProducer};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::http::{
   connection_info::ConnectionInfo, http_request_chunk::StreamWeaveHttpRequestChunk,
 };
-use super::http_request_producer::{HttpRequestProducer, StreamingHttpRequestProducer};
 use crate::producer::{Producer, ProducerConfig};
 use async_trait::async_trait;
 use futures::stream;

@@ -1,5 +1,5 @@
-use crate::transformers::chunk::chunk_transformer::ChunkTransformer;
 use crate::output::Output;
+use crate::transformers::chunk::chunk_transformer::ChunkTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

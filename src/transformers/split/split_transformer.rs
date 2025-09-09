@@ -13,7 +13,6 @@ where
   pub config: TransformerConfig<Vec<T>>,
 }
 
-
 impl<F, T> SplitTransformer<F, T>
 where
   F: FnMut(&T) -> bool + Send + Clone + 'static,

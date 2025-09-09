@@ -1,5 +1,5 @@
-use crate::transformers::sort::sort_transformer::SortTransformer;
 use crate::input::Input;
+use crate::transformers::sort::sort_transformer::SortTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

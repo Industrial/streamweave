@@ -1,5 +1,5 @@
-use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use super::command_producer::CommandProducer;
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::producer::{Producer, ProducerConfig};
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};

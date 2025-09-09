@@ -1,6 +1,6 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::transformers::merge::merge_transformer::MergeTransformer;
 use crate::transformer::{Transformer, TransformerConfig};
+use crate::transformers::merge::merge_transformer::MergeTransformer;
 use async_trait::async_trait;
 
 #[async_trait]

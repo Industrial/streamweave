@@ -1,5 +1,5 @@
-use crate::error::ErrorStrategy;
 use crate::consumer::ConsumerConfig;
+use crate::error::ErrorStrategy;
 use tokio::sync::mpsc::Sender;
 
 pub struct ChannelConsumer<T>

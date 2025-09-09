@@ -1,5 +1,5 @@
-use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use super::hash_map_producer::HashMapProducer;
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::producer::{Producer, ProducerConfig};
 use futures::stream;
 use std::hash::Hash;

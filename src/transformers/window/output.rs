@@ -1,5 +1,5 @@
-use crate::transformers::window::window_transformer::WindowTransformer;
 use crate::output::Output;
+use crate::transformers::window::window_transformer::WindowTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

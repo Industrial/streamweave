@@ -1,6 +1,6 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::transformers::split_at::split_at_transformer::SplitAtTransformer;
 use crate::transformer::{Transformer, TransformerConfig};
+use crate::transformers::split_at::split_at_transformer::SplitAtTransformer;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;

@@ -1,5 +1,5 @@
-use crate::transformers::dedupe::dedupe_transformer::DedupeTransformer;
 use crate::input::Input;
+use crate::transformers::dedupe::dedupe_transformer::DedupeTransformer;
 use futures::Stream;
 use std::hash::Hash;
 use std::pin::Pin;

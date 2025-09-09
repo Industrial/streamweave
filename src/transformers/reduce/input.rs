@@ -1,5 +1,5 @@
-use crate::transformers::reduce::reduce_transformer::ReduceTransformer;
 use crate::input::Input;
+use crate::transformers::reduce::reduce_transformer::ReduceTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

@@ -1,6 +1,6 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::transformers::circuit_breaker::circuit_breaker_transformer::CircuitBreakerTransformer;
 use crate::transformer::{Transformer, TransformerConfig};
+use crate::transformers::circuit_breaker::circuit_breaker_transformer::CircuitBreakerTransformer;
 use async_trait::async_trait;
 use futures::StreamExt;
 use std::sync::atomic::Ordering;

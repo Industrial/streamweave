@@ -1,6 +1,6 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::transformers::interleave::interleave_transformer::InterleaveTransformer;
 use crate::transformer::{Transformer, TransformerConfig};
+use crate::transformers::interleave::interleave_transformer::InterleaveTransformer;
 use async_trait::async_trait;
 
 #[async_trait]

@@ -1,5 +1,5 @@
-use crate::transformers::partition::partition_transformer::PartitionTransformer;
 use crate::input::Input;
+use crate::transformers::partition::partition_transformer::PartitionTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

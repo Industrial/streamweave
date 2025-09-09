@@ -1,5 +1,5 @@
-use crate::transformers::circuit_breaker::circuit_breaker_transformer::CircuitBreakerTransformer;
 use crate::input::Input;
+use crate::transformers::circuit_breaker::circuit_breaker_transformer::CircuitBreakerTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

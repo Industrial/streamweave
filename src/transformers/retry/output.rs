@@ -1,5 +1,5 @@
-use crate::transformers::retry::retry_transformer::RetryTransformer;
 use crate::output::Output;
+use crate::transformers::retry::retry_transformer::RetryTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

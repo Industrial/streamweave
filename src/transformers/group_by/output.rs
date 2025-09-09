@@ -1,5 +1,5 @@
-use crate::transformers::group_by::group_by_transformer::GroupByTransformer;
 use crate::output::Output;
+use crate::transformers::group_by::group_by_transformer::GroupByTransformer;
 use futures::Stream;
 use std::hash::Hash;
 use std::pin::Pin;

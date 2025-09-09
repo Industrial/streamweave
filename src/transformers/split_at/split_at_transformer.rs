@@ -12,7 +12,6 @@ where
   pub _phantom: std::marker::PhantomData<T>,
 }
 
-
 impl<T> SplitAtTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,

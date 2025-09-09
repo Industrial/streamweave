@@ -1,5 +1,5 @@
-use crate::transformers::split::split_transformer::SplitTransformer;
 use crate::output::Output;
+use crate::transformers::split::split_transformer::SplitTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

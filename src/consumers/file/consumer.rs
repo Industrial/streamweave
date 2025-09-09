@@ -1,6 +1,6 @@
-use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use super::file_consumer::FileConsumer;
 use crate::consumer::{Consumer, ConsumerConfig};
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use async_trait::async_trait;
 use futures::StreamExt;
 use tokio::fs::File;

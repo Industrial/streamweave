@@ -1,5 +1,5 @@
-use crate::error::ErrorStrategy;
 use crate::consumer::ConsumerConfig;
+use crate::error::ErrorStrategy;
 use axum::body::Body;
 use axum::response::Response;
 use bytes::Bytes;
@@ -128,10 +128,7 @@ impl HttpResponseConsumer {
     (consumer, rx)
   }
 
-  pub fn with_error_strategy(
-    mut self,
-    strategy: ErrorStrategy<StreamWeaveHttpResponse>,
-  ) -> Self {
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<StreamWeaveHttpResponse>) -> Self {
     self.config.error_strategy = strategy;
     self
   }
@@ -143,10 +140,7 @@ impl HttpResponseConsumer {
 }
 
 impl StreamingHttpResponseConsumer {
-  pub fn new() -> (
-    Self,
-    tokio::sync::mpsc::Receiver<ResponseChunk>,
-  ) {
+  pub fn new() -> (Self, tokio::sync::mpsc::Receiver<ResponseChunk>) {
     let (tx, rx) = tokio::sync::mpsc::channel(100); // Buffer size of 100 chunks
     let consumer = Self {
       chunk_sender: tx,
@@ -157,10 +151,7 @@ impl StreamingHttpResponseConsumer {
 
   pub fn with_buffer_size(
     buffer_size: usize,
-  ) -> (
-    Self,
-    tokio::sync::mpsc::Receiver<ResponseChunk>,
-  ) {
+  ) -> (Self, tokio::sync::mpsc::Receiver<ResponseChunk>) {
     let (tx, rx) = tokio::sync::mpsc::channel(buffer_size);
     let consumer = Self {
       chunk_sender: tx,
@@ -169,10 +160,7 @@ impl StreamingHttpResponseConsumer {
     (consumer, rx)
   }
 
-  pub fn with_error_strategy(
-    mut self,
-    strategy: ErrorStrategy<ResponseChunk>,
-  ) -> Self {
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<ResponseChunk>) -> Self {
     self.config.error_strategy = strategy;
     self
   }

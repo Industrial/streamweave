@@ -1,5 +1,5 @@
-use crate::transformers::concat::concat_transformer::ConcatTransformer;
 use crate::output::Output;
+use crate::transformers::concat::concat_transformer::ConcatTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

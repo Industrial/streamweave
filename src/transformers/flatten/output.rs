@@ -1,5 +1,5 @@
-use crate::transformers::flatten::flatten_transformer::FlattenTransformer;
 use crate::output::Output;
+use crate::transformers::flatten::flatten_transformer::FlattenTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

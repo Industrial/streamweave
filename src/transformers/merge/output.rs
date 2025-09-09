@@ -1,5 +1,5 @@
-use crate::transformers::merge::merge_transformer::MergeTransformer;
 use crate::output::Output;
+use crate::transformers::merge::merge_transformer::MergeTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

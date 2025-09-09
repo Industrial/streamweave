@@ -1,6 +1,6 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::transformers::timeout::timeout_transformer::TimeoutTransformer;
 use crate::transformer::{Transformer, TransformerConfig};
+use crate::transformers::timeout::timeout_transformer::TimeoutTransformer;
 use async_stream;
 use async_trait::async_trait;
 use futures::StreamExt;

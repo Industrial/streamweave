@@ -1,6 +1,8 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::transformers::web_socket::web_socket_transformer::{WebSocketMessage, WebSocketTransformer};
 use crate::transformer::{Transformer, TransformerConfig};
+use crate::transformers::web_socket::web_socket_transformer::{
+  WebSocketMessage, WebSocketTransformer,
+};
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;

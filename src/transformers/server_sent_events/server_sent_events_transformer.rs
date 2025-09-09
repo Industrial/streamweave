@@ -76,7 +76,9 @@ impl ServerSentEventsTransformer {
 
   pub fn with_error_strategy(
     mut self,
-    strategy: ErrorStrategy<crate::transformers::server_sent_events::server_sent_events_transformer::SSEMessage>,
+    strategy: ErrorStrategy<
+      crate::transformers::server_sent_events::server_sent_events_transformer::SSEMessage,
+    >,
   ) -> Self {
     self.config = self.config.with_error_strategy(strategy);
     self

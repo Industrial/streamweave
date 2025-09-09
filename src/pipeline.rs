@@ -218,7 +218,7 @@ mod tests {
   use crate::{
     consumer::{Consumer, ConsumerConfig},
     input::Input,
-    output::{Output},
+    output::Output,
     producer::{Producer, ProducerConfig},
     transformer::{Transformer, TransformerConfig},
   };

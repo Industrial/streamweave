@@ -1,6 +1,6 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::transformers::dedupe::dedupe_transformer::DedupeTransformer;
 use crate::transformer::{Transformer, TransformerConfig};
+use crate::transformers::dedupe::dedupe_transformer::DedupeTransformer;
 use async_trait::async_trait;
 use futures::StreamExt;
 use std::hash::Hash;

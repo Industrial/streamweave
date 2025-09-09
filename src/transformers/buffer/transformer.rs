@@ -1,6 +1,6 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::transformers::buffer::buffer_transformer::BufferTransformer;
 use crate::transformer::{Transformer, TransformerConfig};
+use crate::transformers::buffer::buffer_transformer::BufferTransformer;
 use async_trait::async_trait;
 use futures::StreamExt;
 

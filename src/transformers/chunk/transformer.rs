@@ -1,6 +1,6 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::transformers::chunk::chunk_transformer::ChunkTransformer;
 use crate::transformer::{Transformer, TransformerConfig};
+use crate::transformers::chunk::chunk_transformer::ChunkTransformer;
 use async_trait::async_trait;
 use futures::StreamExt;
 

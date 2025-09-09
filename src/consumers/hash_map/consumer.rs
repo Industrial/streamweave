@@ -1,6 +1,6 @@
-use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use super::hash_map_consumer::HashMapConsumer;
 use crate::consumer::{Consumer, ConsumerConfig};
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use async_trait::async_trait;
 use futures::StreamExt;
 use std::hash::Hash;

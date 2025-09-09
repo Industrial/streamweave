@@ -1,5 +1,7 @@
-use crate::transformers::web_socket::web_socket_transformer::{WebSocketMessage, WebSocketTransformer};
 use crate::output::Output;
+use crate::transformers::web_socket::web_socket_transformer::{
+  WebSocketMessage, WebSocketTransformer,
+};
 use futures::Stream;
 use std::pin::Pin;
 

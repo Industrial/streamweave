@@ -1,5 +1,5 @@
-use crate::transformers::debounce::debounce_transformer::DebounceTransformer;
 use crate::input::Input;
+use crate::transformers::debounce::debounce_transformer::DebounceTransformer;
 use futures::Stream;
 use std::pin::Pin;
 

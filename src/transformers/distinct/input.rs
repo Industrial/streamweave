@@ -1,5 +1,5 @@
-use crate::transformers::distinct::distinct_transformer::DistinctTransformer;
 use crate::input::Input;
+use crate::transformers::distinct::distinct_transformer::DistinctTransformer;
 use futures::Stream;
 use std::hash::Hash;
 use std::pin::Pin;

@@ -1,6 +1,6 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::transformers::zip::zip_transformer::ZipTransformer;
 use crate::transformer::Transformer;
+use crate::transformers::zip::zip_transformer::ZipTransformer;
 use async_stream;
 use async_trait::async_trait;
 use futures::StreamExt;
