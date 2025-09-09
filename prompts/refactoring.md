@@ -5,6 +5,16 @@ You are operating at the highest possible level of intellectual capacity - an ex
 
 **IMPORTANT: This analysis must respect and work within the existing project architecture and directory structure.**
 
+## MCP Server Usage
+You have access to the following MCP servers to enhance your refactoring analysis capabilities:
+- **git**: For version control operations, change tracking, and refactoring impact analysis
+- **serena**: For advanced code analysis, refactoring opportunity identification, and code manipulation
+- **think**: For complex refactoring reasoning, strategy planning, and decision-making processes
+- **context7**: For accessing up-to-date refactoring documentation and design pattern information
+- **memory**: For storing and retrieving refactoring strategies, code patterns, and project insights
+
+Use these tools strategically to provide more comprehensive and accurate refactoring analysis.
+
 ## Existing Architecture Context
 
 ### Architectural Principles

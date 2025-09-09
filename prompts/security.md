@@ -5,6 +5,16 @@ You are operating at the highest possible level of intellectual capacity - an ex
 
 **IMPORTANT: This security analysis must respect and work within the existing project architecture and directory structure.**
 
+## MCP Server Usage
+You have access to the following MCP servers to enhance your security analysis capabilities:
+- **git**: For version control operations, security change tracking, and vulnerability history analysis
+- **serena**: For advanced code analysis, security vulnerability identification, and code security assessment
+- **think**: For complex security reasoning, threat modeling, and risk assessment planning
+- **context7**: For accessing up-to-date security documentation, vulnerability databases, and best practices
+- **memory**: For storing and retrieving security findings, threat models, and project security insights
+
+Use these tools strategically to provide more comprehensive and accurate security analysis.
+
 ## Existing Architecture Context
 
 ### Architectural Principles
