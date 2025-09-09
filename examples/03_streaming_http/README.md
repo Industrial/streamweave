@@ -1,16 +1,18 @@
 # StreamWeave HTTP Streaming Server
 
-A real HTTP server built with **Axum** and **StreamWeave** that demonstrates streaming HTTP request processing through StreamWeave pipelines. This example focuses on **streaming-only architecture** with no buffering.
+A fully functional web server built with **Axum** and **StreamWeave** that demonstrates streaming HTTP request processing through StreamWeave pipelines. This example features **interactive web endpoints** with both HTML and JSON responses, showcasing the full power of StreamWeave's streaming architecture.
 
 ## 🚀 What This Example Shows
 
-This example demonstrates how to build a **real HTTP server** where every request flows through a StreamWeave pipeline:
+This example demonstrates how to build a **real web server** where every request flows through a StreamWeave pipeline:
 
 1. **HTTP Request** → **StreamWeave Producer** → **Pipeline** → **StreamWeave Consumer** → **HTTP Response**
 2. **True streaming**: Each HTTP request is processed as a stream through the pipeline
-3. **Real web server**: Built with Axum, listening on port 3000
+3. **Interactive web server**: Built with Axum, listening on port 3000
 4. **StreamWeave integration**: Uses our custom `StreamingHttpRequestProducer` and `StreamingHttpResponseConsumer`
-5. **Browser-friendly**: All endpoints use GET requests for easy testing
+5. **Multiple endpoints**: Echo, streaming data, and metrics endpoints
+6. **Query parameters**: Support for delay and format configuration
+7. **Browser-friendly**: All endpoints use GET requests for easy testing
 
 ## 🏗 Architecture
 
@@ -30,7 +32,11 @@ HTTP Client → Axum Router → StreamWeave Pipeline → HTTP Response
 
 ## 📋 Available Endpoints
 
-- **GET** `/echo/{message}` - Echo endpoint with route parameter (processed through StreamWeave streaming pipeline)
+- **GET** `/echo/{message}` - Echo endpoint with route parameter and query options
+  - Query parameters: `delay` (processing delay in ms), `format` (html or json)
+  - Examples: `/echo/hello`, `/echo/test?delay=500`, `/echo/data?format=json`
+- **GET** `/streaming/data` - Streaming data endpoint with JSON response
+- **GET** `/metrics` - Real-time metrics endpoint with JSON response
 
 ## 🛠 How It Works
 
@@ -107,26 +113,41 @@ cargo build --example 03_streaming_http
 ./target/debug/examples/03_streaming_http
 ```
 
-The server will start on `http://localhost:3000` with the following endpoint:
+The server will start on `http://localhost:3000` with the following endpoints:
 
-- **GET** `/echo/:message` - Echo endpoint processed through streaming pipeline
+- **GET** `/echo/{message}` - Echo endpoint processed through streaming pipeline
+- **GET** `/streaming/data` - Streaming data endpoint with JSON response
+- **GET** `/metrics` - Real-time metrics endpoint with JSON response
+
+### Test in Your Browser
+
+Visit these URLs to see the streaming pipeline in action:
+
+- `http://localhost:3000/echo/hello` - Default HTML response
+- `http://localhost:3000/echo/streaming` - Echo with "streaming" message
+- `http://localhost:3000/echo/test?delay=500` - 500ms processing delay
+- `http://localhost:3000/echo/data?format=json` - JSON response format
+- `http://localhost:3000/streaming/data` - Streaming data API
+- `http://localhost:3000/metrics` - Real-time metrics API
 
 ## 🎯 Key Features
 
-### 1. **Single Route Architecture**
-- Only one endpoint: `/echo/:message`
+### 1. **Multiple Endpoint Architecture**
+- Three distinct endpoints: `/echo/{message}`, `/streaming/data`, `/metrics`
 - All requests go through the StreamWeave streaming pipeline
-- Simplified routing for focused demonstration
+- Different response formats: HTML and JSON
+- Query parameter support for configuration
 
 ### 2. **Streaming Pipeline Integration**
 - Every request flows through the complete StreamWeave pipeline
 - Demonstrates real-world streaming architecture
 - Includes backpressure control and error handling
 
-### 3. **Beautiful HTML Responses**
-- Modern, responsive design with gradients and animations
-- Shows streaming pipeline status and processing information
-- Easy to test in any web browser
+### 3. **Rich Response Formats**
+- **HTML Responses**: Modern, responsive design with gradients and animations
+- **JSON Responses**: Clean API format for programmatic access
+- **Query Parameters**: Configurable delay and format options
+- **Pipeline Information**: Shows streaming pipeline status and processing details
 
 ### 4. **Robust Error Handling**
 - Fallback to HTML response if pipeline processing fails

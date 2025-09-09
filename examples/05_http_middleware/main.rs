@@ -21,10 +21,7 @@ use streamweave::{
       response_transform_transformer::ResponseTransformTransformer,
       validation_transformer::RequestValidationTransformer,
     },
-    http_response_builder::{
-      builder_utils::JsonResponseBuilder,
-      response_data::ResponseData,
-    },
+    http_response_builder::{builder_utils::JsonResponseBuilder, response_data::ResponseData},
     http_router::transformer::HttpRouterTransformer,
   },
 };
@@ -88,7 +85,7 @@ struct UserHandler;
 impl HttpHandler for UserHandler {
   async fn handle(&self, request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
     let path = request.path();
-    
+
     // Simulate some processing time
     tokio::time::sleep(Duration::from_millis(100)).await;
 
@@ -337,11 +334,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Build the HTTP router transformer
   let mut router = HttpRouterTransformer::new()
-    .add_route(
-      api_users_route,
-      "api_users".to_string(),
-      users_handler,
-    )?
+    .add_route(api_users_route, "api_users".to_string(), users_handler)?
     .add_route(api_user_route, "api_user".to_string(), user_handler)?
     .add_route(
       api_create_user_route,
