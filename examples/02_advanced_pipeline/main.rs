@@ -1,14 +1,13 @@
 use std::time::Duration;
 use streamweave::{
+  consumers::file::file_consumer::FileConsumer,
   error::ErrorStrategy,
   pipeline::PipelineBuilder,
-  consumers::file::file_consumer::FileConsumer,
   producers::file::file_producer::FileProducer,
   transformers::{
-    batch::batch_transformer::BatchTransformer, 
-    circuit_breaker::circuit_breaker_transformer::CircuitBreakerTransformer, 
-    map::map_transformer::MapTransformer,
-    rate_limit::rate_limit_transformer::RateLimitTransformer, 
+    batch::batch_transformer::BatchTransformer,
+    circuit_breaker::circuit_breaker_transformer::CircuitBreakerTransformer,
+    map::map_transformer::MapTransformer, rate_limit::rate_limit_transformer::RateLimitTransformer,
     retry::retry_transformer::RetryTransformer,
   },
 };

@@ -1,20 +1,20 @@
+use futures::StreamExt;
 use http::Method;
 use std::collections::HashMap;
 use std::sync::Arc;
-use futures::StreamExt;
 use streamweave::{
   http::{
     http_handler::HttpHandler, http_request_chunk::StreamWeaveHttpRequestChunk,
     http_response::StreamWeaveHttpResponse, route_pattern::RoutePattern,
   },
+  transformer::{Transformer, TransformerConfig},
   transformers::{
-    http_router::transformer::HttpRouterTransformer,
     http_response_builder::{
-      builder_utils::{responses, JsonResponseBuilder, HtmlResponseBuilder, ErrorResponseBuilder},
+      builder_utils::{ErrorResponseBuilder, HtmlResponseBuilder, JsonResponseBuilder, responses},
       transformer::HttpResponseBuilderTransformer,
     },
+    http_router::transformer::HttpRouterTransformer,
   },
-  transformer::{Transformer, TransformerConfig},
 };
 
 /// Example HTTP handler that returns a simple response
@@ -61,11 +61,14 @@ impl HttpHandler for HelloHandler {
       .build();
 
     // Convert ResponseData to StreamWeaveHttpResponse using the transformer
-    let response_builder = HttpResponseBuilderTransformer::new()
-      .with_security_headers(true);
-    
-    response_builder.build_response(response_data).await
-      .unwrap_or_else(|_| StreamWeaveHttpResponse::internal_server_error("Failed to build response".into()))
+    let response_builder = HttpResponseBuilderTransformer::new().with_security_headers(true);
+
+    response_builder
+      .build_response(response_data)
+      .await
+      .unwrap_or_else(|_| {
+        StreamWeaveHttpResponse::internal_server_error("Failed to build response".into())
+      })
   }
 }
 
@@ -79,7 +82,7 @@ impl HttpHandler for UserHandler {
       .path_param("id")
       .unwrap_or(&"unknown".to_string())
       .clone();
-    
+
     // Use JSON Response Builder for structured API response
     let response_data = JsonResponseBuilder::with_status(http::StatusCode::OK)
       .string_field("user_id", &user_id)
@@ -94,9 +97,13 @@ impl HttpHandler for UserHandler {
     let response_builder = HttpResponseBuilderTransformer::new()
       .with_security_headers(true)
       .with_cors_headers(true);
-    
-    response_builder.build_response(response_data).await
-      .unwrap_or_else(|_| StreamWeaveHttpResponse::internal_server_error("Failed to build response".into()))
+
+    response_builder
+      .build_response(response_data)
+      .await
+      .unwrap_or_else(|_| {
+        StreamWeaveHttpResponse::internal_server_error("Failed to build response".into())
+      })
   }
 }
 
@@ -127,9 +134,13 @@ impl HttpHandler for ApiHandler {
     let response_builder = HttpResponseBuilderTransformer::new()
       .with_security_headers(true)
       .with_cors_headers(true);
-    
-    response_builder.build_response(response_data).await
-      .unwrap_or_else(|_| StreamWeaveHttpResponse::internal_server_error("Failed to build response".into()))
+
+    response_builder
+      .build_response(response_data)
+      .await
+      .unwrap_or_else(|_| {
+        StreamWeaveHttpResponse::internal_server_error("Failed to build response".into())
+      })
   }
 }
 
@@ -151,9 +162,13 @@ impl HttpHandler for NotFoundHandler {
     let response_builder = HttpResponseBuilderTransformer::new()
       .with_security_headers(true)
       .with_cors_headers(true);
-    
-    response_builder.build_response(response_data).await
-      .unwrap_or_else(|_| StreamWeaveHttpResponse::internal_server_error("Failed to build response".into()))
+
+    response_builder
+      .build_response(response_data)
+      .await
+      .unwrap_or_else(|_| {
+        StreamWeaveHttpResponse::internal_server_error("Failed to build response".into())
+      })
   }
 }
 
@@ -186,7 +201,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .add_route(api_route, "api".to_string(), api_handler.clone())?
     .add_route(post_route, "api_post".to_string(), api_handler)?
     .with_fallback_handler(not_found_handler);
-  
+
   router.set_config(TransformerConfig::default().with_name("http_router".to_string()));
 
   // Create test requests
@@ -213,9 +228,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Process the response
     if let Some(response) = output_stream.next().await {
-      println!("Response: {} - {} bytes", response.status, response.body.len());
+      println!(
+        "Response: {} - {} bytes",
+        response.status,
+        response.body.len()
+      );
       println!("Headers: {:?}", response.headers.keys().collect::<Vec<_>>());
-      
+
       // Show a snippet of the response body for demonstration
       let body_preview = String::from_utf8_lossy(&response.body);
       let preview = if body_preview.len() > 200 {

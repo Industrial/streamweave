@@ -1,6 +1,5 @@
 use streamweave::{
-  pipeline::PipelineBuilder,
-  consumers::console::console_consumer::ConsoleConsumer,
+  consumers::console::console_consumer::ConsoleConsumer, pipeline::PipelineBuilder,
   producers::range::range_producer::RangeProducer,
   transformers::map::map_transformer::MapTransformer,
 };
