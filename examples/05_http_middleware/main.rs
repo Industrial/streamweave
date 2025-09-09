@@ -22,79 +22,50 @@ use streamweave::{
       validation_transformer::RequestValidationTransformer,
     },
     http_response_builder::{
-      builder_utils::{ErrorResponseBuilder, JsonResponseBuilder},
+      builder_utils::JsonResponseBuilder,
       response_data::ResponseData,
     },
     http_router::transformer::HttpRouterTransformer,
   },
 };
 
-/// Example API handler that returns user data
-struct UserApiHandler;
+/// Handler for GET /api/users - returns list of all users
+struct UsersHandler;
 
 #[async_trait::async_trait]
-impl HttpHandler for UserApiHandler {
-  async fn handle(&self, request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
-    let path = request.path();
-    let method = &request.method;
-
+impl HttpHandler for UsersHandler {
+  async fn handle(&self, _request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
     // Simulate some processing time
     tokio::time::sleep(Duration::from_millis(100)).await;
 
-    let response_data = match (method, path) {
-      (&Method::GET, "/api/users") => JsonResponseBuilder::with_status(http::StatusCode::OK)
-        .array_field(
-          "users",
-          vec![
-            serde_json::json!({
-                "id": 1,
-                "name": "Alice",
-                "email": "alice@example.com"
-            }),
-            serde_json::json!({
-                "id": 2,
-                "name": "Bob",
-                "email": "bob@example.com"
-            }),
-            serde_json::json!({
-                "id": 3,
-                "name": "Charlie",
-                "email": "charlie@example.com"
-            }),
-          ],
-        )
-        .number_field("total", 3.0)
-        .number_field("page", 1.0)
-        .header("x-response-time", "100ms")
-        .header("x-api-version", "v1")
-        .security_headers()
-        .cors_headers("https://app.example.com")
-        .build(),
-      (&Method::GET, path) if path.starts_with("/api/users/") => {
-        let user_id = path.strip_prefix("/api/users/").unwrap_or("unknown");
-        JsonResponseBuilder::with_status(http::StatusCode::OK)
-          .string_field("id", user_id)
-          .string_field("name", &format!("User {}", user_id))
-          .string_field("email", &format!("user{}@example.com", user_id))
-          .header("x-response-time", "100ms")
-          .header("x-api-version", "v1")
-          .security_headers()
-          .cors_headers("https://app.example.com")
-          .build()
-      }
-      (&Method::POST, "/api/users") => JsonResponseBuilder::with_status(http::StatusCode::CREATED)
-        .string_field("message", "User created successfully")
-        .number_field("id", 4.0)
-        .string_field("status", "created")
-        .header("x-response-time", "100ms")
-        .header("x-api-version", "v1")
-        .security_headers()
-        .cors_headers("https://app.example.com")
-        .build(),
-      _ => ErrorResponseBuilder::new(http::StatusCode::NOT_FOUND, "Endpoint not found")
-        .header("x-api-version", "v1")
-        .build(),
-    };
+    let response_data = JsonResponseBuilder::with_status(http::StatusCode::OK)
+      .array_field(
+        "users",
+        vec![
+          serde_json::json!({
+              "id": 1,
+              "name": "Alice",
+              "email": "alice@example.com"
+          }),
+          serde_json::json!({
+              "id": 2,
+              "name": "Bob",
+              "email": "bob@example.com"
+          }),
+          serde_json::json!({
+              "id": 3,
+              "name": "Charlie",
+              "email": "charlie@example.com"
+          }),
+        ],
+      )
+      .number_field("total", 3.0)
+      .number_field("page", 1.0)
+      .header("x-response-time", "100ms")
+      .header("x-api-version", "v1")
+      .security_headers()
+      .cors_headers("https://app.example.com")
+      .build();
 
     // Convert ResponseData to StreamWeaveHttpResponse
     match response_data {
@@ -110,39 +81,143 @@ impl HttpHandler for UserApiHandler {
   }
 }
 
-/// Example handler for public endpoints
-struct PublicHandler;
+/// Handler for GET /api/users/{id} - returns specific user by ID
+struct UserHandler;
 
 #[async_trait::async_trait]
-impl HttpHandler for PublicHandler {
+impl HttpHandler for UserHandler {
   async fn handle(&self, request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
     let path = request.path();
+    
+    // Simulate some processing time
+    tokio::time::sleep(Duration::from_millis(100)).await;
 
-    let response_data = match path {
-      "/health" => JsonResponseBuilder::with_status(http::StatusCode::OK)
-        .string_field("status", "healthy")
-        .string_field("timestamp", "2024-01-15T10:30:00Z")
-        .security_headers()
-        .cors_headers("https://monitoring.example.com")
-        .build(),
-      "/version" => JsonResponseBuilder::with_status(http::StatusCode::OK)
-        .string_field("version", "1.0.0")
-        .string_field("build", "2024-01-15")
-        .security_headers()
-        .cors_headers("https://monitoring.example.com")
-        .build(),
-      "/metrics" => JsonResponseBuilder::with_status(http::StatusCode::OK)
-        .number_field("requests_total", 1234.0)
-        .number_field("requests_per_second", 45.6)
-        .string_field("average_response_time", "120ms")
-        .number_field("error_rate", 0.02)
-        .security_headers()
-        .cors_headers("https://monitoring.example.com")
-        .build(),
-      _ => {
-        ErrorResponseBuilder::new(http::StatusCode::NOT_FOUND, "Public endpoint not found").build()
+    let user_id = path.strip_prefix("/api/users/").unwrap_or("unknown");
+    let response_data = JsonResponseBuilder::with_status(http::StatusCode::OK)
+      .string_field("id", user_id)
+      .string_field("name", &format!("User {}", user_id))
+      .string_field("email", &format!("user{}@example.com", user_id))
+      .header("x-response-time", "100ms")
+      .header("x-api-version", "v1")
+      .security_headers()
+      .cors_headers("https://app.example.com")
+      .build();
+
+    // Convert ResponseData to StreamWeaveHttpResponse
+    match response_data {
+      ResponseData::Success {
+        status,
+        headers,
+        body,
+      } => StreamWeaveHttpResponse::new(status, headers, body),
+      ResponseData::Error { status, message } => {
+        StreamWeaveHttpResponse::new(status, HeaderMap::new(), message.into())
       }
-    };
+    }
+  }
+}
+
+/// Handler for POST /api/users - creates a new user
+struct CreateUserHandler;
+
+#[async_trait::async_trait]
+impl HttpHandler for CreateUserHandler {
+  async fn handle(&self, _request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
+    // Simulate some processing time
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    let response_data = JsonResponseBuilder::with_status(http::StatusCode::CREATED)
+      .string_field("message", "User created successfully")
+      .number_field("id", 4.0)
+      .string_field("status", "created")
+      .header("x-response-time", "100ms")
+      .header("x-api-version", "v1")
+      .security_headers()
+      .cors_headers("https://app.example.com")
+      .build();
+
+    // Convert ResponseData to StreamWeaveHttpResponse
+    match response_data {
+      ResponseData::Success {
+        status,
+        headers,
+        body,
+      } => StreamWeaveHttpResponse::new(status, headers, body),
+      ResponseData::Error { status, message } => {
+        StreamWeaveHttpResponse::new(status, HeaderMap::new(), message.into())
+      }
+    }
+  }
+}
+
+/// Handler for GET /health - health check endpoint
+struct HealthHandler;
+
+#[async_trait::async_trait]
+impl HttpHandler for HealthHandler {
+  async fn handle(&self, _request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
+    let response_data = JsonResponseBuilder::with_status(http::StatusCode::OK)
+      .string_field("status", "healthy")
+      .string_field("timestamp", "2024-01-15T10:30:00Z")
+      .security_headers()
+      .cors_headers("https://monitoring.example.com")
+      .build();
+
+    // Convert ResponseData to StreamWeaveHttpResponse
+    match response_data {
+      ResponseData::Success {
+        status,
+        headers,
+        body,
+      } => StreamWeaveHttpResponse::new(status, headers, body),
+      ResponseData::Error { status, message } => {
+        StreamWeaveHttpResponse::new(status, HeaderMap::new(), message.into())
+      }
+    }
+  }
+}
+
+/// Handler for GET /version - version information endpoint
+struct VersionHandler;
+
+#[async_trait::async_trait]
+impl HttpHandler for VersionHandler {
+  async fn handle(&self, _request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
+    let response_data = JsonResponseBuilder::with_status(http::StatusCode::OK)
+      .string_field("version", "1.0.0")
+      .string_field("build", "2024-01-15")
+      .security_headers()
+      .cors_headers("https://monitoring.example.com")
+      .build();
+
+    // Convert ResponseData to StreamWeaveHttpResponse
+    match response_data {
+      ResponseData::Success {
+        status,
+        headers,
+        body,
+      } => StreamWeaveHttpResponse::new(status, headers, body),
+      ResponseData::Error { status, message } => {
+        StreamWeaveHttpResponse::new(status, HeaderMap::new(), message.into())
+      }
+    }
+  }
+}
+
+/// Handler for GET /metrics - metrics endpoint
+struct MetricsHandler;
+
+#[async_trait::async_trait]
+impl HttpHandler for MetricsHandler {
+  async fn handle(&self, _request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
+    let response_data = JsonResponseBuilder::with_status(http::StatusCode::OK)
+      .number_field("requests_total", 1234.0)
+      .number_field("requests_per_second", 45.6)
+      .string_field("average_response_time", "120ms")
+      .number_field("error_rate", 0.02)
+      .security_headers()
+      .cors_headers("https://monitoring.example.com")
+      .build();
 
     // Convert ResponseData to StreamWeaveHttpResponse
     match response_data {
@@ -252,26 +327,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let version_route = RoutePattern::new(Method::GET, "/version")?;
   let metrics_route = RoutePattern::new(Method::GET, "/metrics")?;
 
-  // Create handlers
-  let user_handler = Arc::new(UserApiHandler);
-  let public_handler = Arc::new(PublicHandler);
+  // Create individual handlers
+  let users_handler = Arc::new(UsersHandler);
+  let user_handler = Arc::new(UserHandler);
+  let create_user_handler = Arc::new(CreateUserHandler);
+  let health_handler = Arc::new(HealthHandler);
+  let version_handler = Arc::new(VersionHandler);
+  let metrics_handler = Arc::new(MetricsHandler);
 
   // Build the HTTP router transformer
   let mut router = HttpRouterTransformer::new()
     .add_route(
       api_users_route,
       "api_users".to_string(),
-      user_handler.clone(),
+      users_handler,
     )?
-    .add_route(api_user_route, "api_user".to_string(), user_handler.clone())?
+    .add_route(api_user_route, "api_user".to_string(), user_handler)?
     .add_route(
       api_create_user_route,
       "api_create_user".to_string(),
-      user_handler,
+      create_user_handler,
     )?
-    .add_route(health_route, "health".to_string(), public_handler.clone())?
-    .add_route(version_route, "version".to_string(), public_handler.clone())?
-    .add_route(metrics_route, "metrics".to_string(), public_handler)?;
+    .add_route(health_route, "health".to_string(), health_handler)?
+    .add_route(version_route, "version".to_string(), version_handler)?
+    .add_route(metrics_route, "metrics".to_string(), metrics_handler)?;
 
   router.set_config(TransformerConfig::default().with_name("http_router".to_string()));
 

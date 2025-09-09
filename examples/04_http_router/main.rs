@@ -1,17 +1,19 @@
-use futures::StreamExt;
 use http::Method;
 use std::collections::HashMap;
 use std::sync::Arc;
 use streamweave::{
+  consumers::vec::vec_consumer::VecConsumer,
   http::{
     http_handler::HttpHandler, http_request_chunk::StreamWeaveHttpRequestChunk,
     http_response::StreamWeaveHttpResponse, route_pattern::RoutePattern,
   },
+  pipeline::PipelineBuilder,
+  producers::vec::vec_producer::VecProducer,
   transformer::{Transformer, TransformerConfig},
   transformers::{
     http_response_builder::{
       builder_utils::{ErrorResponseBuilder, HtmlResponseBuilder, JsonResponseBuilder, responses},
-      transformer::HttpResponseBuilderTransformer,
+      response_data::ResponseData,
     },
     http_router::transformer::HttpRouterTransformer,
   },
@@ -60,15 +62,17 @@ impl HttpHandler for HelloHandler {
       .header("x-powered-by", "StreamWeave HTTP Response Builder")
       .build();
 
-    // Convert ResponseData to StreamWeaveHttpResponse using the transformer
-    let response_builder = HttpResponseBuilderTransformer::new().with_security_headers(true);
-
-    response_builder
-      .build_response(response_data)
-      .await
-      .unwrap_or_else(|_| {
-        StreamWeaveHttpResponse::internal_server_error("Failed to build response".into())
-      })
+    // Convert ResponseData to StreamWeaveHttpResponse
+    match response_data {
+      ResponseData::Success {
+        status,
+        headers,
+        body,
+      } => StreamWeaveHttpResponse::new(status, headers, body),
+      ResponseData::Error { status, message } => {
+        StreamWeaveHttpResponse::new(status, http::HeaderMap::new(), message.into())
+      }
+    }
   }
 }
 
@@ -94,16 +98,17 @@ impl HttpHandler for UserHandler {
       .header("x-powered-by", "StreamWeave")
       .build();
 
-    let response_builder = HttpResponseBuilderTransformer::new()
-      .with_security_headers(true)
-      .with_cors_headers(true);
-
-    response_builder
-      .build_response(response_data)
-      .await
-      .unwrap_or_else(|_| {
-        StreamWeaveHttpResponse::internal_server_error("Failed to build response".into())
-      })
+    // Convert ResponseData to StreamWeaveHttpResponse
+    match response_data {
+      ResponseData::Success {
+        status,
+        headers,
+        body,
+      } => StreamWeaveHttpResponse::new(status, headers, body),
+      ResponseData::Error { status, message } => {
+        StreamWeaveHttpResponse::new(status, http::HeaderMap::new(), message.into())
+      }
+    }
   }
 }
 
@@ -131,16 +136,17 @@ impl HttpHandler for ApiHandler {
       "powered_by": "StreamWeave"
     }));
 
-    let response_builder = HttpResponseBuilderTransformer::new()
-      .with_security_headers(true)
-      .with_cors_headers(true);
-
-    response_builder
-      .build_response(response_data)
-      .await
-      .unwrap_or_else(|_| {
-        StreamWeaveHttpResponse::internal_server_error("Failed to build response".into())
-      })
+    // Convert ResponseData to StreamWeaveHttpResponse
+    match response_data {
+      ResponseData::Success {
+        status,
+        headers,
+        body,
+      } => StreamWeaveHttpResponse::new(status, headers, body),
+      ResponseData::Error { status, message } => {
+        StreamWeaveHttpResponse::new(status, http::HeaderMap::new(), message.into())
+      }
+    }
   }
 }
 
@@ -159,16 +165,17 @@ impl HttpHandler for NotFoundHandler {
     .header("x-powered-by", "StreamWeave HTTP Response Builder")
     .build();
 
-    let response_builder = HttpResponseBuilderTransformer::new()
-      .with_security_headers(true)
-      .with_cors_headers(true);
-
-    response_builder
-      .build_response(response_data)
-      .await
-      .unwrap_or_else(|_| {
-        StreamWeaveHttpResponse::internal_server_error("Failed to build response".into())
-      })
+    // Convert ResponseData to StreamWeaveHttpResponse
+    match response_data {
+      ResponseData::Success {
+        status,
+        headers,
+        body,
+      } => StreamWeaveHttpResponse::new(status, headers, body),
+      ResponseData::Error { status, message } => {
+        StreamWeaveHttpResponse::new(status, http::HeaderMap::new(), message.into())
+      }
+    }
   }
 }
 
@@ -179,7 +186,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   println!("🚀 StreamWeave HTTP Router Transformer Example");
   println!("===============================================");
-  println!("Now featuring HTTP Response Builder integration!");
+  println!("Now featuring full StreamWeave pipeline architecture with HTTP Response Builder!");
   println!();
 
   // Create route patterns
@@ -214,47 +221,74 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     create_test_request(Method::GET, "/users/456?include=profile", HashMap::new()),
   ];
 
-  println!("\n📝 Testing HTTP Router Transformer with Response Builder");
-  println!("======================================================");
+  println!(
+    "📝 Processing {} test requests through complete StreamWeave pipeline",
+    test_requests.len()
+  );
+  println!("==================================================================");
 
-  // Process each test request using the transformer
-  for (i, request) in test_requests.into_iter().enumerate() {
-    println!("\n--- Test {} ---", i + 1);
-    println!("Request: {} {}", request.method, request.path());
+  // Process all requests through the complete pipeline
+  let request_producer =
+    VecProducer::new(test_requests).with_name("http_request_producer".to_string());
 
-    // Create a simple input stream with just this request
-    let input_stream = futures::stream::iter(vec![request]);
-    let mut output_stream = router.transform(Box::pin(input_stream));
+  let response_consumer =
+    VecConsumer::<StreamWeaveHttpResponse>::new().with_name("response_collector".to_string());
 
-    // Process the response
-    if let Some(response) = output_stream.next().await {
-      println!(
-        "Response: {} - {} bytes",
-        response.status,
-        response.body.len()
-      );
-      println!("Headers: {:?}", response.headers.keys().collect::<Vec<_>>());
+  let pipeline = PipelineBuilder::new()
+    .producer(request_producer)
+    .transformer(router)
+    ._consumer(response_consumer);
 
-      // Show a snippet of the response body for demonstration
-      let body_preview = String::from_utf8_lossy(&response.body);
-      let preview = if body_preview.len() > 200 {
-        format!("{}...", &body_preview[..200])
-      } else {
-        body_preview.to_string()
-      };
-      println!("Body preview: {}", preview);
-    } else {
-      println!("❌ No response generated");
+  let pipeline_result = pipeline.run().await;
+
+  match pipeline_result {
+    Ok(((), consumer)) => {
+      let responses = consumer.into_vec();
+      println!("\n🎉 StreamWeave Pipeline Processing Complete!");
+      println!("=============================================");
+
+      for (i, response) in responses.into_iter().enumerate() {
+        println!("\n--- Response {} ---", i + 1);
+        println!("Status: {}", response.status);
+        println!("Headers: {}", response.headers.len());
+        println!("Body size: {} bytes", response.body.len());
+
+        // Show some key headers
+        if let Some(content_type) = response.headers.get("content-type") {
+          println!(
+            "Content-Type: {}",
+            content_type.to_str().unwrap_or("invalid")
+          );
+        }
+        if let Some(cors) = response.headers.get("access-control-allow-origin") {
+          println!("CORS Origin: {}", cors.to_str().unwrap_or("invalid"));
+        }
+
+        // Show a preview of the response body
+        let body_preview = String::from_utf8_lossy(&response.body);
+        let preview = if body_preview.len() > 200 {
+          format!("{}...", &body_preview[..200])
+        } else {
+          body_preview.to_string()
+        };
+        println!("Body preview: {}", preview);
+      }
+    }
+    Err(e) => {
+      println!("❌ Pipeline error: {}", e);
     }
   }
 
   println!("\n🎉 HTTP Router Transformer example completed successfully!");
   println!("\nKey Features Demonstrated:");
+  println!("• 🛣️  HTTP Router: Request routing with path parameters and fallback handling");
+  println!("• 🆕 HTTP Response Builder: Structured response generation with security headers");
+  println!("• 🔗 StreamWeave Architecture: Complete request-to-response pipeline in one stream");
   println!("• Route pattern matching with path parameters");
   println!("• Query parameter parsing");
   println!("• Multiple HTTP methods support");
   println!("• Fallback handler for 404 responses");
-  println!("• 🆕 HTTP Response Builder integration:");
+  println!("• HTTP Response Builder integration:");
   println!("  - HtmlResponseBuilder for rich HTML responses");
   println!("  - JsonResponseBuilder for structured API responses");
   println!("  - ErrorResponseBuilder for proper error responses");
@@ -262,6 +296,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("  - Automatic security headers");
   println!("  - CORS support");
   println!("  - Content-Type header management");
+  println!("• Pipeline Processing: All requests processed through a single continuous stream");
 
   Ok(())
 }

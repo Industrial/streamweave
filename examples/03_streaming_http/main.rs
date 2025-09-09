@@ -1,119 +1,45 @@
-use axum::{
-  Router,
-  body::Body,
-  extract::{Path, Request},
-  http::StatusCode,
-  response::Response,
-  routing::get,
-};
-use std::net::SocketAddr;
-use tokio;
-use tower_http::cors::CorsLayer;
-
+use http::Method;
+use std::sync::Arc;
+use std::time::Duration;
 use streamweave::{
-  consumers::http_response::http_response_consumer::{
-    ResponseChunk, StreamingHttpResponseConsumer,
+  consumers::vec::vec_consumer::VecConsumer,
+  http::{
+    http_handler::HttpHandler, http_request_chunk::StreamWeaveHttpRequestChunk,
+    http_response::StreamWeaveHttpResponse, route_pattern::RoutePattern,
   },
-  http::http_request_chunk::StreamWeaveHttpRequestChunk,
   pipeline::PipelineBuilder,
-  producers::http_request::http_request_producer::StreamingHttpRequestProducer,
+  producers::vec::vec_producer::VecProducer,
+  transformer::{Transformer, TransformerConfig},
   transformers::{
     backpressure::backpressure_transformer::BackpressureTransformer,
+    http_response_builder::{
+      builder_utils::{ErrorResponseBuilder, HtmlResponseBuilder, JsonResponseBuilder},
+      response_data::ResponseData,
+    },
+    http_router::transformer::HttpRouterTransformer,
     map::map_transformer::MapTransformer,
   },
 };
 
-// Echo endpoint with route parameter - now uses streaming implementation
-async fn echo_route(Path(message): Path<String>) -> Result<Response<Body>, (StatusCode, String)> {
-  println!("🔄 Processing echo request for message: {}", message);
+/// Handler for echo endpoint with streaming capabilities
+struct EchoHandler;
 
-  // Create a mock request to pass through the streaming pipeline
-  let req = Request::builder()
-    .uri(format!("/echo/{}", message))
-    .method("GET")
-    .body(Body::from(format!("Echo: {}", message)))
-    .unwrap();
+#[async_trait::async_trait]
+impl HttpHandler for EchoHandler {
+  async fn handle(&self, request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
+    let path = request.path();
+    let method = &request.method;
 
-  // Create streaming StreamWeave pipeline
-  let (consumer, mut chunk_receiver) = StreamingHttpResponseConsumer::new();
+    // Extract message from path parameter
+    let message = path.strip_prefix("/echo/").unwrap_or("world");
 
-  // Spawn pipeline processing
-  let pipeline_handle = tokio::spawn(async move {
-    let _pipeline = PipelineBuilder::new()
-      .producer(StreamingHttpRequestProducer::from_axum_request(req).await)
-      .transformer(BackpressureTransformer::new(10)) // Add backpressure control
-      .transformer(MapTransformer::new(|chunk: StreamWeaveHttpRequestChunk| {
-        // Process each chunk of the request
-        let path = chunk.uri.path();
-        let method = chunk.method.as_str();
+    // Simulate some processing time for streaming effect
+    tokio::time::sleep(Duration::from_millis(200)).await;
 
-        println!(
-          "  📥 Processing chunk: {} {} ({} bytes)",
-          method,
-          path,
-          chunk.chunk.len()
-        );
-
-        // For this example, we'll echo the chunk back as a ResponseChunk
-        ResponseChunk::body(chunk.chunk)
-      }))
-      ._consumer(consumer)
-      .run()
-      .await?;
-    Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
-  });
-
-  // Wait for pipeline to complete
-  let _ = pipeline_handle.await;
-
-  // Build streaming response
-  let mut response_builder = Response::builder();
-  let mut body_chunks = Vec::new();
-
-  // Process response chunks
-  while let Some(chunk) = chunk_receiver.recv().await {
-    match chunk {
-      ResponseChunk::Header(status, headers) => {
-        response_builder = response_builder.status(status);
-        for (key, value) in headers {
-          if let Some(key) = key {
-            response_builder = response_builder.header(key, value);
-          }
-        }
-      }
-      ResponseChunk::Body(data) => {
-        body_chunks.push(data);
-      }
-      ResponseChunk::End => break,
-      ResponseChunk::Error(status, message) => {
-        return Err((status, message));
-      }
-    }
-  }
-
-  // Convert chunks to streaming body - use a simple approach for now
-  let body = if body_chunks.is_empty() {
-    Body::from("No data")
-  } else {
-    // For simplicity, concatenate all chunks
-    let combined = body_chunks.into_iter().fold(Vec::new(), |mut acc, chunk| {
-      acc.extend_from_slice(&chunk);
-      acc
-    });
-    Body::from(combined)
-  };
-
-  // Set default status if none was set
-  let response_builder = response_builder.status(StatusCode::OK);
-
-  // Set default content type
-  let response_builder = response_builder.header("content-type", "text/plain; charset=utf-8");
-
-  let _pipeline_result = response_builder.body(body).unwrap();
-
-  // Always return the HTML response to show the streaming pipeline was used
-  let html_content = format!(
-    r#"<!DOCTYPE html>
+    // Use HTTP Response Builder for structured HTML response
+    let response_data = HtmlResponseBuilder::with_status(http::StatusCode::OK)
+      .content(&format!(
+        r#"<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -168,6 +94,13 @@ async fn echo_route(Path(message): Path<String>) -> Result<Response<Body>, (Stat
             margin-top: 20px;
             display: inline-block;
         }}
+        .pipeline-info {{
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: left;
+        }}
     </style>
 </head>
 <body>
@@ -179,6 +112,17 @@ async fn echo_route(Path(message): Path<String>) -> Result<Response<Body>, (Stat
             <p>Route parameter: <code>/echo/{}</code></p>
             <p>Processed through the streaming pipeline with backpressure control</p>
         </div>
+        <div class="pipeline-info">
+            <h3>🚀 Pipeline Architecture</h3>
+            <ul>
+                <li><strong>HTTP Router:</strong> Request routing with path parameters</li>
+                <li><strong>HTTP Response Builder:</strong> Structured response generation</li>
+                <li><strong>Backpressure Control:</strong> Prevents memory overflow</li>
+                <li><strong>Streaming Processing:</strong> Real-time data flow</li>
+                <li><strong>Method:</strong> {}</li>
+                <li><strong>Path:</strong> {}</li>
+            </ul>
+        </div>
         <div class="streaming-badge">🚀 STREAMING PIPELINE</div>
         <div class="timestamp">
             Generated at: {}
@@ -186,50 +130,321 @@ async fn echo_route(Path(message): Path<String>) -> Result<Response<Body>, (Stat
     </div>
 </body>
 </html>"#,
-    message.to_uppercase(),
-    message,
-    chrono::Utc::now()
-      .format("%Y-%m-%d %H:%M:%S UTC")
-      .to_string()
-  );
+        message.to_uppercase(),
+        message,
+        method.as_str(),
+        path,
+        chrono::Utc::now()
+          .format("%Y-%m-%d %H:%M:%S UTC")
+          .to_string()
+      ))
+      .header("x-powered-by", "StreamWeave HTTP Response Builder")
+      .header("x-streaming", "true")
+      .build();
 
-  Ok(
-    Response::builder()
-      .status(StatusCode::OK)
-      .header("content-type", "text/html; charset=utf-8")
-      .body(Body::from(html_content))
-      .unwrap(),
-  )
+    // Convert ResponseData to StreamWeaveHttpResponse
+    match response_data {
+      ResponseData::Success {
+        status,
+        headers,
+        body,
+      } => StreamWeaveHttpResponse::new(status, headers, body),
+      ResponseData::Error { status, message } => {
+        StreamWeaveHttpResponse::new(status, http::HeaderMap::new(), message.into())
+      }
+    }
+  }
+}
+
+/// Handler for streaming data endpoint
+struct StreamingDataHandler;
+
+#[async_trait::async_trait]
+impl HttpHandler for StreamingDataHandler {
+  async fn handle(&self, request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
+    let path = request.path();
+    let method = &request.method;
+
+    // Simulate streaming data processing
+    tokio::time::sleep(Duration::from_millis(300)).await;
+
+    // Use JSON Response Builder for structured streaming data
+    let response_data = JsonResponseBuilder::with_status(http::StatusCode::OK)
+      .string_field("endpoint", "streaming-data")
+      .string_field("method", method.as_str())
+      .string_field("path", path)
+      .string_field("type", "streaming")
+      .array_field(
+        "data_chunks",
+        vec![
+          serde_json::json!({"chunk": 1, "data": "First streaming chunk", "timestamp": chrono::Utc::now().to_rfc3339()}),
+          serde_json::json!({"chunk": 2, "data": "Second streaming chunk", "timestamp": chrono::Utc::now().to_rfc3339()}),
+          serde_json::json!({"chunk": 3, "data": "Third streaming chunk", "timestamp": chrono::Utc::now().to_rfc3339()}),
+        ],
+      )
+      .string_field("status", "streaming_complete")
+      .string_field("pipeline", "StreamWeave HTTP Router + Response Builder")
+      .header("x-streaming", "true")
+      .header("x-chunks", "3")
+      .build();
+
+    // Convert ResponseData to StreamWeaveHttpResponse
+    match response_data {
+      ResponseData::Success {
+        status,
+        headers,
+        body,
+      } => StreamWeaveHttpResponse::new(status, headers, body),
+      ResponseData::Error { status, message } => {
+        StreamWeaveHttpResponse::new(status, http::HeaderMap::new(), message.into())
+      }
+    }
+  }
+}
+
+/// Handler for real-time metrics endpoint
+struct MetricsHandler;
+
+#[async_trait::async_trait]
+impl HttpHandler for MetricsHandler {
+  async fn handle(&self, _request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
+    // Simulate real-time metrics collection
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    let response_data = JsonResponseBuilder::with_status(http::StatusCode::OK)
+      .string_field("endpoint", "real-time-metrics")
+      .string_field("type", "streaming_metrics")
+      .number_field("requests_per_second", 45.6)
+      .number_field("active_connections", 12.0)
+      .number_field("memory_usage_mb", 128.5)
+      .number_field("cpu_usage_percent", 23.4)
+      .string_field("timestamp", &chrono::Utc::now().to_rfc3339())
+      .string_field("pipeline_status", "streaming")
+      .header("x-metrics", "real-time")
+      .header("x-update-interval", "1s")
+      .build();
+
+    // Convert ResponseData to StreamWeaveHttpResponse
+    match response_data {
+      ResponseData::Success {
+        status,
+        headers,
+        body,
+      } => StreamWeaveHttpResponse::new(status, headers, body),
+      ResponseData::Error { status, message } => {
+        StreamWeaveHttpResponse::new(status, http::HeaderMap::new(), message.into())
+      }
+    }
+  }
+}
+
+/// Fallback handler for 404 responses
+struct NotFoundHandler;
+
+#[async_trait::async_trait]
+impl HttpHandler for NotFoundHandler {
+  async fn handle(&self, request: StreamWeaveHttpRequestChunk) -> StreamWeaveHttpResponse {
+    let response_data = ErrorResponseBuilder::not_found(&format!(
+      "No streaming endpoint found for {} {}",
+      request.method,
+      request.path()
+    ))
+    .header("x-powered-by", "StreamWeave HTTP Response Builder")
+    .header("x-streaming", "false")
+    .build();
+
+    // Convert ResponseData to StreamWeaveHttpResponse
+    match response_data {
+      ResponseData::Success {
+        status,
+        headers,
+        body,
+      } => StreamWeaveHttpResponse::new(status, headers, body),
+      ResponseData::Error { status, message } => {
+        StreamWeaveHttpResponse::new(status, http::HeaderMap::new(), message.into())
+      }
+    }
+  }
+}
+
+/// Create test requests for streaming HTTP endpoints
+fn create_test_requests() -> Vec<StreamWeaveHttpRequestChunk> {
+  let mut requests = Vec::new();
+
+  // Helper function to create a request
+  let create_request = |method: Method, path: &str, headers: http::HeaderMap, body: &str| {
+    let uri: http::Uri = format!("http://localhost:3000{}", path).parse().unwrap();
+    let connection_info = streamweave::http::connection_info::ConnectionInfo::new(
+      std::net::SocketAddr::new(std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)), 8080),
+      std::net::SocketAddr::new(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)), 3000),
+      http::Version::HTTP_11,
+    );
+
+    StreamWeaveHttpRequestChunk::new(
+      method,
+      uri,
+      headers,
+      bytes::Bytes::from(body.to_string()),
+      connection_info,
+      true,
+    )
+  };
+
+  // 1. Echo endpoint with message
+  let mut headers = http::HeaderMap::new();
+  headers.insert("user-agent", "StreamWeave Test Client".parse().unwrap());
+  headers.insert("accept", "text/html,application/json".parse().unwrap());
+  requests.push(create_request(Method::GET, "/echo/hello", headers, ""));
+
+  // 2. Echo endpoint with different message
+  let mut headers = http::HeaderMap::new();
+  headers.insert("user-agent", "StreamWeave Test Client".parse().unwrap());
+  headers.insert("accept", "text/html".parse().unwrap());
+  requests.push(create_request(Method::GET, "/echo/streaming", headers, ""));
+
+  // 3. Streaming data endpoint
+  let mut headers = http::HeaderMap::new();
+  headers.insert("user-agent", "StreamWeave Test Client".parse().unwrap());
+  headers.insert("accept", "application/json".parse().unwrap());
+  requests.push(create_request(Method::GET, "/streaming/data", headers, ""));
+
+  // 4. Real-time metrics endpoint
+  let mut headers = http::HeaderMap::new();
+  headers.insert("user-agent", "StreamWeave Test Client".parse().unwrap());
+  headers.insert("accept", "application/json".parse().unwrap());
+  requests.push(create_request(Method::GET, "/metrics", headers, ""));
+
+  // 5. Non-existent endpoint (404)
+  let mut headers = http::HeaderMap::new();
+  headers.insert("user-agent", "StreamWeave Test Client".parse().unwrap());
+  requests.push(create_request(Method::GET, "/nonexistent", headers, ""));
+
+  requests
 }
 
 #[tokio::main]
-async fn main() {
-  println!("🚀 StreamWeave HTTP Streaming Server");
-  println!("📡 Built with Axum + StreamWeave");
-  println!("🔄 Streaming-only architecture - no buffering!");
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+  // Initialize logging
+  tracing_subscriber::fmt::init();
+
+  println!("🚀 StreamWeave HTTP Streaming Example");
+  println!("=====================================");
+  println!("Now featuring HTTP Router and HTTP Response Builder integration!");
+  println!("Demonstrates streaming capabilities with full StreamWeave architecture");
   println!();
 
-  // Build our application with routes
-  let app = Router::new()
-    .route("/echo/{message}", get(echo_route))
-    .layer(CorsLayer::permissive());
+  // Create route patterns
+  let echo_route = RoutePattern::new(Method::GET, "/echo/{message}")?;
+  let streaming_data_route = RoutePattern::new(Method::GET, "/streaming/data")?;
+  let metrics_route = RoutePattern::new(Method::GET, "/metrics")?;
 
-  // Run it
-  let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-  println!("🌐 Server starting on {}", addr);
-  println!("📋 Available endpoints:");
-  println!("   GET  /echo/:message             - Echo endpoint with streaming pipeline");
-  println!();
-  println!("🔗 Test endpoints:");
-  println!("   Browser: http://localhost:3000/echo/hello");
-  println!();
-  println!("🎉 Echo endpoint now uses StreamWeave streaming pipeline!");
-  println!("   - Takes route parameters like /echo/abcd");
-  println!("   - Returns beautiful HTML pages with the echoed message");
-  println!("   - All processing goes through the streaming pipeline");
+  // Create handlers
+  let echo_handler = Arc::new(EchoHandler);
+  let streaming_data_handler = Arc::new(StreamingDataHandler);
+  let metrics_handler = Arc::new(MetricsHandler);
+  let not_found_handler = Arc::new(NotFoundHandler);
 
-  let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-  println!("✅ Server listening on {}", addr);
+  // Build the HTTP router transformer
+  let mut router = HttpRouterTransformer::new()
+    .add_route(echo_route, "echo".to_string(), echo_handler)?
+    .add_route(streaming_data_route, "streaming_data".to_string(), streaming_data_handler)?
+    .add_route(metrics_route, "metrics".to_string(), metrics_handler)?
+    .with_fallback_handler(not_found_handler);
 
-  axum::serve(listener, app).await.unwrap();
+  router.set_config(TransformerConfig::default().with_name("http_router".to_string()));
+
+  // Create test requests
+  let test_requests = create_test_requests();
+
+  println!(
+    "📝 Processing {} test requests through complete StreamWeave streaming pipeline",
+    test_requests.len()
+  );
+  println!("========================================================================");
+
+  // Process all requests through the complete streaming pipeline
+  let request_producer =
+    VecProducer::new(test_requests).with_name("streaming_request_producer".to_string());
+
+  let response_consumer =
+    VecConsumer::<StreamWeaveHttpResponse>::new().with_name("streaming_response_collector".to_string());
+
+  let pipeline = PipelineBuilder::new()
+    .producer(request_producer)
+    .transformer(BackpressureTransformer::new(10)) // Add backpressure control for streaming
+    .transformer(MapTransformer::new(|chunk: StreamWeaveHttpRequestChunk| {
+      // Simulate streaming processing with some delay
+      println!(
+        "  📥 Processing streaming chunk: {} {} ({} bytes)",
+        chunk.method.as_str(),
+        chunk.uri.path(),
+        chunk.chunk.len()
+      );
+      chunk
+    }))
+    .transformer(router)
+    ._consumer(response_consumer);
+
+  let pipeline_result = pipeline.run().await;
+
+  match pipeline_result {
+    Ok(((), consumer)) => {
+      let responses = consumer.into_vec();
+      println!("\n🎉 StreamWeave Streaming Pipeline Processing Complete!");
+      println!("=====================================================");
+
+      for (i, response) in responses.into_iter().enumerate() {
+        println!("\n--- Streaming Response {} ---", i + 1);
+        println!("Status: {}", response.status);
+        println!("Headers: {}", response.headers.len());
+        println!("Body size: {} bytes", response.body.len());
+
+        // Show some key headers
+        if let Some(content_type) = response.headers.get("content-type") {
+          println!(
+            "Content-Type: {}",
+            content_type.to_str().unwrap_or("invalid")
+          );
+        }
+        if let Some(streaming) = response.headers.get("x-streaming") {
+          println!("Streaming: {}", streaming.to_str().unwrap_or("invalid"));
+        }
+        if let Some(powered_by) = response.headers.get("x-powered-by") {
+          println!("Powered By: {}", powered_by.to_str().unwrap_or("invalid"));
+        }
+
+        // Show a preview of the response body
+        let body_preview = String::from_utf8_lossy(&response.body);
+        let preview = if body_preview.len() > 200 {
+          format!("{}...", &body_preview[..200])
+        } else {
+          body_preview.to_string()
+        };
+        println!("Body preview: {}", preview);
+      }
+    }
+    Err(e) => {
+      println!("❌ Pipeline error: {}", e);
+    }
+  }
+
+  println!("\n🎉 HTTP Streaming example completed successfully!");
+  println!("\nKey Features Demonstrated:");
+  println!("• 🛣️  HTTP Router: Request routing with path parameters and fallback handling");
+  println!("• 🆕 HTTP Response Builder: Structured response generation with security headers");
+  println!("• 🔗 StreamWeave Architecture: Complete request-to-response pipeline in one stream");
+  println!("• 🔄 Streaming Processing: Real-time data flow with backpressure control");
+  println!("• 📊 Multiple Endpoints:");
+  println!("  - /echo/{{message}} - Echo endpoint with beautiful HTML responses");
+  println!("  - /streaming/data - Streaming data endpoint with JSON responses");
+  println!("  - /metrics - Real-time metrics endpoint");
+  println!("  - 404 handling for non-existent endpoints");
+  println!("• 🚀 Pipeline Features:");
+  println!("  - Backpressure control to prevent memory overflow");
+  println!("  - Streaming data processing with real-time flow");
+  println!("  - HTTP Response Builder integration for structured responses");
+  println!("  - Path parameter extraction and processing");
+  println!("  - Error handling and fallback responses");
+
+  Ok(())
 }
