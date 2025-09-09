@@ -14,6 +14,7 @@ pub mod flat_map;
 pub mod flatten;
 pub mod group_by;
 pub mod http_middleware;
+pub mod http_response_builder;
 pub mod http_router;
 pub mod interleave;
 pub mod limit;
