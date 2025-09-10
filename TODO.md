@@ -345,16 +345,16 @@ Use Axum's built-in types directly in StreamWeave pipelines:
 ### Migration TODO List
 
 #### REMOVE (No Longer Needed)
-- [ ] Remove `StreamWeaveHttpRequest` struct
-- [ ] Remove `StreamWeaveHttpResponse` struct  
-- [ ] Remove `ConnectionInfo` struct
-- [ ] Remove custom HTTP type serialization/deserialization
-- [ ] Remove custom parameter extraction logic
-- [ ] Remove custom header manipulation utilities
-- [ ] Remove custom streaming body handling
-- [ ] Remove custom error type mappings
-- [ ] Remove HTTP type conversion functions
-- [ ] Remove custom type tests and benchmarks
+- [x] Remove `StreamWeaveHttpRequest` struct
+- [x] Remove `StreamWeaveHttpResponse` struct  
+- [x] Remove `ConnectionInfo` struct
+- [x] Remove custom HTTP type serialization/deserialization
+- [x] Remove custom parameter extraction logic
+- [x] Remove custom header manipulation utilities
+- [x] Remove custom streaming body handling
+- [x] Remove custom error type mappings
+- [x] Remove HTTP type conversion functions
+- [x] Remove custom type tests and benchmarks
 
 #### CHANGE (Update Existing Code)
 - [ ] Update `examples/03_axum_middleware/main.rs` to use Axum types directly
