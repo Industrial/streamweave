@@ -1,10 +1,10 @@
 use axum::{
   Router,
+  extract::{Path, Query, Request},
   http::{HeaderMap, Method, StatusCode, Uri},
   response::Json,
-  routing::any,
-  extract::{Request, Path, Query},
   response::Response,
+  routing::any,
 };
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;

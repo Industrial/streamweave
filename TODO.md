@@ -357,7 +357,7 @@ Use Axum's built-in types directly in StreamWeave pipelines:
 - [x] Remove custom type tests and benchmarks
 
 #### CHANGE (Update Existing Code)
-- [ ] Update `examples/03_axum_middleware/main.rs` to use Axum types directly
+- [x] Update `examples/03_axum_middleware/main.rs` to use Axum types directly
 - [ ] Remove conversion between Axum and StreamWeave types
 - [ ] Update StreamWeave transformers to accept Axum `Request<B>` instead of `StreamWeaveHttpRequestChunk`
 - [ ] Update StreamWeave transformers to return Axum `Response<B>` instead of `StreamWeaveHttpResponse`
