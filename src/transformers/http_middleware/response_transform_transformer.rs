@@ -422,11 +422,18 @@ impl Output for ResponseTransformTransformer {
 impl Transformer for ResponseTransformTransformer {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let rules = Arc::clone(&self.rules);
+    let transformer_name = self
+      .transformer_config
+      .name()
+      .unwrap_or("response_transform".to_string());
 
     Box::pin(async_stream::stream! {
         let mut input_stream = input;
 
         while let Some(response) = input_stream.next().await {
+            println!("🔄 [{}] Transforming response: {} {} bytes",
+                transformer_name, response.status, response.body.len());
+
             // Transform the response
             let mut response = response;
             let mut transform_error = None;
@@ -489,10 +496,12 @@ impl Transformer for ResponseTransformTransformer {
                 }
             }
 
-            if let Some(_error) = transform_error {
+            if let Some(error) = transform_error {
+                println!("   ❌ [{}] Transformation failed: {:?}", transformer_name, error);
                 // Skip this response if there was a transformation error
                 continue;
             } else {
+                println!("   ✅ [{}] Response transformation completed successfully", transformer_name);
                 yield response;
             }
         }

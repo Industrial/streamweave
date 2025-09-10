@@ -1,20 +1,26 @@
-use streamweave::{
-  consumers::console::console_consumer::ConsoleConsumer, pipeline::PipelineBuilder,
-  producers::range::range_producer::RangeProducer,
-  transformers::map::map_transformer::MapTransformer,
-};
+mod pipeline;
+
+use pipeline::run_basic_pipeline;
 
 #[tokio::main]
-async fn main() {
-  // Create a pipeline that:
-  // 1. Produces numbers from 1 to 5
-  // 2. Doubles each number
-  // 3. Prints the result to the console
-  let pipeline = PipelineBuilder::new()
-    .producer(RangeProducer::new(1, 6, 1))
-    .transformer(MapTransformer::new(|x: i32| x * 2))
-    ._consumer(ConsoleConsumer::new());
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+  println!("🚀 StreamWeave Basic Pipeline Example");
+  println!("=====================================");
+  println!("This example demonstrates a simple data processing pipeline:");
+  println!("1. Produces numbers from 1 to 5");
+  println!("2. Doubles each number");
+  println!("3. Prints the result to the console");
+  println!();
 
-  // Run the pipeline
-  pipeline.run().await.unwrap();
+  run_basic_pipeline().await?;
+
+  println!();
+  println!("✅ Basic pipeline example completed successfully!");
+  println!("Key Features Demonstrated:");
+  println!("• RangeProducer: Generates sequential numbers");
+  println!("• MapTransformer: Transforms data (doubling in this case)");
+  println!("• ConsoleConsumer: Outputs results to console");
+  println!("• PipelineBuilder: Orchestrates the data flow");
+
+  Ok(())
 }

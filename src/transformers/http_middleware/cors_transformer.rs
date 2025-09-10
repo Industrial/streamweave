@@ -243,17 +243,22 @@ impl Output for CorsTransformer {
 #[async_trait]
 impl Transformer for CorsTransformer {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
+    let transformer_name = self.transformer_config.name().unwrap_or("cors".to_string());
     Box::pin(async_stream::stream! {
         let mut input_stream = input;
 
         while let Some(request) = input_stream.next().await {
+            println!("🌐 [{}] Processing request: {} {}", transformer_name, request.method, request.path());
+
             // Check if this is a preflight request
             if request.method == Method::OPTIONS {
+                println!("   🔄 [{}] Preflight OPTIONS request detected", transformer_name);
                 // For preflight requests, we need to return a response instead of continuing the pipeline
                 // This is a limitation of the current transformer design - we'll yield the request
                 // and let the response handling be done elsewhere
                 yield request;
             } else {
+                println!("   ✅ [{}] Non-preflight request, passing through", transformer_name);
                 // For non-preflight requests, just pass through
                 yield request;
             }

@@ -405,16 +405,26 @@ impl Output for CompressionTransformer {
 impl Transformer for CompressionTransformer {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let config = self.config.clone();
+    let transformer_name = self
+      .transformer_config
+      .name()
+      .unwrap_or("compression".to_string());
 
     Box::pin(async_stream::stream! {
         let mut input_stream = input;
 
         while let Some(mut response) = input_stream.next().await {
+            println!("🗜️  [{}] Processing response for compression", transformer_name);
+
             // Check if we should compress this response
             if config.enabled_algorithms.is_empty() || !Self::should_compress_static(&config, &response) {
+                println!("   ⏭️  [{}] Skipping compression - not eligible", transformer_name);
                 yield response;
                 continue;
             }
+
+            println!("   📦 [{}] Response eligible for compression, body size: {} bytes",
+                transformer_name, response.body.len());
 
             // Get the Accept-Encoding header from the original request
             // For now, we'll assume gzip is acceptable
@@ -422,8 +432,13 @@ impl Transformer for CompressionTransformer {
             let algorithm = Self::get_best_algorithm_static(&config, accept_encoding);
 
             if let Some(algorithm) = algorithm {
+                println!("   🔧 [{}] Using compression algorithm: {}", transformer_name, algorithm.as_str());
                 match Self::compress_body_static(&config, &response.body, algorithm).await {
                     Ok(compressed_body) => {
+                        let compression_ratio = (response.body.len() as f64 - compressed_body.len() as f64) / response.body.len() as f64 * 100.0;
+                        println!("   ✅ [{}] Compression successful - {} bytes -> {} bytes ({:.1}% reduction)",
+                            transformer_name, response.body.len(), compressed_body.len(), compression_ratio);
+
                         // Add compression headers
                         response.headers.insert("content-encoding", HeaderValue::from_static(algorithm.as_str()));
                         response.headers.insert("vary", HeaderValue::from_static("accept-encoding"));
@@ -433,13 +448,15 @@ impl Transformer for CompressionTransformer {
 
                         yield response;
                     }
-                    Err(_e) => {
+                    Err(e) => {
+                        println!("   ❌ [{}] Compression failed: {:?}", transformer_name, e);
                         // If compression fails, return the original response
                         // In a real implementation, you might want to log this error
                         yield response;
                     }
                 }
             } else {
+                println!("   ⚠️  [{}] No supported compression algorithm found", transformer_name);
                 // No supported algorithm found, return original response
                 yield response;
             }

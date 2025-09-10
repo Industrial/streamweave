@@ -295,11 +295,17 @@ impl Output for RequestValidationTransformer {
 impl Transformer for RequestValidationTransformer {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let rules = Arc::clone(&self.rules);
+    let transformer_name = self
+      .transformer_config
+      .name()
+      .unwrap_or("validation".to_string());
 
     Box::pin(async_stream::stream! {
         let mut input_stream = input;
 
         while let Some(request) = input_stream.next().await {
+            println!("✅ [{}] Validating request: {} {}", transformer_name, request.method, request.path());
+
             // Validate the request
             let validation_result = {
                 let mut all_errors = Vec::new();
@@ -417,10 +423,15 @@ impl Transformer for RequestValidationTransformer {
 
             match validation_result {
                 ValidationResult::Valid => {
+                    println!("   ✅ [{}] Validation passed, continuing processing", transformer_name);
                     // Validation passed, continue processing
                     yield request;
                 }
-                ValidationResult::Invalid { .. } => {
+                ValidationResult::Invalid { errors } => {
+                    println!("   ❌ [{}] Validation failed with {} errors:", transformer_name, errors.len());
+                    for error in &errors {
+                        println!("      - {}: {}", error.field, error.message);
+                    }
                     // Validation failed, skip this request
                     continue;
                 }

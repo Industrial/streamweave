@@ -385,20 +385,30 @@ impl Output for RateLimitTransformer {
 impl Transformer for RateLimitTransformer {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let rate_limiter = self.rate_limiter.clone();
+    let transformer_name = self
+      .transformer_config
+      .name()
+      .unwrap_or("rate_limit".to_string());
 
     Box::pin(async_stream::stream! {
         let mut input_stream = input;
 
         while let Some(request) = input_stream.next().await {
+            println!("⏱️  [{}] Checking rate limit for request: {} {}", transformer_name, request.method, request.path());
+
             // Check rate limit
             let rate_limit_result = rate_limiter.is_allowed(&request).await;
 
             match rate_limit_result {
-                RateLimitResult::Allowed { .. } => {
+                RateLimitResult::Allowed { remaining, reset_time } => {
+                    println!("   ✅ [{}] Rate limit passed - remaining: {}, reset: {:?}",
+                        transformer_name, remaining, reset_time);
                     // Rate limit passed, continue processing
                     yield request;
                 }
-                RateLimitResult::RateLimited { .. } => {
+                RateLimitResult::RateLimited { retry_after } => {
+                    println!("   🚫 [{}] Rate limit exceeded - retry after: {:?}",
+                        transformer_name, retry_after);
                     // Rate limit exceeded, skip this request
                     // In a real implementation, you might want to return an error response
                     // For now, we'll just skip the request

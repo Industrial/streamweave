@@ -10,9 +10,18 @@ where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
+    let consumer_name = self.config.name.clone();
+    println!("📥 [{}] Starting to consume stream", consumer_name);
+    let mut count = 0;
     while let Some(value) = stream.next().await {
+      count += 1;
+      println!(
+        "   📦 [{}] Consuming item #{}: {:?}",
+        consumer_name, count, value
+      );
       self.vec.push(value);
     }
+    println!("✅ [{}] Finished consuming {} items", consumer_name, count);
   }
 
   fn set_config_impl(&mut self, config: ConsumerConfig<T>) {

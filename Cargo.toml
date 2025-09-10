@@ -15,6 +15,7 @@ hyper = { version = "1.6", features = ["full"] }
 http = "1.0"
 http-body-util = "0.1"
 bytes = "1.0"
+tower = "0.5"
 tower-http = { version = "0.5", features = ["cors"] }
 url = "2.5"
 flate2 = "1.0"
@@ -72,16 +73,8 @@ name = "02_advanced_pipeline"
 path = "examples/02_advanced_pipeline/main.rs"
 
 [[example]]
-name = "03_streaming_http"
-path = "examples/03_streaming_http/main.rs"
-
-[[example]]
-name = "04_http_router"
-path = "examples/04_http_router/main.rs"
-
-[[example]]
-name = "05_http_middleware"
-path = "examples/05_http_middleware/main.rs"
+name = "03_axum_middleware"
+path = "examples/03_axum_middleware/main.rs"
 
 [dev-dependencies]
 proptest = "1.4"

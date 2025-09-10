@@ -1,6 +1,44 @@
 # StreamWeave HTTP Server Core Components TODO
 
-This document outlines the components needed to make StreamWeave the primary architectural component of an HTTP server, replacing the current secondary role where it's only used within Axum route handlers.
+# StreamWeave HTTP Server Core Components TODO
+
+> **⚠️ ARCHITECTURAL UPDATE (2024)**: This document has been updated to reflect the current recommended approach of using **Axum + StreamWeave** instead of a pure StreamWeave HTTP server implementation.
+
+## Current Recommended Architecture ✅
+
+**Axum + StreamWeave Integration** (as demonstrated in `examples/03_axum_middleware`):
+- **Axum**: Handles HTTP protocol, connection management, routing, and low-level HTTP details
+- **StreamWeave**: Handles business logic, data processing, middleware pipeline, and transformations
+- **Architecture**: `Axum HTTP Server → StreamWeave Pipeline → Response`
+- **Benefits**: Battle-tested HTTP server + StreamWeave's streaming-first data processing
+
+## Why Axum + StreamWeave Instead of Pure StreamWeave?
+
+### Problems with Custom HTTP Server Implementation
+1. **HTTP Protocol Complexity**: HTTP/1.1 and HTTP/2 have many edge cases, connection handling, and protocol details
+2. **Connection Management**: Proper connection pooling, keep-alive, and cleanup require extensive testing
+3. **Error Handling**: HTTP status codes, error responses, and edge cases are complex
+4. **Maintenance Overhead**: Custom HTTP server code requires ongoing maintenance and testing
+5. **Performance**: Battle-tested HTTP servers like Axum are highly optimized
+6. **Ecosystem**: Rich middleware ecosystem and community support
+
+### Benefits of Axum + StreamWeave
+1. **Focus on Strengths**: Axum handles HTTP protocol, StreamWeave handles data processing
+2. **Production Ready**: Axum is used in production by many companies
+3. **Maintainability**: Less custom code to maintain and debug
+4. **Performance**: Highly optimized HTTP server with proven track record
+5. **Ecosystem**: Access to Axum's rich middleware ecosystem
+6. **Clean Separation**: Clear boundaries between HTTP concerns and business logic
+
+## Superseded Components
+
+The following components are **NO LONGER NEEDED** as they have been superseded by Axum:
+
+---
+
+## Historical Context (Superseded)
+
+This document originally outlined the components needed to make StreamWeave the primary architectural component of an HTTP server, replacing the current secondary role where it's only used within Axum route handlers.
 
 ## Current State
 - StreamWeave is currently used as a secondary component within Axum route handlers
@@ -172,9 +210,24 @@ pub enum ResponseData {
 
 ---
 
-## 4. HTTP Server Producer
+## 4. HTTP Server Producer ❌ SUPERSEDED BY AXUM
 
-**Priority: HIGH** | **Estimated Effort: 3-4 days**
+**Priority: N/A** | **Estimated Effort: N/A** | **Status: SUPERSEDED**
+
+### Context
+~~A producer that accepts incoming HTTP connections and produces HTTP request streams, replacing the need for Axum's server functionality.~~
+
+**SUPERSEDED**: This component is no longer needed as Axum handles HTTP server functionality. Axum provides battle-tested HTTP protocol handling, connection management, and server implementation that would be complex and error-prone to reimplement.
+
+### Why Superseded?
+- **HTTP Protocol Complexity**: HTTP/1.1 and HTTP/2 have many edge cases that Axum already handles
+- **Connection Management**: Axum provides robust connection pooling and keep-alive handling
+- **TLS/SSL Support**: Axum integrates seamlessly with Rust's TLS ecosystem
+- **Performance**: Axum is highly optimized and battle-tested in production
+- **Maintenance**: Custom HTTP server implementation would require ongoing maintenance
+
+### Current Solution
+Use Axum as the HTTP server with StreamWeave handling business logic in route handlers (see `examples/03_axum_middleware`).| **Estimated Effort: 3-4 days**
 
 ### Context
 A producer that accepts incoming HTTP connections and produces HTTP request streams, replacing the need for Axum's server functionality.
@@ -219,7 +272,7 @@ impl Producer for HttpServerProducer {
 
 ---
 
-## 5. HTTP Response Consumer
+## 5. HTTP Response Consumer ❌ SUPERSEDED BY AXUM
 
 **Priority: HIGH** | **Estimated Effort: 2-3 days**
 
@@ -265,58 +318,76 @@ pub enum ResponseChunk {
 
 ---
 
-## 6. Enhanced HTTP Types
+## 6. Axum Types Integration ❌ SUPERSEDED BY AXUM TYPES
 
 **Priority: MEDIUM** | **Estimated Effort: 1-2 days**
 
 ### Context
-More sophisticated HTTP types for better integration and easier manipulation within StreamWeave pipelines.
+~~More sophisticated HTTP types for better integration and easier manipulation within StreamWeave pipelines.~~
 
-### Requirements
-- Rich request representation with path/query parameters
-- Enhanced response types
-- Better error handling types
-- Streaming body support
-- Header manipulation utilities
+**SUPERSEDED**: This component is no longer needed as Axum provides all necessary HTTP types. Custom HTTP types create unnecessary abstraction layers and conversion overhead.
 
-### Implementation Details
-```rust
-pub struct StreamWeaveHttpRequest {
-    pub method: Method,
-    pub uri: Uri,
-    pub headers: HeaderMap,
-    pub body: BodyStream,
-    pub path_params: HashMap<String, String>,
-    pub query_params: HashMap<String, String>,
-    pub connection_info: ConnectionInfo,
-}
+### Why Superseded?
+- **Type Duplication**: Axum already provides `Request<B>`, `Response<B>`, `Method`, `Uri`, `HeaderMap`, etc.
+- **Performance Overhead**: Converting between Axum and custom types adds unnecessary overhead
+- **Ecosystem Integration**: Axum types integrate seamlessly with Tower middleware and extractors
+- **Maintenance Burden**: Custom types require ongoing maintenance to stay in sync with Axum
+- **Limited Value**: No significant benefits over using Axum types directly
 
-pub struct StreamWeaveHttpResponse {
-    pub status: StatusCode,
-    pub headers: HeaderMap,
-    pub body: BodyStream,
-    pub trailers: Option<HeaderMap>,
-}
+### Current Solution
+Use Axum's built-in types directly in StreamWeave pipelines:
+- `Request<B>` for incoming requests
+- `Response<B>` for outgoing responses  
+- `Stream` for streaming bodies
+- `Path<T>`, `Query<T>`, `TypedHeader<T>` extractors for parameters
+- `ConnectInfo` for connection information
 
-pub struct ConnectionInfo {
-    pub remote_addr: SocketAddr,
-    pub local_addr: SocketAddr,
-    pub protocol: HttpVersion,
-    pub tls_info: Option<TlsInfo>,
-}
-```
+### Migration TODO List
 
-### Inline Tests Required (100% Coverage)
-- Request parsing and validation
-- Parameter extraction (path and query)
-- Header manipulation
-- Body streaming
-- Response construction
-- Error type handling
-- Serialization/deserialization
-- Memory efficiency
-- Type safety validation
-- Integration with existing types
+#### REMOVE (No Longer Needed)
+- [ ] Remove `StreamWeaveHttpRequest` struct
+- [ ] Remove `StreamWeaveHttpResponse` struct  
+- [ ] Remove `ConnectionInfo` struct
+- [ ] Remove custom HTTP type serialization/deserialization
+- [ ] Remove custom parameter extraction logic
+- [ ] Remove custom header manipulation utilities
+- [ ] Remove custom streaming body handling
+- [ ] Remove custom error type mappings
+- [ ] Remove HTTP type conversion functions
+- [ ] Remove custom type tests and benchmarks
+
+#### CHANGE (Update Existing Code)
+- [ ] Update `examples/03_axum_middleware/main.rs` to use Axum types directly
+- [ ] Remove conversion between Axum and StreamWeave types
+- [ ] Update StreamWeave transformers to accept Axum `Request<B>` instead of `StreamWeaveHttpRequestChunk`
+- [ ] Update StreamWeave transformers to return Axum `Response<B>` instead of `StreamWeaveHttpResponse`
+- [ ] Update pipeline builders to work with Axum types
+- [ ] Update middleware transformers to use Axum extractors
+- [ ] Update router transformer to use Axum routing patterns
+- [ ] Update response transformers to return Axum response types
+- [ ] Update error handling to use Axum error types
+- [ ] Update logging to work with Axum request/response types
+
+#### ADD (New Axum Integration)
+- [ ] Add Axum `Stream` extractor support in StreamWeave pipelines
+- [ ] Add Axum `Path<T>` extractor integration for path parameters
+- [ ] Add Axum `Query<T>` extractor integration for query parameters
+- [ ] Add Axum `TypedHeader<T>` extractor integration for headers
+- [ ] Add Axum `ConnectInfo` extractor integration for connection info
+- [ ] Add Axum `Json<T>` response integration
+- [ ] Add Axum `Html<T>` response integration
+- [ ] Add Axum `Text<T>` response integration
+- [ ] Add Axum streaming response support
+- [ ] Add Axum error response integration
+- [ ] Add Axum middleware integration helpers
+- [ ] Add Axum extractor trait implementations for StreamWeave
+- [ ] Add Axum response trait implementations for StreamWeave
+- [ ] Add Axum type conversion utilities (if needed)
+- [ ] Add Axum integration examples
+- [ ] Add Axum type documentation
+- [ ] Add Axum integration tests
+- [ ] Add performance benchmarks for Axum vs custom types
+- [ ] Add migration guide from custom types to Axum types
 
 ---
 
@@ -509,27 +580,62 @@ mod integration_tests {
 
 ---
 
-## Implementation Priority
+## Current Implementation Status
 
-1. **Phase 1 (Core)**: HTTP Router Transformer, HTTP Response Builder, HTTP Server Producer, HTTP Response Consumer
-2. **Phase 2 (Middleware)**: HTTP Middleware System, Enhanced HTTP Types
-3. **Phase 3 (Management)**: Connection Management, Error Handling
-4. **Phase 4 (Polish)**: HTTP Pipeline Builder, Integration Tests
+### ✅ COMPLETED COMPONENTS
+1. **HTTP Router Transformer** - Routes requests within StreamWeave pipelines
+2. **HTTP Middleware System** - CORS, logging, validation, rate limiting, compression, response transformation
+3. **HTTP Response Builder** - Constructs HTTP responses from processed data
 
-## Success Criteria
+### ❌ SUPERSEDED COMPONENTS (No Longer Needed)
+4. **HTTP Server Producer** - Superseded by Axum HTTP server
+5. **HTTP Response Consumer** - Superseded by Axum response handling
+6. **Connection Management Transformer** - Superseded by Axum connection management
+7. **HTTP Error Handling System** - Superseded by Axum error handling
+8. **HTTP Pipeline Builder** - Superseded by Axum + StreamWeave integration pattern
+9. **HTTP Server Integration Tests** - Superseded by Axum + StreamWeave integration tests
 
-- StreamWeave becomes the primary component handling HTTP requests/responses
-- Axum is either eliminated or reduced to low-level protocol handling
-- All HTTP functionality is implemented as StreamWeave transformers
-- 100% test coverage for all components
-- Performance comparable to or better than Axum
-- Full streaming support throughout the pipeline
-- Easy composability of middleware and handlers
+### ❌ SUPERSEDED COMPONENTS (No Longer Needed)
+6. **Enhanced HTTP Types** - Superseded by Axum types
+
+## Current Recommended Architecture
+
+**Axum + StreamWeave Integration** (see `examples/03_axum_middleware`):
+- **Axum**: HTTP server, connection management, routing, error handling
+- **StreamWeave**: Business logic, data processing, middleware pipeline
+- **Benefits**: Production-ready HTTP server + streaming-first data processing
+
+## Success Criteria (Updated)
+
+- ✅ StreamWeave integrates seamlessly with Axum for HTTP server functionality
+- ✅ Axum handles HTTP protocol details and connection management
+- ✅ StreamWeave handles business logic and data processing pipelines
+- ✅ Clean separation of concerns between HTTP and business logic
+- ✅ Production-ready and maintainable architecture
+- ✅ Full streaming support throughout the StreamWeave pipeline
+- ✅ Easy composability of middleware and transformers
+
+## Summary
+
+This TODO document has been updated to reflect the architectural decision to use **Axum + StreamWeave** instead of a pure StreamWeave HTTP server implementation. The key insight is that HTTP server implementation is complex and error-prone, while Axum provides battle-tested HTTP functionality that can be seamlessly integrated with StreamWeave's streaming-first data processing capabilities.
+
+### Key Changes Made:
+1. **Superseded Components**: Marked HTTP Server Producer, HTTP Response Consumer, Connection Management, Error Handling, and Pipeline Builder as superseded by Axum
+2. **Current Architecture**: Documented the recommended Axum + StreamWeave integration pattern
+3. **Updated Success Criteria**: Focused on integration rather than replacement of Axum
+4. **Example Reference**: Pointed to `examples/03_axum_middleware` as the current best practice
+
+### Next Steps:
+- Focus on enhancing StreamWeave's data processing capabilities
+- Improve integration patterns with Axum
+- Add more sophisticated middleware transformers
+- Optimize performance of StreamWeave pipelines
+- Expand examples and documentation
 
 ## Notes
 
-- Each component should be implemented as a separate module in `src/transformers/http/` or `src/producers/http/` or `src/consumers/http/`
-- All components must implement the appropriate StreamWeave traits
-- Inline tests should be comprehensive and cover edge cases
-- Documentation should include usage examples for each component
-- Performance benchmarks should be included for critical components
+- StreamWeave components should focus on data processing and business logic
+- HTTP protocol concerns should be handled by Axum
+- Integration examples should demonstrate clean separation of concerns
+- Performance optimization should focus on StreamWeave pipeline efficiency
+- Documentation should emphasize the Axum + StreamWeave integration pattern

@@ -263,11 +263,17 @@ impl Transformer for RequestLoggingTransformer {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let logger = self.logger.clone();
     let include_body = self.include_body;
+    let transformer_name = self
+      .transformer_config
+      .name()
+      .unwrap_or("request_logging".to_string());
 
     Box::pin(async_stream::stream! {
         let mut input_stream = input;
 
         while let Some(request) = input_stream.next().await {
+            println!("📝 [{}] Logging request: {} {}", transformer_name, request.method, request.path());
+
             // Create log entry for the request
             let log_entry = {
                 let timestamp = chrono::Utc::now();
@@ -306,8 +312,17 @@ impl Transformer for RequestLoggingTransformer {
                 }
             };
 
+            println!("   📊 [{}] Request details: UA={:?}, Body={} bytes, Headers={}",
+                transformer_name,
+                log_entry.user_agent,
+                log_entry.body_size.unwrap_or(0),
+                log_entry.headers.as_ref().map(|h| h.len()).unwrap_or(0)
+            );
+
             // Log the request
             logger.log_request(&log_entry).await;
+
+            println!("   ✅ [{}] Request logged successfully", transformer_name);
 
             // Yield the request to continue processing
             yield request;

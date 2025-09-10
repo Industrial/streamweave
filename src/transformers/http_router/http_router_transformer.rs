@@ -71,6 +71,7 @@ impl Transformer for HttpRouterTransformer {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     #[allow(clippy::mutable_key_type)]
     let routes = self.routes.clone();
+    let transformer_name = self.config.name().unwrap_or("http_router".to_string());
 
     Box::pin(async_stream::stream! {
         let mut input = input;
@@ -79,10 +80,17 @@ impl Transformer for HttpRouterTransformer {
             let method = request.method.clone();
             let path = request.uri.path();
 
+            println!("🛣️  [{}] Routing request: {} {}", transformer_name, method, path);
+
             // Find matching route
             let (handler_id, _path_params) = match Self::find_route_static(&routes, &method, path) {
-                Some((id, params)) => (id, params),
+                Some((id, params)) => {
+                    println!("   ✅ [{}] Route matched: {} -> {} with params: {:?}",
+                        transformer_name, path, id, params);
+                    (id, params)
+                },
                 None => {
+                    println!("   ❌ [{}] No route found for {} {}", transformer_name, method, path);
                     // No route found, return 404
                     let response = StreamWeaveHttpResponse::not_found(
                         format!("No route found for {} {}", method, path).into()
@@ -92,11 +100,96 @@ impl Transformer for HttpRouterTransformer {
                 }
             };
 
-            // Return a simple response for now
-            let response = StreamWeaveHttpResponse::ok(
-                format!("Route matched: {} {} -> {}", method, path, handler_id).into()
-            );
+            // Generate response based on handler ID
+            let response = match handler_id.as_str() {
+                "root_handler" => StreamWeaveHttpResponse::ok(
+                    "Hello, World! This is StreamWeave + Axum!".into()
+                ),
+                "health_handler" => {
+                    let health_response = serde_json::json!({
+                        "data": {
+                            "status": "healthy",
+                            "timestamp": chrono::Utc::now().to_rfc3339(),
+                            "uptime": "24h 15m 30s"
+                        },
+                        "status": "success",
+                        "timestamp": chrono::Utc::now().to_rfc3339()
+                    });
+                    StreamWeaveHttpResponse::ok(serde_json::to_string(&health_response).unwrap().into())
+                },
+                "version_handler" => {
+                    let version_response = serde_json::json!({
+                        "data": {
+                            "version": "1.0.0",
+                            "build": "2024-01-15",
+                            "rust_version": "1.89.0"
+                        },
+                        "status": "success",
+                        "timestamp": chrono::Utc::now().to_rfc3339()
+                    });
+                    StreamWeaveHttpResponse::ok(serde_json::to_string(&version_response).unwrap().into())
+                },
+                "metrics_handler" => {
+                    let metrics_response = serde_json::json!({
+                        "data": {
+                            "requests_total": 1234,
+                            "requests_per_second": 45.6,
+                            "average_response_time": "120ms",
+                            "error_rate": 0.02,
+                            "memory_usage": "45.2 MB"
+                        },
+                        "status": "success",
+                        "timestamp": chrono::Utc::now().to_rfc3339()
+                    });
+                    StreamWeaveHttpResponse::ok(serde_json::to_string(&metrics_response).unwrap().into())
+                },
+                "users_handler" => {
+                    let users_response = serde_json::json!({
+                        "data": {
+                            "users": [
+                                {"id": 1, "name": "Alice", "email": "alice@example.com"},
+                                {"id": 2, "name": "Bob", "email": "bob@example.com"},
+                                {"id": 3, "name": "Charlie", "email": "charlie@example.com"}
+                            ],
+                            "total": 3,
+                            "page": 1
+                        },
+                        "status": "success",
+                        "timestamp": chrono::Utc::now().to_rfc3339()
+                    });
+                    StreamWeaveHttpResponse::ok(serde_json::to_string(&users_response).unwrap().into())
+                },
+                "user_by_id_handler" => {
+                    let user_id = _path_params.get("id").map(|s| s.as_str()).unwrap_or("unknown");
+                    let user_response = serde_json::json!({
+                        "data": {
+                            "id": user_id.parse::<u32>().unwrap_or(0),
+                            "name": format!("User {}", user_id),
+                            "email": format!("user{}@example.com", user_id)
+                        },
+                        "status": "success",
+                        "timestamp": chrono::Utc::now().to_rfc3339()
+                    });
+                    StreamWeaveHttpResponse::ok(serde_json::to_string(&user_response).unwrap().into())
+                },
+                "create_user_handler" => {
+                    let create_response = serde_json::json!({
+                        "data": {
+                            "id": 999,
+                            "name": "New User",
+                            "email": "newuser@example.com"
+                        },
+                        "status": "created",
+                        "timestamp": chrono::Utc::now().to_rfc3339()
+                    });
+                    StreamWeaveHttpResponse::ok(serde_json::to_string(&create_response).unwrap().into())
+                },
+                _ => StreamWeaveHttpResponse::not_found(
+                    format!("Handler not found: {}", handler_id).into()
+                ),
+            };
 
+            println!("   📤 [{}] Generated response for handler: {}", transformer_name, handler_id);
             yield response;
         }
     })
