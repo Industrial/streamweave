@@ -25,11 +25,12 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Install devenv
-        uses: cachix/devenv-action@v0.1.0
-
-      - name: Run devenv shell
         run: |
-          devenv shell -- bash -c "
+          nix profile install github:cachix/devenv
+
+      - name: Run nix develop
+        run: |
+          nix develop --command bash -c "
             echo '🔍 Running cargo check...'
             cargo check --all-targets --all-features
             
@@ -57,11 +58,12 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Install devenv
-        uses: cachix/devenv-action@v0.1.0
+        run: |
+          nix profile install github:cachix/devenv
 
       - name: Run tests
         run: |
-          devenv shell -- bash -c "
+          nix develop --command bash -c "
             echo '🧪 Running tests with Rust ${{ matrix.rust-version }}...'
             cargo test --all-targets --all-features --verbose
           "
@@ -80,11 +82,12 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Install devenv
-        uses: cachix/devenv-action@v0.1.0
+        run: |
+          nix profile install github:cachix/devenv
 
       - name: Build examples
         run: |
-          devenv shell -- bash -c "
+          nix develop --command bash -c "
             echo '📦 Building examples...'
             cargo build --examples --all-features
             
@@ -106,17 +109,18 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Install devenv
-        uses: cachix/devenv-action@v0.1.0
+        run: |
+          nix profile install github:cachix/devenv
 
       - name: Install cargo-audit
         run: |
-          devenv shell -- bash -c "
+          nix develop --command bash -c "
             cargo install cargo-audit
           "
 
       - name: Run security audit
         run: |
-          devenv shell -- bash -c "
+          nix develop --command bash -c "
             echo '🔒 Running security audit...'
             cargo audit
           "
@@ -135,11 +139,12 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Install devenv
-        uses: cachix/devenv-action@v0.1.0
+        run: |
+          nix profile install github:cachix/devenv
 
       - name: Generate coverage
         run: |
-          devenv shell -- bash -c "
+          nix develop --command bash -c "
             echo '📊 Generating coverage report...'
             cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
           "

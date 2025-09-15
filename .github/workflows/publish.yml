@@ -22,11 +22,12 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Install devenv
-        uses: cachix/devenv-action@v0.1.0
+        run: |
+          nix profile install github:cachix/devenv
 
       - name: Verify package
         run: |
-          devenv shell -- bash -c "
+          nix develop --command bash -c "
             echo '🔍 Verifying package...'
             cargo check --all-targets --all-features
             cargo test --all-targets --all-features
@@ -36,21 +37,21 @@ jobs:
 
       - name: Build package
         run: |
-          devenv shell -- bash -c "
+          nix develop --command bash -c "
             echo '📦 Building package...'
             cargo build --release --all-features
           "
 
       - name: Test package
         run: |
-          devenv shell -- bash -c "
+          nix develop --command bash -c "
             echo '🧪 Testing package...'
             cargo test --release --all-features
           "
 
       - name: Publish to Crates.io
         run: |
-          devenv shell -- bash -c "
+          nix develop --command bash -c "
             echo '🚀 Publishing to Crates.io...'
             cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
           "
@@ -71,11 +72,12 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Install devenv
-        uses: cachix/devenv-action@v0.1.0
+        run: |
+          nix profile install github:cachix/devenv
 
       - name: Generate documentation
         run: |
-          devenv shell -- bash -c "
+          nix develop --command bash -c "
             echo '📚 Generating documentation...'
             cargo doc --all-features --no-deps --documentation-private-items
           "

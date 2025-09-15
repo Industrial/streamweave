@@ -1,0 +1,36 @@
+---
+description: Testing strategy and conventions for StreamWeave
+alwaysApply: true
+---
+
+# Testing Strategy
+
+## Test Organization
+- Place tests inline in implementation files (not separate test files)
+- Use `#[cfg(test)]` modules within each file
+- Use the `bin/test` script to run tests (not `cargo test` directly)
+- Group related tests in the same module
+
+## Test Types
+- **Unit Tests**: Test individual functions and methods
+- **Integration Tests**: Test component interactions
+- **Property Tests**: Use `proptest` for randomized testing
+- **Pipeline Tests**: Test complete pipeline configurations
+
+## Test Patterns
+- Use `#[tokio::test]` for async tests
+- Create test helpers for common setup
+- Use `VecConsumer` for collecting test results
+- Test both success and error conditions
+
+## Coverage Goals
+- Aim for >90% line coverage
+- Test all public APIs
+- Test error conditions and edge cases
+- Test async behavior and cancellation
+
+## Test Data
+- Use realistic test data that matches production patterns
+- Create test fixtures for complex data structures
+- Use `proptest` for generating test data
+- Test with various data sizes and types

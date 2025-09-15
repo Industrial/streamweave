@@ -1,0 +1,38 @@
+---
+description: Rust coding standards and best practices for the StreamWeave project
+alwaysApply: true
+---
+
+# Rust Coding Standards
+
+## Code Style
+- Use 2 spaces for indentation (as configured in rustfmt.toml)
+- Follow Rust naming conventions (snake_case for functions/variables, PascalCase for types)
+- Keep lines under 100 characters when possible
+- Use trailing commas in multi-line structs and function calls
+- Prefer `use` statements at the top of files, not inline imports
+
+## Error Handling
+- Use `thiserror` for custom error types
+- Prefer `Result<T, E>` over panicking
+- Use `?` operator for error propagation
+- Provide meaningful error messages with context
+
+## Async/Await
+- Use `#[tokio::main]` for main functions
+- Prefer `async fn` over `fn` returning `Future`
+- Use `futures::Stream` for streaming operations
+- Handle backpressure appropriately
+
+## Documentation
+- Write comprehensive doc comments for public APIs
+- Include examples in doc comments
+- Use `///` for public items, `//!` for module-level docs
+- Document error conditions and panics
+
+## Testing
+- Place tests inline in implementation files (not separate test files)
+- Use the `bin/test` script to run tests
+- Write unit tests for all public functions
+- Use property-based testing with `proptest` where appropriate
+- Test error conditions and edge cases

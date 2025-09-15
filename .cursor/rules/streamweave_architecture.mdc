@@ -1,0 +1,37 @@
+---
+description: StreamWeave-specific architectural patterns and conventions
+alwaysApply: true
+---
+
+# StreamWeave Architecture Patterns
+
+## Core Components
+- **Producers**: Generate data streams, implement `Producer` trait
+- **Transformers**: Process stream items, implement `Transformer` trait  
+- **Consumers**: Consume stream data, implement `Consumer` trait
+- **Pipeline**: Orchestrates the flow between components
+
+## Design Principles
+- **Composability**: All components can be chained together fluently
+- **Type Safety**: Use PhantomData for compile-time state tracking
+- **Async-First**: Built around `futures::Stream` and async/await
+- **Zero-Cost Abstractions**: Minimize runtime overhead
+- **Error Resilience**: Comprehensive error handling strategies
+
+## Module Structure
+- Each component type has its own module (producers/, transformers/, consumers/)
+- Each component has: mod.rs, input.rs, output.rs, and the main implementation
+- Use trait objects with `Box<dyn Trait>` for dynamic dispatch
+- Keep generic constraints minimal and focused
+
+## Pipeline Builder Pattern
+- Use state types (Empty, HasProducer, HasTransformer, Complete) for compile-time validation
+- Implement fluent API with method chaining
+- Support error strategy configuration at pipeline and component levels
+- Use PhantomData to track state without runtime overhead
+
+## Error Handling Strategy
+- Pipeline-level: Stop, Skip, Retry, Custom
+- Component-level: Override pipeline strategy per component
+- Use `ErrorAction` enum for error handling decisions
+- Provide meaningful error context and recovery options
