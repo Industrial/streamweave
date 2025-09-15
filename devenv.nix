@@ -50,7 +50,7 @@
 
     # Version management
     git
-    gitAndTools.gh # GitHub CLI
+    gitAndTools.gh
   ];
 
   # Pre-commit hooks
@@ -73,7 +73,7 @@
         enable = true;
         name = "cargo-build";
         description = "Check if project builds successfully";
-        entry = "cargo build";
+        entry = "bin/build";
         pass_filenames = false;
       };
 
@@ -82,7 +82,7 @@
         enable = true;
         name = "cargo-test";
         description = "Run cargo tests";
-        entry = "cargo test";
+        entry = "bin/test";
         pass_filenames = false;
       };
 
@@ -94,29 +94,6 @@
         entry = "cargo audit";
         pass_filenames = false;
       };
-    };
-  };
-
-  # Automatic commands
-  enterShell = ''
-    echo "🦀 StreamWeave Development Environment"
-    echo "📦 Available commands:"
-    echo "  cargo build     - Build the project"
-    echo "  cargo test      - Run tests"
-    echo "  cargo clippy    - Run linter"
-    echo "  cargo fmt       - Format code"
-    echo "  cargo audit     - Security audit"
-    echo "  cargo doc       - Generate documentation"
-    echo "  cargo publish   - Publish to crates.io"
-    echo ""
-    echo "🔍 Running initial checks..."
-    cargo check
-    cargo clippy -- -D warnings
-  '';
-
-  processes = {
-    cargo-watch = {
-      exec = "cargo watch -x check -x test";
     };
   };
 
