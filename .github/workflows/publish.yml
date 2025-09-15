@@ -30,14 +30,6 @@ jobs:
           name: devenv
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-      - name: Cache Nix Store
-        uses: nix-community/cache-nix-action@v6
-        with:
-          primary-key: ${{ runner.os }}-nix-${{ hashFiles('**/devenv.lock') }}
-          restore-prefixes-first-match: |
-            ${{ runner.os }}-nix-
-          paths: /nix/store
-
       - name: Install devenv
         run: |
           nix profile install github:cachix/devenv
@@ -95,14 +87,6 @@ jobs:
         with:
           name: devenv
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-
-      - name: Cache Nix Store
-        uses: nix-community/cache-nix-action@v6
-        with:
-          primary-key: ${{ runner.os }}-nix-${{ hashFiles('**/devenv.lock') }}
-          restore-prefixes-first-match: |
-            ${{ runner.os }}-nix-
-          paths: /nix/store
 
       - name: Install devenv
         run: |
