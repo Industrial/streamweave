@@ -20,19 +20,3 @@ pub async fn run_basic_pipeline() -> Result<(), Box<dyn std::error::Error>> {
 
   Ok(())
 }
-
-/// Creates a pipeline that doubles numbers from a given range
-pub fn create_doubling_pipeline(start: i32, end: i32, step: i32) {
-  PipelineBuilder::new()
-    .producer(RangeProducer::new(start, end, step))
-    .transformer(MapTransformer::new(|x: i32| x * 2))
-    ._consumer(ConsoleConsumer::new());
-}
-
-/// Creates a pipeline that multiplies numbers by a given factor
-pub fn create_multiplying_pipeline(start: i32, end: i32, step: i32, factor: i32) {
-  PipelineBuilder::new()
-    .producer(RangeProducer::new(start, end, step))
-    .transformer(MapTransformer::new(move |x: i32| x * factor))
-    ._consumer(ConsoleConsumer::new());
-}

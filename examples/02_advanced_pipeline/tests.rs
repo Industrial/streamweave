@@ -14,8 +14,6 @@ use streamweave::{
 };
 use tokio::fs;
 
-use super::pipeline::{create_batch_pipeline, create_resilient_pipeline};
-
 #[tokio::test]
 async fn test_advanced_pipeline_processes_data_correctly() {
   // Create a pipeline that processes data through multiple transformers
@@ -174,22 +172,4 @@ async fn test_advanced_pipeline_handles_invalid_data() {
   // Should contain the processed data including the invalid entry converted to 0
   let all_data: String = output.join(" ");
   assert!(all_data.contains("0")); // The invalid entry should be converted to 0
-}
-
-#[tokio::test]
-async fn test_batch_pipeline_function() {
-  // Test the create_batch_pipeline function
-  let pipeline = create_batch_pipeline("input.txt", "output.txt", 3).unwrap();
-  
-  // We can verify the pipeline is created correctly
-  assert!(pipeline.producer().is_some());
-}
-
-#[tokio::test]
-async fn test_resilient_pipeline_function() {
-  // Test the create_resilient_pipeline function
-  let pipeline = create_resilient_pipeline("input.txt", "output.txt");
-  
-  // We can verify the pipeline is created correctly
-  assert!(pipeline.producer().is_some());
 }

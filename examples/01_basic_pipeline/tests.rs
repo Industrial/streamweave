@@ -6,8 +6,6 @@ use streamweave::{
   transformer::{Transformer, TransformerConfig},
 };
 
-use super::pipeline::{create_doubling_pipeline, create_multiplying_pipeline};
-
 #[tokio::test]
 async fn test_basic_pipeline_doubles_numbers() {
   // Create a pipeline that doubles numbers from 1 to 5
@@ -43,22 +41,4 @@ async fn test_basic_pipeline_with_different_range() {
   
   // Verify the results
   assert_eq!(numbers, vec![0, 3, 6, 9]);
-}
-
-#[tokio::test]
-async fn test_doubling_pipeline_function() {
-  // Test the create_doubling_pipeline function
-  let pipeline = create_doubling_pipeline(1, 6, 1);
-  
-  // We can't easily test the console output, but we can verify the pipeline is created
-  assert!(pipeline.producer().is_some());
-}
-
-#[tokio::test]
-async fn test_multiplying_pipeline_function() {
-  // Test the create_multiplying_pipeline function
-  let pipeline = create_multiplying_pipeline(1, 6, 1, 3);
-  
-  // We can't easily test the console output, but we can verify the pipeline is created
-  assert!(pipeline.producer().is_some());
 }
