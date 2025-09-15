@@ -228,7 +228,7 @@ mod tests {
     let transformer = SkipTransformer::<i32>::new(3);
 
     let error = StreamError {
-      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      source: Box::new(std::io::Error::other("test error")),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
@@ -264,7 +264,7 @@ mod tests {
 
     // Test Retry strategy exhausted
     let error = StreamError {
-      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      source: Box::new(std::io::Error::other("test error")),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
@@ -403,7 +403,7 @@ mod tests {
           let transformer = SkipTransformer::<i32>::new(3);
 
           let error = StreamError {
-              source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "property test error")),
+              source: Box::new(std::io::Error::other("property test error")),
               context: ErrorContext {
                   timestamp: chrono::Utc::now(),
                   item: None,

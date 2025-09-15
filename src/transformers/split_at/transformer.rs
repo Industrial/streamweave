@@ -294,7 +294,7 @@ mod tests {
     let transformer = SplitAtTransformer::<i32>::new(3);
 
     let error = StreamError {
-      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      source: Box::new(std::io::Error::other("test error")),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
@@ -330,7 +330,7 @@ mod tests {
 
     // Test Retry strategy exhausted
     let error = StreamError {
-      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      source: Box::new(std::io::Error::other("test error")),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
@@ -469,7 +469,7 @@ mod tests {
       let transformer = SplitAtTransformer::<i32>::new(3);
 
       let error = StreamError {
-        source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "property test error")),
+        source: Box::new(std::io::Error::other("property test error")),
         context: ErrorContext {
           timestamp: chrono::Utc::now(),
           item: None,
@@ -554,13 +554,14 @@ mod tests {
 
   #[tokio::test]
   async fn test_split_at_transformer_nested_types() {
+    type NestedVecResult = Vec<(Vec<Vec<i32>>, Vec<Vec<i32>>)>;
+
     let mut transformer = SplitAtTransformer::<Vec<i32>>::new(1);
 
     // Test splitting vectors
     let input = stream::iter(vec![vec![1, 2], vec![3, 4], vec![5, 6]]);
     let boxed_input = Box::pin(input);
-    let result: Vec<(Vec<Vec<i32>>, Vec<Vec<i32>>)> =
-      transformer.transform(boxed_input).collect().await;
+    let result: NestedVecResult = transformer.transform(boxed_input).collect().await;
 
     // Should split at index 1
     assert_eq!(result.len(), 1);

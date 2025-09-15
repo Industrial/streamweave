@@ -133,7 +133,7 @@ mod tests {
   impl std::error::Error for TestError {}
 
   // Test transformer that doubles the input
-  #[derive(Clone)]
+  #[derive(Clone, Debug)]
   struct TestTransformer<T: std::fmt::Debug + Clone + Send + Sync> {
     config: TransformerConfig<T>,
   }
@@ -403,5 +403,253 @@ mod tests {
       transformer2.config().error_strategy(),
       ErrorStrategy::Stop
     ));
+  }
+
+  #[test]
+  fn test_transformer_config_default() {
+    let config = TransformerConfig::<i32>::default();
+    assert!(matches!(config.error_strategy(), ErrorStrategy::Stop));
+    assert_eq!(config.name(), None);
+  }
+
+  #[test]
+  fn test_transformer_config_builder_pattern() {
+    let config = TransformerConfig::<i32>::default()
+      .with_name("test".to_string())
+      .with_error_strategy(ErrorStrategy::Skip);
+
+    assert_eq!(config.name(), Some("test".to_string()));
+    assert!(matches!(config.error_strategy(), ErrorStrategy::Skip));
+  }
+
+  #[test]
+  fn test_transformer_config_clone() {
+    let config1 = TransformerConfig::<i32>::default()
+      .with_name("test".to_string())
+      .with_error_strategy(ErrorStrategy::Retry(3));
+
+    let config2 = config1.clone();
+    assert_eq!(config1, config2);
+  }
+
+  #[test]
+  fn test_transformer_config_debug() {
+    let config = TransformerConfig::<i32>::default()
+      .with_name("test".to_string())
+      .with_error_strategy(ErrorStrategy::Skip);
+
+    let debug_str = format!("{:?}", config);
+    assert!(debug_str.contains("test"));
+  }
+
+  #[test]
+  fn test_transformer_config_partial_eq() {
+    let config1 = TransformerConfig::<i32>::default()
+      .with_name("test".to_string())
+      .with_error_strategy(ErrorStrategy::Skip);
+
+    let config2 = TransformerConfig::<i32>::default()
+      .with_name("test".to_string())
+      .with_error_strategy(ErrorStrategy::Skip);
+
+    let config3 = TransformerConfig::<i32>::default()
+      .with_name("different".to_string())
+      .with_error_strategy(ErrorStrategy::Skip);
+
+    assert_eq!(config1, config2);
+    assert_ne!(config1, config3);
+  }
+
+  #[test]
+  fn test_transformer_with_name() {
+    let transformer = TestTransformer::<i32>::new().with_name("custom_name".to_string());
+
+    assert_eq!(transformer.config().name(), Some("custom_name".to_string()));
+  }
+
+  #[test]
+  fn test_transformer_with_config() {
+    let config = TransformerConfig::<i32>::default()
+      .with_name("test".to_string())
+      .with_error_strategy(ErrorStrategy::Skip);
+
+    let transformer = TestTransformer::<i32>::new().with_config(config.clone());
+    assert_eq!(transformer.config(), &config);
+  }
+
+  #[test]
+  fn test_transformer_config_mut() {
+    let mut transformer = TestTransformer::<i32>::new();
+    let config = transformer.config_mut();
+    config.name = Some("test".to_string());
+
+    assert_eq!(transformer.config().name(), Some("test".to_string()));
+  }
+
+  #[test]
+  fn test_transformer_set_config() {
+    let mut transformer = TestTransformer::<i32>::new();
+    let config = TransformerConfig::<i32>::default()
+      .with_name("test".to_string())
+      .with_error_strategy(ErrorStrategy::Skip);
+
+    transformer.set_config(config);
+    assert_eq!(transformer.config().name(), Some("test".to_string()));
+    assert!(matches!(
+      transformer.config().error_strategy(),
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_transformer_config_getter() {
+    let transformer = TestTransformer::<i32>::new()
+      .with_config(TransformerConfig::default().with_name("test".to_string()));
+
+    assert_eq!(transformer.config().name(), Some("test".to_string()));
+  }
+
+  #[test]
+  fn test_error_handling_retry_exhausted() {
+    let transformer = TestTransformer::<i32>::new()
+      .with_config(TransformerConfig::default().with_error_strategy(ErrorStrategy::Retry(2)));
+
+    let error = StreamError {
+      source: Box::new(TestError("test error".to_string())),
+      context: ErrorContext::default(),
+      component: ComponentInfo::default(),
+      retries: 3, // More than the retry limit
+    };
+
+    assert!(matches!(
+      transformer.handle_error(&error),
+      ErrorAction::Stop
+    ));
+  }
+
+  #[test]
+  fn test_error_handling_retry_within_limit() {
+    let transformer = TestTransformer::<i32>::new()
+      .with_config(TransformerConfig::default().with_error_strategy(ErrorStrategy::Retry(5)));
+
+    let error = StreamError {
+      source: Box::new(TestError("test error".to_string())),
+      context: ErrorContext::default(),
+      component: ComponentInfo::default(),
+      retries: 2, // Within the retry limit
+    };
+
+    assert!(matches!(
+      transformer.handle_error(&error),
+      ErrorAction::Retry
+    ));
+  }
+
+  #[test]
+  fn test_error_handling_stop_strategy() {
+    let transformer = TestTransformer::<i32>::new()
+      .with_config(TransformerConfig::default().with_error_strategy(ErrorStrategy::Stop));
+
+    let error = StreamError {
+      source: Box::new(TestError("test error".to_string())),
+      context: ErrorContext::default(),
+      component: ComponentInfo::default(),
+      retries: 0,
+    };
+
+    assert!(matches!(
+      transformer.handle_error(&error),
+      ErrorAction::Stop
+    ));
+  }
+
+  #[test]
+  fn test_error_handling_skip_strategy() {
+    let transformer = TestTransformer::<i32>::new()
+      .with_config(TransformerConfig::default().with_error_strategy(ErrorStrategy::Skip));
+
+    let error = StreamError {
+      source: Box::new(TestError("test error".to_string())),
+      context: ErrorContext::default(),
+      component: ComponentInfo::default(),
+      retries: 0,
+    };
+
+    assert!(matches!(
+      transformer.handle_error(&error),
+      ErrorAction::Skip
+    ));
+  }
+
+  #[test]
+  fn test_component_info_default_name() {
+    let transformer = TestTransformer::<i32>::new();
+    let info = transformer.component_info();
+    assert_eq!(info.name, "transformer");
+    assert_eq!(
+      info.type_name,
+      std::any::type_name::<TestTransformer<i32>>()
+    );
+  }
+
+  #[test]
+  fn test_error_context_with_none_item() {
+    let transformer = TestTransformer::<i32>::new()
+      .with_config(TransformerConfig::default().with_name("test".to_string()));
+
+    let context = transformer.create_error_context(None);
+    assert_eq!(context.component_name, "test");
+    assert_eq!(
+      context.component_type,
+      std::any::type_name::<TestTransformer<i32>>()
+    );
+    assert_eq!(context.item, None);
+  }
+
+  #[test]
+  fn test_error_context_timestamp() {
+    let transformer = TestTransformer::<i32>::new();
+    let before = chrono::Utc::now();
+    let context = transformer.create_error_context(Some(42));
+    let after = chrono::Utc::now();
+
+    assert!(context.timestamp >= before);
+    assert!(context.timestamp <= after);
+  }
+
+  #[tokio::test]
+  async fn test_transformer_with_different_types() {
+    let mut transformer = TestTransformer::<String>::new();
+    let input = futures::stream::iter(vec!["hello".to_string(), "world".to_string()]);
+    let output = transformer.transform(Box::pin(input));
+    let result: Vec<String> = output.collect().await;
+    assert_eq!(result, vec!["hello".to_string(), "world".to_string()]);
+  }
+
+  #[tokio::test]
+  async fn test_transformer_with_large_input() {
+    let mut transformer = TestTransformer::<i32>::new();
+    let input = futures::stream::iter((1..=1000).collect::<Vec<_>>());
+    let output = transformer.transform(Box::pin(input));
+    let result: Vec<i32> = output.collect().await;
+    assert_eq!(result.len(), 1000);
+    assert_eq!(result[0], 1);
+    assert_eq!(result[999], 1000);
+  }
+
+  #[test]
+  fn test_transformer_clone() {
+    let transformer1 = TestTransformer::<i32>::new()
+      .with_config(TransformerConfig::default().with_name("test".to_string()));
+
+    let transformer2 = transformer1.clone();
+    assert_eq!(transformer1.config(), transformer2.config());
+  }
+
+  #[test]
+  fn test_transformer_debug() {
+    let transformer = TestTransformer::<i32>::new();
+    let debug_str = format!("{:?}", transformer);
+    assert!(debug_str.contains("TestTransformer"));
   }
 }

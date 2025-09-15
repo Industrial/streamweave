@@ -77,7 +77,7 @@ mod tests {
 
     // Test that Skip strategy allows consumption to continue
     let action = consumer.handle_error(&StreamError {
-      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      source: Box::new(std::io::Error::other("test error")),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: Some(42),
@@ -95,7 +95,7 @@ mod tests {
     // Test that Stop strategy halts consumption
     let consumer = consumer.with_error_strategy(ErrorStrategy::<i32>::Stop);
     let action = consumer.handle_error(&StreamError {
-      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      source: Box::new(std::io::Error::other("test error")),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: Some(42),

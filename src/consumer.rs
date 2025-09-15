@@ -423,7 +423,7 @@ mod tests {
     });
 
     let error = StreamError {
-      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      source: Box::new(std::io::Error::other("test error")),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,

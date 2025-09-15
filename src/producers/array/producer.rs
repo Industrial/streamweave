@@ -171,7 +171,7 @@ mod tests {
   fn test_error_handling_stop() {
     let producer = ArrayProducer::<i32, 3>::new([1, 2, 3]);
     let error = StreamError {
-      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      source: Box::new(std::io::Error::other("test error")),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,
@@ -194,7 +194,7 @@ mod tests {
     let mut producer = ArrayProducer::<i32, 3>::new([1, 2, 3]);
     producer = producer.with_error_strategy(ErrorStrategy::Skip);
     let error = StreamError {
-      source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test error")),
+      source: Box::new(std::io::Error::other("test error")),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
         item: None,

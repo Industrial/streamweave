@@ -106,7 +106,7 @@ mod tests {
   impl Producer for TestEnvVarProducer {
     fn produce(&mut self) -> Self::OutputStream {
       let _config = self.config.clone();
-      let vars = match &self.filter {
+      match &self.filter {
         Some(filter) => {
           let vars: Vec<_> = filter
             .iter()
@@ -131,8 +131,7 @@ mod tests {
           };
           Box::pin(stream::iter(vars))
         }
-      };
-      vars
+      }
     }
 
     fn set_config_impl(&mut self, config: ProducerConfig<(String, String)>) {
@@ -209,13 +208,14 @@ mod tests {
 
   #[tokio::test]
   async fn test_env_var_producer_filtered() {
-    let _lock = ENV_LOCK.lock().unwrap();
-
-    unsafe {
-      env::set_var("TEST_VAR_1", "value1");
-      env::set_var("TEST_VAR_2", "value2");
-      env::set_var("TEST_VAR_3", "value3");
-    }
+    {
+      let _lock = ENV_LOCK.lock().unwrap();
+      unsafe {
+        env::set_var("TEST_VAR_1", "value1");
+        env::set_var("TEST_VAR_2", "value2");
+        env::set_var("TEST_VAR_3", "value3");
+      }
+    } // Lock is dropped here
 
     let mut producer = EnvVarProducer::with_vars(vec!["TEST_VAR_1".to_string()]);
     let stream = producer.produce();
@@ -404,7 +404,10 @@ mod tests {
 
   #[tokio::test]
   async fn test_env_var_producer_nonexistent_vars() {
-    let _lock = ENV_LOCK.lock().unwrap();
+    {
+      let _lock = ENV_LOCK.lock().unwrap();
+      // Lock is held only for the duration of this block
+    } // Lock is dropped here
 
     let producer = EnvVarProducer::with_vars(vec!["NONEXISTENT_VAR".to_string()]);
     let mut producer = producer;
@@ -415,11 +418,12 @@ mod tests {
 
   #[tokio::test]
   async fn test_env_var_producer_mixed_existent_nonexistent() {
-    let _lock = ENV_LOCK.lock().unwrap();
-
-    unsafe {
-      env::set_var("EXISTENT_VAR", "exists");
-    }
+    {
+      let _lock = ENV_LOCK.lock().unwrap();
+      unsafe {
+        env::set_var("EXISTENT_VAR", "exists");
+      }
+    } // Lock is dropped here
 
     let producer = EnvVarProducer::with_vars(vec![
       "EXISTENT_VAR".to_string(),
@@ -442,13 +446,14 @@ mod tests {
 
   #[tokio::test]
   async fn test_env_var_producer_all_env_vars() {
-    let _lock = ENV_LOCK.lock().unwrap();
-
-    // Set some test environment variables
-    unsafe {
-      env::set_var("TEST_ALL_1", "value1");
-      env::set_var("TEST_ALL_2", "value2");
-    }
+    {
+      let _lock = ENV_LOCK.lock().unwrap();
+      // Set some test environment variables
+      unsafe {
+        env::set_var("TEST_ALL_1", "value1");
+        env::set_var("TEST_ALL_2", "value2");
+      }
+    } // Lock is dropped here
 
     let mut producer = EnvVarProducer::new();
     let stream = producer.produce();
@@ -619,14 +624,15 @@ mod tests {
   #[tokio::test]
   async fn test_env_var_producer_edge_cases() {
     // Test with very long variable names and values
-    let _lock = ENV_LOCK.lock().unwrap();
-
     let long_name = "A".repeat(1000);
     let long_value = "B".repeat(1000);
 
-    unsafe {
-      env::set_var(&long_name, &long_value);
-    }
+    {
+      let _lock = ENV_LOCK.lock().unwrap();
+      unsafe {
+        env::set_var(&long_name, &long_value);
+      }
+    } // Lock is dropped here
 
     let producer = EnvVarProducer::with_vars(vec![long_name.clone()]);
     let mut producer = producer;
@@ -643,15 +649,16 @@ mod tests {
 
   #[tokio::test]
   async fn test_env_var_producer_special_characters() {
-    let _lock = ENV_LOCK.lock().unwrap();
-
     // Test with special characters in names and values
     let special_name = "SPECIAL_CHARS_!@#$%^&*()";
     let special_value = "value with spaces and special chars: !@#$%^&*()";
 
-    unsafe {
-      env::set_var(special_name, special_value);
-    }
+    {
+      let _lock = ENV_LOCK.lock().unwrap();
+      unsafe {
+        env::set_var(special_name, special_value);
+      }
+    } // Lock is dropped here
 
     let producer = EnvVarProducer::with_vars(vec![special_name.to_string()]);
     let mut producer = producer;
@@ -671,15 +678,16 @@ mod tests {
 
   #[tokio::test]
   async fn test_env_var_producer_unicode() {
-    let _lock = ENV_LOCK.lock().unwrap();
-
     // Test with Unicode characters
     let unicode_name = "UNICODE_测试_🚀";
     let unicode_value = "value with 测试 and 🚀 emoji";
 
-    unsafe {
-      env::set_var(unicode_name, unicode_value);
-    }
+    {
+      let _lock = ENV_LOCK.lock().unwrap();
+      unsafe {
+        env::set_var(unicode_name, unicode_value);
+      }
+    } // Lock is dropped here
 
     let producer = EnvVarProducer::with_vars(vec![unicode_name.to_string()]);
     let mut producer = producer;
