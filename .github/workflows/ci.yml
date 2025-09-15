@@ -45,9 +45,9 @@ jobs:
         run: |
           nix profile install github:cachix/devenv
 
-      - name: Run nix develop
+      - name: Run devenv shell
         run: |
-          nix develop --command bash -c "
+          devenv shell -- bash -c "
             echo '🔍 Running cargo check...'
             cargo check --all-targets --all-features
             
@@ -97,7 +97,7 @@ jobs:
 
       - name: Run tests
         run: |
-          nix develop --command bash -c "
+          devenv shell -- bash -c "
             echo '🧪 Running tests with Rust ${{ matrix.rust-version }}...'
             cargo test --all-targets --all-features --verbose
           "
@@ -138,7 +138,7 @@ jobs:
 
       - name: Build examples
         run: |
-          nix develop --command bash -c "
+          devenv shell -- bash -c "
             echo '📦 Building examples...'
             cargo build --examples --all-features
             
@@ -182,13 +182,13 @@ jobs:
 
       - name: Install cargo-audit
         run: |
-          nix develop --command bash -c "
+          devenv shell -- bash -c "
             cargo install cargo-audit
           "
 
       - name: Run security audit
         run: |
-          nix develop --command bash -c "
+          devenv shell -- bash -c "
             echo '🔒 Running security audit...'
             cargo audit
           "
@@ -229,13 +229,13 @@ jobs:
 
       - name: Install coverage tools
         run: |
-          nix develop --command bash -c "
+          devenv shell -- bash -c "
             cargo install cargo-llvm-cov
           "
 
       - name: Generate coverage report
         run: |
-          nix develop --command bash -c "
+          devenv shell -- bash -c "
             echo '📊 Generating coverage report...'
             cargo llvm-cov --all-targets --all-features --html --open
           "

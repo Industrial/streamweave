@@ -44,7 +44,7 @@ jobs:
 
       - name: Verify package
         run: |
-          nix develop --command bash -c "
+          devenv shell -- bash -c "
             echo '🔍 Verifying package...'
             cargo check --all-targets --all-features
             cargo test --all-targets --all-features
@@ -54,21 +54,21 @@ jobs:
 
       - name: Build package
         run: |
-          nix develop --command bash -c "
+          devenv shell -- bash -c "
             echo '📦 Building package...'
             cargo build --release --all-features
           "
 
       - name: Test package
         run: |
-          nix develop --command bash -c "
+          devenv shell -- bash -c "
             echo '🧪 Testing package...'
             cargo test --release --all-features
           "
 
       - name: Publish to Crates.io
         run: |
-          nix develop --command bash -c "
+          devenv shell -- bash -c "
             echo '🚀 Publishing to Crates.io...'
             cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
           "
@@ -111,7 +111,7 @@ jobs:
 
       - name: Generate documentation
         run: |
-          nix develop --command bash -c "
+          devenv shell -- bash -c "
             echo '📚 Generating documentation...'
             cargo doc --all-features --no-deps --documentation-private-items
           "
