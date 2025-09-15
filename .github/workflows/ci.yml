@@ -35,11 +35,13 @@ jobs:
 
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv
+          nix profile install github:cachix/devenv --accept-flake-config|      - name: Install devenv
+        run: |
+          nix profile install github:cachix/devenv --accept-flake-config
 
       - name: Run check and lint
         run: |
-          devenv shell -- bash -c "
+          devenv shell --accept-flake-config -- bash -c "
             echo '🔍 Running check (includes cargo check + clippy)...'
             bin/check
             
@@ -74,11 +76,13 @@ jobs:
 
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv
+          nix profile install github:cachix/devenv --accept-flake-config|      - name: Install devenv
+        run: |
+          nix profile install github:cachix/devenv --accept-flake-config
 
       - name: Run tests
         run: |
-          devenv shell -- bash -c "
+          devenv shell --accept-flake-config -- bash -c "
             echo '🧪 Running tests with Rust ${{ matrix.rust-version }}...'
             bin/test
           "
@@ -107,11 +111,13 @@ jobs:
 
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv
+          nix profile install github:cachix/devenv --accept-flake-config|      - name: Install devenv
+        run: |
+          nix profile install github:cachix/devenv --accept-flake-config
 
       - name: Build examples
         run: |
-          devenv shell -- bash -c "
+          devenv shell --accept-flake-config -- bash -c "
             echo '📦 Building examples...'
             bin/build --examples --all-features
             
@@ -143,17 +149,19 @@ jobs:
 
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv
+          nix profile install github:cachix/devenv --accept-flake-config|      - name: Install devenv
+        run: |
+          nix profile install github:cachix/devenv --accept-flake-config
 
       - name: Install cargo-audit
         run: |
-          devenv shell -- bash -c "
+          devenv shell --accept-flake-config -- bash -c "
             cargo install cargo-audit
           "
 
       - name: Run security audit
         run: |
-          devenv shell -- bash -c "
+          devenv shell --accept-flake-config -- bash -c "
             echo '🔒 Running security audit...'
             cargo audit
           "
@@ -182,17 +190,19 @@ jobs:
 
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv
+          nix profile install github:cachix/devenv --accept-flake-config|      - name: Install devenv
+        run: |
+          nix profile install github:cachix/devenv --accept-flake-config
 
       - name: Install coverage tools
         run: |
-          devenv shell -- bash -c "
+          devenv shell --accept-flake-config -- bash -c "
             cargo install cargo-llvm-cov
           "
 
       - name: Generate coverage report
         run: |
-          devenv shell -- bash -c "
+          devenv shell --accept-flake-config -- bash -c "
             echo '📊 Generating coverage report...'
             cargo llvm-cov --all-targets --all-features --html --open
           "

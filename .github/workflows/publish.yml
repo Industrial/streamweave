@@ -32,11 +32,13 @@ jobs:
 
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv
+          nix profile install github:cachix/devenv --accept-flake-config|      - name: Install devenv
+        run: |
+          nix profile install github:cachix/devenv --accept-flake-config
 
       - name: Verify package
         run: |
-          devenv shell -- bash -c "
+          devenv shell --accept-flake-config -- bash -c "
             echo '🔍 Verifying package...'
             bin/check
             bin/test
@@ -45,21 +47,21 @@ jobs:
 
       - name: Build package
         run: |
-          devenv shell -- bash -c "
+          devenv shell --accept-flake-config -- bash -c "
             echo '📦 Building package...'
             bin/build --release --all-features
           "
 
       - name: Test package
         run: |
-          devenv shell -- bash -c "
+          devenv shell --accept-flake-config -- bash -c "
             echo '🧪 Testing package...'
             bin/test --release --all-features
           "
 
       - name: Publish to Crates.io
         run: |
-          devenv shell -- bash -c "
+          devenv shell --accept-flake-config -- bash -c "
             echo '🚀 Publishing to Crates.io...'
             bin/publish
           "
@@ -90,11 +92,13 @@ jobs:
 
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv
+          nix profile install github:cachix/devenv --accept-flake-config|      - name: Install devenv
+        run: |
+          nix profile install github:cachix/devenv --accept-flake-config
 
       - name: Generate documentation
         run: |
-          devenv shell -- bash -c "
+          devenv shell --accept-flake-config -- bash -c "
             echo '📚 Generating documentation...'
             cargo doc --all-features --no-deps --documentation-private-items
           "
