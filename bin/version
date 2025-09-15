@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# StreamWeave Version Management Script
+# This script helps manage version numbers
+
+echo "📦 StreamWeave Version Management"
+echo "================================="
+
+# Get current version
+current_version=$(grep '^version = ' Cargo.toml | cut -d '"' -f 2)
+echo "Current version: $current_version"
+
+# Parse version components
+IFS='.' read -r major minor patch <<< "$current_version"
+
+echo ""
+echo "Available version bump options:"
+echo "1) patch: $major.$minor.$((patch + 1))"
+echo "2) minor: $major.$((minor + 1)).0"
+echo "3) major: $((major + 1)).0.0"
+echo "4) custom: Enter your own version"
+
+read -p "Choose option (1-4): " choice
+
+case $choice in
+    1)
+        new_version="$major.$minor.$((patch + 1))"
+        ;;
+    2)
+        new_version="$major.$((minor + 1)).0"
+        ;;
+    3)
+        new_version="$((major + 1)).0.0"
+        ;;
+    4)
+        read -p "Enter new version: " new_version
+        ;;
+    *)
+        echo "❌ Invalid option"
+        exit 1
+        ;;
+esac
+
+echo ""
+echo "🔄 Updating version from $current_version to $new_version..."
+
+# Update Cargo.toml
+sed -i "s/^version = \"$current_version\"/version = \"$new_version\"/" Cargo.toml
+
+# Update Cargo.lock
+cargo update
+
+echo "✅ Version updated to $new_version"
+echo ""
+echo "Next steps:"
+echo "1. Review the changes: git diff"
+echo "2. Commit the changes: git add . && git commit -m \"Bump version to $new_version\""
+echo "3. Publish: ./bin/publish"

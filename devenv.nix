@@ -13,7 +13,6 @@
         "rust-analyzer"
         "rustc"
         "rustfmt"
-        # "llvm-tools-preview"
         "llvm-tools"
       ];
       targets = [
@@ -39,12 +38,19 @@
     # Formatting tools
     alejandra
 
-    # Added from the code block
+    # Publishing tools
     cargo-watch
+    cargo-audit
+    cargo-llvm-cov
+    cargo-nextest
 
-    # # LLVM tools for coverage testing
-    # llvmPackages_18.llvm
-    # llvmPackages_18.libclang
+    # Documentation tools
+    mdbook
+    mdbook-mermaid
+
+    # Version management
+    git
+    gitAndTools.gh # GitHub CLI
   ];
 
   # Pre-commit hooks
@@ -79,18 +85,44 @@
         entry = "cargo test";
         pass_filenames = false;
       };
+
+      # Security audit
+      audit = {
+        enable = true;
+        name = "cargo-audit";
+        description = "Run security audit";
+        entry = "cargo audit";
+        pass_filenames = false;
+      };
     };
   };
 
   # Automatic commands
   enterShell = ''
-    echo "🦀 Running initial cargo build..."
-    cargo build
+    echo "🦀 StreamWeave Development Environment"
+    echo "📦 Available commands:"
+    echo "  cargo build     - Build the project"
+    echo "  cargo test      - Run tests"
+    echo "  cargo clippy    - Run linter"
+    echo "  cargo fmt       - Format code"
+    echo "  cargo audit     - Security audit"
+    echo "  cargo doc       - Generate documentation"
+    echo "  cargo publish   - Publish to crates.io"
+    echo ""
+    echo "🔍 Running initial checks..."
+    cargo check
+    cargo clippy -- -D warnings
   '';
 
   processes = {
     cargo-watch = {
       exec = "cargo watch -x check -x test";
     };
+  };
+
+  # Environment variables
+  env = {
+    RUST_BACKTRACE = "1";
+    CARGO_TERM_COLOR = "always";
   };
 }

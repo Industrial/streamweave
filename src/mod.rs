@@ -1,7 +1,6 @@
 pub mod consumer;
 pub mod consumers;
 pub mod error;
-pub mod http;
 pub mod input;
 pub mod pipeline;
 pub mod producer;

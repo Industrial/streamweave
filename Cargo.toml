@@ -2,24 +2,21 @@
 name = "streamweave"
 version = "0.1.0"
 edition = "2024"
+authors = ["Tom Wieland <tom.wieland@gmail.com>"]  # Add your info
+description = "Composable, async, stream-first computation in pure Rust"
+license = "MIT OR Apache-2.0"  # Add license
+repository = "https://github.com/Industrial/streamweave"  # Add your repo
+homepage = "https://github.com/Industrial/streamweave"  # Add homepage
+documentation = "https://docs.rs/streamweave"  # Add docs
+keywords = ["stream", "async", "pipeline", "data-processing", "rust"]
+categories = ["asynchronous", "data-structures", "web-programming::http-server"]
+readme = "README.md"
 
 [dependencies]
 # Async runtime and utilities
 tokio = { version = "1.0", features = ["full"] }
 futures = "0.3"
 async-trait = "0.1"
-
-# HTTP related
-axum = { version = "0.8", features = ["macros"] }
-hyper = { version = "1.6", features = ["full"] }
-http = "1.0"
-http-body-util = "0.1"
-bytes = "1.0"
-tower = "0.5"
-tower-http = { version = "0.5", features = ["cors"] }
-url = "2.5"
-flate2 = "1.0"
-validator = "0.18"
 
 # Compression
 async-compression = { version = "0.4", features = ["tokio", "gzip", "deflate"] }
@@ -48,7 +45,6 @@ hyper-tungstenite = "0.13"
 hyper-util = { version = "0.1", features = ["full"] }
 jsonwebtoken = "9.2"
 mime = "0.3"
-multipart = "0.18"
 num-traits = "0.2.19"
 regex = "1.10"
 serde_urlencoded = "0.7"
@@ -58,11 +54,9 @@ thiserror = "1.0.57"
 tokio-stream = { version = "0.1", features = ["io-util"] }
 tokio-tungstenite = "0.21"
 tracing = "0.1.40"
-tracing-subscriber = "0.3.18"
+tracing-subscriber = "0.3.20"
 base64 = "0.22.1"
 tokio-util = "0.7.14"
-cargo-llvm-cov = "0.6.18"
-cargo-nextest = "0.9.102"
 
 [[example]]
 name = "01_basic_pipeline"
@@ -72,9 +66,7 @@ path = "examples/01_basic_pipeline/main.rs"
 name = "02_advanced_pipeline"
 path = "examples/02_advanced_pipeline/main.rs"
 
-[[example]]
-name = "03_axum_middleware"
-path = "examples/03_axum_middleware/main.rs"
-
 [dev-dependencies]
 proptest = "1.4"
+cargo-llvm-cov = "0.6.18"
+cargo-nextest = "0.9.102"

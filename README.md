@@ -1,5 +1,10 @@
 # StreamWeave
 
+[![Crates.io](https://img.shields.io/crates/v/streamweave.svg)](https://crates.io/crates/streamweave)
+[![Documentation](https://docs.rs/streamweave/badge.svg)](https://docs.rs/streamweave)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/yourusername/streamweave/workflows/CI/badge.svg)](https://github.com/yourusername/streamweave/actions)
+
 **Composable, async, stream-first computation in pure Rust**  
 *Build fully composable, async data pipelines using a fluent API.*
 
@@ -20,6 +25,9 @@ browser-specific stream primitives.
 - Comprehensive test infrastructure
 - File-based producers and consumers
 - Common transformers (Map, Batch, RateLimit, CircuitBreaker, Retry, Filter)
+- HTTP middleware support with Axum integration
+- WebSocket support
+- Server-Sent Events support
 
 ### 🚧 Planned
 
@@ -56,19 +64,28 @@ All components can be chained together fluently.
 ### ✅ Currently Possible
 
 ```rust
-// Advanced pipeline with error handling and multiple transformers
-let pipeline = PipelineBuilder::new()
-    .producer(FileProducer::new("input.txt"))
-    .transformer(MapTransformer::new(|s: String| {
-        s.parse::<i32>().unwrap_or_default()
-    }))
-    .transformer(BatchTransformer::new(3).unwrap())
-    .transformer(RateLimitTransformer::new(1, Duration::from_secs(1)))
-    .transformer(CircuitBreakerTransformer::new(3, Duration::from_secs(5)))
-    .transformer(RetryTransformer::new(3, Duration::from_millis(100)))
-    .consumer(FileConsumer::new("output.txt"))
-    .run()
-    .await?;
+use streamweave::{
+    consumers::console::console_consumer::ConsoleConsumer,
+    pipeline::PipelineBuilder,
+    producers::range::range_producer::RangeProducer,
+    transformers::map::map_transformer::MapTransformer,
+};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create a pipeline that:
+    // 1. Produces numbers from 1 to 5
+    // 2. Doubles each number
+    // 3. Prints the result to the console
+    let pipeline = PipelineBuilder::new()
+        .producer(RangeProducer::new(1, 6, 1))
+        .transformer(MapTransformer::new(|x: i32| x * 2))
+        .consumer(ConsoleConsumer::new());
+
+    // Run the pipeline
+    pipeline.run().await?;
+    Ok(())
+}
 ```
 
 ## 🧱 API Overview
@@ -114,61 +131,41 @@ MapTransformer::new(parse)
     }));
 ```
 
-**Default Behaviors:**
-- Pipeline Level: `ErrorStrategy::Stop` - Pipeline stops on first error
-- Component Level: Inherits pipeline strategy unless overridden
+## 🚀 Getting Started
 
-**Error Actions:**
-- `Stop`: Stop processing and propagate error (default)
-- `Skip`: Skip errored item and continue
-- `Retry(n)`: Retry operation n times before applying next strategy
-- `Custom(handler)`: Custom error handling logic
+### Installation
 
-**Error Context:**
-```rust
-struct StreamError<E> {
-    source: E,                    // Original error
-    context: ErrorContext,        // Error metadata
-    retries: usize,              // Retry attempts if any
-    component: ComponentInfo,     // Component where error occurred
-}
+Add StreamWeave to your `Cargo.toml`:
 
-struct ErrorContext {
-    timestamp: DateTime<Utc>,
-    item: Option<Box<dyn Any>>,  // Item being processed
-    stage: PipelineStage,        // Stage where error occurred
-}
+```toml
+[dependencies]
+streamweave = "0.1.0"
 ```
 
-### 🚧 Planned Features
-
-#### Fan-Out (Broadcast)
+### Basic Usage
 
 ```rust
-graph
-    .producer(SensorProducer::new())
-    .tee()
-    .branch(|b| {
-        b.transform(LogTransformer::new()).consumer(LogConsumer::new());
-        b.transform(MetricsTransformer::new()).consumer(MetricsConsumer::new());
-    });
-```
+use streamweave::{
+    consumers::vec::vec_consumer::VecConsumer,
+    pipeline::PipelineBuilder,
+    producers::array::array_producer::ArrayProducer,
+    transformers::map::map_transformer::MapTransformer,
+};
 
-#### Fan-In (Merge)
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let producer = ArrayProducer::new(vec![1, 2, 3, 4, 5]);
+    let transformer = MapTransformer::new(|x: i32| x * 2);
+    let consumer = VecConsumer::new();
 
-```rust
-graph
-    .merge(vec![stream1, stream2])
-    .transform(DeduplicateTransformer::new())
-    .consumer(OutputConsumer::new());
-```
+    let pipeline = PipelineBuilder::new()
+        .producer(producer)
+        .transformer(transformer)
+        .consumer(consumer);
 
-#### Composable Subgraphs
-
-```rust
-fn clean_emails() -> impl Transformer<Row, String, Error> {
-    FilterTransformer::new(|row| row["active"] == "true")
-        .chain(MapTransformer::new(|row| row["email"].to_lowercase()))
+    let ((), result) = pipeline.run().await?;
+    println!("Result: {:?}", result.collected);
+    Ok(())
 }
 ```
 
@@ -194,3 +191,28 @@ let (_, consumer) = PipelineBuilder::new()
 
 assert_eq!(consumer.collected, vec!["1", "2", "3"]);
 ```
+
+## 📚 Documentation
+
+- [API Documentation](https://docs.rs/streamweave)
+- [Examples](https://github.com/yourusername/streamweave/tree/main/examples)
+- [Contributing Guide](https://github.com/yourusername/streamweave/blob/main/CONTRIBUTING.md)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## 📄 License
+
+This project is licensed under either of
+
+- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+## 🙏 Acknowledgments
+
+- Built with [Tokio](https://tokio.rs/) for async runtime
+- HTTP support powered by [Axum](https://github.com/tokio-rs/axum)
+- Inspired by reactive programming patterns and stream processing frameworks
