@@ -39,7 +39,7 @@ jobs:
 
       - name: Run check and lint
         run: |
-          devenv shell --accept-flake-config -- bash -c "
+          devenv shell -- bash -c "
             echo '🔍 Running check (includes cargo check + clippy)...'
             bin/check
             
@@ -78,7 +78,7 @@ jobs:
 
       - name: Run tests
         run: |
-          devenv shell --accept-flake-config -- bash -c "
+          devenv shell -- bash -c "
             echo '🧪 Running tests with Rust ${{ matrix.rust-version }}...'
             bin/test
           "
@@ -111,7 +111,7 @@ jobs:
 
       - name: Build examples
         run: |
-          devenv shell --accept-flake-config -- bash -c "
+          devenv shell -- bash -c "
             echo '📦 Building examples...'
             bin/build --examples --all-features
             
@@ -147,13 +147,13 @@ jobs:
 
       - name: Install cargo-audit
         run: |
-          devenv shell --accept-flake-config -- bash -c "
+          devenv shell -- bash -c "
             cargo install cargo-audit
           "
 
       - name: Run security audit
         run: |
-          devenv shell --accept-flake-config -- bash -c "
+          devenv shell -- bash -c "
             echo '🔒 Running security audit...'
             cargo audit
           "
@@ -186,13 +186,13 @@ jobs:
 
       - name: Install coverage tools
         run: |
-          devenv shell --accept-flake-config -- bash -c "
+          devenv shell -- bash -c "
             cargo install cargo-llvm-cov
           "
 
       - name: Generate coverage report
         run: |
-          devenv shell --accept-flake-config -- bash -c "
+          devenv shell -- bash -c "
             echo '📊 Generating coverage report...'
             cargo llvm-cov --all-targets --all-features --html --open
           "

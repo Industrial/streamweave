@@ -36,7 +36,7 @@ jobs:
 
       - name: Verify package
         run: |
-          devenv shell --accept-flake-config -- bash -c "
+          devenv shell -- bash -c "
             echo '🔍 Verifying package...'
             bin/check
             bin/test
@@ -45,21 +45,21 @@ jobs:
 
       - name: Build package
         run: |
-          devenv shell --accept-flake-config -- bash -c "
+          devenv shell -- bash -c "
             echo '📦 Building package...'
             bin/build --release --all-features
           "
 
       - name: Test package
         run: |
-          devenv shell --accept-flake-config -- bash -c "
+          devenv shell -- bash -c "
             echo '🧪 Testing package...'
             bin/test --release --all-features
           "
 
       - name: Publish to Crates.io
         run: |
-          devenv shell --accept-flake-config -- bash -c "
+          devenv shell -- bash -c "
             echo '🚀 Publishing to Crates.io...'
             bin/publish
           "
@@ -94,7 +94,7 @@ jobs:
 
       - name: Generate documentation
         run: |
-          devenv shell --accept-flake-config -- bash -c "
+          devenv shell -- bash -c "
             echo '📚 Generating documentation...'
             cargo doc --all-features --no-deps --documentation-private-items
           "
