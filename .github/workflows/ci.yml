@@ -74,8 +74,6 @@ jobs:
 
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv --accept-flake-config|      - name: Install devenv
-        run: |
           nix profile install github:cachix/devenv --accept-flake-config
 
       - name: Run tests
@@ -108,8 +106,6 @@ jobs:
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv --accept-flake-config|      - name: Install devenv
         run: |
           nix profile install github:cachix/devenv --accept-flake-config
 
@@ -146,8 +142,6 @@ jobs:
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv --accept-flake-config|      - name: Install devenv
         run: |
           nix profile install github:cachix/devenv --accept-flake-config
 
@@ -187,8 +181,6 @@ jobs:
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv --accept-flake-config|      - name: Install devenv
         run: |
           nix profile install github:cachix/devenv --accept-flake-config
 
