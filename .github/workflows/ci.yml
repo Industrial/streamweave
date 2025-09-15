@@ -45,17 +45,14 @@ jobs:
         run: |
           nix profile install github:cachix/devenv
 
-      - name: Run devenv shell
+      - name: Run check and lint
         run: |
           devenv shell -- bash -c "
-            echo '🔍 Running cargo check...'
-            cargo check --all-targets --all-features
+            echo '🔍 Running check (includes cargo check + clippy)...'
+            bin/check
             
-            echo '🔍 Running clippy...'
-            cargo clippy --all-targets --all-features -- -D warnings
-            
-            echo '🔍 Running rustfmt...'
-            cargo fmt --all -- --check
+            echo '🔍 Running lint (includes rustfmt)...'
+            bin/lint
           "
 
   # Test on multiple Rust versions
@@ -99,7 +96,7 @@ jobs:
         run: |
           devenv shell -- bash -c "
             echo '🧪 Running tests with Rust ${{ matrix.rust-version }}...'
-            cargo test --all-targets --all-features --verbose
+            bin/test
           "
 
   # Build and test examples
@@ -140,10 +137,10 @@ jobs:
         run: |
           devenv shell -- bash -c "
             echo '📦 Building examples...'
-            cargo build --examples --all-features
+            bin/build --examples --all-features
             
             echo '🧪 Running example tests...'
-            cargo test --examples --all-features
+            bin/test --examples --all-features
           "
 
   # Security audit

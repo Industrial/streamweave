@@ -46,31 +46,30 @@ jobs:
         run: |
           devenv shell -- bash -c "
             echo '🔍 Verifying package...'
-            cargo check --all-targets --all-features
-            cargo test --all-targets --all-features
-            cargo clippy --all-targets --all-features -- -D warnings
-            cargo fmt --all -- --check
+            bin/check
+            bin/test
+            bin/lint
           "
 
       - name: Build package
         run: |
           devenv shell -- bash -c "
             echo '📦 Building package...'
-            cargo build --release --all-features
+            bin/build --release --all-features
           "
 
       - name: Test package
         run: |
           devenv shell -- bash -c "
             echo '🧪 Testing package...'
-            cargo test --release --all-features
+            bin/test --release --all-features
           "
 
       - name: Publish to Crates.io
         run: |
           devenv shell -- bash -c "
             echo '🚀 Publishing to Crates.io...'
-            cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+            bin/publish
           "
 
   # Publish documentation to GitHub Pages

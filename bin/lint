@@ -2,4 +2,7 @@
 set -euo pipefail
 exec > >(tee log/lint.log) 2>&1 
 
-rustfmt --check ./**/*.rs
+echo "🔍 Running rustfmt..."
+cargo fmt --all -- --check
+
+echo "✅ Lint completed successfully!"
