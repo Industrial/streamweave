@@ -2,7 +2,7 @@ use crate::error::ErrorStrategy;
 use crate::transformer::{Transformer, TransformerConfig};
 use std::marker::PhantomData;
 use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::time::Duration;
 
 pub struct RateLimitTransformer<T>
@@ -42,16 +42,20 @@ where
     self
   }
 
+  /// Checks if the rate limit has been exceeded.
+  ///
+  /// This method is protected by a RwLock, so we use relaxed atomic ordering
+  /// since the lock already provides the necessary synchronization.
   pub async fn _check_rate_limit(&self) -> Result<(), crate::error::StreamError<T>> {
     let now = tokio::time::Instant::now();
     let mut window_start = self.window_start.write().await;
 
     if now.duration_since(*window_start) >= self.time_window {
-      self.count.store(0, std::sync::atomic::Ordering::SeqCst);
+      self.count.store(0, Ordering::Relaxed);
       *window_start = now;
     }
 
-    if self.count.load(std::sync::atomic::Ordering::SeqCst) >= self.rate_limit {
+    if self.count.load(Ordering::Relaxed) >= self.rate_limit {
       Err(crate::error::StreamError::new(
         Box::new(std::io::Error::other("Rate limit exceeded")),
         crate::error::ErrorContext {
@@ -63,7 +67,7 @@ where
         self.component_info(),
       ))
     } else {
-      self.count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+      self.count.fetch_add(1, Ordering::Relaxed);
       Ok(())
     }
   }

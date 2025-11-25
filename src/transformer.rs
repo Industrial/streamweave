@@ -44,6 +44,7 @@ where
 {
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream;
 
+  #[must_use]
   fn with_config(&self, config: TransformerConfig<Self::Input>) -> Self
   where
     Self: Sized + Clone,
@@ -65,6 +66,7 @@ where
     self.get_config_mut_impl()
   }
 
+  #[must_use]
   fn with_name(mut self, name: String) -> Self
   where
     Self: Sized,

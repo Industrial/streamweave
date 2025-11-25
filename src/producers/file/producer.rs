@@ -6,21 +6,54 @@ use futures::StreamExt;
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio_stream::wrappers::LinesStream;
+use tracing::{error, warn};
 
 #[async_trait]
 impl Producer for FileProducer {
+  /// Produces a stream of lines from the file.
+  ///
+  /// # Error Handling
+  ///
+  /// - If the file cannot be opened, an error is logged and an empty stream is returned.
+  /// - If a line cannot be read, a warning is logged and that line is skipped.
+  ///
+  /// Note: The configured error strategy is not currently applied to I/O errors
+  /// during stream production. This is a known limitation of the current architecture.
   fn produce(&mut self) -> Self::OutputStream {
     let path = self.path.clone();
+    let component_name = self
+      .config
+      .name
+      .clone()
+      .unwrap_or_else(|| "file_producer".to_string());
 
     Box::pin(async_stream::stream! {
-      if let Ok(file) = File::open(&path).await {
-        let reader = BufReader::new(file);
-        let mut lines = LinesStream::new(reader.lines());
+      match File::open(&path).await {
+        Ok(file) => {
+          let reader = BufReader::new(file);
+          let mut lines = LinesStream::new(reader.lines());
 
-        while let Some(line) = lines.next().await {
-          if let Ok(line) = line {
-            yield line;
+          while let Some(line_result) = lines.next().await {
+            match line_result {
+              Ok(line) => yield line,
+              Err(e) => {
+                warn!(
+                  component = %component_name,
+                  path = %path,
+                  error = %e,
+                  "Failed to read line from file, skipping"
+                );
+              }
+            }
           }
+        }
+        Err(e) => {
+          error!(
+            component = %component_name,
+            path = %path,
+            error = %e,
+            "Failed to open file, producing empty stream"
+          );
         }
       }
     })

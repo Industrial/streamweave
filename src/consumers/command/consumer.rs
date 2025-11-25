@@ -24,8 +24,12 @@ where
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> ConsumerConfig<T> {
-    self.config.clone()
+  fn get_config_impl(&self) -> &ConsumerConfig<T> {
+    &self.config
+  }
+
+  fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<T> {
+    &mut self.config
   }
 
   fn handle_error(&self, error: &StreamError<T>) -> ErrorAction {
@@ -84,9 +88,11 @@ mod tests {
       .with_error_strategy(ErrorStrategy::<&str>::Skip)
       .with_name("test_consumer".to_string());
 
-    let config = consumer.get_config();
-    assert_eq!(config.error_strategy, ErrorStrategy::<&str>::Skip);
-    assert_eq!(config.name, "test_consumer");
+    assert_eq!(
+      consumer.config().error_strategy,
+      ErrorStrategy::<&str>::Skip
+    );
+    assert_eq!(consumer.config().name, "test_consumer");
   }
 
   #[tokio::test]

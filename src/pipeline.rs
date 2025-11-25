@@ -36,6 +36,7 @@ where
 
 // Initial builder creation
 impl PipelineBuilder<Empty> {
+  #[must_use]
   pub fn new() -> Self {
     PipelineBuilder {
       _producer_stream: None,
@@ -46,11 +47,13 @@ impl PipelineBuilder<Empty> {
     }
   }
 
+  #[must_use]
   pub fn with_error_strategy(mut self, strategy: ErrorStrategy<()>) -> Self {
     self.error_strategy = strategy;
     self
   }
 
+  #[must_use]
   pub fn producer<P>(mut self, mut producer: P) -> PipelineBuilder<HasProducer<P>>
   where
     P: Producer + 'static,
@@ -83,6 +86,7 @@ where
   P::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
   P::OutputStream: 'static,
 {
+  #[must_use]
   pub fn transformer<T>(mut self, mut transformer: T) -> PipelineBuilder<HasTransformer<P, T>>
   where
     T: Transformer + 'static,
@@ -94,9 +98,9 @@ where
     let producer_stream = self
       ._producer_stream
       .take()
-      .unwrap()
+      .expect("producer stream should be present in HasProducer state")
       .downcast::<P::OutputStream>()
-      .unwrap();
+      .expect("producer stream should downcast to correct type");
 
     let transformer_stream = transformer.transform((*producer_stream).into());
     self.transformer_stream = Some(Box::new(transformer_stream));
@@ -121,6 +125,7 @@ where
   T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
   T::OutputStream: 'static,
 {
+  #[must_use]
   pub fn transformer<U>(mut self, mut transformer: U) -> PipelineBuilder<HasTransformer<P, U>>
   where
     U: Transformer + 'static,
@@ -132,9 +137,9 @@ where
     let transformer_stream = self
       .transformer_stream
       .take()
-      .unwrap()
+      .expect("transformer stream should be present in HasTransformer state")
       .downcast::<T::OutputStream>()
-      .unwrap();
+      .expect("transformer stream should downcast to correct type");
 
     let new_stream = transformer.transform((*transformer_stream).into());
     self.transformer_stream = Some(Box::new(new_stream));
@@ -148,6 +153,7 @@ where
     }
   }
 
+  #[must_use]
   pub fn consumer<C>(mut self, consumer: C) -> Pipeline<P, T, C>
   where
     C: Consumer + 'static,
@@ -157,9 +163,9 @@ where
     let transformer_stream = self
       .transformer_stream
       .take()
-      .unwrap()
+      .expect("transformer stream should be present in HasTransformer state")
       .downcast::<T::OutputStream>()
-      .unwrap();
+      .expect("transformer stream should downcast to correct type");
 
     Pipeline {
       _producer_stream: None,
@@ -180,6 +186,7 @@ where
   T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
   C::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  #[must_use]
   pub fn with_error_strategy(mut self, strategy: ErrorStrategy<()>) -> Self {
     self.error_strategy = strategy;
     self
@@ -204,8 +211,14 @@ where
   where
     C::InputStream: From<T::OutputStream>,
   {
-    let transformer_stream = self.transformer_stream.take().unwrap();
-    let mut consumer = self._consumer.take().unwrap();
+    let transformer_stream = self
+      .transformer_stream
+      .take()
+      .expect("transformer stream should be present in Complete state");
+    let mut consumer = self
+      ._consumer
+      .take()
+      .expect("consumer should be present in Complete state");
 
     consumer.consume(transformer_stream.into()).await;
     Ok(((), consumer))
@@ -346,8 +359,12 @@ mod tests {
       self.config = config;
     }
 
-    fn get_config_impl(&self) -> ConsumerConfig<Self::Input> {
-      self.config.clone()
+    fn get_config_impl(&self) -> &ConsumerConfig<Self::Input> {
+      &self.config
+    }
+
+    fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<Self::Input> {
+      &mut self.config
     }
   }
 

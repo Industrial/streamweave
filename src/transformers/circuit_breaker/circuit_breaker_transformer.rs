@@ -2,7 +2,7 @@ use crate::error::ErrorStrategy;
 use crate::transformer::TransformerConfig;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::time::Duration;
 
 #[derive(Clone)]
@@ -43,15 +43,17 @@ where
     self
   }
 
+  /// Checks if the circuit breaker is open (tripped).
+  ///
+  /// Uses Acquire ordering on load and Release on store to ensure proper
+  /// visibility across threads while avoiding the overhead of SeqCst.
   pub async fn _is_circuit_open(&self) -> bool {
-    let failure_count = self.failure_count.load(std::sync::atomic::Ordering::SeqCst);
+    let failure_count = self.failure_count.load(Ordering::Acquire);
     if failure_count >= self.failure_threshold {
       let last_failure = self.last_failure_time.read().await;
       if let Some(time) = *last_failure {
         if time.elapsed() >= self.reset_timeout {
-          self
-            .failure_count
-            .store(0, std::sync::atomic::Ordering::SeqCst);
+          self.failure_count.store(0, Ordering::Release);
           false
         } else {
           true
@@ -64,10 +66,12 @@ where
     }
   }
 
+  /// Records a failure, incrementing the failure count.
+  ///
+  /// Uses AcqRel ordering to ensure the increment is visible to other threads
+  /// and we see the latest count value.
   pub async fn _record_failure(&self) {
-    self
-      .failure_count
-      .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    self.failure_count.fetch_add(1, Ordering::AcqRel);
     let mut last_failure = self.last_failure_time.write().await;
     *last_failure = Some(tokio::time::Instant::now());
   }

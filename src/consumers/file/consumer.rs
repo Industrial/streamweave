@@ -5,34 +5,73 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
+use tracing::{error, warn};
 
 #[async_trait]
 impl Consumer for FileConsumer {
+  /// Consumes a stream and writes each item to the file.
+  ///
+  /// # Error Handling
+  ///
+  /// - If the file cannot be created, an error is logged and all items are dropped.
+  /// - If a write fails, an error is logged but consumption continues.
+  /// - If a flush fails, a warning is logged but consumption continues.
+  ///
+  /// Note: The configured error strategy is not currently applied to I/O errors
+  /// during stream consumption. This is a known limitation of the current architecture.
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
+    let component_name = self.config.name.clone();
+    let path = self.path.clone();
+
     // Create file once at the start
-    if self.file.is_none()
-      && let Ok(file) = File::create(&self.path).await
-    {
-      self.file = Some(file);
+    if self.file.is_none() {
+      match File::create(&self.path).await {
+        Ok(file) => {
+          self.file = Some(file);
+        }
+        Err(e) => {
+          error!(
+            component = %component_name,
+            path = %path,
+            error = %e,
+            "Failed to create file, all items will be dropped"
+          );
+        }
+      }
     }
 
     while let Some(value) = stream.next().await {
       if let Some(file) = &mut self.file {
         if let Err(e) = file.write_all(value.as_bytes()).await {
-          eprintln!("Failed to write to file: {}", e);
+          error!(
+            component = %component_name,
+            path = %path,
+            error = %e,
+            "Failed to write to file"
+          );
         }
         // Ensure each write is flushed
         if let Err(e) = file.flush().await {
-          eprintln!("Failed to flush file: {}", e);
+          warn!(
+            component = %component_name,
+            path = %path,
+            error = %e,
+            "Failed to flush file"
+          );
         }
       }
     }
 
     // Final flush after stream is consumed
-    if let Some(file) = &mut self.file
-      && let Err(e) = file.flush().await
-    {
-      eprintln!("Failed to flush file: {}", e);
+    if let Some(file) = &mut self.file {
+      if let Err(e) = file.flush().await {
+        warn!(
+          component = %component_name,
+          path = %path,
+          error = %e,
+          "Failed to perform final flush"
+        );
+      }
     }
   }
 
@@ -40,8 +79,12 @@ impl Consumer for FileConsumer {
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> ConsumerConfig<String> {
-    self.config.clone()
+  fn get_config_impl(&self) -> &ConsumerConfig<String> {
+    &self.config
+  }
+
+  fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<String> {
+    &mut self.config
   }
 
   fn handle_error(&self, error: &StreamError<String>) -> ErrorAction {
@@ -118,8 +161,10 @@ mod tests {
       .with_error_strategy(ErrorStrategy::<String>::Skip)
       .with_name("test_consumer".to_string());
 
-    let config = consumer.get_config();
-    assert_eq!(config.error_strategy, ErrorStrategy::<String>::Skip);
-    assert_eq!(config.name, "test_consumer");
+    assert_eq!(
+      consumer.config().error_strategy,
+      ErrorStrategy::<String>::Skip
+    );
+    assert_eq!(consumer.config().name, "test_consumer");
   }
 }

@@ -24,6 +24,7 @@ where
 {
   async fn consume(&mut self, stream: Self::InputStream);
 
+  #[must_use]
   fn with_config(&self, config: ConsumerConfig<Self::Input>) -> Self
   where
     Self: Sized + Clone,
@@ -37,34 +38,36 @@ where
     self.set_config_impl(config);
   }
 
-  fn get_config(&self) -> ConsumerConfig<Self::Input> {
+  fn config(&self) -> &ConsumerConfig<Self::Input> {
     self.get_config_impl()
   }
 
+  fn config_mut(&mut self) -> &mut ConsumerConfig<Self::Input> {
+    self.get_config_mut_impl()
+  }
+
+  #[must_use]
   fn with_name(mut self, name: String) -> Self
   where
     Self: Sized,
   {
-    let mut config = self.get_config();
-    config.name = name;
-    self.set_config(config);
+    self.config_mut().name = name.clone();
     self
   }
 
   fn handle_error(&self, error: &StreamError<Self::Input>) -> ErrorAction {
-    match self.get_config().error_strategy {
+    match &self.config().error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
-      ErrorStrategy::Custom(ref handler) => handler(error),
+      ErrorStrategy::Retry(n) if error.retries < *n => ErrorAction::Retry,
+      ErrorStrategy::Custom(handler) => handler(error),
       _ => ErrorAction::Stop,
     }
   }
 
   fn component_info(&self) -> ComponentInfo {
-    let config = self.get_config();
     ComponentInfo {
-      name: config.name,
+      name: self.config().name.clone(),
       type_name: std::any::type_name::<Self>().to_string(),
     }
   }
@@ -79,7 +82,8 @@ where
   }
 
   fn set_config_impl(&mut self, config: ConsumerConfig<Self::Input>);
-  fn get_config_impl(&self) -> ConsumerConfig<Self::Input>;
+  fn get_config_impl(&self) -> &ConsumerConfig<Self::Input>;
+  fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<Self::Input>;
 }
 
 #[cfg(test)]
@@ -143,20 +147,26 @@ mod tests {
       self.config = config;
     }
 
-    fn get_config_impl(&self) -> ConsumerConfig<Self::Input> {
-      self.config.clone()
+    fn get_config_impl(&self) -> &ConsumerConfig<Self::Input> {
+      &self.config
+    }
+
+    fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<Self::Input> {
+      &mut self.config
     }
   }
 
   // Test consumer that always fails
   #[derive(Clone)]
   struct FailingConsumer {
-    name: Option<String>,
+    config: ConsumerConfig<i32>,
   }
 
   impl FailingConsumer {
     fn new() -> Self {
-      Self { name: None }
+      Self {
+        config: ConsumerConfig::default(),
+      }
     }
   }
 
@@ -171,23 +181,16 @@ mod tests {
       // This consumer just drops the stream without processing
     }
 
-    fn with_name(mut self, name: String) -> Self
-    where
-      Self: Sized,
-    {
-      self.name = Some(name);
-      self
-    }
-
     fn set_config_impl(&mut self, config: ConsumerConfig<Self::Input>) {
-      self.name = Some(config.name);
+      self.config = config;
     }
 
-    fn get_config_impl(&self) -> ConsumerConfig<Self::Input> {
-      ConsumerConfig {
-        error_strategy: ErrorStrategy::Stop,
-        name: self.name.clone().unwrap_or_default(),
-      }
+    fn get_config_impl(&self) -> &ConsumerConfig<Self::Input> {
+      &self.config
+    }
+
+    fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<Self::Input> {
+      &mut self.config
     }
   }
 
@@ -372,9 +375,9 @@ mod tests {
       error_strategy: ErrorStrategy::Skip,
       name: "first".to_string(),
     });
-    assert_eq!(consumer.get_config().name, "first");
+    assert_eq!(consumer.config().name, "first");
     assert!(matches!(
-      consumer.get_config().error_strategy,
+      consumer.config().error_strategy,
       ErrorStrategy::Skip
     ));
 
@@ -383,9 +386,9 @@ mod tests {
       error_strategy: ErrorStrategy::Retry(3),
       name: "second".to_string(),
     });
-    assert_eq!(consumer.get_config().name, "second");
+    assert_eq!(consumer.config().name, "second");
     assert!(matches!(
-      consumer.get_config().error_strategy,
+      consumer.config().error_strategy,
       ErrorStrategy::Retry(3)
     ));
   }
@@ -407,9 +410,9 @@ mod tests {
     let stream2 = Box::pin(tokio_stream::iter(input2.clone()));
     consumer.consume(stream2).await;
 
-    assert_eq!(consumer.get_config().name, "persistent");
+    assert_eq!(consumer.config().name, "persistent");
     assert!(matches!(
-      consumer.get_config().error_strategy,
+      consumer.config().error_strategy,
       ErrorStrategy::Skip
     ));
     assert_eq!(consumer.get_items(), vec![1, 2, 3, 4, 5, 6]);
@@ -556,14 +559,14 @@ mod tests {
       error_strategy: ErrorStrategy::Retry(3),
       name: "consumer2".to_string(),
     });
-    assert_eq!(consumer1.get_config().name, "consumer1");
-    assert_eq!(consumer2.get_config().name, "consumer2");
+    assert_eq!(consumer1.config().name, "consumer1");
+    assert_eq!(consumer2.config().name, "consumer2");
     assert!(matches!(
-      consumer1.get_config().error_strategy,
+      consumer1.config().error_strategy,
       ErrorStrategy::Skip
     ));
     assert!(matches!(
-      consumer2.get_config().error_strategy,
+      consumer2.config().error_strategy,
       ErrorStrategy::Retry(3)
     ));
   }

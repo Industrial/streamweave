@@ -21,8 +21,12 @@ where
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> ConsumerConfig<(K, V)> {
-    self.config.clone()
+  fn get_config_impl(&self) -> &ConsumerConfig<(K, V)> {
+    &self.config
+  }
+
+  fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<(K, V)> {
+    &mut self.config
   }
 
   fn handle_error(&self, error: &StreamError<(K, V)>) -> ErrorAction {
@@ -92,8 +96,10 @@ mod tests {
       .with_error_strategy(ErrorStrategy::<(i32, &str)>::Skip)
       .with_name("test_consumer".to_string());
 
-    let config = consumer.get_config();
-    assert_eq!(config.error_strategy, ErrorStrategy::<(i32, &str)>::Skip);
-    assert_eq!(config.name, "test_consumer");
+    assert_eq!(
+      consumer.config().error_strategy,
+      ErrorStrategy::<(i32, &str)>::Skip
+    );
+    assert_eq!(consumer.config().name, "test_consumer");
   }
 }
