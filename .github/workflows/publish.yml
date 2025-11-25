@@ -84,7 +84,7 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Setup Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@v8
+        uses: DeterminateSystems/magic-nix-cache-action@v13
 
       - name: Setup Cachix
         uses: cachix/cachix-action@v15
@@ -146,7 +146,7 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Setup Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@v8
+        uses: DeterminateSystems/magic-nix-cache-action@v13
 
       - name: Setup Cachix
         uses: cachix/cachix-action@v15
@@ -247,7 +247,7 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Setup Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@v8
+        uses: DeterminateSystems/magic-nix-cache-action@v13
 
       - name: Setup Cachix
         uses: cachix/cachix-action@v15
