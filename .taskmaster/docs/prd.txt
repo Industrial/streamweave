@@ -1,0 +1,188 @@
+# StreamWeave Product Requirements Document
+
+## Project Overview
+
+StreamWeave is a composable, async, stream-first computation framework in pure Rust. It provides a fluent API for building fully composable, async data pipelines. The framework is built around the concept of streaming data with a focus on simplicity, composability, and performance.
+
+## Current State
+
+The following features are already implemented:
+- Pure Rust API with zero-cost abstractions
+- Full async/await compatibility via `futures::Stream`
+- Fluent pipeline-style API with type-safe builder pattern
+- Comprehensive error handling system with multiple strategies (Stop, Skip, Retry, Custom)
+- Code-as-configuration — no external DSLs
+- Comprehensive test infrastructure
+- File-based producers and consumers
+- Common transformers (Map, Batch, RateLimit, CircuitBreaker, Retry, Filter, Window, Delay)
+- HTTP middleware support with Axum integration
+- WebSocket support
+- Server-Sent Events support
+
+## Architecture
+
+The framework uses three primary building blocks:
+1. **Producer**: Starts a stream of data (implements the `Producer` trait)
+2. **Transformer**: Transforms stream items (implements the `Transformer` trait)
+3. **Consumer**: Consumes the stream (implements the `Consumer` trait)
+
+All components are chained together using the `PipelineBuilder` with a type-state pattern for compile-time validation.
+
+## Planned Features (Requirements)
+
+### 1. Stateful Processing
+Add support for stateful stream processing where transformers can maintain and update state across items.
+- Implement a `StatefulTransformer` trait that allows maintaining state
+- Provide state persistence options (in-memory, external store)
+- Support for state snapshots and recovery
+- Add state aggregation patterns (running totals, moving averages)
+
+### 2. Exactly-Once Processing Semantics
+Implement exactly-once processing guarantees for reliable stream processing.
+- Add transaction support for pipelines
+- Implement idempotent processing patterns
+- Add deduplication mechanisms
+- Support checkpointing and recovery
+- Implement offset tracking for resumable processing
+
+### 3. Distributed Processing
+Support distributed stream processing across multiple nodes.
+- Design distributed architecture (coordinator/worker model)
+- Implement data partitioning strategies
+- Add inter-node communication (gRPC or custom protocol)
+- Support work stealing and load balancing
+- Implement fault tolerance and node recovery
+
+### 4. Windowing Operations
+Implement comprehensive windowing operations for time-based and count-based processing.
+- Tumbling windows (fixed, non-overlapping)
+- Sliding windows (overlapping)
+- Session windows (gap-based)
+- Global windows
+- Custom window implementations
+- Late data handling
+- Watermarks for event-time processing
+
+### 5. Additional Data Format Support
+Add support for more data formats and serialization.
+- JSON streaming (with serde integration)
+- CSV parsing and generation
+- Parquet file support
+- Avro format support
+- MessagePack support
+- Protocol Buffers integration
+- Arrow format for columnar data
+
+### 6. Specialized Transformers
+Add more specialized transformers for common use cases.
+- `FlatMap` transformer (one-to-many mapping)
+- `Reduce` transformer (aggregation)
+- `GroupBy` transformer (keyed grouping)
+- `Join` transformer (stream joining)
+- `Sort` transformer (ordered output)
+- `Distinct` transformer (deduplication)
+- `Sample` transformer (statistical sampling)
+- `Throttle` transformer (backpressure control)
+
+### 7. Fan-In/Fan-Out Support
+Implement support for splitting and merging streams.
+- Stream splitting (one input to multiple outputs)
+- Stream merging (multiple inputs to one output)
+- Round-robin distribution
+- Broadcast to all consumers
+- Conditional routing based on content
+- Load-balanced fan-out
+
+### 8. WASM Optimizations
+Optimize for WebAssembly deployment.
+- WASM-specific memory management
+- Browser-compatible async runtime integration
+- Size optimization for WASM bundles
+- WASM-specific documentation and examples
+- Feature flags for WASM vs native builds
+- Testing infrastructure for WASM targets
+
+### 9. Reusable Pipeline Components
+Enable pipeline composition and reuse.
+- Pipeline templates/blueprints
+- Parameterized pipelines
+- Pipeline serialization/deserialization
+- Hot-reload of pipeline configurations
+- Pipeline versioning
+
+### 10. Specialized Producers and Consumers
+Add more specialized I/O components.
+
+**Producers:**
+- Kafka producer
+- Redis Streams producer
+- MQTT producer
+- Database query producer (SQL)
+- gRPC streaming producer
+- Timer/interval producer
+- HTTP polling producer
+
+**Consumers:**
+- Kafka consumer
+- Redis Streams consumer
+- MQTT consumer
+- Database sink consumer
+- gRPC streaming consumer
+- Elasticsearch consumer
+- S3/Cloud storage consumer
+
+### 11. Machine Learning Integration
+Add ML pipeline support.
+- Model inference transformer
+- Feature extraction utilities
+- Batch inference optimization
+- Model hot-swapping
+- Integration with common ML frameworks (ONNX, TensorFlow Lite)
+- Streaming prediction pipelines
+
+### 12. Monitoring and Metrics
+Implement comprehensive observability.
+- Metrics collection (throughput, latency, error rates)
+- OpenTelemetry integration
+- Prometheus metrics export
+- Distributed tracing support
+- Health check endpoints
+- Custom metric definitions
+- Real-time dashboards integration
+
+### 13. SQL-Like Querying
+Add SQL-like query interface for streams.
+- SELECT-style projections
+- WHERE-style filtering
+- GROUP BY aggregations
+- JOIN operations across streams
+- ORDER BY with streaming sort
+- LIMIT and OFFSET support
+- Query optimization
+
+### 14. Visualization Tools
+Create tools for pipeline visualization and debugging.
+- Pipeline DAG visualization
+- Real-time data flow visualization
+- Performance profiling visualization
+- Interactive pipeline builder UI
+- Debug mode with step-through execution
+- Pipeline comparison tools
+
+## Technical Requirements
+
+- All features must maintain backward compatibility
+- Performance must not regress for existing functionality
+- All public APIs must have comprehensive documentation
+- Test coverage must remain above 90%
+- WASM compatibility must be preserved for applicable features
+- Follow existing code patterns and architecture
+
+## Success Criteria
+
+- All planned features implemented and tested
+- Documentation updated for all new features
+- Examples provided for each major feature
+- Performance benchmarks for critical paths
+- Community feedback incorporated
+
