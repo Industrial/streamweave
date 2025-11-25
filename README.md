@@ -2,8 +2,9 @@
 
 [![Crates.io](https://img.shields.io/crates/v/streamweave.svg)](https://crates.io/crates/streamweave)
 [![Documentation](https://docs.rs/streamweave/badge.svg)](https://docs.rs/streamweave)
+[![CI](https://github.com/Industrial/streamweave/workflows/CI/badge.svg)](https://github.com/Industrial/streamweave/actions)
+[![codecov](https://codecov.io/gh/Industrial/streamweave/graph/badge.svg)](https://codecov.io/gh/Industrial/streamweave)
 [![License: CC BY-SA 4.0](https://img.shields.io/badge/License-CC%20BY--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-sa/4.0/)
-[![CI](https://github.com/yourusername/streamweave/workflows/CI/badge.svg)](https://github.com/yourusername/streamweave/actions)
 
 **Composable, async, stream-first computation in pure Rust**  
 *Build fully composable, async data pipelines using a fluent API.*
