@@ -13,7 +13,7 @@ pub async fn run_basic_pipeline() -> Result<(), Box<dyn std::error::Error>> {
   let pipeline = PipelineBuilder::new()
     .producer(RangeProducer::new(1, 6, 1))
     .transformer(MapTransformer::new(|x: i32| x * 2))
-    ._consumer(ConsoleConsumer::new());
+    .consumer(ConsoleConsumer::new());
 
   // Run the pipeline
   pipeline.run().await?;

@@ -45,7 +45,7 @@ async fn test_advanced_pipeline_processes_data_correctly() {
     .transformer(rate_limit_transformer)
     .transformer(circuit_breaker_transformer)
     .transformer(retry_transformer)
-    ._consumer(VecConsumer::<String>::new());
+    .consumer(VecConsumer::<String>::new());
 
   // Create test input file
   fs::write("test_input.txt", "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n").await.unwrap();
@@ -97,7 +97,7 @@ async fn test_advanced_pipeline_with_different_batch_size() {
     .transformer(map_transformer1)
     .transformer(batch_transformer)
     .transformer(map_transformer2)
-    ._consumer(VecConsumer::<String>::new());
+    .consumer(VecConsumer::<String>::new());
 
   // Create test input file
   fs::write("test_input2.txt", "1\n2\n3\n4\n5\n").await.unwrap();
@@ -149,7 +149,7 @@ async fn test_advanced_pipeline_handles_invalid_data() {
     .transformer(map_transformer1)
     .transformer(batch_transformer)
     .transformer(map_transformer2)
-    ._consumer(VecConsumer::<String>::new());
+    .consumer(VecConsumer::<String>::new());
 
   // Create test input file with invalid data
   fs::write("test_input3.txt", "1\ninvalid\n3\n4\n5\n").await.unwrap();

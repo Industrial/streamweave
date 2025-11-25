@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 authors = ["Tom Wieland <tom.wieland@gmail.com>"]  # Add your info
 description = "Composable, async, stream-first computation in pure Rust"
-license = "MIT OR Apache-2.0"  # Add license
+license = "CC-BY-SA-4.0"
 repository = "https://github.com/Industrial/streamweave"  # Add your repo
 homepage = "https://github.com/Industrial/streamweave"  # Add homepage
 documentation = "https://docs.rs/streamweave"  # Add docs
@@ -49,7 +49,6 @@ num-traits = "0.2.19"
 regex = "1.10"
 serde_urlencoded = "0.7"
 sha2 = "0.10"
-tempfile = "3.10.0"
 thiserror = "1.0.57"
 tokio-stream = { version = "0.1", features = ["io-util"] }
 tokio-tungstenite = "0.21"
@@ -68,5 +67,4 @@ path = "examples/02_advanced_pipeline/main.rs"
 
 [dev-dependencies]
 proptest = "1.4"
-cargo-llvm-cov = "0.6.18"
-cargo-nextest = "0.9.102"
+tempfile = "3.10.0"

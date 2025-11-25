@@ -15,7 +15,7 @@ async fn test_basic_pipeline_doubles_numbers() {
   let pipeline = PipelineBuilder::new()
     .producer(RangeProducer::new(1, 6, 1))
     .transformer(map_transformer)
-    ._consumer(VecConsumer::<i32>::new());
+    .consumer(VecConsumer::<i32>::new());
 
   // Run the pipeline
   let result = pipeline.run().await.unwrap();
@@ -34,7 +34,7 @@ async fn test_basic_pipeline_with_different_range() {
   let pipeline = PipelineBuilder::new()
     .producer(RangeProducer::new(0, 4, 1))
     .transformer(map_transformer)
-    ._consumer(VecConsumer::<i32>::new());
+    .consumer(VecConsumer::<i32>::new());
 
   let result = pipeline.run().await.unwrap();
   let numbers = result.1.into_vec();

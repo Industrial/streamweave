@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/streamweave.svg)](https://crates.io/crates/streamweave)
 [![Documentation](https://docs.rs/streamweave/badge.svg)](https://docs.rs/streamweave)
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](https://opensource.org/licenses/MIT)
+[![License: CC BY-SA 4.0](https://img.shields.io/badge/License-CC%20BY--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-sa/4.0/)
 [![CI](https://github.com/yourusername/streamweave/workflows/CI/badge.svg)](https://github.com/yourusername/streamweave/actions)
 
 **Composable, async, stream-first computation in pure Rust**  
@@ -204,12 +204,9 @@ Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) 
 
 ## 📄 License
 
-This project is licensed under either of
+This project is licensed under the [Creative Commons Attribution-ShareAlike 4.0 International License](https://creativecommons.org/licenses/by-sa/4.0/).
 
-- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option.
+See [LICENSE](LICENSE) for details.
 
 ## 🙏 Acknowledgments
 
