@@ -1,107 +1,303 @@
-name: Publish to Crates.io
+name: 🚀 Release & Publish
 
 on:
   push:
     tags:
-      - 'v*'  # Triggers on version tags like v0.1.0
+      - 'v[0-9]+.[0-9]+.[0-9]+'      # v1.2.3
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'    # v1.2.3-beta.1
+
+# Only one release at a time
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
-  publish:
-    name: Publish to Crates.io
+  # =============================================================================
+  # VALIDATE
+  # =============================================================================
+  validate:
+    name: 🔍 Validate Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+          
+          # Check if this is a prerelease (contains hyphen like -beta, -rc, -alpha)
+          if [[ "$TAG" == *"-"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "📦 Prerelease version: $TAG"
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "📦 Release version: $TAG"
+          fi
+
+      - name: Verify version matches Cargo.toml
+        run: |
+          CARGO_VERSION=$(grep '^version = ' Cargo.toml | head -1 | cut -d '"' -f 2)
+          TAG_VERSION="${{ steps.version.outputs.version }}"
+          
+          echo "📋 Tag version: $TAG_VERSION"
+          echo "📋 Cargo.toml version: $CARGO_VERSION"
+          
+          if [[ "$CARGO_VERSION" != "$TAG_VERSION" ]]; then
+            echo "❌ Version mismatch!"
+            echo "   Tag: v$TAG_VERSION"
+            echo "   Cargo.toml: $CARGO_VERSION"
+            echo ""
+            echo "Please update Cargo.toml version to match the tag."
+            exit 1
+          fi
+          
+          echo "✅ Versions match!"
+
+  # =============================================================================
+  # BUILD & TEST
+  # =============================================================================
+  build:
+    name: 🔨 Build & Test
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v25
+        uses: cachix/install-nix-action@v27
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Setup Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@v2
+        uses: DeterminateSystems/magic-nix-cache-action@v8
 
       - name: Setup Cachix
-        uses: cachix/cachix-action@v14
+        uses: cachix/cachix-action@v15
         with:
           name: devenv
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv --accept-flake-config
+        run: nix profile install github:cachix/devenv --accept-flake-config
 
-      - name: Verify package
+      - name: Lint & Format Check
         run: |
           devenv shell -- bash -c "
-            echo '🔍 Verifying package...'
+            echo '🔍 Running lint checks...'
             bin/check
-            bin/test
             bin/lint
           "
 
-      - name: Build package
+      - name: Run Tests
         run: |
           devenv shell -- bash -c "
-            echo '📦 Building package...'
-            bin/build --release --all-features
+            echo '🧪 Running tests...'
+            bin/test
           "
 
-      - name: Test package
+      - name: Build Release
         run: |
           devenv shell -- bash -c "
-            echo '🧪 Testing package...'
-            bin/test --release --all-features
+            echo '📦 Building release...'
+            cargo build --release --all-features
           "
 
-      - name: Publish to Crates.io
+      - name: Verify Package
         run: |
           devenv shell -- bash -c "
-            echo '🚀 Publishing to Crates.io...'
-            bin/publish
+            echo '🔍 Verifying package...'
+            cargo publish --dry-run
           "
 
-  # Publish documentation to GitHub Pages
-  docs:
-    name: Publish Documentation
+  # =============================================================================
+  # PUBLISH TO CRATES.IO
+  # =============================================================================
+  publish:
+    name: 📤 Publish to crates.io
     runs-on: ubuntu-latest
-    needs: publish
-    if: github.ref_type == 'tag'
+    needs: [validate, build]
+    permissions:
+      contents: read
+    environment:
+      name: crates-io
+      url: https://crates.io/crates/streamweave
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v25
+        uses: cachix/install-nix-action@v27
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Setup Magic Nix Cache
-        uses: DeterminateSystems/magic-nix-cache-action@v2
+        uses: DeterminateSystems/magic-nix-cache-action@v8
 
       - name: Setup Cachix
-        uses: cachix/cachix-action@v14
+        uses: cachix/cachix-action@v15
         with:
           name: devenv
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
       - name: Install devenv
+        run: nix profile install github:cachix/devenv --accept-flake-config
+
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          nix profile install github:cachix/devenv --accept-flake-config
+          devenv shell -- bash -c "
+            echo '🚀 Publishing v${{ needs.validate.outputs.version }} to crates.io...'
+            cargo publish
+            echo '✅ Published successfully!'
+          "
+
+  # =============================================================================
+  # CREATE GITHUB RELEASE
+  # =============================================================================
+  release:
+    name: 🎉 Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate, publish]
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          echo "## What's Changed" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          
+          if [[ -n "$PREV_TAG" ]]; then
+            echo "Changes since $PREV_TAG:" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            git log --pretty=format:"* %s (%h)" $PREV_TAG..HEAD >> CHANGELOG.md
+          else
+            echo "Initial release! 🎉" >> CHANGELOG.md
+          fi
+          
+          echo "" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "---" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "📦 **Install from crates.io:**" >> CHANGELOG.md
+          echo '```toml' >> CHANGELOG.md
+          echo '[dependencies]' >> CHANGELOG.md
+          echo 'streamweave = "${{ needs.validate.outputs.version }}"' >> CHANGELOG.md
+          echo '```' >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "📚 **Documentation:** [docs.rs/streamweave](https://docs.rs/streamweave)" >> CHANGELOG.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ needs.validate.outputs.version }}
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: ${{ needs.validate.outputs.is_prerelease == 'true' }}
+          generate_release_notes: true
+          make_latest: ${{ needs.validate.outputs.is_prerelease != 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # =============================================================================
+  # PUBLISH DOCUMENTATION
+  # =============================================================================
+  docs:
+    name: 📚 Publish Documentation
+    runs-on: ubuntu-latest
+    needs: [validate, publish]
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Setup Magic Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v8
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: devenv
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: Install devenv
+        run: nix profile install github:cachix/devenv --accept-flake-config
 
       - name: Generate documentation
         run: |
           devenv shell -- bash -c "
             echo '📚 Generating documentation...'
-            cargo doc --all-features --no-deps --documentation-private-items
+            cargo doc --all-features --no-deps
+            
+            # Create redirect index.html
+            echo '<meta http-equiv=\"refresh\" content=\"0; url=streamweave/index.html\">' > target/doc/index.html
           "
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./target/doc
-          destination_dir: streamweave
+          path: 'target/doc'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # =============================================================================
+  # RELEASE SUCCESS NOTIFICATION
+  # =============================================================================
+  notify:
+    name: 📢 Release Complete
+    runs-on: ubuntu-latest
+    needs: [validate, publish, release, docs]
+    if: always()
+    steps:
+      - name: Check release status
+        run: |
+          if [[ "${{ needs.publish.result }}" != "success" ]]; then
+            echo "❌ Release failed at publish step"
+            exit 1
+          fi
+          
+          echo "🎉 StreamWeave v${{ needs.validate.outputs.version }} released successfully!"
+          echo ""
+          echo "📦 crates.io: https://crates.io/crates/streamweave/${{ needs.validate.outputs.version }}"
+          echo "📚 docs.rs: https://docs.rs/streamweave/${{ needs.validate.outputs.version }}"
+          echo "🏷️ GitHub: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate.outputs.version }}"
