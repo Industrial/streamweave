@@ -1,6 +1,11 @@
 ---
-description: Always use context7, selena and git MCP servers for all operations
+description: Always use context7, selena, git and taskmaster MCP servers for all operations
 alwaysApply: true
 ---
 
-Use context7, selena and git MCP servers
+Use context7, selena, git and task-master-ai MCP servers for development operations.
+
+- **context7**: For library and framework documentation lookups
+- **serena**: For code analysis and understanding
+- **git**: For git operations and history
+- **task-master-ai**: For task management and project planning (see taskmaster/taskmaster.mdc and taskmaster/dev_workflow.mdc)
