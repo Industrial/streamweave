@@ -15,7 +15,7 @@
             "id": 1,
             "title": "Design StatefulTransformer trait",
             "description": "Design and implement the core StatefulTransformer trait with state type parameter",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nThe StatefulTransformer trait needs to extend the existing Transformer trait while adding state management capabilities. It should be generic over the state type and provide methods for state access.\n\n## Requirements\n\n- Generic state type parameter with appropriate bounds (Send, Sync, Clone)\n- Methods: get_state(), update_state(), reset_state()\n- Integration with existing transform() method\n- State initialization hook\n\n## Acceptance Criteria\n\n- [ ] Trait compiles and is ergonomic to implement\n- [ ] State type is generic and flexible\n- [ ] Trait is compatible with existing pipeline builder\n- [ ] Documentation explains state lifecycle"
           },
@@ -23,7 +23,7 @@
             "id": 2,
             "title": "Implement in-memory state storage",
             "description": "Create thread-safe in-memory state storage implementation",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1
             ],
@@ -33,7 +33,7 @@
             "id": 3,
             "title": "Create example stateful transformers",
             "description": "Implement RunningSum, MovingAverage, and SessionWindow as example stateful transformers",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1,
               2
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-25T23:37:23.910Z",
+      "updated": "2025-11-25T23:50:10.069Z",
       "description": "Tasks for master context"
     }
   }

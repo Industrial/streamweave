@@ -6,5 +6,6 @@ pub mod output;
 pub mod pipeline;
 pub mod producer;
 pub mod producers;
+pub mod stateful_transformer;
 pub mod transformer;
 pub mod transformers;
