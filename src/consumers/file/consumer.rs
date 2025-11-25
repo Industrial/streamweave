@@ -63,15 +63,15 @@ impl Consumer for FileConsumer {
     }
 
     // Final flush after stream is consumed
-    if let Some(file) = &mut self.file {
-      if let Err(e) = file.flush().await {
-        warn!(
-          component = %component_name,
-          path = %path,
-          error = %e,
-          "Failed to perform final flush"
-        );
-      }
+    if let Some(file) = &mut self.file
+      && let Err(e) = file.flush().await
+    {
+      warn!(
+        component = %component_name,
+        path = %path,
+        error = %e,
+        "Failed to perform final flush"
+      );
     }
   }
 
