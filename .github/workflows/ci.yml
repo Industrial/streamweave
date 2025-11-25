@@ -37,7 +37,7 @@ jobs:
         uses: DeterminateSystems/magic-nix-cache-action@v8
 
       - name: Setup Cachix
-        uses: cachix/cachix-action@v15
+        uses: cachix/cachix-action@v16
         with:
           name: devenv
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -80,7 +80,7 @@ jobs:
         uses: DeterminateSystems/magic-nix-cache-action@v8
 
       - name: Setup Cachix
-        uses: cachix/cachix-action@v15
+        uses: cachix/cachix-action@v16
         with:
           name: devenv
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -116,7 +116,7 @@ jobs:
         uses: DeterminateSystems/magic-nix-cache-action@v8
 
       - name: Setup Cachix
-        uses: cachix/cachix-action@v15
+        uses: cachix/cachix-action@v16
         with:
           name: devenv
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -155,7 +155,7 @@ jobs:
         uses: DeterminateSystems/magic-nix-cache-action@v8
 
       - name: Setup Cachix
-        uses: cachix/cachix-action@v15
+        uses: cachix/cachix-action@v16
         with:
           name: devenv
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -200,7 +200,7 @@ jobs:
         uses: DeterminateSystems/magic-nix-cache-action@v8
 
       - name: Setup Cachix
-        uses: cachix/cachix-action@v15
+        uses: cachix/cachix-action@v16
         with:
           name: devenv
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -245,7 +245,7 @@ jobs:
         uses: DeterminateSystems/magic-nix-cache-action@v8
 
       - name: Setup Cachix
-        uses: cachix/cachix-action@v15
+        uses: cachix/cachix-action@v16
         with:
           name: devenv
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
