@@ -38,7 +38,7 @@
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::fmt::{self, Debug};
+use std::fmt::{self, Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use std::time::Duration;
@@ -96,6 +96,22 @@ impl std::error::Error for WindowError {}
 
 /// Result type for window operations.
 pub type WindowResult<T> = Result<T, WindowError>;
+
+/// Trait for window types that can be used with `WindowState`.
+///
+/// This trait provides a common interface for different window types
+/// (e.g., `TimeWindow`, `GlobalWindow`) to be used generically.
+pub trait Window: Clone + Debug + Send + Sync + 'static {
+  /// Returns the end time of the window, if applicable.
+  /// Returns `None` for windows without a defined end (e.g., global windows).
+  fn end_time(&self) -> Option<DateTime<Utc>>;
+
+  /// Returns the start time of the window, if applicable.
+  fn start_time(&self) -> Option<DateTime<Utc>>;
+
+  /// Returns true if this window contains the given timestamp.
+  fn contains(&self, timestamp: DateTime<Utc>) -> bool;
+}
 
 /// A time-based window with start and end timestamps.
 ///
@@ -195,6 +211,20 @@ impl fmt::Display for TimeWindow {
       self.start.format("%H:%M:%S"),
       self.end.format("%H:%M:%S")
     )
+  }
+}
+
+impl Window for TimeWindow {
+  fn end_time(&self) -> Option<DateTime<Utc>> {
+    Some(self.end)
+  }
+
+  fn start_time(&self) -> Option<DateTime<Utc>> {
+    Some(self.start)
+  }
+
+  fn contains(&self, timestamp: DateTime<Utc>) -> bool {
+    timestamp >= self.start && timestamp < self.end
   }
 }
 
@@ -856,6 +886,20 @@ impl fmt::Display for GlobalWindow {
   }
 }
 
+impl Window for GlobalWindow {
+  fn end_time(&self) -> Option<DateTime<Utc>> {
+    None // Global window has no end
+  }
+
+  fn start_time(&self) -> Option<DateTime<Utc>> {
+    None // Global window has no start
+  }
+
+  fn contains(&self, _timestamp: DateTime<Utc>) -> bool {
+    true // Global window contains all timestamps
+  }
+}
+
 impl GlobalWindowAssigner {
   /// Creates a new global window assigner.
   pub fn new() -> Self {
@@ -933,6 +977,534 @@ impl WindowConfig {
   pub fn with_allowed_lateness(mut self, lateness: Duration) -> Self {
     self.allowed_lateness = lateness;
     self
+  }
+}
+
+// =============================================================================
+// Watermark Support
+// =============================================================================
+
+/// Represents a watermark in event-time processing.
+///
+/// A watermark is a statement that all events with timestamps less than or equal
+/// to the watermark have arrived. It's used to track event-time progress and
+/// determine when windows can be triggered.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Watermark {
+  /// The timestamp represented by this watermark.
+  pub timestamp: DateTime<Utc>,
+}
+
+impl Watermark {
+  /// Creates a new watermark at the given timestamp.
+  #[must_use]
+  pub fn new(timestamp: DateTime<Utc>) -> Self {
+    Self { timestamp }
+  }
+
+  /// Creates an initial watermark at the minimum possible time.
+  #[must_use]
+  pub fn min() -> Self {
+    Self {
+      timestamp: DateTime::<Utc>::MIN_UTC,
+    }
+  }
+
+  /// Creates a watermark at the maximum possible time (end of stream).
+  #[must_use]
+  pub fn max() -> Self {
+    Self {
+      timestamp: DateTime::<Utc>::MAX_UTC,
+    }
+  }
+
+  /// Returns true if this is the end-of-stream watermark.
+  #[must_use]
+  pub fn is_end_of_stream(&self) -> bool {
+    self.timestamp == DateTime::<Utc>::MAX_UTC
+  }
+
+  /// Advances this watermark to at least the given timestamp.
+  /// Returns true if the watermark was actually advanced.
+  pub fn advance(&mut self, timestamp: DateTime<Utc>) -> bool {
+    if timestamp > self.timestamp {
+      self.timestamp = timestamp;
+      true
+    } else {
+      false
+    }
+  }
+}
+
+impl Display for Watermark {
+  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    if self.is_end_of_stream() {
+      write!(f, "Watermark(END)")
+    } else {
+      write!(f, "Watermark({})", self.timestamp)
+    }
+  }
+}
+
+/// Trait for generating watermarks from observed event timestamps.
+///
+/// Different strategies exist for watermark generation:
+/// - Monotonic: watermark follows the maximum observed timestamp exactly
+/// - Bounded out-of-orderness: allows for some delay in event arrival
+/// - Periodic: generates watermarks at fixed intervals
+pub trait WatermarkGenerator: Send + Sync + std::fmt::Debug + 'static {
+  /// Called when a new element arrives with the given event timestamp.
+  /// Returns the new watermark if it should be emitted.
+  fn on_event(&mut self, timestamp: DateTime<Utc>) -> Option<Watermark>;
+
+  /// Called periodically to generate watermarks even without new events.
+  /// Returns the new watermark if it should be emitted.
+  fn on_periodic_emit(&mut self) -> Option<Watermark>;
+
+  /// Returns the current watermark without advancing it.
+  fn current_watermark(&self) -> Watermark;
+
+  /// Signals end of stream, generating the final watermark.
+  fn on_end_of_stream(&mut self) -> Watermark {
+    Watermark::max()
+  }
+}
+
+/// Generates watermarks that follow the maximum observed timestamp exactly.
+///
+/// This is suitable for streams where events arrive in order.
+#[derive(Debug, Clone)]
+pub struct MonotonicWatermarkGenerator {
+  current: Watermark,
+}
+
+impl MonotonicWatermarkGenerator {
+  /// Creates a new monotonic watermark generator.
+  #[must_use]
+  pub fn new() -> Self {
+    Self {
+      current: Watermark::min(),
+    }
+  }
+}
+
+impl Default for MonotonicWatermarkGenerator {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl WatermarkGenerator for MonotonicWatermarkGenerator {
+  fn on_event(&mut self, timestamp: DateTime<Utc>) -> Option<Watermark> {
+    if self.current.advance(timestamp) {
+      Some(self.current.clone())
+    } else {
+      None
+    }
+  }
+
+  fn on_periodic_emit(&mut self) -> Option<Watermark> {
+    // Monotonic generator doesn't emit on periodic basis
+    None
+  }
+
+  fn current_watermark(&self) -> Watermark {
+    self.current.clone()
+  }
+}
+
+/// Generates watermarks allowing for bounded out-of-orderness.
+///
+/// The watermark is set to `max_observed_timestamp - max_out_of_orderness`.
+/// This allows events to arrive slightly out of order while still making progress.
+#[derive(Debug, Clone)]
+pub struct BoundedOutOfOrdernessGenerator {
+  /// Maximum allowed out-of-orderness.
+  max_out_of_orderness: Duration,
+  /// Maximum timestamp seen so far.
+  max_timestamp: Option<DateTime<Utc>>,
+  /// Current watermark.
+  current: Watermark,
+}
+
+impl BoundedOutOfOrdernessGenerator {
+  /// Creates a new bounded out-of-orderness watermark generator.
+  #[must_use]
+  pub fn new(max_out_of_orderness: Duration) -> Self {
+    Self {
+      max_out_of_orderness,
+      max_timestamp: None,
+      current: Watermark::min(),
+    }
+  }
+
+  fn calculate_watermark(&self) -> Watermark {
+    match self.max_timestamp {
+      Some(max_ts) => Watermark::new(max_ts - self.max_out_of_orderness),
+      None => Watermark::min(),
+    }
+  }
+}
+
+impl WatermarkGenerator for BoundedOutOfOrdernessGenerator {
+  fn on_event(&mut self, timestamp: DateTime<Utc>) -> Option<Watermark> {
+    // Update max timestamp
+    self.max_timestamp = Some(
+      self
+        .max_timestamp
+        .map(|current| current.max(timestamp))
+        .unwrap_or(timestamp),
+    );
+
+    // Calculate new watermark
+    let new_watermark = self.calculate_watermark();
+
+    // Only emit if watermark advanced
+    if new_watermark.timestamp > self.current.timestamp {
+      self.current = new_watermark.clone();
+      Some(new_watermark)
+    } else {
+      None
+    }
+  }
+
+  fn on_periodic_emit(&mut self) -> Option<Watermark> {
+    // Emit current watermark on periodic basis
+    Some(self.current.clone())
+  }
+
+  fn current_watermark(&self) -> Watermark {
+    self.current.clone()
+  }
+}
+
+/// Generates watermarks at fixed intervals regardless of event arrival.
+#[derive(Debug, Clone)]
+pub struct PeriodicWatermarkGenerator {
+  /// The inner generator for calculating watermark values.
+  inner: BoundedOutOfOrdernessGenerator,
+  /// Interval between watermark emissions.
+  interval: Duration,
+  /// Last emission time.
+  last_emit: Option<DateTime<Utc>>,
+}
+
+impl PeriodicWatermarkGenerator {
+  /// Creates a new periodic watermark generator.
+  #[must_use]
+  pub fn new(max_out_of_orderness: Duration, interval: Duration) -> Self {
+    Self {
+      inner: BoundedOutOfOrdernessGenerator::new(max_out_of_orderness),
+      interval,
+      last_emit: None,
+    }
+  }
+}
+
+impl WatermarkGenerator for PeriodicWatermarkGenerator {
+  fn on_event(&mut self, timestamp: DateTime<Utc>) -> Option<Watermark> {
+    // Update the inner generator but don't emit watermark per-event
+    self.inner.on_event(timestamp);
+    None
+  }
+
+  fn on_periodic_emit(&mut self) -> Option<Watermark> {
+    let now = Utc::now();
+    let interval_chrono = ChronoDuration::from_std(self.interval).unwrap_or(ChronoDuration::zero());
+    let should_emit = self
+      .last_emit
+      .map(|last| now - last >= interval_chrono)
+      .unwrap_or(true);
+
+    if should_emit {
+      self.last_emit = Some(now);
+      Some(self.inner.current_watermark())
+    } else {
+      None
+    }
+  }
+
+  fn current_watermark(&self) -> Watermark {
+    self.inner.current_watermark()
+  }
+}
+
+// =============================================================================
+// Late Data Handling
+// =============================================================================
+
+/// Result of evaluating whether an element is late.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LateDataResult<T> {
+  /// The element is not late and should be processed normally.
+  OnTime(T),
+  /// The element is late but within allowed lateness.
+  WithinLateness(T),
+  /// The element is late and should be dropped.
+  Drop,
+  /// The element is late and should be redirected to side output.
+  SideOutput(T),
+}
+
+impl<T> LateDataResult<T> {
+  /// Returns true if the element should be processed (OnTime or WithinLateness).
+  #[must_use]
+  pub fn should_process(&self) -> bool {
+    matches!(
+      self,
+      LateDataResult::OnTime(_) | LateDataResult::WithinLateness(_)
+    )
+  }
+
+  /// Extracts the element if it should be processed.
+  #[must_use]
+  pub fn into_processable(self) -> Option<T> {
+    match self {
+      LateDataResult::OnTime(t) | LateDataResult::WithinLateness(t) => Some(t),
+      _ => None,
+    }
+  }
+
+  /// Returns true if this is a side output.
+  #[must_use]
+  pub fn is_side_output(&self) -> bool {
+    matches!(self, LateDataResult::SideOutput(_))
+  }
+
+  /// Extracts the element for side output.
+  #[must_use]
+  pub fn into_side_output(self) -> Option<T> {
+    match self {
+      LateDataResult::SideOutput(t) => Some(t),
+      _ => None,
+    }
+  }
+}
+
+/// Handles late data according to the configured policy.
+#[derive(Debug, Clone)]
+pub struct LateDataHandler {
+  /// Policy for handling late data.
+  policy: LateDataPolicy,
+  /// Statistics about late data.
+  stats: LateDataStats,
+}
+
+/// Statistics about late data processing.
+#[derive(Debug, Clone, Default)]
+pub struct LateDataStats {
+  /// Number of on-time elements.
+  pub on_time: u64,
+  /// Number of elements within allowed lateness.
+  pub within_lateness: u64,
+  /// Number of dropped late elements.
+  pub dropped: u64,
+  /// Number of elements sent to side output.
+  pub side_output: u64,
+}
+
+impl LateDataHandler {
+  /// Creates a new late data handler with the given policy.
+  #[must_use]
+  pub fn new(policy: LateDataPolicy) -> Self {
+    Self {
+      policy,
+      stats: LateDataStats::default(),
+    }
+  }
+
+  /// Creates a handler that drops all late data.
+  #[must_use]
+  pub fn drop_late() -> Self {
+    Self::new(LateDataPolicy::Drop)
+  }
+
+  /// Creates a handler that allows late data within the given lateness window.
+  #[must_use]
+  pub fn with_allowed_lateness(lateness: Duration) -> Self {
+    Self::new(LateDataPolicy::AllowLateness(lateness))
+  }
+
+  /// Creates a handler that redirects late data to a side output.
+  #[must_use]
+  pub fn redirect_to_side_output() -> Self {
+    Self::new(LateDataPolicy::SideOutput)
+  }
+
+  /// Returns the allowed lateness based on the policy.
+  fn allowed_lateness(&self) -> Duration {
+    match &self.policy {
+      LateDataPolicy::AllowLateness(d) => *d,
+      _ => Duration::ZERO,
+    }
+  }
+
+  /// Evaluates whether an element is late and returns the appropriate action.
+  ///
+  /// # Arguments
+  /// - `element_timestamp`: The event time of the element.
+  /// - `current_watermark`: The current watermark.
+  /// - `element`: The element to evaluate.
+  pub fn evaluate<T>(
+    &mut self,
+    element_timestamp: DateTime<Utc>,
+    current_watermark: &Watermark,
+    element: T,
+  ) -> LateDataResult<T> {
+    // Element is on-time if its timestamp >= watermark
+    if element_timestamp >= current_watermark.timestamp {
+      self.stats.on_time += 1;
+      return LateDataResult::OnTime(element);
+    }
+
+    // Element is late - check if within allowed lateness
+    let lateness_duration = current_watermark.timestamp - element_timestamp;
+    let allowed = self.allowed_lateness();
+
+    // Convert chrono Duration to std Duration for comparison
+    if let Ok(lateness_std) = lateness_duration.to_std()
+      && lateness_std <= allowed
+    {
+      self.stats.within_lateness += 1;
+      return LateDataResult::WithinLateness(element);
+    }
+
+    // Element is truly late - apply policy
+    match &self.policy {
+      LateDataPolicy::Drop => {
+        self.stats.dropped += 1;
+        LateDataResult::Drop
+      }
+      LateDataPolicy::AllowLateness(_) => {
+        // Even beyond allowed lateness, process it (policy says to allow)
+        self.stats.within_lateness += 1;
+        LateDataResult::WithinLateness(element)
+      }
+      LateDataPolicy::SideOutput => {
+        self.stats.side_output += 1;
+        LateDataResult::SideOutput(element)
+      }
+    }
+  }
+
+  /// Returns statistics about late data handling.
+  #[must_use]
+  pub fn stats(&self) -> &LateDataStats {
+    &self.stats
+  }
+
+  /// Resets statistics.
+  pub fn reset_stats(&mut self) {
+    self.stats = LateDataStats::default();
+  }
+
+  /// Returns the configured policy.
+  #[must_use]
+  pub fn policy(&self) -> &LateDataPolicy {
+    &self.policy
+  }
+
+  /// Returns the allowed lateness from the policy.
+  #[must_use]
+  pub fn get_allowed_lateness(&self) -> Duration {
+    match &self.policy {
+      LateDataPolicy::AllowLateness(d) => *d,
+      _ => Duration::ZERO,
+    }
+  }
+}
+
+// =============================================================================
+// Windowed Stream Processing
+// =============================================================================
+
+/// Tracks the state of a window including its watermark context.
+#[derive(Debug)]
+pub struct WindowState<W: Window, T> {
+  /// The window this state belongs to.
+  pub window: W,
+  /// Elements currently in the window.
+  pub elements: Vec<(DateTime<Utc>, T)>,
+  /// Count of elements.
+  pub count: usize,
+  /// Whether the window has been triggered.
+  pub triggered: bool,
+  /// Last watermark that affected this window.
+  pub last_watermark: Option<Watermark>,
+}
+
+impl<W: Window, T: Clone> WindowState<W, T> {
+  /// Creates a new window state.
+  #[must_use]
+  pub fn new(window: W) -> Self {
+    Self {
+      window,
+      elements: Vec::new(),
+      count: 0,
+      triggered: false,
+      last_watermark: None,
+    }
+  }
+
+  /// Adds an element to the window.
+  pub fn add(&mut self, timestamp: DateTime<Utc>, element: T) {
+    self.elements.push((timestamp, element));
+    self.count += 1;
+  }
+
+  /// Updates the watermark for this window.
+  pub fn update_watermark(&mut self, watermark: Watermark) {
+    self.last_watermark = Some(watermark);
+  }
+
+  /// Returns true if the window should be garbage collected.
+  ///
+  /// A window can be GC'd if it has been triggered and the watermark
+  /// has passed the window's end time plus allowed lateness.
+  #[must_use]
+  pub fn can_be_gc(&self, current_watermark: &Watermark, allowed_lateness: ChronoDuration) -> bool {
+    if !self.triggered {
+      return false;
+    }
+    match self.window.end_time() {
+      Some(end_time) => current_watermark.timestamp > end_time + allowed_lateness,
+      None => false, // Global windows are never GC'd
+    }
+  }
+
+  /// Clears all elements from the window.
+  pub fn clear(&mut self) {
+    self.elements.clear();
+    self.count = 0;
+  }
+
+  /// Marks the window as triggered.
+  pub fn mark_triggered(&mut self) {
+    self.triggered = true;
+  }
+
+  /// Returns the elements as a slice.
+  #[must_use]
+  pub fn elements(&self) -> &[(DateTime<Utc>, T)] {
+    &self.elements
+  }
+
+  /// Extracts the element values without timestamps.
+  #[must_use]
+  pub fn values(&self) -> Vec<T> {
+    self.elements.iter().map(|(_, v)| v.clone()).collect()
+  }
+}
+
+impl<W: Window, T: Clone> Clone for WindowState<W, T> {
+  fn clone(&self) -> Self {
+    Self {
+      window: self.window.clone(),
+      elements: self.elements.clone(),
+      count: self.count,
+      triggered: self.triggered,
+      last_watermark: self.last_watermark.clone(),
+    }
   }
 }
 
@@ -1243,5 +1815,315 @@ mod tests {
         .on_event_time(timestamp(10, 5, 0), &window),
       TriggerResult::FireAndPurge
     );
+  }
+
+  // ==========================================================================
+  // Watermark Tests
+  // ==========================================================================
+
+  #[test]
+  fn test_watermark_basic() {
+    let ts = timestamp(10, 30, 0);
+    let wm = Watermark::new(ts);
+    assert_eq!(wm.timestamp, ts);
+    assert!(!wm.is_end_of_stream());
+    assert!(format!("{}", wm).contains("Watermark"));
+  }
+
+  #[test]
+  fn test_watermark_min_max() {
+    let min_wm = Watermark::min();
+    let max_wm = Watermark::max();
+
+    assert!(min_wm.timestamp < max_wm.timestamp);
+    assert!(!min_wm.is_end_of_stream());
+    assert!(max_wm.is_end_of_stream());
+    assert!(format!("{}", max_wm).contains("END"));
+  }
+
+  #[test]
+  fn test_watermark_advance() {
+    let mut wm = Watermark::new(timestamp(10, 0, 0));
+
+    // Advancing to a later time should succeed
+    assert!(wm.advance(timestamp(10, 5, 0)));
+    assert_eq!(wm.timestamp, timestamp(10, 5, 0));
+
+    // Advancing to an earlier time should not change it
+    assert!(!wm.advance(timestamp(10, 3, 0)));
+    assert_eq!(wm.timestamp, timestamp(10, 5, 0));
+
+    // Advancing to the same time should not change it
+    assert!(!wm.advance(timestamp(10, 5, 0)));
+    assert_eq!(wm.timestamp, timestamp(10, 5, 0));
+  }
+
+  #[test]
+  fn test_watermark_ordering() {
+    let wm1 = Watermark::new(timestamp(10, 0, 0));
+    let wm2 = Watermark::new(timestamp(10, 5, 0));
+    let wm3 = Watermark::new(timestamp(10, 0, 0));
+
+    assert!(wm1 < wm2);
+    assert!(wm2 > wm1);
+    assert_eq!(wm1, wm3);
+  }
+
+  // ==========================================================================
+  // Watermark Generator Tests
+  // ==========================================================================
+
+  #[test]
+  fn test_monotonic_generator() {
+    let mut generator = MonotonicWatermarkGenerator::new();
+    assert_eq!(generator.current_watermark(), Watermark::min());
+
+    // First event should emit watermark
+    let wm = generator.on_event(timestamp(10, 0, 0));
+    assert!(wm.is_some());
+    assert_eq!(wm.unwrap().timestamp, timestamp(10, 0, 0));
+
+    // Later event should emit watermark
+    let wm = generator.on_event(timestamp(10, 5, 0));
+    assert!(wm.is_some());
+    assert_eq!(wm.unwrap().timestamp, timestamp(10, 5, 0));
+
+    // Earlier event should not emit watermark
+    let wm = generator.on_event(timestamp(10, 3, 0));
+    assert!(wm.is_none());
+    assert_eq!(generator.current_watermark().timestamp, timestamp(10, 5, 0));
+
+    // Periodic emit should return None
+    assert!(generator.on_periodic_emit().is_none());
+  }
+
+  #[test]
+  fn test_bounded_out_of_orderness_generator() {
+    let max_delay = Duration::from_secs(5);
+    let mut generator = BoundedOutOfOrdernessGenerator::new(max_delay);
+    assert_eq!(generator.current_watermark(), Watermark::min());
+
+    // First event at 10:00:00 -> watermark at 09:59:55
+    let wm = generator.on_event(timestamp(10, 0, 0));
+    assert!(wm.is_some());
+    assert_eq!(wm.unwrap().timestamp, timestamp(9, 59, 55));
+
+    // Event at 10:00:10 -> watermark at 10:00:05
+    let wm = generator.on_event(timestamp(10, 0, 10));
+    assert!(wm.is_some());
+    assert_eq!(wm.unwrap().timestamp, timestamp(10, 0, 5));
+
+    // Event at 10:00:05 (late but within bounds) -> no new watermark
+    let wm = generator.on_event(timestamp(10, 0, 5));
+    assert!(wm.is_none());
+    assert_eq!(generator.current_watermark().timestamp, timestamp(10, 0, 5));
+
+    // Periodic emit should return current watermark
+    let wm = generator.on_periodic_emit();
+    assert!(wm.is_some());
+    assert_eq!(wm.unwrap().timestamp, timestamp(10, 0, 5));
+  }
+
+  #[test]
+  fn test_periodic_watermark_generator() {
+    let max_delay = Duration::from_secs(5);
+    let interval = Duration::from_secs(10);
+    let mut generator = PeriodicWatermarkGenerator::new(max_delay, interval);
+
+    // Events should not emit watermarks directly
+    let wm = generator.on_event(timestamp(10, 0, 0));
+    assert!(wm.is_none());
+
+    generator.on_event(timestamp(10, 0, 10));
+    assert!(generator.on_event(timestamp(10, 0, 15)).is_none());
+
+    // First periodic emit should work (no previous emit)
+    let wm = generator.on_periodic_emit();
+    assert!(wm.is_some());
+    // Watermark should be 10:00:10 (max) - 5s (delay) = 10:00:05
+    assert_eq!(wm.unwrap().timestamp, timestamp(10, 0, 10));
+  }
+
+  #[test]
+  fn test_watermark_generator_end_of_stream() {
+    let mut generator = MonotonicWatermarkGenerator::new();
+    generator.on_event(timestamp(10, 0, 0));
+
+    let eos = generator.on_end_of_stream();
+    assert!(eos.is_end_of_stream());
+  }
+
+  // ==========================================================================
+  // Late Data Handler Tests
+  // ==========================================================================
+
+  #[test]
+  fn test_late_data_result() {
+    let on_time: LateDataResult<i32> = LateDataResult::OnTime(42);
+    assert!(on_time.should_process());
+    assert_eq!(on_time.into_processable(), Some(42));
+
+    let within: LateDataResult<i32> = LateDataResult::WithinLateness(42);
+    assert!(within.should_process());
+
+    let drop: LateDataResult<i32> = LateDataResult::Drop;
+    assert!(!drop.should_process());
+    assert_eq!(drop.into_processable(), None);
+
+    let side: LateDataResult<i32> = LateDataResult::SideOutput(42);
+    assert!(!side.should_process());
+    assert!(side.is_side_output());
+    assert_eq!(LateDataResult::SideOutput(42).into_side_output(), Some(42));
+  }
+
+  #[test]
+  fn test_late_data_handler_on_time() {
+    let mut handler = LateDataHandler::drop_late();
+    let watermark = Watermark::new(timestamp(10, 0, 0));
+
+    // Element at same time as watermark is on-time
+    let result = handler.evaluate(timestamp(10, 0, 0), &watermark, "data");
+    assert!(matches!(result, LateDataResult::OnTime("data")));
+
+    // Element after watermark is on-time
+    let result = handler.evaluate(timestamp(10, 5, 0), &watermark, "data");
+    assert!(matches!(result, LateDataResult::OnTime("data")));
+
+    assert_eq!(handler.stats().on_time, 2);
+  }
+
+  #[test]
+  fn test_late_data_handler_within_lateness() {
+    let mut handler = LateDataHandler::with_allowed_lateness(Duration::from_secs(30));
+    let watermark = Watermark::new(timestamp(10, 0, 0));
+
+    // Element 10 seconds before watermark (within 30s lateness)
+    let result = handler.evaluate(timestamp(9, 59, 50), &watermark, "data");
+    assert!(matches!(result, LateDataResult::WithinLateness("data")));
+
+    assert_eq!(handler.stats().within_lateness, 1);
+  }
+
+  #[test]
+  fn test_late_data_handler_drop() {
+    let mut handler = LateDataHandler::drop_late();
+    let watermark = Watermark::new(timestamp(10, 0, 0));
+
+    // Element 30 seconds before watermark (late, no allowed lateness)
+    let result = handler.evaluate(timestamp(9, 59, 30), &watermark, "data");
+    assert!(matches!(result, LateDataResult::Drop));
+
+    assert_eq!(handler.stats().dropped, 1);
+  }
+
+  #[test]
+  fn test_late_data_handler_side_output() {
+    let mut handler = LateDataHandler::redirect_to_side_output();
+    let watermark = Watermark::new(timestamp(10, 0, 0));
+
+    // Element 30 seconds before watermark (late, goes to side output)
+    let result = handler.evaluate(timestamp(9, 59, 30), &watermark, "data");
+    assert!(matches!(result, LateDataResult::SideOutput("data")));
+
+    assert_eq!(handler.stats().side_output, 1);
+  }
+
+  #[test]
+  fn test_late_data_handler_stats_reset() {
+    let mut handler = LateDataHandler::drop_late();
+    let watermark = Watermark::new(timestamp(10, 0, 0));
+
+    handler.evaluate(timestamp(10, 0, 0), &watermark, "data");
+    handler.evaluate(timestamp(9, 59, 0), &watermark, "data");
+
+    assert_eq!(handler.stats().on_time, 1);
+    assert_eq!(handler.stats().dropped, 1);
+
+    handler.reset_stats();
+    assert_eq!(handler.stats().on_time, 0);
+    assert_eq!(handler.stats().dropped, 0);
+  }
+
+  #[test]
+  fn test_late_data_handler_accessors() {
+    let handler = LateDataHandler::with_allowed_lateness(Duration::from_secs(30));
+    assert!(matches!(handler.policy(), LateDataPolicy::AllowLateness(_)));
+    assert_eq!(handler.get_allowed_lateness(), Duration::from_secs(30));
+  }
+
+  // ==========================================================================
+  // Window State Tests
+  // ==========================================================================
+
+  #[test]
+  fn test_window_state_basic() {
+    let window = TimeWindow::new(timestamp(10, 0, 0), timestamp(10, 5, 0));
+    let mut state: WindowState<TimeWindow, i32> = WindowState::new(window.clone());
+
+    assert_eq!(state.count, 0);
+    assert!(!state.triggered);
+    assert!(state.last_watermark.is_none());
+
+    state.add(timestamp(10, 1, 0), 42);
+    state.add(timestamp(10, 2, 0), 43);
+
+    assert_eq!(state.count, 2);
+    assert_eq!(state.elements().len(), 2);
+    assert_eq!(state.values(), vec![42, 43]);
+  }
+
+  #[test]
+  fn test_window_state_watermark() {
+    let window = TimeWindow::new(timestamp(10, 0, 0), timestamp(10, 5, 0));
+    let mut state: WindowState<TimeWindow, i32> = WindowState::new(window);
+
+    let wm = Watermark::new(timestamp(10, 3, 0));
+    state.update_watermark(wm.clone());
+    assert_eq!(state.last_watermark, Some(wm));
+  }
+
+  #[test]
+  fn test_window_state_trigger_and_clear() {
+    let window = TimeWindow::new(timestamp(10, 0, 0), timestamp(10, 5, 0));
+    let mut state: WindowState<TimeWindow, i32> = WindowState::new(window);
+
+    state.add(timestamp(10, 1, 0), 42);
+    state.mark_triggered();
+    assert!(state.triggered);
+
+    state.clear();
+    assert_eq!(state.count, 0);
+    assert!(state.elements().is_empty());
+  }
+
+  #[test]
+  fn test_window_state_gc() {
+    let window = TimeWindow::new(timestamp(10, 0, 0), timestamp(10, 5, 0));
+    let mut state: WindowState<TimeWindow, i32> = WindowState::new(window);
+
+    // Non-triggered windows cannot be GC'd
+    let wm = Watermark::new(timestamp(11, 0, 0));
+    assert!(!state.can_be_gc(&wm, ChronoDuration::zero()));
+
+    // Triggered window can be GC'd after watermark passes end + lateness
+    state.mark_triggered();
+    assert!(state.can_be_gc(&wm, ChronoDuration::zero()));
+
+    // With allowed lateness, needs more time
+    let wm2 = Watermark::new(timestamp(10, 5, 0));
+    assert!(!state.can_be_gc(&wm2, ChronoDuration::minutes(1)));
+  }
+
+  #[test]
+  fn test_window_state_clone() {
+    let window = TimeWindow::new(timestamp(10, 0, 0), timestamp(10, 5, 0));
+    let mut state: WindowState<TimeWindow, i32> = WindowState::new(window);
+    state.add(timestamp(10, 1, 0), 42);
+    state.mark_triggered();
+
+    let cloned = state.clone();
+    assert_eq!(cloned.count, 1);
+    assert!(cloned.triggered);
+    assert_eq!(cloned.values(), vec![42]);
   }
 }

@@ -106,7 +106,7 @@
         "id": 3,
         "title": "Implement Windowing Operations",
         "description": "Implement comprehensive windowing operations for time-based and count-based stream processing.",
-        "status": "in-progress",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           1
@@ -126,7 +126,7 @@
             "id": 2,
             "title": "Implement TumblingWindow",
             "description": "Create non-overlapping fixed-size windows",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1
             ],
@@ -136,7 +136,7 @@
             "id": 3,
             "title": "Implement SlidingWindow",
             "description": "Create overlapping windows with configurable slide",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1
             ],
@@ -146,7 +146,7 @@
             "id": 4,
             "title": "Implement SessionWindow",
             "description": "Create gap-based session windows",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1
             ],
@@ -156,7 +156,7 @@
             "id": 5,
             "title": "Implement watermarks and late data handling",
             "description": "Add event-time tracking and late data policies",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               2,
               3,
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T00:28:12.856Z",
+      "updated": "2025-11-26T00:42:44.629Z",
       "description": "Tasks for master context"
     }
   }
