@@ -56,7 +56,7 @@
         "id": 2,
         "title": "Implement Exactly-Once Processing",
         "description": "Implement exactly-once processing guarantees for reliable stream processing with deduplication and idempotency.",
-        "status": "in-progress",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           1
@@ -86,7 +86,7 @@
             "id": 3,
             "title": "Implement offset tracking",
             "description": "Track processing offsets for resumable pipelines",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nOffset tracking allows pipelines to resume from where they left off.\n\n## Requirements\n\n- Track last processed offset per source\n- Persist offsets to storage\n- Support offset commit strategies (auto, manual)\n\n## Acceptance Criteria\n\n- [ ] Offsets are tracked accurately\n- [ ] Offsets persist across restarts\n- [ ] Manual and auto commit modes work\n- [ ] Offset reset (earliest/latest) is supported"
           },
@@ -94,7 +94,7 @@
             "id": 4,
             "title": "Add transaction support",
             "description": "Implement transactional processing for atomic commits",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               3
             ],
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T00:11:29.804Z",
+      "updated": "2025-11-26T00:23:38.061Z",
       "description": "Tasks for master context"
     }
   }

@@ -9,5 +9,6 @@ pub mod pipeline;
 pub mod producer;
 pub mod producers;
 pub mod stateful_transformer;
+pub mod transaction;
 pub mod transformer;
 pub mod transformers;
