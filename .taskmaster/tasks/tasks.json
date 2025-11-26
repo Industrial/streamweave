@@ -320,7 +320,7 @@
         "id": 7,
         "title": "Implement Distributed Processing",
         "description": "Support distributed stream processing across multiple nodes for horizontal scalability.",
-        "status": "pending",
+        "status": "in-progress",
         "priority": "low",
         "dependencies": [
           1,
@@ -328,13 +328,13 @@
           5
         ],
         "details": "## Context\n\nDistributed processing enables horizontal scaling for high-volume streams that exceed single-node capacity.\n\n## Implementation Approach\n\n1. Design coordinator/worker architecture\n2. Implement data partitioning strategies\n3. Add network communication layer\n4. Implement fault tolerance and recovery\n\n## Technical Considerations\n\n- Network partition handling\n- Exactly-once semantics across nodes\n- Shuffle and redistribution costs\n- State management in distributed setting",
-        "testStrategy": "## Acceptance Criteria\n\n- [ ] Pipelines run across multiple nodes\n- [ ] Data partitioned correctly by key\n- [ ] Worker failures handled with recovery\n- [ ] Coordinator failover works\n- [ ] Network partitions handled gracefully\n- [ ] Performance scales linearly with nodes\n- [ ] Exactly-once preserved across cluster",
+        "testStrategy": "## Acceptance Criteria\n\n- [ ] Pipelines run across multiple nodes\n- [ ] Data partitioned correctly by key\n- [ ] Worker failures handled with recovery\n- [ ] Coordinator failover works\n- [ ] Network partitions handled gracefully\n- [ ] Performance scales linearly with nodes\n- [ ] Exactly-once preserved across cluster\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete",
         "subtasks": [
           {
             "id": 1,
             "title": "Design distributed architecture",
             "description": "Create architecture document for distributed processing",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nA solid architecture is essential before implementation.\n\n## Requirements\n\n- Define coordinator and worker roles\n- Specify communication protocol\n- Plan state distribution strategy\n- Document failure modes and recovery\n\n## Acceptance Criteria\n\n- [ ] Architecture document reviewed and approved\n- [ ] All failure modes identified\n- [ ] Protocol defined with message formats\n- [ ] Scalability limits documented"
           },
@@ -346,7 +346,7 @@
             "dependencies": [
               1
             ],
-            "details": "## Context\n\nPartitioning determines how data is distributed across workers.\n\n## Requirements\n\n- Hash-based partitioning by key\n- Range partitioning\n- Custom partitioner support\n\n## Acceptance Criteria\n\n- [ ] Consistent partitioning (same key -> same worker)\n- [ ] Even distribution across workers\n- [ ] Rebalancing on worker change"
+            "details": "## Context\n\nPartitioning determines how data is distributed across workers.\n\n## Requirements\n\n- Hash-based partitioning by key\n- Range partitioning\n- Custom partitioner support\n\n## Acceptance Criteria\n\n- [ ] Consistent partitioning (same key -> same worker)\n- [ ] Even distribution across workers\n- [ ] Rebalancing on worker change\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 3,
@@ -356,7 +356,7 @@
             "dependencies": [
               1
             ],
-            "details": "## Context\n\nEfficient network communication is critical for distributed processing.\n\n## Requirements\n\n- gRPC for RPC communication\n- Streaming data transfer\n- Connection pooling and retry\n\n## Acceptance Criteria\n\n- [ ] Nodes can discover and connect\n- [ ] Data streams efficiently between nodes\n- [ ] Connection failures handled with reconnect"
+            "details": "## Context\n\nEfficient network communication is critical for distributed processing.\n\n## Requirements\n\n- gRPC for RPC communication\n- Streaming data transfer\n- Connection pooling and retry\n\n## Acceptance Criteria\n\n- [ ] Nodes can discover and connect\n- [ ] Data streams efficiently between nodes\n- [ ] Connection failures handled with reconnect\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 4,
@@ -367,7 +367,7 @@
               2,
               3
             ],
-            "details": "## Context\n\nFault tolerance keeps the system running despite failures.\n\n## Requirements\n\n- Heartbeat-based failure detection\n- Work redistribution on failure\n- State recovery from checkpoints\n\n## Acceptance Criteria\n\n- [ ] Failed workers detected within timeout\n- [ ] Work redistributed to healthy workers\n- [ ] No data loss on worker failure\n- [ ] System continues processing after recovery"
+            "details": "## Context\n\nFault tolerance keeps the system running despite failures.\n\n## Requirements\n\n- Heartbeat-based failure detection\n- Work redistribution on failure\n- State recovery from checkpoints\n\n## Acceptance Criteria\n\n- [ ] Failed workers detected within timeout\n- [ ] Work redistributed to healthy workers\n- [ ] No data loss on worker failure\n- [ ] System continues processing after recovery\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           }
         ]
       },
@@ -379,7 +379,7 @@
         "priority": "medium",
         "dependencies": [],
         "details": "## Context\n\nWASM support enables running pipelines in browsers and edge environments. The current codebase supports WASM but needs optimization.\n\n## Implementation Approach\n\n1. Audit current WASM compatibility\n2. Add feature flags for WASM-specific code\n3. Optimize bundle size\n4. Create WASM-specific documentation\n\n## Technical Considerations\n\n- No std library for some targets\n- Memory management differences\n- Async runtime compatibility\n- Bundle size concerns",
-        "testStrategy": "## Acceptance Criteria\n\n- [ ] All core features work in WASM\n- [ ] Bundle size under 500KB gzipped\n- [ ] Memory usage acceptable in browser\n- [ ] Examples work in browser and Node.js\n- [ ] Documentation covers WASM deployment\n- [ ] CI tests WASM targets",
+        "testStrategy": "## Acceptance Criteria\n\n- [ ] All core features work in WASM\n- [ ] Bundle size under 500KB gzipped\n- [ ] Memory usage acceptable in browser\n- [ ] Examples work in browser and Node.js\n- [ ] Documentation covers WASM deployment\n- [ ] CI tests WASM targets\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete",
         "subtasks": [
           {
             "id": 1,
@@ -403,11 +403,11 @@
             "id": 3,
             "title": "Optimize bundle size",
             "description": "Reduce WASM bundle size through optimization",
-            "status": "in-progress",
+            "status": "pending",
             "dependencies": [
               2
             ],
-            "details": "## Context\n\nSmall bundle size is important for web deployment.\n\n## Requirements\n\n- Enable LTO and size optimization\n- Remove unused code with wasm-opt\n- Optional features for code splitting\n\n## Acceptance Criteria\n\n- [ ] Bundle under 500KB gzipped\n- [ ] Core features available in minimal build\n- [ ] Size regression tests in CI"
+            "details": "## Context\n\nSmall bundle size is important for web deployment.\n\n## Requirements\n\n- Enable LTO and size optimization\n- Remove unused code with wasm-opt\n- Optional features for code splitting\n\n## Acceptance Criteria\n\n- [ ] Bundle under 500KB gzipped\n- [ ] Core features available in minimal build\n- [ ] Size regression tests in CI\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 4,
@@ -417,7 +417,7 @@
             "dependencies": [
               2
             ],
-            "details": "## Context\n\nUsers need guidance for WASM deployment.\n\n## Requirements\n\n- Getting started guide for WASM\n- Browser example with webpack/vite\n- Node.js example\n- Performance tips\n\n## Acceptance Criteria\n\n- [ ] WASM docs in README or separate file\n- [ ] Working browser example\n- [ ] Working Node.js example\n- [ ] Common issues documented"
+            "details": "## Context\n\nUsers need guidance for WASM deployment.\n\n## Requirements\n\n- Getting started guide for WASM\n- Browser example with webpack/vite\n- Node.js example\n- Performance tips\n\n## Acceptance Criteria\n\n- [ ] WASM docs in README or separate file\n- [ ] Working browser example\n- [ ] Working Node.js example\n- [ ] Common issues documented\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           }
         ]
       },
@@ -429,7 +429,7 @@
         "priority": "medium",
         "dependencies": [],
         "details": "## Context\n\nIntegration with external systems makes StreamWeave useful for real-world applications. These are the most commonly requested integrations.\n\n## Implementation Approach\n\n1. Define standard interfaces for external systems\n2. Implement each integration as optional feature\n3. Ensure consistent configuration patterns\n4. Add integration tests with testcontainers\n\n## Technical Considerations\n\n- Connection pooling and management\n- Retry and reconnection logic\n- Backpressure handling\n- Configuration consistency",
-        "testStrategy": "## Acceptance Criteria\n\n- [ ] Kafka producer/consumer work with real cluster\n- [ ] Redis Streams integration works\n- [ ] Database query producer handles large results\n- [ ] All integrations have retry logic\n- [ ] Configuration is consistent across integrations\n- [ ] Integration tests pass in CI",
+        "testStrategy": "## Acceptance Criteria\n\n- [ ] Kafka producer/consumer work with real cluster\n- [ ] Redis Streams integration works\n- [ ] Database query producer handles large results\n- [ ] All integrations have retry logic\n- [ ] Configuration is consistent across integrations\n- [ ] Integration tests pass in CI\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete",
         "subtasks": [
           {
             "id": 1,
@@ -437,7 +437,7 @@
             "description": "Add Kafka integration for producing and consuming messages",
             "status": "pending",
             "dependencies": [],
-            "details": "## Context\n\nKafka is the most common streaming platform.\n\n## Requirements\n\n- Consume from Kafka topics\n- Produce to Kafka topics\n- Support consumer groups\n- Handle partition assignment\n\n## Acceptance Criteria\n\n- [ ] Can consume from multiple partitions\n- [ ] Offset management works\n- [ ] Producer batching configurable\n- [ ] Connection failures handled"
+            "details": "## Context\n\nKafka is the most common streaming platform.\n\n## Requirements\n\n- Consume from Kafka topics\n- Produce to Kafka topics\n- Support consumer groups\n- Handle partition assignment\n\n## Acceptance Criteria\n\n- [ ] Can consume from multiple partitions\n- [ ] Offset management works\n- [ ] Producer batching configurable\n- [ ] Connection failures handled\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 2,
@@ -445,7 +445,7 @@
             "description": "Add Redis Streams integration",
             "status": "pending",
             "dependencies": [],
-            "details": "## Context\n\nRedis Streams provides lightweight message streaming.\n\n## Requirements\n\n- XREAD for consuming\n- XADD for producing\n- Consumer group support\n- Message acknowledgment\n\n## Acceptance Criteria\n\n- [ ] Can read from streams\n- [ ] Can write to streams\n- [ ] Consumer groups work\n- [ ] Pending messages tracked"
+            "details": "## Context\n\nRedis Streams provides lightweight message streaming.\n\n## Requirements\n\n- XREAD for consuming\n- XADD for producing\n- Consumer group support\n- Message acknowledgment\n\n## Acceptance Criteria\n\n- [ ] Can read from streams\n- [ ] Can write to streams\n- [ ] Consumer groups work\n- [ ] Pending messages tracked\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 3,
@@ -453,7 +453,7 @@
             "description": "Add SQL database producer for query results",
             "status": "pending",
             "dependencies": [],
-            "details": "## Context\n\nDatabase queries are a common data source.\n\n## Requirements\n\n- Support PostgreSQL and MySQL\n- Cursor-based iteration for large results\n- Parameterized queries\n- Connection pooling\n\n## Acceptance Criteria\n\n- [ ] Large query results streamed efficiently\n- [ ] Memory usage bounded\n- [ ] Connection pool managed correctly\n- [ ] Multiple databases supported"
+            "details": "## Context\n\nDatabase queries are a common data source.\n\n## Requirements\n\n- Support PostgreSQL and MySQL\n- Cursor-based iteration for large results\n- Parameterized queries\n- Connection pooling\n\n## Acceptance Criteria\n\n- [ ] Large query results streamed efficiently\n- [ ] Memory usage bounded\n- [ ] Connection pool managed correctly\n- [ ] Multiple databases supported\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 4,
@@ -461,7 +461,7 @@
             "description": "Add producer that polls HTTP endpoints",
             "status": "pending",
             "dependencies": [],
-            "details": "## Context\n\nPolling APIs is common for integrations without webhooks.\n\n## Requirements\n\n- Configurable poll interval\n- Support for pagination\n- Delta detection (only new items)\n- Rate limiting\n\n## Acceptance Criteria\n\n- [ ] Polls at configured interval\n- [ ] Handles pagination correctly\n- [ ] Emits only new items\n- [ ] Rate limits respected"
+            "details": "## Context\n\nPolling APIs is common for integrations without webhooks.\n\n## Requirements\n\n- Configurable poll interval\n- Support for pagination\n- Delta detection (only new items)\n- Rate limiting\n\n## Acceptance Criteria\n\n- [ ] Polls at configured interval\n- [ ] Handles pagination correctly\n- [ ] Emits only new items\n- [ ] Rate limits respected\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           }
         ]
       },
@@ -473,7 +473,7 @@
         "priority": "medium",
         "dependencies": [],
         "details": "## Context\n\nObservability is essential for production deployments. Users need to understand pipeline performance and health.\n\n## Implementation Approach\n\n1. Define standard metrics (throughput, latency, errors)\n2. Integrate with OpenTelemetry\n3. Add Prometheus export\n4. Support distributed tracing\n\n## Technical Considerations\n\n- Minimal overhead for metrics collection\n- Cardinality management\n- Trace context propagation",
-        "testStrategy": "## Acceptance Criteria\n\n- [ ] Throughput, latency, error metrics collected\n- [ ] Metrics exported to Prometheus\n- [ ] OpenTelemetry traces generated\n- [ ] Trace context propagates through pipeline\n- [ ] Metrics overhead under 5%\n- [ ] Health check endpoint available\n- [ ] Dashboard templates provided",
+        "testStrategy": "## Acceptance Criteria\n\n- [ ] Throughput, latency, error metrics collected\n- [ ] Metrics exported to Prometheus\n- [ ] OpenTelemetry traces generated\n- [ ] Trace context propagates through pipeline\n- [ ] Metrics overhead under 5%\n- [ ] Health check endpoint available\n- [ ] Dashboard templates provided\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete",
         "subtasks": [
           {
             "id": 1,
@@ -481,7 +481,7 @@
             "description": "Create standard metrics for pipeline monitoring",
             "status": "pending",
             "dependencies": [],
-            "details": "## Context\n\nStandard metrics enable consistent monitoring.\n\n## Requirements\n\n- Throughput (items/second)\n- Latency (p50, p95, p99)\n- Error rate and types\n- Backpressure indicators\n\n## Acceptance Criteria\n\n- [ ] All standard metrics defined\n- [ ] Metrics have appropriate labels\n- [ ] Collection is efficient"
+            "details": "## Context\n\nStandard metrics enable consistent monitoring.\n\n## Requirements\n\n- Throughput (items/second)\n- Latency (p50, p95, p99)\n- Error rate and types\n- Backpressure indicators\n\n## Acceptance Criteria\n\n- [ ] All standard metrics defined\n- [ ] Metrics have appropriate labels\n- [ ] Collection is efficient\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 2,
@@ -491,7 +491,7 @@
             "dependencies": [
               1
             ],
-            "details": "## Context\n\nOpenTelemetry is the standard for observability.\n\n## Requirements\n\n- Trace spans for pipeline stages\n- Metrics via OTLP\n- Context propagation\n\n## Acceptance Criteria\n\n- [ ] Traces show pipeline execution\n- [ ] Metrics export via OTLP\n- [ ] Context propagates correctly"
+            "details": "## Context\n\nOpenTelemetry is the standard for observability.\n\n## Requirements\n\n- Trace spans for pipeline stages\n- Metrics via OTLP\n- Context propagation\n\n## Acceptance Criteria\n\n- [ ] Traces show pipeline execution\n- [ ] Metrics export via OTLP\n- [ ] Context propagates correctly\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 3,
@@ -501,7 +501,7 @@
             "dependencies": [
               1
             ],
-            "details": "## Context\n\nPrometheus is widely used for metrics.\n\n## Requirements\n\n- /metrics endpoint\n- Standard Prometheus format\n- Configurable labels\n\n## Acceptance Criteria\n\n- [ ] Metrics endpoint works\n- [ ] Prometheus can scrape metrics\n- [ ] Grafana dashboards work"
+            "details": "## Context\n\nPrometheus is widely used for metrics.\n\n## Requirements\n\n- /metrics endpoint\n- Standard Prometheus format\n- Configurable labels\n\n## Acceptance Criteria\n\n- [ ] Metrics endpoint works\n- [ ] Prometheus can scrape metrics\n- [ ] Grafana dashboards work\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 4,
@@ -509,7 +509,7 @@
             "description": "Add health check endpoint and liveness probes",
             "status": "pending",
             "dependencies": [],
-            "details": "## Context\n\nHealth checks enable orchestrator integration.\n\n## Requirements\n\n- /health endpoint\n- Liveness and readiness probes\n- Component health aggregation\n\n## Acceptance Criteria\n\n- [ ] Health endpoint returns status\n- [ ] Unhealthy components detected\n- [ ] Kubernetes probes work"
+            "details": "## Context\n\nHealth checks enable orchestrator integration.\n\n## Requirements\n\n- /health endpoint\n- Liveness and readiness probes\n- Component health aggregation\n\n## Acceptance Criteria\n\n- [ ] Health endpoint returns status\n- [ ] Unhealthy components detected\n- [ ] Kubernetes probes work\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           }
         ]
       },
@@ -524,7 +524,7 @@
           4
         ],
         "details": "## Context\n\nSQL is familiar to many developers. A SQL-like interface lowers the learning curve for stream processing.\n\n## Implementation Approach\n\n1. Design SQL dialect for streams\n2. Implement SQL parser\n3. Translate SQL to pipeline operations\n4. Add query optimization\n\n## Technical Considerations\n\n- SQL semantics in streaming context\n- Query optimization opportunities\n- Type safety with SQL\n- Error messages for invalid queries",
-        "testStrategy": "## Acceptance Criteria\n\n- [ ] SELECT, WHERE, GROUP BY work\n- [ ] Aggregations produce correct results\n- [ ] JOIN works for windowed streams\n- [ ] Queries compile to efficient pipelines\n- [ ] Type errors caught at parse time\n- [ ] Query optimizer improves performance\n- [ ] Examples show common query patterns",
+        "testStrategy": "## Acceptance Criteria\n\n- [ ] SELECT, WHERE, GROUP BY work\n- [ ] Aggregations produce correct results\n- [ ] JOIN works for windowed streams\n- [ ] Queries compile to efficient pipelines\n- [ ] Type errors caught at parse time\n- [ ] Query optimizer improves performance\n- [ ] Examples show common query patterns\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete",
         "subtasks": [
           {
             "id": 1,
@@ -532,7 +532,7 @@
             "description": "Define the SQL syntax for stream queries",
             "status": "pending",
             "dependencies": [],
-            "details": "## Context\n\nNeed to define what SQL constructs are supported.\n\n## Requirements\n\n- SELECT for projection\n- WHERE for filtering\n- GROUP BY for aggregation\n- WINDOW for windowing\n- JOIN for stream joining\n\n## Acceptance Criteria\n\n- [ ] Syntax documented\n- [ ] Semantics clearly defined\n- [ ] Examples for each construct"
+            "details": "## Context\n\nNeed to define what SQL constructs are supported.\n\n## Requirements\n\n- SELECT for projection\n- WHERE for filtering\n- GROUP BY for aggregation\n- WINDOW for windowing\n- JOIN for stream joining\n\n## Acceptance Criteria\n\n- [ ] Syntax documented\n- [ ] Semantics clearly defined\n- [ ] Examples for each construct\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 2,
@@ -542,7 +542,7 @@
             "dependencies": [
               1
             ],
-            "details": "## Context\n\nParser converts SQL text to AST.\n\n## Requirements\n\n- Use sqlparser-rs or custom parser\n- Parse all supported constructs\n- Helpful error messages\n\n## Acceptance Criteria\n\n- [ ] All syntax parsed correctly\n- [ ] Errors include position\n- [ ] Parser is well-tested"
+            "details": "## Context\n\nParser converts SQL text to AST.\n\n## Requirements\n\n- Use sqlparser-rs or custom parser\n- Parse all supported constructs\n- Helpful error messages\n\n## Acceptance Criteria\n\n- [ ] All syntax parsed correctly\n- [ ] Errors include position\n- [ ] Parser is well-tested\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 3,
@@ -552,7 +552,7 @@
             "dependencies": [
               2
             ],
-            "details": "## Context\n\nTranslation converts SQL to efficient pipelines.\n\n## Requirements\n\n- Map SQL operations to transformers\n- Handle complex queries with multiple operations\n- Preserve semantics correctly\n\n## Acceptance Criteria\n\n- [ ] Simple queries translate correctly\n- [ ] Complex queries work\n- [ ] Result matches SQL semantics"
+            "details": "## Context\n\nTranslation converts SQL to efficient pipelines.\n\n## Requirements\n\n- Map SQL operations to transformers\n- Handle complex queries with multiple operations\n- Preserve semantics correctly\n\n## Acceptance Criteria\n\n- [ ] Simple queries translate correctly\n- [ ] Complex queries work\n- [ ] Result matches SQL semantics\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 4,
@@ -562,7 +562,7 @@
             "dependencies": [
               3
             ],
-            "details": "## Context\n\nOptimization improves query performance.\n\n## Requirements\n\n- Predicate pushdown\n- Projection pruning\n- Join ordering\n\n## Acceptance Criteria\n\n- [ ] Optimizer improves query performance\n- [ ] No semantic changes from optimization\n- [ ] Optimization rules are tested"
+            "details": "## Context\n\nOptimization improves query performance.\n\n## Requirements\n\n- Predicate pushdown\n- Projection pruning\n- Join ordering\n\n## Acceptance Criteria\n\n- [ ] Optimizer improves query performance\n- [ ] No semantic changes from optimization\n- [ ] Optimization rules are tested\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           }
         ]
       },
@@ -577,7 +577,7 @@
           4
         ],
         "details": "## Context\n\nML inference on streams enables real-time predictions. This is increasingly common in modern applications.\n\n## Implementation Approach\n\n1. Design inference transformer interface\n2. Integrate with ONNX Runtime\n3. Add batching for efficient inference\n4. Support model hot-swapping\n\n## Technical Considerations\n\n- Inference latency requirements\n- Batch size optimization\n- Model loading and memory\n- GPU support considerations",
-        "testStrategy": "## Acceptance Criteria\n\n- [ ] ONNX models load and run inference\n- [ ] Batching improves throughput\n- [ ] Model can be swapped without restart\n- [ ] Feature extraction utilities work\n- [ ] Latency acceptable for streaming use\n- [ ] Examples show end-to-end ML pipeline",
+        "testStrategy": "## Acceptance Criteria\n\n- [ ] ONNX models load and run inference\n- [ ] Batching improves throughput\n- [ ] Model can be swapped without restart\n- [ ] Feature extraction utilities work\n- [ ] Latency acceptable for streaming use\n- [ ] Examples show end-to-end ML pipeline\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete",
         "subtasks": [
           {
             "id": 1,
@@ -585,7 +585,7 @@
             "description": "Create trait for model inference transformers",
             "status": "pending",
             "dependencies": [],
-            "details": "## Context\n\nA common interface enables different ML backends.\n\n## Requirements\n\n- Load model from path/bytes\n- Run inference on input\n- Support batched inference\n- Handle model errors\n\n## Acceptance Criteria\n\n- [ ] Trait is flexible for different frameworks\n- [ ] Batching is supported\n- [ ] Errors handled gracefully"
+            "details": "## Context\n\nA common interface enables different ML backends.\n\n## Requirements\n\n- Load model from path/bytes\n- Run inference on input\n- Support batched inference\n- Handle model errors\n\n## Acceptance Criteria\n\n- [ ] Trait is flexible for different frameworks\n- [ ] Batching is supported\n- [ ] Errors handled gracefully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 2,
@@ -595,7 +595,7 @@
             "dependencies": [
               1
             ],
-            "details": "## Context\n\nONNX is a portable model format.\n\n## Requirements\n\n- Load ONNX models\n- Run inference with ONNX Runtime\n- Support CPU and GPU execution\n\n## Acceptance Criteria\n\n- [ ] ONNX models load correctly\n- [ ] Inference produces correct results\n- [ ] GPU execution works if available"
+            "details": "## Context\n\nONNX is a portable model format.\n\n## Requirements\n\n- Load ONNX models\n- Run inference with ONNX Runtime\n- Support CPU and GPU execution\n\n## Acceptance Criteria\n\n- [ ] ONNX models load correctly\n- [ ] Inference produces correct results\n- [ ] GPU execution works if available\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 3,
@@ -605,7 +605,7 @@
             "dependencies": [
               1
             ],
-            "details": "## Context\n\nBatching improves GPU utilization.\n\n## Requirements\n\n- Configurable batch size\n- Timeout for partial batches\n- Dynamic batching based on load\n\n## Acceptance Criteria\n\n- [ ] Batching improves throughput\n- [ ] Timeouts prevent stale data\n- [ ] Latency impact acceptable"
+            "details": "## Context\n\nBatching improves GPU utilization.\n\n## Requirements\n\n- Configurable batch size\n- Timeout for partial batches\n- Dynamic batching based on load\n\n## Acceptance Criteria\n\n- [ ] Batching improves throughput\n- [ ] Timeouts prevent stale data\n- [ ] Latency impact acceptable\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 4,
@@ -615,7 +615,7 @@
             "dependencies": [
               2
             ],
-            "details": "## Context\n\nHot-swapping enables model updates without downtime.\n\n## Requirements\n\n- Load new model while old is serving\n- Atomic swap to new model\n- Graceful handling of in-flight requests\n\n## Acceptance Criteria\n\n- [ ] Model can be swapped at runtime\n- [ ] No requests lost during swap\n- [ ] Swap is atomic"
+            "details": "## Context\n\nHot-swapping enables model updates without downtime.\n\n## Requirements\n\n- Load new model while old is serving\n- Atomic swap to new model\n- Graceful handling of in-flight requests\n\n## Acceptance Criteria\n\n- [ ] Model can be swapped at runtime\n- [ ] No requests lost during swap\n- [ ] Swap is atomic\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           }
         ]
       },
@@ -629,7 +629,7 @@
           10
         ],
         "details": "## Context\n\nVisualization helps users understand and debug pipelines. Interactive tools improve developer experience.\n\n## Implementation Approach\n\n1. Generate pipeline DAG representation\n2. Create web-based visualization\n3. Add real-time data flow display\n4. Implement debug mode\n\n## Technical Considerations\n\n- Web UI technology choices\n- Real-time updates via WebSocket\n- Performance impact of visualization\n- Integration with IDE",
-        "testStrategy": "## Acceptance Criteria\n\n- [ ] Pipeline DAG visualized correctly\n- [ ] Real-time data flow shown\n- [ ] Debug mode allows step-through\n- [ ] Performance profiling visualized\n- [ ] UI works in major browsers\n- [ ] Low overhead when not visualizing",
+        "testStrategy": "## Acceptance Criteria\n\n- [ ] Pipeline DAG visualized correctly\n- [ ] Real-time data flow shown\n- [ ] Debug mode allows step-through\n- [ ] Performance profiling visualized\n- [ ] UI works in major browsers\n- [ ] Low overhead when not visualizing\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete",
         "subtasks": [
           {
             "id": 1,
@@ -637,7 +637,7 @@
             "description": "Create data structure representing pipeline as DAG",
             "status": "pending",
             "dependencies": [],
-            "details": "## Context\n\nDAG representation enables visualization.\n\n## Requirements\n\n- Capture all nodes and edges\n- Include node metadata\n- Export to common formats (DOT, JSON)\n\n## Acceptance Criteria\n\n- [ ] DAG captures pipeline structure\n- [ ] Metadata includes types, config\n- [ ] Export formats work"
+            "details": "## Context\n\nDAG representation enables visualization.\n\n## Requirements\n\n- Capture all nodes and edges\n- Include node metadata\n- Export to common formats (DOT, JSON)\n\n## Acceptance Criteria\n\n- [ ] DAG captures pipeline structure\n- [ ] Metadata includes types, config\n- [ ] Export formats work\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 2,
@@ -647,7 +647,7 @@
             "dependencies": [
               1
             ],
-            "details": "## Context\n\nWeb UI allows interactive exploration.\n\n## Requirements\n\n- Display pipeline DAG\n- Zoom and pan\n- Node details on click\n\n## Acceptance Criteria\n\n- [ ] Pipeline displayed clearly\n- [ ] Navigation is smooth\n- [ ] Node info accessible"
+            "details": "## Context\n\nWeb UI allows interactive exploration.\n\n## Requirements\n\n- Display pipeline DAG\n- Zoom and pan\n- Node details on click\n\n## Acceptance Criteria\n\n- [ ] Pipeline displayed clearly\n- [ ] Navigation is smooth\n- [ ] Node info accessible\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 3,
@@ -657,7 +657,7 @@
             "dependencies": [
               2
             ],
-            "details": "## Context\n\nReal-time display helps understand pipeline behavior.\n\n## Requirements\n\n- Show throughput per node\n- Animate data flow\n- Highlight bottlenecks\n\n## Acceptance Criteria\n\n- [ ] Throughput displayed accurately\n- [ ] Animation is smooth\n- [ ] Bottlenecks visible"
+            "details": "## Context\n\nReal-time display helps understand pipeline behavior.\n\n## Requirements\n\n- Show throughput per node\n- Animate data flow\n- Highlight bottlenecks\n\n## Acceptance Criteria\n\n- [ ] Throughput displayed accurately\n- [ ] Animation is smooth\n- [ ] Bottlenecks visible\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 4,
@@ -667,7 +667,7 @@
             "dependencies": [
               2
             ],
-            "details": "## Context\n\nDebug mode helps troubleshoot issues.\n\n## Requirements\n\n- Pause at breakpoints\n- Inspect data at each stage\n- Step forward/backward\n\n## Acceptance Criteria\n\n- [ ] Breakpoints work\n- [ ] Data inspection works\n- [ ] Stepping is reliable"
+            "details": "## Context\n\nDebug mode helps troubleshoot issues.\n\n## Requirements\n\n- Pause at breakpoints\n- Inspect data at each stage\n- Step forward/backward\n\n## Acceptance Criteria\n\n- [ ] Breakpoints work\n- [ ] Data inspection works\n- [ ] Stepping is reliable\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           }
         ]
       },
@@ -679,7 +679,7 @@
         "priority": "low",
         "dependencies": [],
         "details": "## Context\n\nReusable components reduce duplication and enable sharing of common patterns. This is essential for large-scale pipeline development.\n\n## Implementation Approach\n\n1. Design component abstraction\n2. Implement pipeline templates\n3. Add serialization for sharing\n4. Create component registry\n\n## Technical Considerations\n\n- Type safety across components\n- Versioning and compatibility\n- Configuration injection\n- Testing reusable components",
-        "testStrategy": "## Acceptance Criteria\n\n- [ ] Components can be composed into larger pipelines\n- [ ] Templates are parameterizable\n- [ ] Components can be serialized/deserialized\n- [ ] Component registry allows discovery\n- [ ] Type errors caught at composition time\n- [ ] Examples show composition patterns",
+        "testStrategy": "## Acceptance Criteria\n\n- [ ] Components can be composed into larger pipelines\n- [ ] Templates are parameterizable\n- [ ] Components can be serialized/deserialized\n- [ ] Component registry allows discovery\n- [ ] Type errors caught at composition time\n- [ ] Examples show composition patterns\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete",
         "subtasks": [
           {
             "id": 1,
@@ -687,7 +687,7 @@
             "description": "Create abstraction for reusable pipeline components",
             "status": "pending",
             "dependencies": [],
-            "details": "## Context\n\nComponents are reusable pipeline fragments.\n\n## Requirements\n\n- Define component boundaries\n- Support typed inputs/outputs\n- Enable composition\n\n## Acceptance Criteria\n\n- [ ] Component trait defined\n- [ ] Composition is type-safe\n- [ ] API is ergonomic"
+            "details": "## Context\n\nComponents are reusable pipeline fragments.\n\n## Requirements\n\n- Define component boundaries\n- Support typed inputs/outputs\n- Enable composition\n\n## Acceptance Criteria\n\n- [ ] Component trait defined\n- [ ] Composition is type-safe\n- [ ] API is ergonomic\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 2,
@@ -697,7 +697,7 @@
             "dependencies": [
               1
             ],
-            "details": "## Context\n\nTemplates allow customization of common patterns.\n\n## Requirements\n\n- Define template with parameters\n- Instantiate with specific values\n- Type-check parameters\n\n## Acceptance Criteria\n\n- [ ] Templates can be defined\n- [ ] Instantiation works correctly\n- [ ] Parameter errors caught early"
+            "details": "## Context\n\nTemplates allow customization of common patterns.\n\n## Requirements\n\n- Define template with parameters\n- Instantiate with specific values\n- Type-check parameters\n\n## Acceptance Criteria\n\n- [ ] Templates can be defined\n- [ ] Instantiation works correctly\n- [ ] Parameter errors caught early\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 3,
@@ -707,7 +707,7 @@
             "dependencies": [
               1
             ],
-            "details": "## Context\n\nSerialization enables sharing and storage.\n\n## Requirements\n\n- Serialize to JSON/YAML\n- Deserialize and reconstruct\n- Version information\n\n## Acceptance Criteria\n\n- [ ] Round-trip serialization works\n- [ ] Versions handled correctly\n- [ ] Invalid configs rejected"
+            "details": "## Context\n\nSerialization enables sharing and storage.\n\n## Requirements\n\n- Serialize to JSON/YAML\n- Deserialize and reconstruct\n- Version information\n\n## Acceptance Criteria\n\n- [ ] Round-trip serialization works\n- [ ] Versions handled correctly\n- [ ] Invalid configs rejected\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
           {
             "id": 4,
@@ -717,14 +717,14 @@
             "dependencies": [
               3
             ],
-            "details": "## Context\n\nRegistry enables component discovery.\n\n## Requirements\n\n- Register components by name\n- Search by type/tags\n- Version management\n\n## Acceptance Criteria\n\n- [ ] Components can be registered\n- [ ] Search works correctly\n- [ ] Versions resolved correctly"
+            "details": "## Context\n\nRegistry enables component discovery.\n\n## Requirements\n\n- Register components by name\n- Search by type/tags\n- Version management\n\n## Acceptance Criteria\n\n- [ ] Components can be registered\n- [ ] Search works correctly\n- [ ] Versions resolved correctly\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           }
         ]
       }
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T05:29:48.515Z",
+      "updated": "2025-11-26T17:59:06.028Z",
       "description": "Tasks for master context"
     }
   }

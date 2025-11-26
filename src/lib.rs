@@ -14,6 +14,9 @@ pub mod transformer;
 pub mod transformers;
 pub mod window;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod distributed;
+
 // Re-export commonly used types
 pub use consumer::Consumer;
 pub use error::{ErrorAction, ErrorContext, ErrorStrategy, StreamError};
