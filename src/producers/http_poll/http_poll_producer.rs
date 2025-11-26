@@ -1,7 +1,7 @@
 use crate::error::ErrorStrategy;
 use crate::producer::ProducerConfig;
-use reqwest::header::HeaderMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::time::Duration;
 
@@ -13,7 +13,7 @@ pub struct HttpPollProducerConfig {
   /// HTTP method (GET, POST, etc.).
   pub method: String,
   /// HTTP headers to include in requests.
-  pub headers: HeaderMap,
+  pub headers: HashMap<String, String>,
   /// Request body (for POST/PUT requests).
   pub body: Option<String>,
   /// Polling interval between requests.
@@ -39,7 +39,7 @@ impl Default for HttpPollProducerConfig {
     Self {
       url: String::new(),
       method: "GET".to_string(),
-      headers: HeaderMap::new(),
+      headers: HashMap::new(),
       body: None,
       poll_interval: Duration::from_secs(60),
       max_requests: None,
@@ -108,10 +108,8 @@ impl HttpPollProducerConfig {
     &mut self,
     key: &str,
     value: &str,
-  ) -> Result<(), reqwest::header::InvalidHeaderValue> {
-    let header_name = reqwest::header::HeaderName::from_bytes(key.as_bytes())?;
-    let header_value = reqwest::header::HeaderValue::from_str(value)?;
-    self.headers.insert(header_name, header_value);
+  ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    self.headers.insert(key.to_string(), value.to_string());
     Ok(())
   }
 
@@ -185,7 +183,7 @@ pub struct HttpPollResponse {
   /// Response status code.
   pub status: u16,
   /// Response headers.
-  pub headers: HeaderMap,
+  pub headers: HashMap<String, String>,
   /// Response body as JSON.
   pub body: serde_json::Value,
   /// Request URL that was polled.
@@ -195,13 +193,42 @@ pub struct HttpPollResponse {
 impl HttpPollResponse {
   /// Creates a new HTTP poll response.
   #[must_use]
-  pub fn new(status: u16, headers: HeaderMap, body: serde_json::Value, url: String) -> Self {
+  pub fn new(
+    status: u16,
+    headers: HashMap<String, String>,
+    body: serde_json::Value,
+    url: String,
+  ) -> Self {
     Self {
       status,
       headers,
       body,
       url,
     }
+  }
+
+  /// Converts a HeaderMap to HashMap<String, String>.
+  #[must_use]
+  pub fn headers_from_reqwest(headers: &reqwest::header::HeaderMap) -> HashMap<String, String> {
+    headers
+      .iter()
+      .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
+      .collect()
+  }
+
+  /// Converts a HashMap<String, String> to HeaderMap.
+  #[must_use]
+  pub fn headers_to_reqwest(headers: &HashMap<String, String>) -> reqwest::header::HeaderMap {
+    let mut header_map = reqwest::header::HeaderMap::new();
+    for (k, v) in headers {
+      if let (Ok(name), Ok(value)) = (
+        reqwest::header::HeaderName::from_bytes(k.as_bytes()),
+        reqwest::header::HeaderValue::from_str(v),
+      ) {
+        header_map.insert(name, value);
+      }
+    }
+    header_map
   }
 }
 
@@ -235,6 +262,7 @@ pub struct HttpPollProducer {
   /// HTTP client.
   pub(crate) client: Option<reqwest::Client>,
   /// Rate limiter state.
+  #[allow(unused)]
   pub(crate) last_request_time: Option<std::time::Instant>,
 }
 
@@ -316,11 +344,10 @@ mod tests {
 
   #[test]
   fn test_delta_detection_config() {
-    let mut config = DeltaDetectionConfig::new("id");
     let mut seen_ids = HashSet::new();
     seen_ids.insert("1".to_string());
     seen_ids.insert("2".to_string());
-    config = DeltaDetectionConfig::with_seen_ids("id", seen_ids);
+    let config = DeltaDetectionConfig::with_seen_ids("id", seen_ids);
     assert_eq!(config.id_field, "id");
     assert_eq!(config.seen_ids.len(), 2);
   }

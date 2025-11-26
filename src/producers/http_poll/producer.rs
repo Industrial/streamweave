@@ -1,7 +1,6 @@
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
 use super::http_poll_producer::{
-  DeltaDetectionConfig, HttpPollProducer, HttpPollProducerConfig, HttpPollResponse,
-  PaginationConfig,
+  HttpPollProducer, HttpPollProducerConfig, HttpPollResponse, PaginationConfig,
 };
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::producer::{Producer, ProducerConfig};
@@ -10,9 +9,12 @@ use async_stream::stream;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
 use async_trait::async_trait;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
-use futures::StreamExt;
+use futures::Stream;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
-use reqwest::header::HeaderMap;
+use std::pin::Pin;
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+use chrono;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
 use std::collections::HashSet;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
@@ -21,6 +23,186 @@ use std::time::{Duration, Instant};
 use tokio::time::sleep;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
 use tracing::{error, warn};
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+fn create_http_poll_stream(
+  client_option: Option<reqwest::Client>,
+  http_config: HttpPollProducerConfig,
+  component_name: String,
+  error_strategy: ErrorStrategy<HttpPollResponse>,
+) -> Pin<Box<dyn Stream<Item = HttpPollResponse> + Send>> {
+  Box::pin(stream! {
+    // Create HTTP client if not already created
+    let client = match client_option {
+      Some(c) => c,
+      None => {
+        match reqwest::Client::builder()
+          .timeout(http_config.timeout)
+          .default_headers(HttpPollResponse::headers_to_reqwest(&http_config.headers))
+          .build()
+        {
+          Ok(c) => c,
+          Err(e) => {
+            error!(
+              component = %component_name,
+              error = %e,
+              "Failed to create HTTP client, producing empty stream"
+            );
+            return;
+          }
+        }
+      }
+    };
+
+    let mut request_count = 0;
+     let mut seen_ids: HashSet<String> = if let Some(ref delta) = http_config.delta_detection {
+       delta.seen_ids.clone()
+     } else {
+       HashSet::new()
+     };
+      let mut last_request_time: Option<Instant> = None;
+
+    // Poll loop
+    loop {
+      // Check max requests limit
+      if let Some(max) = http_config.max_requests && request_count >= max {
+        break;
+      }
+
+      // Rate limiting
+      if let Some(rps) = http_config.rate_limit && let Some(last_time) = last_request_time {
+        let elapsed = last_time.elapsed();
+        let min_interval = Duration::from_secs_f64(1.0 / rps);
+        if elapsed < min_interval {
+          sleep(min_interval - elapsed).await;
+        }
+      }
+
+      // Make HTTP request
+      let request_result = make_request(&client, &http_config, request_count).await;
+      last_request_time = Some(Instant::now());
+      request_count += 1;
+
+      match request_result {
+        Ok((response, _url)) => {
+          // Handle pagination
+          let mut responses = vec![response];
+          if let Some(ref pagination) = http_config.pagination {
+            match handle_pagination(&client, &http_config, pagination, request_count).await {
+              Ok(mut pages) => {
+                responses.append(&mut pages);
+              }
+              Err(e) => {
+                warn!(
+                  component = %component_name,
+                  error = %e,
+                  "Pagination handling failed, emitting initial response only"
+                );
+              }
+            }
+          }
+
+          // Process responses
+          for mut resp in responses {
+            // Delta detection
+            if let Some(ref delta_config) = http_config.delta_detection {
+              let items = extract_items_from_response(&resp.body, &delta_config.id_field);
+              let mut new_items = Vec::new();
+              for item in items {
+                if let Some(id_value) = item.get(&delta_config.id_field) {
+                  let id_str = id_value.to_string();
+                  if !seen_ids.contains(&id_str) {
+                    seen_ids.insert(id_str.clone());
+                    new_items.push(item);
+                  }
+                }
+              }
+
+              // Only emit if there are new items
+              if new_items.is_empty() {
+                continue;
+              }
+
+              // Create response with filtered items
+              let mut filtered_body = serde_json::json!({});
+              if let Some(obj) = resp.body.as_object_mut() {
+                // Try to preserve structure while replacing data array
+                for (key, value) in obj.iter() {
+                  if key == &delta_config.id_field {
+                    continue; // Skip ID field
+                  }
+                  filtered_body[key] = value.clone();
+                }
+                filtered_body["items"] = serde_json::Value::Array(
+                  new_items.into_iter().map(|item| serde_json::to_value(item).unwrap()).collect()
+                );
+              }
+
+              let filtered_response = HttpPollResponse::new(
+                resp.status,
+                resp.headers.clone(),
+                filtered_body,
+                resp.url.clone(),
+              );
+              yield filtered_response;
+            } else {
+              // No delta detection, emit all responses
+              yield resp;
+            }
+          }
+        }
+        Err(e) => {
+          let error = StreamError::new(
+            e,
+      ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: component_name.clone(),
+        component_type: std::any::type_name::<HttpPollProducer>().to_string(),
+      },
+      ComponentInfo {
+        name: component_name.clone(),
+        type_name: std::any::type_name::<HttpPollProducer>().to_string(),
+      },
+          );
+
+          match handle_error_strategy(&error_strategy, &error) {
+            ErrorAction::Stop => {
+              error!(
+                component = %component_name,
+                error = %error,
+                "Stopping due to HTTP request error"
+              );
+              break;
+            }
+            ErrorAction::Skip => {
+              warn!(
+                component = %component_name,
+                error = %error,
+                "Skipping due to HTTP request error, continuing to poll"
+              );
+              sleep(http_config.poll_interval).await;
+              continue;
+            }
+            ErrorAction::Retry => {
+              warn!(
+                component = %component_name,
+                error = %error,
+                "Retrying HTTP request after backoff"
+              );
+              sleep(http_config.retry_backoff).await;
+              request_count -= 1; // Don't count failed request
+              continue;
+            }
+          }
+        }
+      }
+
+      // Wait before next poll
+      sleep(http_config.poll_interval).await;
+    }
+  })
+}
 
 #[async_trait]
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
@@ -41,181 +223,10 @@ impl Producer for HttpPollProducer {
       .unwrap_or_else(|| "http_poll_producer".to_string());
     let error_strategy = self.config.error_strategy.clone();
 
-    Box::pin(stream! {
-      // Create HTTP client if not already created
-      let client = match self.client.take() {
-        Some(c) => c,
-        None => {
-          match reqwest::Client::builder()
-            .timeout(http_config.timeout)
-            .default_headers(http_config.headers.clone())
-            .build()
-          {
-            Ok(c) => c,
-            Err(e) => {
-              error!(
-                component = %component_name,
-                error = %e,
-                "Failed to create HTTP client, producing empty stream"
-              );
-              return;
-            }
-          }
-        }
-      };
+    // Create HTTP client if not already created
+    let client_option = self.client.take();
 
-      let mut request_count = 0;
-      let mut seen_ids: HashSet<String> = if let Some(ref delta) = http_config.delta_detection {
-        delta.seen_ids.clone()
-      } else {
-        HashSet::new()
-      };
-      let mut last_request_time = self.last_request_time;
-
-      // Poll loop
-      loop {
-        // Check max requests limit
-        if let Some(max) = http_config.max_requests {
-          if request_count >= max {
-            break;
-          }
-        }
-
-        // Rate limiting
-        if let Some(rps) = http_config.rate_limit {
-          if let Some(last_time) = last_request_time {
-            let elapsed = last_time.elapsed();
-            let min_interval = Duration::from_secs_f64(1.0 / rps);
-            if elapsed < min_interval {
-              sleep(min_interval - elapsed).await;
-            }
-          }
-        }
-
-        // Make HTTP request
-        let request_result = make_request(&client, &http_config, request_count).await;
-        last_request_time = Some(Instant::now());
-        request_count += 1;
-
-        match request_result {
-          Ok((response, url)) => {
-            // Handle pagination
-            let mut responses = vec![response];
-            if let Some(ref pagination) = http_config.pagination {
-              match handle_pagination(&client, &http_config, pagination, request_count).await {
-                Ok(mut pages) => {
-                  responses.append(&mut pages);
-                }
-                Err(e) => {
-                  warn!(
-                    component = %component_name,
-                    error = %e,
-                    "Pagination handling failed, emitting initial response only"
-                  );
-                }
-              }
-            }
-
-            // Process responses
-            for resp in responses {
-              // Delta detection
-              if let Some(ref delta_config) = http_config.delta_detection {
-                let items = extract_items_from_response(&resp.body, &delta_config.id_field);
-                let mut new_items = Vec::new();
-                for item in items {
-                  if let Some(id_value) = item.get(&delta_config.id_field) {
-                    let id_str = id_value.to_string();
-                    if !seen_ids.contains(&id_str) {
-                      seen_ids.insert(id_str.clone());
-                      new_items.push(item);
-                    }
-                  }
-                }
-
-                // Only emit if there are new items
-                if new_items.is_empty() {
-                  continue;
-                }
-
-                // Create response with filtered items
-                let mut filtered_body = serde_json::json!({});
-                if let Some(obj) = resp.body.as_object_mut() {
-                  // Try to preserve structure while replacing data array
-                  for (key, value) in obj.iter() {
-                    if key == &delta_config.id_field {
-                      continue; // Skip ID field
-                    }
-                    filtered_body[key] = value.clone();
-                  }
-                  filtered_body["items"] = serde_json::Value::Array(
-                    new_items.into_iter().map(|item| serde_json::to_value(item).unwrap()).collect()
-                  );
-                }
-
-                let filtered_response = HttpPollResponse::new(
-                  resp.status,
-                  resp.headers.clone(),
-                  filtered_body,
-                  resp.url.clone(),
-                );
-                yield filtered_response;
-              } else {
-                // No delta detection, emit all responses
-                yield resp;
-              }
-            }
-          }
-          Err(e) => {
-            let error = StreamError::new(
-              Box::new(e),
-              ErrorContext {
-                timestamp: chrono::Utc::now(),
-                item: None,
-                component_name: component_name.clone(),
-                component_type: std::any::type_name::<Self>().to_string(),
-              },
-              ComponentInfo {
-                name: component_name.clone(),
-                type_name: std::any::type_name::<Self>().to_string(),
-              },
-            );
-
-            match handle_error_strategy(&error_strategy, &error) {
-              ErrorAction::Stop => {
-                error!(
-                  component = %component_name,
-                  error = %error,
-                  "Stopping due to HTTP request error"
-                );
-                break;
-              }
-              ErrorAction::Skip => {
-                warn!(
-                  component = %component_name,
-                  error = %error,
-                  "Skipping due to HTTP request error, continuing to poll"
-                );
-                sleep(http_config.poll_interval).await;
-                continue;
-              }
-              ErrorAction::Retry => {
-                warn!(
-                  component = %component_name,
-                  error = %error,
-                  "Retrying HTTP request after backoff"
-                );
-                sleep(http_config.retry_backoff).await;
-                request_count -= 1; // Don't count failed request
-                continue;
-              }
-            }
-          }
-        }
-
-        // Wait before next poll
-        sleep(http_config.poll_interval).await;
-      }
-    })
+    create_http_poll_stream(client_option, http_config, component_name, error_strategy)
   }
 
   fn set_config_impl(&mut self, config: ProducerConfig<HttpPollResponse>) {
@@ -241,7 +252,7 @@ async fn make_request(
   let url = build_request_url(config, request_num)?;
 
   // Build request
-  let mut request = match config.method.as_str() {
+  let request = match config.method.as_str() {
     "GET" => client.get(&url),
     "POST" => {
       let mut req = client.post(&url);
@@ -267,7 +278,7 @@ async fn make_request(
       Some(req) => match req.send().await {
         Ok(response) => {
           let status = response.status().as_u16();
-          let headers = response.headers().clone();
+          let headers = HttpPollResponse::headers_from_reqwest(response.headers());
           let body = response.json::<serde_json::Value>().await?;
 
           return Ok((
@@ -278,14 +289,14 @@ async fn make_request(
         Err(e) => {
           last_error = Some(e);
           if attempt < config.retries {
-            sleep(config.retry_backoff * (attempt as u32 + 1)).await;
+            sleep(config.retry_backoff * (attempt + 1)).await;
             continue;
           }
         }
       },
       None => {
         // Request cannot be cloned (e.g., has a body), make fresh request
-        let mut req = match config.method.as_str() {
+        let req = match config.method.as_str() {
           "GET" => client.get(&url),
           "POST" => {
             let mut r = client.post(&url);
@@ -307,7 +318,7 @@ async fn make_request(
         match req.send().await {
           Ok(response) => {
             let status = response.status().as_u16();
-            let headers = response.headers().clone();
+            let headers = HttpPollResponse::headers_from_reqwest(response.headers());
             let body = response.json::<serde_json::Value>().await?;
 
             return Ok((
@@ -318,7 +329,7 @@ async fn make_request(
           Err(e) => {
             last_error = Some(e);
             if attempt < config.retries {
-              sleep(config.retry_backoff * (attempt as u32 + 1)).await;
+              sleep(config.retry_backoff * (attempt + 1)).await;
               continue;
             }
           }
@@ -337,19 +348,17 @@ fn build_request_url(
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
   let mut url = config.url.clone();
 
-  if let Some(ref pagination) = config.pagination {
-    if let PaginationConfig::QueryParameter {
-      ref page_param,
-      limit_param: _,
-      step,
-      start,
-      max_pages: _,
-    } = pagination
-    {
-      let page_value = start + (request_num * step);
-      let separator = if url.contains('?') { "&" } else { "?" };
-      url.push_str(&format!("{}{}={}", separator, page_param, page_value));
-    }
+  if let Some(PaginationConfig::QueryParameter {
+    ref page_param,
+    limit_param: _,
+    step,
+    start,
+    max_pages: _,
+  }) = config.pagination
+  {
+    let page_value = start + (request_num * step);
+    let separator = if url.contains('?') { "&" } else { "?" };
+    url.push_str(&format!("{}{}={}", separator, page_param, page_value));
   }
 
   Ok(url)
@@ -381,7 +390,7 @@ async fn handle_pagination(
           break; // Stop pagination on error
         }
 
-        let headers = response.headers().clone();
+        let headers = HttpPollResponse::headers_from_reqwest(response.headers());
         let body = response.json::<serde_json::Value>().await?;
 
         // Check if this page has data
@@ -415,7 +424,7 @@ async fn handle_pagination(
           break;
         }
 
-        let headers = response.headers().clone();
+        let headers = HttpPollResponse::headers_from_reqwest(response.headers());
         let body = response.json::<serde_json::Value>().await?;
 
         responses.push(HttpPollResponse::new(
@@ -450,7 +459,7 @@ async fn handle_pagination(
           break;
         }
 
-        let headers = response.headers().clone();
+        let headers = HttpPollResponse::headers_from_reqwest(response.headers());
         let body = response.json::<serde_json::Value>().await?;
 
         responses.push(HttpPollResponse::new(
@@ -482,10 +491,10 @@ fn extract_items_from_response(
 
   if let Some(array) = body.as_array() {
     for item in array {
-      if let Some(obj) = item.as_object() {
-        if obj.contains_key(id_field) {
-          items.push(obj.clone());
-        }
+      if let Some(obj) = item.as_object()
+        && obj.contains_key(id_field)
+      {
+        items.push(obj.clone());
       }
     }
   } else if let Some(obj) = body.as_object() {
@@ -493,10 +502,10 @@ fn extract_items_from_response(
     for field in &["data", "items", "results", "records"] {
       if let Some(array) = obj.get(*field).and_then(|v| v.as_array()) {
         for item in array {
-          if let Some(item_obj) = item.as_object() {
-            if item_obj.contains_key(id_field) {
-              items.push(item_obj.clone());
-            }
+          if let Some(item_obj) = item.as_object()
+            && item_obj.contains_key(id_field)
+          {
+            items.push(item_obj.clone());
           }
         }
       }
@@ -513,10 +522,10 @@ fn has_data(body: &serde_json::Value) -> bool {
   } else if let Some(obj) = body.as_object() {
     // Check common data fields
     for field in &["data", "items", "results", "records"] {
-      if let Some(array) = obj.get(*field).and_then(|v| v.as_array()) {
-        if !array.is_empty() {
-          return true;
-        }
+      if let Some(array) = obj.get(*field).and_then(|v| v.as_array())
+        && !array.is_empty()
+      {
+        return true;
       }
     }
     false
@@ -535,32 +544,32 @@ fn is_last_page(body: &serde_json::Value) -> bool {
     if let Some(next) = obj.get("next") {
       return next.is_null();
     }
-    if let Some(page) = obj.get("page").and_then(|v| v.as_u64()) {
-      if let Some(total_pages) = obj.get("total_pages").and_then(|v| v.as_u64()) {
-        return page >= total_pages;
-      }
+    if let Some(page) = obj.get("page").and_then(|v| v.as_u64())
+      && let Some(total_pages) = obj.get("total_pages").and_then(|v| v.as_u64())
+    {
+      return page >= total_pages;
     }
   }
   false
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
-fn extract_next_url_from_link_header(headers: &HeaderMap) -> Option<String> {
+fn extract_next_url_from_link_header(
+  headers: &std::collections::HashMap<String, String>,
+) -> Option<String> {
   headers.get("link").and_then(|link_value| {
-    link_value.to_str().ok().and_then(|link_str| {
-      // Parse Link header: <url>; rel="next"
-      for link in link_str.split(',') {
-        let parts: Vec<&str> = link.split(';').collect();
-        if parts.len() >= 2 {
-          let url = parts[0].trim().trim_matches('<').trim_matches('>');
-          let rel = parts[1].trim();
-          if rel.contains("rel=\"next\"") || rel.contains("rel='next'") {
-            return Some(url.to_string());
-          }
+    // Parse Link header: <url>; rel="next"
+    for link in link_value.split(',') {
+      let parts: Vec<&str> = link.split(';').collect();
+      if parts.len() >= 2 {
+        let url = parts[0].trim().trim_matches('<').trim_matches('>');
+        let rel = parts[1].trim();
+        if rel.contains("rel=\"next\"") || rel.contains("rel='next'") {
+          return Some(url.to_string());
         }
       }
-      None
-    })
+    }
+    None
   })
 }
 

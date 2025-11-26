@@ -1,15 +1,12 @@
 #[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
-use super::redis_streams_producer::{
-  RedisStreamsConsumerConfig, RedisStreamsMessage, RedisStreamsProducer,
-};
+use super::redis_streams_producer::{RedisStreamsMessage, RedisStreamsProducer};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::producer::{Producer, ProducerConfig};
 #[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
 use async_stream::stream;
 #[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
 use async_trait::async_trait;
-#[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
-use futures::StreamExt;
+
 #[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
 use redis::{
   AsyncCommands, Client, RedisResult,
@@ -57,7 +54,7 @@ impl Producer for RedisStreamsProducer {
         }
       };
 
-      let mut connection: ConnectionManager = match client.get_tokio_connection_manager().await {
+      let mut connection: ConnectionManager = match client.get_connection_manager().await {
         Ok(conn) => conn,
         Err(e) => {
           error!(
@@ -73,27 +70,44 @@ impl Producer for RedisStreamsProducer {
       let mut start_id = redis_config.start_id.clone();
 
       // Create consumer group if specified
-      if let (Some(ref group), Some(ref consumer)) = (&redis_config.group, &redis_config.consumer) {
+      if let (Some(group), Some(_consumer)) = (&redis_config.group, &redis_config.consumer) {
         // Try to create consumer group (ignore if it already exists)
-        let _: RedisResult<()> = connection.xgroup_create(&stream_name, group, &start_id, true).await;
+        let _: RedisResult<()> = connection.xgroup_create(&stream_name, group, &start_id).await;
         start_id = ">".to_string(); // Use '>' to read new messages in consumer group
       }
 
       // Poll for messages
       loop {
-        let read_options = StreamReadOptions::default()
+        let _read_options = StreamReadOptions::default()
           .count(redis_config.count.unwrap_or(1))
-          .block(redis_config.block_ms);
+          .block(redis_config.block_ms.try_into().unwrap());
 
-        let result: RedisResult<StreamReadReply> = if let (Some(ref group), Some(ref consumer)) = (&redis_config.group, &redis_config.consumer) {
-          // Read from consumer group
-          connection
-            .xreadgroup(group, consumer, &[(&stream_name, &start_id)], &read_options)
+        let result: RedisResult<StreamReadReply> = if let (Some(group), Some(consumer)) = (&redis_config.group, &redis_config.consumer) {
+          // Read from consumer group using command interface
+          redis::cmd("XREADGROUP")
+            .arg("GROUP")
+            .arg(group)
+            .arg(consumer)
+            .arg("COUNT")
+            .arg(redis_config.count.unwrap_or(1))
+            .arg("BLOCK")
+            .arg(redis_config.block_ms)
+            .arg("STREAMS")
+            .arg(&stream_name)
+            .arg(&start_id)
+            .query_async(&mut connection)
             .await
         } else {
           // Simple XREAD
-          connection
-            .xread(&[(&stream_name, &start_id)], &read_options)
+          redis::cmd("XREAD")
+            .arg("COUNT")
+            .arg(redis_config.count.unwrap_or(1))
+            .arg("BLOCK")
+            .arg(redis_config.block_ms)
+            .arg("STREAMS")
+            .arg(&stream_name)
+            .arg(&start_id)
+            .query_async(&mut connection)
             .await
         };
 
@@ -105,7 +119,7 @@ impl Producer for RedisStreamsProducer {
                 for (field, value) in stream_id.map.iter() {
                   fields.insert(
                     field.clone(),
-                    String::from_utf8_lossy(value).to_string(),
+                    format!("{:?}", value),
                   );
                 }
 
@@ -116,18 +130,15 @@ impl Producer for RedisStreamsProducer {
                 };
 
                 // Acknowledge message if auto-ack is enabled and using consumer groups
-                if redis_config.auto_ack {
-                  if let Some(ref group) = redis_config.group {
-                    if let Err(e) = connection.xack(&stream_name, group, &[&stream_id.id]).await {
-                      warn!(
-                        component = %component_name,
-                        message_id = %stream_id.id,
-                        error = %e,
-                        "Failed to acknowledge message"
-                      );
-                    }
+                if redis_config.auto_ack && let Some(ref group) = redis_config.group
+                  && let Err(e) = connection.xack::<&str, &str, &str, ()>(&stream_name, group, &[&stream_id.id]).await {
+                    warn!(
+                      component = %component_name,
+                      message_id = %stream_id.id,
+                      error = %e,
+                      "Failed to acknowledge message"
+                    );
                   }
-                }
 
                 yield message;
                 start_id = stream_id.id.clone();

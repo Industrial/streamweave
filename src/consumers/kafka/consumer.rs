@@ -1,5 +1,5 @@
 #[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
-use super::kafka_consumer::{KafkaConsumer, KafkaProducerConfig};
+use super::kafka_consumer::KafkaConsumer;
 use crate::consumer::{Consumer, ConsumerConfig};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 #[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
@@ -44,12 +44,12 @@ where
     let mut client_config = ClientConfig::new();
     client_config.set("bootstrap.servers", &kafka_config.bootstrap_servers);
     client_config.set("acks", &kafka_config.acks);
-    client_config.set("retries", &kafka_config.retries.to_string());
-    client_config.set("batch.size", &kafka_config.batch_size.to_string());
-    client_config.set("linger.ms", &kafka_config.linger_ms.to_string());
+    client_config.set("retries", kafka_config.retries.to_string());
+    client_config.set("batch.size", kafka_config.batch_size.to_string());
+    client_config.set("linger.ms", kafka_config.linger_ms.to_string());
     client_config.set(
       "max.request.size",
-      &kafka_config.max_request_size.to_string(),
+      kafka_config.max_request_size.to_string(),
     );
 
     if kafka_config.compression_type != "none" {

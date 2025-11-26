@@ -1,13 +1,12 @@
 #[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
-use super::kafka_producer::{KafkaConsumerConfig, KafkaMessage, KafkaProducer};
+use super::kafka_producer::{KafkaMessage, KafkaProducer};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::producer::{Producer, ProducerConfig};
 #[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
 use async_stream::stream;
 #[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
 use async_trait::async_trait;
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
-use futures::StreamExt;
+
 #[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
 use rdkafka::{
   ClientContext, Statistics,
@@ -16,10 +15,7 @@ use rdkafka::{
   consumer::{Consumer, ConsumerContext},
   message::{BorrowedMessage, Headers, Message},
 };
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
-use serde::Deserialize;
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
-use std::sync::Arc;
+
 #[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
 use std::time::Duration;
 #[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
@@ -84,19 +80,19 @@ impl Producer for KafkaProducer {
       );
       client_config.set(
         "auto.commit.interval.ms",
-        &kafka_config.auto_commit_interval_ms.to_string(),
+        kafka_config.auto_commit_interval_ms.to_string(),
       );
 
       // Set session and poll timeouts
-      client_config.set("session.timeout.ms", &kafka_config.session_timeout_ms.to_string());
+      client_config.set("session.timeout.ms", kafka_config.session_timeout_ms.to_string());
       client_config.set(
         "max.poll.interval.ms",
-        &kafka_config.max_poll_interval_ms.to_string(),
+        kafka_config.max_poll_interval_ms.to_string(),
       );
 
       // Set fetch settings
-      client_config.set("fetch.max.bytes", &kafka_config.fetch_max_bytes.to_string());
-      client_config.set("fetch.wait.max.ms", &kafka_config.fetch_wait_max_ms.to_string());
+      client_config.set("fetch.max.bytes", kafka_config.fetch_max_bytes.to_string());
+      client_config.set("fetch.wait.max.ms", kafka_config.fetch_wait_max_ms.to_string());
 
       // Apply custom properties
       for (key, value) in &kafka_config.custom_properties {
@@ -201,7 +197,7 @@ fn convert_message(message: &BorrowedMessage<'_>) -> KafkaMessage {
   let mut headers = std::collections::HashMap::new();
   if let Some(message_headers) = message.headers() {
     for header in message_headers.iter() {
-      if let (Some(key), Some(value)) = (header.key, header.value) {
+      if let (key, Some(value)) = (header.key, header.value) {
         headers.insert(key.to_string(), value.to_vec());
       }
     }

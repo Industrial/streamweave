@@ -1,7 +1,6 @@
 use crate::consumer::ConsumerConfig;
 use crate::error::ErrorStrategy;
 use serde::Serialize;
-use std::collections::HashMap;
 
 /// Configuration for Redis Streams producer behavior.
 #[derive(Debug, Clone)]

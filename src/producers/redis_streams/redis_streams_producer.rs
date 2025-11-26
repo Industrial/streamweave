@@ -2,7 +2,6 @@ use crate::error::ErrorStrategy;
 use crate::producer::ProducerConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::time::Duration;
 
 /// Configuration for Redis Streams consumer behavior.
 #[derive(Debug, Clone)]

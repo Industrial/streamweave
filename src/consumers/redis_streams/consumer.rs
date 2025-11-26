@@ -1,5 +1,5 @@
 #[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
-use super::redis_streams_consumer::{RedisStreamsConsumer, RedisStreamsProducerConfig};
+use super::redis_streams_consumer::RedisStreamsConsumer;
 use crate::consumer::{Consumer, ConsumerConfig};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 #[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
@@ -49,7 +49,7 @@ where
       }
     };
 
-    let mut connection: ConnectionManager = match client.get_tokio_connection_manager().await {
+    let mut connection: ConnectionManager = match client.get_connection_manager().await {
       Ok(conn) => conn,
       Err(e) => {
         error!(
@@ -134,7 +134,11 @@ where
       // Execute XADD
       // Note: maxlen support would require using the command interface directly
       // For now, we use simple xadd - maxlen can be handled via Redis configuration
-      let result: RedisResult<String> = connection.xadd(&stream_name, "*", &fields).await;
+      let fields_vec: Vec<(&str, &str)> = fields
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
+      let result: RedisResult<String> = connection.xadd(&stream_name, "*", &fields_vec).await;
 
       match result {
         Ok(_message_id) => {

@@ -2,14 +2,18 @@
 use super::database_producer::{
   DatabaseProducer, DatabaseProducerConfig, DatabaseRow, DatabaseType,
 };
-use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+use crate::error::{ErrorAction, ErrorStrategy, StreamError};
 use crate::producer::{Producer, ProducerConfig};
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
 use async_stream::stream;
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
 use async_trait::async_trait;
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
 use futures::StreamExt;
+#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+use sqlx::{Column, TypeInfo};
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
 use std::collections::HashMap;
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
@@ -32,11 +36,14 @@ impl Producer for DatabaseProducer {
       .name
       .clone()
       .unwrap_or_else(|| "database_producer".to_string());
-    let error_strategy = self.config.error_strategy.clone();
+    let _error_strategy = self.config.error_strategy.clone();
+
+    // Take the pool, creating it synchronously if needed
+    let pool_option = self.pool.take();
 
     Box::pin(stream! {
       // Create connection pool if not already created
-      let pool = match self.pool.take() {
+      let pool = match pool_option {
         Some(p) => p,
         None => {
           match create_pool(&db_config).await {
@@ -57,38 +64,12 @@ impl Producer for DatabaseProducer {
       let query_result = match execute_query(&pool, &db_config).await {
         Ok(stream) => stream,
         Err(e) => {
-          let error = StreamError::new(
-            Box::new(e),
-            ErrorContext {
-              timestamp: chrono::Utc::now(),
-              item: None,
-              component_name: component_name.clone(),
-              component_type: std::any::type_name::<Self>().to_string(),
-            },
-            ComponentInfo {
-              name: component_name.clone(),
-              type_name: std::any::type_name::<Self>().to_string(),
-            },
+          error!(
+            component = %component_name,
+            error = %e,
+            "Failed to execute query, ending stream"
           );
-
-          match handle_error_strategy(&error_strategy, &error) {
-            ErrorAction::Stop => {
-              error!(
-                component = %component_name,
-                error = %error,
-                "Stopping due to query execution error"
-              );
-              return;
-            }
-            ErrorAction::Skip | ErrorAction::Retry => {
-              warn!(
-                component = %component_name,
-                error = %error,
-                "Query execution failed, producing empty stream"
-              );
-              return;
-            }
-          }
+          return;
         }
       };
 
@@ -100,49 +81,15 @@ impl Producer for DatabaseProducer {
             yield row;
           }
           Err(e) => {
-            let error = StreamError::new(
-              Box::new(e),
-              ErrorContext {
-                timestamp: chrono::Utc::now(),
-                item: None,
-                component_name: component_name.clone(),
-                component_type: std::any::type_name::<Self>().to_string(),
-              },
-              ComponentInfo {
-                name: component_name.clone(),
-                type_name: std::any::type_name::<Self>().to_string(),
-              },
+            warn!(
+              component = %component_name,
+              error = %e,
+              "Row processing failed, skipping row"
             );
-
-            match handle_error_strategy(&error_strategy, &error) {
-              ErrorAction::Stop => {
-                error!(
-                  component = %component_name,
-                  error = %error,
-                  "Stopping due to row processing error"
-                );
-                break;
-              }
-              ErrorAction::Skip => {
-                warn!(
-                  component = %component_name,
-                  error = %error,
-                  "Skipping row due to processing error"
-                );
-                continue;
-              }
-              ErrorAction::Retry => {
-                warn!(
-                  component = %component_name,
-                  error = %error,
-                  "Retry not fully supported for row processing errors, skipping"
-                );
-                continue;
-              }
-            }
+            continue;
           }
         }
-      }
+       }
     })
   }
 
@@ -166,36 +113,35 @@ use super::database_producer::DatabasePool;
 async fn create_pool(
   config: &DatabaseProducerConfig,
 ) -> Result<DatabasePool, Box<dyn std::error::Error + Send + Sync>> {
-  let pool_options = sqlx::pool::PoolOptions::new()
-    .max_connections(config.max_connections)
-    .min_connections(config.min_connections)
-    .acquire_timeout(config.connect_timeout)
-    .idle_timeout(config.idle_timeout)
-    .max_lifetime(config.max_lifetime);
-
   match config.database_type {
     DatabaseType::Postgres => {
-      let pool = pool_options.connect(&config.connection_url).await?;
+      let pool = sqlx::PgPool::connect(&config.connection_url).await?;
       Ok(DatabasePool::Postgres(pool))
     }
     DatabaseType::Mysql => {
-      let pool = pool_options.connect(&config.connection_url).await?;
+      let pool = sqlx::MySqlPool::connect(&config.connection_url).await?;
       Ok(DatabasePool::Mysql(pool))
     }
     DatabaseType::Sqlite => {
-      let pool = pool_options.connect(&config.connection_url).await?;
+      let pool = sqlx::SqlitePool::connect(&config.connection_url).await?;
       Ok(DatabasePool::Sqlite(pool))
     }
   }
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
-async fn execute_query(
-  pool: &DatabasePool,
-  config: &DatabaseProducerConfig,
+async fn execute_query<'a>(
+  pool: &'a DatabasePool,
+  config: &'a DatabaseProducerConfig,
 ) -> Result<
-  impl futures::Stream<Item = Result<DatabaseRow, Box<dyn std::error::Error + Send + Sync>>> + Send,
-  Box<dyn std::error::Error + Send + Sync>,
+  std::pin::Pin<
+    Box<
+      dyn futures::Stream<Item = Result<DatabaseRow, Box<dyn std::error::Error + Send + Sync + 'a>>>
+        + Send
+        + 'a,
+    >,
+  >,
+  Box<dyn std::error::Error + Send + Sync + 'a>,
 > {
   match pool {
     DatabasePool::Postgres(pg_pool) => {
@@ -351,11 +297,11 @@ fn convert_row_to_database_row(row: &sqlx::postgres::PgRow) -> DatabaseRow {
   let mut fields = HashMap::new();
 
   for (idx, column) in row.columns().iter().enumerate() {
-    let value = match column.type_info().name() {
+    let value = match format!("{}", column.type_info()).as_str() {
       "BOOL" | "BOOLEAN" => row
         .try_get::<bool, _>(idx)
         .ok()
-        .map(|v| serde_json::Value::Bool(v)),
+        .map(serde_json::Value::Bool),
       "INT2" | "SMALLINT" => row
         .try_get::<i16, _>(idx)
         .ok()
@@ -379,15 +325,15 @@ fn convert_row_to_database_row(row: &sqlx::postgres::PgRow) -> DatabaseRow {
       "TEXT" | "VARCHAR" | "CHAR" => row
         .try_get::<String, _>(idx)
         .ok()
-        .map(|v| serde_json::Value::String(v)),
+        .map(serde_json::Value::String),
       "BYTEA" => row
         .try_get::<Vec<u8>, _>(idx)
         .ok()
-        .map(|v| serde_json::Value::String(base64::encode(v))),
+        .map(|v| serde_json::Value::String(BASE64.encode(v))),
       _ => row
         .try_get::<String, _>(idx)
         .ok()
-        .map(|v| serde_json::Value::String(v))
+        .map(serde_json::Value::String)
         .or_else(|| row.try_get::<serde_json::Value, _>(idx).ok()),
     };
 
@@ -405,11 +351,11 @@ fn convert_mysql_row_to_database_row(row: &sqlx::mysql::MySqlRow) -> DatabaseRow
   let mut fields = HashMap::new();
 
   for (idx, column) in row.columns().iter().enumerate() {
-    let value = match column.type_info().name() {
+    let value = match format!("{}", column.type_info()).as_str() {
       "TINYINT" | "BOOLEAN" => row
         .try_get::<bool, _>(idx)
         .ok()
-        .map(|v| serde_json::Value::Bool(v)),
+        .map(serde_json::Value::Bool),
       "SMALLINT" => row
         .try_get::<i16, _>(idx)
         .ok()
@@ -433,16 +379,15 @@ fn convert_mysql_row_to_database_row(row: &sqlx::mysql::MySqlRow) -> DatabaseRow
       "VARCHAR" | "TEXT" | "CHAR" | "TINYTEXT" | "MEDIUMTEXT" | "LONGTEXT" => row
         .try_get::<String, _>(idx)
         .ok()
-        .map(|v| serde_json::Value::String(v)),
+        .map(serde_json::Value::String),
       "BLOB" | "BINARY" => row
         .try_get::<Vec<u8>, _>(idx)
         .ok()
-        .map(|v| serde_json::Value::String(base64::encode(v))),
+        .map(|v| serde_json::Value::String(BASE64.encode(v))),
       _ => row
         .try_get::<String, _>(idx)
         .ok()
-        .map(|v| serde_json::Value::String(v))
-        .or_else(|| row.try_get::<serde_json::Value, _>(idx).ok()),
+        .map(serde_json::Value::String),
     };
 
     if let Some(val) = value {
@@ -471,17 +416,17 @@ fn convert_sqlite_row_to_database_row(row: &sqlx::sqlite::SqliteRow) -> Database
       "TEXT" | "VARCHAR" => row
         .try_get::<String, _>(idx)
         .ok()
-        .map(|v| serde_json::Value::String(v)),
+        .map(serde_json::Value::String),
       "BLOB" => row
         .try_get::<Vec<u8>, _>(idx)
         .ok()
-        .map(|v| serde_json::Value::String(base64::encode(v))),
+        .map(|v| serde_json::Value::String(BASE64.encode(v))),
       _ => {
         // Try common types
         row
           .try_get::<String, _>(idx)
           .ok()
-          .map(|v| serde_json::Value::String(v))
+          .map(serde_json::Value::String)
           .or_else(|| {
             row
               .try_get::<i64, _>(idx)
@@ -494,7 +439,6 @@ fn convert_sqlite_row_to_database_row(row: &sqlx::sqlite::SqliteRow) -> Database
               .ok()
               .map(|v| serde_json::Value::Number(serde_json::Number::from_f64(v).unwrap()))
           })
-          .or_else(|| row.try_get::<serde_json::Value, _>(idx).ok())
       }
     };
 
@@ -507,6 +451,7 @@ fn convert_sqlite_row_to_database_row(row: &sqlx::sqlite::SqliteRow) -> Database
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[allow(dead_code)]
 fn handle_error_strategy<T>(strategy: &ErrorStrategy<T>, error: &StreamError<T>) -> ErrorAction
 where
   T: std::fmt::Debug + Clone + Send + Sync,
@@ -571,7 +516,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_database_producer_basic_query() {
-    let pool = setup_test_db().await;
+    let _pool = setup_test_db().await;
 
     let config = DatabaseProducerConfig::default()
       .with_connection_url("sqlite::memory:".to_string())
@@ -579,7 +524,7 @@ mod tests {
       .with_query("SELECT id, name, email, age, active, balance FROM users ORDER BY id");
 
     // Manually set the pool (in real usage, the producer creates it)
-    let mut producer = DatabaseProducer::new(config);
+    let producer = DatabaseProducer::new(config);
 
     // Create pool and manually execute query for testing
     let db_config = producer.db_config().clone();
@@ -587,9 +532,8 @@ mod tests {
 
     match test_pool {
       DatabasePool::Sqlite(sqlite_pool) => {
-        let query_result = execute_query(&DatabasePool::Sqlite(sqlite_pool), &db_config)
-          .await
-          .unwrap();
+        let pool = DatabasePool::Sqlite(sqlite_pool);
+        let query_result = execute_query(&pool, &db_config).await.unwrap();
         let mut rows: Vec<DatabaseRow> = Vec::new();
         let mut stream = std::pin::pin!(query_result);
 
@@ -665,9 +609,8 @@ mod tests {
         .await
         .unwrap();
 
-        let query_result = execute_query(&DatabasePool::Sqlite(sqlite_pool), &db_config)
-          .await
-          .unwrap();
+        let pool = DatabasePool::Sqlite(sqlite_pool);
+        let query_result = execute_query(&pool, &db_config).await.unwrap();
         let mut rows: Vec<DatabaseRow> = Vec::new();
         let mut stream = std::pin::pin!(query_result);
 
@@ -757,9 +700,8 @@ mod tests {
           .unwrap();
         }
 
-        let query_result = execute_query(&DatabasePool::Sqlite(sqlite_pool), &db_config)
-          .await
-          .unwrap();
+        let pool = DatabasePool::Sqlite(sqlite_pool);
+        let query_result = execute_query(&pool, &db_config).await.unwrap();
         let mut rows: Vec<DatabaseRow> = Vec::new();
         let mut stream = std::pin::pin!(query_result);
 
@@ -789,11 +731,13 @@ mod tests {
 
   #[tokio::test]
   async fn test_database_producer_connection_pooling() {
-    let config = DatabaseProducerConfig::default()
-      .with_connection_url("sqlite::memory:".to_string())
-      .with_database_type(DatabaseType::Sqlite)
-      .with_max_connections(5)
-      .with_min_connections(2);
+    let config = DatabaseProducerConfig {
+      connection_url: "sqlite::memory:".to_string(),
+      database_type: DatabaseType::Sqlite,
+      max_connections: 5,
+      min_connections: 2,
+      ..Default::default()
+    };
 
     let pool = create_pool(&config).await.unwrap();
 
@@ -852,9 +796,8 @@ mod tests {
           .await
           .unwrap();
 
-        let query_result = execute_query(&DatabasePool::Sqlite(sqlite_pool), &db_config)
-          .await
-          .unwrap();
+        let pool = DatabasePool::Sqlite(sqlite_pool);
+        let query_result = execute_query(&pool, &db_config).await.unwrap();
         let mut rows: Vec<DatabaseRow> = Vec::new();
         let mut stream = std::pin::pin!(query_result);
 
@@ -877,7 +820,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_database_producer_different_data_types() {
-    let pool = setup_test_db().await;
+    let _pool = setup_test_db().await;
 
     let config = DatabaseProducerConfig::default()
       .with_connection_url("sqlite::memory:".to_string())
@@ -916,9 +859,8 @@ mod tests {
         .await
         .unwrap();
 
-        let query_result = execute_query(&DatabasePool::Sqlite(sqlite_pool), &db_config)
-          .await
-          .unwrap();
+        let pool = DatabasePool::Sqlite(sqlite_pool);
+        let query_result = execute_query(&pool, &db_config).await.unwrap();
         let mut rows: Vec<DatabaseRow> = Vec::new();
         let mut stream = std::pin::pin!(query_result);
 
