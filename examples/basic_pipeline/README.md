@@ -8,7 +8,7 @@ This example demonstrates the most basic usage of StreamWeave by creating a simp
 ## Running the Example
 
 ```bash
-cargo run --example 01_basic_pipeline
+cargo run --example basic_pipeline
 ```
 
 ## Expected Output
