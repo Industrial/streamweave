@@ -451,7 +451,7 @@
             "id": 3,
             "title": "Implement database query producer",
             "description": "Add SQL database producer for query results",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nDatabase queries are a common data source.\n\n## Requirements\n\n- Support PostgreSQL and MySQL\n- Cursor-based iteration for large results\n- Parameterized queries\n- Connection pooling\n\n## Acceptance Criteria\n\n- [ ] Large query results streamed efficiently\n- [ ] Memory usage bounded\n- [ ] Connection pool managed correctly\n- [ ] Multiple databases supported\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
@@ -467,6 +467,119 @@
       },
       {
         "id": 10,
+        "title": "Create Comprehensive Examples",
+        "description": "Create examples demonstrating all major functionality to help users understand and adopt StreamWeave features.",
+        "status": "pending",
+        "priority": "medium",
+        "dependencies": [
+          9
+        ],
+        "details": "## Context\n\nExamples are essential for helping users understand how to use StreamWeave effectively. While we have basic and advanced pipeline examples, many key features lack dedicated examples showing real-world usage patterns.\n\n## Implementation Approach\n\n1. Create example for each major integration (Kafka, Redis, Database, HTTP)\n2. Add examples for advanced transformers and patterns\n3. Create examples demonstrating error handling and resilience patterns\n4. Update README.md to reflect current capabilities\n\n## Technical Considerations\n\n- Examples should be runnable and well-documented\n- Use realistic scenarios that demonstrate value\n- Include setup instructions for external dependencies\n- Show both simple and complex use cases\n- Each example should have a README with explanation",
+        "testStrategy": "## Acceptance Criteria\n\n- [ ] Each example compiles and runs successfully\n- [ ] Examples demonstrate real-world usage patterns\n- [ ] All examples have README with setup instructions\n- [ ] README.md accurately reflects current feature set\n- [ ] Examples are listed in main README\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Kafka integration example",
+            "description": "Add example demonstrating Kafka producer and consumer",
+            "status": "pending",
+            "dependencies": [],
+            "details": "## Context\n\nKafka is one of the most common message streaming platforms. Users need a clear example showing how to consume from and produce to Kafka topics.\n\n## Requirements\n\n- Demonstrate consuming from Kafka topics with consumer groups\n- Show producing messages to Kafka with batching\n- Include setup instructions for local Kafka instance\n- Show offset management and error handling\n\n## Acceptance Criteria\n\n- [ ] Example compiles and runs\n- [ ] README explains Kafka setup\n- [ ] Demonstrates consumer groups and partition handling\n- [ ] Shows producer batching configuration\n- [ ] Example is well-commented\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 2,
+            "title": "Create Redis Streams integration example",
+            "description": "Add example demonstrating Redis Streams producer and consumer",
+            "status": "pending",
+            "dependencies": [],
+            "details": "## Context\n\nRedis Streams provides lightweight message streaming. An example helps users understand the integration.\n\n## Requirements\n\n- Demonstrate XREAD and XADD operations\n- Show consumer group usage\n- Include message acknowledgment patterns\n- Show setup for local Redis instance\n\n## Acceptance Criteria\n\n- [ ] Example compiles and runs\n- [ ] README explains Redis setup\n- [ ] Demonstrates consumer groups\n- [ ] Shows message acknowledgment\n- [ ] Example is well-commented\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 3,
+            "title": "Create database query example",
+            "description": "Add example demonstrating database query producer with SQLite",
+            "status": "pending",
+            "dependencies": [],
+            "details": "## Context\n\nDatabase queries are a common data source. Users need examples showing how to stream query results efficiently.\n\n## Requirements\n\n- Use in-memory SQLite for easy testing\n- Demonstrate parameterized queries\n- Show cursor-based streaming for large results\n- Include connection pooling configuration\n\n## Acceptance Criteria\n\n- [ ] Example compiles and runs\n- [ ] Uses in-memory SQLite (no external setup needed)\n- [ ] Demonstrates parameterized queries\n- [ ] Shows streaming large result sets\n- [ ] Example is well-commented\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 4,
+            "title": "Create HTTP polling example",
+            "description": "Add example demonstrating HTTP polling producer with pagination",
+            "status": "pending",
+            "dependencies": [],
+            "details": "## Context\n\nHTTP polling is common for APIs without webhooks. Users need examples showing polling, pagination, and delta detection.\n\n## Requirements\n\n- Demonstrate polling an HTTP endpoint\n- Show pagination handling (query params, Link headers, or JSON fields)\n- Include delta detection to emit only new items\n- Show rate limiting configuration\n\n## Acceptance Criteria\n\n- [ ] Example compiles and runs\n- [ ] Demonstrates pagination strategies\n- [ ] Shows delta detection in action\n- [ ] Includes rate limiting\n- [ ] Uses mock HTTP server or public API\n- [ ] Example is well-commented\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 5,
+            "title": "Create file formats example",
+            "description": "Add example demonstrating CSV, JSONL, and Parquet producers/consumers",
+            "status": "pending",
+            "dependencies": [],
+            "details": "## Context\n\nFile format support is essential for data processing. Users need examples showing how to read and write various formats.\n\n## Requirements\n\n- Demonstrate CSV read/write with headers\n- Show JSONL streaming for large files\n- Include Parquet read/write with column projection\n- Show streaming parsing to avoid loading entire files\n\n## Acceptance Criteria\n\n- [ ] Example compiles and runs\n- [ ] Demonstrates CSV with header handling\n- [ ] Shows JSONL streaming\n- [ ] Includes Parquet column projection\n- [ ] Uses test data files in example directory\n- [ ] Example is well-commented\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 6,
+            "title": "Create stateful processing example",
+            "description": "Add example demonstrating stateful transformers (RunningSum, MovingAverage)",
+            "status": "pending",
+            "dependencies": [],
+            "details": "## Context\n\nStateful processing enables aggregations and analytics. Users need examples showing how state is maintained across items.\n\n## Requirements\n\n- Demonstrate RunningSumTransformer for cumulative calculations\n- Show MovingAverageTransformer with configurable window size\n- Include state checkpointing example\n- Explain state lifecycle and cleanup\n\n## Acceptance Criteria\n\n- [ ] Example compiles and runs\n- [ ] Demonstrates RunningSum\n- [ ] Shows MovingAverage with different window sizes\n- [ ] Includes checkpoint example if applicable\n- [ ] Explains state management clearly\n- [ ] Example is well-commented\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 7,
+            "title": "Create error handling example",
+            "description": "Add example demonstrating error handling strategies (Stop, Skip, Retry, Custom)",
+            "status": "pending",
+            "dependencies": [],
+            "details": "## Context\n\nError handling is critical for production pipelines. Users need examples showing different strategies and when to use them.\n\n## Requirements\n\n- Demonstrate Stop, Skip, Retry, and Custom error strategies\n- Show pipeline-level and component-level error handling\n- Include examples of error recovery patterns\n- Show how to handle different error types\n\n## Acceptance Criteria\n\n- [ ] Example compiles and runs\n- [ ] Demonstrates all error handling strategies\n- [ ] Shows pipeline and component-level configuration\n- [ ] Includes realistic error scenarios\n- [ ] Explains when to use each strategy\n- [ ] Example is well-commented\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 8,
+            "title": "Create advanced transformers example",
+            "description": "Add example demonstrating CircuitBreaker, Retry, Batch, and RateLimit transformers",
+            "status": "pending",
+            "dependencies": [],
+            "details": "## Context\n\nAdvanced transformers provide resilience and performance optimization. Examples help users understand their use cases.\n\n## Requirements\n\n- Demonstrate CircuitBreaker for external service calls\n- Show Retry transformer with exponential backoff\n- Include Batch transformer for grouping items\n- Show RateLimit transformer for throughput control\n\n## Acceptance Criteria\n\n- [ ] Example compiles and runs\n- [ ] Demonstrates CircuitBreaker with failure scenarios\n- [ ] Shows Retry with backoff strategies\n- [ ] Includes Batch with time and size triggers\n- [ ] Shows RateLimit configuration\n- [ ] Example is well-commented\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 9,
+            "title": "Create windowing operations example",
+            "description": "Add example demonstrating time-based and count-based windowing",
+            "status": "pending",
+            "dependencies": [],
+            "details": "## Context\n\nWindowing is fundamental to stream processing. Users need examples showing different window types and use cases.\n\n## Requirements\n\n- Demonstrate tumbling windows (time and count-based)\n- Show sliding windows with overlap\n- Include session windows for gap-based grouping\n- Show watermark handling for event-time processing\n\n## Acceptance Criteria\n\n- [ ] Example compiles and runs\n- [ ] Demonstrates tumbling windows\n- [ ] Shows sliding windows\n- [ ] Includes session windows\n- [ ] Explains window triggers and emissions\n- [ ] Example is well-commented\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 10,
+            "title": "Create exactly-once processing example",
+            "description": "Add example demonstrating message deduplication and exactly-once guarantees",
+            "status": "pending",
+            "dependencies": [],
+            "details": "## Context\n\nExactly-once processing ensures reliable stream processing. Users need examples showing deduplication and idempotency patterns.\n\n## Requirements\n\n- Demonstrate MessageDedupeTransformer\n- Show offset tracking and resume from checkpoint\n- Include transaction example if applicable\n- Show how to handle duplicates in retry scenarios\n\n## Acceptance Criteria\n\n- [ ] Example compiles and runs\n- [ ] Demonstrates message deduplication\n- [ ] Shows offset tracking and recovery\n- [ ] Includes checkpoint example\n- [ ] Explains exactly-once semantics\n- [ ] Example is well-commented\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 11,
+            "title": "Update README.md with current capabilities",
+            "description": "Update README.md to accurately reflect all implemented features and provide links to examples",
+            "status": "pending",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10
+            ],
+            "details": "## Context\n\nThe README.md currently lists many features as 'Planned' that are actually implemented. It needs to be updated to reflect the current state and guide users to appropriate examples.\n\n## Requirements\n\n- Move implemented features from 'Planned' to 'Implemented'\n- Add links to all new examples\n- Update feature list to include Kafka, Redis, Database, HTTP polling integrations\n- Add stateful processing, exactly-once, windowing to implemented list\n- Include example links in appropriate sections\n- Update code examples if needed\n\n## Acceptance Criteria\n\n- [ ] All implemented features accurately listed\n- [ ] Planned features list only truly unimplemented items\n- [ ] Examples are linked from relevant sections\n- [ ] Code examples are current and work\n- [ ] README provides clear navigation to examples\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          }
+        ]
+      },
+      {
+        "id": 11,
         "title": "Implement Monitoring and Metrics",
         "description": "Add comprehensive observability with metrics collection, tracing, and monitoring integration.",
         "status": "pending",
@@ -514,7 +627,7 @@
         ]
       },
       {
-        "id": 11,
+        "id": 12,
         "title": "Implement SQL-Like Querying",
         "description": "Add SQL-like query interface for intuitive stream processing with SELECT, WHERE, GROUP BY syntax.",
         "status": "pending",
@@ -567,7 +680,7 @@
         ]
       },
       {
-        "id": 12,
+        "id": 13,
         "title": "Implement Machine Learning Integration",
         "description": "Add ML pipeline support with model inference, feature extraction, and integration with ML frameworks.",
         "status": "pending",
@@ -620,13 +733,13 @@
         ]
       },
       {
-        "id": 13,
+        "id": 14,
         "title": "Add Visualization Tools",
         "description": "Create tools for pipeline visualization, debugging, and interactive development.",
         "status": "pending",
         "priority": "low",
         "dependencies": [
-          10
+          11
         ],
         "details": "## Context\n\nVisualization helps users understand and debug pipelines. Interactive tools improve developer experience.\n\n## Implementation Approach\n\n1. Generate pipeline DAG representation\n2. Create web-based visualization\n3. Add real-time data flow display\n4. Implement debug mode\n\n## Technical Considerations\n\n- Web UI technology choices\n- Real-time updates via WebSocket\n- Performance impact of visualization\n- Integration with IDE",
         "testStrategy": "## Acceptance Criteria\n\n- [ ] Pipeline DAG visualized correctly\n- [ ] Real-time data flow shown\n- [ ] Debug mode allows step-through\n- [ ] Performance profiling visualized\n- [ ] UI works in major browsers\n- [ ] Low overhead when not visualizing\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete",
@@ -672,7 +785,7 @@
         ]
       },
       {
-        "id": 14,
+        "id": 15,
         "title": "Create Reusable Pipeline Components",
         "description": "Enable pipeline composition, templates, and reuse patterns for modular pipeline development.",
         "status": "pending",
@@ -724,7 +837,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T20:13:26.516Z",
+      "updated": "2025-11-26T22:00:00.000Z",
       "description": "Tasks for master context"
     }
   }
