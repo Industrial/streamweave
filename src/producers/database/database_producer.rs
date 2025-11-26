@@ -180,16 +180,18 @@ pub struct DatabaseProducer {
   /// Database-specific configuration.
   pub db_config: DatabaseProducerConfig,
   /// Connection pool (initialized lazily).
-  pool: Option<DatabasePool>,
+  pub(crate) pool: Option<DatabasePool>,
 }
 
 /// Internal enum to hold different database connection pools.
 #[derive(Debug)]
-enum DatabasePool {
+pub(crate) enum DatabasePool {
   #[cfg(feature = "sqlx")]
   Postgres(sqlx::PgPool),
   #[cfg(feature = "sqlx")]
   Mysql(sqlx::MySqlPool),
+  #[cfg(feature = "sqlx")]
+  Sqlite(sqlx::SqlitePool),
 }
 
 impl DatabaseProducer {

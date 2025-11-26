@@ -256,11 +256,11 @@ async fn execute_query(
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
-fn bind_parameter_postgres(
-  query: sqlx::query::Query<'_, sqlx::Postgres, sqlx::postgres::PgArguments>,
+fn bind_parameter_postgres<'q>(
+  query: sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments>,
   param: &serde_json::Value,
 ) -> Result<
-  sqlx::query::Query<'_, sqlx::Postgres, sqlx::postgres::PgArguments>,
+  sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments>,
   Box<dyn std::error::Error + Send + Sync>,
 > {
   let bound_query = match param {
@@ -286,11 +286,11 @@ fn bind_parameter_postgres(
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
-fn bind_parameter_mysql(
-  query: sqlx::query::Query<'_, sqlx::MySql, sqlx::mysql::MySqlArguments>,
+fn bind_parameter_mysql<'q>(
+  query: sqlx::query::Query<'q, sqlx::MySql, sqlx::mysql::MySqlArguments>,
   param: &serde_json::Value,
 ) -> Result<
-  sqlx::query::Query<'_, sqlx::MySql, sqlx::mysql::MySqlArguments>,
+  sqlx::query::Query<'q, sqlx::MySql, sqlx::mysql::MySqlArguments>,
   Box<dyn std::error::Error + Send + Sync>,
 > {
   let bound_query = match param {
@@ -316,11 +316,11 @@ fn bind_parameter_mysql(
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
-fn bind_parameter_sqlite(
-  query: sqlx::query::Query<'_, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'_>>,
+fn bind_parameter_sqlite<'q>(
+  query: sqlx::query::Query<'q, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'q>>,
   param: &serde_json::Value,
 ) -> Result<
-  sqlx::query::Query<'_, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'_>>,
+  sqlx::query::Query<'q, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'q>>,
   Box<dyn std::error::Error + Send + Sync>,
 > {
   let bound_query = match param {

@@ -233,9 +233,9 @@ pub struct HttpPollProducer {
   /// HTTP polling-specific configuration.
   pub http_config: HttpPollProducerConfig,
   /// HTTP client.
-  client: Option<reqwest::Client>,
+  pub(crate) client: Option<reqwest::Client>,
   /// Rate limiter state.
-  last_request_time: Option<std::time::Instant>,
+  pub(crate) last_request_time: Option<std::time::Instant>,
 }
 
 impl HttpPollProducer {

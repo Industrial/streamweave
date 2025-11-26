@@ -833,6 +833,111 @@
             "details": "## Context\n\nRegistry enables component discovery.\n\n## Requirements\n\n- Register components by name\n- Search by type/tags\n- Version management\n\n## Acceptance Criteria\n\n- [ ] Components can be registered\n- [ ] Search works correctly\n- [ ] Versions resolved correctly\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           }
         ]
+      },
+      {
+        "id": 16,
+        "title": "Implement HTTP Server Support",
+        "description": "Add HTTP server capabilities enabling REST microservices with streaming request/response bodies through StreamWeave pipelines.",
+        "status": "pending",
+        "priority": "high",
+        "dependencies": [],
+        "details": "## Context\n\nCurrently, StreamWeave can only act as an HTTP client (via HttpPollProducer). To enable building complete REST microservices, we need HTTP server capabilities that allow:\n- Streaming HTTP requests through pipelines\n- Streaming HTTP request bodies as stream items\n- Streaming HTTP response bodies from pipeline outputs\n- Integration with Axum for route handling and middleware\n- Support for REST API patterns (GET, POST, PUT, DELETE, etc.)\n\n## Implementation Approach\n\n1. Add Axum dependency as optional feature\n2. Create HTTP request producer that converts incoming HTTP requests to stream items\n3. Create HTTP response consumer that converts stream items to HTTP responses\n4. Support streaming request/response bodies\n5. Integrate with Axum router for route handling\n6. Add middleware support for authentication, CORS, etc.\n\n## Technical Considerations\n\n- Type safety between request/response types and pipeline types\n- Streaming large request/response bodies efficiently\n- Error handling and HTTP status codes\n- Async request handling with Tokio\n- Integration with existing error handling strategies\n- Support for different content types (JSON, text, binary)\n- Connection pooling and concurrent request handling\n- WASM compatibility considerations (may need feature flags)",
+        "testStrategy": "## Acceptance Criteria\n\n- [ ] HTTP requests can be converted to stream items via producer\n- [ ] Stream items can be converted to HTTP responses via consumer\n- [ ] Request bodies can be streamed through pipelines\n- [ ] Response bodies can be streamed from pipeline outputs\n- [ ] Axum integration works for route handling\n- [ ] Multiple HTTP methods supported (GET, POST, PUT, DELETE, PATCH)\n- [ ] Status codes and headers are correctly handled\n- [ ] Error responses work with proper status codes\n- [ ] Middleware can be applied (CORS, auth, logging)\n- [ ] Concurrent requests are handled correctly\n- [ ] Large request/response bodies stream efficiently\n- [ ] Example REST microservice compiles and runs\n- [ ] Unit tests achieve >90% coverage\n- [ ] Integration tests verify end-to-end request/response flow\n- [ ] Documentation includes examples for common REST patterns\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add Axum dependency and HTTP server types",
+            "description": "Add Axum as optional dependency and create core HTTP server types for requests and responses",
+            "status": "pending",
+            "dependencies": [],
+            "details": "## Context\n\nWe need Axum as the HTTP server framework and core types to represent HTTP requests and responses in the StreamWeave ecosystem.\n\n## Requirements\n\n- Add `axum` as optional dependency with feature flag `http-server`\n- Create `HttpRequest` type wrapping Axum's request with metadata\n- Create `HttpResponse` type for response data\n- Support common content types (JSON, text/plain, application/octet-stream)\n- Include request metadata (method, path, headers, query params)\n- Include response metadata (status code, headers)\n\n## Acceptance Criteria\n\n- [ ] Axum dependency added with proper feature flag\n- [ ] `HttpRequest` type defined with all request metadata\n- [ ] `HttpResponse` type defined with status and headers\n- [ ] Content type handling for common formats\n- [ ] Types are Send + Sync for async use\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 2,
+            "title": "Implement HTTP request producer",
+            "description": "Create producer that converts incoming HTTP requests into stream items",
+            "status": "pending",
+            "dependencies": [
+              1
+            ],
+            "details": "## Context\n\nThe HTTP request producer should accept HTTP requests (likely from an Axum handler) and convert them into stream items that can flow through a StreamWeave pipeline.\n\n## Requirements\n\n- Implement `Producer` trait for HTTP requests\n- Support streaming request bodies (for large payloads)\n- Extract request metadata (headers, query params, path params)\n- Handle different HTTP methods\n- Support both JSON and raw body extraction\n- Handle request errors gracefully\n- Support concurrent requests\n\n## Acceptance Criteria\n\n- [ ] `HttpRequestProducer` implements `Producer<HttpRequest>`\n- [ ] Request bodies can be extracted as JSON or raw bytes\n- [ ] Request metadata (method, path, headers) accessible\n- [ ] Query parameters and path parameters extracted\n- [ ] Concurrent requests handled correctly\n- [ ] Large request bodies stream efficiently\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 3,
+            "title": "Implement HTTP response consumer",
+            "description": "Create consumer that converts stream items into HTTP responses",
+            "status": "pending",
+            "dependencies": [
+              1
+            ],
+            "details": "## Context\n\nThe HTTP response consumer should take stream items from a pipeline and convert them into HTTP responses that can be sent back to clients via Axum.\n\n## Requirements\n\n- Implement `Consumer` trait for HTTP responses\n- Support streaming response bodies\n- Set HTTP status codes and headers\n- Handle different content types (JSON, text, binary)\n- Support both single-item and stream responses\n- Handle response errors with appropriate status codes\n- Support chunked transfer encoding for large responses\n\n## Acceptance Criteria\n\n- [ ] `HttpResponseConsumer` implements `Consumer<HttpResponse>`\n- [ ] Response status codes can be set\n- [ ] Response headers can be set\n- [ ] Response bodies can be JSON, text, or binary\n- [ ] Streaming responses work correctly\n- [ ] Error responses use appropriate status codes\n- [ ] Large responses stream efficiently\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 4,
+            "title": "Add Axum route handler integration",
+            "description": "Create Axum handlers that integrate HTTP requests/responses with StreamWeave pipelines",
+            "status": "pending",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "## Context\n\nWe need Axum route handlers that bridge the gap between HTTP requests/responses and StreamWeave pipelines, allowing users to define REST endpoints using StreamWeave for processing.\n\n## Requirements\n\n- Create handler function that accepts pipeline configuration\n- Convert Axum request to HttpRequest\n- Run pipeline with request as input\n- Convert pipeline output to Axum response\n- Support async request handling\n- Handle pipeline errors and convert to HTTP errors\n- Support multiple HTTP methods per route\n\n## Acceptance Criteria\n\n- [ ] Handler function works with Axum router\n- [ ] Requests flow through pipeline correctly\n- [ ] Pipeline outputs converted to responses\n- [ ] Errors from pipeline result in appropriate HTTP errors\n- [ ] Async handling works correctly\n- [ ] Multiple routes can be defined\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 5,
+            "title": "Support streaming request bodies",
+            "description": "Enable streaming large HTTP request bodies through pipelines as stream items",
+            "status": "pending",
+            "dependencies": [
+              2
+            ],
+            "details": "## Context\n\nFor large request bodies (e.g., file uploads, large JSON arrays), we should support streaming the body content through the pipeline rather than loading it all into memory.\n\n## Requirements\n\n- Stream request body as bytes or text chunks\n- Support chunked transfer encoding on input\n- Handle different content types (multipart, JSON arrays, binary)\n- Provide progress indication for large uploads\n- Support early termination of uploads on errors\n- Memory-efficient handling of large bodies\n\n## Acceptance Criteria\n\n- [ ] Large request bodies can be streamed\n- [ ] Memory usage remains constant for large bodies\n- [ ] Chunked encoding supported\n- [ ] Different content types handled\n- [ ] Early termination works on errors\n- [ ] Progress tracking available\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 6,
+            "title": "Support streaming response bodies",
+            "description": "Enable streaming large HTTP response bodies from pipeline outputs",
+            "status": "pending",
+            "dependencies": [
+              3
+            ],
+            "details": "## Context\n\nFor large response bodies (e.g., large datasets, file downloads), we should support streaming the response content from pipeline outputs without buffering everything in memory.\n\n## Requirements\n\n- Stream pipeline outputs as response body chunks\n- Support chunked transfer encoding on output\n- Set appropriate Content-Type headers\n- Handle streaming errors gracefully\n- Support early client disconnection\n- Memory-efficient handling of large responses\n\n## Acceptance Criteria\n\n- [ ] Large response bodies can be streamed\n- [ ] Memory usage remains constant for large responses\n- [ ] Chunked encoding supported\n- [ ] Content-Type headers set correctly\n- [ ] Client disconnection handled gracefully\n- [ ] Streaming errors handled properly\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 7,
+            "title": "Add middleware support",
+            "description": "Enable Axum middleware for authentication, CORS, logging, and rate limiting",
+            "status": "pending",
+            "dependencies": [
+              4
+            ],
+            "details": "## Context\n\nProduction REST APIs require middleware for common concerns like authentication, CORS, request logging, rate limiting, etc. We should support Axum's middleware ecosystem.\n\n## Requirements\n\n- Support Axum middleware tower layers\n- Common middleware examples (CORS, auth, logging)\n- Middleware execution order\n- Request context passing through middleware\n- Error handling in middleware\n- Integration with StreamWeave error strategies\n\n## Acceptance Criteria\n\n- [ ] Axum middleware can be applied to routes\n- [ ] CORS middleware works correctly\n- [ ] Authentication middleware can extract tokens/credentials\n- [ ] Logging middleware captures request/response info\n- [ ] Rate limiting middleware works\n- [ ] Request context flows through middleware\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 8,
+            "title": "Add comprehensive error handling for HTTP",
+            "description": "Map StreamWeave errors to appropriate HTTP status codes and error responses",
+            "status": "pending",
+            "dependencies": [
+              4
+            ],
+            "details": "## Context\n\nStreamWeave has comprehensive error handling, but HTTP responses need specific status codes and error message formats. We need to map pipeline errors to HTTP errors.\n\n## Requirements\n\n- Map StreamWeave errors to HTTP status codes\n- Format error responses as JSON\n- Include error context in responses\n- Handle different error types (validation, not found, server errors)\n- Support custom error responses\n- Preserve error details in development mode\n\n## Acceptance Criteria\n\n- [ ] Validation errors return 400 Bad Request\n- [ ] Not found errors return 404 Not Found\n- [ ] Server errors return 500 Internal Server Error\n- [ ] Error responses include useful messages\n- [ ] Error context available in development\n- [ ] Custom error responses supported\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          },
+          {
+            "id": 9,
+            "title": "Create REST microservice example",
+            "description": "Build complete example REST API demonstrating all HTTP server capabilities",
+            "status": "pending",
+            "dependencies": [
+              4,
+              5,
+              6,
+              7,
+              8
+            ],
+            "details": "## Context\n\nA comprehensive example helps users understand how to build REST microservices with StreamWeave, demonstrating best practices and common patterns.\n\n## Requirements\n\n- Example REST API with multiple endpoints\n- Demonstrate GET, POST, PUT, DELETE operations\n- Show request/response body streaming\n- Include database integration example\n- Show error handling patterns\n- Include middleware usage (CORS, logging)\n- Demonstrate concurrent request handling\n- Include documentation and comments\n\n## Acceptance Criteria\n\n- [ ] Example compiles and runs\n- [ ] Multiple REST endpoints implemented\n- [ ] All HTTP methods demonstrated\n- [ ] Request/response streaming shown\n- [ ] Database integration included\n- [ ] Error handling demonstrated\n- [ ] Middleware usage shown\n- [ ] Well-commented and documented\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
+          }
+        ]
       }
     ],
     "metadata": {

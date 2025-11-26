@@ -42,7 +42,7 @@ impl ConsumerContext for StreamWeaveConsumerContext {}
 
 #[async_trait]
 #[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
-impl Producer for KafkaProducer<KafkaMessage> {
+impl Producer for KafkaProducer {
   /// Produces a stream of messages from Kafka topics.
   ///
   /// # Error Handling

@@ -389,10 +389,11 @@ async fn handle_pagination(
           break;
         }
 
+        // Check for "no more pages" indicator before moving body
+        let is_last = is_last_page(&body);
         responses.push(HttpPollResponse::new(status, headers, body, url));
 
-        // Check for "no more pages" indicator
-        if is_last_page(&body) {
+        if is_last {
           break;
         }
       }

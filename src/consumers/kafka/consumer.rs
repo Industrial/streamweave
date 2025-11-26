@@ -131,7 +131,7 @@ where
       };
 
       // Send to Kafka
-      let record = FutureRecord::to(&topic).payload(&payload);
+      let record: FutureRecord<(), Vec<u8>> = FutureRecord::to(&topic).payload(&payload);
 
       match producer
         .send(record, Timeout::After(Duration::from_secs(5)))
