@@ -23,3 +23,11 @@ pub mod jsonl;
 pub mod msgpack;
 #[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
 pub mod parquet;
+
+// Kafka integration (native only, requires librdkafka and cmake)
+#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+pub mod kafka;
+
+// Redis Streams integration (native only, requires Redis)
+#[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
+pub mod redis_streams;

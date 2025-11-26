@@ -66,6 +66,12 @@ random = [
 # Compression support (native only)
 compression = ["dep:async-compression"]
 
+# Kafka integration (native only)
+kafka = ["dep:rdkafka"]
+
+# Redis Streams integration (native only)
+redis-streams = ["dep:redis"]
+
 [dependencies]
 # Async runtime and utilities - base features for both native and WASM
 tokio = { version = "1.0", default-features = false }
@@ -107,6 +113,15 @@ async-stream = "0.3.3"
 hyper-tungstenite = { version = "0.13", optional = true }
 hyper-util = { version = "0.1", features = ["full"], optional = true }
 tokio-tungstenite = { version = "0.21", optional = true }
+
+# Kafka integration (native only - requires librdkafka)
+# Note: Requires cmake, pkg-config, openssl, zlib, and zstd to build
+# These are provided by devenv.nix when using devenv.sh
+# To use SSL, the system must have OpenSSL available (provided by devenv)
+rdkafka = { version = "0.36", optional = true, features = ["cmake-build"] }
+
+# Redis Streams integration (native only - requires Redis)
+redis = { version = "0.26", optional = true, features = ["tokio-comp", "streams", "connection-manager"] }
 
 # Utilities (mostly WASM-compatible)
 jsonwebtoken = "9.2"

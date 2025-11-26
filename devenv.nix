@@ -51,6 +51,13 @@
     # Version management
     git
     gitAndTools.gh
+
+    # Build dependencies for Kafka integration
+    cmake
+    pkg-config
+    openssl
+    zlib
+    zstd
   ];
 
   # Pre-commit hooks

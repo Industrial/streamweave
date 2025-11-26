@@ -375,7 +375,7 @@
         "id": 8,
         "title": "WASM Optimizations",
         "description": "Optimize StreamWeave for WebAssembly deployment with browser and server-side WASM support.",
-        "status": "in-progress",
+        "status": "done",
         "priority": "medium",
         "dependencies": [],
         "details": "## Context\n\nWASM support enables running pipelines in browsers and edge environments. The current codebase supports WASM but needs optimization.\n\n## Implementation Approach\n\n1. Audit current WASM compatibility\n2. Add feature flags for WASM-specific code\n3. Optimize bundle size\n4. Create WASM-specific documentation\n\n## Technical Considerations\n\n- No std library for some targets\n- Memory management differences\n- Async runtime compatibility\n- Bundle size concerns",
@@ -435,7 +435,7 @@
             "id": 1,
             "title": "Implement Kafka producer/consumer",
             "description": "Add Kafka integration for producing and consuming messages",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nKafka is the most common streaming platform.\n\n## Requirements\n\n- Consume from Kafka topics\n- Produce to Kafka topics\n- Support consumer groups\n- Handle partition assignment\n\n## Acceptance Criteria\n\n- [ ] Can consume from multiple partitions\n- [ ] Offset management works\n- [ ] Producer batching configurable\n- [ ] Connection failures handled\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
@@ -443,7 +443,7 @@
             "id": 2,
             "title": "Implement Redis Streams producer/consumer",
             "description": "Add Redis Streams integration",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nRedis Streams provides lightweight message streaming.\n\n## Requirements\n\n- XREAD for consuming\n- XADD for producing\n- Consumer group support\n- Message acknowledgment\n\n## Acceptance Criteria\n\n- [ ] Can read from streams\n- [ ] Can write to streams\n- [ ] Consumer groups work\n- [ ] Pending messages tracked\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T18:44:37.465Z",
+      "updated": "2025-11-26T19:29:45.104Z",
       "description": "Tasks for master context"
     }
   }

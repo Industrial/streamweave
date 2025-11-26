@@ -1,4 +1,4 @@
-import init, { process_numbers, process_string, calculate_sum } from '../pkg/wasm_browser.js';
+import init, { calculate_sum, process_numbers, process_string } from '../pkg/wasm_browser.js';
 
 async function main() {
     // Initialize the WASM module
