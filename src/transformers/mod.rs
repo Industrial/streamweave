@@ -25,6 +25,7 @@ pub mod rate_limit;
 pub mod reduce;
 pub mod retry;
 pub mod round_robin;
+pub mod router;
 pub mod running_sum;
 pub mod sample;
 pub mod skip;

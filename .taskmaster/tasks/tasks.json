@@ -258,7 +258,7 @@
             "id": 3,
             "title": "Implement content-based routing",
             "description": "Route elements based on content to specific consumers",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nContent-based routing directs elements based on their properties.\n\n## Requirements\n\n- Accept routing function\n- Support default route\n- Handle unroutable elements\n\n## Acceptance Criteria\n\n- [ ] Elements route to correct consumer\n- [ ] Default route catches unmatched\n- [ ] Routing function errors handled"
           },
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T00:58:52.353Z",
+      "updated": "2025-11-26T01:02:34.996Z",
       "description": "Tasks for master context"
     }
   }
