@@ -1,11 +1,15 @@
 pub mod array;
 pub mod channel;
 pub mod command;
+pub mod csv;
 pub mod env_var;
 pub mod file;
 pub mod hash_map;
 pub mod hash_set;
 pub mod interval;
+pub mod jsonl;
+pub mod msgpack;
+pub mod parquet;
 pub mod random_number;
 pub mod range;
 pub mod string;
