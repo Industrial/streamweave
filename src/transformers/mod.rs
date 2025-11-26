@@ -13,6 +13,7 @@ pub mod flat_map;
 pub mod flatten;
 pub mod group_by;
 pub mod interleave;
+pub mod join;
 pub mod limit;
 pub mod map;
 pub mod merge;

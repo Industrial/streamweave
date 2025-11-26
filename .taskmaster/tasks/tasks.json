@@ -170,7 +170,7 @@
         "id": 4,
         "title": "Add Specialized Transformers",
         "description": "Implement additional specialized transformers for common stream processing operations.",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [],
         "details": "## Context\n\nA rich set of transformers makes the framework more useful out of the box. These are common operations that users shouldn't need to implement themselves.\n\n## Implementation Approach\n\n1. Implement each transformer following existing patterns\n2. Ensure consistent API and error handling\n3. Add comprehensive tests and documentation\n\n## Technical Considerations\n\n- Maintain consistency with existing transformer API\n- Consider memory usage for stateful transformers\n- Ensure WASM compatibility",
@@ -180,7 +180,7 @@
             "id": 1,
             "title": "Implement FlatMap transformer",
             "description": "Create transformer that maps one input to zero or more outputs",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nFlatMap is essential for one-to-many transformations like splitting strings.\n\n## Requirements\n\n- Accept function that returns iterator\n- Flatten results into output stream\n- Handle empty results gracefully\n\n## Acceptance Criteria\n\n- [ ] One-to-many mapping works correctly\n- [ ] Empty results don't break stream\n- [ ] Type inference works well\n- [ ] Performance is comparable to manual implementation"
           },
@@ -188,7 +188,7 @@
             "id": 2,
             "title": "Implement Reduce transformer",
             "description": "Create transformer for aggregating stream elements",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nReduce combines elements using an associative function.\n\n## Requirements\n\n- Accept binary reduction function\n- Support initial accumulator value\n- Emit intermediate or final results\n\n## Acceptance Criteria\n\n- [ ] Reduction produces correct result\n- [ ] Works with various types\n- [ ] Can emit running results if configured"
           },
@@ -196,7 +196,7 @@
             "id": 3,
             "title": "Implement GroupBy transformer",
             "description": "Create transformer for grouping elements by key",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nGroupBy partitions streams by key for per-key processing.\n\n## Requirements\n\n- Accept key extraction function\n- Route elements to per-key sub-streams\n- Support downstream per-key aggregation\n\n## Acceptance Criteria\n\n- [ ] Elements grouped by correct key\n- [ ] Per-key processing is isolated\n- [ ] Memory bounded for many keys"
           },
@@ -204,7 +204,7 @@
             "id": 4,
             "title": "Implement Join transformer",
             "description": "Create transformer for joining two streams",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               3
             ],
@@ -214,7 +214,7 @@
             "id": 5,
             "title": "Implement Distinct transformer",
             "description": "Create transformer that emits only unique elements",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nDistinct removes duplicates from the stream.\n\n## Requirements\n\n- Track seen elements\n- Configurable uniqueness key\n- Memory-bounded tracking (optional bloom filter)\n\n## Acceptance Criteria\n\n- [ ] Duplicates correctly filtered\n- [ ] Custom key extraction works\n- [ ] Memory usage is bounded"
           },
@@ -222,7 +222,7 @@
             "id": 6,
             "title": "Implement Sample transformer",
             "description": "Create transformer for statistical sampling",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nSampling reduces stream volume for testing or analysis.\n\n## Requirements\n\n- Random sampling with configurable rate\n- Reservoir sampling for fixed-size samples\n- Reproducible with seed\n\n## Acceptance Criteria\n\n- [ ] Sample rate is accurate over time\n- [ ] Distribution is uniform\n- [ ] Seeded sampling is reproducible"
           }
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T00:42:44.629Z",
+      "updated": "2025-11-26T00:48:38.279Z",
       "description": "Tasks for master context"
     }
   }
