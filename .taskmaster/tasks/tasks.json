@@ -5,7 +5,7 @@
         "id": 1,
         "title": "Implement Stateful Processing",
         "description": "Add support for stateful stream processing where transformers can maintain and update state across items.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nStateful processing is essential for many stream processing use cases like aggregations, sessionization, and pattern detection. Currently, StreamWeave transformers are stateless - they process each item independently without memory of previous items.\n\n## Implementation Approach\n\n1. Create a `StatefulTransformer` trait extending the base `Transformer` trait\n2. Add state storage abstraction (in-memory initially, with hooks for external stores)\n3. Implement state lifecycle management (initialization, updates, cleanup)\n4. Add state serialization for checkpointing\n\n## Technical Considerations\n\n- State must be thread-safe for concurrent access\n- Memory management for large state\n- State migration between transformer versions\n- Integration with error handling strategies",
@@ -44,7 +44,7 @@
             "id": 4,
             "title": "Add state checkpointing",
             "description": "Implement state serialization and checkpointing for recovery",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               2
             ],
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-25T23:50:10.069Z",
+      "updated": "2025-11-25T23:59:34.081Z",
       "description": "Tasks for master context"
     }
   }

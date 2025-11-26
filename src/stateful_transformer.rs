@@ -132,6 +132,65 @@ where
 {
 }
 
+/// Extension trait for state checkpointing (serialization/deserialization).
+///
+/// This trait provides methods for serializing state to bytes and
+/// restoring state from bytes, enabling checkpointing and persistence.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::stateful_transformer::{InMemoryStateStore, StateStore, StateCheckpoint};
+///
+/// let store: InMemoryStateStore<i64> = InMemoryStateStore::new(42);
+///
+/// // Serialize state to bytes
+/// let checkpoint = store.serialize_state().unwrap();
+///
+/// // Restore to a new store
+/// let store2: InMemoryStateStore<i64> = InMemoryStateStore::empty();
+/// store2.deserialize_and_set_state(&checkpoint).unwrap();
+///
+/// assert_eq!(store2.get().unwrap(), Some(42));
+/// ```
+pub trait StateCheckpoint<S>: StateStore<S>
+where
+  S: Clone + Send + Sync + serde::Serialize + serde::de::DeserializeOwned + Default,
+{
+  /// Serialize the current state to a byte vector.
+  ///
+  /// This is used for checkpointing and persistence.
+  /// Returns an empty vector if no state is set.
+  fn serialize_state(&self) -> StateResult<Vec<u8>> {
+    self
+      .get()?
+      .map(|s| serde_json::to_vec(&s).map_err(|e| StateError::SerializationFailed(e.to_string())))
+      .unwrap_or(Ok(Vec::new()))
+  }
+
+  /// Deserialize state from a byte vector and set it.
+  ///
+  /// This is used for restoring state from checkpoints.
+  /// If the data is empty, sets the state to the default value.
+  fn deserialize_and_set_state(&self, data: &[u8]) -> StateResult<()> {
+    if data.is_empty() {
+      self.set(S::default())
+    } else {
+      let state: S = serde_json::from_slice(data)
+        .map_err(|e| StateError::DeserializationFailed(e.to_string()))?;
+      self.set(state)
+    }
+  }
+}
+
+// Blanket implementation for all StateStore types with serialization support
+impl<S, T> StateCheckpoint<S> for T
+where
+  S: Clone + Send + Sync + serde::Serialize + serde::de::DeserializeOwned + Default,
+  T: StateStore<S>,
+{
+}
+
 /// In-memory state store using `Arc<RwLock<S>>` for thread-safe access.
 ///
 /// This is the default state store implementation that keeps state in memory.
@@ -437,6 +496,415 @@ where
   }
 }
 
+// ============================================================================
+// State Checkpointing
+// ============================================================================
+
+/// Error type for checkpoint operations.
+#[derive(Debug)]
+pub enum CheckpointError {
+  /// State is not initialized and cannot be checkpointed
+  NoState,
+  /// Serialization failed
+  SerializationFailed(String),
+  /// Deserialization failed
+  DeserializationFailed(String),
+  /// I/O error during checkpoint operation
+  IoError(std::io::Error),
+  /// State store error
+  StateError(StateError),
+}
+
+impl std::fmt::Display for CheckpointError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      CheckpointError::NoState => write!(f, "No state to checkpoint"),
+      CheckpointError::SerializationFailed(msg) => {
+        write!(f, "Checkpoint serialization failed: {}", msg)
+      }
+      CheckpointError::DeserializationFailed(msg) => {
+        write!(f, "Checkpoint deserialization failed: {}", msg)
+      }
+      CheckpointError::IoError(err) => write!(f, "Checkpoint I/O error: {}", err),
+      CheckpointError::StateError(err) => write!(f, "State error during checkpoint: {}", err),
+    }
+  }
+}
+
+impl std::error::Error for CheckpointError {
+  fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    match self {
+      CheckpointError::IoError(err) => Some(err),
+      _ => None,
+    }
+  }
+}
+
+impl From<std::io::Error> for CheckpointError {
+  fn from(err: std::io::Error) -> Self {
+    CheckpointError::IoError(err)
+  }
+}
+
+impl From<StateError> for CheckpointError {
+  fn from(err: StateError) -> Self {
+    CheckpointError::StateError(err)
+  }
+}
+
+/// Result type for checkpoint operations.
+pub type CheckpointResult<T> = Result<T, CheckpointError>;
+
+/// Configuration for state checkpointing.
+#[derive(Debug, Clone)]
+pub struct CheckpointConfig {
+  /// Interval between automatic checkpoints (number of items processed).
+  /// Set to 0 to disable automatic checkpointing.
+  pub checkpoint_interval: usize,
+  /// Whether to checkpoint on pipeline completion.
+  pub checkpoint_on_complete: bool,
+  /// Whether to restore from checkpoint on startup.
+  pub restore_on_startup: bool,
+}
+
+impl Default for CheckpointConfig {
+  fn default() -> Self {
+    Self {
+      checkpoint_interval: 0, // Disabled by default
+      checkpoint_on_complete: true,
+      restore_on_startup: true,
+    }
+  }
+}
+
+impl CheckpointConfig {
+  /// Create a new checkpoint configuration with the specified interval.
+  pub fn with_interval(interval: usize) -> Self {
+    Self {
+      checkpoint_interval: interval,
+      ..Default::default()
+    }
+  }
+
+  /// Set whether to checkpoint on pipeline completion.
+  pub fn checkpoint_on_complete(mut self, enable: bool) -> Self {
+    self.checkpoint_on_complete = enable;
+    self
+  }
+
+  /// Set whether to restore from checkpoint on startup.
+  pub fn restore_on_startup(mut self, enable: bool) -> Self {
+    self.restore_on_startup = enable;
+    self
+  }
+
+  /// Check if automatic checkpointing is enabled.
+  pub fn is_auto_checkpoint_enabled(&self) -> bool {
+    self.checkpoint_interval > 0
+  }
+}
+
+/// Trait for checkpoint storage backends.
+///
+/// This trait abstracts the persistence mechanism for state checkpoints,
+/// allowing for different implementations (file, database, cloud storage, etc.).
+pub trait CheckpointStore: Send + Sync {
+  /// Save a checkpoint with the given data.
+  fn save(&self, data: &[u8]) -> CheckpointResult<()>;
+
+  /// Load the most recent checkpoint.
+  ///
+  /// Returns `None` if no checkpoint exists.
+  fn load(&self) -> CheckpointResult<Option<Vec<u8>>>;
+
+  /// Delete all checkpoints.
+  fn clear(&self) -> CheckpointResult<()>;
+
+  /// Check if a checkpoint exists.
+  fn exists(&self) -> bool;
+}
+
+/// File-based checkpoint store.
+///
+/// Saves state checkpoints to a file on the local filesystem.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use streamweave::stateful_transformer::{FileCheckpointStore, CheckpointStore};
+/// use std::path::PathBuf;
+///
+/// let store = FileCheckpointStore::new(PathBuf::from("/tmp/my_checkpoint.json"));
+/// store.save(b"{\"count\": 42}").unwrap();
+///
+/// let data = store.load().unwrap();
+/// assert!(data.is_some());
+/// ```
+#[derive(Debug, Clone)]
+pub struct FileCheckpointStore {
+  path: std::path::PathBuf,
+}
+
+impl FileCheckpointStore {
+  /// Create a new file checkpoint store with the specified path.
+  pub fn new(path: std::path::PathBuf) -> Self {
+    Self { path }
+  }
+
+  /// Get the checkpoint file path.
+  pub fn path(&self) -> &std::path::Path {
+    &self.path
+  }
+}
+
+impl CheckpointStore for FileCheckpointStore {
+  fn save(&self, data: &[u8]) -> CheckpointResult<()> {
+    // Create parent directories if they don't exist
+    if let Some(parent) = self.path.parent() {
+      std::fs::create_dir_all(parent)?;
+    }
+
+    // Write to a temporary file first, then rename for atomicity
+    let temp_path = self.path.with_extension("tmp");
+    std::fs::write(&temp_path, data)?;
+    std::fs::rename(&temp_path, &self.path)?;
+
+    Ok(())
+  }
+
+  fn load(&self) -> CheckpointResult<Option<Vec<u8>>> {
+    if !self.path.exists() {
+      return Ok(None);
+    }
+
+    let data = std::fs::read(&self.path)?;
+    Ok(Some(data))
+  }
+
+  fn clear(&self) -> CheckpointResult<()> {
+    if self.path.exists() {
+      std::fs::remove_file(&self.path)?;
+    }
+    Ok(())
+  }
+
+  fn exists(&self) -> bool {
+    self.path.exists()
+  }
+}
+
+/// In-memory checkpoint store for testing.
+///
+/// Stores checkpoints in memory without persistence.
+#[derive(Debug, Default)]
+pub struct InMemoryCheckpointStore {
+  data: std::sync::RwLock<Option<Vec<u8>>>,
+}
+
+impl InMemoryCheckpointStore {
+  /// Create a new in-memory checkpoint store.
+  pub fn new() -> Self {
+    Self::default()
+  }
+}
+
+impl CheckpointStore for InMemoryCheckpointStore {
+  fn save(&self, data: &[u8]) -> CheckpointResult<()> {
+    let mut guard = self
+      .data
+      .write()
+      .map_err(|_| CheckpointError::SerializationFailed("Lock poisoned".to_string()))?;
+    *guard = Some(data.to_vec());
+    Ok(())
+  }
+
+  fn load(&self) -> CheckpointResult<Option<Vec<u8>>> {
+    let guard = self
+      .data
+      .read()
+      .map_err(|_| CheckpointError::DeserializationFailed("Lock poisoned".to_string()))?;
+    Ok(guard.clone())
+  }
+
+  fn clear(&self) -> CheckpointResult<()> {
+    let mut guard = self
+      .data
+      .write()
+      .map_err(|_| CheckpointError::SerializationFailed("Lock poisoned".to_string()))?;
+    *guard = None;
+    Ok(())
+  }
+
+  fn exists(&self) -> bool {
+    self.data.read().map(|g| g.is_some()).unwrap_or(false)
+  }
+}
+
+/// Extension trait for checkpointing state stores with serde-serializable state.
+///
+/// This trait provides checkpoint functionality for any state store where the
+/// state type implements `serde::Serialize` and `serde::Deserialize`.
+pub trait CheckpointableStateStore<S>: StateStore<S>
+where
+  S: Clone + Send + Sync + serde::Serialize + serde::de::DeserializeOwned,
+{
+  /// Create a JSON checkpoint of the current state.
+  fn create_json_checkpoint(&self) -> CheckpointResult<Vec<u8>> {
+    let state = self.get()?.ok_or(CheckpointError::NoState)?;
+    serde_json::to_vec(&state).map_err(|e| CheckpointError::SerializationFailed(e.to_string()))
+  }
+
+  /// Restore state from a JSON checkpoint.
+  fn restore_from_json_checkpoint(&self, data: &[u8]) -> CheckpointResult<()> {
+    let state: S = serde_json::from_slice(data)
+      .map_err(|e| CheckpointError::DeserializationFailed(e.to_string()))?;
+    self.set(state)?;
+    Ok(())
+  }
+
+  /// Create a pretty-printed JSON checkpoint of the current state.
+  fn create_json_checkpoint_pretty(&self) -> CheckpointResult<Vec<u8>> {
+    let state = self.get()?.ok_or(CheckpointError::NoState)?;
+    serde_json::to_vec_pretty(&state)
+      .map_err(|e| CheckpointError::SerializationFailed(e.to_string()))
+  }
+
+  /// Save the current state to a checkpoint store.
+  fn save_checkpoint(&self, checkpoint_store: &dyn CheckpointStore) -> CheckpointResult<()> {
+    let data = self.create_json_checkpoint()?;
+    checkpoint_store.save(&data)
+  }
+
+  /// Load state from a checkpoint store.
+  fn load_checkpoint(&self, checkpoint_store: &dyn CheckpointStore) -> CheckpointResult<bool> {
+    match checkpoint_store.load()? {
+      Some(data) => {
+        self.restore_from_json_checkpoint(&data)?;
+        Ok(true)
+      }
+      None => Ok(false),
+    }
+  }
+}
+
+// Blanket implementation for all StateStore types with serializable state
+impl<S, T> CheckpointableStateStore<S> for T
+where
+  S: Clone + Send + Sync + serde::Serialize + serde::de::DeserializeOwned,
+  T: StateStore<S>,
+{
+}
+
+/// Helper struct for managing checkpoints with automatic intervals.
+pub struct CheckpointManager<S>
+where
+  S: Clone + Send + Sync + serde::Serialize + serde::de::DeserializeOwned,
+{
+  store: Box<dyn CheckpointStore>,
+  config: CheckpointConfig,
+  items_since_checkpoint: std::sync::atomic::AtomicUsize,
+  _phantom: std::marker::PhantomData<S>,
+}
+
+impl<S> std::fmt::Debug for CheckpointManager<S>
+where
+  S: Clone + Send + Sync + serde::Serialize + serde::de::DeserializeOwned,
+{
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("CheckpointManager")
+      .field("store", &"<dyn CheckpointStore>")
+      .field("config", &self.config)
+      .field("items_since_checkpoint", &self.items_since_checkpoint)
+      .finish()
+  }
+}
+
+impl<S> CheckpointManager<S>
+where
+  S: Clone + Send + Sync + serde::Serialize + serde::de::DeserializeOwned,
+{
+  /// Create a new checkpoint manager with the given store and configuration.
+  pub fn new(store: Box<dyn CheckpointStore>, config: CheckpointConfig) -> Self {
+    Self {
+      store,
+      config,
+      items_since_checkpoint: std::sync::atomic::AtomicUsize::new(0),
+      _phantom: std::marker::PhantomData,
+    }
+  }
+
+  /// Create a checkpoint manager with a file store.
+  pub fn with_file(path: std::path::PathBuf, config: CheckpointConfig) -> Self {
+    Self::new(Box::new(FileCheckpointStore::new(path)), config)
+  }
+
+  /// Get the checkpoint configuration.
+  pub fn config(&self) -> &CheckpointConfig {
+    &self.config
+  }
+
+  /// Record that an item has been processed and potentially trigger a checkpoint.
+  ///
+  /// Returns `true` if a checkpoint should be taken based on the interval.
+  pub fn record_item(&self) -> bool {
+    if !self.config.is_auto_checkpoint_enabled() {
+      return false;
+    }
+
+    let count = self
+      .items_since_checkpoint
+      .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+    count + 1 >= self.config.checkpoint_interval
+  }
+
+  /// Reset the item counter after a checkpoint.
+  pub fn reset_counter(&self) {
+    self
+      .items_since_checkpoint
+      .store(0, std::sync::atomic::Ordering::Relaxed);
+  }
+
+  /// Save state to the checkpoint store.
+  pub fn save<Store>(&self, state_store: &Store) -> CheckpointResult<()>
+  where
+    Store: CheckpointableStateStore<S>,
+  {
+    state_store.save_checkpoint(self.store.as_ref())?;
+    self.reset_counter();
+    Ok(())
+  }
+
+  /// Load state from the checkpoint store.
+  pub fn load<Store>(&self, state_store: &Store) -> CheckpointResult<bool>
+  where
+    Store: CheckpointableStateStore<S>,
+  {
+    state_store.load_checkpoint(self.store.as_ref())
+  }
+
+  /// Clear all checkpoints.
+  pub fn clear(&self) -> CheckpointResult<()> {
+    self.store.clear()
+  }
+
+  /// Check if a checkpoint exists.
+  pub fn has_checkpoint(&self) -> bool {
+    self.store.exists()
+  }
+
+  /// Conditionally save a checkpoint if the interval has been reached.
+  pub fn maybe_checkpoint<Store>(&self, state_store: &Store) -> CheckpointResult<()>
+  where
+    Store: CheckpointableStateStore<S>,
+  {
+    if self.record_item() {
+      self.save(state_store)?;
+    }
+    Ok(())
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -671,5 +1139,112 @@ mod tests {
     assert!(!store.is_initialized());
     assert_eq!(store.get().unwrap(), None);
     assert_eq!(store.initial_state(), None);
+  }
+
+  // Checkpointing tests
+
+  #[test]
+  fn test_serialize_state_with_value() {
+    let store: InMemoryStateStore<i64> = InMemoryStateStore::new(42);
+    let serialized = store.serialize_state().unwrap();
+    assert!(!serialized.is_empty());
+
+    // Verify it's valid JSON
+    let value: i64 = serde_json::from_slice(&serialized).unwrap();
+    assert_eq!(value, 42);
+  }
+
+  #[test]
+  fn test_serialize_state_empty() {
+    let store: InMemoryStateStore<i64> = InMemoryStateStore::empty();
+    let serialized = store.serialize_state().unwrap();
+    assert!(serialized.is_empty());
+  }
+
+  #[test]
+  fn test_deserialize_and_set_state() {
+    let store: InMemoryStateStore<i64> = InMemoryStateStore::empty();
+    let data = serde_json::to_vec(&100i64).unwrap();
+
+    store.deserialize_and_set_state(&data).unwrap();
+    assert_eq!(store.get().unwrap(), Some(100));
+  }
+
+  #[test]
+  fn test_checkpoint_roundtrip() {
+    // Create store with initial value and modify it
+    let store1: InMemoryStateStore<i64> = InMemoryStateStore::new(10);
+    store1.set(42).unwrap();
+
+    // Serialize the state
+    let checkpoint = store1.serialize_state().unwrap();
+
+    // Create a new store and restore from checkpoint
+    let store2: InMemoryStateStore<i64> = InMemoryStateStore::empty();
+    store2.deserialize_and_set_state(&checkpoint).unwrap();
+
+    // Verify state was restored
+    assert_eq!(store2.get().unwrap(), Some(42));
+  }
+
+  #[test]
+  fn test_checkpoint_complex_type() {
+    #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize, Default)]
+    struct ComplexState {
+      count: i32,
+      values: Vec<String>,
+    }
+
+    let store: InMemoryStateStore<ComplexState> = InMemoryStateStore::new(ComplexState {
+      count: 5,
+      values: vec!["a".to_string(), "b".to_string()],
+    });
+
+    // Serialize
+    let checkpoint = store.serialize_state().unwrap();
+
+    // Restore to new store
+    let store2: InMemoryStateStore<ComplexState> = InMemoryStateStore::empty();
+    store2.deserialize_and_set_state(&checkpoint).unwrap();
+
+    let restored = store2.get().unwrap().unwrap();
+    assert_eq!(restored.count, 5);
+    assert_eq!(restored.values, vec!["a".to_string(), "b".to_string()]);
+  }
+
+  #[test]
+  fn test_deserialize_invalid_data() {
+    let store: InMemoryStateStore<i64> = InMemoryStateStore::empty();
+    let invalid_data = b"not valid json";
+
+    let result = store.deserialize_and_set_state(invalid_data);
+    assert!(result.is_err());
+    assert!(matches!(
+      result.unwrap_err(),
+      StateError::DeserializationFailed(_)
+    ));
+  }
+
+  #[test]
+  fn test_checkpoint_after_updates() {
+    let store: InMemoryStateStore<i64> = InMemoryStateStore::new(0);
+
+    // Perform several updates
+    for i in 1..=10 {
+      store
+        .update(move |current| current.unwrap_or(0) + i)
+        .unwrap();
+    }
+
+    // State should be 1+2+...+10 = 55
+    assert_eq!(store.get().unwrap(), Some(55));
+
+    // Serialize and restore
+    let checkpoint = store.serialize_state().unwrap();
+    let store2: InMemoryStateStore<i64> = InMemoryStateStore::empty();
+    store2.deserialize_and_set_state(&checkpoint).unwrap();
+
+    // Verify the accumulated state was preserved
+    assert_eq!(store2.get().unwrap(), Some(55));
   }
 }
