@@ -1,0 +1,21 @@
+{
+  "name": "streamweave-wasm-nodejs-example",
+  "version": "0.1.0",
+  "description": "StreamWeave WASM Node.js example",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "build:wasm": "wasm-pack build --target nodejs --out-dir pkg",
+    "start": "npm run build:wasm && node src/index.js",
+    "test": "node src/index.js"
+  },
+  "dependencies": {
+    "streamweave": {
+      "path": "../../",
+      "features": ["wasm"],
+      "default-features": false
+    }
+  },
+  "devDependencies": {}
+}
+
