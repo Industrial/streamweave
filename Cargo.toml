@@ -40,6 +40,15 @@ wasm = [
     "tokio/time",
 ]
 
+# Minimal WASM feature for smallest bundle size
+# Includes core stream processing with minimal tokio features
+wasm-minimal = [
+    "tokio/sync",
+    "tokio/rt",
+    "tokio/time",
+    "tokio/macros",
+]
+
 # Optional file format support (native only due to file I/O)
 file-formats = [
     "dep:arrow",
@@ -124,3 +133,19 @@ path = "examples/02_advanced_pipeline/main.rs"
 [dev-dependencies]
 proptest = "1.4"
 tempfile = "3.10.0"
+
+# Release profile optimizations
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# WASM-optimized release profile
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"  # Optimize for size
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

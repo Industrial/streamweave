@@ -393,7 +393,7 @@
             "id": 2,
             "title": "Add WASM feature flags",
             "description": "Create feature flags for WASM-specific code paths",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               1
             ],
@@ -403,7 +403,7 @@
             "id": 3,
             "title": "Optimize bundle size",
             "description": "Reduce WASM bundle size through optimization",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               2
             ],
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T05:17:54.317Z",
+      "updated": "2025-11-26T05:29:48.515Z",
       "description": "Tasks for master context"
     }
   }

@@ -159,8 +159,55 @@ For browser environments, consider providing:
 
 | Build Type | Target Size |
 |------------|-------------|
-| Core (minimal) | < 200KB gzipped |
-| Full WASM | < 500KB gzipped |
+| Minimal (`wasm-minimal`) | < 200KB gzipped |
+| Standard (`wasm`) | < 500KB gzipped |
+
+## Bundle Size Optimization
+
+### Release Profile Configuration
+
+The following profiles are configured in `Cargo.toml` for optimal WASM size:
+
+```toml
+# Release profile optimizations
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# WASM-optimized release profile
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"  # Optimize for size
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+```
+
+### Building Optimized WASM
+
+```bash
+# Standard WASM release build
+cargo build --target wasm32-unknown-unknown --features wasm --no-default-features --release
+
+# Minimal WASM build (smallest size)
+cargo build --target wasm32-unknown-unknown --features wasm-minimal --no-default-features --profile wasm-release
+
+# Further optimize with wasm-opt (if installed)
+wasm-opt -Oz -o optimized.wasm target/wasm32-unknown-unknown/wasm-release/streamweave.wasm
+```
+
+### Measuring Bundle Size
+
+```bash
+# Check raw WASM size
+ls -lh target/wasm32-unknown-unknown/wasm-release/*.wasm
+
+# Check gzipped size
+gzip -c target/wasm32-unknown-unknown/wasm-release/streamweave.wasm | wc -c
+```
 
 ## Implementation Phases
 
