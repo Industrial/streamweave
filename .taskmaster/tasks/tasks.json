@@ -342,7 +342,7 @@
             "id": 2,
             "title": "Implement data partitioning",
             "description": "Create partitioning strategies for distributing data",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               1
             ],
@@ -352,7 +352,7 @@
             "id": 3,
             "title": "Implement network communication",
             "description": "Add gRPC or custom protocol for inter-node communication",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               1
             ],
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T18:09:24.321Z",
+      "updated": "2025-11-26T18:17:30.019Z",
       "description": "Tasks for master context"
     }
   }
