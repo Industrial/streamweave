@@ -9,6 +9,14 @@ unmaintained = "warn"
 yanked = "warn"
 notice = "warn"
 
+# Allow known vulnerabilities with no fix available
+# RUSTSEC-2023-0071: rsa crate vulnerability in sqlx-mysql transitive dependency
+# No fixed upgrade available as of 2024. This is a medium severity timing sidechannel
+# issue that doesn't affect typical database query use cases.
+[[advisories.ignore]]
+id = "RUSTSEC-2023-0071"
+reason = "Transitive dependency of sqlx-mysql with no fix available"
+
 [licenses]
 unlicensed = "deny"
 copyleft = "warn"

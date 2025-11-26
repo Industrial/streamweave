@@ -72,6 +72,9 @@ kafka = ["dep:rdkafka"]
 # Redis Streams integration (native only)
 redis-streams = ["dep:redis"]
 
+# Database integration (native only)
+database = ["dep:sqlx"]
+
 [dependencies]
 # Async runtime and utilities - base features for both native and WASM
 tokio = { version = "1.0", default-features = false }
@@ -122,6 +125,16 @@ rdkafka = { version = "0.36", optional = true, features = ["cmake-build"] }
 
 # Redis Streams integration (native only - requires Redis)
 redis = { version = "0.26", optional = true, features = ["tokio-comp", "streams", "connection-manager"] }
+
+# Database integration (native only - requires PostgreSQL/MySQL)
+# sqlx with runtime mode for dynamic queries and connection pooling
+sqlx = { version = "0.8", optional = true, default-features = false, features = [
+  "runtime-tokio-native-tls",
+  "postgres",
+  "mysql",
+  "chrono",
+  "uuid",
+] }
 
 # Utilities (mostly WASM-compatible)
 jsonwebtoken = "9.2"

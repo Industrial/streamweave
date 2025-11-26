@@ -40,3 +40,7 @@ pub mod kafka;
 // Redis Streams integration (native only, requires Redis)
 #[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
 pub mod redis_streams;
+
+// Database integration (native only, requires PostgreSQL/MySQL)
+#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+pub mod database;
