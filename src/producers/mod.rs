@@ -44,3 +44,7 @@ pub mod redis_streams;
 // Database integration (native only, requires PostgreSQL/MySQL)
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
 pub mod database;
+
+// HTTP polling integration (native only)
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+pub mod http_poll;

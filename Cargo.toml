@@ -75,6 +75,9 @@ redis-streams = ["dep:redis"]
 # Database integration (native only)
 database = ["dep:sqlx"]
 
+# HTTP polling integration (native only)
+http-poll = ["dep:reqwest"]
+
 [dependencies]
 # Async runtime and utilities - base features for both native and WASM
 tokio = { version = "1.0", default-features = false }
@@ -134,6 +137,13 @@ sqlx = { version = "0.8", optional = true, default-features = false, features = 
   "mysql",
   "chrono",
   "uuid",
+] }
+
+# HTTP client for polling (native only)
+reqwest = { version = "0.12", optional = true, default-features = false, features = [
+  "json",
+  "gzip",
+  "brotli",
 ] }
 
 # Utilities (mostly WASM-compatible)
