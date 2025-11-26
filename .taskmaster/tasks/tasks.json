@@ -106,7 +106,7 @@
         "id": 3,
         "title": "Implement Windowing Operations",
         "description": "Implement comprehensive windowing operations for time-based and count-based stream processing.",
-        "status": "pending",
+        "status": "in-progress",
         "priority": "high",
         "dependencies": [
           1
@@ -118,7 +118,7 @@
             "id": 1,
             "title": "Design Window trait and types",
             "description": "Create the core Window trait and enum for window types",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nA well-designed Window abstraction enables flexible windowing strategies.\n\n## Requirements\n\n- Window trait with assign(), trigger(), merge() methods\n- WindowAssigner for assigning elements to windows\n- WindowTrigger for determining when to emit\n\n## Acceptance Criteria\n\n- [ ] Trait is flexible enough for all window types\n- [ ] Type system prevents invalid window configurations\n- [ ] API is ergonomic and well-documented"
           },
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T00:23:38.061Z",
+      "updated": "2025-11-26T00:28:12.856Z",
       "description": "Tasks for master context"
     }
   }
