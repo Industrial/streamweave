@@ -3,6 +3,7 @@ pub mod consumers;
 pub mod error;
 pub mod input;
 pub mod message;
+pub mod offset;
 pub mod output;
 pub mod pipeline;
 pub mod producer;
