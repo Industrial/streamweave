@@ -20,9 +20,24 @@ Before running this example, you need:
 
 3. **Kafka feature enabled** - Build with `--features kafka`
 
-## Quick Start with Docker
+## Quick Start with devenv.sh (Recommended)
 
-The easiest way to run Kafka locally is using Docker Compose:
+If you're using `devenv.sh`, Kafka is automatically configured and started:
+
+```bash
+# Activate devenv environment
+devenv shell
+
+# Kafka will start automatically on port 9092
+# Verify it's running:
+# Kafka should be available at localhost:9092
+```
+
+The `devenv.nix` file includes Kafka service configuration that automatically starts Kafka when you enter the devenv shell.
+
+## Alternative: Quick Start with Docker
+
+If not using devenv, the easiest way to run Kafka locally is using Docker:
 
 ```bash
 # Start Kafka and Zookeeper
@@ -33,8 +48,6 @@ docker run -d --name kafka -p 9092:9092 \
   -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 \
   -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
   confluentinc/cp-kafka:latest
-
-# Or use docker-compose (create docker-compose.yml):
 ```
 
 Alternatively, use the official Kafka quickstart:

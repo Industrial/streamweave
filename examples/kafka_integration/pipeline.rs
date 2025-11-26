@@ -93,8 +93,8 @@ pub async fn produce_to_kafka() -> Result<(), Box<dyn std::error::Error>> {
   println!("📤 Setting up Kafka producer...");
 
   // Create sample events
-  use streamweave::producers::vec::vec_producer::VecProducer;
   use std::time::{SystemTime, UNIX_EPOCH};
+  use streamweave::producers::vec::vec_producer::VecProducer;
 
   let now = SystemTime::now()
     .duration_since(UNIX_EPOCH)
@@ -189,10 +189,7 @@ pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
       Ok(mut event) => {
         // Add processing indicator
         event.message = format!("[PROCESSED] {}", event.message);
-        println!(
-          "  Processing: offset={}, event_id={}",
-          msg.offset, event.id
-        );
+        println!("  Processing: offset={}, event_id={}", msg.offset, event.id);
         Ok(event)
       }
       Err(e) => Err(format!("Parse error: {}", e)),
@@ -240,4 +237,3 @@ pub async fn produce_to_kafka() -> Result<(), Box<dyn std::error::Error>> {
 pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Kafka feature is not enabled. Build with --features kafka".into())
 }
-

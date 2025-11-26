@@ -8,16 +8,18 @@ async function main() {
     
     // Example 1: Process numbers
     console.log('\n=== Example 1: Processing Numbers ===');
-    const numbers = process_numbers(1, 15);
-    console.log('Processed numbers:', numbers);
+    const inputNumbers = new Uint32Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    const numbers = process_numbers(inputNumbers);
+    console.log('Input numbers:', Array.from(inputNumbers));
+    console.log('Processed numbers (doubled):', Array.from(numbers));
     
     // Display results in the DOM
     const resultsDiv = document.getElementById('results');
     if (resultsDiv) {
         resultsDiv.innerHTML = `
             <h2>Processing Results</h2>
-            <h3>Numbers (1-14, doubled, filtered > 10):</h3>
-            <pre>${JSON.stringify(numbers, null, 2)}</pre>
+            <h3>Numbers (doubled):</h3>
+            <pre>${JSON.stringify(Array.from(numbers), null, 2)}</pre>
         `;
     }
     
@@ -41,8 +43,9 @@ async function main() {
             <h2>StreamWeave WASM Processing Results</h2>
             
             <h3>1. Number Processing</h3>
-            <p>Processed numbers from 1 to 14:</p>
-            <pre>${JSON.stringify(numbers, null, 2)}</pre>
+            <p>Input: [${Array.from(inputNumbers).join(', ')}]</p>
+            <p>Output (doubled): [${Array.from(numbers).join(', ')}]</p>
+            <pre>${JSON.stringify(Array.from(numbers), null, 2)}</pre>
             
             <h3>2. String Processing</h3>
             <p>Original: "${testString}"</p>

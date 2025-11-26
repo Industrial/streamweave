@@ -30,7 +30,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       round_trip_example().await?;
     }
     _ => {
-      println!("Usage: cargo run --example kafka_integration --features kafka [consume|produce|roundtrip]");
+      println!(
+        "Usage: cargo run --example kafka_integration --features kafka [consume|produce|roundtrip]"
+      );
       println!();
       println!("Examples:");
       println!("  cargo run --example kafka_integration --features kafka produce");
@@ -51,4 +53,3 @@ fn main() {
   eprintln!("Build with: cargo run --example kafka_integration --features kafka");
   std::process::exit(1);
 }
-
