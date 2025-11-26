@@ -232,7 +232,7 @@
         "id": 5,
         "title": "Implement Fan-In/Fan-Out Support",
         "description": "Add support for splitting streams to multiple consumers and merging multiple streams.",
-        "status": "pending",
+        "status": "in-progress",
         "priority": "medium",
         "dependencies": [],
         "details": "## Context\n\nFan-out allows one stream to feed multiple downstream processors. Fan-in merges multiple streams into one. These are essential for parallel processing and stream routing.\n\n## Implementation Approach\n\n1. Design stream splitting mechanism\n2. Implement various distribution strategies\n3. Add stream merging with ordering options\n4. Create routing based on content\n\n## Technical Considerations\n\n- Backpressure propagation across branches\n- Ordering guarantees in fan-in\n- Memory management for buffering",
@@ -242,7 +242,7 @@
             "id": 1,
             "title": "Implement stream broadcast",
             "description": "Send each element to all downstream consumers",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nBroadcast sends every element to all consumers.\n\n## Requirements\n\n- Clone elements for each consumer\n- Handle slow consumers\n- Configurable buffer size\n\n## Acceptance Criteria\n\n- [ ] All consumers receive all elements\n- [ ] Slow consumers don't block fast ones\n- [ ] Memory usage is bounded"
           },
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T00:48:38.279Z",
+      "updated": "2025-11-26T00:55:25.757Z",
       "description": "Tasks for master context"
     }
   }

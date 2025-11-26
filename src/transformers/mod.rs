@@ -1,5 +1,6 @@
 pub mod backpressure;
 pub mod batch;
+pub mod broadcast;
 pub mod buffer;
 pub mod chunk;
 pub mod circuit_breaker;
