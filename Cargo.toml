@@ -122,7 +122,7 @@ arrow = { version = "54", default-features = false, features = ["ipc"], optional
 parquet = { version = "54", default-features = false, features = ["arrow", "snap", "lz4", "zstd"], optional = true }
 
 # JSON Schema validation (optional - not WASM-compatible due to getrandom dependency)
-jsonschema = { version = "0.17", optional = true }
+jsonschema = { version = "0.37", optional = true }
 
 # Time handling (works in WASM)
 chrono = { version = "0.4", features = ["serde"] }
