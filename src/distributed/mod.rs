@@ -10,6 +10,10 @@ pub mod protocol;
 pub mod worker;
 
 pub use coordinator::{Coordinator, CoordinatorConfig, CoordinatorError};
-pub use partitioner::{PartitionKey, PartitionStrategy, Partitioner};
+pub use partitioner::rebalance;
+pub use partitioner::{
+  CustomPartitioner, HashPartitioner, PartitionKey, PartitionStrategy, Partitioner,
+  RangePartitioner, RoundRobinPartitioner,
+};
 pub use protocol::{Message, MessageType, ProtocolError, ProtocolVersion};
 pub use worker::{Worker, WorkerConfig, WorkerError, WorkerId, WorkerState};
