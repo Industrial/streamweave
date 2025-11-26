@@ -11,6 +11,8 @@ pub enum DatabaseType {
   Postgres,
   /// MySQL/MariaDB database
   Mysql,
+  /// SQLite database (including in-memory)
+  Sqlite,
 }
 
 impl Default for DatabaseType {
@@ -263,6 +265,17 @@ mod tests {
     assert_eq!(config.max_connections, 20);
     assert_eq!(config.fetch_size, 500);
     assert!(config.enable_ssl);
+  }
+
+  #[test]
+  fn test_database_producer_config_sqlite() {
+    let config = DatabaseProducerConfig::default()
+      .with_connection_url("sqlite::memory:")
+      .with_database_type(DatabaseType::Sqlite)
+      .with_query("SELECT * FROM users WHERE id = ?");
+
+    assert_eq!(config.connection_url, "sqlite::memory:");
+    assert_eq!(config.database_type, DatabaseType::Sqlite);
   }
 
   #[test]

@@ -182,6 +182,10 @@ async fn create_pool(
       let pool = pool_options.connect(&config.connection_url).await?;
       Ok(DatabasePool::Mysql(pool))
     }
+    DatabaseType::Sqlite => {
+      let pool = pool_options.connect(&config.connection_url).await?;
+      Ok(DatabasePool::Sqlite(pool))
+    }
   }
 }
 
@@ -225,6 +229,24 @@ async fn execute_query(
       let row_stream = query.fetch(mysql_pool).map(|row_result| {
         row_result
           .map(|row: sqlx::mysql::MySqlRow| convert_mysql_row_to_database_row(&row))
+          .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+      });
+
+      Ok(Box::pin(row_stream))
+    }
+    DatabasePool::Sqlite(sqlite_pool) => {
+      // Use sqlx::query for runtime queries (supports dynamic parameters)
+      let mut query = sqlx::query(&config.query);
+
+      // Bind parameters dynamically
+      for param in &config.parameters {
+        query = bind_parameter_sqlite(query, param)?;
+      }
+
+      // Execute query and map rows - cursor-based streaming for large results
+      let row_stream = query.fetch(sqlite_pool).map(|row_result| {
+        row_result
+          .map(|row: sqlx::sqlite::SqliteRow| convert_sqlite_row_to_database_row(&row))
           .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
       });
 
@@ -286,6 +308,36 @@ fn bind_parameter_mysql(
     serde_json::Value::String(s) => query.bind(s.clone()),
     serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
       // Serialize complex types to JSON string for MySQL JSON columns
+      let json_str = serde_json::to_string(param)?;
+      query.bind(json_str)
+    }
+  };
+  Ok(bound_query)
+}
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+fn bind_parameter_sqlite(
+  query: sqlx::query::Query<'_, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'_>>,
+  param: &serde_json::Value,
+) -> Result<
+  sqlx::query::Query<'_, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'_>>,
+  Box<dyn std::error::Error + Send + Sync>,
+> {
+  let bound_query = match param {
+    serde_json::Value::Null => query.bind(None::<Option<String>>),
+    serde_json::Value::Bool(b) => query.bind(if *b { 1i64 } else { 0i64 }), // SQLite uses integer for boolean
+    serde_json::Value::Number(n) => {
+      if let Some(i) = n.as_i64() {
+        query.bind(i)
+      } else if let Some(f) = n.as_f64() {
+        query.bind(f)
+      } else {
+        return Err("Unsupported number type for SQLite parameter".into());
+      }
+    }
+    serde_json::Value::String(s) => query.bind(s.clone()),
+    serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
+      // Serialize complex types to JSON string for SQLite
       let json_str = serde_json::to_string(param)?;
       query.bind(json_str)
     }
@@ -402,6 +454,59 @@ fn convert_mysql_row_to_database_row(row: &sqlx::mysql::MySqlRow) -> DatabaseRow
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+fn convert_sqlite_row_to_database_row(row: &sqlx::sqlite::SqliteRow) -> DatabaseRow {
+  use sqlx::Row;
+  let mut fields = HashMap::new();
+
+  for (idx, column) in row.columns().iter().enumerate() {
+    let value = match column.type_info().name() {
+      "INTEGER" => row
+        .try_get::<i64, _>(idx)
+        .ok()
+        .map(|v| serde_json::Value::Number(v.into())),
+      "REAL" => row
+        .try_get::<f64, _>(idx)
+        .ok()
+        .map(|v| serde_json::Value::Number(serde_json::Number::from_f64(v).unwrap())),
+      "TEXT" | "VARCHAR" => row
+        .try_get::<String, _>(idx)
+        .ok()
+        .map(|v| serde_json::Value::String(v)),
+      "BLOB" => row
+        .try_get::<Vec<u8>, _>(idx)
+        .ok()
+        .map(|v| serde_json::Value::String(base64::encode(v))),
+      _ => {
+        // Try common types
+        row
+          .try_get::<String, _>(idx)
+          .ok()
+          .map(|v| serde_json::Value::String(v))
+          .or_else(|| {
+            row
+              .try_get::<i64, _>(idx)
+              .ok()
+              .map(|v| serde_json::Value::Number(v.into()))
+          })
+          .or_else(|| {
+            row
+              .try_get::<f64, _>(idx)
+              .ok()
+              .map(|v| serde_json::Value::Number(serde_json::Number::from_f64(v).unwrap()))
+          })
+          .or_else(|| row.try_get::<serde_json::Value, _>(idx).ok())
+      }
+    };
+
+    if let Some(val) = value {
+      fields.insert(column.name().to_string(), val);
+    }
+  }
+
+  DatabaseRow::new(fields)
+}
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
 fn handle_error_strategy<T>(strategy: &ErrorStrategy<T>, error: &StreamError<T>) -> ErrorAction
 where
   T: std::fmt::Debug + Clone + Send + Sync,
@@ -412,5 +517,433 @@ where
     ErrorStrategy::Retry(n) if error.retries < *n => ErrorAction::Retry,
     ErrorStrategy::Custom(handler) => handler(error),
     _ => ErrorAction::Stop,
+  }
+}
+
+#[cfg(test)]
+#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+mod tests {
+  use super::*;
+  use futures::StreamExt;
+  use sqlx::SqlitePool;
+
+  async fn setup_test_db() -> SqlitePool {
+    // Use in-memory database with shared cache for testing
+    let pool = SqlitePool::connect("sqlite::memory:?cache=shared")
+      .await
+      .unwrap();
+
+    // Create test table
+    sqlx::query(
+      r#"
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT,
+        age INTEGER,
+        active INTEGER,
+        balance REAL
+      )
+      "#,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Insert test data
+    sqlx::query(
+      r#"
+      INSERT INTO users (id, name, email, age, active, balance)
+      VALUES 
+        (1, 'Alice', 'alice@example.com', 30, 1, 1000.50),
+        (2, 'Bob', 'bob@example.com', 25, 1, 750.25),
+        (3, 'Charlie', 'charlie@example.com', 35, 0, 2000.00),
+        (4, 'Diana', 'diana@example.com', 28, 1, 1500.75),
+        (5, 'Eve', 'eve@example.com', 32, 1, 3000.00)
+      "#,
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    pool
+  }
+
+  #[tokio::test]
+  async fn test_database_producer_basic_query() {
+    let pool = setup_test_db().await;
+
+    let config = DatabaseProducerConfig::default()
+      .with_connection_url("sqlite::memory:".to_string())
+      .with_database_type(DatabaseType::Sqlite)
+      .with_query("SELECT id, name, email, age, active, balance FROM users ORDER BY id");
+
+    // Manually set the pool (in real usage, the producer creates it)
+    let mut producer = DatabaseProducer::new(config);
+
+    // Create pool and manually execute query for testing
+    let db_config = producer.db_config().clone();
+    let test_pool = create_pool(&db_config).await.unwrap();
+
+    match test_pool {
+      DatabasePool::Sqlite(sqlite_pool) => {
+        let query_result = execute_query(&DatabasePool::Sqlite(sqlite_pool), &db_config)
+          .await
+          .unwrap();
+        let mut rows: Vec<DatabaseRow> = Vec::new();
+        let mut stream = std::pin::pin!(query_result);
+
+        while let Some(result) = stream.next().await {
+          rows.push(result.unwrap());
+        }
+
+        assert_eq!(rows.len(), 5);
+
+        // Verify first row
+        let first_row = &rows[0];
+        assert_eq!(
+          first_row.get("id"),
+          Some(&serde_json::Value::Number(1.into()))
+        );
+        assert_eq!(
+          first_row.get("name"),
+          Some(&serde_json::Value::String("Alice".to_string()))
+        );
+        assert_eq!(
+          first_row.get("email"),
+          Some(&serde_json::Value::String("alice@example.com".to_string()))
+        );
+      }
+      _ => panic!("Expected SQLite pool"),
+    }
+  }
+
+  #[tokio::test]
+  async fn test_database_producer_parameterized_query() {
+    let _pool = setup_test_db().await;
+
+    let config = DatabaseProducerConfig::default()
+      .with_connection_url("sqlite::memory:".to_string())
+      .with_database_type(DatabaseType::Sqlite)
+      .with_query("SELECT id, name, email FROM users WHERE age > ? ORDER BY id")
+      .with_parameter(serde_json::Value::Number(30.into()));
+
+    let db_config = config.clone();
+    let test_pool = create_pool(&db_config).await.unwrap();
+
+    match test_pool {
+      DatabasePool::Sqlite(sqlite_pool) => {
+        // Need to setup the DB again since we're creating a new connection
+        sqlx::query(
+          r#"
+          CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            age INTEGER,
+            active INTEGER,
+            balance REAL
+          )
+          "#,
+        )
+        .execute(&sqlite_pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+          r#"
+          INSERT OR REPLACE INTO users (id, name, email, age, active, balance)
+          VALUES 
+            (1, 'Alice', 'alice@example.com', 30, 1, 1000.50),
+            (2, 'Bob', 'bob@example.com', 25, 1, 750.25),
+            (3, 'Charlie', 'charlie@example.com', 35, 0, 2000.00),
+            (4, 'Diana', 'diana@example.com', 28, 1, 1500.75),
+            (5, 'Eve', 'eve@example.com', 32, 1, 3000.00)
+          "#,
+        )
+        .execute(&sqlite_pool)
+        .await
+        .unwrap();
+
+        let query_result = execute_query(&DatabasePool::Sqlite(sqlite_pool), &db_config)
+          .await
+          .unwrap();
+        let mut rows: Vec<DatabaseRow> = Vec::new();
+        let mut stream = std::pin::pin!(query_result);
+
+        while let Some(result) = stream.next().await {
+          rows.push(result.unwrap());
+        }
+
+        // Should only get rows where age > 30
+        assert_eq!(rows.len(), 2);
+        assert_eq!(
+          rows[0].get("name"),
+          Some(&serde_json::Value::String("Charlie".to_string()))
+        );
+        assert_eq!(
+          rows[1].get("name"),
+          Some(&serde_json::Value::String("Eve".to_string()))
+        );
+      }
+      _ => panic!("Expected SQLite pool"),
+    }
+  }
+
+  #[tokio::test]
+  async fn test_database_producer_large_result_set() {
+    let pool = setup_test_db().await;
+
+    // Insert more data to test large result sets
+    for i in 6..=100 {
+      sqlx::query(
+        "INSERT INTO users (id, name, email, age, active, balance) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .bind(i)
+      .bind(format!("User{}", i))
+      .bind(format!("user{}@example.com", i))
+      .bind(20 + (i % 30))
+      .bind(1)
+      .bind(1000.0 + (i as f64))
+      .execute(&pool)
+      .await
+      .unwrap();
+    }
+
+    let config = DatabaseProducerConfig::default()
+      .with_connection_url("sqlite::memory:".to_string())
+      .with_database_type(DatabaseType::Sqlite)
+      .with_query("SELECT id, name FROM users ORDER BY id")
+      .with_fetch_size(10); // Small fetch size to test cursor-based streaming
+
+    let db_config = config.clone();
+    let test_pool = create_pool(&db_config).await.unwrap();
+
+    match test_pool {
+      DatabasePool::Sqlite(sqlite_pool) => {
+        // Recreate DB with all data
+        sqlx::query("DROP TABLE IF EXISTS users")
+          .execute(&sqlite_pool)
+          .await
+          .unwrap();
+        sqlx::query(
+          r#"
+          CREATE TABLE users (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            age INTEGER,
+            active INTEGER,
+            balance REAL
+          )
+          "#,
+        )
+        .execute(&sqlite_pool)
+        .await
+        .unwrap();
+
+        for i in 1..=100 {
+          sqlx::query(
+            "INSERT INTO users (id, name, email, age, active, balance) VALUES (?, ?, ?, ?, ?, ?)",
+          )
+          .bind(i)
+          .bind(format!("User{}", i))
+          .bind(format!("user{}@example.com", i))
+          .bind(20 + (i % 30))
+          .bind(1)
+          .bind(1000.0 + (i as f64))
+          .execute(&sqlite_pool)
+          .await
+          .unwrap();
+        }
+
+        let query_result = execute_query(&DatabasePool::Sqlite(sqlite_pool), &db_config)
+          .await
+          .unwrap();
+        let mut rows: Vec<DatabaseRow> = Vec::new();
+        let mut stream = std::pin::pin!(query_result);
+
+        while let Some(result) = stream.next().await {
+          rows.push(result.unwrap());
+        }
+
+        // Should get all 100 rows
+        assert_eq!(rows.len(), 100);
+
+        // Verify data integrity
+        for (i, row) in rows.iter().enumerate() {
+          let expected_id = (i + 1) as i64;
+          assert_eq!(
+            row.get("id"),
+            Some(&serde_json::Value::Number(expected_id.into()))
+          );
+          assert_eq!(
+            row.get("name"),
+            Some(&serde_json::Value::String(format!("User{}", expected_id)))
+          );
+        }
+      }
+      _ => panic!("Expected SQLite pool"),
+    }
+  }
+
+  #[tokio::test]
+  async fn test_database_producer_connection_pooling() {
+    let config = DatabaseProducerConfig::default()
+      .with_connection_url("sqlite::memory:".to_string())
+      .with_database_type(DatabaseType::Sqlite)
+      .with_max_connections(5)
+      .with_min_connections(2);
+
+    let pool = create_pool(&config).await.unwrap();
+
+    match pool {
+      DatabasePool::Sqlite(sqlite_pool) => {
+        // Pool should be created successfully
+        // Verify we can execute queries
+        sqlx::query("SELECT 1")
+          .fetch_one(&sqlite_pool)
+          .await
+          .unwrap();
+      }
+      _ => panic!("Expected SQLite pool"),
+    }
+  }
+
+  #[tokio::test]
+  async fn test_database_producer_null_values() {
+    let _pool = setup_test_db().await;
+
+    // Insert a row with NULL values
+    sqlx::query("INSERT INTO users (id, name, email, age, active, balance) VALUES (6, 'NullUser', NULL, NULL, 1, NULL)")
+      .execute(&_pool)
+      .await
+      .unwrap();
+
+    let config = DatabaseProducerConfig::default()
+      .with_connection_url("sqlite::memory:".to_string())
+      .with_database_type(DatabaseType::Sqlite)
+      .with_query("SELECT id, name, email, age, balance FROM users WHERE id = 6");
+
+    let db_config = config.clone();
+    let test_pool = create_pool(&db_config).await.unwrap();
+
+    match test_pool {
+      DatabasePool::Sqlite(sqlite_pool) => {
+        // Setup DB
+        sqlx::query(
+          r#"
+          CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            age INTEGER,
+            active INTEGER,
+            balance REAL
+          )
+          "#,
+        )
+        .execute(&sqlite_pool)
+        .await
+        .unwrap();
+
+        sqlx::query("INSERT OR REPLACE INTO users (id, name, email, age, active, balance) VALUES (6, 'NullUser', NULL, NULL, 1, NULL)")
+          .execute(&sqlite_pool)
+          .await
+          .unwrap();
+
+        let query_result = execute_query(&DatabasePool::Sqlite(sqlite_pool), &db_config)
+          .await
+          .unwrap();
+        let mut rows: Vec<DatabaseRow> = Vec::new();
+        let mut stream = std::pin::pin!(query_result);
+
+        while let Some(result) = stream.next().await {
+          rows.push(result.unwrap());
+        }
+
+        assert_eq!(rows.len(), 1);
+        let row = &rows[0];
+        assert_eq!(row.get("id"), Some(&serde_json::Value::Number(6.into())));
+        assert_eq!(
+          row.get("name"),
+          Some(&serde_json::Value::String("NullUser".to_string()))
+        );
+        // NULL values may not appear in the row or may be null JSON values
+      }
+      _ => panic!("Expected SQLite pool"),
+    }
+  }
+
+  #[tokio::test]
+  async fn test_database_producer_different_data_types() {
+    let pool = setup_test_db().await;
+
+    let config = DatabaseProducerConfig::default()
+      .with_connection_url("sqlite::memory:".to_string())
+      .with_database_type(DatabaseType::Sqlite)
+      .with_query("SELECT id, name, age, balance, active FROM users WHERE id = 1");
+
+    let db_config = config.clone();
+    let test_pool = create_pool(&db_config).await.unwrap();
+
+    match test_pool {
+      DatabasePool::Sqlite(sqlite_pool) => {
+        // Setup DB
+        sqlx::query(
+          r#"
+          CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT,
+            age INTEGER,
+            active INTEGER,
+            balance REAL
+          )
+          "#,
+        )
+        .execute(&sqlite_pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+          r#"
+          INSERT OR REPLACE INTO users (id, name, email, age, active, balance)
+          VALUES (1, 'Alice', 'alice@example.com', 30, 1, 1000.50)
+          "#,
+        )
+        .execute(&sqlite_pool)
+        .await
+        .unwrap();
+
+        let query_result = execute_query(&DatabasePool::Sqlite(sqlite_pool), &db_config)
+          .await
+          .unwrap();
+        let mut rows: Vec<DatabaseRow> = Vec::new();
+        let mut stream = std::pin::pin!(query_result);
+
+        while let Some(result) = stream.next().await {
+          rows.push(result.unwrap());
+        }
+
+        assert_eq!(rows.len(), 1);
+        let row = &rows[0];
+
+        // Verify different data types are correctly converted
+        assert_eq!(row.get("id"), Some(&serde_json::Value::Number(1.into())));
+        assert_eq!(
+          row.get("name"),
+          Some(&serde_json::Value::String("Alice".to_string()))
+        );
+        assert_eq!(row.get("age"), Some(&serde_json::Value::Number(30.into())));
+        // Balance is REAL (float) - check it's a number
+        if let Some(serde_json::Value::Number(n)) = row.get("balance") {
+          assert!((n.as_f64().unwrap() - 1000.50).abs() < 0.01);
+        } else {
+          panic!("Balance should be a number");
+        }
+      }
+      _ => panic!("Expected SQLite pool"),
+    }
   }
 }
