@@ -459,7 +459,7 @@
             "id": 4,
             "title": "Implement HTTP polling producer",
             "description": "Add producer that polls HTTP endpoints",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nPolling APIs is common for integrations without webhooks.\n\n## Requirements\n\n- Configurable poll interval\n- Support for pagination\n- Delta detection (only new items)\n- Rate limiting\n\n## Acceptance Criteria\n\n- [ ] Polls at configured interval\n- [ ] Handles pagination correctly\n- [ ] Emits only new items\n- [ ] Rate limits respected\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           }
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T20:10:59.624Z",
+      "updated": "2025-11-26T20:13:26.516Z",
       "description": "Tasks for master context"
     }
   }

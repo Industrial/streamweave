@@ -195,36 +195,36 @@ async fn execute_query(
 > {
   match pool {
     DatabasePool::Postgres(pg_pool) => {
-      // Build query with parameters
-      let mut query_builder = sqlx::query_as::<_, sqlx::postgres::PgRow>(&config.query);
+      // Use sqlx::query for runtime queries (supports dynamic parameters)
+      let mut query = sqlx::query(&config.query);
 
-      // Add parameters
+      // Bind parameters dynamically
       for param in &config.parameters {
-        query_builder = bind_parameter(query_builder, param)?;
+        query = bind_parameter_postgres(query, param)?;
       }
 
-      // Execute query and map rows
-      let row_stream = query_builder.fetch(pg_pool).map(|row_result| {
+      // Execute query and map rows - cursor-based streaming for large results
+      let row_stream = query.fetch(pg_pool).map(|row_result| {
         row_result
-          .map(|row| convert_row_to_database_row(&row))
+          .map(|row: sqlx::postgres::PgRow| convert_row_to_database_row(&row))
           .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
       });
 
       Ok(Box::pin(row_stream))
     }
     DatabasePool::Mysql(mysql_pool) => {
-      // Build query with parameters
-      let mut query_builder = sqlx::query_as::<_, sqlx::mysql::MySqlRow>(&config.query);
+      // Use sqlx::query for runtime queries (supports dynamic parameters)
+      let mut query = sqlx::query(&config.query);
 
-      // Add parameters
+      // Bind parameters dynamically
       for param in &config.parameters {
-        query_builder = bind_parameter_mysql(query_builder, param)?;
+        query = bind_parameter_mysql(query, param)?;
       }
 
-      // Execute query and map rows
-      let row_stream = query_builder.fetch(mysql_pool).map(|row_result| {
+      // Execute query and map rows - cursor-based streaming for large results
+      let row_stream = query.fetch(mysql_pool).map(|row_result| {
         row_result
-          .map(|row| convert_mysql_row_to_database_row(&row))
+          .map(|row: sqlx::mysql::MySqlRow| convert_mysql_row_to_database_row(&row))
           .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
       });
 
@@ -234,29 +234,63 @@ async fn execute_query(
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
-fn bind_parameter(
-  mut query: sqlx::query_builder::QueryAs<'_, sqlx::Postgres, sqlx::postgres::PgRow, ()>,
+fn bind_parameter_postgres(
+  query: sqlx::query::Query<'_, sqlx::Postgres, sqlx::postgres::PgArguments>,
   param: &serde_json::Value,
 ) -> Result<
-  sqlx::query_builder::QueryAs<'_, sqlx::Postgres, sqlx::postgres::PgRow, ()>,
+  sqlx::query::Query<'_, sqlx::Postgres, sqlx::postgres::PgArguments>,
   Box<dyn std::error::Error + Send + Sync>,
 > {
-  use sqlx::Arguments;
-  // This is a simplified approach - in practice, sqlx requires compile-time type information
-  // For runtime queries, we'll use sqlx::query which accepts runtime parameters
-  // For now, return error indicating this needs dynamic query handling
-  Err("Dynamic parameter binding requires sqlx::query (not query_as)".into())
+  let bound_query = match param {
+    serde_json::Value::Null => query.bind(None::<Option<String>>),
+    serde_json::Value::Bool(b) => query.bind(*b),
+    serde_json::Value::Number(n) => {
+      if let Some(i) = n.as_i64() {
+        query.bind(i)
+      } else if let Some(f) = n.as_f64() {
+        query.bind(f)
+      } else {
+        return Err("Unsupported number type for PostgreSQL parameter".into());
+      }
+    }
+    serde_json::Value::String(s) => query.bind(s.clone()),
+    serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
+      // Serialize complex types to JSON string for PostgreSQL JSON/JSONB columns
+      let json_str = serde_json::to_string(param)?;
+      query.bind(json_str)
+    }
+  };
+  Ok(bound_query)
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
 fn bind_parameter_mysql(
-  mut query: sqlx::query_builder::QueryAs<'_, sqlx::MySql, sqlx::mysql::MySqlRow, ()>,
+  query: sqlx::query::Query<'_, sqlx::MySql, sqlx::mysql::MySqlArguments>,
   param: &serde_json::Value,
 ) -> Result<
-  sqlx::query_builder::QueryAs<'_, sqlx::MySql, sqlx::mysql::MySqlRow, ()>,
+  sqlx::query::Query<'_, sqlx::MySql, sqlx::mysql::MySqlArguments>,
   Box<dyn std::error::Error + Send + Sync>,
 > {
-  Err("Dynamic parameter binding requires sqlx::query (not query_as)".into())
+  let bound_query = match param {
+    serde_json::Value::Null => query.bind(None::<Option<String>>),
+    serde_json::Value::Bool(b) => query.bind(*b),
+    serde_json::Value::Number(n) => {
+      if let Some(i) = n.as_i64() {
+        query.bind(i)
+      } else if let Some(f) = n.as_f64() {
+        query.bind(f)
+      } else {
+        return Err("Unsupported number type for MySQL parameter".into());
+      }
+    }
+    serde_json::Value::String(s) => query.bind(s.clone()),
+    serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
+      // Serialize complex types to JSON string for MySQL JSON columns
+      let json_str = serde_json::to_string(param)?;
+      query.bind(json_str)
+    }
+  };
+  Ok(bound_query)
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
