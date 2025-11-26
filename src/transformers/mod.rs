@@ -16,6 +16,7 @@ pub mod interleave;
 pub mod limit;
 pub mod map;
 pub mod merge;
+pub mod message_dedupe;
 pub mod moving_average;
 pub mod partition;
 pub mod rate_limit;

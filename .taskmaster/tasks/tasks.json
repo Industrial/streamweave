@@ -76,7 +76,7 @@
             "id": 2,
             "title": "Create deduplication transformer",
             "description": "Implement a transformer that filters duplicate messages based on ID",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1
             ],
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T00:03:31.039Z",
+      "updated": "2025-11-26T00:08:48.995Z",
       "description": "Tasks for master context"
     }
   }
