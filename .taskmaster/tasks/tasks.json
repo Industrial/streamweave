@@ -425,7 +425,7 @@
         "id": 9,
         "title": "Add Specialized Producers and Consumers",
         "description": "Implement producers and consumers for common external systems like Kafka, Redis, and databases.",
-        "status": "pending",
+        "status": "done",
         "priority": "medium",
         "dependencies": [],
         "details": "## Context\n\nIntegration with external systems makes StreamWeave useful for real-world applications. These are the most commonly requested integrations.\n\n## Implementation Approach\n\n1. Define standard interfaces for external systems\n2. Implement each integration as optional feature\n3. Ensure consistent configuration patterns\n4. Add integration tests with testcontainers\n\n## Technical Considerations\n\n- Connection pooling and management\n- Retry and reconnection logic\n- Backpressure handling\n- Configuration consistency",
@@ -469,7 +469,7 @@
         "id": 10,
         "title": "Create Comprehensive Examples",
         "description": "Create examples demonstrating all major functionality to help users understand and adopt StreamWeave features.",
-        "status": "pending",
+        "status": "in-progress",
         "priority": "medium",
         "dependencies": [
           9
@@ -481,7 +481,7 @@
             "id": 1,
             "title": "Create Kafka integration example",
             "description": "Add example demonstrating Kafka producer and consumer",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [],
             "details": "## Context\n\nKafka is one of the most common message streaming platforms. Users need a clear example showing how to consume from and produce to Kafka topics.\n\n## Requirements\n\n- Demonstrate consuming from Kafka topics with consumer groups\n- Show producing messages to Kafka with batching\n- Include setup instructions for local Kafka instance\n- Show offset management and error handling\n\n## Acceptance Criteria\n\n- [ ] Example compiles and runs\n- [ ] README explains Kafka setup\n- [ ] Demonstrates consumer groups and partition handling\n- [ ] Shows producer batching configuration\n- [ ] Example is well-commented\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete"
           },
@@ -942,7 +942,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T22:00:00.000Z",
+      "updated": "2025-11-26T23:32:41.357Z",
       "description": "Tasks for master context"
     }
   }

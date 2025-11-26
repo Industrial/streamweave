@@ -12,8 +12,15 @@ keywords = ["stream", "async", "pipeline", "data-processing", "rust"]
 categories = ["asynchronous", "data-structures", "web-programming::http-server"]
 readme = "README.md"
 
+# rust-analyzer configuration
+# This ensures rust-analyzer uses native target (not wasm32) for better IDE support
+[package.metadata.rust-analyzer]
+# Configure rust-analyzer to check with kafka feature enabled
+# and use native target so Kafka code is not marked as inactive
+check.allTargets = true
+
 [features]
-default = ["native"]
+default = ["native", "kafka"]
 
 # Native platform features (full functionality)
 native = [
@@ -168,6 +175,10 @@ path = "examples/basic_pipeline/main.rs"
 [[example]]
 name = "advanced_pipeline"
 path = "examples/advanced_pipeline/main.rs"
+
+[[example]]
+name = "kafka_integration"
+path = "examples/kafka_integration/main.rs"
 
 [dev-dependencies]
 proptest = "1.4"
