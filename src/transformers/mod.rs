@@ -20,6 +20,7 @@ pub mod map;
 pub mod merge;
 pub mod message_dedupe;
 pub mod moving_average;
+pub mod ordered_merge;
 pub mod partition;
 pub mod rate_limit;
 pub mod reduce;

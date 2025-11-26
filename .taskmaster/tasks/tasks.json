@@ -266,7 +266,7 @@
             "id": 4,
             "title": "Implement stream merge",
             "description": "Combine multiple input streams into one output",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nMerge combines multiple streams into a single output.\n\n## Requirements\n\n- Merge with configurable ordering (FIFO, round-robin, priority)\n- Handle stream completion\n- Propagate errors from any source\n\n## Acceptance Criteria\n\n- [ ] All elements from all streams appear in output\n- [ ] Ordering matches configuration\n- [ ] Completed streams don't block others"
           }
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T01:02:34.996Z",
+      "updated": "2025-11-26T01:07:51.911Z",
       "description": "Tasks for master context"
     }
   }
