@@ -56,7 +56,7 @@
         "id": 2,
         "title": "Implement Exactly-Once Processing",
         "description": "Implement exactly-once processing guarantees for reliable stream processing with deduplication and idempotency.",
-        "status": "pending",
+        "status": "in-progress",
         "priority": "high",
         "dependencies": [
           1
@@ -68,7 +68,7 @@
             "id": 1,
             "title": "Implement message ID tracking",
             "description": "Add unique message IDs to stream items for deduplication",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nMessage IDs are the foundation of exactly-once processing.\n\n## Requirements\n\n- Generate unique IDs (UUID or sequence)\n- Attach ID to each stream item\n- Make ID accessible in transformers\n\n## Acceptance Criteria\n\n- [ ] All items have unique IDs\n- [ ] IDs are preserved through transformations\n- [ ] IDs can be extracted for deduplication"
           },
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-25T23:59:34.081Z",
+      "updated": "2025-11-26T00:03:31.039Z",
       "description": "Tasks for master context"
     }
   }
