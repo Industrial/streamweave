@@ -1,3 +1,4 @@
+// Core transformers (WASM-compatible)
 pub mod backpressure;
 pub mod batch;
 pub mod broadcast;
@@ -28,7 +29,6 @@ pub mod retry;
 pub mod round_robin;
 pub mod router;
 pub mod running_sum;
-pub mod sample;
 pub mod skip;
 pub mod sort;
 pub mod split;
@@ -37,3 +37,7 @@ pub mod take;
 pub mod timeout;
 pub mod window;
 pub mod zip;
+
+// Transformers requiring random number generation
+#[cfg(feature = "random")]
+pub mod sample;

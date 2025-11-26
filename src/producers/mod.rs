@@ -1,16 +1,34 @@
+// Core producers (WASM-compatible)
 pub mod array;
 pub mod channel;
-pub mod command;
-pub mod csv;
-pub mod env_var;
-pub mod file;
 pub mod hash_map;
 pub mod hash_set;
-pub mod interval;
-pub mod jsonl;
-pub mod msgpack;
-pub mod parquet;
-pub mod random_number;
 pub mod range;
 pub mod string;
 pub mod vec;
+
+// Producers requiring tokio runtime features
+#[cfg(feature = "native")]
+pub mod interval;
+
+// Producers requiring random number generation
+#[cfg(feature = "random")]
+pub mod random_number;
+
+// Native-only producers (require OS features)
+#[cfg(not(target_arch = "wasm32"))]
+pub mod command;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod env_var;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod file;
+
+// File format producers (native only, require file I/O)
+#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+pub mod csv;
+#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+pub mod jsonl;
+#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+pub mod msgpack;
+#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+pub mod parquet;

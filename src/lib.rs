@@ -13,3 +13,27 @@ pub mod transaction;
 pub mod transformer;
 pub mod transformers;
 pub mod window;
+
+// Re-export commonly used types
+pub use consumer::Consumer;
+pub use error::{ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+pub use input::Input;
+pub use message::{Message, MessageId, MessageMetadata};
+pub use output::Output;
+pub use pipeline::{Complete, Empty, HasProducer, HasTransformer, Pipeline};
+pub use producer::Producer;
+pub use stateful_transformer::{
+  InMemoryStateStore, StateStore, StateStoreExt, StatefulTransformer,
+};
+pub use transformer::Transformer;
+
+// Feature-gated re-exports
+#[cfg(feature = "file-formats")]
+pub use {
+  consumers::csv::csv_consumer::CsvConsumer, consumers::jsonl::jsonl_consumer::JsonlConsumer,
+  consumers::msgpack::msgpack_consumer::MsgPackConsumer,
+  consumers::parquet::parquet_consumer::ParquetConsumer, producers::csv::csv_producer::CsvProducer,
+  producers::jsonl::jsonl_producer::JsonlProducer,
+  producers::msgpack::msgpack_producer::MsgPackProducer,
+  producers::parquet::parquet_producer::ParquetProducer,
+};

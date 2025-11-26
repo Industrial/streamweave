@@ -1,13 +1,25 @@
+// Core consumers (WASM-compatible)
 pub mod array;
 pub mod channel;
-pub mod command;
-pub mod console;
-pub mod csv;
-pub mod file;
 pub mod hash_map;
 pub mod hash_set;
-pub mod jsonl;
-pub mod msgpack;
-pub mod parquet;
 pub mod string;
 pub mod vec;
+
+// Native-only consumers (require OS features)
+#[cfg(not(target_arch = "wasm32"))]
+pub mod command;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod console;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod file;
+
+// File format consumers (native only, require file I/O)
+#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+pub mod csv;
+#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+pub mod jsonl;
+#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+pub mod msgpack;
+#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+pub mod parquet;

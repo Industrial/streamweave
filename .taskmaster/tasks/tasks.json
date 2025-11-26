@@ -375,7 +375,7 @@
         "id": 8,
         "title": "WASM Optimizations",
         "description": "Optimize StreamWeave for WebAssembly deployment with browser and server-side WASM support.",
-        "status": "pending",
+        "status": "in-progress",
         "priority": "medium",
         "dependencies": [],
         "details": "## Context\n\nWASM support enables running pipelines in browsers and edge environments. The current codebase supports WASM but needs optimization.\n\n## Implementation Approach\n\n1. Audit current WASM compatibility\n2. Add feature flags for WASM-specific code\n3. Optimize bundle size\n4. Create WASM-specific documentation\n\n## Technical Considerations\n\n- No std library for some targets\n- Memory management differences\n- Async runtime compatibility\n- Bundle size concerns",
@@ -385,7 +385,7 @@
             "id": 1,
             "title": "Audit WASM compatibility",
             "description": "Test all features in WASM and document incompatibilities",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "## Context\n\nNeed to understand current WASM support level.\n\n## Requirements\n\n- Test each module in wasm32 target\n- Document what works and what doesn't\n- Identify dependencies blocking WASM\n\n## Acceptance Criteria\n\n- [ ] Compatibility matrix documented\n- [ ] Blocking issues identified\n- [ ] Plan for fixes created"
           },
@@ -393,7 +393,7 @@
             "id": 2,
             "title": "Add WASM feature flags",
             "description": "Create feature flags for WASM-specific code paths",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [
               1
             ],
@@ -724,7 +724,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-26T04:58:45.225Z",
+      "updated": "2025-11-26T05:17:54.317Z",
       "description": "Tasks for master context"
     }
   }

@@ -12,43 +12,94 @@ keywords = ["stream", "async", "pipeline", "data-processing", "rust"]
 categories = ["asynchronous", "data-structures", "web-programming::http-server"]
 readme = "README.md"
 
+[features]
+default = ["native"]
+
+# Native platform features (full functionality)
+native = [
+    "tokio/full",
+    "tokio-stream/io-util",
+    "dep:async-compression",
+    "dep:hyper-tungstenite",
+    "dep:hyper-util",
+    "dep:jsonschema",
+    "dep:tokio-tungstenite",
+    "dep:tokio-util",
+    "dep:tracing-subscriber",
+    "file-formats",
+    "random",
+]
+
+# WebAssembly platform features (browser/Node.js compatible)
+# Note: Random number generation requires browser crypto API
+# UUID and random features are disabled for WASM due to getrandom limitations
+wasm = [
+    "tokio/sync",
+    "tokio/macros",
+    "tokio/rt",
+    "tokio/time",
+]
+
+# Optional file format support (native only due to file I/O)
+file-formats = [
+    "dep:arrow",
+    "dep:parquet",
+    "dep:csv",
+    "dep:rmp-serde",
+]
+
+# Random number generation support
+random = [
+    "dep:rand",
+    "dep:uuid",
+]
+
+# Compression support (native only)
+compression = ["dep:async-compression"]
+
 [dependencies]
-# Async runtime and utilities
-tokio = { version = "1.0", features = ["full"] }
+# Async runtime and utilities - base features for both native and WASM
+tokio = { version = "1.0", default-features = false }
 futures = "0.3"
 async-trait = "0.1"
 
-# Compression
-async-compression = { version = "0.4", features = ["tokio", "gzip", "deflate"] }
+# Compression (native only)
+async-compression = { version = "0.4", features = ["tokio", "gzip", "deflate"], optional = true }
 
-# Serialization
+# Serialization (always available)
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-csv = "1.3"
-rmp-serde = "1.3"
 
-# Columnar data formats
-arrow = { version = "54", default-features = false, features = ["ipc"] }
-parquet = { version = "54", default-features = false, features = ["arrow", "snap", "lz4", "zstd"] }
+# File format dependencies (native only - requires file I/O)
+csv = { version = "1.3", optional = true }
+rmp-serde = { version = "1.3", optional = true }
+arrow = { version = "54", default-features = false, features = ["ipc"], optional = true }
+parquet = { version = "54", default-features = false, features = ["arrow", "snap", "lz4", "zstd"], optional = true }
 
-# JSON Schema validation
-jsonschema = "0.17"
+# JSON Schema validation (optional - not WASM-compatible due to getrandom dependency)
+jsonschema = { version = "0.17", optional = true }
 
-# Time handling
+# Time handling (works in WASM)
 chrono = { version = "0.4", features = ["serde"] }
 
-# Random number generation
-rand = "0.8"
+# Random number generation (optional - required for random producers and UUID message IDs)
+rand = { version = "0.8", optional = true }
 
-# UUID generation
-uuid = { version = "1.0", features = ["v4", "serde"] }
+# UUID generation (optional - required for UUID-based message IDs)
+uuid = { version = "1.0", features = ["v4", "serde"], optional = true }
 
-# Pin utilities
+# Pin utilities (works in WASM)
 pin-project = "1.0"
 
+# Stream utilities (works in WASM)
 async-stream = "0.3.3"
-hyper-tungstenite = "0.13"
-hyper-util = { version = "0.1", features = ["full"] }
+
+# WebSocket and HTTP (native only)
+hyper-tungstenite = { version = "0.13", optional = true }
+hyper-util = { version = "0.1", features = ["full"], optional = true }
+tokio-tungstenite = { version = "0.21", optional = true }
+
+# Utilities (mostly WASM-compatible)
 jsonwebtoken = "9.2"
 mime = "0.3"
 num-traits = "0.2.19"
@@ -56,12 +107,11 @@ regex = "1.10"
 serde_urlencoded = "0.7"
 sha2 = "0.10"
 thiserror = "1.0.57"
-tokio-stream = { version = "0.1", features = ["io-util"] }
-tokio-tungstenite = "0.21"
+tokio-stream = { version = "0.1", default-features = false }
 tracing = "0.1.40"
-tracing-subscriber = "0.3.20"
+tracing-subscriber = { version = "0.3.20", optional = true }
 base64 = "0.22.1"
-tokio-util = "0.7.14"
+tokio-util = { version = "0.7.14", optional = true }
 
 [[example]]
 name = "01_basic_pipeline"
