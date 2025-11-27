@@ -67,17 +67,20 @@ impl SqlParser {
   ///     "SELECT user_id, COUNT(*) FROM events GROUP BY user_id"
   /// )?;
   /// ```
-  pub fn parse(&self, query: &str) -> Result<SqlQuery, StreamError<String>> {
+  #[allow(clippy::result_large_err)] // Boxing errors intentionally to reduce Result size
+  pub fn parse(&self, query: &str) -> Result<SqlQuery, Box<StreamError<String>>> {
     let mut parser = Parser::new(&self.dialect);
     parser = parser.try_with_sql(query)?;
     let ast = parser.parse_statement()?;
 
     match ast {
-      Statement::Query(query) => self.convert_query(*query),
-      _ => Err(self.create_error(format!(
+      Statement::Query(query) => {
+        self.convert_query(*query).map_err(|e| Box::new(e))
+      }
+      _ => Err(Box::new(self.create_error(format!(
         "Unsupported statement type. Only SELECT queries are supported, found: {:?}",
         ast
-      ))),
+      )))),
     }
   }
 
@@ -485,6 +488,13 @@ impl From<ParserError> for StreamError<String> {
       ErrorContext::default(),
       ComponentInfo::new("SQL Parser".to_string(), "SqlParser".to_string()),
     )
+  }
+}
+
+// Helper to convert ParserError to Box<StreamError<String>> for ? operator
+impl From<ParserError> for Box<StreamError<String>> {
+  fn from(err: ParserError) -> Self {
+    Box::new(StreamError::from(err))
   }
 }
 

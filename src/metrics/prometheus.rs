@@ -29,11 +29,9 @@
 //! ```
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "prometheus"))]
-use crate::metrics::types::{BackpressureLevel, PipelineMetrics};
+use crate::metrics::types::PipelineMetrics;
 #[cfg(all(not(target_arch = "wasm32"), feature = "prometheus"))]
 use std::collections::HashMap;
-#[cfg(all(not(target_arch = "wasm32"), feature = "prometheus"))]
-use std::time::Duration;
 
 /// Exports StreamWeave metrics in Prometheus text format.
 ///

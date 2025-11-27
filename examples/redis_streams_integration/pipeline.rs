@@ -41,7 +41,7 @@ pub async fn consume_from_redis() -> Result<(), Box<dyn std::error::Error>> {
     .with_connection_url("redis://localhost:6379")
     .with_stream("example-stream")
     .with_group("streamweave-example-group") // Consumer group for distributed processing
-    .consumer("consumer-1") // Consumer name within the group
+    .with_consumer("consumer-1") // Consumer name within the group
     .with_start_id(">") // Read new messages (use "0" to read from beginning)
     .with_block_ms(1000) // Block for 1 second waiting for new messages
     .with_count(10) // Read up to 10 messages per call
@@ -89,8 +89,8 @@ pub async fn consume_from_redis() -> Result<(), Box<dyn std::error::Error>> {
   })
   .with_error_strategy(ErrorStrategy::Skip);
 
-  // Console consumer to print events (in real app, could write to DB, etc.)
-  use streamweave::consumers::console::console_consumer::ConsoleConsumer;
+  // Use VecConsumer to collect events (ConsoleConsumer requires Display, but we have Result)
+  use streamweave::consumers::vec::vec_consumer::VecConsumer;
 
   println!("🚀 Starting pipeline to consume from Redis Streams...");
   println!("   Stream: example-stream");
@@ -101,7 +101,7 @@ pub async fn consume_from_redis() -> Result<(), Box<dyn std::error::Error>> {
   let pipeline = PipelineBuilder::new()
     .producer(producer)
     .transformer(transformer)
-    .consumer(ConsoleConsumer::new());
+    .consumer(VecConsumer::new());
 
   // Run the pipeline (this will block until the stream ends or is interrupted)
   pipeline.run().await?;
@@ -170,8 +170,14 @@ pub async fn produce_to_redis() -> Result<(), Box<dyn std::error::Error>> {
   println!("   Max length: 1000 messages (approximate)");
   println!("   Sending {} events...\n", events.len());
 
+  // Add identity transformer to pass through events unchanged
+  let identity_transformer = MapTransformer::new(|event: Event| -> Result<Event, String> {
+    Ok(event)
+  });
+
   let pipeline = PipelineBuilder::new()
     .producer(VecProducer::new(events))
+    .transformer(identity_transformer)
     .consumer(consumer);
 
   // Run the pipeline
@@ -197,7 +203,7 @@ pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
     .with_connection_url("redis://localhost:6379")
     .with_stream("input-stream")
     .with_group("streamweave-roundtrip-group")
-    .consumer("roundtrip-consumer-1")
+    .with_consumer("roundtrip-consumer-1")
     .with_start_id(">") // Read new messages
     .with_block_ms(1000)
     .with_auto_ack(true);

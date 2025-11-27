@@ -12,7 +12,7 @@ use streamweave::{
   error::ErrorStrategy,
   pipeline::PipelineBuilder,
   producers::http_poll::http_poll_producer::{
-    DeltaDetectionConfig, HttpPollProducer, HttpPollProducerConfig, PaginationConfig,
+    DeltaDetectionConfig, HttpPollProducer, HttpPollProducerConfig, HttpPollResponse, PaginationConfig,
   },
   transformers::flatten::flatten_transformer::FlattenTransformer,
   transformers::map::map_transformer::MapTransformer,
@@ -41,7 +41,7 @@ pub async fn basic_polling() -> Result<(), Box<dyn std::error::Error>> {
     .with_error_strategy(ErrorStrategy::Skip); // Skip on errors
 
   // Transform responses to extract useful data
-  let transformer = MapTransformer::new(|response| -> Result<String, String> {
+  let transformer = MapTransformer::new(|response: HttpPollResponse| -> Result<String, String> {
     // Extract title from the response body if it's a post
     if let Some(title) = response.body.get("title").and_then(|v| v.as_str()) {
       Ok(format!("Post: {}", title))
@@ -67,7 +67,10 @@ pub async fn basic_polling() -> Result<(), Box<dyn std::error::Error>> {
   println!("\n✅ Polling completed!");
   println!("📊 Results ({} items):", results.len());
   for (i, result) in results.iter().enumerate() {
-    println!("  {}. {}", i + 1, result);
+    match result {
+      Ok(value) => println!("  {}. {}", i + 1, value),
+      Err(e) => println!("  {}. Error: {}", i + 1, e),
+    }
   }
 
   Ok(())
@@ -105,7 +108,7 @@ pub async fn pagination_example() -> Result<(), Box<dyn std::error::Error>> {
     .with_error_strategy(ErrorStrategy::Skip);
 
   // Transform to extract post titles from paginated responses
-  let transformer = MapTransformer::new(|response| -> Result<Vec<String>, String> {
+  let transformer = MapTransformer::new(|response: HttpPollResponse| -> Result<Vec<String>, String> {
     // Extract array of posts from response
     if let Some(posts) = response.body.as_array() {
       let titles: Vec<String> = posts
@@ -117,6 +120,11 @@ pub async fn pagination_example() -> Result<(), Box<dyn std::error::Error>> {
     } else {
       Err("Expected array in response".to_string())
     }
+  });
+
+  // Unwrap Result<Vec<String>, String> to Vec<String> for FlattenTransformer
+  let unwrap_transformer = MapTransformer::new(|result: Result<Vec<String>, String>| -> Vec<String> {
+    result.unwrap_or_default()
   });
 
   // Flatten Vec<String> to individual String items
@@ -133,6 +141,7 @@ pub async fn pagination_example() -> Result<(), Box<dyn std::error::Error>> {
   let pipeline = PipelineBuilder::new()
     .producer(producer)
     .transformer(transformer)
+    .transformer(unwrap_transformer)
     .transformer(flatten_transformer)
     .transformer(format_transformer)
     .consumer(consumer);
@@ -144,7 +153,10 @@ pub async fn pagination_example() -> Result<(), Box<dyn std::error::Error>> {
   println!("\n✅ Pagination completed!");
   println!("📊 Results ({} posts across all pages):", results.len());
   for (i, result) in results.iter().enumerate() {
-    println!("  {}. {}", i + 1, result);
+    match result {
+      Ok(value) => println!("  {}. {}", i + 1, value),
+      Err(e) => println!("  {}. Error: {}", i + 1, e),
+    }
   }
 
   Ok(())
@@ -175,7 +187,7 @@ pub async fn delta_detection_example() -> Result<(), Box<dyn std::error::Error>>
     .with_error_strategy(ErrorStrategy::Skip);
 
   // Transform to extract individual posts
-  let transformer = MapTransformer::new(|response| -> Result<Vec<Post>, String> {
+  let transformer = MapTransformer::new(|response: HttpPollResponse| -> Result<Vec<Post>, String> {
     if let Some(posts) = response.body.as_array() {
       let posts: Result<Vec<Post>, _> = posts
         .iter()
@@ -185,6 +197,11 @@ pub async fn delta_detection_example() -> Result<(), Box<dyn std::error::Error>>
     } else {
       Err("Expected array in response".to_string())
     }
+  });
+
+  // Unwrap Result<Vec<Post>, String> to Vec<Post> for FlattenTransformer
+  let unwrap_transformer = MapTransformer::new(|result: Result<Vec<Post>, String>| -> Vec<Post> {
+    result.unwrap_or_default()
   });
 
   // Flatten Vec<Post> to individual Post items
@@ -197,6 +214,7 @@ pub async fn delta_detection_example() -> Result<(), Box<dyn std::error::Error>>
   let pipeline = PipelineBuilder::new()
     .producer(producer)
     .transformer(transformer)
+    .transformer(unwrap_transformer)
     .transformer(flatten_transformer)
     .consumer(consumer);
     
@@ -235,7 +253,7 @@ pub async fn rate_limited_polling() -> Result<(), Box<dyn std::error::Error>> {
     .with_name("http-poll-rate-limited".to_string())
     .with_error_strategy(ErrorStrategy::Skip);
 
-  let transformer = MapTransformer::new(|response| -> Result<String, String> {
+  let transformer = MapTransformer::new(|response: HttpPollResponse| -> Result<String, String> {
     if let Some(title) = response.body.get("title").and_then(|v| v.as_str()) {
       Ok(format!("[{}] {}", response.status, title))
     } else {
@@ -264,7 +282,10 @@ pub async fn rate_limited_polling() -> Result<(), Box<dyn std::error::Error>> {
   );
   println!("📊 Results ({} items):", results.len());
   for (i, result) in results.iter().enumerate() {
-    println!("  {}. {}", i + 1, result);
+    match result {
+      Ok(value) => println!("  {}. {}", i + 1, value),
+      Err(e) => println!("  {}. Error: {}", i + 1, e),
+    }
   }
 
   Ok(())

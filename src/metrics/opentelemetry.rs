@@ -39,10 +39,6 @@ use opentelemetry_sdk::{
   trace::{SdkTracer, SdkTracerProvider, TraceError},
 };
 // MetricsError type alias - check actual location in opentelemetry 0.31
-#[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
-use opentelemetry_otlp::{MetricExporter, SpanExporter};
-#[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
-use std::time::Duration;
 
 /// Configuration for OpenTelemetry integration.
 ///
@@ -181,11 +177,13 @@ impl OpenTelemetryConfig {
   ///
   /// Returns an error if the tracer provider cannot be initialized.
   pub async fn init_tracer(&self) -> Result<SdkTracer, TraceError> {
-    let mut resource_builder = Resource::builder().with_service_name(self.service_name.as_str());
+    let service_name = self.service_name.clone();
+    let mut resource_builder = Resource::builder().with_service_name(service_name);
 
     if let Some(version) = &self.service_version {
+      let version = version.clone();
       resource_builder =
-        resource_builder.with_attribute(KeyValue::new("service.version", version.as_str()));
+        resource_builder.with_attribute(KeyValue::new("service.version", version));
     }
 
     // Add custom attributes
@@ -240,11 +238,12 @@ impl OpenTelemetryConfig {
     let service_version = self.service_version.clone();
     let resource_attributes = self.resource_attributes.clone();
 
-    let mut resource_builder = Resource::builder().with_service_name(service_name.as_str());
+    let mut resource_builder = Resource::builder().with_service_name(service_name);
 
     if let Some(version) = &service_version {
+      let version = version.clone();
       resource_builder =
-        resource_builder.with_attribute(KeyValue::new("service.version", version.as_str()));
+        resource_builder.with_attribute(KeyValue::new("service.version", version));
     }
 
     // Add custom attributes
@@ -356,12 +355,13 @@ impl PipelineTracer {
   ///
   /// A span builder that can be used to create the span.
   pub fn producer_span(&self, producer_name: &str) -> opentelemetry::trace::SpanBuilder {
+    let producer_name = producer_name.to_string();
     self
       .tracer
       .span_builder(format!("producer.{}", producer_name))
       .with_kind(opentelemetry::trace::SpanKind::Producer)
       .with_attributes(vec![
-        KeyValue::new("pipeline.name", self.pipeline_name.as_str()),
+        KeyValue::new("pipeline.name", self.pipeline_name.clone()),
         KeyValue::new("component.type", "producer"),
         KeyValue::new("component.name", producer_name),
       ])
@@ -377,12 +377,13 @@ impl PipelineTracer {
   ///
   /// A span builder that can be used to create the span.
   pub fn transformer_span(&self, transformer_name: &str) -> opentelemetry::trace::SpanBuilder {
+    let transformer_name = transformer_name.to_string();
     self
       .tracer
       .span_builder(format!("transformer.{}", transformer_name))
       .with_kind(opentelemetry::trace::SpanKind::Internal)
       .with_attributes(vec![
-        KeyValue::new("pipeline.name", self.pipeline_name.as_str()),
+        KeyValue::new("pipeline.name", self.pipeline_name.clone()),
         KeyValue::new("component.type", "transformer"),
         KeyValue::new("component.name", transformer_name),
       ])
@@ -398,12 +399,13 @@ impl PipelineTracer {
   ///
   /// A span builder that can be used to create the span.
   pub fn consumer_span(&self, consumer_name: &str) -> opentelemetry::trace::SpanBuilder {
+    let consumer_name = consumer_name.to_string();
     self
       .tracer
       .span_builder(format!("consumer.{}", consumer_name))
       .with_kind(opentelemetry::trace::SpanKind::Consumer)
       .with_attributes(vec![
-        KeyValue::new("pipeline.name", self.pipeline_name.as_str()),
+        KeyValue::new("pipeline.name", self.pipeline_name.clone()),
         KeyValue::new("component.type", "consumer"),
         KeyValue::new("component.name", consumer_name),
       ])
@@ -421,7 +423,7 @@ impl PipelineTracer {
       .with_kind(opentelemetry::trace::SpanKind::Internal)
       .with_attributes(vec![KeyValue::new(
         "pipeline.name",
-        self.pipeline_name.as_str(),
+        self.pipeline_name.clone(),
       )])
   }
 }
@@ -448,6 +450,7 @@ impl PipelineTracer {
 /// ```
 #[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
 pub struct MetricsExporter {
+  #[allow(dead_code)] // Kept for potential future use
   meter: opentelemetry::metrics::Meter,
   pipeline_name: String,
   throughput_counter: opentelemetry::metrics::Counter<u64>,

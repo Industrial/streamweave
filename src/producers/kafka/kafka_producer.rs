@@ -97,6 +97,13 @@ impl KafkaConsumerConfig {
     self.custom_properties.insert(key.into(), value.into());
     self
   }
+
+  /// Sets the auto commit interval in milliseconds.
+  #[must_use]
+  pub fn with_auto_commit_interval_ms(mut self, interval_ms: u64) -> Self {
+    self.auto_commit_interval_ms = interval_ms;
+    self
+  }
 }
 
 /// A message received from Kafka.

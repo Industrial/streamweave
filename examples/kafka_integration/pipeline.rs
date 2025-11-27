@@ -63,8 +63,8 @@ pub async fn consume_from_kafka() -> Result<(), Box<dyn std::error::Error>> {
   })
   .with_error_strategy(ErrorStrategy::Skip);
 
-  // Console consumer to print events (in real app, could write to DB, etc.)
-  use streamweave::consumers::console::console_consumer::ConsoleConsumer;
+  // Use VecConsumer to collect events (ConsoleConsumer requires Display, but we have Result)
+  use streamweave::consumers::vec::vec_consumer::VecConsumer;
 
   println!("🚀 Starting pipeline to consume from Kafka...");
   println!("   Topic: example-topic");
@@ -74,7 +74,7 @@ pub async fn consume_from_kafka() -> Result<(), Box<dyn std::error::Error>> {
   let pipeline = PipelineBuilder::new()
     .producer(producer)
     .transformer(transformer)
-    .consumer(ConsoleConsumer::new());
+    .consumer(VecConsumer::new());
 
   // Run the pipeline (this will block until the stream ends or is interrupted)
   pipeline.run().await?;
@@ -150,8 +150,14 @@ pub async fn produce_to_kafka() -> Result<(), Box<dyn std::error::Error>> {
   println!("   Compression: gzip");
   println!("   Sending {} events...\n", events.len());
 
+  // Add identity transformer to pass through events unchanged
+  let identity_transformer = MapTransformer::new(|event: Event| -> Result<Event, String> {
+    Ok(event)
+  });
+
   let pipeline = PipelineBuilder::new()
     .producer(VecProducer::new(events))
+    .transformer(identity_transformer)
     .consumer(consumer);
 
   // Run the pipeline

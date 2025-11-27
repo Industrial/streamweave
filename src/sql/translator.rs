@@ -19,10 +19,9 @@
 //! The translator creates a `QueryPlan` that describes these operations.
 //! The plan can then be used to build an actual pipeline when a producer is provided.
 
-use crate::error::{ComponentInfo, ErrorContext, StreamError, StringError};
+use crate::error::StreamError;
 use crate::sql::ast::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Plan describing how to translate a SQL query into pipeline operations
 ///
@@ -135,7 +134,7 @@ impl QueryTranslator {
   /// let translator = QueryTranslator::new();
   /// let plan = translator.translate(&query)?;
   /// ```
-  pub fn translate(&self, query: &SqlQuery) -> Result<QueryPlan, StreamError<String>> {
+  pub fn translate(&self, query: &SqlQuery) -> Result<QueryPlan, Box<StreamError<String>>> {
     let mut operations = Vec::new();
 
     // WHERE clause → Filter operation
@@ -148,7 +147,7 @@ impl QueryTranslator {
     // GROUP BY + aggregations → GroupBy operation
     if let Some(group_by) = &query.group_by {
       // Extract aggregations from SELECT items
-      let aggregations = self.extract_aggregations(&query.select.items)?;
+      let aggregations = self.extract_aggregations(&query.select.items).map_err(Box::new)?;
 
       operations.push(QueryOperation::GroupBy {
         keys: group_by.keys.clone(),
@@ -201,20 +200,19 @@ impl QueryTranslator {
     let mut aggregations = Vec::new();
 
     for item in items {
-      if let SelectItem::Expression { expr, alias } = item {
-        if let Expression::Aggregate {
+      if let SelectItem::Expression { expr, alias } = item
+        && let Expression::Aggregate {
           name,
           arg,
           distinct,
         } = expr
-        {
-          aggregations.push(Aggregation {
-            function: name.clone(),
-            expression: *arg.clone(),
-            distinct: *distinct,
-            alias: alias.clone(),
-          });
-        }
+      {
+        aggregations.push(Aggregation {
+          function: name.clone(),
+          expression: *arg.clone(),
+          distinct: *distinct,
+          alias: alias.clone(),
+        });
       }
     }
 

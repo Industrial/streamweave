@@ -32,7 +32,6 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
-use tokio::time::Instant;
 
 /// Configuration for batched inference.
 #[derive(Debug, Clone)]
@@ -262,7 +261,6 @@ where
 // Transformer trait implementation
 #[cfg(feature = "ml")]
 mod transformer_impl {
-  use super::BatchedInferenceConfig;
   use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
   use crate::input::Input;
   use crate::output::Output;
@@ -274,7 +272,6 @@ mod transformer_impl {
   use std::pin::Pin;
   use std::sync::Arc;
   use std::time::Duration;
-  use tokio::sync::RwLock;
   use tokio::time::{Instant, sleep};
 
   // Input trait implementation

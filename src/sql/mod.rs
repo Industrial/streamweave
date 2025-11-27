@@ -81,7 +81,8 @@ pub use translator::{Aggregation, QueryOperation, QueryPlan, QueryTranslator};
 /// )?;
 /// ```
 #[cfg(feature = "sql")]
-pub fn parse_query(query: &str) -> Result<SqlQuery, crate::error::StreamError<String>> {
+#[allow(clippy::result_large_err)] // Boxing errors intentionally to reduce Result size
+pub fn parse_query(query: &str) -> Result<SqlQuery, Box<crate::error::StreamError<String>>> {
   let parser = SqlParser::new();
   parser.parse(query)
 }

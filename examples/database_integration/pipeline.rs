@@ -157,13 +157,22 @@ pub async fn large_result_set_example() -> Result<(), Box<dyn std::error::Error>
   println!("   Max connections: 10");
   println!("   Processing...");
 
-  let pipeline = PipelineBuilder::new().producer(producer).consumer(consumer);
+  // Add identity transformer to pass through database rows unchanged
+  use streamweave::producers::database::database_producer::DatabaseRow;
+  let identity_transformer = MapTransformer::new(|row: DatabaseRow| -> Result<DatabaseRow, String> {
+    Ok(row)
+  });
+
+  let pipeline = PipelineBuilder::new()
+    .producer(producer)
+    .transformer(identity_transformer)
+    .consumer(consumer);
 
   let ((), result) = pipeline.run().await?;
 
   println!(
     "\n✅ Processed {} rows from large result set!",
-    result.collected.len()
+    result.vec.len()
   );
   println!("   Memory usage remains bounded due to cursor-based streaming");
 
@@ -204,9 +213,19 @@ pub async fn connection_pooling_example() -> Result<(), Box<dyn std::error::Erro
   println!("   Connection pool manages connections efficiently");
   println!();
 
+  // Add identity transformer to pass through database rows unchanged
+  let identity_transformer = MapTransformer::new(|row: DatabaseRow| -> Result<DatabaseRow, String> {
+    Ok(row)
+  });
+
+  // Use VecConsumer instead of ConsoleConsumer since we have Result types
+  use streamweave::consumers::vec::vec_consumer::VecConsumer;
+  let consumer = VecConsumer::new();
+
   let pipeline = PipelineBuilder::new()
     .producer(producer)
-    .consumer(ConsoleConsumer::new());
+    .transformer(identity_transformer)
+    .consumer(consumer);
 
   pipeline.run().await?;
 

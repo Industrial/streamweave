@@ -27,7 +27,6 @@ use crate::transformer::TransformerConfig;
 use crate::transformers::ml::InferenceBackend;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::RwLock;
 
 /// Transformer that runs ML inference on stream items.
@@ -211,7 +210,6 @@ mod transformer_impl {
   use futures::StreamExt;
   use std::pin::Pin;
   use std::sync::Arc;
-  use tokio::sync::RwLock;
 
   // Input trait implementation
   impl<B> Input for InferenceTransformer<B>

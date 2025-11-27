@@ -71,12 +71,12 @@ impl QueryOptimizer {
   /// let optimizer = QueryOptimizer::new();
   /// let optimized = optimizer.optimize(query)?;
   /// ```
-  pub fn optimize(&self, mut query: SqlQuery) -> Result<SqlQuery, StreamError<String>> {
+  pub fn optimize(&self, mut query: SqlQuery) -> Result<SqlQuery, Box<StreamError<String>>> {
     // Apply optimization rules in order
 
     // 1. Constant folding in WHERE clause
     if let Some(ref mut where_clause) = query.where_clause {
-      where_clause.condition = self.fold_constants(where_clause.condition.clone())?;
+      where_clause.condition = self.fold_constants(where_clause.condition.clone()).map_err(Box::new)?;
     }
 
     // 2. Constant folding in SELECT expressions
@@ -86,20 +86,22 @@ impl QueryOptimizer {
       .iter()
       .map(|item| match item {
         crate::sql::ast::SelectItem::Expression { expr, alias } => {
-          Ok::<crate::sql::ast::SelectItem, StreamError<String>>(
-            crate::sql::ast::SelectItem::Expression {
-              expr: self.fold_constants(expr.clone())?,
-              alias: alias.clone(),
-            },
-          )
+          self.fold_constants(expr.clone())
+            .map(|expr| {
+              crate::sql::ast::SelectItem::Expression {
+                expr,
+                alias: alias.clone(),
+              }
+            })
+            .map_err(Box::new)
         }
-        _ => Ok::<crate::sql::ast::SelectItem, StreamError<String>>(item.clone()),
+        _ => Ok::<crate::sql::ast::SelectItem, Box<StreamError<String>>>(item.clone()),
       })
       .collect::<Result<Vec<_>, _>>()?;
 
     // 3. Projection pruning (if aggressive mode)
     if self.aggressive {
-      query = self.prune_projections(query)?;
+      query = self.prune_projections(query).map_err(Box::new)?;
     }
 
     // 4. Predicate pushdown is already handled by query structure

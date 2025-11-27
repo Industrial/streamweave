@@ -97,6 +97,7 @@ use std::error::Error;
 ///     }
 /// }
 /// ```
+#[allow(async_fn_in_trait)] // Public trait with async methods - keeping async fn syntax for clarity
 pub trait InferenceBackend: Send + Sync {
   /// The input type for model inference.
   ///
