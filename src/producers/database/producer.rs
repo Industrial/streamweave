@@ -115,15 +115,35 @@ async fn create_pool(
 ) -> Result<DatabasePool, Box<dyn std::error::Error + Send + Sync>> {
   match config.database_type {
     DatabaseType::Postgres => {
-      let pool = sqlx::PgPool::connect(&config.connection_url).await?;
+      let pool_options = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(config.max_connections)
+        .min_connections(config.min_connections)
+        .acquire_timeout(config.connect_timeout)
+        .idle_timeout(config.idle_timeout)
+        .max_lifetime(config.max_lifetime);
+      
+      let pool = pool_options.connect(&config.connection_url).await?;
       Ok(DatabasePool::Postgres(pool))
     }
     DatabaseType::Mysql => {
-      let pool = sqlx::MySqlPool::connect(&config.connection_url).await?;
+      let pool_options = sqlx::mysql::MySqlPoolOptions::new()
+        .max_connections(config.max_connections)
+        .min_connections(config.min_connections)
+        .acquire_timeout(config.connect_timeout)
+        .idle_timeout(config.idle_timeout)
+        .max_lifetime(config.max_lifetime);
+      
+      let pool = pool_options.connect(&config.connection_url).await?;
       Ok(DatabasePool::Mysql(pool))
     }
     DatabaseType::Sqlite => {
-      let pool = sqlx::SqlitePool::connect(&config.connection_url).await?;
+      let pool_options = sqlx::sqlite::SqlitePoolOptions::new()
+        .max_connections(config.max_connections)
+        .acquire_timeout(config.connect_timeout)
+        .idle_timeout(config.idle_timeout)
+        .max_lifetime(config.max_lifetime);
+      
+      let pool = pool_options.connect(&config.connection_url).await?;
       Ok(DatabasePool::Sqlite(pool))
     }
   }

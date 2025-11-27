@@ -180,6 +180,14 @@ path = "examples/advanced_pipeline/main.rs"
 name = "kafka_integration"
 path = "examples/kafka_integration/main.rs"
 
+[[example]]
+name = "redis_streams_integration"
+path = "examples/redis_streams_integration/main.rs"
+
+[[example]]
+name = "database_integration"
+path = "examples/database_integration/main.rs"
+
 [dev-dependencies]
 proptest = "1.4"
 tempfile = "3.10.0"
