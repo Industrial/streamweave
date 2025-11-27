@@ -310,6 +310,51 @@ impl HttpRequest {
       .map(|ct| *ct == content_type)
       .unwrap_or(false)
   }
+
+  /// Check if this HttpRequest is a body chunk (from streaming mode).
+  ///
+  /// When streaming is enabled, the producer yields:
+  /// 1. First: Request metadata with body = None
+  /// 2. Then: Body chunks with body = Some(chunk) and progress headers
+  ///
+  /// ## Example
+  ///
+  /// ```rust,no_run
+  /// use streamweave::http_server::HttpRequest;
+  ///
+  /// let request = /* ... */;
+  /// if request.is_body_chunk() {
+  ///     let offset = request.get_chunk_offset().unwrap_or(0);
+  ///     let size = request.get_chunk_size().unwrap_or(0);
+  ///     println!("Processing chunk at offset {} with size {}", offset, size);
+  /// }
+  /// ```
+  pub fn is_body_chunk(&self) -> bool {
+    // A body chunk has a body and progress tracking headers
+    self.body.is_some() && self.headers.contains_key("x-streamweave-chunk-offset")
+  }
+
+  /// Get the byte offset of this body chunk (for progress tracking).
+  ///
+  /// Returns None if this is not a body chunk or if the offset header is missing.
+  pub fn get_chunk_offset(&self) -> Option<u64> {
+    self
+      .headers
+      .get("x-streamweave-chunk-offset")
+      .and_then(|v| v.to_str().ok())
+      .and_then(|s| s.parse::<u64>().ok())
+  }
+
+  /// Get the size of this body chunk in bytes.
+  ///
+  /// Returns None if this is not a body chunk or if the size header is missing.
+  pub fn get_chunk_size(&self) -> Option<usize> {
+    self
+      .headers
+      .get("x-streamweave-chunk-size")
+      .and_then(|v| v.to_str().ok())
+      .and_then(|s| s.parse::<usize>().ok())
+  }
 }
 
 /// HTTP response type for StreamWeave pipelines.

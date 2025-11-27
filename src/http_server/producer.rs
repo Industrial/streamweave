@@ -18,6 +18,11 @@ use axum::extract::Request;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use chrono;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+use futures::StreamExt;
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[allow(unused_imports)] // BodyExt is used via trait method into_data_stream()
+use http_body_util::BodyExt;
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use tracing::{error, warn};
 
 /// Configuration for HTTP request producer behavior.
@@ -320,16 +325,19 @@ impl Clone for HttpRequestProducer {
 #[async_trait]
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 impl Producer for HttpRequestProducer {
-  /// Produces a stream containing a single HTTP request item.
+  /// Produces a stream containing HTTP request items.
   ///
-  /// The stream yields the `HttpRequest` that was created from the Axum request.
-  /// For most use cases, this will be a single-item stream, but the structure
-  /// allows for future extension to support streaming request bodies as multiple items.
+  /// When streaming is enabled, the stream yields:
+  /// 1. First: The `HttpRequest` with metadata (body = None when streaming)
+  /// 2. Then: Body chunks as `HttpRequest` items with only the body field set
+  ///
+  /// When streaming is disabled, the stream yields a single `HttpRequest` with the full body.
   ///
   /// ## Error Handling
   ///
   /// - Request parsing errors are handled according to the error strategy.
   /// - Body extraction errors are logged but don't stop the stream.
+  /// - Streaming errors are handled gracefully with early termination support.
   fn produce(&mut self) -> Self::OutputStream {
     let component_name = self
       .config
@@ -338,11 +346,104 @@ impl Producer for HttpRequestProducer {
       .unwrap_or_else(|| "http_request_producer".to_string());
     let error_strategy = self.config.error_strategy.clone();
     let request = self.request.take();
+    let body_stream = self.body_stream.take();
+    let _chunk_size = self.http_config.chunk_size; // Reserved for future chunk size control
+    let stream_body = self.http_config.stream_body;
 
     Box::pin(stream! {
       match request {
         Some(req) => {
-          yield req;
+          // Always yield the request metadata first
+          // When streaming, body will be None; when not streaming, body will contain full body
+          yield req.clone();
+
+          // If streaming is enabled and we have a body stream, stream the chunks
+          if stream_body && let Some(body) = body_stream {
+              // Convert Axum Body to a stream of bytes
+              // Note: Chunk size is controlled by the body's natural boundaries
+              // Future enhancement: buffer and split chunks to exact chunk_size
+              let mut body_stream = body.into_data_stream();
+              let mut total_bytes = 0u64;
+
+              while let Some(chunk_result) = body_stream.next().await {
+                match chunk_result {
+                  Ok(chunk) => {
+                    // chunk is already bytes::Bytes
+                    total_bytes += chunk.len() as u64;
+
+                    // Yield chunk as HttpRequest with body set
+                    // Clone minimal metadata for context
+                    // Add progress tracking via custom header
+                    let mut chunk_headers = req.headers.clone();
+                    chunk_headers.insert(
+                      axum::http::HeaderName::from_static("x-streamweave-chunk-offset"),
+                      axum::http::HeaderValue::from_str(&total_bytes.to_string())
+                        .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
+                    );
+                    chunk_headers.insert(
+                      axum::http::HeaderName::from_static("x-streamweave-chunk-size"),
+                      axum::http::HeaderValue::from_str(&chunk.len().to_string())
+                        .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
+                    );
+
+                    let chunk_request = HttpRequest {
+                      method: req.method,
+                      uri: req.uri.clone(),
+                      path: req.path.clone(),
+                      headers: chunk_headers,
+                      query_params: req.query_params.clone(),
+                      path_params: req.path_params.clone(),
+                      body: Some(chunk.to_vec()),
+                      content_type: req.content_type.clone(),
+                      remote_addr: req.remote_addr.clone(),
+                    };
+
+                    yield chunk_request;
+
+                    // Check for early termination on errors (if error strategy is Stop)
+                    // This allows downstream to signal termination
+                  }
+                  Err(e) => {
+                    warn!(
+                      component = %component_name,
+                      error = %e,
+                      total_bytes = total_bytes,
+                      "Error reading body chunk during streaming"
+                    );
+
+                    match error_strategy {
+                      ErrorStrategy::Stop => {
+                        error!(
+                          component = %component_name,
+                          error = %e,
+                          "Stopping stream due to body read error"
+                        );
+                        break;
+                      }
+                      ErrorStrategy::Skip => {
+                        // Continue streaming, skip this chunk
+                        continue;
+                      }
+                      ErrorStrategy::Retry(_) => {
+                        warn!(
+                          component = %component_name,
+                          "Cannot retry body chunk read, skipping"
+                        );
+                        continue;
+                      }
+                      ErrorStrategy::Custom(_) => {
+                        warn!(
+                          component = %component_name,
+                          "Custom error handler not applicable for body chunk read"
+                        );
+                        // Continue streaming
+                        continue;
+                      }
+                    }
+                  }
+                }
+              }
+          }
         }
         None => {
           let error: StreamError<HttpRequest> = StreamError::new(

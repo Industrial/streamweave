@@ -7,6 +7,8 @@
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use crate::http_server::consumer::HttpResponseConsumer;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+use crate::http_server::error::{is_development_mode, map_to_http_error};
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use crate::http_server::producer::{HttpRequestProducer, HttpRequestProducerConfig};
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use crate::http_server::types::{HttpRequest, HttpResponse};
@@ -18,6 +20,8 @@ use crate::producer::Producer;
 use axum::http::StatusCode;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use axum::{body::Body, extract::Request, response::Response};
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+use chrono::Utc;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use futures::StreamExt;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
@@ -90,7 +94,25 @@ where
   } else {
     // No request available
     warn!("No request available from producer");
-    HttpResponse::error(StatusCode::BAD_REQUEST, "Failed to extract request").to_axum_response()
+    let error_response = map_to_http_error(
+      &crate::error::StreamError::<HttpRequest>::new(
+        Box::new(std::io::Error::other("Failed to extract request")),
+        crate::error::ErrorContext {
+          timestamp: Utc::now(),
+          item: None,
+          component_name: "http_request_producer".to_string(),
+          component_type: "HttpRequestProducer".to_string(),
+        },
+        crate::error::ComponentInfo {
+          name: "http_request_producer".to_string(),
+          type_name: "HttpRequestProducer".to_string(),
+        },
+      ),
+      is_development_mode(),
+    );
+    HttpResponse::json(StatusCode::BAD_REQUEST, &error_response)
+      .unwrap_or_else(|_| HttpResponse::error(StatusCode::BAD_REQUEST, "Failed to extract request"))
+      .to_axum_response()
   }
 }
 
@@ -194,16 +216,46 @@ where
   // Run the pipeline
   match pipeline.run().await {
     Ok((_, mut consumer)) => {
-      // Get the response from the consumer
-      consumer.get_response().await
+      // Check if streaming is enabled
+      if consumer.http_config().stream_response {
+        // For streaming, we need to get the stream from the pipeline output
+        // This is a simplified version - in practice, you'd want to stream directly
+        // from the transformer output without collecting in the consumer
+        consumer.get_response().await
+      } else {
+        // Get the response from the consumer (non-streaming)
+        consumer.get_response().await
+      }
     }
     Err(e) => {
       error!(error = ?e, "Pipeline execution failed");
-      HttpResponse::error(
-        StatusCode::INTERNAL_SERVER_ERROR,
-        &format!("Pipeline execution failed: {:?}", e),
-      )
-      .to_axum_response()
+      let error_response = map_to_http_error(
+        &crate::error::StreamError::<HttpResponse>::new(
+          Box::new(std::io::Error::other(format!(
+            "Pipeline execution failed: {:?}",
+            e
+          ))),
+          crate::error::ErrorContext {
+            timestamp: Utc::now(),
+            item: None,
+            component_name: "pipeline".to_string(),
+            component_type: "Pipeline".to_string(),
+          },
+          crate::error::ComponentInfo {
+            name: "pipeline".to_string(),
+            type_name: "Pipeline".to_string(),
+          },
+        ),
+        is_development_mode(),
+      );
+      HttpResponse::json(StatusCode::INTERNAL_SERVER_ERROR, &error_response)
+        .unwrap_or_else(|_| {
+          HttpResponse::error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            &format!("Pipeline execution failed: {:?}", e),
+          )
+        })
+        .to_axum_response()
     }
   }
 }

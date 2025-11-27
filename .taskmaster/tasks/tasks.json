@@ -851,60 +851,6 @@
         ]
       },
       {
-        "id": 15,
-        "title": "Create Reusable Pipeline Components",
-        "description": "Enable pipeline composition, templates, and reuse patterns for modular pipeline development.",
-        "status": "pending",
-        "priority": "low",
-        "dependencies": [],
-        "details": "## Context\n\nReusable components reduce duplication and enable sharing of common patterns. This is essential for large-scale pipeline development.\n\n## Implementation Approach\n\n1. Design component abstraction\n2. Implement pipeline templates\n3. Add serialization for sharing\n4. Create component registry\n\n## Technical Considerations\n\n- Type safety across components\n- Versioning and compatibility\n- Configuration injection\n- Testing reusable components\n\n## Documentation Requirements\n\nDoxidize documentation should be generated for all implemented code in this task. This includes:\n- Comprehensive doc comments for all public APIs\n- Code examples in doc comments where appropriate\n- Module-level documentation for public modules\n- Documentation should be generated using `./bin/docs` and verified to build successfully\n- All public types, functions, and methods should have complete documentation\n\n## Example Requirements\n\nAn example should be created demonstrating the reusable pipeline components functionality. The example should show how to:\n- Create reusable pipeline components\n- Compose components into larger pipelines\n- Use parameterizable pipeline templates\n- Serialize and deserialize components\n- Use the component registry for discovery\n- Share components across projects",
-        "testStrategy": "## Acceptance Criteria\n\n- [ ] Components can be composed into larger pipelines\n- [ ] Templates are parameterizable\n- [ ] Components can be serialized/deserialized\n- [ ] Component registry allows discovery\n- [ ] Type errors caught at composition time\n- [ ] Examples show composition patterns\n- [ ] Example demonstrating the reusable pipeline components functionality is created and runs successfully\n- [ ] Doxidize documentation is generated successfully using `./bin/docs` and all public APIs are documented\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Design component abstraction",
-            "description": "Create abstraction for reusable pipeline components",
-            "status": "pending",
-            "dependencies": [],
-            "details": "## Context\n\nComponents are reusable pipeline fragments.\n\n## Requirements\n\n- Define component boundaries\n- Support typed inputs/outputs\n- Enable composition\n\n## Acceptance Criteria\n\n- [ ] Component trait defined\n- [ ] Composition is type-safe\n- [ ] API is ergonomic\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete\n\n## Documentation Requirements\n\nDoxidize documentation should be generated for all implemented code in this task. This includes:\n- Comprehensive doc comments for all public APIs\n- Code examples in doc comments where appropriate\n- Module-level documentation for public modules\n- Documentation should be generated using `./bin/docs` and verified to build successfully\n- All public types, functions, and methods should have complete documentation",
-            "testStrategy": "- [ ] Doxidize documentation is generated successfully using `./bin/docs` and all public APIs are documented"
-          },
-          {
-            "id": 2,
-            "title": "Implement pipeline templates",
-            "description": "Create parameterizable pipeline templates",
-            "status": "pending",
-            "dependencies": [
-              1
-            ],
-            "details": "## Context\n\nTemplates allow customization of common patterns.\n\n## Requirements\n\n- Define template with parameters\n- Instantiate with specific values\n- Type-check parameters\n\n## Acceptance Criteria\n\n- [ ] Templates can be defined\n- [ ] Instantiation works correctly\n- [ ] Parameter errors caught early\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete\n\n## Documentation Requirements\n\nDoxidize documentation should be generated for all implemented code in this task. This includes:\n- Comprehensive doc comments for all public APIs\n- Code examples in doc comments where appropriate\n- Module-level documentation for public modules\n- Documentation should be generated using `./bin/docs` and verified to build successfully\n- All public types, functions, and methods should have complete documentation",
-            "testStrategy": "- [ ] Doxidize documentation is generated successfully using `./bin/docs` and all public APIs are documented"
-          },
-          {
-            "id": 3,
-            "title": "Add component serialization",
-            "description": "Enable serializing components for sharing",
-            "status": "pending",
-            "dependencies": [
-              1
-            ],
-            "details": "## Context\n\nSerialization enables sharing and storage.\n\n## Requirements\n\n- Serialize to JSON/YAML\n- Deserialize and reconstruct\n- Version information\n\n## Acceptance Criteria\n\n- [ ] Round-trip serialization works\n- [ ] Versions handled correctly\n- [ ] Invalid configs rejected\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete\n\n## Documentation Requirements\n\nDoxidize documentation should be generated for all implemented code in this task. This includes:\n- Comprehensive doc comments for all public APIs\n- Code examples in doc comments where appropriate\n- Module-level documentation for public modules\n- Documentation should be generated using `./bin/docs` and verified to build successfully\n- All public types, functions, and methods should have complete documentation",
-            "testStrategy": "- [ ] Doxidize documentation is generated successfully using `./bin/docs` and all public APIs are documented"
-          },
-          {
-            "id": 4,
-            "title": "Create component registry",
-            "description": "Build registry for discovering components",
-            "status": "pending",
-            "dependencies": [
-              3
-            ],
-            "details": "## Context\n\nRegistry enables component discovery.\n\n## Requirements\n\n- Register components by name\n- Search by type/tags\n- Version management\n\n## Acceptance Criteria\n\n- [ ] Components can be registered\n- [ ] Search works correctly\n- [ ] Versions resolved correctly\n- [ ] Example demonstrating the functionality is created and runs successfully\n- [ ] The command `bin/check && bin/lint && bin/build && bin/test` must successfully complete\n\n## Documentation Requirements\n\nDoxidize documentation should be generated for all implemented code in this task. This includes:\n- Comprehensive doc comments for all public APIs\n- Code examples in doc comments where appropriate\n- Module-level documentation for public modules\n- Documentation should be generated using `./bin/docs` and verified to build successfully\n- All public types, functions, and methods should have complete documentation",
-            "testStrategy": "- [ ] Doxidize documentation is generated successfully using `./bin/docs` and all public APIs are documented"
-          }
-        ]
-      },
-      {
         "id": 16,
         "title": "Implement HTTP Server Support",
         "description": "Add HTTP server capabilities enabling REST microservices with streaming request/response bodies through StreamWeave pipelines.",
@@ -961,7 +907,7 @@
             "id": 5,
             "title": "Support streaming request bodies",
             "description": "Enable streaming large HTTP request bodies through pipelines as stream items",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [
               2
             ],
@@ -972,7 +918,7 @@
             "id": 6,
             "title": "Support streaming response bodies",
             "description": "Enable streaming large HTTP response bodies from pipeline outputs",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               3
             ],
@@ -983,7 +929,7 @@
             "id": 7,
             "title": "Add middleware support",
             "description": "Enable Axum middleware for authentication, CORS, logging, and rate limiting",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               4
             ],
@@ -994,7 +940,7 @@
             "id": 8,
             "title": "Add comprehensive error handling for HTTP",
             "description": "Map StreamWeave errors to appropriate HTTP status codes and error responses",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               4
             ],
@@ -1005,7 +951,7 @@
             "id": 9,
             "title": "Create REST microservice example",
             "description": "Build complete example REST API demonstrating all HTTP server capabilities",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               4,
               5,
@@ -1021,7 +967,7 @@
     ],
     "metadata": {
       "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-11-27T01:06:11.737Z",
+      "updated": "2025-11-27T12:05:07.979Z",
       "description": "Tasks for master context"
     }
   }

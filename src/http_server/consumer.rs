@@ -10,7 +10,11 @@ use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, Stre
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use crate::http_server::types::HttpResponse;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+use async_stream::stream;
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use async_trait::async_trait;
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+use axum::body::Bytes;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use axum::{body::Body, response::Response};
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
@@ -202,32 +206,163 @@ impl HttpResponseConsumer {
     }
   }
 
-  /// Gets a streaming response for chunked transfer encoding.
+  /// Creates a streaming response from a stream of HttpResponse items.
   ///
-  /// This creates a streaming response that sends items as they arrive.
-  /// Useful for large responses that should be streamed to the client.
+  /// This method converts a stream of `HttpResponse` items into a streaming Axum
+  /// response with chunked transfer encoding. The first response's status and headers
+  /// are used, and subsequent responses' bodies are streamed as chunks.
   ///
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use streamweave::http_server::HttpResponseConsumer;
+  /// use streamweave::http_server::{HttpResponseConsumer, HttpResponse};
+  /// use streamweave::consumer::Consumer;
+  /// use futures::StreamExt;
+  /// use axum::http::StatusCode;
   ///
-  /// let mut consumer = HttpResponseConsumer::new();
-  /// let stream_response = consumer.get_streaming_response();
+  /// async fn stream_responses(mut stream: impl futures::Stream<Item = HttpResponse> + Send) {
+  ///     let consumer = HttpResponseConsumer::new();
+  ///     let response = consumer.create_streaming_response(stream).await;
+  ///     // Send response to client
+  /// }
   /// ```
-  pub fn get_streaming_response(&self) -> Response<Body> {
-    // For now, return a simple streaming response
-    // Full streaming implementation will be in subtask 16.6
-    if let Some(first) = self.responses.first() {
-      first.clone().to_axum_response()
+  pub async fn create_streaming_response(
+    &self,
+    stream: impl futures::Stream<Item = HttpResponse> + Send + 'static,
+  ) -> Response<Body> {
+    use std::pin::Pin;
+    use std::sync::{Arc, Mutex};
+
+    // Clone config data needed for the stream (to avoid lifetime issues)
+    let component_name = self.config.name.clone();
+    let error_strategy = self.config.error_strategy.clone();
+    let default_status = self.http_config.default_status;
+
+    // Shared state for first response metadata
+    let first_response_meta: Arc<Mutex<Option<(axum::http::StatusCode, axum::http::HeaderMap)>>> =
+      Arc::new(Mutex::new(None));
+
+    let first_response_meta_clone = first_response_meta.clone();
+
+    // Pin the stream to make it usable in the async stream
+    let pinned_stream = Box::pin(stream);
+
+    let body_stream: Pin<Box<dyn futures::Stream<Item = Result<Bytes, std::io::Error>> + Send>> =
+      Box::pin(stream! {
+        let mut stream = pinned_stream;
+        let mut first_response_handled = false;
+
+        while let Some(response) = stream.next().await {
+          // Handle first response specially - extract status and headers
+          if !first_response_handled {
+            let content_type = response.content_type.clone();
+            let mut headers = response.headers.clone();
+
+            // Set Content-Type header if not already set
+            if !headers.contains_key("content-type") {
+              let content_type_value = axum::http::HeaderValue::from_str(content_type.as_str())
+                .unwrap_or_else(|_| axum::http::HeaderValue::from_static("application/octet-stream"));
+              headers.insert("content-type", content_type_value);
+            }
+
+            // Set Transfer-Encoding: chunked for streaming
+            headers.insert(
+              "transfer-encoding",
+              axum::http::HeaderValue::from_static("chunked"),
+            );
+
+            // Store metadata in shared state
+            *first_response_meta_clone.lock().unwrap() = Some((response.status, headers));
+            first_response_handled = true;
+          }
+
+          // Handle errors in response stream
+          if response.status.as_u16() >= 400 {
+            let error = StreamError::new(
+              Box::new(std::io::Error::other(format!(
+                "HTTP error status: {}",
+                response.status
+              ))),
+              ErrorContext {
+                timestamp: chrono::Utc::now(),
+                item: Some(response.clone()),
+                component_name: component_name.clone(),
+                component_type: std::any::type_name::<HttpResponseConsumer>().to_string(),
+              },
+              ComponentInfo {
+                name: component_name.clone(),
+                type_name: std::any::type_name::<HttpResponseConsumer>().to_string(),
+              },
+            );
+
+            match error_strategy {
+              ErrorStrategy::Stop => {
+                error!(
+                  component = %component_name,
+                  error = %error,
+                  "Stopping stream due to HTTP error status"
+                );
+                break;
+              }
+              ErrorStrategy::Skip => {
+                warn!(
+                  component = %component_name,
+                  error = %error,
+                  "Skipping response with error status"
+                );
+                continue;
+              }
+              ErrorStrategy::Retry(_) => {
+                warn!(
+                  component = %component_name,
+                  error = %error,
+                  "Cannot retry HTTP response streaming"
+                );
+                continue;
+              }
+              ErrorStrategy::Custom(_) => {
+                warn!(
+                  component = %component_name,
+                  "Custom error handler not applicable for streaming"
+                );
+                continue;
+              }
+            }
+          }
+
+          // Yield response body as chunk
+          if !response.body.is_empty() {
+            yield Ok(Bytes::from(response.body));
+          }
+        }
+
+        // If no responses were received, we need to handle that
+        // But we can't return early from a stream, so we'll handle it in the response builder
+      });
+
+    // Convert stream to Axum Body
+    let body = Body::from_stream(body_stream);
+
+    // Get metadata from first response (if any)
+    let (status, headers) = if let Some(meta) = first_response_meta.lock().unwrap().take() {
+      meta
     } else {
-      HttpResponse::new(
-        self.http_config.default_status,
-        Vec::new(),
-        crate::http_server::types::ContentType::Text,
-      )
-      .to_axum_response()
-    }
+      // No responses - use defaults
+      let mut default_headers = axum::http::HeaderMap::new();
+      default_headers.insert(
+        "content-type",
+        axum::http::HeaderValue::from_static("text/plain"),
+      );
+      (default_status, default_headers)
+    };
+
+    // Build response with status and headers
+    let mut response = Response::builder().status(status).body(body).unwrap();
+
+    // Set headers
+    *response.headers_mut() = headers;
+
+    response
   }
 
   /// Merges multiple responses into a single response.
