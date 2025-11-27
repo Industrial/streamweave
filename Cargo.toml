@@ -128,7 +128,7 @@ jsonschema = { version = "0.17", optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 
 # Random number generation (optional - required for random producers and UUID message IDs)
-rand = { version = "0.8", optional = true }
+rand = { version = "0.9", optional = true }
 
 # UUID generation (optional - required for UUID-based message IDs)
 uuid = { version = "1.0", features = ["v4", "serde"], optional = true }
