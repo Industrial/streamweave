@@ -27,9 +27,9 @@ pub fn process_stream(numbers: &[u32]) -> Vec<u32> {
     // #[wasm_bindgen]
     // pub async fn process_async(numbers: Vec<u32>) -> Vec<u32> {
     //     let pipeline = Pipeline::<u32, u32>::new()
-    //         .with_producer(ArrayProducer::new(numbers))
-    //         .with_transformer(MapTransformer::new(|x| x * 2))
-    //         .with_consumer(VecConsumer::new());
+    //         .producer(ArrayProducer::new(numbers))
+    //         .transformer(MapTransformer::new(|x| x * 2))
+    //         .consumer(VecConsumer::new());
     //     
     //     pipeline.run().await.unwrap()
     // }

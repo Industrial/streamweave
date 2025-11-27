@@ -295,21 +295,25 @@ async fn setup_large_test_database() -> Result<SqlitePool, Box<dyn std::error::E
 }
 
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "database")))]
+#[allow(dead_code)]
 pub async fn basic_query_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Database feature is not enabled. Build with --features database".into())
 }
 
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "database")))]
+#[allow(dead_code)]
 pub async fn parameterized_query_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Database feature is not enabled. Build with --features database".into())
 }
 
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "database")))]
+#[allow(dead_code)]
 pub async fn large_result_set_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Database feature is not enabled. Build with --features database".into())
 }
 
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "database")))]
+#[allow(dead_code)]
 pub async fn connection_pooling_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Database feature is not enabled. Build with --features database".into())
 }

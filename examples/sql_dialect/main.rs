@@ -6,8 +6,10 @@
 //! Note: This example demonstrates the dialect design. Actual parsing and
 //! execution will be implemented in subsequent tasks.
 
+#[cfg(feature = "sql")]
 use streamweave::sql::{ast::*, dialect::StreamSqlDialect};
 
+#[cfg(feature = "sql")]
 fn main() {
   println!("StreamWeave SQL Dialect Examples");
   println!("=================================\n");
@@ -64,4 +66,13 @@ fn main() {
 
   println!("\n✅ SQL Dialect design demonstrated!");
   println!("\nNote: Actual SQL parsing and execution will be implemented in Tasks 12.2-12.4");
+}
+
+#[cfg(not(feature = "sql"))]
+fn main() {
+  eprintln!("❌ Error: SQL feature is not enabled");
+  eprintln!();
+  eprintln!("This example requires the 'sql' feature to be enabled.");
+  eprintln!("Build with: cargo run --example sql_dialect --features sql");
+  std::process::exit(1);
 }

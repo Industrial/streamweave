@@ -3,8 +3,10 @@
 //! This example demonstrates the complete SQL query functionality:
 //! parsing, translation, and optimization.
 
+#[cfg(feature = "sql")]
 use streamweave::sql::{QueryOptimizer, QueryTranslator, parse_query};
 
+#[cfg(feature = "sql")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("StreamWeave SQL Query Example");
   println!("==============================\n");
@@ -71,4 +73,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("for the stream specified in the FROM clause.");
 
   Ok(())
+}
+
+#[cfg(not(feature = "sql"))]
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+  eprintln!("❌ Error: SQL feature is not enabled");
+  eprintln!();
+  eprintln!("This example requires the 'sql' feature to be enabled.");
+  eprintln!("Build with: cargo run --example sql_query --features sql");
+  std::process::exit(1);
 }

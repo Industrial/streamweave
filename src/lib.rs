@@ -27,31 +27,51 @@
 #![warn(missing_docs)]
 #![warn(missing_doc_code_examples)]
 
+/// Consumer trait and related types.
 pub mod consumer;
+/// Built-in consumer implementations.
 pub mod consumers;
+/// Error handling types and strategies.
 pub mod error;
+/// Input type definitions.
 pub mod input;
+/// Message types for stream items.
 pub mod message;
+/// Metrics collection and reporting.
 pub mod metrics;
+/// Offset tracking for stream processing.
 pub mod offset;
+/// Output type definitions.
 pub mod output;
+/// Pipeline builder and execution.
 pub mod pipeline;
+/// Producer trait and related types.
 pub mod producer;
+/// Built-in producer implementations.
 pub mod producers;
+/// Stateful transformer support.
 pub mod stateful_transformer;
+/// Transaction management for exactly-once processing.
 pub mod transaction;
+/// Transformer trait and related types.
 pub mod transformer;
+/// Built-in transformer implementations.
 pub mod transformers;
+/// Visualization utilities for stream monitoring.
 pub mod visualization;
+/// Window-based processing utilities.
 pub mod window;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "native"))]
+/// Distributed processing support.
 pub mod distributed;
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+/// HTTP server integration for stream processing.
 pub mod http_server;
 
 #[cfg(feature = "sql")]
+/// SQL query support for stream processing.
 pub mod sql;
 
 // Re-export commonly used types

@@ -27,7 +27,13 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[cfg(feature = "ml")]
-use ort::{Environment, ExecutionProvider, GraphOptimizationLevel, Session, SessionBuilder, Value};
+use ort::{
+  environment::Environment,
+  execution_providers::ExecutionProvider,
+  session::Session,
+  session::builder::{GraphOptimizationLevel, SessionBuilder},
+  value::Value,
+};
 
 /// Error type for ONNX Runtime operations.
 ///

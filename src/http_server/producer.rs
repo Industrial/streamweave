@@ -4,11 +4,9 @@
 //! through StreamWeave pipelines.
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
-use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+use crate::error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
-use crate::http_server::types::{HttpRequest, HttpRequestItem};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
-use crate::output::Output;
+use crate::http_server::types::HttpRequest;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use crate::producer::{Producer, ProducerConfig};
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
@@ -19,10 +17,6 @@ use async_trait::async_trait;
 use axum::extract::Request;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use chrono;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
-use futures::Stream;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
-use std::pin::Pin;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use tracing::{error, warn};
 
@@ -192,33 +186,37 @@ impl HttpRequestProducer {
     axum_request: Request,
     http_config: HttpRequestProducerConfig,
   ) -> Self {
+    // Extract body size info before consuming the request
+    let body_size = axum_request
+      .headers()
+      .get("content-length")
+      .and_then(|v| v.to_str().ok())
+      .and_then(|s| s.parse::<usize>().ok());
+
+    // Split request into parts and body before consuming
+    let (parts, body) = axum_request.into_parts();
+    let request_without_body = Request::from_parts(parts, axum::body::Body::empty());
+
     // Extract metadata first (before consuming the request)
-    let mut request = HttpRequest::from_axum_request(axum_request.clone()).await;
+    let mut request = HttpRequest::from_axum_request(request_without_body).await;
 
     // Extract body if configured
     let body_stream = if http_config.extract_body {
       // Check body size limit
-      let body_size = axum_request
-        .headers()
-        .get("content-length")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.parse::<usize>().ok());
-
-      if let Some(size) = body_size {
-        if let Some(max_size) = http_config.max_body_size {
-          if size > max_size {
-            warn!(
-              "Request body size {} exceeds maximum {} bytes, body will not be extracted",
-              size, max_size
-            );
-            return Self {
-              config: ProducerConfig::default(),
-              http_config,
-              request: Some(request),
-              body_stream: None,
-            };
-          }
-        }
+      if let Some(size) = body_size
+        && let Some(max_size) = http_config.max_body_size
+        && size > max_size
+      {
+        warn!(
+          "Request body size {} exceeds maximum {} bytes, body will not be extracted",
+          size, max_size
+        );
+        return Self {
+          config: ProducerConfig::default(),
+          http_config,
+          request: Some(request),
+          body_stream: None,
+        };
       }
 
       // Extract body bytes or stream
@@ -226,10 +224,9 @@ impl HttpRequestProducer {
         // For streaming mode, extract the body stream for later chunking
         // Note: This consumes the request, so we extract metadata first
         request.body = None;
-        Some(axum_request.into_body())
+        Some(body)
       } else {
         // Non-streaming mode: extract entire body
-        let (parts, body) = axum_request.into_parts();
         let body_result = axum::body::to_bytes(body, usize::MAX).await;
         match body_result {
           Ok(body_bytes) => {
@@ -348,8 +345,8 @@ impl Producer for HttpRequestProducer {
           yield req;
         }
         None => {
-          let error = StreamError::new(
-            "No request available".to_string(),
+          let error: StreamError<HttpRequest> = StreamError::new(
+            Box::new(std::io::Error::other("No request available")),
             ErrorContext {
               timestamp: chrono::Utc::now(),
               item: None,

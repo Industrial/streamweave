@@ -3,7 +3,6 @@ use crate::transformer::{Transformer, TransformerConfig};
 use crate::transformers::debounce::debounce_transformer::DebounceTransformer;
 use async_stream;
 use async_trait::async_trait;
-use futures::StreamExt;
 use tokio::time;
 
 #[async_trait]
@@ -23,7 +22,7 @@ where
 
         loop {
             tokio::select! {
-                maybe_item = input.next() => {
+                maybe_item = futures::StreamExt::next(&mut input) => {
                     match maybe_item {
                         Some(item) => {
                             last_item = Some(item);

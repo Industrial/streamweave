@@ -10,15 +10,11 @@ use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, Stre
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use crate::http_server::types::HttpResponse;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
-use crate::input::Input;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use async_trait::async_trait;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use axum::{body::Body, response::Response};
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use futures::StreamExt;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
-use std::pin::Pin;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use tracing::{error, warn};
 
@@ -318,7 +314,6 @@ impl Consumer for HttpResponseConsumer {
   /// - Invalid responses are logged but may be skipped based on strategy.
   async fn consume(&mut self, mut stream: Self::InputStream) {
     let component_name = self.config.name.clone();
-    let error_strategy = self.config.error_strategy.clone();
     let max_items = self.http_config.max_items;
     let mut count = 0;
 
@@ -340,7 +335,10 @@ impl Consumer for HttpResponseConsumer {
       // Validate response
       if response.status.as_u16() >= 400 {
         let error = StreamError::new(
-          format!("HTTP error status: {}", response.status),
+          Box::new(std::io::Error::other(format!(
+            "HTTP error status: {}",
+            response.status
+          ))),
           ErrorContext {
             timestamp: chrono::Utc::now(),
             item: Some(response.clone()),

@@ -1,5 +1,6 @@
 mod pipeline;
 
+#[allow(unused_imports)]
 use pipeline::{
   basic_query_example, connection_pooling_example, large_result_set_example,
   parameterized_query_example,

@@ -36,7 +36,7 @@ use opentelemetry::{
 use opentelemetry_sdk::{
   Resource,
   metrics::SdkMeterProvider,
-  trace::{self, SdkTracerProvider, TraceError},
+  trace::{SdkTracer, SdkTracerProvider, TraceError},
 };
 // MetricsError type alias - check actual location in opentelemetry 0.31
 #[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
@@ -165,7 +165,7 @@ impl OpenTelemetryConfig {
     let value_str: String = value.into();
     self
       .resource_attributes
-      .push(KeyValue::new(key_str.as_str(), value_str.as_str()));
+      .push(KeyValue::new(key_str.clone(), value_str.clone()));
     self
   }
 
@@ -180,11 +180,12 @@ impl OpenTelemetryConfig {
   /// # Errors
   ///
   /// Returns an error if the tracer provider cannot be initialized.
-  pub async fn init_tracer(&self) -> Result<opentelemetry::trace::Tracer, TraceError> {
+  pub async fn init_tracer(&self) -> Result<SdkTracer, TraceError> {
     let mut resource_builder = Resource::builder().with_service_name(self.service_name.as_str());
 
     if let Some(version) = &self.service_version {
-      resource_builder = resource_builder.with_attribute("service.version", version.as_str());
+      resource_builder =
+        resource_builder.with_attribute(KeyValue::new("service.version", version.as_str()));
     }
 
     // Add custom attributes
@@ -198,7 +199,9 @@ impl OpenTelemetryConfig {
 
     // Set endpoint via environment variable if custom endpoint is provided
     if self.otlp_endpoint != "http://localhost:4317" {
-      std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", &self.otlp_endpoint);
+      unsafe {
+        std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", &self.otlp_endpoint);
+      }
     }
 
     let exporter = SpanExporter::builder()
@@ -233,14 +236,19 @@ impl OpenTelemetryConfig {
   ) -> Result<opentelemetry::metrics::Meter, Box<dyn std::error::Error + Send + Sync>> {
     use opentelemetry::metrics::MeterProvider;
 
-    let mut resource_builder = Resource::builder().with_service_name(self.service_name.as_str());
+    let service_name = self.service_name.clone();
+    let service_version = self.service_version.clone();
+    let resource_attributes = self.resource_attributes.clone();
 
-    if let Some(version) = &self.service_version {
-      resource_builder = resource_builder.with_attribute("service.version", version.as_str());
+    let mut resource_builder = Resource::builder().with_service_name(service_name.as_str());
+
+    if let Some(version) = &service_version {
+      resource_builder =
+        resource_builder.with_attribute(KeyValue::new("service.version", version.as_str()));
     }
 
     // Add custom attributes
-    for attr in &self.resource_attributes {
+    for attr in &resource_attributes {
       resource_builder = resource_builder.with_attribute(attr.clone());
     }
 
@@ -250,7 +258,9 @@ impl OpenTelemetryConfig {
 
     // Set endpoint via environment variable if custom endpoint is provided
     if self.otlp_endpoint != "http://localhost:4317" {
-      std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", &self.otlp_endpoint);
+      unsafe {
+        std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", &self.otlp_endpoint);
+      }
     }
 
     let exporter = MetricExporter::builder()
@@ -312,7 +322,7 @@ impl OpenTelemetryConfig {
 /// ```
 #[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
 pub struct PipelineTracer {
-  tracer: opentelemetry::trace::Tracer,
+  tracer: SdkTracer,
   pipeline_name: String,
 }
 
@@ -329,9 +339,9 @@ impl PipelineTracer {
   ///
   /// A new `PipelineTracer` instance.
   #[must_use]
-  pub fn new(tracer: &opentelemetry::trace::Tracer, pipeline_name: impl Into<String>) -> Self {
+  pub fn new(tracer: SdkTracer, pipeline_name: impl Into<String>) -> Self {
     Self {
-      tracer: tracer.clone(),
+      tracer,
       pipeline_name: pipeline_name.into(),
     }
   }

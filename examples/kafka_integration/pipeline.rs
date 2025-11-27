@@ -224,16 +224,19 @@ pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "kafka")))]
+#[allow(dead_code)]
 pub async fn consume_from_kafka() -> Result<(), Box<dyn std::error::Error>> {
   Err("Kafka feature is not enabled. Build with --features kafka".into())
 }
 
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "kafka")))]
+#[allow(dead_code)]
 pub async fn produce_to_kafka() -> Result<(), Box<dyn std::error::Error>> {
   Err("Kafka feature is not enabled. Build with --features kafka".into())
 }
 
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "kafka")))]
+#[allow(dead_code)]
 pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Kafka feature is not enabled. Build with --features kafka".into())
 }

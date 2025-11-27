@@ -2,12 +2,19 @@ use crate::error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformer::TransformerConfig;
 use std::marker::PhantomData;
 
+/// A transformer that groups items in a stream into batches of a specified size.
+///
+/// This transformer collects incoming items until the specified `size` is reached,
+/// then emits them as a `Vec<T>`.
 pub struct BatchTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  /// The number of items to include in each batch.
   pub size: usize,
+  /// Configuration for the transformer, including error handling strategy.
   pub config: TransformerConfig<T>,
+  /// Phantom data to track the input type parameter.
   pub _phantom: PhantomData<T>,
 }
 
@@ -15,6 +22,15 @@ impl<T> BatchTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  /// Creates a new `BatchTransformer` with the given batch size.
+  ///
+  /// # Arguments
+  ///
+  /// * `size` - The number of items to include in each batch. Must be greater than zero.
+  ///
+  /// # Returns
+  ///
+  /// A `Result` containing the `BatchTransformer` if `size` is valid, or an error if `size` is zero.
   pub fn new(size: usize) -> Result<Self, Box<StreamError<T>>> {
     if size == 0 {
       return Err(Box::new(StreamError::new(
@@ -41,11 +57,21 @@ where
     })
   }
 
+  /// Sets the error handling strategy for this transformer.
+  ///
+  /// # Arguments
+  ///
+  /// * `strategy` - The error handling strategy to use.
   pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
     self.config.error_strategy = strategy;
     self
   }
 
+  /// Sets the name for this transformer.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name to assign to this transformer.
   pub fn with_name(mut self, name: String) -> Self {
     self.config.name = Some(name);
     self

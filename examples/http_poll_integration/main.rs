@@ -1,5 +1,6 @@
 mod pipeline;
 
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
 use pipeline::{basic_polling, delta_detection_example, pagination_example, rate_limited_polling};
 
 #[tokio::main]

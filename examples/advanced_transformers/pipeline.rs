@@ -1,6 +1,6 @@
 use std::time::Duration;
 use streamweave::{
-  consumers::vec::vec_consumer::VecConsumer, error::ErrorStrategy, pipeline::PipelineBuilder,
+  consumers::vec::vec_consumer::VecConsumer, pipeline::PipelineBuilder,
   producers::vec::vec_producer::VecProducer,
   transformers::batch::batch_transformer::BatchTransformer,
   transformers::circuit_breaker::circuit_breaker_transformer::CircuitBreakerTransformer,
@@ -25,12 +25,13 @@ pub async fn circuit_breaker_example() -> Result<(), Box<dyn std::error::Error>>
   let consumer = VecConsumer::new();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(circuit_breaker)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(circuit_breaker)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
   println!("✅ Processed {} items", results.len());
   println!("💡 Circuit breaker prevents cascading failures");
   Ok(())
@@ -53,12 +54,13 @@ pub async fn retry_example() -> Result<(), Box<dyn std::error::Error>> {
   let consumer = VecConsumer::new();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(retry)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(retry)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
   println!("✅ Processed {} items with retry logic", results.len());
   println!("💡 Retries help with transient failures");
   Ok(())
@@ -78,12 +80,13 @@ pub async fn batch_example() -> Result<(), Box<dyn std::error::Error>> {
   let consumer = VecConsumer::new();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(batch)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(batch)
+    .consumer(consumer);
+    
 
-  let results: Vec<Vec<i32>> = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results: Vec<Vec<i32>> = result_consumer.into_vec();
   println!("✅ Created {} batches", results.len());
   for (i, batch) in results.iter().enumerate() {
     println!("  Batch {}: {:?}", i + 1, batch);
@@ -109,12 +112,13 @@ pub async fn rate_limit_example() -> Result<(), Box<dyn std::error::Error>> {
   let consumer = VecConsumer::new();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(rate_limit)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(rate_limit)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
   println!("✅ Processed {} items (rate limited)", results.len());
   println!("💡 Rate limiting prevents overwhelming downstream systems");
   Ok(())

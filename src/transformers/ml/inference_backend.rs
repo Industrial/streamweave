@@ -238,7 +238,10 @@ pub trait InferenceBackend: Send + Sync {
   /// # Ok(())
   /// # }
   /// ```
-  async fn infer(&self, input: Self::Input) -> Result<Self::Output, Self::Error>;
+  fn infer(
+    &self,
+    input: Self::Input,
+  ) -> impl std::future::Future<Output = Result<Self::Output, Self::Error>> + Send;
 
   /// Run inference on a batch of inputs.
   ///
@@ -293,15 +296,10 @@ pub trait InferenceBackend: Send + Sync {
   /// # Ok(())
   /// # }
   /// ```
-  async fn infer_batch(&self, inputs: Vec<Self::Input>) -> Result<Vec<Self::Output>, Self::Error> {
-    // Default implementation: run inference on each input sequentially
-    // Backends should override this for efficient batch processing
-    let mut results = Vec::with_capacity(inputs.len());
-    for input in inputs {
-      results.push(self.infer(input).await?);
-    }
-    Ok(results)
-  }
+  fn infer_batch(
+    &self,
+    inputs: Vec<Self::Input>,
+  ) -> impl std::future::Future<Output = Result<Vec<Self::Output>, Self::Error>> + Send;
 
   /// Check if a model is currently loaded.
   ///

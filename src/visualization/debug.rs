@@ -512,6 +512,9 @@ mod tests {
     let should_pause = debugger.should_pause("node_1".to_string(), None).await;
     assert!(should_pause);
 
+    // Resume the debugger so we can test the next node
+    debugger.resume().await;
+
     let should_not_pause = debugger.should_pause("node_2".to_string(), None).await;
     assert!(!should_not_pause);
   }

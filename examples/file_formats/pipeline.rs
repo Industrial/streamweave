@@ -60,12 +60,13 @@ pub async fn csv_example() -> Result<(), Box<dyn std::error::Error>> {
 
   println!("🔄 Reading CSV file and processing...");
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(transformer)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(transformer)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
 
   println!("\n✅ CSV read completed!");
   println!("📊 Results ({} records):", results.len());
@@ -75,8 +76,8 @@ pub async fn csv_example() -> Result<(), Box<dyn std::error::Error>> {
 
   // Now write CSV file
   println!("\n📝 Writing CSV file...");
-  let write_producer = streamweave::producers::vec::vec_producer::VecProducer::new(results.clone());
-  let write_transformer = MapTransformer::new(|s: String| -> Person {
+  let _write_producer = streamweave::producers::vec::vec_producer::VecProducer::new(results.clone());
+  let _write_transformer = MapTransformer::new(|_s: String| -> Person {
     // Parse back from display format (simplified - in real use, keep original data)
     // For demo, we'll create new data
     Person {
@@ -113,9 +114,9 @@ pub async fn csv_example() -> Result<(), Box<dyn std::error::Error>> {
     .with_error_strategy(ErrorStrategy::Skip);
 
   let write_pipeline = PipelineBuilder::new()
-    .with_producer(write_producer)
-    .with_consumer(write_consumer)
-    .build();
+    .producer(write_producer)
+    .transformer(MapTransformer::new(|x: Person| x))
+    .consumer(write_consumer);
 
   write_pipeline.run().await?;
 
@@ -153,12 +154,13 @@ pub async fn jsonl_example() -> Result<(), Box<dyn std::error::Error>> {
 
   println!("🔄 Streaming JSONL file (line-by-line processing)...");
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(transformer)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(transformer)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
 
   println!("\n✅ JSONL read completed!");
   println!("📊 Results ({} records):", results.len());
@@ -191,9 +193,9 @@ pub async fn jsonl_example() -> Result<(), Box<dyn std::error::Error>> {
     .with_error_strategy(ErrorStrategy::Skip);
 
   let write_pipeline = PipelineBuilder::new()
-    .with_producer(write_producer)
-    .with_consumer(write_consumer)
-    .build();
+    .producer(write_producer)
+    .transformer(MapTransformer::new(|x: Person| x))
+    .consumer(write_consumer);
 
   write_pipeline.run().await?;
 
@@ -255,9 +257,9 @@ pub async fn parquet_example() -> Result<(), Box<dyn std::error::Error>> {
 
   let write_producer = streamweave::producers::vec::vec_producer::VecProducer::new(vec![batch]);
   let write_pipeline = PipelineBuilder::new()
-    .with_producer(write_producer)
-    .with_consumer(write_consumer)
-    .build();
+    .producer(write_producer)
+    .transformer(MapTransformer::new(|x: RecordBatch| x))
+    .consumer(write_consumer);
 
   write_pipeline.run().await?;
   println!("✅ Sample Parquet file created!");
@@ -315,12 +317,13 @@ pub async fn parquet_example() -> Result<(), Box<dyn std::error::Error>> {
   let consumer = VecConsumer::new();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(transformer)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(transformer)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
 
   println!("\n✅ Parquet read with projection completed!");
   println!("📊 Results ({} batches):", results.len());

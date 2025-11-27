@@ -2,9 +2,15 @@ use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, Stre
 use crate::{input::Input, output::Output};
 use async_trait::async_trait;
 
+/// Configuration for transformers, including error handling strategy and naming.
+///
+/// This struct holds configuration options that can be applied to any transformer,
+/// allowing customization of error handling behavior and component identification.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TransformerConfig<T: std::fmt::Debug + Clone + Send + Sync> {
+  /// The error handling strategy to use when errors occur.
   pub error_strategy: ErrorStrategy<T>,
+  /// Optional name for identifying this transformer in logs and metrics.
   pub name: Option<String>,
 }
 
@@ -18,20 +24,32 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> Default for TransformerConfig<T> 
 }
 
 impl<T: std::fmt::Debug + Clone + Send + Sync> TransformerConfig<T> {
+  /// Sets the error handling strategy for this transformer configuration.
+  ///
+  /// # Arguments
+  ///
+  /// * `strategy` - The error handling strategy to use.
   pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
     self.error_strategy = strategy;
     self
   }
 
+  /// Sets the name for this transformer configuration.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name to assign to this transformer.
   pub fn with_name(mut self, name: String) -> Self {
     self.name = Some(name);
     self
   }
 
+  /// Returns the current error handling strategy.
   pub fn error_strategy(&self) -> ErrorStrategy<T> {
     self.error_strategy.clone()
   }
 
+  /// Returns the current name, if set.
   pub fn name(&self) -> Option<String> {
     self.name.clone()
   }
@@ -91,6 +109,17 @@ where
   /// ```
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream;
 
+  /// Creates a new transformer instance with the given configuration.
+  ///
+  /// This method clones the transformer and applies the provided configuration.
+  ///
+  /// # Arguments
+  ///
+  /// * `config` - The `TransformerConfig` to apply.
+  ///
+  /// # Returns
+  ///
+  /// A new transformer instance with the specified configuration.
   #[must_use]
   fn with_config(&self, config: TransformerConfig<Self::Input>) -> Self
   where
@@ -101,18 +130,42 @@ where
     this
   }
 
+  /// Sets the configuration for this transformer.
+  ///
+  /// # Arguments
+  ///
+  /// * `config` - The new `TransformerConfig` to apply.
   fn set_config(&mut self, config: TransformerConfig<Self::Input>) {
     self.set_config_impl(config);
   }
 
+  /// Returns a reference to the transformer's configuration.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the `TransformerConfig` for this transformer.
   fn config(&self) -> &TransformerConfig<Self::Input> {
     self.get_config_impl()
   }
 
+  /// Returns a mutable reference to the transformer's configuration.
+  ///
+  /// # Returns
+  ///
+  /// A mutable reference to the `TransformerConfig` for this transformer.
   fn config_mut(&mut self) -> &mut TransformerConfig<Self::Input> {
     self.get_config_mut_impl()
   }
 
+  /// Sets the name for this transformer.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name to assign to this transformer.
+  ///
+  /// # Returns
+  ///
+  /// The transformer instance with the updated name.
   #[must_use]
   fn with_name(mut self, name: String) -> Self
   where
@@ -126,6 +179,18 @@ where
     self
   }
 
+  /// Handles an error that occurred during stream processing.
+  ///
+  /// This method determines the appropriate `ErrorAction` based on the
+  /// transformer's configured `ErrorStrategy`.
+  ///
+  /// # Arguments
+  ///
+  /// * `error` - The `StreamError` that occurred.
+  ///
+  /// # Returns
+  ///
+  /// The `ErrorAction` to take in response to the error.
   fn handle_error(&self, error: &StreamError<Self::Input>) -> ErrorAction {
     match self.config().error_strategy() {
       ErrorStrategy::Stop => ErrorAction::Stop,
@@ -136,6 +201,18 @@ where
     }
   }
 
+  /// Creates an error context for error reporting.
+  ///
+  /// This method constructs an `ErrorContext` with the current timestamp,
+  /// the item that caused the error (if any), and component information.
+  ///
+  /// # Arguments
+  ///
+  /// * `item` - The item that caused the error, if available.
+  ///
+  /// # Returns
+  ///
+  /// An `ErrorContext` containing error details.
   fn create_error_context(&self, item: Option<Self::Input>) -> ErrorContext<Self::Input> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
@@ -145,6 +222,13 @@ where
     }
   }
 
+  /// Returns information about the component for error reporting.
+  ///
+  /// This includes the component's name and type.
+  ///
+  /// # Returns
+  ///
+  /// A `ComponentInfo` struct containing details about the transformer.
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self
@@ -155,9 +239,32 @@ where
     }
   }
 
-  // These methods need to be implemented by each transformer
+  /// Sets the configuration implementation.
+  ///
+  /// This method must be implemented by each transformer to store the configuration.
+  ///
+  /// # Arguments
+  ///
+  /// * `config` - The `TransformerConfig` to store.
   fn set_config_impl(&mut self, config: TransformerConfig<Self::Input>);
+
+  /// Returns a reference to the configuration implementation.
+  ///
+  /// This method must be implemented by each transformer to return its stored configuration.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the transformer's `TransformerConfig`.
   fn get_config_impl(&self) -> &TransformerConfig<Self::Input>;
+
+  /// Returns a mutable reference to the configuration implementation.
+  ///
+  /// This method must be implemented by each transformer to return a mutable reference
+  /// to its stored configuration.
+  ///
+  /// # Returns
+  ///
+  /// A mutable reference to the transformer's `TransformerConfig`.
   fn get_config_mut_impl(&mut self) -> &mut TransformerConfig<Self::Input>;
 }
 

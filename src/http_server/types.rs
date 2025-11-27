@@ -9,7 +9,7 @@
 use axum::{
   body::Body,
   extract::Request,
-  http::{HeaderMap, HeaderValue, Method, StatusCode, Uri},
+  http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Uri},
 };
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use serde::{Deserialize, Serialize};
@@ -80,7 +80,7 @@ impl From<HttpMethod> for Method {
 /// Content type enumeration for common HTTP content types.
 ///
 /// This provides type-safe handling of common content types used in REST APIs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 pub enum ContentType {
   /// JSON content type (`application/json`)
@@ -118,6 +118,7 @@ impl ContentType {
   }
 
   /// Parse a content type from a MIME type string.
+  #[allow(clippy::should_implement_trait)]
   pub fn from_str(s: &str) -> Self {
     match s {
       "application/json" => ContentType::Json,
@@ -199,7 +200,7 @@ impl HttpRequest {
   ///     println!("Method: {:?}, Path: {}", request.method, request.path);
   /// }
   /// ```
-  pub async fn from_axum_request(mut axum_request: Request) -> Self {
+  pub async fn from_axum_request(axum_request: Request) -> Self {
     let method = HttpMethod::from(axum_request.method().clone());
     let uri = axum_request.uri().clone();
     let path = uri.path().to_string();
@@ -219,7 +220,7 @@ impl HttpRequest {
       .map(|info| info.to_string());
 
     // Extract body if available
-    let body = if axum_request.method() == &Method::GET || axum_request.method() == &Method::HEAD {
+    let body = if axum_request.method() == Method::GET || axum_request.method() == Method::HEAD {
       None
     } else {
       // For now, we'll extract the body in the producer
@@ -360,10 +361,9 @@ impl HttpResponse {
   /// ```
   pub fn new(status: StatusCode, body: Vec<u8>, content_type: ContentType) -> Self {
     let mut headers = HeaderMap::new();
-    headers.insert(
-      "content-type",
-      HeaderValue::from_str(content_type.as_str()).unwrap_or_default(),
-    );
+    let content_type_value = HeaderValue::from_str(content_type.as_str())
+      .unwrap_or_else(|_| HeaderValue::from_static("application/octet-stream"));
+    headers.insert("content-type", content_type_value);
 
     Self {
       status,
@@ -455,7 +455,9 @@ impl HttpResponse {
   /// response.add_header("x-custom-header", HeaderValue::from_static("value"));
   /// ```
   pub fn add_header(&mut self, name: &str, value: HeaderValue) {
-    self.headers.insert(name, value);
+    if let Ok(header_name) = HeaderName::from_bytes(name.as_bytes()) {
+      self.headers.insert(header_name, value);
+    }
   }
 
   /// Set a header in the response (replaces existing value).
@@ -470,7 +472,9 @@ impl HttpResponse {
   /// response.set_header("x-custom-header", HeaderValue::from_static("value"));
   /// ```
   pub fn set_header(&mut self, name: &str, value: HeaderValue) {
-    self.headers.insert(name, value);
+    if let Ok(header_name) = HeaderName::from_bytes(name.as_bytes()) {
+      self.headers.insert(header_name, value);
+    }
   }
 
   /// Convert the response to an Axum response.
@@ -517,6 +521,7 @@ impl Default for HttpResponse {
 /// ```
 #[derive(Debug, Clone)]
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[allow(clippy::large_enum_variant)]
 pub enum HttpRequestItem {
   /// HTTP request with metadata (method, path, headers, etc.)
   /// When streaming, this is yielded first with body = None.

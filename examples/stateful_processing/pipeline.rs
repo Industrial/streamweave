@@ -1,8 +1,8 @@
 use streamweave::{
   consumers::vec::vec_consumer::VecConsumer, error::ErrorStrategy, pipeline::PipelineBuilder,
   producers::range::range_producer::RangeProducer, stateful_transformer::StatefulTransformer,
-  transformers::moving_average::moving_average_transformer::MovingAverageTransformer,
-  transformers::running_sum::running_sum_transformer::RunningSumTransformer,
+  transformers::moving_average::MovingAverageTransformer,
+  transformers::running_sum::RunningSumTransformer,
 };
 
 /// Example: Running Sum Transformer
@@ -35,12 +35,13 @@ pub async fn running_sum_example() -> Result<(), Box<dyn std::error::Error>> {
   println!();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(transformer.clone())
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(transformer.clone())
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
 
   println!("✅ Running sum completed!");
   println!("📊 Results:");
@@ -68,12 +69,12 @@ pub async fn running_sum_example() -> Result<(), Box<dyn std::error::Error>> {
   let consumer2 = VecConsumer::new();
 
   let pipeline2 = PipelineBuilder::new()
-    .with_producer(producer2)
-    .with_transformer(transformer2)
-    .with_consumer(consumer2)
-    .build();
+    .producer(producer2)
+    .transformer(transformer2)
+    .consumer(consumer2);
 
-  let results2 = pipeline2.run().await?;
+  let (_, result_consumer2) = pipeline2.run().await?;
+  let results2 = result_consumer2.into_vec();
   println!("   Results after reset: {:?}", results2);
   println!("   ✅ State correctly reset to 0");
 
@@ -95,7 +96,7 @@ pub async fn moving_average_example() -> Result<(), Box<dyn std::error::Error>> 
     10.0, 12.0, 11.0, 13.0, 15.0, 14.0, 16.0, 18.0, 17.0, 19.0, 20.0, 18.0, 16.0, 15.0, 17.0,
   ];
 
-  let producer = streamweave::producers::vec::vec_producer::VecProducer::new(sample_data.clone())
+  let _producer = streamweave::producers::vec::vec_producer::VecProducer::new(sample_data.clone())
     .with_name("data-generator".to_string())
     .with_error_strategy(ErrorStrategy::Skip);
 
@@ -108,14 +109,14 @@ pub async fn moving_average_example() -> Result<(), Box<dyn std::error::Error>> 
   let consumer_small = VecConsumer::new();
 
   let pipeline_small = PipelineBuilder::new()
-    .with_producer(streamweave::producers::vec::vec_producer::VecProducer::new(
+    .producer(streamweave::producers::vec::vec_producer::VecProducer::new(
       sample_data.clone(),
     ))
-    .with_transformer(transformer_small)
-    .with_consumer(consumer_small)
-    .build();
+    .transformer(transformer_small)
+    .consumer(consumer_small);
 
-  let results_small = pipeline_small.run().await?;
+  let (_, result_consumer_small) = pipeline_small.run().await?;
+  let results_small = result_consumer_small.into_vec();
 
   println!("   Input values: {:?}", sample_data);
   println!("   Moving averages (window=3):");
@@ -132,14 +133,14 @@ pub async fn moving_average_example() -> Result<(), Box<dyn std::error::Error>> 
   let consumer_large = VecConsumer::new();
 
   let pipeline_large = PipelineBuilder::new()
-    .with_producer(streamweave::producers::vec::vec_producer::VecProducer::new(
+    .producer(streamweave::producers::vec::vec_producer::VecProducer::new(
       sample_data.clone(),
     ))
-    .with_transformer(transformer_large)
-    .with_consumer(consumer_large)
-    .build();
+    .transformer(transformer_large)
+    .consumer(consumer_large);
 
-  let results_large = pipeline_large.run().await?;
+  let (_, result_consumer_large) = pipeline_large.run().await?;
+  let results_large = result_consumer_large.into_vec();
 
   println!("   Moving averages (window=5):");
   for (i, avg) in results_large.iter().enumerate() {
@@ -173,12 +174,12 @@ pub async fn state_checkpoint_example() -> Result<(), Box<dyn std::error::Error>
   let consumer1 = VecConsumer::new();
 
   let pipeline1 = PipelineBuilder::new()
-    .with_producer(producer1)
-    .with_transformer(transformer.clone())
-    .with_consumer(consumer1)
-    .build();
+    .producer(producer1)
+    .transformer(transformer.clone())
+    .consumer(consumer1);
 
-  let results1 = pipeline1.run().await?;
+  let (_, result_consumer1) = pipeline1.run().await?;
+  let results1 = result_consumer1.into_vec();
   println!("   Results: {:?}", results1);
   println!("   Expected: [101, 103, 106, 110, 115] (starting from 100)");
 
@@ -192,12 +193,12 @@ pub async fn state_checkpoint_example() -> Result<(), Box<dyn std::error::Error>
   let consumer2 = VecConsumer::new();
 
   let pipeline2 = PipelineBuilder::new()
-    .with_producer(producer2)
-    .with_transformer(transformer.clone())
-    .with_consumer(consumer2)
-    .build();
+    .producer(producer2)
+    .transformer(transformer.clone())
+    .consumer(consumer2);
 
-  let results2 = pipeline2.run().await?;
+  let (_, result_consumer2) = pipeline2.run().await?;
+  let results2 = result_consumer2.into_vec();
   println!("   Results: {:?}", results2);
   println!("   Expected: [121, 128, 136, 145, 155] (continuing from 115)");
 

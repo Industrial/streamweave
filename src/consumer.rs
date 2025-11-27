@@ -2,9 +2,15 @@ use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, Stre
 use crate::input::Input;
 use async_trait::async_trait;
 
+/// Configuration for a consumer component.
+///
+/// This struct holds configuration options that control how a consumer
+/// behaves, including error handling strategy and component naming.
 #[derive(Debug, Clone)]
 pub struct ConsumerConfig<T: std::fmt::Debug + Clone + Send + Sync> {
+  /// The error handling strategy to use when processing items.
   pub error_strategy: ErrorStrategy<T>,
+  /// The name of this consumer component.
   pub name: String,
 }
 
@@ -72,6 +78,11 @@ where
   /// ```
   async fn consume(&mut self, stream: Self::InputStream);
 
+  /// Creates a new consumer instance with the given configuration.
+  ///
+  /// # Arguments
+  ///
+  /// * `config` - The configuration to apply to the consumer.
   #[must_use]
   fn with_config(&self, config: ConsumerConfig<Self::Input>) -> Self
   where
@@ -82,18 +93,30 @@ where
     this
   }
 
+  /// Sets the configuration for this consumer.
+  ///
+  /// # Arguments
+  ///
+  /// * `config` - The configuration to set.
   fn set_config(&mut self, config: ConsumerConfig<Self::Input>) {
     self.set_config_impl(config);
   }
 
+  /// Returns a reference to the consumer's configuration.
   fn config(&self) -> &ConsumerConfig<Self::Input> {
     self.get_config_impl()
   }
 
+  /// Returns a mutable reference to the consumer's configuration.
   fn config_mut(&mut self) -> &mut ConsumerConfig<Self::Input> {
     self.get_config_mut_impl()
   }
 
+  /// Sets the name for this consumer.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name to assign to this consumer.
   #[must_use]
   fn with_name(mut self, name: String) -> Self
   where
@@ -103,6 +126,15 @@ where
     self
   }
 
+  /// Handles an error according to the consumer's error strategy.
+  ///
+  /// # Arguments
+  ///
+  /// * `error` - The error that occurred.
+  ///
+  /// # Returns
+  ///
+  /// The action to take based on the error strategy.
   fn handle_error(&self, error: &StreamError<Self::Input>) -> ErrorAction {
     match &self.config().error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
@@ -113,6 +145,7 @@ where
     }
   }
 
+  /// Returns information about this consumer component.
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self.config().name.clone(),
@@ -120,6 +153,15 @@ where
     }
   }
 
+  /// Creates an error context for the given item.
+  ///
+  /// # Arguments
+  ///
+  /// * `item` - The item that caused the error, if any.
+  ///
+  /// # Returns
+  ///
+  /// An error context containing information about when and where the error occurred.
   fn create_error_context(&self, item: Option<Self::Input>) -> ErrorContext<Self::Input> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
@@ -129,8 +171,11 @@ where
     }
   }
 
+  /// Internal implementation for setting configuration.
   fn set_config_impl(&mut self, config: ConsumerConfig<Self::Input>);
+  /// Internal implementation for getting configuration.
   fn get_config_impl(&self) -> &ConsumerConfig<Self::Input>;
+  /// Internal implementation for getting mutable configuration.
   fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<Self::Input>;
 }
 
@@ -140,7 +185,8 @@ mod tests {
   use crate::error::{ErrorAction, ErrorContext, ErrorStrategy, StreamError};
   use futures::StreamExt;
   use std::pin::Pin;
-  use std::sync::{Arc, Mutex};
+  use std::sync::Arc;
+  use tokio::sync::Mutex;
   use tokio_stream::Stream;
 
   // Test error type
@@ -170,11 +216,11 @@ mod tests {
       }
     }
 
-    fn get_items(&self) -> Vec<T>
+    async fn get_items(&self) -> Vec<T>
     where
       T: Clone,
     {
-      self.items.lock().unwrap().clone()
+      self.items.lock().await.clone()
     }
   }
 
@@ -187,7 +233,7 @@ mod tests {
   impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Consumer for CollectorConsumer<T> {
     async fn consume(&mut self, mut stream: Self::InputStream) {
       while let Some(item) = stream.next().await {
-        self.items.lock().unwrap().push(item);
+        self.items.lock().await.push(item);
       }
     }
 
@@ -248,7 +294,7 @@ mod tests {
     let input = vec![1, 2, 3, 4, 5];
     let stream = Box::pin(tokio_stream::iter(input.clone()));
     consumer.consume(stream).await;
-    assert_eq!(consumer.get_items(), input);
+    assert_eq!(consumer.get_items().await, input);
   }
 
   #[tokio::test]
@@ -257,7 +303,7 @@ mod tests {
     let input: Vec<i32> = vec![];
     let stream = Box::pin(tokio_stream::iter(input));
     consumer.consume(stream).await;
-    assert!(consumer.get_items().is_empty());
+    assert!(consumer.get_items().await.is_empty());
   }
 
   #[tokio::test]
@@ -266,7 +312,7 @@ mod tests {
     let input = vec!["hello".to_string(), "world".to_string()];
     let stream = Box::pin(tokio_stream::iter(input.clone()));
     consumer.consume(stream).await;
-    assert_eq!(consumer.get_items(), input);
+    assert_eq!(consumer.get_items().await, input);
   }
 
   #[tokio::test]
@@ -463,7 +509,7 @@ mod tests {
       consumer.config().error_strategy,
       ErrorStrategy::Skip
     ));
-    assert_eq!(consumer.get_items(), vec![1, 2, 3, 4, 5, 6]);
+    assert_eq!(consumer.get_items().await, vec![1, 2, 3, 4, 5, 6]);
   }
 
   #[test]
@@ -540,7 +586,7 @@ mod tests {
       handle.await.unwrap();
     }
     let consumer = consumer.lock().await;
-    let mut collected = consumer.get_items();
+    let mut collected = consumer.get_items().await;
     collected.sort();
     assert_eq!(collected, vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
   }
@@ -577,7 +623,7 @@ mod tests {
     // Close the sender to signal stream completion
     drop(tx);
     let consumer = handle.await.unwrap();
-    assert_eq!(consumer.get_items().len(), 10);
+    assert_eq!(consumer.get_items().await.len(), 10);
   }
 
   #[tokio::test]

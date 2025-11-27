@@ -27,8 +27,11 @@ pub struct JsonlProducer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + DeserializeOwned + 'static,
 {
+  /// The path to the JSONL file to read from.
   pub path: String,
+  /// Configuration for the producer, including error handling strategy.
   pub config: ProducerConfig<T>,
+  /// Phantom data to track the type parameter.
   pub _phantom: PhantomData<T>,
 }
 

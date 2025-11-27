@@ -2,9 +2,15 @@ use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, Stre
 use crate::output::Output;
 use async_trait::async_trait;
 
+/// Configuration for a producer component.
+///
+/// This struct holds configuration options that control how a producer
+/// behaves, including error handling strategy and component naming.
 #[derive(Debug, Clone)]
 pub struct ProducerConfig<T: std::fmt::Debug + Clone + Send + Sync> {
+  /// The error handling strategy to use when producing items.
   pub error_strategy: ErrorStrategy<T>,
+  /// Optional name for identifying this producer in logs and metrics.
   pub name: Option<String>,
 }
 
@@ -18,20 +24,32 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> Default for ProducerConfig<T> {
 }
 
 impl<T: std::fmt::Debug + Clone + Send + Sync> ProducerConfig<T> {
+  /// Sets the error handling strategy for this producer configuration.
+  ///
+  /// # Arguments
+  ///
+  /// * `strategy` - The error handling strategy to use.
   pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
     self.error_strategy = strategy;
     self
   }
 
+  /// Sets the name for this producer configuration.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name to assign to this producer.
   pub fn with_name(mut self, name: String) -> Self {
     self.name = Some(name);
     self
   }
 
+  /// Returns the current error handling strategy.
   pub fn error_strategy(&self) -> ErrorStrategy<T> {
     self.error_strategy.clone()
   }
 
+  /// Returns the current name, if set.
   pub fn name(&self) -> Option<String> {
     self.name.clone()
   }
@@ -75,6 +93,17 @@ where
   /// A stream that yields items of type `Self::Output`.
   fn produce(&mut self) -> Self::OutputStream;
 
+  /// Creates a new producer instance with the given configuration.
+  ///
+  /// This method clones the producer and applies the provided configuration.
+  ///
+  /// # Arguments
+  ///
+  /// * `config` - The `ProducerConfig` to apply.
+  ///
+  /// # Returns
+  ///
+  /// A new producer instance with the specified configuration.
   #[must_use]
   fn with_config(&self, config: ProducerConfig<Self::Output>) -> Self
   where
@@ -85,18 +114,42 @@ where
     this
   }
 
+  /// Sets the configuration for this producer.
+  ///
+  /// # Arguments
+  ///
+  /// * `config` - The new `ProducerConfig` to apply.
   fn set_config(&mut self, config: ProducerConfig<Self::Output>) {
     self.set_config_impl(config);
   }
 
+  /// Returns a reference to the producer's configuration.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the `ProducerConfig` for this producer.
   fn config(&self) -> &ProducerConfig<Self::Output> {
     self.get_config_impl()
   }
 
+  /// Returns a mutable reference to the producer's configuration.
+  ///
+  /// # Returns
+  ///
+  /// A mutable reference to the `ProducerConfig` for this producer.
   fn config_mut(&mut self) -> &mut ProducerConfig<Self::Output> {
     self.get_config_mut_impl()
   }
 
+  /// Sets the name for this producer.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name to assign to this producer.
+  ///
+  /// # Returns
+  ///
+  /// The producer instance with the updated name.
   #[must_use]
   fn with_name(mut self, name: String) -> Self
   where
@@ -110,6 +163,18 @@ where
     self
   }
 
+  /// Handles an error that occurred during stream production.
+  ///
+  /// This method determines the appropriate `ErrorAction` based on the
+  /// producer's configured `ErrorStrategy`.
+  ///
+  /// # Arguments
+  ///
+  /// * `error` - The `StreamError` that occurred.
+  ///
+  /// # Returns
+  ///
+  /// The `ErrorAction` to take in response to the error.
   fn handle_error(&self, error: &StreamError<Self::Output>) -> ErrorAction {
     match self.config().error_strategy() {
       ErrorStrategy::Stop => ErrorAction::Stop,
@@ -119,6 +184,18 @@ where
     }
   }
 
+  /// Creates an error context for error reporting.
+  ///
+  /// This method constructs an `ErrorContext` with the current timestamp,
+  /// the item that caused the error (if any), and component information.
+  ///
+  /// # Arguments
+  ///
+  /// * `item` - The item that caused the error, if available.
+  ///
+  /// # Returns
+  ///
+  /// An `ErrorContext` containing error details.
   fn create_error_context(&self, item: Option<Self::Output>) -> ErrorContext<Self::Output> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
@@ -128,6 +205,13 @@ where
     }
   }
 
+  /// Returns information about the component for error reporting.
+  ///
+  /// This includes the component's name and type.
+  ///
+  /// # Returns
+  ///
+  /// A `ComponentInfo` struct containing details about the producer.
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self
@@ -138,9 +222,32 @@ where
     }
   }
 
-  // These methods need to be implemented by each producer
+  /// Sets the configuration implementation.
+  ///
+  /// This method must be implemented by each producer to store the configuration.
+  ///
+  /// # Arguments
+  ///
+  /// * `config` - The `ProducerConfig` to store.
   fn set_config_impl(&mut self, config: ProducerConfig<Self::Output>);
+
+  /// Returns a reference to the configuration implementation.
+  ///
+  /// This method must be implemented by each producer to return its stored configuration.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the producer's `ProducerConfig`.
   fn get_config_impl(&self) -> &ProducerConfig<Self::Output>;
+
+  /// Returns a mutable reference to the configuration implementation.
+  ///
+  /// This method must be implemented by each producer to return a mutable reference
+  /// to its stored configuration.
+  ///
+  /// # Returns
+  ///
+  /// A mutable reference to the producer's `ProducerConfig`.
   fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<Self::Output>;
 }
 

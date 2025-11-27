@@ -8,6 +8,7 @@
 
 use crate::error::{ComponentInfo, ErrorContext, StreamError, StringError};
 use crate::sql::ast::*;
+use chrono;
 use sqlparser::ast::*;
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::{Parser, ParserError};
@@ -68,11 +69,11 @@ impl SqlParser {
   /// ```
   pub fn parse(&self, query: &str) -> Result<SqlQuery, StreamError<String>> {
     let mut parser = Parser::new(&self.dialect);
-    parser.try_with_sql(query)?;
+    parser = parser.try_with_sql(query)?;
     let ast = parser.parse_statement()?;
 
     match ast {
-      Statement::Query(query) => self.convert_query(query),
+      Statement::Query(query) => self.convert_query(*query),
       _ => Err(self.create_error(format!(
         "Unsupported statement type. Only SELECT queries are supported, found: {:?}",
         ast
@@ -82,6 +83,12 @@ impl SqlParser {
 
   /// Convert sqlparser Query AST to StreamWeave SqlQuery
   fn convert_query(&self, query: Query) -> Result<SqlQuery, StreamError<String>> {
+    // Extract Select from body
+    let select_expr = match query.body.as_ref() {
+      SetExpr::Select(select) => select,
+      _ => return Err(self.create_error("Only SELECT queries are supported".to_string())),
+    };
+
     // Convert SELECT clause
     let select = self.convert_select(&query.body)?;
 
@@ -89,26 +96,27 @@ impl SqlParser {
     let from = self.convert_from(&query.body)?;
 
     // Convert WHERE clause
-    let where_clause = query.selection.as_ref().map(|expr| WhereClause {
-      condition: self.convert_expr(expr)?,
+    let where_clause = select_expr.selection.as_ref().map(|expr| WhereClause {
+      condition: self
+        .convert_expr(expr)
+        .unwrap_or_else(|e| panic!("Failed to convert WHERE expression: {:?}", e)),
     });
 
     // Convert GROUP BY clause
-    let group_by = if query.group_by.is_empty() {
-      None
-    } else {
-      Some(GroupByClause {
-        keys: query
-          .group_by
+    let group_by = match &select_expr.group_by {
+      sqlparser::ast::GroupByExpr::All => None,
+      sqlparser::ast::GroupByExpr::Expressions(exprs) if exprs.is_empty() => None,
+      sqlparser::ast::GroupByExpr::Expressions(exprs) => Some(GroupByClause {
+        keys: exprs
           .iter()
           .map(|e| self.convert_expr(e))
           .collect::<Result<Vec<_>, _>>()?,
-        having: query
+        having: select_expr
           .having
           .as_ref()
           .map(|e| self.convert_expr(e))
           .transpose()?,
-      })
+      }),
     };
 
     // Convert ORDER BY clause
@@ -119,15 +127,17 @@ impl SqlParser {
         items: query
           .order_by
           .iter()
-          .map(|item| {
-            Ok(OrderByItem {
-              expr: self.convert_expr(&item.expr)?,
-              direction: match item.asc {
-                Some(true) | None => SortDirection::Asc,
-                Some(false) => SortDirection::Desc,
-              },
-            })
-          })
+          .map(
+            |item| -> Result<crate::sql::ast::OrderByItem, StreamError<String>> {
+              Ok(OrderByItem {
+                expr: self.convert_expr(&item.expr)?,
+                direction: match item.asc {
+                  Some(true) | None => SortDirection::Asc,
+                  Some(false) => SortDirection::Desc,
+                },
+              })
+            },
+          )
           .collect::<Result<Vec<_>, _>>()?,
       })
     };
@@ -190,18 +200,25 @@ impl SqlParser {
   }
 
   /// Convert sqlparser SelectItem to StreamWeave SelectItem
-  fn convert_select_item(&self, item: &SelectItem) -> Result<SelectItem, StreamError<String>> {
+  fn convert_select_item(
+    &self,
+    item: &sqlparser::ast::SelectItem,
+  ) -> Result<crate::sql::ast::SelectItem, StreamError<String>> {
     match item {
-      sqlparser::ast::SelectItem::UnnamedExpr(expr) => Ok(SelectItem::Expression {
-        expr: self.convert_expr(expr)?,
-        alias: None,
-      }),
-      sqlparser::ast::SelectItem::ExprWithAlias { expr, alias } => Ok(SelectItem::Expression {
-        expr: self.convert_expr(expr)?,
-        alias: Some(alias.value.clone()),
-      }),
-      sqlparser::ast::SelectItem::Wildcard(_) => Ok(SelectItem::All),
-      sqlparser::ast::SelectItem::QualifiedWildcard(_, _) => Ok(SelectItem::All),
+      sqlparser::ast::SelectItem::UnnamedExpr(expr) => {
+        Ok(crate::sql::ast::SelectItem::Expression {
+          expr: self.convert_expr(expr)?,
+          alias: None,
+        })
+      }
+      sqlparser::ast::SelectItem::ExprWithAlias { expr, alias } => {
+        Ok(crate::sql::ast::SelectItem::Expression {
+          expr: self.convert_expr(expr)?,
+          alias: Some(alias.value.clone()),
+        })
+      }
+      sqlparser::ast::SelectItem::Wildcard(_) => Ok(crate::sql::ast::SelectItem::All),
+      sqlparser::ast::SelectItem::QualifiedWildcard(_, _) => Ok(crate::sql::ast::SelectItem::All),
     }
   }
 
@@ -255,10 +272,22 @@ impl SqlParser {
             name: idents[1].value.clone(),
           }))
         } else {
-          Err(StreamError::new(format!(
-            "Invalid compound identifier: {:?}",
-            idents
-          )))
+          Err(StreamError::new(
+            Box::new(StringError(format!(
+              "Invalid compound identifier: {:?}",
+              idents
+            ))),
+            ErrorContext {
+              timestamp: chrono::Utc::now(),
+              item: Some(format!("{:?}", idents)),
+              component_name: "sql_parser".to_string(),
+              component_type: std::any::type_name::<SqlParser>().to_string(),
+            },
+            ComponentInfo {
+              name: "sql_parser".to_string(),
+              type_name: std::any::type_name::<SqlParser>().to_string(),
+            },
+          ))
         }
       }
       Expr::Value(value) => Ok(Expression::Literal(self.convert_value(value)?)),
@@ -277,7 +306,10 @@ impl SqlParser {
           .args
           .iter()
           .map(|arg| match arg {
-            FunctionArg::Unnamed(expr) => self.convert_expr(expr),
+            FunctionArg::Unnamed(arg_expr) => match arg_expr {
+              FunctionArgExpr::Expr(expr) => self.convert_expr(expr),
+              _ => Err(self.create_error("Unsupported function argument type".to_string())),
+            },
             FunctionArg::Named { name: _, arg } => match arg {
               FunctionArgExpr::Expr(expr) => self.convert_expr(expr),
               _ => Err(self.create_error("Unsupported function argument type".to_string())),
@@ -329,26 +361,32 @@ impl SqlParser {
         let cases = conditions
           .iter()
           .zip(results.iter())
-          .map(|(cond, result)| Ok((self.convert_expr(cond)?, self.convert_expr(result)?)))
+          .map(
+            |(cond, result)| -> Result<
+              (crate::sql::ast::Expression, crate::sql::ast::Expression),
+              StreamError<String>,
+            > { Ok((self.convert_expr(cond)?, self.convert_expr(result)?)) },
+          )
           .collect::<Result<Vec<_>, _>>()?;
 
         Ok(Expression::Case {
           cases,
           else_result: else_result
             .as_ref()
-            .map(|e| Box::new(self.convert_expr(e)?))
-            .transpose()?,
+            .map(|e| self.convert_expr(e))
+            .transpose()?
+            .map(|e| Box::new(e)),
         })
       }
       Expr::IsNull(expr) => Ok(Expression::BinaryOp {
         left: Box::new(self.convert_expr(expr)?),
-        op: BinaryOperator::IsNull,
-        right: Box::new(Expression::Literal(Literal::Null)),
+        op: crate::sql::ast::BinaryOperator::IsNull,
+        right: Box::new(Expression::Literal(crate::sql::ast::Literal::Null)),
       }),
       Expr::IsNotNull(expr) => Ok(Expression::BinaryOp {
         left: Box::new(self.convert_expr(expr)?),
-        op: BinaryOperator::IsNotNull,
-        right: Box::new(Expression::Literal(Literal::Null)),
+        op: crate::sql::ast::BinaryOperator::IsNotNull,
+        right: Box::new(Expression::Literal(crate::sql::ast::Literal::Null)),
       }),
       _ => Err(self.create_error(format!("Unsupported expression type: {:?}", expr))),
     }
@@ -385,32 +423,50 @@ impl SqlParser {
   }
 
   /// Convert sqlparser BinaryOperator to StreamWeave BinaryOperator
-  fn convert_binary_op(&self, op: &BinaryOperator) -> Result<BinaryOperator, StreamError<String>> {
+  fn convert_binary_op(
+    &self,
+    op: &sqlparser::ast::BinaryOperator,
+  ) -> Result<crate::sql::ast::BinaryOperator, StreamError<String>> {
     match op {
-      sqlparser::ast::BinaryOperator::Plus => Ok(BinaryOperator::Add),
-      sqlparser::ast::BinaryOperator::Minus => Ok(BinaryOperator::Subtract),
-      sqlparser::ast::BinaryOperator::Multiply => Ok(BinaryOperator::Multiply),
-      sqlparser::ast::BinaryOperator::Divide => Ok(BinaryOperator::Divide),
-      sqlparser::ast::BinaryOperator::Modulo => Ok(BinaryOperator::Modulo),
-      sqlparser::ast::BinaryOperator::Eq => Ok(BinaryOperator::Eq),
-      sqlparser::ast::BinaryOperator::NotEq => Ok(BinaryOperator::Ne),
-      sqlparser::ast::BinaryOperator::Lt => Ok(BinaryOperator::Lt),
-      sqlparser::ast::BinaryOperator::LtEq => Ok(BinaryOperator::Le),
-      sqlparser::ast::BinaryOperator::Gt => Ok(BinaryOperator::Gt),
-      sqlparser::ast::BinaryOperator::GtEq => Ok(BinaryOperator::Ge),
-      sqlparser::ast::BinaryOperator::And => Ok(BinaryOperator::And),
-      sqlparser::ast::BinaryOperator::Or => Ok(BinaryOperator::Or),
-      sqlparser::ast::BinaryOperator::Like => Ok(BinaryOperator::Like),
+      sqlparser::ast::BinaryOperator::Plus => Ok(crate::sql::ast::BinaryOperator::Add),
+      sqlparser::ast::BinaryOperator::Minus => Ok(crate::sql::ast::BinaryOperator::Subtract),
+      sqlparser::ast::BinaryOperator::Multiply => Ok(crate::sql::ast::BinaryOperator::Multiply),
+      sqlparser::ast::BinaryOperator::Divide => Ok(crate::sql::ast::BinaryOperator::Divide),
+      sqlparser::ast::BinaryOperator::Modulo => Ok(crate::sql::ast::BinaryOperator::Modulo),
+      sqlparser::ast::BinaryOperator::Eq => Ok(crate::sql::ast::BinaryOperator::Eq),
+      sqlparser::ast::BinaryOperator::NotEq => Ok(crate::sql::ast::BinaryOperator::Ne),
+      sqlparser::ast::BinaryOperator::Lt => Ok(crate::sql::ast::BinaryOperator::Lt),
+      sqlparser::ast::BinaryOperator::LtEq => Ok(crate::sql::ast::BinaryOperator::Le),
+      sqlparser::ast::BinaryOperator::Gt => Ok(crate::sql::ast::BinaryOperator::Gt),
+      sqlparser::ast::BinaryOperator::GtEq => Ok(crate::sql::ast::BinaryOperator::Ge),
+      sqlparser::ast::BinaryOperator::And => Ok(crate::sql::ast::BinaryOperator::And),
+      sqlparser::ast::BinaryOperator::Or => Ok(crate::sql::ast::BinaryOperator::Or),
+      // Note: sqlparser doesn't have Like as a BinaryOperator, it's handled differently
+      // We'll need to handle LIKE expressions in the expression conversion
       _ => Err(self.create_error(format!("Unsupported binary operator: {:?}", op))),
     }
   }
 
   /// Convert sqlparser UnaryOperator to StreamWeave UnaryOperator
-  fn convert_unary_op(&self, op: &UnaryOperator) -> Result<UnaryOperator, StreamError<String>> {
+  fn convert_unary_op(
+    &self,
+    op: &sqlparser::ast::UnaryOperator,
+  ) -> Result<crate::sql::ast::UnaryOperator, StreamError<String>> {
     match op {
-      sqlparser::ast::UnaryOperator::Not => Ok(UnaryOperator::Not),
-      sqlparser::ast::UnaryOperator::Minus => Ok(UnaryOperator::Minus),
-      sqlparser::ast::UnaryOperator::Plus => Ok(UnaryOperator::Plus),
+      sqlparser::ast::UnaryOperator::Not => Ok(crate::sql::ast::UnaryOperator::Not),
+      sqlparser::ast::UnaryOperator::Minus => Ok(crate::sql::ast::UnaryOperator::Minus),
+      sqlparser::ast::UnaryOperator::Plus => Ok(crate::sql::ast::UnaryOperator::Plus),
+      sqlparser::ast::UnaryOperator::PGAbs => {
+        Err(self.create_error("PGAbs operator not supported".to_string()))
+      }
+      sqlparser::ast::UnaryOperator::PGBitwiseNot
+      | sqlparser::ast::UnaryOperator::PGSquareRoot
+      | sqlparser::ast::UnaryOperator::PGCubeRoot
+      | sqlparser::ast::UnaryOperator::PGPostfixFactorial
+      | sqlparser::ast::UnaryOperator::PGPrefixFactorial => Err(self.create_error(format!(
+        "PostgreSQL-specific unary operator not supported: {:?}",
+        op
+      ))),
     }
   }
 }
@@ -425,10 +481,7 @@ impl Default for SqlParser {
 impl From<ParserError> for StreamError<String> {
   fn from(err: ParserError) -> Self {
     StreamError::new(
-      Box::new(StringError(format!(
-        "SQL parse error at position {}: {}",
-        err.pos, err.message
-      ))),
+      Box::new(StringError(format!("SQL parse error: {:?}", err))),
       ErrorContext::default(),
       ComponentInfo::new("SQL Parser".to_string(), "SqlParser".to_string()),
     )

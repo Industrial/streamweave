@@ -17,8 +17,11 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for WindowT
         window.push_back(item);
 
         if window.len() == size {
-          yield window.iter().cloned().collect::<Vec<_>>();
-          window.clear(); // Clear the entire window instead of just popping one item
+          // Efficiently yield the current window as a Vec
+          let window_vec: Vec<T> = window.iter().cloned().collect();
+          yield window_vec;
+          // Slide the window by removing the oldest item
+          window.pop_front();
         }
       }
 
@@ -85,7 +88,19 @@ mod tests {
 
     let result: Vec<Vec<i32>> = transformer.transform(boxed_input).collect().await;
 
-    assert_eq!(result, vec![vec![1, 2, 3], vec![4, 5, 6], vec![7],]);
+    // Sliding window of size 3: each window overlaps by 2 items
+    // The transformer also emits a partial window at the end if there are remaining items
+    assert_eq!(
+      result,
+      vec![
+        vec![1, 2, 3],
+        vec![2, 3, 4],
+        vec![3, 4, 5],
+        vec![4, 5, 6],
+        vec![5, 6, 7],
+        vec![6, 7] // Partial window at the end
+      ]
+    );
   }
 
   #[tokio::test]

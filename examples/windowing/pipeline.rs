@@ -1,5 +1,5 @@
 use streamweave::{
-  consumers::vec::vec_consumer::VecConsumer, error::ErrorStrategy, pipeline::PipelineBuilder,
+  consumers::vec::vec_consumer::VecConsumer, pipeline::PipelineBuilder,
   producers::vec::vec_producer::VecProducer,
   transformers::window::window_transformer::WindowTransformer,
 };
@@ -18,12 +18,13 @@ pub async fn tumbling_window_example() -> Result<(), Box<dyn std::error::Error>>
   let consumer = VecConsumer::new();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(window)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(window)
+    .consumer(consumer);
+    
 
-  let results: Vec<Vec<i32>> = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results: Vec<Vec<i32>> = result_consumer.into_vec();
   println!("✅ Created {} windows", results.len());
   for (i, window) in results.iter().enumerate() {
     println!("  Window {}: {:?}", i + 1, window);
@@ -47,12 +48,13 @@ pub async fn sliding_window_example() -> Result<(), Box<dyn std::error::Error>> 
   let consumer = VecConsumer::new();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(window)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(window)
+    .consumer(consumer);
+    
 
-  let results: Vec<Vec<i32>> = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results: Vec<Vec<i32>> = result_consumer.into_vec();
   println!("✅ Created {} windows", results.len());
   for (i, window) in results.iter().enumerate() {
     println!("  Window {}: {:?}", i + 1, window);
@@ -75,12 +77,13 @@ pub async fn count_window_example() -> Result<(), Box<dyn std::error::Error>> {
   let consumer = VecConsumer::new();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(window)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(window)
+    .consumer(consumer);
+    
 
-  let results: Vec<Vec<i32>> = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results: Vec<Vec<i32>> = result_consumer.into_vec();
   println!("✅ Created {} windows", results.len());
   for (i, window) in results.iter().enumerate() {
     println!("  Window {}: {:?}", i + 1, window);

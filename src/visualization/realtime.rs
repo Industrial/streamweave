@@ -19,6 +19,10 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 
+fn default_instant() -> Arc<RwLock<Instant>> {
+  Arc::new(RwLock::new(Instant::now()))
+}
+
 /// Metrics for a single pipeline node in real-time visualization.
 ///
 /// Tracks throughput, latency, and other metrics for a specific node
@@ -42,7 +46,7 @@ pub struct NodeMetrics {
   /// Error count
   pub error_count: u64,
   /// Last update timestamp
-  #[serde(skip)]
+  #[serde(skip, default = "default_instant")]
   pub last_update: Arc<RwLock<Instant>>,
   /// Items processed in the last time window
   #[serde(skip)]
@@ -108,8 +112,8 @@ impl NodeMetrics {
       window.push_back(now);
 
       // Keep only last 60 seconds of items
-      let cutoff = now.saturating_sub(Duration::from_secs(60));
-      while window.front().map_or(false, |&t| t < cutoff) {
+      let cutoff = now.checked_sub(Duration::from_secs(60)).unwrap_or(now);
+      while window.front().is_some_and(|&t| t < cutoff) {
         window.pop_front();
       }
     }
@@ -141,12 +145,14 @@ impl NodeMetrics {
   /// # }
   /// ```
   pub async fn record_latency(&mut self, latency: Duration) {
-    let mut samples = self.latency_samples.write().await;
-    samples.push_back(latency);
+    {
+      let mut samples = self.latency_samples.write().await;
+      samples.push_back(latency);
 
-    // Keep only last 1000 samples
-    if samples.len() > 1000 {
-      samples.pop_front();
+      // Keep only last 1000 samples
+      if samples.len() > 1000 {
+        samples.pop_front();
+      }
     }
 
     self.update_latency_stats().await;
@@ -192,7 +198,7 @@ impl NodeMetrics {
     let window = self.items_window.read().await;
     let now = Instant::now();
     let window_duration = Duration::from_secs(5); // 5 second window
-    let cutoff = now.saturating_sub(window_duration);
+    let cutoff = now.checked_sub(window_duration).unwrap_or(now);
 
     let items_in_window = window.iter().filter(|&&t| t >= cutoff).count();
     self.throughput = items_in_window as f64 / window_duration.as_secs_f64();
@@ -250,6 +256,12 @@ impl NodeMetrics {
       total_items: self.total_items,
       error_count: self.error_count,
     }
+  }
+}
+
+impl Default for NodeMetrics {
+  fn default() -> Self {
+    Self::new(String::new())
   }
 }
 

@@ -56,12 +56,13 @@ pub async fn basic_polling() -> Result<(), Box<dyn std::error::Error>> {
   // Build and run pipeline
   println!("🔄 Starting polling (3 requests, 2 second intervals)...");
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(transformer)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(transformer)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
 
   println!("\n✅ Polling completed!");
   println!("📊 Results ({} items):", results.len());
@@ -130,14 +131,15 @@ pub async fn pagination_example() -> Result<(), Box<dyn std::error::Error>> {
 
   println!("🔄 Starting paginated polling (3 pages)...");
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(transformer)
-    .with_transformer(flatten_transformer)
-    .with_transformer(format_transformer)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(transformer)
+    .transformer(flatten_transformer)
+    .transformer(format_transformer)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
 
   println!("\n✅ Pagination completed!");
   println!("📊 Results ({} posts across all pages):", results.len());
@@ -193,13 +195,14 @@ pub async fn delta_detection_example() -> Result<(), Box<dyn std::error::Error>>
   println!("🔄 Starting delta detection polling (2 requests)...");
   println!("   First request will emit all items, second will emit only new ones");
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(transformer)
-    .with_transformer(flatten_transformer)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(transformer)
+    .transformer(flatten_transformer)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
 
   println!("\n✅ Delta detection completed!");
   println!("📊 New items detected ({} items):", results.len());
@@ -245,12 +248,13 @@ pub async fn rate_limited_polling() -> Result<(), Box<dyn std::error::Error>> {
   println!("🔄 Starting rate-limited polling (5 requests, max 2 req/sec)...");
   let start = std::time::Instant::now();
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(transformer)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(transformer)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
   let elapsed = start.elapsed();
 
   println!("\n✅ Rate-limited polling completed!");

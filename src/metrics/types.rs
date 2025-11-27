@@ -431,7 +431,10 @@ impl ErrorMetrics {
 
     // Try to get existing counter (read lock)
     {
-      let map = self.errors_by_type.read().unwrap();
+      let map = self.errors_by_type.read().expect(
+        "Failed to acquire read lock on errors_by_type. This indicates a poisoned lock, \
+         which should not occur in normal operation.",
+      );
       if let Some(counter) = map.get(error_type) {
         counter.fetch_add(1, Ordering::Relaxed);
         return;
@@ -439,7 +442,10 @@ impl ErrorMetrics {
     }
 
     // Need to create new counter (write lock)
-    let mut map = self.errors_by_type.write().unwrap();
+    let mut map = self.errors_by_type.write().expect(
+      "Failed to acquire write lock on errors_by_type. This indicates a poisoned lock, \
+       which should not occur in normal operation.",
+    );
 
     // Double-check after acquiring write lock (another thread might have inserted)
     if let Some(counter) = map.get(error_type) {
@@ -514,7 +520,10 @@ impl ErrorMetrics {
   /// A map of error type to count.
   #[must_use]
   pub fn errors_by_type(&self) -> std::collections::HashMap<String, u64> {
-    let map = self.errors_by_type.read().unwrap();
+    let map = self.errors_by_type.read().expect(
+      "Failed to acquire read lock on errors_by_type. This indicates a poisoned lock, \
+       which should not occur in normal operation.",
+    );
     map
       .iter()
       .map(|(k, v)| (k.clone(), v.load(Ordering::Relaxed)))
@@ -562,16 +571,17 @@ impl Default for ErrorMetrics {
 ///
 /// Backpressure indicates when downstream components cannot keep up with upstream producers,
 /// causing items to queue up in buffers.
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BackpressureLevel {
   /// No backpressure - pipeline is running smoothly.
-  None,
+  None = 0,
   /// Low backpressure - some buffering is occurring but manageable.
-  Low,
+  Low = 1,
   /// Medium backpressure - significant buffering, may impact performance.
-  Medium,
+  Medium = 2,
   /// High backpressure - severe buffering, pipeline may be blocked.
-  High,
+  High = 3,
 }
 
 impl BackpressureLevel {
@@ -705,11 +715,25 @@ impl PipelineMetrics {
   /// # Returns
   ///
   /// The current backpressure level.
+  ///
+  /// # Safety
+  ///
+  /// If an invalid value is stored, this will default to `BackpressureLevel::None`.
   #[must_use]
   pub fn backpressure(&self) -> BackpressureLevel {
-    let value = self.backpressure.load(Ordering::Relaxed);
-    // Safe because we only store valid BackpressureLevel values
-    unsafe { std::mem::transmute(value as u8) }
+    let value = self.backpressure.load(Ordering::Relaxed) as u8;
+    // Safe conversion: match on the value to ensure we only return valid enum variants
+    match value {
+      0 => BackpressureLevel::None,
+      1 => BackpressureLevel::Low,
+      2 => BackpressureLevel::Medium,
+      3 => BackpressureLevel::High,
+      _ => {
+        // Invalid value stored - default to None to avoid undefined behavior
+        // This should never happen in practice, but provides a safe fallback
+        BackpressureLevel::None
+      }
+    }
   }
 
   /// Gets the elapsed time since metrics started.

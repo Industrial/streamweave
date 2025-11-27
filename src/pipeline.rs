@@ -60,7 +60,11 @@ pub struct PipelineBuilder<State> {
   _state: State,
 }
 
-// Pipeline struct that holds the final state
+/// A complete pipeline that connects a producer, transformer, and consumer.
+///
+/// This struct represents a fully constructed pipeline that is ready to execute.
+/// It holds references to the producer stream, transformer stream, and consumer,
+/// along with the error handling strategy.
 pub struct Pipeline<P, T, C>
 where
   P: Producer,
@@ -106,12 +110,32 @@ impl PipelineBuilder<Empty> {
     }
   }
 
+  /// Sets the error handling strategy for the pipeline.
+  ///
+  /// # Arguments
+  ///
+  /// * `strategy` - The error handling strategy to use for the entire pipeline.
+  ///
+  /// # Returns
+  ///
+  /// The pipeline builder with the updated error strategy.
   #[must_use]
   pub fn with_error_strategy(mut self, strategy: ErrorStrategy<()>) -> Self {
     self.error_strategy = strategy;
     self
   }
 
+  /// Adds a producer to the pipeline.
+  ///
+  /// This method takes a producer and starts generating the input stream.
+  ///
+  /// # Arguments
+  ///
+  /// * `producer` - The producer to add to the pipeline.
+  ///
+  /// # Returns
+  ///
+  /// A pipeline builder in the `HasProducer` state, allowing you to add transformers.
   #[must_use]
   pub fn producer<P>(mut self, mut producer: P) -> PipelineBuilder<HasProducer<P>>
   where
@@ -145,6 +169,19 @@ where
   P::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
   P::OutputStream: 'static,
 {
+  /// Adds a transformer to the pipeline.
+  ///
+  /// This method consumes the pipeline builder and returns a new builder
+  /// in the `HasTransformer` state, allowing you to chain additional transformers
+  /// or add a consumer.
+  ///
+  /// # Arguments
+  ///
+  /// * `transformer` - The transformer to add to the pipeline.
+  ///
+  /// # Returns
+  ///
+  /// A new `PipelineBuilder` in the `HasTransformer` state.
   #[must_use]
   pub fn transformer<T>(mut self, mut transformer: T) -> PipelineBuilder<HasTransformer<P, T>>
   where
@@ -157,9 +194,19 @@ where
     let producer_stream = self
       ._producer_stream
       .take()
-      .expect("producer stream should be present in HasProducer state")
+      .unwrap_or_else(|| {
+        panic!(
+          "Internal error: producer stream missing in HasProducer state. \
+           This indicates a bug in the pipeline builder state machine."
+        )
+      })
       .downcast::<P::OutputStream>()
-      .expect("producer stream should downcast to correct type");
+      .unwrap_or_else(|_| {
+        panic!(
+          "Internal error: failed to downcast producer stream to expected type. \
+           This indicates a type mismatch in the pipeline builder."
+        )
+      });
 
     let transformer_stream = transformer.transform((*producer_stream).into());
     self.transformer_stream = Some(Box::new(transformer_stream));
@@ -184,6 +231,18 @@ where
   T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
   T::OutputStream: 'static,
 {
+  /// Adds another transformer to the pipeline.
+  ///
+  /// This method allows chaining multiple transformers together. The new
+  /// transformer will process the output of the previous transformer.
+  ///
+  /// # Arguments
+  ///
+  /// * `transformer` - The transformer to add to the pipeline.
+  ///
+  /// # Returns
+  ///
+  /// A new `PipelineBuilder` in the `HasTransformer` state with the new transformer.
   #[must_use]
   pub fn transformer<U>(mut self, mut transformer: U) -> PipelineBuilder<HasTransformer<P, U>>
   where
@@ -196,9 +255,19 @@ where
     let transformer_stream = self
       .transformer_stream
       .take()
-      .expect("transformer stream should be present in HasTransformer state")
+      .unwrap_or_else(|| {
+        panic!(
+          "Internal error: transformer stream missing in HasTransformer state. \
+           This indicates a bug in the pipeline builder state machine."
+        )
+      })
       .downcast::<T::OutputStream>()
-      .expect("transformer stream should downcast to correct type");
+      .unwrap_or_else(|_| {
+        panic!(
+          "Internal error: failed to downcast transformer stream to expected type. \
+           This indicates a type mismatch in the pipeline builder."
+        )
+      });
 
     let new_stream = transformer.transform((*transformer_stream).into());
     self.transformer_stream = Some(Box::new(new_stream));
@@ -212,6 +281,19 @@ where
     }
   }
 
+  /// Adds a consumer to the pipeline and completes the pipeline construction.
+  ///
+  /// This method takes a consumer and connects it to the transformer's output stream,
+  /// completing the pipeline. It consumes the pipeline builder and returns a complete
+  /// `Pipeline` that is ready to be executed.
+  ///
+  /// # Arguments
+  ///
+  /// * `consumer` - The consumer to add to the pipeline.
+  ///
+  /// # Returns
+  ///
+  /// A complete `Pipeline` that is ready to execute.
   #[must_use]
   pub fn consumer<C>(mut self, consumer: C) -> Pipeline<P, T, C>
   where
@@ -222,9 +304,19 @@ where
     let transformer_stream = self
       .transformer_stream
       .take()
-      .expect("transformer stream should be present in HasTransformer state")
+      .unwrap_or_else(|| {
+        panic!(
+          "Internal error: transformer stream missing in HasTransformer state. \
+           This indicates a bug in the pipeline builder state machine."
+        )
+      })
       .downcast::<T::OutputStream>()
-      .expect("transformer stream should downcast to correct type");
+      .unwrap_or_else(|_| {
+        panic!(
+          "Internal error: failed to downcast transformer stream to expected type. \
+           This indicates a type mismatch in the pipeline builder."
+        )
+      });
 
     Pipeline {
       _producer_stream: None,
@@ -245,6 +337,15 @@ where
   T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
   C::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  /// Sets the error handling strategy for this pipeline.
+  ///
+  /// # Arguments
+  ///
+  /// * `strategy` - The error handling strategy to use.
+  ///
+  /// # Returns
+  ///
+  /// The pipeline with the updated error strategy.
   #[must_use]
   pub fn with_error_strategy(mut self, strategy: ErrorStrategy<()>) -> Self {
     self.error_strategy = strategy;
@@ -308,14 +409,18 @@ where
   where
     C::InputStream: From<T::OutputStream>,
   {
-    let transformer_stream = self
-      .transformer_stream
-      .take()
-      .expect("transformer stream should be present in Complete state");
-    let mut consumer = self
-      ._consumer
-      .take()
-      .expect("consumer should be present in Complete state");
+    let transformer_stream = self.transformer_stream.take().unwrap_or_else(|| {
+      panic!(
+        "Internal error: transformer stream missing in Complete state. \
+           This indicates a bug in the pipeline builder state machine."
+      )
+    });
+    let mut consumer = self._consumer.take().unwrap_or_else(|| {
+      panic!(
+        "Internal error: consumer missing in Complete state. \
+           This indicates a bug in the pipeline builder state machine."
+      )
+    });
 
     consumer.consume(transformer_stream.into()).await;
     Ok(((), consumer))

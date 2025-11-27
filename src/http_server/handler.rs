@@ -13,7 +13,7 @@ use crate::http_server::types::{HttpRequest, HttpResponse};
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use crate::pipeline::PipelineBuilder;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
-use crate::transformers::map::MapTransformer;
+use crate::producer::Producer;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use axum::http::StatusCode;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
@@ -70,7 +70,7 @@ where
   F: Fn(HttpRequest) -> HttpResponse,
 {
   // Create HTTP request producer
-  let mut producer = HttpRequestProducer::from_axum_request(
+  let producer = HttpRequestProducer::from_axum_request(
     axum_request,
     HttpRequestProducerConfig::default()
       .with_extract_body(true)
@@ -79,7 +79,10 @@ where
   .await;
 
   // Get the request from the producer
-  let mut request_stream = producer.produce();
+  let mut request_stream = {
+    let mut producer = producer;
+    <HttpRequestProducer as Producer>::produce(&mut producer)
+  };
   if let Some(request) = request_stream.next().await {
     // Transform the request
     let response = transform_fn(request);
@@ -138,19 +141,22 @@ where
     std::fmt::Debug + Clone + Send + Sync + 'static,
   <HttpResponseConsumer as crate::input::Input>::InputStream: From<T::OutputStream>,
 {
-  let transformer_fn = Arc::new(transformer_fn);
+  let transformer_fn: Arc<dyn Fn() -> T + Send + Sync> = Arc::new(transformer_fn);
   move |request: Request| {
-    let transformer_fn = transformer_fn.clone();
-    Box::pin(async move { handle_request_with_pipeline(request, &*transformer_fn).await })
+    let transformer_fn = Arc::clone(&transformer_fn);
+    Box::pin(
+      async move { handle_request_with_pipeline(request, move || (*transformer_fn)()).await },
+    )
   }
 }
 
 /// Internal function that handles a request through a pipeline.
-async fn handle_request_with_pipeline<T>(
+async fn handle_request_with_pipeline<T, F>(
   axum_request: Request,
-  transformer_fn: &dyn Fn() -> T,
+  transformer_fn: F,
 ) -> Response<Body>
 where
+  F: FnOnce() -> T + Send + 'static,
   T: crate::transformer::Transformer + 'static,
   T::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
   T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
@@ -165,7 +171,7 @@ where
   <HttpResponseConsumer as crate::input::Input>::InputStream: From<T::OutputStream>,
 {
   // Create HTTP request producer from Axum request
-  let mut producer = HttpRequestProducer::from_axum_request(
+  let producer = HttpRequestProducer::from_axum_request(
     axum_request,
     HttpRequestProducerConfig::default()
       .with_extract_body(true)

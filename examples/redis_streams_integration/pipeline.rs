@@ -41,7 +41,7 @@ pub async fn consume_from_redis() -> Result<(), Box<dyn std::error::Error>> {
     .with_connection_url("redis://localhost:6379")
     .with_stream("example-stream")
     .with_group("streamweave-example-group") // Consumer group for distributed processing
-    .with_consumer("consumer-1") // Consumer name within the group
+    .consumer("consumer-1") // Consumer name within the group
     .with_start_id(">") // Read new messages (use "0" to read from beginning)
     .with_block_ms(1000) // Block for 1 second waiting for new messages
     .with_count(10) // Read up to 10 messages per call
@@ -197,7 +197,7 @@ pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
     .with_connection_url("redis://localhost:6379")
     .with_stream("input-stream")
     .with_group("streamweave-roundtrip-group")
-    .with_consumer("roundtrip-consumer-1")
+    .consumer("roundtrip-consumer-1")
     .with_start_id(">") // Read new messages
     .with_block_ms(1000)
     .with_auto_ack(true);
@@ -253,16 +253,19 @@ pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "redis-streams")))]
+#[allow(dead_code)]
 pub async fn consume_from_redis() -> Result<(), Box<dyn std::error::Error>> {
   Err("Redis Streams feature is not enabled. Build with --features redis-streams".into())
 }
 
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "redis-streams")))]
+#[allow(dead_code)]
 pub async fn produce_to_redis() -> Result<(), Box<dyn std::error::Error>> {
   Err("Redis Streams feature is not enabled. Build with --features redis-streams".into())
 }
 
 #[cfg(not(all(not(target_arch = "wasm32"), feature = "redis-streams")))]
+#[allow(dead_code)]
 pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Redis Streams feature is not enabled. Build with --features redis-streams".into())
 }

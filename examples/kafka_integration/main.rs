@@ -1,5 +1,6 @@
 mod pipeline;
 
+#[allow(unused_imports)]
 use pipeline::{consume_from_kafka, produce_to_kafka, round_trip_example};
 
 #[tokio::main]

@@ -3,7 +3,7 @@
 //! This module provides utilities for generating standalone HTML files
 //! with embedded DAG data for easy sharing and viewing.
 
-use crate::visualization::PipelineDag;
+use crate::visualization::{DagExporter, PipelineDag};
 
 /// Generates a standalone HTML file with embedded DAG data.
 ///

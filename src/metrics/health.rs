@@ -35,7 +35,7 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 /// Health status of a component or system.
 ///

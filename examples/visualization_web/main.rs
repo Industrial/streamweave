@@ -6,6 +6,7 @@
 mod pipeline;
 
 use pipeline::create_sample_pipeline;
+use streamweave::visualization::DagExporter;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;

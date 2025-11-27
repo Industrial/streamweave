@@ -85,11 +85,15 @@ impl QueryOptimizer {
       .items
       .iter()
       .map(|item| match item {
-        SelectItem::Expression { expr, alias } => SelectItem::Expression {
-          expr: self.fold_constants(expr.clone())?,
-          alias: alias.clone(),
-        },
-        _ => item.clone(),
+        crate::sql::ast::SelectItem::Expression { expr, alias } => {
+          Ok::<crate::sql::ast::SelectItem, StreamError<String>>(
+            crate::sql::ast::SelectItem::Expression {
+              expr: self.fold_constants(expr.clone())?,
+              alias: alias.clone(),
+            },
+          )
+        }
+        _ => Ok::<crate::sql::ast::SelectItem, StreamError<String>>(item.clone()),
       })
       .collect::<Result<Vec<_>, _>>()?;
 
@@ -115,7 +119,7 @@ impl QueryOptimizer {
         if let (Expression::Literal(left_lit), Expression::Literal(right_lit)) =
           (&left_folded, &right_folded)
         {
-          if let Some(result) = self.evaluate_binary_op(left_lit, op, right_lit)? {
+          if let Some(result) = self.evaluate_binary_op(left_lit, &op, right_lit)? {
             return Ok(Expression::Literal(result));
           }
         }
@@ -129,7 +133,7 @@ impl QueryOptimizer {
       Expression::UnaryOp { op, operand } => {
         let operand_folded = self.fold_constants(*operand)?;
         if let Expression::Literal(lit) = &operand_folded {
-          if let Some(result) = self.evaluate_unary_op(lit, op)? {
+          if let Some(result) = self.evaluate_unary_op(lit, &op)? {
             return Ok(Expression::Literal(result));
           }
         }
@@ -156,62 +160,62 @@ impl QueryOptimizer {
   fn evaluate_binary_op(
     &self,
     left: &Literal,
-    op: BinaryOperator,
+    op: &crate::sql::ast::BinaryOperator,
     right: &Literal,
   ) -> Result<Option<Literal>, StreamError<String>> {
     match (left, op, right) {
-      (Literal::Integer(l), BinaryOperator::Add, Literal::Integer(r)) => {
+      (Literal::Integer(l), crate::sql::ast::BinaryOperator::Add, Literal::Integer(r)) => {
         Ok(Some(Literal::Integer(l + r)))
       }
-      (Literal::Integer(l), BinaryOperator::Subtract, Literal::Integer(r)) => {
+      (Literal::Integer(l), crate::sql::ast::BinaryOperator::Subtract, Literal::Integer(r)) => {
         Ok(Some(Literal::Integer(l - r)))
       }
-      (Literal::Integer(l), BinaryOperator::Multiply, Literal::Integer(r)) => {
+      (Literal::Integer(l), crate::sql::ast::BinaryOperator::Multiply, Literal::Integer(r)) => {
         Ok(Some(Literal::Integer(l * r)))
       }
-      (Literal::Integer(l), BinaryOperator::Divide, Literal::Integer(r)) => {
+      (Literal::Integer(l), crate::sql::ast::BinaryOperator::Divide, Literal::Integer(r)) => {
         if *r == 0 {
           return Err(self.create_error("Division by zero".to_string()));
         }
         Ok(Some(Literal::Integer(l / r)))
       }
-      (Literal::Integer(l), BinaryOperator::Eq, Literal::Integer(r)) => {
+      (Literal::Integer(l), crate::sql::ast::BinaryOperator::Eq, Literal::Integer(r)) => {
         Ok(Some(Literal::Boolean(l == r)))
       }
-      (Literal::Integer(l), BinaryOperator::Ne, Literal::Integer(r)) => {
+      (Literal::Integer(l), crate::sql::ast::BinaryOperator::Ne, Literal::Integer(r)) => {
         Ok(Some(Literal::Boolean(l != r)))
       }
-      (Literal::Integer(l), BinaryOperator::Lt, Literal::Integer(r)) => {
+      (Literal::Integer(l), crate::sql::ast::BinaryOperator::Lt, Literal::Integer(r)) => {
         Ok(Some(Literal::Boolean(l < r)))
       }
-      (Literal::Integer(l), BinaryOperator::Le, Literal::Integer(r)) => {
+      (Literal::Integer(l), crate::sql::ast::BinaryOperator::Le, Literal::Integer(r)) => {
         Ok(Some(Literal::Boolean(l <= r)))
       }
-      (Literal::Integer(l), BinaryOperator::Gt, Literal::Integer(r)) => {
+      (Literal::Integer(l), crate::sql::ast::BinaryOperator::Gt, Literal::Integer(r)) => {
         Ok(Some(Literal::Boolean(l > r)))
       }
-      (Literal::Integer(l), BinaryOperator::Ge, Literal::Integer(r)) => {
+      (Literal::Integer(l), crate::sql::ast::BinaryOperator::Ge, Literal::Integer(r)) => {
         Ok(Some(Literal::Boolean(l >= r)))
       }
-      (Literal::Float(l), BinaryOperator::Add, Literal::Float(r)) => {
+      (Literal::Float(l), crate::sql::ast::BinaryOperator::Add, Literal::Float(r)) => {
         Ok(Some(Literal::Float(l + r)))
       }
-      (Literal::Float(l), BinaryOperator::Subtract, Literal::Float(r)) => {
+      (Literal::Float(l), crate::sql::ast::BinaryOperator::Subtract, Literal::Float(r)) => {
         Ok(Some(Literal::Float(l - r)))
       }
-      (Literal::Float(l), BinaryOperator::Multiply, Literal::Float(r)) => {
+      (Literal::Float(l), crate::sql::ast::BinaryOperator::Multiply, Literal::Float(r)) => {
         Ok(Some(Literal::Float(l * r)))
       }
-      (Literal::Float(l), BinaryOperator::Divide, Literal::Float(r)) => {
+      (Literal::Float(l), crate::sql::ast::BinaryOperator::Divide, Literal::Float(r)) => {
         if *r == 0.0 {
           return Err(self.create_error("Division by zero".to_string()));
         }
         Ok(Some(Literal::Float(l / r)))
       }
-      (Literal::Boolean(l), BinaryOperator::And, Literal::Boolean(r)) => {
+      (Literal::Boolean(l), crate::sql::ast::BinaryOperator::And, Literal::Boolean(r)) => {
         Ok(Some(Literal::Boolean(*l && *r)))
       }
-      (Literal::Boolean(l), BinaryOperator::Or, Literal::Boolean(r)) => {
+      (Literal::Boolean(l), crate::sql::ast::BinaryOperator::Or, Literal::Boolean(r)) => {
         Ok(Some(Literal::Boolean(*l || *r)))
       }
       _ => Ok(None), // Can't evaluate, return None
@@ -222,12 +226,14 @@ impl QueryOptimizer {
   fn evaluate_unary_op(
     &self,
     operand: &Literal,
-    op: UnaryOperator,
+    op: &crate::sql::ast::UnaryOperator,
   ) -> Result<Option<Literal>, StreamError<String>> {
     match (operand, op) {
-      (Literal::Integer(n), UnaryOperator::Minus) => Ok(Some(Literal::Integer(-n))),
-      (Literal::Float(n), UnaryOperator::Minus) => Ok(Some(Literal::Float(-n))),
-      (Literal::Boolean(b), UnaryOperator::Not) => Ok(Some(Literal::Boolean(!b))),
+      (Literal::Integer(n), crate::sql::ast::UnaryOperator::Minus) => {
+        Ok(Some(Literal::Integer(-n)))
+      }
+      (Literal::Float(n), crate::sql::ast::UnaryOperator::Minus) => Ok(Some(Literal::Float(-n))),
+      (Literal::Boolean(b), crate::sql::ast::UnaryOperator::Not) => Ok(Some(Literal::Boolean(!b))),
       _ => Ok(None),
     }
   }
@@ -267,7 +273,7 @@ mod tests {
     let optimizer = QueryOptimizer::new();
     let expr = Expression::BinaryOp {
       left: Box::new(Expression::Literal(Literal::Integer(5))),
-      op: BinaryOperator::Add,
+      op: crate::sql::ast::BinaryOperator::Add,
       right: Box::new(Expression::Literal(Literal::Integer(3))),
     };
 
@@ -280,7 +286,7 @@ mod tests {
     let optimizer = QueryOptimizer::new();
     let expr = Expression::BinaryOp {
       left: Box::new(Expression::Literal(Literal::Integer(10))),
-      op: BinaryOperator::Gt,
+      op: crate::sql::ast::BinaryOperator::Gt,
       right: Box::new(Expression::Literal(Literal::Integer(5))),
     };
 
@@ -306,7 +312,7 @@ mod tests {
       where_clause: Some(WhereClause {
         condition: Expression::BinaryOp {
           left: Box::new(Expression::Literal(Literal::Integer(5))),
-          op: BinaryOperator::Add,
+          op: crate::sql::ast::BinaryOperator::Add,
           right: Box::new(Expression::Literal(Literal::Integer(3))),
         },
       }),

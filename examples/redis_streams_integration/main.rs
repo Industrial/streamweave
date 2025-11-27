@@ -1,5 +1,6 @@
 mod pipeline;
 
+#[allow(unused_imports)]
 use pipeline::{consume_from_redis, produce_to_redis, round_trip_example};
 
 #[tokio::main]

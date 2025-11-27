@@ -30,8 +30,10 @@
 pub mod consumer;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 pub mod handler;
+/// Input types for HTTP server integration.
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 pub mod input;
+/// Output types for HTTP server integration.
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 pub mod output;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]

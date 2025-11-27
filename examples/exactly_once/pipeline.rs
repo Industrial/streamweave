@@ -1,13 +1,10 @@
 use std::time::Duration;
 use streamweave::{
   consumers::vec::vec_consumer::VecConsumer,
-  error::ErrorStrategy,
   message::{Message, MessageId},
   pipeline::PipelineBuilder,
   producers::vec::vec_producer::VecProducer,
-  transformers::message_dedupe::{
-    DeduplicationWindow, message_dedupe_transformer::MessageDedupeTransformer,
-  },
+  transformers::message_dedupe::{DeduplicationWindow, MessageDedupeTransformer},
 };
 
 pub async fn deduplication_example() -> Result<(), Box<dyn std::error::Error>> {
@@ -34,12 +31,13 @@ pub async fn deduplication_example() -> Result<(), Box<dyn std::error::Error>> {
   let consumer = VecConsumer::new();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(deduper)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(deduper)
+    .consumer(consumer);
+    
 
-  let results: Vec<Message<i32>> = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results: Vec<Message<i32>> = result_consumer.into_vec();
   println!(
     "✅ Processed {} unique messages (duplicates filtered)",
     results.len()
@@ -67,7 +65,7 @@ pub async fn checkpoint_example() -> Result<(), Box<dyn std::error::Error>> {
     Message::new(3, MessageId::Sequence(3)),
   ];
 
-  let producer = VecProducer::new(messages.clone());
+  let _producer = VecProducer::new(messages.clone());
 
   let deduper = MessageDedupeTransformer::new()
     .with_window(DeduplicationWindow::Time(Duration::from_secs(60)))
@@ -77,10 +75,9 @@ pub async fn checkpoint_example() -> Result<(), Box<dyn std::error::Error>> {
 
   println!("🔄 First run...");
   let pipeline1 = PipelineBuilder::new()
-    .with_producer(VecProducer::new(messages.clone()))
-    .with_transformer(deduper.clone())
-    .with_consumer(VecConsumer::new())
-    .build();
+    .producer(VecProducer::new(messages.clone()))
+    .transformer(deduper.clone())
+    .consumer(VecConsumer::new());
 
   let _results1 = pipeline1.run().await?;
   println!("✅ First run completed");
@@ -93,14 +90,14 @@ pub async fn checkpoint_example() -> Result<(), Box<dyn std::error::Error>> {
   ];
 
   let pipeline2 = PipelineBuilder::new()
-    .with_producer(VecProducer::new(duplicate_messages))
-    .with_transformer(deduper)
-    .with_consumer(consumer)
-    .build();
+    .producer(VecProducer::new(duplicate_messages))
+    .transformer(deduper)
+    .consumer(consumer);
+    
 
   let results2 = pipeline2.run().await?;
   println!("✅ Second run completed");
-  println!("📊 Processed {} unique messages", results2.len());
+  println!("📊 Processed {} unique messages", results2.1.into_vec().len());
   println!("💡 Checkpointing enables recovery from failures");
   Ok(())
 }

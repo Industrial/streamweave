@@ -241,6 +241,10 @@ impl PipelineDag {
     P: crate::Producer,
     T: crate::Transformer,
     C: crate::Consumer,
+    P::Output: std::fmt::Debug + Clone + Send + Sync,
+    T::Input: std::fmt::Debug + Clone + Send + Sync,
+    T::Output: std::fmt::Debug + Clone + Send + Sync,
+    C::Input: std::fmt::Debug + Clone + Send + Sync,
   {
     let mut dag = Self::new();
 

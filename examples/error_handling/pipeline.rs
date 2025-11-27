@@ -40,17 +40,18 @@ pub async fn stop_strategy_example() -> Result<(), Box<dyn std::error::Error>> {
   println!();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(transformer)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(transformer)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
 
   println!("✅ Stop strategy completed!");
   println!("📊 Results ({} items):", results.len());
   for (i, result) in results.iter().enumerate() {
-    println!("  {}. {}", i + 1, result);
+    println!("  {}. {:?}", i + 1, result);
   }
 
   println!("\n💡 Stop Strategy:");
@@ -96,17 +97,18 @@ pub async fn skip_strategy_example() -> Result<(), Box<dyn std::error::Error>> {
   println!();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(transformer)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(transformer)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
 
   println!("✅ Skip strategy completed!");
   println!("📊 Results ({} items, errors skipped):", results.len());
   for (i, result) in results.iter().enumerate() {
-    println!("  {}. {}", i + 1, result);
+    println!("  {}. {:?}", i + 1, result);
   }
 
   println!("\n💡 Skip Strategy:");
@@ -155,17 +157,18 @@ pub async fn retry_strategy_example() -> Result<(), Box<dyn std::error::Error>> 
   println!();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(transformer)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(transformer)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
 
   println!("✅ Retry strategy completed!");
   println!("📊 Results ({} items after retries):", results.len());
   for (i, result) in results.iter().enumerate() {
-    println!("  {}. {}", i + 1, result);
+    println!("  {}. {:?}", i + 1, result);
   }
 
   println!("\n💡 Retry Strategy:");
@@ -230,17 +233,18 @@ pub async fn custom_strategy_example() -> Result<(), Box<dyn std::error::Error>>
   println!();
 
   let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(transformer)
-    .with_consumer(consumer)
-    .build();
+    .producer(producer)
+    .transformer(transformer)
+    .consumer(consumer);
+    
 
-  let results = pipeline.run().await?;
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
 
   println!("✅ Custom strategy completed!");
   println!("📊 Results ({} items):", results.len());
   for (i, result) in results.iter().enumerate() {
-    println!("  {}. {}", i + 1, result);
+    println!("  {}. {:?}", i + 1, result);
   }
 
   println!("\n💡 Custom Strategy:");
@@ -279,11 +283,17 @@ pub async fn component_level_example() -> Result<(), Box<dyn std::error::Error>>
   .with_error_strategy(ErrorStrategy::Skip); // Component-level: Skip
 
   // Second transformer: Stop on errors (different strategy)
-  let transformer2 = MapTransformer::new(|x: i32| -> Result<i32, String> {
-    if x > 10 {
-      Err(format!("Too large in transformer2: {}", x))
-    } else {
-      Ok(x + 10)
+  // Note: transformer1 outputs Result<i32, String>, so transformer2 needs to accept that
+  let transformer2 = MapTransformer::new(|x: Result<i32, String>| -> Result<i32, String> {
+    match x {
+      Ok(val) => {
+        if val > 10 {
+          Err(format!("Too large in transformer2: {}", val))
+        } else {
+          Ok(val + 10)
+        }
+      }
+      Err(e) => Err(e), // Pass through errors from transformer1
     }
   })
   .with_error_strategy(ErrorStrategy::Stop); // Component-level: Stop
@@ -296,19 +306,27 @@ pub async fn component_level_example() -> Result<(), Box<dyn std::error::Error>>
   println!("   Transformer2: Stop errors (will stop if x > 10)");
   println!();
 
-  let pipeline = PipelineBuilder::new()
-    .with_producer(producer)
-    .with_transformer(transformer1)
-    .with_transformer(transformer2)
-    .with_consumer(consumer)
-    .build();
+  // Transformer to unwrap Result<i32, String> to i32
+  // Since transformer2 outputs Result<i32, String>, we need to unwrap it
+  let unwrap_transformer = MapTransformer::new(|x: Result<i32, String>| -> i32 {
+    x.unwrap_or(0) // In a real scenario, error strategy would have handled errors
+  });
 
-  let results = pipeline.run().await?;
+  let pipeline = PipelineBuilder::new()
+    .producer(producer)
+    .transformer(transformer1)
+    .transformer(transformer2)
+    .transformer(unwrap_transformer)
+    .consumer(consumer);
+    
+
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
 
   println!("✅ Component-level error handling completed!");
   println!("📊 Results ({} items):", results.len());
   for (i, result) in results.iter().enumerate() {
-    println!("  {}. {}", i + 1, result);
+    println!("  {}. {:?}", i + 1, result);
   }
 
   println!("\n💡 Component-Level Error Handling:");

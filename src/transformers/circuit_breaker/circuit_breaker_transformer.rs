@@ -5,16 +5,26 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::time::Duration;
 
+/// A transformer that implements the circuit breaker pattern.
+///
+/// This transformer monitors failures and opens the circuit (stops processing)
+/// when the failure threshold is exceeded, automatically resetting after a timeout.
 #[derive(Clone)]
 pub struct CircuitBreakerTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  /// The number of failures before the circuit opens.
   pub failure_threshold: usize,
+  /// The duration to wait before attempting to reset the circuit.
   pub reset_timeout: Duration,
+  /// The current count of failures.
   pub failure_count: Arc<AtomicUsize>,
+  /// The timestamp of the last failure.
   pub last_failure_time: Arc<tokio::sync::RwLock<Option<tokio::time::Instant>>>,
+  /// Configuration for the transformer, including error handling strategy.
   pub config: TransformerConfig<T>,
+  /// Phantom data to track the type parameter.
   pub _phantom: PhantomData<T>,
 }
 
@@ -22,6 +32,12 @@ impl<T> CircuitBreakerTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  /// Creates a new `CircuitBreakerTransformer` with the given failure threshold and reset timeout.
+  ///
+  /// # Arguments
+  ///
+  /// * `failure_threshold` - The number of failures before the circuit opens.
+  /// * `reset_timeout` - The duration to wait before attempting to reset the circuit.
   pub fn new(failure_threshold: usize, reset_timeout: Duration) -> Self {
     Self {
       failure_threshold,
@@ -33,11 +49,21 @@ where
     }
   }
 
+  /// Sets the error handling strategy for this transformer.
+  ///
+  /// # Arguments
+  ///
+  /// * `strategy` - The error handling strategy to use.
   pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
     self.config.error_strategy = strategy;
     self
   }
 
+  /// Sets the name for this transformer.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name to assign to this transformer.
   pub fn with_name(mut self, name: String) -> Self {
     self.config.name = Some(name);
     self

@@ -130,6 +130,15 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> PartialEq for ErrorStrategy<T> {
 }
 
 impl<T: std::fmt::Debug + Clone + Send + Sync> ErrorStrategy<T> {
+  /// Creates a custom error handling strategy with a user-defined handler function.
+  ///
+  /// # Arguments
+  ///
+  /// * `f` - A function that takes a `StreamError` and returns an `ErrorAction`.
+  ///
+  /// # Returns
+  ///
+  /// A `Custom` error strategy that uses the provided handler function.
   pub fn new_custom<F>(f: F) -> Self
   where
     F: Fn(&StreamError<T>) -> ErrorAction + Send + Sync + 'static,
@@ -195,8 +204,12 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> Clone for StreamError<T> {
   }
 }
 
+/// A simple error type that wraps a string message.
+///
+/// This is useful for creating errors from string messages without
+/// needing to implement a full error type.
 #[derive(Debug)]
-struct StringError(String);
+pub struct StringError(pub String);
 
 impl std::fmt::Display for StringError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -207,6 +220,17 @@ impl std::fmt::Display for StringError {
 impl std::error::Error for StringError {}
 
 impl<T: std::fmt::Debug + Clone + Send + Sync> StreamError<T> {
+  /// Creates a new `StreamError` with the given source error, context, and component information.
+  ///
+  /// # Arguments
+  ///
+  /// * `source` - The original error that occurred.
+  /// * `context` - Context about when and where the error occurred.
+  /// * `component` - Information about the component that encountered the error.
+  ///
+  /// # Returns
+  ///
+  /// A new `StreamError` with `retries` set to 0.
   pub fn new(
     source: Box<dyn Error + Send + Sync>,
     context: ErrorContext<T>,
@@ -237,11 +261,20 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> Error for StreamError<T> {
   }
 }
 
+/// Context information about when and where an error occurred.
+///
+/// This struct provides detailed information about the circumstances
+/// surrounding an error, including the timestamp, the item being processed
+/// (if any), and the component that encountered the error.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ErrorContext<T: std::fmt::Debug + Clone + Send + Sync> {
+  /// The timestamp when the error occurred.
   pub timestamp: chrono::DateTime<chrono::Utc>,
+  /// The item being processed when the error occurred, if available.
   pub item: Option<T>,
+  /// The name of the component that encountered the error.
   pub component_name: String,
+  /// The type of the component that encountered the error.
   pub component_type: String,
 }
 
@@ -256,16 +289,29 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> Default for ErrorContext<T> {
   }
 }
 
+/// Represents the stage in a pipeline where an error occurred.
+///
+/// This enum is used to identify which part of the pipeline
+/// encountered an error, allowing for more targeted error handling.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PipelineStage {
+  /// Error occurred in a producer.
   Producer,
+  /// Error occurred in a transformer, with the transformer name.
   Transformer(String),
+  /// Error occurred in a consumer.
   Consumer,
 }
 
+/// Information about a pipeline component.
+///
+/// This struct provides identifying information about a component,
+/// including its name and type, which is useful for logging and error reporting.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentInfo {
+  /// The name of the component.
   pub name: String,
+  /// The type name of the component.
   pub type_name: String,
 }
 
@@ -279,23 +325,53 @@ impl Default for ComponentInfo {
 }
 
 impl ComponentInfo {
+  /// Creates a new `ComponentInfo` with the given name and type name.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name of the component.
+  /// * `type_name` - The type name of the component.
+  ///
+  /// # Returns
+  ///
+  /// A new `ComponentInfo` instance.
   pub fn new(name: String, type_name: String) -> Self {
     Self { name, type_name }
   }
 }
 
+/// Extended error context that includes pipeline stage information.
+///
+/// This struct combines `ErrorContext` with `PipelineStage` to provide
+/// comprehensive information about where an error occurred in the pipeline.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PipelineErrorContext<T: std::fmt::Debug + Clone + Send + Sync> {
+  /// The base error context.
   pub context: ErrorContext<T>,
+  /// The pipeline stage where the error occurred.
   pub stage: PipelineStage,
 }
 
+/// An error that occurred during pipeline execution.
+///
+/// This struct wraps a `StreamError` and provides pipeline-specific error information.
 #[derive(Debug)]
 pub struct PipelineError<T: std::fmt::Debug + Clone + Send + Sync> {
   inner: StreamError<T>,
 }
 
 impl<T: std::fmt::Debug + Clone + Send + Sync> PipelineError<T> {
+  /// Creates a new `PipelineError` from an error, context, and component information.
+  ///
+  /// # Arguments
+  ///
+  /// * `error` - The underlying error that occurred.
+  /// * `context` - The error context containing details about when and where the error occurred.
+  /// * `component` - Information about the component where the error occurred.
+  ///
+  /// # Returns
+  ///
+  /// A new `PipelineError` instance.
   pub fn new<E>(error: E, context: ErrorContext<T>, component: ComponentInfo) -> Self
   where
     E: Error + Send + Sync + 'static,
@@ -305,14 +381,33 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> PipelineError<T> {
     }
   }
 
+  /// Creates a new `PipelineError` from an existing `StreamError`.
+  ///
+  /// # Arguments
+  ///
+  /// * `error` - The `StreamError` to wrap.
+  ///
+  /// # Returns
+  ///
+  /// A new `PipelineError` instance.
   pub fn from_stream_error(error: StreamError<T>) -> Self {
     Self { inner: error }
   }
 
+  /// Returns a reference to the error context.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the `ErrorContext` associated with this error.
   pub fn context(&self) -> &ErrorContext<T> {
     &self.inner.context
   }
 
+  /// Returns a reference to the component information.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the `ComponentInfo` associated with this error.
   pub fn component(&self) -> &ComponentInfo {
     &self.inner.component
   }

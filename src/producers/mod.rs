@@ -15,12 +15,13 @@ pub mod interval;
 #[cfg(feature = "random")]
 pub mod random_number;
 
-// Native-only producers (require OS features)
-#[cfg(not(target_arch = "wasm32"))]
+// Native-only producers (require OS features and tokio runtime features)
+#[cfg(all(not(target_arch = "wasm32"), feature = "native"))]
 pub mod command;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "native"))]
 pub mod env_var;
-#[cfg(not(target_arch = "wasm32"))]
+/// Producer that reads lines from a file.
+#[cfg(all(not(target_arch = "wasm32"), feature = "native"))]
 pub mod file;
 
 // File format producers (native only, require file I/O)

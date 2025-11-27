@@ -4,8 +4,10 @@
 //! It shows how SQL queries are parsed into ASTs that can be translated
 //! into StreamWeave pipelines.
 
+#[cfg(feature = "sql")]
 use streamweave::sql::SqlParser;
 
+#[cfg(feature = "sql")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("StreamWeave SQL Parser Examples");
   println!("=================================\n");
@@ -84,4 +86,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("\nNote: Query translation to pipelines will be implemented in Task 12.3");
 
   Ok(())
+}
+
+#[cfg(not(feature = "sql"))]
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+  eprintln!("❌ Error: SQL feature is not enabled");
+  eprintln!();
+  eprintln!("This example requires the 'sql' feature to be enabled.");
+  eprintln!("Build with: cargo run --example sql_parser --features sql");
+  std::process::exit(1);
 }

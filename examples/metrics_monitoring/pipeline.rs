@@ -47,8 +47,8 @@ pub async fn run_metrics_example() -> Result<(), Box<dyn std::error::Error>> {
   metrics.throughput().increment_items_produced(1000);
 
   // Run the pipeline
-  let (_, consumer) = pipeline.run().await?;
-  let results = consumer.into_inner();
+  let (_, result_consumer) = pipeline.run().await?;
+  let results = result_consumer.into_vec();
   let execution_time = start_time.elapsed();
 
   // Record completion
@@ -79,7 +79,7 @@ pub async fn run_metrics_example() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Displays comprehensive metrics information.
-fn display_metrics(handle: &streamweave::metrics::MetricsHandle, execution_time: Duration) {
+fn display_metrics(handle: &streamweave::metrics::MetricsHandle, _execution_time: Duration) {
   let metrics = handle.metrics();
 
   println!("📈 Pipeline Metrics Summary");

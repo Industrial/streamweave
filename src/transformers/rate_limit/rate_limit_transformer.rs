@@ -5,15 +5,25 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::time::Duration;
 
+/// A transformer that rate limits items in a stream.
+///
+/// This transformer ensures that only a specified number of items are processed
+/// within a given time window, preventing overload and ensuring fair resource usage.
 pub struct RateLimitTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  /// The maximum number of items allowed within the time window.
   pub rate_limit: usize,
+  /// The time window for rate limiting.
   pub time_window: Duration,
+  /// The current count of items processed in the current window.
   pub count: Arc<AtomicUsize>,
+  /// The start time of the current rate limiting window.
   pub window_start: Arc<tokio::sync::RwLock<tokio::time::Instant>>,
+  /// Configuration for the transformer, including error handling strategy.
   pub config: TransformerConfig<T>,
+  /// Phantom data to track the type parameter.
   pub _phantom: PhantomData<T>,
 }
 
@@ -21,6 +31,12 @@ impl<T> RateLimitTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  /// Creates a new `RateLimitTransformer` with the given rate limit and time window.
+  ///
+  /// # Arguments
+  ///
+  /// * `rate_limit` - The maximum number of items allowed within the time window.
+  /// * `time_window` - The time window for rate limiting.
   pub fn new(rate_limit: usize, time_window: Duration) -> Self {
     Self {
       rate_limit,
@@ -32,11 +48,21 @@ where
     }
   }
 
+  /// Sets the error handling strategy for this transformer.
+  ///
+  /// # Arguments
+  ///
+  /// * `strategy` - The error handling strategy to use.
   pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
     self.config.error_strategy = strategy;
     self
   }
 
+  /// Sets the name for this transformer.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name to assign to this transformer.
   pub fn with_name(mut self, name: String) -> Self {
     self.config.name = Some(name);
     self
