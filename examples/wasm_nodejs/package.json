@@ -1,6 +1,6 @@
 {
   "name": "streamweave-wasm-nodejs-example",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "StreamWeave WASM Node.js example",
   "main": "src/index.js",
   "type": "commonjs",
