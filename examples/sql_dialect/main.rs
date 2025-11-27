@@ -6,7 +6,7 @@
 //! Note: This example demonstrates the dialect design. Actual parsing and
 //! execution will be implemented in subsequent tasks.
 
-use streamweave::sql::{dialect::StreamSqlDialect, ast::*};
+use streamweave::sql::{ast::*, dialect::StreamSqlDialect};
 
 fn main() {
   println!("StreamWeave SQL Dialect Examples");
@@ -37,9 +37,18 @@ fn main() {
   // Demonstrate dialect configuration
   println!("Dialect Configuration:");
   let dialect = StreamSqlDialect::default();
-  println!("  Allow unbounded ORDER BY: {}", dialect.allow_unbounded_order_by);
-  println!("  Max window size (seconds): {:?}", dialect.max_window_size_seconds);
-  println!("  Max window size (rows): {:?}", dialect.max_window_size_rows);
+  println!(
+    "  Allow unbounded ORDER BY: {}",
+    dialect.allow_unbounded_order_by
+  );
+  println!(
+    "  Max window size (seconds): {:?}",
+    dialect.max_window_size_seconds
+  );
+  println!(
+    "  Max window size (rows): {:?}",
+    dialect.max_window_size_rows
+  );
 
   // Demonstrate window size validation
   println!("\nWindow Size Validation:");
@@ -56,4 +65,3 @@ fn main() {
   println!("\n✅ SQL Dialect design demonstrated!");
   println!("\nNote: Actual SQL parsing and execution will be implemented in Tasks 12.2-12.4");
 }
-

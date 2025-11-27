@@ -196,7 +196,7 @@ pub async fn custom_strategy_example() -> Result<(), Box<dyn std::error::Error>>
   // Custom strategy: Skip negative numbers, but stop on numbers > 50
   let custom_strategy = ErrorStrategy::new_custom(|error: &StreamError<i32>| {
     let error_msg = error.source.to_string();
-    
+
     if error_msg.contains("Negative number") {
       // Skip negative numbers
       ErrorAction::Skip
@@ -319,4 +319,3 @@ pub async fn component_level_example() -> Result<(), Box<dyn std::error::Error>>
 
   Ok(())
 }
-

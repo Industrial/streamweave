@@ -1,8 +1,8 @@
 mod pipeline;
 
 use pipeline::{
-  stop_strategy_example, skip_strategy_example, retry_strategy_example, custom_strategy_example,
-  component_level_example,
+  component_level_example, custom_strategy_example, retry_strategy_example, skip_strategy_example,
+  stop_strategy_example,
 };
 
 #[tokio::main]
@@ -42,9 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       component_level_example().await?;
     }
     _ => {
-      println!(
-        "Usage: cargo run --example error_handling [stop|skip|retry|custom|component]"
-      );
+      println!("Usage: cargo run --example error_handling [stop|skip|retry|custom|component]");
       println!();
       println!("Examples:");
       println!("  cargo run --example error_handling stop");
@@ -58,4 +56,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   Ok(())
 }
-

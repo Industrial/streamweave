@@ -44,79 +44,79 @@ use std::sync::Arc;
 /// ```
 #[derive(Debug, Clone)]
 pub struct MetricsCollector {
-    /// The pipeline metrics being collected.
-    metrics: Arc<PipelineMetrics>,
+  /// The pipeline metrics being collected.
+  metrics: Arc<PipelineMetrics>,
 }
 
 impl MetricsCollector {
-    /// Creates a new metrics collector.
-    ///
-    /// # Arguments
-    ///
-    /// * `pipeline_name` - Name/identifier for the pipeline being monitored.
-    ///
-    /// # Returns
-    ///
-    /// A new `MetricsCollector` instance.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use streamweave::metrics::MetricsCollector;
-    ///
-    /// let collector = MetricsCollector::new("data-processing-pipeline");
-    /// ```
-    #[must_use]
-    pub fn new(pipeline_name: impl Into<String>) -> Self {
-        Self {
-            metrics: Arc::new(PipelineMetrics::new(pipeline_name)),
-        }
+  /// Creates a new metrics collector.
+  ///
+  /// # Arguments
+  ///
+  /// * `pipeline_name` - Name/identifier for the pipeline being monitored.
+  ///
+  /// # Returns
+  ///
+  /// A new `MetricsCollector` instance.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave::metrics::MetricsCollector;
+  ///
+  /// let collector = MetricsCollector::new("data-processing-pipeline");
+  /// ```
+  #[must_use]
+  pub fn new(pipeline_name: impl Into<String>) -> Self {
+    Self {
+      metrics: Arc::new(PipelineMetrics::new(pipeline_name)),
     }
+  }
 
-    /// Gets a handle to the metrics being collected.
-    ///
-    /// The handle can be used to access metrics at any time, even during
-    /// pipeline execution.
-    ///
-    /// # Returns
-    ///
-    /// A `MetricsHandle` providing access to the collected metrics.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use streamweave::metrics::MetricsCollector;
-    ///
-    /// let collector = MetricsCollector::new("my-pipeline");
-    /// let metrics = collector.metrics();
-    ///
-    /// // Access metrics
-    /// let throughput = metrics.throughput().items_processed();
-    /// ```
-    #[must_use]
-    pub fn metrics(&self) -> MetricsHandle {
-        MetricsHandle {
-            metrics: Arc::clone(&self.metrics),
-        }
+  /// Gets a handle to the metrics being collected.
+  ///
+  /// The handle can be used to access metrics at any time, even during
+  /// pipeline execution.
+  ///
+  /// # Returns
+  ///
+  /// A `MetricsHandle` providing access to the collected metrics.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave::metrics::MetricsCollector;
+  ///
+  /// let collector = MetricsCollector::new("my-pipeline");
+  /// let metrics = collector.metrics();
+  ///
+  /// // Access metrics
+  /// let throughput = metrics.throughput().items_processed();
+  /// ```
+  #[must_use]
+  pub fn metrics(&self) -> MetricsHandle {
+    MetricsHandle {
+      metrics: Arc::clone(&self.metrics),
     }
+  }
 
-    /// Gets the underlying pipeline metrics.
-    ///
-    /// This method is useful for direct access to metrics without the handle wrapper.
-    ///
-    /// # Returns
-    ///
-    /// A reference to the `PipelineMetrics` instance.
-    #[must_use]
-    pub fn pipeline_metrics(&self) -> &PipelineMetrics {
-        &self.metrics
-    }
+  /// Gets the underlying pipeline metrics.
+  ///
+  /// This method is useful for direct access to metrics without the handle wrapper.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the `PipelineMetrics` instance.
+  #[must_use]
+  pub fn pipeline_metrics(&self) -> &PipelineMetrics {
+    &self.metrics
+  }
 }
 
 impl Default for MetricsCollector {
-    fn default() -> Self {
-        Self::new("unnamed-pipeline")
-    }
+  fn default() -> Self {
+    Self::new("unnamed-pipeline")
+  }
 }
 
 /// Handle providing access to collected metrics.
@@ -141,108 +141,107 @@ impl Default for MetricsCollector {
 /// ```
 #[derive(Debug, Clone)]
 pub struct MetricsHandle {
-    /// Shared reference to the pipeline metrics.
-    metrics: Arc<PipelineMetrics>,
+  /// Shared reference to the pipeline metrics.
+  metrics: Arc<PipelineMetrics>,
 }
 
 impl MetricsHandle {
-    /// Gets a reference to the pipeline metrics.
-    ///
-    /// # Returns
-    ///
-    /// A reference to the `PipelineMetrics` instance.
-    #[must_use]
-    pub fn metrics(&self) -> &PipelineMetrics {
-        &self.metrics
-    }
+  /// Gets a reference to the pipeline metrics.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the `PipelineMetrics` instance.
+  #[must_use]
+  pub fn metrics(&self) -> &PipelineMetrics {
+    &self.metrics
+  }
 
-    /// Gets throughput metrics.
-    ///
-    /// # Returns
-    ///
-    /// A reference to the throughput metrics.
-    #[must_use]
-    pub fn throughput(&self) -> &crate::metrics::types::ThroughputMetrics {
-        self.metrics.throughput()
-    }
+  /// Gets throughput metrics.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the throughput metrics.
+  #[must_use]
+  pub fn throughput(&self) -> &crate::metrics::types::ThroughputMetrics {
+    self.metrics.throughput()
+  }
 
-    /// Gets latency metrics.
-    ///
-    /// # Returns
-    ///
-    /// A reference to the latency metrics.
-    #[must_use]
-    pub fn latency(&self) -> &crate::metrics::types::LatencyMetrics {
-        self.metrics.latency()
-    }
+  /// Gets latency metrics.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the latency metrics.
+  #[must_use]
+  pub fn latency(&self) -> &crate::metrics::types::LatencyMetrics {
+    self.metrics.latency()
+  }
 
-    /// Gets error metrics.
-    ///
-    /// # Returns
-    ///
-    /// A reference to the error metrics.
-    #[must_use]
-    pub fn errors(&self) -> &crate::metrics::types::ErrorMetrics {
-        self.metrics.errors()
-    }
+  /// Gets error metrics.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the error metrics.
+  #[must_use]
+  pub fn errors(&self) -> &crate::metrics::types::ErrorMetrics {
+    self.metrics.errors()
+  }
 
-    /// Gets the pipeline name.
-    ///
-    /// # Returns
-    ///
-    /// The pipeline identifier.
-    #[must_use]
-    pub fn pipeline_name(&self) -> &str {
-        self.metrics.name()
-    }
+  /// Gets the pipeline name.
+  ///
+  /// # Returns
+  ///
+  /// The pipeline identifier.
+  #[must_use]
+  pub fn pipeline_name(&self) -> &str {
+    self.metrics.name()
+  }
 
-    /// Gets the elapsed time since metrics collection started.
-    ///
-    /// # Returns
-    ///
-    /// The elapsed duration.
-    #[must_use]
-    pub fn elapsed(&self) -> std::time::Duration {
-        self.metrics.elapsed()
-    }
+  /// Gets the elapsed time since metrics collection started.
+  ///
+  /// # Returns
+  ///
+  /// The elapsed duration.
+  #[must_use]
+  pub fn elapsed(&self) -> std::time::Duration {
+    self.metrics.elapsed()
+  }
 
-    /// Gets the current backpressure level.
-    ///
-    /// # Returns
-    ///
-    /// The current backpressure level.
-    #[must_use]
-    pub fn backpressure(&self) -> crate::metrics::types::BackpressureLevel {
-        self.metrics.backpressure()
-    }
+  /// Gets the current backpressure level.
+  ///
+  /// # Returns
+  ///
+  /// The current backpressure level.
+  #[must_use]
+  pub fn backpressure(&self) -> crate::metrics::types::BackpressureLevel {
+    self.metrics.backpressure()
+  }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+  use super::*;
 
-    #[test]
-    fn test_metrics_collector() {
-        let collector = MetricsCollector::new("test-pipeline");
-        let handle1 = collector.metrics();
-        let handle2 = collector.metrics();
+  #[test]
+  fn test_metrics_collector() {
+    let collector = MetricsCollector::new("test-pipeline");
+    let handle1 = collector.metrics();
+    let handle2 = collector.metrics();
 
-        assert_eq!(handle1.pipeline_name(), "test-pipeline");
-        assert_eq!(handle1.pipeline_name(), handle2.pipeline_name());
+    assert_eq!(handle1.pipeline_name(), "test-pipeline");
+    assert_eq!(handle1.pipeline_name(), handle2.pipeline_name());
 
-        // Both handles should access the same metrics
-        handle1.metrics().throughput().increment_items_processed(10);
-        assert_eq!(handle2.metrics().throughput().items_processed(), 10);
-    }
+    // Both handles should access the same metrics
+    handle1.metrics().throughput().increment_items_processed(10);
+    assert_eq!(handle2.metrics().throughput().items_processed(), 10);
+  }
 
-    #[test]
-    fn test_metrics_handle() {
-        let collector = MetricsCollector::new("handle-test");
-        let handle = collector.metrics();
+  #[test]
+  fn test_metrics_handle() {
+    let collector = MetricsCollector::new("handle-test");
+    let handle = collector.metrics();
 
-        assert_eq!(handle.pipeline_name(), "handle-test");
-        assert_eq!(handle.throughput().items_processed(), 0);
-        assert_eq!(handle.errors().total_errors(), 0);
-    }
+    assert_eq!(handle.pipeline_name(), "handle-test");
+    assert_eq!(handle.throughput().items_processed(), 0);
+    assert_eq!(handle.errors().total_errors(), 0);
+  }
 }
-

@@ -249,7 +249,11 @@ impl StreamSqlDialect {
   }
 
   /// Validate window size against limits
-  pub fn validate_window_size(&self, seconds: Option<u64>, rows: Option<u64>) -> Result<(), String> {
+  pub fn validate_window_size(
+    &self,
+    seconds: Option<u64>,
+    rows: Option<u64>,
+  ) -> Result<(), String> {
     if let Some(max_seconds) = self.max_window_size_seconds {
       if let Some(secs) = seconds {
         if secs > max_seconds {
@@ -291,11 +295,11 @@ mod tests {
   #[test]
   fn test_window_size_validation() {
     let dialect = StreamSqlDialect::default();
-    
+
     // Valid window sizes
     assert!(dialect.validate_window_size(Some(3600), None).is_ok());
     assert!(dialect.validate_window_size(None, Some(1000)).is_ok());
-    
+
     // Invalid window sizes
     assert!(dialect.validate_window_size(Some(100000), None).is_err());
     assert!(dialect.validate_window_size(None, Some(2_000_000)).is_err());
@@ -307,10 +311,9 @@ mod tests {
       .with_unbounded_order_by()
       .with_max_window_size_seconds(3600)
       .with_max_window_size_rows(10000);
-    
+
     assert!(dialect.allow_unbounded_order_by);
     assert_eq!(dialect.max_window_size_seconds, Some(3600));
     assert_eq!(dialect.max_window_size_rows, Some(10000));
   }
 }
-

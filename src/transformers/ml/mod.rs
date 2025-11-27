@@ -27,10 +27,27 @@
 //! ```
 
 #[cfg(feature = "ml")]
+pub mod batched_inference_transformer;
+#[cfg(feature = "ml")]
+pub mod hotswap;
+#[cfg(feature = "ml")]
 pub mod inference_backend;
+#[cfg(feature = "ml")]
+pub mod inference_transformer;
 #[cfg(feature = "ml")]
 pub mod onnx;
 
 #[cfg(feature = "ml")]
 pub use inference_backend::InferenceBackend;
 
+#[cfg(feature = "ml")]
+pub use onnx::{OnnxBackend, OnnxError};
+
+#[cfg(feature = "ml")]
+pub use batched_inference_transformer::{BatchedInferenceConfig, BatchedInferenceTransformer};
+
+#[cfg(feature = "ml")]
+pub use inference_transformer::InferenceTransformer;
+
+#[cfg(feature = "ml")]
+pub use hotswap::{SwapError, swap_model};

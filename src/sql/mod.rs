@@ -52,22 +52,22 @@ pub mod ast;
 #[cfg(feature = "sql")]
 pub mod dialect;
 #[cfg(feature = "sql")]
+pub mod optimizer;
+#[cfg(feature = "sql")]
 pub mod parser;
 #[cfg(feature = "sql")]
 pub mod translator;
-#[cfg(feature = "sql")]
-pub mod optimizer;
 
 #[cfg(feature = "sql")]
 pub use ast::{SqlAst, SqlQuery};
 #[cfg(feature = "sql")]
 pub use dialect::StreamSqlDialect;
 #[cfg(feature = "sql")]
+pub use optimizer::QueryOptimizer;
+#[cfg(feature = "sql")]
 pub use parser::SqlParser;
 #[cfg(feature = "sql")]
-pub use translator::QueryTranslator;
-#[cfg(feature = "sql")]
-pub use optimizer::QueryOptimizer;
+pub use translator::{Aggregation, QueryOperation, QueryPlan, QueryTranslator};
 
 /// Convenience function to parse a SQL query
 ///
@@ -81,8 +81,7 @@ pub use optimizer::QueryOptimizer;
 /// )?;
 /// ```
 #[cfg(feature = "sql")]
-pub fn parse_query(query: &str) -> Result<SqlQuery, crate::error::StreamError> {
+pub fn parse_query(query: &str) -> Result<SqlQuery, crate::error::StreamError<String>> {
   let parser = SqlParser::new();
   parser.parse(query)
 }
-

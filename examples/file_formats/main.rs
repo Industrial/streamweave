@@ -53,4 +53,3 @@ fn main() {
   eprintln!("Build with: cargo run --example file_formats --features file-formats");
   std::process::exit(1);
 }
-

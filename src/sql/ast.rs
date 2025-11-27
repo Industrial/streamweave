@@ -424,9 +424,22 @@ impl fmt::Display for Expression {
         write!(f, "{}{}", op, operand)
       }
       Expression::FunctionCall { name, args } => {
-        write!(f, "{}({})", name, args.iter().map(|a| a.to_string()).collect::<Vec<_>>().join(", "))
+        write!(
+          f,
+          "{}({})",
+          name,
+          args
+            .iter()
+            .map(|a| a.to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
+        )
       }
-      Expression::Aggregate { name, arg, distinct } => {
+      Expression::Aggregate {
+        name,
+        arg,
+        distinct,
+      } => {
         if *distinct {
           write!(f, "{}(DISTINCT {})", name, arg)
         } else {
@@ -575,4 +588,3 @@ impl fmt::Display for OrderByItem {
 
 /// Alias for the AST type
 pub type SqlAst = SqlQuery;
-

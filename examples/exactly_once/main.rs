@@ -1,6 +1,6 @@
 mod pipeline;
 
-use pipeline::{deduplication_example, checkpoint_example};
+use pipeline::{checkpoint_example, deduplication_example};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,4 +22,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   Ok(())
 }
-

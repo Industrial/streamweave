@@ -1,6 +1,6 @@
 mod pipeline;
 
-use pipeline::{tumbling_window_example, sliding_window_example, count_window_example};
+use pipeline::{count_window_example, sliding_window_example, tumbling_window_example};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -23,4 +23,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   Ok(())
 }
-

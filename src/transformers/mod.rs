@@ -41,3 +41,7 @@ pub mod zip;
 // Transformers requiring random number generation
 #[cfg(feature = "random")]
 pub mod sample;
+
+// Machine learning transformers (native only - requires ML frameworks)
+#[cfg(feature = "ml")]
+pub mod ml;

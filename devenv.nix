@@ -117,9 +117,6 @@
   # Services
   services.kafka = {
     enable = true;
-    port = 9092;
-    # Auto-start Kafka when devenv shell is activated
-    autoStart = true;
   };
 
   # Environment variables

@@ -42,10 +42,14 @@ pub mod stateful_transformer;
 pub mod transaction;
 pub mod transformer;
 pub mod transformers;
+pub mod visualization;
 pub mod window;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod distributed;
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+pub mod http_server;
 
 #[cfg(feature = "sql")]
 pub mod sql;

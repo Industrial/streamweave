@@ -66,12 +66,13 @@ impl SqlParser {
   ///     "SELECT user_id, COUNT(*) FROM events GROUP BY user_id"
   /// )?;
   /// ```
-  pub fn parse(&self, query: &str) -> Result<SqlQuery, StreamError> {
-    let mut parser = Parser::new(&self.dialect).try_with_sql(query)?;
+  pub fn parse(&self, query: &str) -> Result<SqlQuery, StreamError<String>> {
+    let mut parser = Parser::new(&self.dialect);
+    parser.try_with_sql(query)?;
     let ast = parser.parse_statement()?;
 
     match ast {
-      Statement::Query(query) => self.convert_query(*query),
+      Statement::Query(query) => self.convert_query(query),
       _ => Err(self.create_error(format!(
         "Unsupported statement type. Only SELECT queries are supported, found: {:?}",
         ast
@@ -80,7 +81,7 @@ impl SqlParser {
   }
 
   /// Convert sqlparser Query AST to StreamWeave SqlQuery
-  fn convert_query(&self, query: Query) -> Result<SqlQuery, StreamError> {
+  fn convert_query(&self, query: Query) -> Result<SqlQuery, StreamError<String>> {
     // Convert SELECT clause
     let select = self.convert_select(&query.body)?;
 
@@ -102,7 +103,11 @@ impl SqlParser {
           .iter()
           .map(|e| self.convert_expr(e))
           .collect::<Result<Vec<_>, _>>()?,
-        having: query.having.as_ref().map(|e| self.convert_expr(e)).transpose()?,
+        having: query
+          .having
+          .as_ref()
+          .map(|e| self.convert_expr(e))
+          .transpose()?,
       })
     };
 
@@ -137,12 +142,13 @@ impl SqlParser {
       };
       LimitClause {
         count,
-        offset: query.offset.as_ref().and_then(|offset| {
-          match &offset.value {
+        offset: query
+          .offset
+          .as_ref()
+          .and_then(|offset| match &offset.value {
             Expr::Value(Value::Number(n, _)) => n.parse::<u64>().ok(),
             _ => None,
-          }
-        }),
+          }),
       }
     });
 
@@ -165,7 +171,7 @@ impl SqlParser {
   }
 
   /// Convert sqlparser Select body to StreamWeave SelectClause
-  fn convert_select(&self, body: &SetExpr) -> Result<SelectClause, StreamError> {
+  fn convert_select(&self, body: &SetExpr) -> Result<SelectClause, StreamError<String>> {
     match body {
       SetExpr::Select(select) => {
         let items = select
@@ -179,15 +185,12 @@ impl SqlParser {
           distinct: select.distinct.is_some(),
         })
       }
-      _ => Err(self.create_error(format!(
-        "Unsupported SELECT body type: {:?}",
-        body
-      ))),
+      _ => Err(self.create_error(format!("Unsupported SELECT body type: {:?}", body))),
     }
   }
 
   /// Convert sqlparser SelectItem to StreamWeave SelectItem
-  fn convert_select_item(&self, item: &SelectItem) -> Result<SelectItem, StreamError> {
+  fn convert_select_item(&self, item: &SelectItem) -> Result<SelectItem, StreamError<String>> {
     match item {
       sqlparser::ast::SelectItem::UnnamedExpr(expr) => Ok(SelectItem::Expression {
         expr: self.convert_expr(expr)?,
@@ -203,7 +206,7 @@ impl SqlParser {
   }
 
   /// Convert sqlparser FROM clause to StreamWeave FromClause
-  fn convert_from(&self, body: &SetExpr) -> Result<FromClause, StreamError> {
+  fn convert_from(&self, body: &SetExpr) -> Result<FromClause, StreamError<String>> {
     match body {
       SetExpr::Select(select) => {
         if select.from.is_empty() {
@@ -234,15 +237,12 @@ impl SqlParser {
           ))),
         }
       }
-      _ => Err(self.create_error(format!(
-        "FROM clause not found in body: {:?}",
-        body
-      ))),
+      _ => Err(self.create_error(format!("FROM clause not found in body: {:?}", body))),
     }
   }
 
   /// Convert sqlparser Expr to StreamWeave Expression
-  fn convert_expr(&self, expr: &Expr) -> Result<Expression, StreamError> {
+  fn convert_expr(&self, expr: &Expr) -> Result<Expression, StreamError<String>> {
     match expr {
       Expr::Identifier(ident) => Ok(Expression::Column(ColumnRef {
         name: ident.value.clone(),
@@ -329,9 +329,7 @@ impl SqlParser {
         let cases = conditions
           .iter()
           .zip(results.iter())
-          .map(|(cond, result)| {
-            Ok((self.convert_expr(cond)?, self.convert_expr(result)?))
-          })
+          .map(|(cond, result)| Ok((self.convert_expr(cond)?, self.convert_expr(result)?)))
           .collect::<Result<Vec<_>, _>>()?;
 
         Ok(Expression::Case {
@@ -352,10 +350,7 @@ impl SqlParser {
         op: BinaryOperator::IsNotNull,
         right: Box::new(Expression::Literal(Literal::Null)),
       }),
-      _ => Err(self.create_error(format!(
-        "Unsupported expression type: {:?}",
-        expr
-      ))),
+      _ => Err(self.create_error(format!("Unsupported expression type: {:?}", expr))),
     }
   }
 
@@ -369,7 +364,7 @@ impl SqlParser {
   }
 
   /// Convert sqlparser Value to StreamWeave Literal
-  fn convert_value(&self, value: &Value) -> Result<Literal, StreamError> {
+  fn convert_value(&self, value: &Value) -> Result<Literal, StreamError<String>> {
     match value {
       Value::Number(n, _) => {
         if n.contains('.') {
@@ -382,9 +377,7 @@ impl SqlParser {
           })?))
         }
       }
-      Value::SingleQuotedString(s) | Value::DoubleQuotedString(s) => {
-        Ok(Literal::String(s.clone()))
-      }
+      Value::SingleQuotedString(s) | Value::DoubleQuotedString(s) => Ok(Literal::String(s.clone())),
       Value::Boolean(b) => Ok(Literal::Boolean(*b)),
       Value::Null => Ok(Literal::Null),
       _ => Err(self.create_error(format!("Unsupported value type: {:?}", value))),
@@ -392,7 +385,7 @@ impl SqlParser {
   }
 
   /// Convert sqlparser BinaryOperator to StreamWeave BinaryOperator
-  fn convert_binary_op(&self, op: &BinaryOperator) -> Result<BinaryOperator, StreamError> {
+  fn convert_binary_op(&self, op: &BinaryOperator) -> Result<BinaryOperator, StreamError<String>> {
     match op {
       sqlparser::ast::BinaryOperator::Plus => Ok(BinaryOperator::Add),
       sqlparser::ast::BinaryOperator::Minus => Ok(BinaryOperator::Subtract),
@@ -408,12 +401,12 @@ impl SqlParser {
       sqlparser::ast::BinaryOperator::And => Ok(BinaryOperator::And),
       sqlparser::ast::BinaryOperator::Or => Ok(BinaryOperator::Or),
       sqlparser::ast::BinaryOperator::Like => Ok(BinaryOperator::Like),
-      _ => Err(StreamError::new(format!("Unsupported binary operator: {:?}", op))),
+      _ => Err(self.create_error(format!("Unsupported binary operator: {:?}", op))),
     }
   }
 
   /// Convert sqlparser UnaryOperator to StreamWeave UnaryOperator
-  fn convert_unary_op(&self, op: &UnaryOperator) -> Result<UnaryOperator, StreamError> {
+  fn convert_unary_op(&self, op: &UnaryOperator) -> Result<UnaryOperator, StreamError<String>> {
     match op {
       sqlparser::ast::UnaryOperator::Not => Ok(UnaryOperator::Not),
       sqlparser::ast::UnaryOperator::Minus => Ok(UnaryOperator::Minus),
@@ -429,12 +422,16 @@ impl Default for SqlParser {
 }
 
 // Helper trait to convert ParserError to StreamError
-impl From<ParserError> for StreamError {
+impl From<ParserError> for StreamError<String> {
   fn from(err: ParserError) -> Self {
-    StreamError::new(format!(
-      "SQL parse error at position {}: {}",
-      err.pos, err.message
-    ))
+    StreamError::new(
+      Box::new(StringError(format!(
+        "SQL parse error at position {}: {}",
+        err.pos, err.message
+      ))),
+      ErrorContext::default(),
+      ComponentInfo::new("SQL Parser".to_string(), "SqlParser".to_string()),
+    )
   }
 }
 
@@ -475,7 +472,8 @@ mod tests {
   #[test]
   fn test_parse_aggregate_function() {
     let parser = SqlParser::new();
-    let result = parser.parse("SELECT user_id, COUNT(*), SUM(amount) FROM purchases GROUP BY user_id");
+    let result =
+      parser.parse("SELECT user_id, COUNT(*), SUM(amount) FROM purchases GROUP BY user_id");
     assert!(result.is_ok());
     let query = result.unwrap();
     // Check that COUNT and SUM are recognized as aggregates
@@ -497,4 +495,3 @@ mod tests {
     assert!(result.is_err());
   }
 }
-

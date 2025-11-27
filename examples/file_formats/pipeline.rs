@@ -2,13 +2,9 @@
 use serde::{Deserialize, Serialize};
 #[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
 use streamweave::{
-  consumers::csv::csv_consumer::CsvConsumer,
-  consumers::jsonl::jsonl_consumer::JsonlConsumer,
-  consumers::parquet::parquet_consumer::ParquetConsumer,
-  consumers::vec::vec_consumer::VecConsumer,
-  error::ErrorStrategy,
-  pipeline::PipelineBuilder,
-  producers::csv::csv_producer::CsvProducer,
+  consumers::csv::csv_consumer::CsvConsumer, consumers::jsonl::jsonl_consumer::JsonlConsumer,
+  consumers::parquet::parquet_consumer::ParquetConsumer, consumers::vec::vec_consumer::VecConsumer,
+  error::ErrorStrategy, pipeline::PipelineBuilder, producers::csv::csv_producer::CsvProducer,
   producers::jsonl::jsonl_producer::JsonlProducer,
   transformers::map::map_transformer::MapTransformer,
 };
@@ -228,7 +224,9 @@ pub async fn parquet_example() -> Result<(), Box<dyn std::error::Error>> {
   ]));
 
   let id_array = Arc::new(Int64Array::from(vec![1, 2, 3, 4, 5]));
-  let name_array = Arc::new(StringArray::from(vec!["Alice", "Bob", "Charlie", "Diana", "Eve"]));
+  let name_array = Arc::new(StringArray::from(vec![
+    "Alice", "Bob", "Charlie", "Diana", "Eve",
+  ]));
   let email_array = Arc::new(StringArray::from(vec![
     "alice@example.com",
     "bob@example.com",
@@ -301,7 +299,13 @@ pub async fn parquet_example() -> Result<(), Box<dyn std::error::Error>> {
         .map(|arr| arr.value(i))
         .unwrap_or(0);
 
-      result.push_str(&format!("  Row {}: ID={}, Name={}, Age={}\n", i + 1, id, name, age));
+      result.push_str(&format!(
+        "  Row {}: ID={}, Name={}, Age={}\n",
+        i + 1,
+        id,
+        name,
+        age
+      ));
     }
 
     result
@@ -329,4 +333,3 @@ pub async fn parquet_example() -> Result<(), Box<dyn std::error::Error>> {
 
   Ok(())
 }
-

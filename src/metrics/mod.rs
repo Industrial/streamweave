@@ -29,10 +29,20 @@
 //! ```
 
 pub mod collector;
+pub mod health;
+#[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
+pub mod opentelemetry;
+#[cfg(all(not(target_arch = "wasm32"), feature = "prometheus"))]
+pub mod prometheus;
 pub mod types;
 
 pub use collector::{MetricsCollector, MetricsHandle};
+pub use health::{ComponentHealth, HealthCheck, HealthStatus};
 pub use types::{
-    BackpressureLevel, ErrorMetrics, LatencyMetrics, PipelineMetrics, ThroughputMetrics,
+  BackpressureLevel, ErrorMetrics, LatencyMetrics, PipelineMetrics, ThroughputMetrics,
 };
 
+#[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
+pub use opentelemetry::{MetricsExporter, OpenTelemetryConfig, PipelineTracer};
+#[cfg(all(not(target_arch = "wasm32"), feature = "prometheus"))]
+pub use prometheus::PrometheusExporter;

@@ -1,9 +1,6 @@
 use streamweave::{
-  consumers::vec::vec_consumer::VecConsumer,
-  error::ErrorStrategy,
-  pipeline::PipelineBuilder,
-  producers::range::range_producer::RangeProducer,
-  stateful_transformer::StatefulTransformer,
+  consumers::vec::vec_consumer::VecConsumer, error::ErrorStrategy, pipeline::PipelineBuilder,
+  producers::range::range_producer::RangeProducer, stateful_transformer::StatefulTransformer,
   transformers::moving_average::moving_average_transformer::MovingAverageTransformer,
   transformers::running_sum::running_sum_transformer::RunningSumTransformer,
 };
@@ -219,4 +216,3 @@ pub async fn state_checkpoint_example() -> Result<(), Box<dyn std::error::Error>
 
   Ok(())
 }
-

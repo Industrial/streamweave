@@ -1,6 +1,6 @@
 mod pipeline;
 
-use pipeline::{running_sum_example, moving_average_example, state_checkpoint_example};
+use pipeline::{moving_average_example, running_sum_example, state_checkpoint_example};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -43,4 +43,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   Ok(())
 }
-
