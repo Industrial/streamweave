@@ -147,7 +147,9 @@ impl QueryTranslator {
     // GROUP BY + aggregations → GroupBy operation
     if let Some(group_by) = &query.group_by {
       // Extract aggregations from SELECT items
-      let aggregations = self.extract_aggregations(&query.select.items).map_err(Box::new)?;
+      let aggregations = self
+        .extract_aggregations(&query.select.items)
+        .map_err(Box::new)?;
 
       operations.push(QueryOperation::GroupBy {
         keys: group_by.keys.clone(),
@@ -193,6 +195,7 @@ impl QueryTranslator {
   }
 
   /// Extract aggregation functions from SELECT items
+  #[allow(clippy::result_large_err)] // Boxing errors intentionally to reduce Result size
   fn extract_aggregations(
     &self,
     items: &[SelectItem],

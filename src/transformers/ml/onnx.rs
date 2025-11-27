@@ -125,7 +125,6 @@ impl<T> OnnxBackend<T>
 where
   T: ExecutionProvider + Clone,
 {
-
   /// Creates a new ONNX backend with a specific execution provider.
   ///
   /// # Arguments
@@ -244,22 +243,20 @@ where
 
     let mut builder = Session::builder()
       .map_err(|e| OnnxError::with_source("Failed to create session builder", e))?;
-    
+
     // Use default optimization level since we can't move it from &self
     // Users should use swap_model_from_path_with_optimization if they need to change it
     builder = builder
       .with_optimization_level(GraphOptimizationLevel::Level1)
       .map_err(|e| OnnxError::with_source("Failed to set optimization level", e))?;
-    
+
     execution_provider
       .register(&mut builder)
       .map_err(|e| OnnxError::with_source("Failed to register execution provider", e))?;
-    
-    let new_session = builder
-      .commit_from_file(path)
-      .map_err(|e| {
-        OnnxError::with_source(format!("Failed to load model from path: {}", path), e)
-      })?;
+
+    let new_session = builder.commit_from_file(path).map_err(|e| {
+      OnnxError::with_source(format!("Failed to load model from path: {}", path), e)
+    })?;
 
     // Atomically swap the session
     let mut session_guard = self.session.write().await;
@@ -295,16 +292,16 @@ where
 
     let mut builder = Session::builder()
       .map_err(|e| OnnxError::with_source("Failed to create session builder", e))?;
-    
+
     // Use default optimization level since we can't move it from &self
     builder = builder
       .with_optimization_level(GraphOptimizationLevel::Level1)
       .map_err(|e| OnnxError::with_source("Failed to set optimization level", e))?;
-    
+
     execution_provider
       .register(&mut builder)
       .map_err(|e| OnnxError::with_source("Failed to register execution provider", e))?;
-    
+
     let new_session = builder
       .commit_from_memory(bytes)
       .map_err(|e| OnnxError::with_source("Failed to load model from bytes", e))?;
@@ -325,28 +322,28 @@ impl<T: ExecutionProvider + Clone> InferenceBackend for OnnxBackend<T> {
   async fn load_from_path(&mut self, path: &str) -> Result<(), Self::Error> {
     let mut builder = Session::builder()
       .map_err(|e| OnnxError::with_source("Failed to create session builder", e))?;
-    
+
     // Temporarily take ownership of optimization_level to use it
     // We'll restore it with the same value after using it
-    let temp_opt_level = std::mem::replace(&mut self.optimization_level, GraphOptimizationLevel::Level1);
+    let temp_opt_level =
+      std::mem::replace(&mut self.optimization_level, GraphOptimizationLevel::Level1);
     builder = builder
       .with_optimization_level(temp_opt_level)
       .map_err(|e| OnnxError::with_source("Failed to set optimization level", e))?;
-    
+
     // Restore the optimization level (using the value we just used)
     // Since we can't clone, we use Level1 as default - the actual value was already used above
     self.optimization_level = GraphOptimizationLevel::Level1;
-    
-    self.execution_provider
+
+    self
+      .execution_provider
       .clone()
       .register(&mut builder)
       .map_err(|e| OnnxError::with_source("Failed to register execution provider", e))?;
-    
-    let session = builder
-      .commit_from_file(path)
-      .map_err(|e| {
-        OnnxError::with_source(format!("Failed to load model from path: {}", path), e)
-      })?;
+
+    let session = builder.commit_from_file(path).map_err(|e| {
+      OnnxError::with_source(format!("Failed to load model from path: {}", path), e)
+    })?;
 
     let mut session_guard = self.session.write().await;
     *session_guard = Some(session);
@@ -356,21 +353,23 @@ impl<T: ExecutionProvider + Clone> InferenceBackend for OnnxBackend<T> {
   async fn load_from_bytes(&mut self, bytes: &[u8]) -> Result<(), Self::Error> {
     let mut builder = Session::builder()
       .map_err(|e| OnnxError::with_source("Failed to create session builder", e))?;
-    
+
     // Temporarily take ownership of optimization_level to use it
-    let temp_opt_level = std::mem::replace(&mut self.optimization_level, GraphOptimizationLevel::Level1);
+    let temp_opt_level =
+      std::mem::replace(&mut self.optimization_level, GraphOptimizationLevel::Level1);
     builder = builder
       .with_optimization_level(temp_opt_level)
       .map_err(|e| OnnxError::with_source("Failed to set optimization level", e))?;
-    
+
     // Restore with default (the actual value was already used)
     self.optimization_level = GraphOptimizationLevel::Level1;
-    
-    self.execution_provider
+
+    self
+      .execution_provider
       .clone()
       .register(&mut builder)
       .map_err(|e| OnnxError::with_source("Failed to register execution provider", e))?;
-    
+
     let session = builder
       .commit_from_memory(bytes)
       .map_err(|e| OnnxError::with_source("Failed to load model from bytes", e))?;
@@ -391,8 +390,7 @@ impl<T: ExecutionProvider + Clone> InferenceBackend for OnnxBackend<T> {
     // Get input name from model (assumes single input for simplicity)
     let input_name = session
       .inputs
-      .iter()
-      .next()
+      .first()
       .ok_or_else(|| OnnxError::new("Model has no inputs"))?
       .name
       .clone();
@@ -403,7 +401,7 @@ impl<T: ExecutionProvider + Clone> InferenceBackend for OnnxBackend<T> {
     let shape = [1usize, input.len()];
     let input_tensor = Tensor::from_array((shape, input))
       .map_err(|e| OnnxError::with_source("Failed to create input tensor", e))?;
-    
+
     let input_value: DynValue = input_tensor.into_dyn();
 
     // Run inference using ort::inputs! macro
@@ -441,8 +439,7 @@ impl<T: ExecutionProvider + Clone> InferenceBackend for OnnxBackend<T> {
     // Get input name and batch size
     let input_name = session
       .inputs
-      .iter()
-      .next()
+      .first()
       .ok_or_else(|| OnnxError::new("Model has no inputs"))?
       .name
       .clone();
@@ -471,7 +468,7 @@ impl<T: ExecutionProvider + Clone> InferenceBackend for OnnxBackend<T> {
     let shape = [batch_size, feature_size];
     let input_tensor = Tensor::from_array((shape, batched_data))
       .map_err(|e| OnnxError::with_source("Failed to create batched input tensor", e))?;
-    
+
     let input_value: DynValue = input_tensor.into_dyn();
 
     // Run batch inference using ort::inputs! macro
@@ -495,11 +492,11 @@ impl<T: ExecutionProvider + Clone> InferenceBackend for OnnxBackend<T> {
     // The output_array is an ArrayViewD, we need to handle different shapes
     let mut results = Vec::with_capacity(batch_size);
     let shape = output_array.shape();
-    
+
     // Calculate elements per batch item
     let total_elements: usize = shape.iter().product();
     let elements_per_item = total_elements / batch_size;
-    
+
     // Split the output array into individual results
     for i in 0..batch_size {
       let start = i * elements_per_item;
@@ -509,7 +506,7 @@ impl<T: ExecutionProvider + Clone> InferenceBackend for OnnxBackend<T> {
           .skip(start)
           .take(elements_per_item)
           .copied()
-          .collect()
+          .collect(),
       );
     }
 
@@ -519,10 +516,7 @@ impl<T: ExecutionProvider + Clone> InferenceBackend for OnnxBackend<T> {
   fn is_loaded(&self) -> bool {
     // Note: This is a synchronous check. For async, we'd need to use try_read
     // but that's okay for this check
-    self
-      .session
-      .try_read()
-      .map_or(false, |guard| guard.is_some())
+    self.session.try_read().is_ok_and(|guard| guard.is_some())
   }
 }
 

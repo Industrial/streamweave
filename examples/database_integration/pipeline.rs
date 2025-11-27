@@ -159,9 +159,8 @@ pub async fn large_result_set_example() -> Result<(), Box<dyn std::error::Error>
 
   // Add identity transformer to pass through database rows unchanged
   use streamweave::producers::database::database_producer::DatabaseRow;
-  let identity_transformer = MapTransformer::new(|row: DatabaseRow| -> Result<DatabaseRow, String> {
-    Ok(row)
-  });
+  let identity_transformer =
+    MapTransformer::new(|row: DatabaseRow| -> Result<DatabaseRow, String> { Ok(row) });
 
   let pipeline = PipelineBuilder::new()
     .producer(producer)
@@ -214,9 +213,8 @@ pub async fn connection_pooling_example() -> Result<(), Box<dyn std::error::Erro
   println!();
 
   // Add identity transformer to pass through database rows unchanged
-  let identity_transformer = MapTransformer::new(|row: DatabaseRow| -> Result<DatabaseRow, String> {
-    Ok(row)
-  });
+  let identity_transformer =
+    MapTransformer::new(|row: DatabaseRow| -> Result<DatabaseRow, String> { Ok(row) });
 
   // Use VecConsumer instead of ConsoleConsumer since we have Result types
   use streamweave::consumers::vec::vec_consumer::VecConsumer;

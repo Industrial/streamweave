@@ -171,9 +171,8 @@ pub async fn produce_to_redis() -> Result<(), Box<dyn std::error::Error>> {
   println!("   Sending {} events...\n", events.len());
 
   // Add identity transformer to pass through events unchanged
-  let identity_transformer = MapTransformer::new(|event: Event| -> Result<Event, String> {
-    Ok(event)
-  });
+  let identity_transformer =
+    MapTransformer::new(|event: Event| -> Result<Event, String> { Ok(event) });
 
   let pipeline = PipelineBuilder::new()
     .producer(VecProducer::new(events))

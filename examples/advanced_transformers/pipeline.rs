@@ -28,7 +28,6 @@ pub async fn circuit_breaker_example() -> Result<(), Box<dyn std::error::Error>>
     .producer(producer)
     .transformer(circuit_breaker)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();
@@ -57,7 +56,6 @@ pub async fn retry_example() -> Result<(), Box<dyn std::error::Error>> {
     .producer(producer)
     .transformer(retry)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();
@@ -83,7 +81,6 @@ pub async fn batch_example() -> Result<(), Box<dyn std::error::Error>> {
     .producer(producer)
     .transformer(batch)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results: Vec<Vec<i32>> = result_consumer.into_vec();
@@ -115,7 +112,6 @@ pub async fn rate_limit_example() -> Result<(), Box<dyn std::error::Error>> {
     .producer(producer)
     .transformer(rate_limit)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();

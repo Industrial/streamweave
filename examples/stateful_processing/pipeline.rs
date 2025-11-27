@@ -38,7 +38,6 @@ pub async fn running_sum_example() -> Result<(), Box<dyn std::error::Error>> {
     .producer(producer)
     .transformer(transformer.clone())
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();

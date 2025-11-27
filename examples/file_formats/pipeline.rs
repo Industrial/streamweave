@@ -63,7 +63,6 @@ pub async fn csv_example() -> Result<(), Box<dyn std::error::Error>> {
     .producer(producer)
     .transformer(transformer)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();
@@ -76,7 +75,8 @@ pub async fn csv_example() -> Result<(), Box<dyn std::error::Error>> {
 
   // Now write CSV file
   println!("\n📝 Writing CSV file...");
-  let _write_producer = streamweave::producers::vec::vec_producer::VecProducer::new(results.clone());
+  let _write_producer =
+    streamweave::producers::vec::vec_producer::VecProducer::new(results.clone());
   let _write_transformer = MapTransformer::new(|_s: String| -> Person {
     // Parse back from display format (simplified - in real use, keep original data)
     // For demo, we'll create new data
@@ -157,7 +157,6 @@ pub async fn jsonl_example() -> Result<(), Box<dyn std::error::Error>> {
     .producer(producer)
     .transformer(transformer)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();
@@ -320,7 +319,6 @@ pub async fn parquet_example() -> Result<(), Box<dyn std::error::Error>> {
     .producer(producer)
     .transformer(transformer)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();

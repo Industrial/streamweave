@@ -74,9 +74,7 @@ impl SqlParser {
     let ast = parser.parse_statement()?;
 
     match ast {
-      Statement::Query(query) => {
-        self.convert_query(*query).map_err(|e| Box::new(e))
-      }
+      Statement::Query(query) => self.convert_query(*query).map_err(Box::new),
       _ => Err(Box::new(self.create_error(format!(
         "Unsupported statement type. Only SELECT queries are supported, found: {:?}",
         ast
@@ -85,6 +83,7 @@ impl SqlParser {
   }
 
   /// Convert sqlparser Query AST to StreamWeave SqlQuery
+  #[allow(clippy::result_large_err)] // Private function - boxing not needed
   fn convert_query(&self, query: Query) -> Result<SqlQuery, StreamError<String>> {
     // Extract Select from body
     let select_expr = match query.body.as_ref() {
@@ -184,6 +183,7 @@ impl SqlParser {
   }
 
   /// Convert sqlparser Select body to StreamWeave SelectClause
+  #[allow(clippy::result_large_err)] // Private function - boxing not needed
   fn convert_select(&self, body: &SetExpr) -> Result<SelectClause, StreamError<String>> {
     match body {
       SetExpr::Select(select) => {
@@ -203,6 +203,7 @@ impl SqlParser {
   }
 
   /// Convert sqlparser SelectItem to StreamWeave SelectItem
+  #[allow(clippy::result_large_err)] // Private function - boxing not needed
   fn convert_select_item(
     &self,
     item: &sqlparser::ast::SelectItem,
@@ -226,6 +227,7 @@ impl SqlParser {
   }
 
   /// Convert sqlparser FROM clause to StreamWeave FromClause
+  #[allow(clippy::result_large_err)] // Private function - boxing not needed
   fn convert_from(&self, body: &SetExpr) -> Result<FromClause, StreamError<String>> {
     match body {
       SetExpr::Select(select) => {
@@ -262,6 +264,7 @@ impl SqlParser {
   }
 
   /// Convert sqlparser Expr to StreamWeave Expression
+  #[allow(clippy::result_large_err)] // Private function - boxing not needed
   fn convert_expr(&self, expr: &Expr) -> Result<Expression, StreamError<String>> {
     match expr {
       Expr::Identifier(ident) => Ok(Expression::Column(ColumnRef {
@@ -378,7 +381,7 @@ impl SqlParser {
             .as_ref()
             .map(|e| self.convert_expr(e))
             .transpose()?
-            .map(|e| Box::new(e)),
+            .map(Box::new),
         })
       }
       Expr::IsNull(expr) => Ok(Expression::BinaryOp {
@@ -405,6 +408,7 @@ impl SqlParser {
   }
 
   /// Convert sqlparser Value to StreamWeave Literal
+  #[allow(clippy::result_large_err)] // Private function - boxing not needed
   fn convert_value(&self, value: &Value) -> Result<Literal, StreamError<String>> {
     match value {
       Value::Number(n, _) => {
@@ -426,6 +430,7 @@ impl SqlParser {
   }
 
   /// Convert sqlparser BinaryOperator to StreamWeave BinaryOperator
+  #[allow(clippy::result_large_err)] // Private function - boxing not needed
   fn convert_binary_op(
     &self,
     op: &sqlparser::ast::BinaryOperator,
@@ -451,6 +456,7 @@ impl SqlParser {
   }
 
   /// Convert sqlparser UnaryOperator to StreamWeave UnaryOperator
+  #[allow(clippy::result_large_err)] // Private function - boxing not needed
   fn convert_unary_op(
     &self,
     op: &sqlparser::ast::UnaryOperator,

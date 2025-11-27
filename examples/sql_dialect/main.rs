@@ -7,7 +7,7 @@
 //! execution will be implemented in subsequent tasks.
 
 #[cfg(feature = "sql")]
-use streamweave::sql::{ast::*, dialect::StreamSqlDialect};
+use streamweave::sql::dialect::StreamSqlDialect;
 
 #[cfg(feature = "sql")]
 fn main() {

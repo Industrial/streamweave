@@ -182,8 +182,7 @@ impl OpenTelemetryConfig {
 
     if let Some(version) = &self.service_version {
       let version = version.clone();
-      resource_builder =
-        resource_builder.with_attribute(KeyValue::new("service.version", version));
+      resource_builder = resource_builder.with_attribute(KeyValue::new("service.version", version));
     }
 
     // Add custom attributes
@@ -242,8 +241,7 @@ impl OpenTelemetryConfig {
 
     if let Some(version) = &service_version {
       let version = version.clone();
-      resource_builder =
-        resource_builder.with_attribute(KeyValue::new("service.version", version));
+      resource_builder = resource_builder.with_attribute(KeyValue::new("service.version", version));
     }
 
     // Add custom attributes

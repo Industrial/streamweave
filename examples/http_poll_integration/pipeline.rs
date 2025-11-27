@@ -1,10 +1,6 @@
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
 use serde::{Deserialize, Serialize};
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
-use serde_json::json;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
-use std::collections::HashSet;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
 use std::time::Duration;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
 use streamweave::{
@@ -12,7 +8,8 @@ use streamweave::{
   error::ErrorStrategy,
   pipeline::PipelineBuilder,
   producers::http_poll::http_poll_producer::{
-    DeltaDetectionConfig, HttpPollProducer, HttpPollProducerConfig, HttpPollResponse, PaginationConfig,
+    DeltaDetectionConfig, HttpPollProducer, HttpPollProducerConfig, HttpPollResponse,
+    PaginationConfig,
   },
   transformers::flatten::flatten_transformer::FlattenTransformer,
   transformers::map::map_transformer::MapTransformer,
@@ -59,7 +56,6 @@ pub async fn basic_polling() -> Result<(), Box<dyn std::error::Error>> {
     .producer(producer)
     .transformer(transformer)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();
@@ -108,24 +104,27 @@ pub async fn pagination_example() -> Result<(), Box<dyn std::error::Error>> {
     .with_error_strategy(ErrorStrategy::Skip);
 
   // Transform to extract post titles from paginated responses
-  let transformer = MapTransformer::new(|response: HttpPollResponse| -> Result<Vec<String>, String> {
-    // Extract array of posts from response
-    if let Some(posts) = response.body.as_array() {
-      let titles: Vec<String> = posts
-        .iter()
-        .filter_map(|post| post.get("title").and_then(|t| t.as_str()))
-        .map(|s| s.to_string())
-        .collect();
-      Ok(titles)
-    } else {
-      Err("Expected array in response".to_string())
-    }
-  });
+  let transformer = MapTransformer::new(
+    |response: HttpPollResponse| -> Result<Vec<String>, String> {
+      // Extract array of posts from response
+      if let Some(posts) = response.body.as_array() {
+        let titles: Vec<String> = posts
+          .iter()
+          .filter_map(|post| post.get("title").and_then(|t| t.as_str()))
+          .map(|s| s.to_string())
+          .collect();
+        Ok(titles)
+      } else {
+        Err("Expected array in response".to_string())
+      }
+    },
+  );
 
   // Unwrap Result<Vec<String>, String> to Vec<String> for FlattenTransformer
-  let unwrap_transformer = MapTransformer::new(|result: Result<Vec<String>, String>| -> Vec<String> {
-    result.unwrap_or_default()
-  });
+  let unwrap_transformer =
+    MapTransformer::new(|result: Result<Vec<String>, String>| -> Vec<String> {
+      result.unwrap_or_default()
+    });
 
   // Flatten Vec<String> to individual String items
   let flatten_transformer = FlattenTransformer::<String>::new();
@@ -145,7 +144,6 @@ pub async fn pagination_example() -> Result<(), Box<dyn std::error::Error>> {
     .transformer(flatten_transformer)
     .transformer(format_transformer)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();
@@ -187,17 +185,18 @@ pub async fn delta_detection_example() -> Result<(), Box<dyn std::error::Error>>
     .with_error_strategy(ErrorStrategy::Skip);
 
   // Transform to extract individual posts
-  let transformer = MapTransformer::new(|response: HttpPollResponse| -> Result<Vec<Post>, String> {
-    if let Some(posts) = response.body.as_array() {
-      let posts: Result<Vec<Post>, _> = posts
-        .iter()
-        .map(|p| serde_json::from_value(p.clone()))
-        .collect();
-      posts.map_err(|e| format!("Failed to parse post: {}", e))
-    } else {
-      Err("Expected array in response".to_string())
-    }
-  });
+  let transformer =
+    MapTransformer::new(|response: HttpPollResponse| -> Result<Vec<Post>, String> {
+      if let Some(posts) = response.body.as_array() {
+        let posts: Result<Vec<Post>, _> = posts
+          .iter()
+          .map(|p| serde_json::from_value(p.clone()))
+          .collect();
+        posts.map_err(|e| format!("Failed to parse post: {}", e))
+      } else {
+        Err("Expected array in response".to_string())
+      }
+    });
 
   // Unwrap Result<Vec<Post>, String> to Vec<Post> for FlattenTransformer
   let unwrap_transformer = MapTransformer::new(|result: Result<Vec<Post>, String>| -> Vec<Post> {
@@ -217,7 +216,6 @@ pub async fn delta_detection_example() -> Result<(), Box<dyn std::error::Error>>
     .transformer(unwrap_transformer)
     .transformer(flatten_transformer)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();
@@ -269,7 +267,6 @@ pub async fn rate_limited_polling() -> Result<(), Box<dyn std::error::Error>> {
     .producer(producer)
     .transformer(transformer)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();
@@ -298,5 +295,6 @@ struct Post {
   id: u32,
   title: String,
   body: String,
-  userId: u32,
+  #[serde(rename = "userId")]
+  user_id: u32,
 }

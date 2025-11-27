@@ -43,7 +43,6 @@ pub async fn stop_strategy_example() -> Result<(), Box<dyn std::error::Error>> {
     .producer(producer)
     .transformer(transformer)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();
@@ -100,7 +99,6 @@ pub async fn skip_strategy_example() -> Result<(), Box<dyn std::error::Error>> {
     .producer(producer)
     .transformer(transformer)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();
@@ -160,7 +158,6 @@ pub async fn retry_strategy_example() -> Result<(), Box<dyn std::error::Error>> 
     .producer(producer)
     .transformer(transformer)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();
@@ -236,7 +233,6 @@ pub async fn custom_strategy_example() -> Result<(), Box<dyn std::error::Error>>
     .producer(producer)
     .transformer(transformer)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();
@@ -318,7 +314,6 @@ pub async fn component_level_example() -> Result<(), Box<dyn std::error::Error>>
     .transformer(transformer2)
     .transformer(unwrap_transformer)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results = result_consumer.into_vec();

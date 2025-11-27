@@ -21,7 +21,6 @@ pub async fn tumbling_window_example() -> Result<(), Box<dyn std::error::Error>>
     .producer(producer)
     .transformer(window)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results: Vec<Vec<i32>> = result_consumer.into_vec();
@@ -51,7 +50,6 @@ pub async fn sliding_window_example() -> Result<(), Box<dyn std::error::Error>> 
     .producer(producer)
     .transformer(window)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results: Vec<Vec<i32>> = result_consumer.into_vec();
@@ -80,7 +78,6 @@ pub async fn count_window_example() -> Result<(), Box<dyn std::error::Error>> {
     .producer(producer)
     .transformer(window)
     .consumer(consumer);
-    
 
   let (_, result_consumer) = pipeline.run().await?;
   let results: Vec<Vec<i32>> = result_consumer.into_vec();

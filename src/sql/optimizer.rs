@@ -76,7 +76,9 @@ impl QueryOptimizer {
 
     // 1. Constant folding in WHERE clause
     if let Some(ref mut where_clause) = query.where_clause {
-      where_clause.condition = self.fold_constants(where_clause.condition.clone()).map_err(Box::new)?;
+      where_clause.condition = self
+        .fold_constants(where_clause.condition.clone())
+        .map_err(Box::new)?;
     }
 
     // 2. Constant folding in SELECT expressions
@@ -85,16 +87,13 @@ impl QueryOptimizer {
       .items
       .iter()
       .map(|item| match item {
-        crate::sql::ast::SelectItem::Expression { expr, alias } => {
-          self.fold_constants(expr.clone())
-            .map(|expr| {
-              crate::sql::ast::SelectItem::Expression {
-                expr,
-                alias: alias.clone(),
-              }
-            })
-            .map_err(Box::new)
-        }
+        crate::sql::ast::SelectItem::Expression { expr, alias } => self
+          .fold_constants(expr.clone())
+          .map(|expr| crate::sql::ast::SelectItem::Expression {
+            expr,
+            alias: alias.clone(),
+          })
+          .map_err(Box::new),
         _ => Ok::<crate::sql::ast::SelectItem, Box<StreamError<String>>>(item.clone()),
       })
       .collect::<Result<Vec<_>, _>>()?;
@@ -111,6 +110,7 @@ impl QueryOptimizer {
   }
 
   /// Fold constant expressions (evaluate at compile time)
+  #[allow(clippy::result_large_err)] // Boxing errors intentionally to reduce Result size
   fn fold_constants(&self, expr: Expression) -> Result<Expression, StreamError<String>> {
     match expr {
       Expression::BinaryOp { left, op, right } => {
@@ -120,10 +120,9 @@ impl QueryOptimizer {
         // If both sides are literals, evaluate the expression
         if let (Expression::Literal(left_lit), Expression::Literal(right_lit)) =
           (&left_folded, &right_folded)
+          && let Some(result) = self.evaluate_binary_op(left_lit, &op, right_lit)?
         {
-          if let Some(result) = self.evaluate_binary_op(left_lit, &op, right_lit)? {
-            return Ok(Expression::Literal(result));
-          }
+          return Ok(Expression::Literal(result));
         }
 
         Ok(Expression::BinaryOp {
@@ -134,10 +133,10 @@ impl QueryOptimizer {
       }
       Expression::UnaryOp { op, operand } => {
         let operand_folded = self.fold_constants(*operand)?;
-        if let Expression::Literal(lit) = &operand_folded {
-          if let Some(result) = self.evaluate_unary_op(lit, &op)? {
-            return Ok(Expression::Literal(result));
-          }
+        if let Expression::Literal(lit) = &operand_folded
+          && let Some(result) = self.evaluate_unary_op(lit, &op)?
+        {
+          return Ok(Expression::Literal(result));
         }
         Ok(Expression::UnaryOp {
           op,
@@ -159,6 +158,7 @@ impl QueryOptimizer {
   }
 
   /// Evaluate a binary operation on literals
+  #[allow(clippy::result_large_err)] // Boxing errors intentionally to reduce Result size
   fn evaluate_binary_op(
     &self,
     left: &Literal,
@@ -225,6 +225,7 @@ impl QueryOptimizer {
   }
 
   /// Evaluate a unary operation on a literal
+  #[allow(clippy::result_large_err)] // Boxing errors intentionally to reduce Result size
   fn evaluate_unary_op(
     &self,
     operand: &Literal,
@@ -241,6 +242,7 @@ impl QueryOptimizer {
   }
 
   /// Prune unused projections (remove columns that aren't referenced)
+  #[allow(clippy::result_large_err)] // Boxing errors intentionally to reduce Result size
   fn prune_projections(&self, query: SqlQuery) -> Result<SqlQuery, StreamError<String>> {
     // For now, this is a placeholder
     // In a full implementation, we would:

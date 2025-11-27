@@ -21,8 +21,8 @@ pub fn create_sample_pipeline() -> (
   MapTransformer<impl FnMut(i32) -> i32 + Send + Clone + 'static, i32, i32>,
   VecConsumer<i32>,
 ) {
-  let producer = ArrayProducer::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-    .with_name("numbers_producer".to_string());
+  let producer =
+    ArrayProducer::new([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]).with_name("numbers_producer".to_string());
   let transformer = MapTransformer::new(|x: i32| x * 2).with_name("doubler".to_string());
   let consumer = VecConsumer::new().with_name("results_collector".to_string());
 
