@@ -2,20 +2,96 @@ use std::error::Error;
 use std::fmt;
 use std::sync::Arc;
 
+/// Action to take when an error occurs in a pipeline component.
+///
+/// This enum is used by error strategies to determine how to handle errors
+/// during stream processing.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::error::ErrorAction;
+///
+/// // Stop processing on error
+/// let action = ErrorAction::Stop;
+///
+/// // Skip the item and continue
+/// let action = ErrorAction::Skip;
+///
+/// // Retry the operation
+/// let action = ErrorAction::Retry;
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum ErrorAction {
+  /// Stop processing immediately when an error occurs.
+  ///
+  /// This is the default behavior and ensures data integrity by preventing
+  /// partial results after an error.
   Stop,
+  /// Skip the item that caused the error and continue processing.
+  ///
+  /// Useful for non-critical errors where partial results are acceptable.
   Skip,
+  /// Retry the operation that caused the error.
+  ///
+  /// Useful for transient failures that may succeed on retry.
   Retry,
 }
 
 // Type alias for the complex custom error handler function
 type CustomErrorHandler<T> = Arc<dyn Fn(&StreamError<T>) -> ErrorAction + Send + Sync>;
 
+/// Strategy for handling errors in pipeline components.
+///
+/// Error strategies determine how components respond to errors during
+/// stream processing. Strategies can be set at the pipeline level or
+/// overridden at the component level.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::error::ErrorStrategy;
+///
+/// // Stop on first error (default)
+/// let strategy = ErrorStrategy::Stop;
+///
+/// // Skip errors and continue
+/// let strategy = ErrorStrategy::Skip;
+///
+/// // Retry up to 3 times
+/// let strategy = ErrorStrategy::Retry(3);
+///
+/// // Custom error handling
+/// let strategy = ErrorStrategy::new_custom(|error| {
+///     if error.retries < 2 {
+///         ErrorAction::Retry
+///     } else {
+///         ErrorAction::Stop
+///     }
+/// });
+/// ```
 pub enum ErrorStrategy<T: std::fmt::Debug + Clone + Send + Sync> {
+  /// Stop processing immediately when an error occurs.
+  ///
+  /// This is the default strategy and ensures data integrity.
   Stop,
+  /// Skip items that cause errors and continue processing.
+  ///
+  /// Useful for data cleaning scenarios where invalid records can be
+  /// safely ignored.
   Skip,
+  /// Retry failed operations up to the specified number of times.
+  ///
+  /// # Arguments
+  ///
+  /// * `usize` - Maximum number of retry attempts
+  ///
+  /// Useful for transient failures like network timeouts.
   Retry(usize),
+  /// Custom error handling logic.
+  ///
+  /// Allows fine-grained control over error handling based on error
+  /// context, type, or retry count.
   Custom(CustomErrorHandler<T>),
 }
 
@@ -62,11 +138,49 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> ErrorStrategy<T> {
   }
 }
 
+/// Error that occurred during stream processing.
+///
+/// This error type provides rich context about where and when an error
+/// occurred, making it easier to debug and handle errors appropriately.
+///
+/// # Fields
+///
+/// * `source` - The original error that occurred
+/// * `context` - Context about when and where the error occurred
+/// * `component` - Information about the component that encountered the error
+/// * `retries` - Number of times this error has been retried
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::error::{StreamError, ErrorContext, ComponentInfo};
+/// use std::error::Error;
+///
+/// # fn example() {
+/// let error = StreamError::new(
+///     Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "File not found")),
+///     ErrorContext {
+///         timestamp: chrono::Utc::now(),
+///         item: Some(42),
+///         component_name: "FileProducer".to_string(),
+///         component_type: "Producer".to_string(),
+///     },
+///     ComponentInfo {
+///         name: "file-producer".to_string(),
+///         type_name: "FileProducer".to_string(),
+///     },
+/// );
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct StreamError<T: std::fmt::Debug + Clone + Send + Sync> {
+  /// The original error that occurred.
   pub source: Box<dyn Error + Send + Sync>,
+  /// Context about when and where the error occurred.
   pub context: ErrorContext<T>,
+  /// Information about the component that encountered the error.
   pub component: ComponentInfo,
+  /// Number of times this error has been retried.
   pub retries: usize,
 }
 

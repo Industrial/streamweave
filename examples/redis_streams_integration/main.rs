@@ -37,7 +37,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       println!("Examples:");
       println!("  cargo run --example redis_streams_integration --features redis-streams produce");
       println!("  cargo run --example redis_streams_integration --features redis-streams consume");
-      println!("  cargo run --example redis_streams_integration --features redis-streams roundtrip");
+      println!(
+        "  cargo run --example redis_streams_integration --features redis-streams roundtrip"
+      );
       return Ok(());
     }
   }
@@ -53,4 +55,3 @@ fn main() {
   eprintln!("Build with: cargo run --example redis_streams_integration --features redis-streams");
   std::process::exit(1);
 }
-

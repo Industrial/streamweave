@@ -1,8 +1,38 @@
+//! # StreamWeave
+//!
+//! StreamWeave is a composable, async, stream-first computation framework for Rust.
+//! It provides a fluent API for building data processing pipelines with producers,
+//! transformers, and consumers.
+//!
+//! ## Core Concepts
+//!
+//! - **Producers**: Generate data streams
+//! - **Transformers**: Process and transform stream items
+//! - **Consumers**: Consume stream data
+//! - **Pipelines**: Compose producers, transformers, and consumers together
+//!
+//! ## Example
+//!
+//! ```rust
+//! use streamweave::prelude::*;
+//!
+//! let pipeline = Pipeline::new()
+//!     .with_producer(ArrayProducer::new(vec![1, 2, 3, 4, 5]))
+//!     .with_transformer(MapTransformer::new(|x| x * 2))
+//!     .with_consumer(VecConsumer::new());
+//!
+//! let result = pipeline.run().await?;
+//! ```
+
+#![warn(missing_docs)]
+#![warn(missing_doc_code_examples)]
+
 pub mod consumer;
 pub mod consumers;
 pub mod error;
 pub mod input;
 pub mod message;
+pub mod metrics;
 pub mod offset;
 pub mod output;
 pub mod pipeline;
@@ -16,6 +46,9 @@ pub mod window;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod distributed;
+
+#[cfg(feature = "sql")]
+pub mod sql;
 
 // Re-export commonly used types
 pub use consumer::Consumer;

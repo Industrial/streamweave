@@ -121,7 +121,7 @@ async fn create_pool(
         .acquire_timeout(config.connect_timeout)
         .idle_timeout(config.idle_timeout)
         .max_lifetime(config.max_lifetime);
-      
+
       let pool = pool_options.connect(&config.connection_url).await?;
       Ok(DatabasePool::Postgres(pool))
     }
@@ -132,7 +132,7 @@ async fn create_pool(
         .acquire_timeout(config.connect_timeout)
         .idle_timeout(config.idle_timeout)
         .max_lifetime(config.max_lifetime);
-      
+
       let pool = pool_options.connect(&config.connection_url).await?;
       Ok(DatabasePool::Mysql(pool))
     }
@@ -142,7 +142,7 @@ async fn create_pool(
         .acquire_timeout(config.connect_timeout)
         .idle_timeout(config.idle_timeout)
         .max_lifetime(config.max_lifetime);
-      
+
       let pool = pool_options.connect(&config.connection_url).await?;
       Ok(DatabasePool::Sqlite(pool))
     }

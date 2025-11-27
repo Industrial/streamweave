@@ -5,7 +5,9 @@ use streamweave::{
   consumers::console::console_consumer::ConsoleConsumer,
   error::ErrorStrategy,
   pipeline::PipelineBuilder,
-  producers::database::database_producer::{DatabaseProducer, DatabaseProducerConfig, DatabaseRow, DatabaseType},
+  producers::database::database_producer::{
+    DatabaseProducer, DatabaseProducerConfig, DatabaseRow, DatabaseType,
+  },
   transformers::map::map_transformer::MapTransformer,
 };
 
@@ -155,13 +157,14 @@ pub async fn large_result_set_example() -> Result<(), Box<dyn std::error::Error>
   println!("   Max connections: 10");
   println!("   Processing...");
 
-  let pipeline = PipelineBuilder::new()
-    .producer(producer)
-    .consumer(consumer);
+  let pipeline = PipelineBuilder::new().producer(producer).consumer(consumer);
 
   let ((), result) = pipeline.run().await?;
 
-  println!("\n✅ Processed {} rows from large result set!", result.collected.len());
+  println!(
+    "\n✅ Processed {} rows from large result set!",
+    result.collected.len()
+  );
   println!("   Memory usage remains bounded due to cursor-based streaming");
 
   drop(pool);
@@ -310,4 +313,3 @@ pub async fn large_result_set_example() -> Result<(), Box<dyn std::error::Error>
 pub async fn connection_pooling_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Database feature is not enabled. Build with --features database".into())
 }
-

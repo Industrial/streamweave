@@ -1,16 +1,20 @@
 #[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
 use serde::{Deserialize, Serialize};
 #[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
+use std::time::{SystemTime, UNIX_EPOCH};
+#[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
 use streamweave::{
-  consumers::redis_streams::redis_streams_consumer::{RedisStreamsConsumer, RedisStreamsProducerConfig},
+  consumers::redis_streams::redis_streams_consumer::{
+    RedisStreamsConsumer, RedisStreamsProducerConfig,
+  },
   error::ErrorStrategy,
   pipeline::PipelineBuilder,
-  producers::redis_streams::redis_streams_producer::{RedisStreamsConsumerConfig, RedisStreamsMessage, RedisStreamsProducer},
+  producers::redis_streams::redis_streams_producer::{
+    RedisStreamsConsumerConfig, RedisStreamsMessage, RedisStreamsProducer,
+  },
   producers::vec::vec_producer::VecProducer,
   transformers::map::map_transformer::MapTransformer,
 };
-#[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
-use std::time::{SystemTime, UNIX_EPOCH};
 
 /// A simple event structure for demonstration
 #[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
@@ -61,10 +65,7 @@ pub async fn consume_from_redis() -> Result<(), Box<dyn std::error::Error>> {
           Ok(event)
         }
         Err(e) => {
-          eprintln!(
-            "  ✗ Failed to deserialize message at ID {}: {}",
-            msg.id, e
-          );
+          eprintln!("  ✗ Failed to deserialize message at ID {}: {}", msg.id, e);
           Err(format!("Deserialization error: {}", e))
         }
       }
@@ -80,10 +81,7 @@ pub async fn consume_from_redis() -> Result<(), Box<dyn std::error::Error>> {
           Ok(event)
         }
         Err(e) => {
-          eprintln!(
-            "  ✗ Failed to deserialize message at ID {}: {}",
-            msg.id, e
-          );
+          eprintln!("  ✗ Failed to deserialize message at ID {}: {}", msg.id, e);
           Err(format!("Deserialization error: {}", e))
         }
       }
@@ -268,4 +266,3 @@ pub async fn produce_to_redis() -> Result<(), Box<dyn std::error::Error>> {
 pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Redis Streams feature is not enabled. Build with --features redis-streams".into())
 }
-

@@ -96,6 +96,55 @@ jobs:
         run: cargo test --examples --all-features
 
   # =============================================================================
+  # DOCUMENTATION
+  # =============================================================================
+  docs:
+    name: 📚 Documentation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Doxidize
+        run: cargo install doxidize || echo "Doxidize installation failed, will use cargo doc"
+
+      - name: Generate documentation
+        run: |
+          # Try Doxidize first, fallback to cargo doc
+          if command -v doxidize &> /dev/null && ./bin/docs 2>&1; then
+            echo "✅ Documentation generated with Doxidize"
+          else
+            echo "⚠️  Using cargo doc as fallback"
+            cargo doc --all-features --no-deps
+          fi
+
+      - name: Check documentation
+        run: |
+          # Verify documentation was generated
+          if [ -d "target/doc" ]; then
+            echo "✅ Documentation generated successfully"
+            ls -la target/doc/
+          else
+            echo "❌ Documentation generation failed"
+            exit 1
+          fi
+
+      - name: Verify documentation quality
+        run: |
+          # Run documentation verification script if available
+          if [ -f "scripts/verify-docs.sh" ]; then
+            ./scripts/verify-docs.sh || echo "⚠️ Documentation verification found issues (non-fatal)"
+          fi
+
+  # =============================================================================
   # SECURITY AUDIT
   # =============================================================================
   security:

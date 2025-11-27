@@ -2,13 +2,56 @@ use crate::error::{ErrorAction, ErrorStrategy, PipelineError, StreamError};
 use crate::{consumer::Consumer, producer::Producer, transformer::Transformer};
 use std::marker::PhantomData;
 
-// State types for the builder
+/// Empty state for pipeline builder.
+///
+/// This state indicates that no components have been added to the pipeline yet.
 pub struct Empty;
+
+/// State indicating a producer has been added to the pipeline.
+///
+/// # Type Parameters
+///
+/// * `P` - The producer type that has been added
 pub struct HasProducer<P>(PhantomData<P>);
+
+/// State indicating both a producer and transformer have been added.
+///
+/// # Type Parameters
+///
+/// * `P` - The producer type
+/// * `T` - The transformer type
 pub struct HasTransformer<P, T>(PhantomData<(P, T)>);
+
+/// Complete state indicating all components (producer, transformer, consumer) are present.
+///
+/// # Type Parameters
+///
+/// * `P` - The producer type
+/// * `T` - The transformer type
+/// * `C` - The consumer type
 pub struct Complete<P, T, C>(PhantomData<(P, T, C)>);
 
-// Pipeline builder with state and error handling
+/// Pipeline builder with state machine for compile-time validation.
+///
+/// The builder uses phantom types to ensure pipelines are only built when all
+/// required components are present. This prevents runtime errors from missing
+/// components.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::prelude::*;
+///
+/// let pipeline = PipelineBuilder::new()
+///     .with_producer(ArrayProducer::new(vec![1, 2, 3]))
+///     .with_transformer(MapTransformer::new(|x| x * 2))
+///     .with_consumer(VecConsumer::new())
+///     .build();
+/// ```
+///
+/// # Type Parameters
+///
+/// * `State` - The current state of the builder (Empty, HasProducer, HasTransformer, or Complete)
 pub struct PipelineBuilder<State> {
   _producer_stream: Option<Box<dyn std::any::Any + Send + 'static>>,
   transformer_stream: Option<Box<dyn std::any::Any + Send + 'static>>,
@@ -36,6 +79,22 @@ where
 
 // Initial builder creation
 impl PipelineBuilder<Empty> {
+  /// Creates a new empty pipeline builder.
+  ///
+  /// This is the starting point for building a pipeline. You must add
+  /// a producer, transformer, and consumer before the pipeline can be built.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave::prelude::*;
+  ///
+  /// let builder = PipelineBuilder::new();
+  /// ```
+  ///
+  /// # Returns
+  ///
+  /// A new `PipelineBuilder` in the `Empty` state.
   #[must_use]
   pub fn new() -> Self {
     PipelineBuilder {
@@ -207,6 +266,44 @@ where
     }
   }
 
+  /// Executes the pipeline, processing all items from producer through transformer to consumer.
+  ///
+  /// This method consumes the pipeline and runs it to completion. It will:
+  /// 1. Generate items from the producer
+  /// 2. Transform items through the transformer
+  /// 3. Consume items with the consumer
+  ///
+  /// # Returns
+  ///
+  /// Returns `Ok(((), consumer))` on success, where the consumer can be used
+  /// to retrieve results (e.g., `VecConsumer` will have collected items).
+  ///
+  /// Returns `Err(PipelineError)` if an error occurs during execution and
+  /// the error strategy is set to `Stop`.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave::prelude::*;
+  ///
+  /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+  /// let pipeline = Pipeline::new()
+  ///     .with_producer(ArrayProducer::new(vec![1, 2, 3, 4, 5]))
+  ///     .with_transformer(MapTransformer::new(|x| x * 2))
+  ///     .with_consumer(VecConsumer::new());
+  ///
+  /// let (_, consumer) = pipeline.run().await?;
+  /// let results = consumer.into_inner();
+  /// assert_eq!(results, vec![2, 4, 6, 8, 10]);
+  /// # Ok(())
+  /// # }
+  /// ```
+  ///
+  /// # Errors
+  ///
+  /// This method will return an error if:
+  /// - The error strategy is set to `Stop` and an error occurs
+  /// - The consumer fails to process items (depending on error strategy)
   pub async fn run(mut self) -> Result<((), C), PipelineError<()>>
   where
     C::InputStream: From<T::OutputStream>,

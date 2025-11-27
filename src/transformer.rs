@@ -37,11 +37,58 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> TransformerConfig<T> {
   }
 }
 
+/// Trait for components that transform data streams.
+///
+/// Transformers process items as they flow through the pipeline. They can
+/// filter, map, aggregate, or perform any other transformation on stream items.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::prelude::*;
+///
+/// let mut transformer = MapTransformer::new(|x: i32| x * 2);
+/// let input = futures::stream::iter(vec![Ok(1), Ok(2), Ok(3)]);
+/// let output = transformer.transform(input);
+/// // Output stream yields: 2, 4, 6
+/// ```
+///
+/// # Implementations
+///
+/// Common transformer implementations include:
+/// - [`MapTransformer`] - Transforms each item
+/// - [`FilterTransformer`] - Filters items based on a predicate
+/// - [`BatchTransformer`] - Groups items into batches
+/// - [`RateLimitTransformer`] - Controls throughput
+/// - [`RetryTransformer`] - Retries failed items
 #[async_trait]
 pub trait Transformer: Input + Output
 where
   Self::Input: std::fmt::Debug + Clone + Send + Sync,
 {
+  /// Transforms a stream of input items into a stream of output items.
+  ///
+  /// This method is called by the pipeline to process items. The transformer
+  /// receives items from the previous component and produces transformed items
+  /// for the next component.
+  ///
+  /// # Arguments
+  ///
+  /// * `input` - The input stream to transform
+  ///
+  /// # Returns
+  ///
+  /// A stream that yields transformed items of type `Self::Output`.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave::prelude::*;
+  ///
+  /// let mut transformer = MapTransformer::new(|x: i32| x * 2);
+  /// let input = futures::stream::iter(vec![Ok(1), Ok(2), Ok(3)]);
+  /// let output = transformer.transform(input);
+  /// ```
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream;
 
   #[must_use]

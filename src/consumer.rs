@@ -17,11 +17,59 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> Default for ConsumerConfig<T> {
   }
 }
 
+/// Trait for components that consume data streams.
+///
+/// Consumers are the end point of a pipeline. They receive processed items
+/// and typically write them to a destination (file, database, console, etc.)
+/// or perform some final action.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::prelude::*;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let mut consumer = VecConsumer::new();
+/// let stream = futures::stream::iter(vec![Ok(1), Ok(2), Ok(3)]);
+/// consumer.consume(stream).await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Implementations
+///
+/// Common consumer implementations include:
+/// - [`VecConsumer`] - Collects items into a vector
+/// - [`FileConsumer`] - Writes data to files
+/// - [`KafkaConsumer`] - Produces to Kafka topics
+/// - [`ConsoleConsumer`] - Prints items to console
 #[async_trait]
 pub trait Consumer: Input
 where
   Self::Input: std::fmt::Debug + Clone + Send + Sync,
 {
+  /// Consumes a stream of items.
+  ///
+  /// This method is called by the pipeline to process the final stream.
+  /// The consumer should handle all items in the stream and perform the
+  /// appropriate action (write to file, send to database, etc.).
+  ///
+  /// # Arguments
+  ///
+  /// * `stream` - The stream of items to consume
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave::prelude::*;
+  ///
+  /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+  /// let mut consumer = VecConsumer::new();
+  /// let stream = futures::stream::iter(vec![Ok(1), Ok(2), Ok(3)]);
+  /// consumer.consume(stream).await?;
+  /// # Ok(())
+  /// # }
+  /// ```
   async fn consume(&mut self, stream: Self::InputStream);
 
   #[must_use]

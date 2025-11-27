@@ -21,28 +21,27 @@ browser-specific stream primitives.
 - Pure Rust API with zero-cost abstractions
 - Full async/await compatibility via `futures::Stream`
 - Fluent pipeline-style API with type-safe builder pattern
-- Comprehensive error handling system with multiple strategies
+- Comprehensive error handling system with multiple strategies (Stop, Skip, Retry, Custom)
 - Code-as-configuration — no external DSLs
 - Comprehensive test infrastructure
-- File-based producers and consumers
-- Common transformers (Map, Batch, RateLimit, CircuitBreaker, Retry, Filter)
+- **Integration Examples**: Kafka, Redis Streams, Database (PostgreSQL/MySQL/SQLite), HTTP Polling
+- **File Format Support**: CSV, JSONL, Parquet with streaming parsing
+- **Stateful Processing**: RunningSum, MovingAverage transformers
+- **Exactly-Once Processing**: Message deduplication with configurable windows
+- **Windowing Operations**: Tumbling, sliding, and count-based windows
+- **Advanced Transformers**: CircuitBreaker, Retry, Batch, RateLimit
+- **Common Transformers**: Map, Filter, Flatten, Reduce, and many more
 - HTTP middleware support with Axum integration
 - WebSocket support
 - Server-Sent Events support
 
 ### 🚧 Planned
 
-- Add stateful processing
-- Implement exactly-once processing
 - Support distributed processing
-- Implement windowing operations
-- Support more data formats
-- Add more specialized transformers
 - Fan-in/fan-out support
 - WASM-specific optimizations and documentation
 - Additional specialized transformers and utilities
 - Reusable pipeline components
-- More specialized producers and consumers
 - Add machine learning integration
 - Implement monitoring and metrics
 - Add SQL-like querying
@@ -196,8 +195,41 @@ assert_eq!(consumer.collected, vec!["1", "2", "3"]);
 ## 📚 Documentation
 
 - [API Documentation](https://docs.rs/streamweave)
-- [Examples](https://github.com/yourusername/streamweave/tree/main/examples)
+- [Local Documentation](target/doc/streamweave/index.html) - Generated with Doxidize (run `./bin/docs`)
+- [Getting Started Guide](docs/getting_started.md)
+- [Architecture Overview](docs/architecture.md)
+- [Common Use Cases](docs/guides/common_use_cases.md)
+- [Troubleshooting](docs/troubleshooting.md)
 - [Contributing Guide](https://github.com/yourusername/streamweave/blob/main/CONTRIBUTING.md)
+
+## 📖 Examples
+
+StreamWeave includes comprehensive examples demonstrating all major features:
+
+### Integration Examples
+- **[Kafka Integration](examples/kafka_integration/)** - Produce to and consume from Kafka topics
+- **[Redis Streams Integration](examples/redis_streams_integration/)** - XADD and XREAD operations with consumer groups
+- **[Database Integration](examples/database_integration/)** - Query PostgreSQL, MySQL, and SQLite with streaming results
+- **[HTTP Polling Integration](examples/http_poll_integration/)** - Poll HTTP endpoints with pagination, delta detection, and rate limiting
+
+### File Format Examples
+- **[File Formats](examples/file_formats/)** - CSV, JSONL, and Parquet read/write with streaming parsing
+
+### Processing Examples
+- **[Stateful Processing](examples/stateful_processing/)** - RunningSum and MovingAverage transformers
+- **[Error Handling](examples/error_handling/)** - Stop, Skip, Retry, and Custom error strategies
+- **[Advanced Transformers](examples/advanced_transformers/)** - CircuitBreaker, Retry, Batch, RateLimit
+- **[Windowing Operations](examples/windowing/)** - Tumbling, sliding, and count-based windows
+- **[Exactly-Once Processing](examples/exactly_once/)** - Message deduplication and checkpointing
+
+### Basic Examples
+- **[Basic Pipeline](examples/basic_pipeline/)** - Simple pipeline example
+- **[Advanced Pipeline](examples/advanced_pipeline/)** - Complex pipeline patterns
+
+Run any example with:
+```bash
+cargo run --example <example_name> --features <required_features>
+```
 
 ## 🤝 Contributing
 

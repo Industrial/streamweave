@@ -62,4 +62,3 @@ fn main() {
   eprintln!("Build with: cargo run --example database_integration --features database");
   std::process::exit(1);
 }
-

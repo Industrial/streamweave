@@ -204,9 +204,22 @@ jobs:
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
 
+      - name: Install Doxidize
+        run: cargo install doxidize
+
       - name: Generate documentation
         run: |
-          cargo doc --all-features --no-deps
+          # Try Doxidize first, fallback to cargo doc
+          if command -v doxidize &> /dev/null && ./bin/docs; then
+            echo "✅ Documentation generated with Doxidize"
+            # Copy Doxidize output to target/doc if different location
+            if [ -d "target/doc/doxidize" ]; then
+              cp -r target/doc/doxidize/* target/doc/ || true
+            fi
+          else
+            echo "⚠️  Falling back to cargo doc"
+            cargo doc --all-features --no-deps
+          fi
           echo '<meta http-equiv="refresh" content="0; url=streamweave/index.html">' > target/doc/index.html
 
       - name: Setup Pages

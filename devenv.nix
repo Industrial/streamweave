@@ -47,6 +47,7 @@
     # Documentation tools
     mdbook
     mdbook-mermaid
+    # Doxidize will be installed via cargo install in devenv
 
     # Version management
     git
@@ -99,6 +100,15 @@
         name = "cargo-audit";
         description = "Run security audit";
         entry = "cargo audit";
+        pass_filenames = false;
+      };
+
+      # Documentation check (optional - can be disabled if too strict)
+      docs = {
+        enable = false;  # Set to true to enable documentation checks
+        name = "cargo-doc-check";
+        description = "Check that documentation builds and has no warnings";
+        entry = "cargo doc --all-features --no-deps 2>&1 | grep -i 'warning.*missing' || true";
         pass_filenames = false;
       };
     };

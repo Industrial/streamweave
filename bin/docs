@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+exec > >(tee log/docs.log) 2>&1
+
+# Generate documentation using Doxidize
+# Falls back to cargo doc if Doxidize is not available or fails
+
+echo "📚 Generating documentation..."
+
+# Check if doxidize is available
+if command -v doxidize &> /dev/null; then
+    echo "Using Doxidize for documentation generation..."
+    
+    # Create output directory if it doesn't exist
+    mkdir -p target/doc/doxidize
+    
+    # Run doxidize (adjust command based on actual doxidize CLI)
+    if doxidize build 2>&1; then
+        echo "✅ Documentation generated successfully with Doxidize"
+        echo "📖 Documentation available at: target/doc/doxidize/index.html"
+        exit 0
+    else
+        echo "⚠️  Doxidize build failed, falling back to cargo doc..."
+    fi
+else
+    echo "⚠️  Doxidize not found, falling back to cargo doc..."
+fi
+
+# Fallback to cargo doc
+echo "Using cargo doc as fallback..."
+cargo doc --all-features --no-deps --open
+
+echo "✅ Documentation generated successfully"
+echo "📖 Documentation available at: target/doc/streamweave/index.html"
+

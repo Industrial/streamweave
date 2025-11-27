@@ -37,11 +37,42 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> ProducerConfig<T> {
   }
 }
 
+/// Trait for components that produce data streams.
+///
+/// Producers generate items that flow through the pipeline. They are the
+/// starting point of any StreamWeave pipeline.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::prelude::*;
+///
+/// let mut producer = ArrayProducer::new(vec![1, 2, 3, 4, 5]);
+/// let stream = producer.produce();
+/// // Stream yields: 1, 2, 3, 4, 5
+/// ```
+///
+/// # Implementations
+///
+/// Common producer implementations include:
+/// - [`ArrayProducer`] - Produces items from a vector
+/// - [`FileProducer`] - Reads data from files
+/// - [`KafkaProducer`] - Consumes from Kafka topics
+/// - [`DatabaseProducer`] - Queries database tables
 #[async_trait]
 pub trait Producer: Output
 where
   Self::Output: std::fmt::Debug + Clone + Send + Sync,
 {
+  /// Produces a stream of items.
+  ///
+  /// This method is called by the pipeline to generate the input stream.
+  /// The returned stream will be consumed by transformers and eventually
+  /// by consumers.
+  ///
+  /// # Returns
+  ///
+  /// A stream that yields items of type `Self::Output`.
   fn produce(&mut self) -> Self::OutputStream;
 
   #[must_use]

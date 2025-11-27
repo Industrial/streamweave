@@ -1,0 +1,71 @@
+# Doxidize Configuration for StreamWeave
+# Documentation generator configuration
+
+[package]
+name = "streamweave"
+version = "0.1.0"
+description = "Composable, async, stream-first computation in pure Rust"
+authors = ["Tom Wieland <tom.wieland@gmail.com>"]
+repository = "https://github.com/Industrial/streamweave"
+homepage = "https://github.com/Industrial/streamweave"
+documentation = "https://docs.rs/streamweave"
+
+[build]
+# Source directory containing Rust source files
+source_dir = "src"
+
+# Output directory for generated documentation
+output_dir = "target/doc/doxidize"
+
+# Documentation theme/styling
+theme = "default"
+
+# Enable search functionality
+search = true
+
+# Enable cross-references between modules and types
+cross_references = true
+
+# Documentation versioning
+versioning = false
+
+[navigation]
+# Navigation structure - will be auto-generated from module structure
+auto_generate = true
+
+# Custom navigation entries (in addition to auto-generated)
+custom = []
+
+[documentation]
+# Include private items in documentation
+include_private = false
+
+# Include test code in documentation
+include_tests = false
+
+# Include examples in documentation
+include_examples = true
+
+# Code examples directory
+examples_dir = "examples"
+
+# Additional markdown documentation to include
+additional_docs = [
+    "README.md",
+    "docs/getting_started.md",
+    "docs/architecture.md",
+    "docs/guides/common_use_cases.md",
+    "docs/troubleshooting.md",
+    "docs/WASM_GUIDE.md",
+    "docs/WASM_COMPATIBILITY.md",
+    "docs/KAFKA_SETUP.md",
+    "docs/BUNDLE_SIZE.md"
+]
+
+[styling]
+# Custom CSS file (optional)
+custom_css = null
+
+# Custom theme colors (optional)
+theme_colors = null
+

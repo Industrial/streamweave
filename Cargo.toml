@@ -85,6 +85,9 @@ database = ["dep:sqlx"]
 # HTTP polling integration (native only)
 http-poll = ["dep:reqwest"]
 
+# SQL query interface (native only - requires sqlparser)
+sql = ["dep:sqlparser"]
+
 [dependencies]
 # Async runtime and utilities - base features for both native and WASM
 tokio = { version = "1.0", default-features = false }
@@ -154,6 +157,9 @@ reqwest = { version = "0.12", optional = true, default-features = false, feature
   "brotli",
 ] }
 
+# SQL parser for SQL-like querying (native only)
+sqlparser = { version = "0.40", optional = true }
+
 # Utilities (mostly WASM-compatible)
 jsonwebtoken = "9.2"
 mime = "0.3"
@@ -187,6 +193,42 @@ path = "examples/redis_streams_integration/main.rs"
 [[example]]
 name = "database_integration"
 path = "examples/database_integration/main.rs"
+
+[[example]]
+name = "http_poll_integration"
+path = "examples/http_poll_integration/main.rs"
+
+[[example]]
+name = "metrics_monitoring"
+path = "examples/metrics_monitoring/main.rs"
+
+[[example]]
+name = "file_formats"
+path = "examples/file_formats/main.rs"
+
+[[example]]
+name = "stateful_processing"
+path = "examples/stateful_processing/main.rs"
+
+[[example]]
+name = "sql_dialect"
+path = "examples/sql_dialect/main.rs"
+
+[[example]]
+name = "error_handling"
+path = "examples/error_handling/main.rs"
+
+[[example]]
+name = "advanced_transformers"
+path = "examples/advanced_transformers/main.rs"
+
+[[example]]
+name = "windowing"
+path = "examples/windowing/main.rs"
+
+[[example]]
+name = "exactly_once"
+path = "examples/exactly_once/main.rs"
 
 [dev-dependencies]
 proptest = "1.4"
