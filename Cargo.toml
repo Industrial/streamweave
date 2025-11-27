@@ -197,7 +197,7 @@ tracing-opentelemetry = { version = "0.32", optional = true }
 # This is a feature flag for enabling Prometheus support, but no dependencies are needed
 
 # Utilities (mostly WASM-compatible)
-jsonwebtoken = "9.2"
+jsonwebtoken = "10.2"
 mime = "0.3"
 num-traits = "0.2.19"
 regex = "1.10"
