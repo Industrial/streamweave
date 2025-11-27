@@ -14,15 +14,15 @@
 //!
 //! # Core Concepts
 //!
-//! - [`Window`]: Represents a window boundary (start/end time)
+//! - [`TimeWindow`]: Represents a window boundary (start/end time)
 //! - [`WindowAssigner`]: Assigns elements to windows
 //! - [`WindowTrigger`]: Determines when to emit window results
 //! - [`LateDataPolicy`]: Handles elements arriving after window closes
 //!
 //! # Window Types
 //!
-//! - [`TumblingWindow`]: Fixed-size, non-overlapping windows
-//! - [`SlidingWindow`]: Fixed-size, overlapping windows
+//! - [`TumblingWindowAssigner`]: Fixed-size, non-overlapping windows
+//! - [`SlidingWindowAssigner`]: Fixed-size, overlapping windows
 //! - [`SessionWindow`]: Gap-based dynamic windows
 //!
 //! # Example

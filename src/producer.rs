@@ -73,10 +73,10 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> ProducerConfig<T> {
 /// # Implementations
 ///
 /// Common producer implementations include:
-/// - [`ArrayProducer`] - Produces items from a vector
-/// - [`FileProducer`] - Reads data from files
-/// - [`KafkaProducer`] - Consumes from Kafka topics
-/// - [`DatabaseProducer`] - Queries database tables
+/// - `ArrayProducer` - Produces items from a vector
+/// - `FileProducer` - Reads data from files
+/// - `KafkaProducer` - Consumes from Kafka topics
+/// - `DatabaseProducer` - Queries database tables
 #[async_trait]
 pub trait Producer: Output
 where

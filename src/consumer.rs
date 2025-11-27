@@ -45,10 +45,10 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> Default for ConsumerConfig<T> {
 /// # Implementations
 ///
 /// Common consumer implementations include:
-/// - [`VecConsumer`] - Collects items into a vector
-/// - [`FileConsumer`] - Writes data to files
-/// - [`KafkaConsumer`] - Produces to Kafka topics
-/// - [`ConsoleConsumer`] - Prints items to console
+/// - `VecConsumer` - Collects items into a vector
+/// - `FileConsumer` - Writes data to files
+/// - `KafkaConsumer` - Produces to Kafka topics
+/// - `ConsoleConsumer` - Prints items to console
 #[async_trait]
 pub trait Consumer: Input
 where

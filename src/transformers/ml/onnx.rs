@@ -113,7 +113,7 @@ impl Error for OnnxError {
 /// # }
 /// ```
 pub struct OnnxBackend<T: ExecutionProvider + Clone> {
-  /// The ONNX Runtime session (wrapped in Arc<RwLock> for thread safety and hot-swapping)
+  /// The ONNX Runtime session (wrapped in `Arc<RwLock>` for thread safety and hot-swapping)
   session: Arc<RwLock<Option<Session>>>,
   /// The execution provider (CPU, GPU, etc.)
   execution_provider: T,

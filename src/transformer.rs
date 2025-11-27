@@ -74,11 +74,11 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> TransformerConfig<T> {
 /// # Implementations
 ///
 /// Common transformer implementations include:
-/// - [`MapTransformer`] - Transforms each item
-/// - [`FilterTransformer`] - Filters items based on a predicate
-/// - [`BatchTransformer`] - Groups items into batches
-/// - [`RateLimitTransformer`] - Controls throughput
-/// - [`RetryTransformer`] - Retries failed items
+/// - `MapTransformer` - Transforms each item
+/// - `FilterTransformer` - Filters items based on a predicate
+/// - `BatchTransformer` - Groups items into batches
+/// - `RateLimitTransformer` - Controls throughput
+/// - `RetryTransformer` - Retries failed items
 #[async_trait]
 pub trait Transformer: Input + Output
 where

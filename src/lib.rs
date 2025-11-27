@@ -25,7 +25,6 @@
 //! ```
 
 #![warn(missing_docs)]
-#![warn(missing_doc_code_examples)]
 
 /// Consumer trait and related types.
 pub mod consumer;
