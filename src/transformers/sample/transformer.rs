@@ -4,8 +4,6 @@ use crate::transformers::sample::sample_transformer::SampleTransformer;
 use async_stream;
 use async_trait::async_trait;
 use futures::StreamExt;
-#[allow(unused_imports)]
-use rand::Rng;
 
 #[async_trait]
 impl<T> Transformer for SampleTransformer<T>
@@ -31,7 +29,17 @@ where
                 counter < 2  // Only emit the first two items
             };
             #[cfg(not(test))]
-            let should_emit = rand::thread_rng().gen_bool(probability);
+            let should_emit = {
+              use rand::rngs::StdRng;
+              use rand::{Rng, SeedableRng};
+              let mut rng = StdRng::seed_from_u64(
+                std::time::SystemTime::now()
+                  .duration_since(std::time::UNIX_EPOCH)
+                  .unwrap()
+                  .as_nanos() as u64,
+              );
+              rng.random_bool(probability)
+            };
 
             if should_emit {
                 yield item;

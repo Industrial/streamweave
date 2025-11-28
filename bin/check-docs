@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+exec > >(tee log/docs-check.log) 2>&1
+
+echo "📚 Checking documentation..."
+echo ""
+
+# Use RUSTDOCFLAGS to treat warnings as errors (like in bin/publish)
+# This ensures missing documentation blocks commits
+RUSTDOCFLAGS='-D warnings' cargo doc --all-features --no-deps 2>&1
+
+# If we get here, documentation check passed
+echo ""
+echo "✅ Documentation check passed: No missing documentation warnings found!"
+exit 0
+

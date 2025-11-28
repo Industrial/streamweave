@@ -197,7 +197,7 @@ tracing-opentelemetry = { version = "0.32", optional = true }
 # This is a feature flag for enabling Prometheus support, but no dependencies are needed
 
 # Utilities (mostly WASM-compatible)
-jsonwebtoken = "10.2"
+jsonwebtoken = { version = "10.2", default-features = false, features = ["rust_crypto"] }
 mime = "0.3"
 num-traits = "0.2.19"
 regex = "1.10"
@@ -209,6 +209,10 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.20", optional = true }
 base64 = "0.22.1"
 tokio-util = { version = "0.7.14", optional = true }
+
+# Configure getrandom for WASM support (required for some dependencies)
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
 
 [[example]]
 name = "basic_pipeline"

@@ -2,4 +2,4 @@
 set -euo pipefail
 exec > >(tee log/build.log) 2>&1 
 
-cargo build
+RUSTFLAGS='-D warnings' cargo build

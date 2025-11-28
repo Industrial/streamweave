@@ -11,7 +11,13 @@ impl Producer for RandomNumberProducer {
     let range = self.range.clone();
     let interval_duration = self.interval;
     let count = self.count;
-    let rng = StdRng::from_entropy();
+    // Use seeded RNG for reproducibility and compatibility
+    let rng = StdRng::seed_from_u64(
+      std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos() as u64,
+    );
 
     let initial_state = (rng, range, time::interval(interval_duration));
 
@@ -19,7 +25,7 @@ impl Producer for RandomNumberProducer {
       initial_state,
       move |(mut rng, range, mut interval)| async move {
         interval.tick().await;
-        let number = rng.gen_range(range.clone());
+        let number = rng.random_range(range.clone());
         let new_seed = std::time::SystemTime::now()
           .duration_since(std::time::UNIX_EPOCH)
           .unwrap()

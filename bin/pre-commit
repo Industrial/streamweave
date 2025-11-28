@@ -46,9 +46,9 @@ if ! bin/audit; then
 fi
 
 # Run docs
-echo "Running bin/docs-check..."
-if ! bin/docs-check; then
-  echo "bin/docs-check failed."
+echo "Running bin/check-docs..."
+if ! bin/check-docs; then
+  echo "bin/check-docs failed."
   exit 1
 fi
 

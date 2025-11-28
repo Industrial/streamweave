@@ -3,7 +3,7 @@ set -euo pipefail
 exec > >(tee log/check.log) 2>&1 
 
 echo "🔍 Running cargo check..."
-cargo check --all-targets --all-features
+RUSTFLAGS='-D warnings' cargo check --all-targets --all-features
 
 echo "🔍 Running clippy..."
 cargo clippy --all-targets --all-features -- -D warnings

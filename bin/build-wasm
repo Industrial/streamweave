@@ -11,7 +11,7 @@ cd "$PROJECT_ROOT"
 echo "🔨 Building WASM target..."
 
 # Build WASM release library (this produces rlib, not wasm directly)
-cargo build \
+RUSTFLAGS='-D warnings' cargo build \
   --target wasm32-unknown-unknown \
   --features wasm \
   --no-default-features \
