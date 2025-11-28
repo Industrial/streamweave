@@ -308,20 +308,39 @@ impl SqlParser {
       }),
       Expr::Function(func) => {
         let name = func.name.to_string();
-        let args = func
-          .args
-          .iter()
-          .map(|arg| match arg {
+        let mut args = Vec::new();
+        let mut has_wildcard = false;
+
+        // Collect arguments, handling wildcard for COUNT(*)
+        for arg in &func.args {
+          match arg {
             FunctionArg::Unnamed(arg_expr) => match arg_expr {
-              FunctionArgExpr::Expr(expr) => self.convert_expr(expr),
-              _ => Err(self.create_error("Unsupported function argument type".to_string())),
+              FunctionArgExpr::Expr(expr) => {
+                args.push(self.convert_expr(expr)?);
+              }
+              FunctionArgExpr::Wildcard => {
+                has_wildcard = true;
+                // For COUNT(*), we'll use Null as placeholder
+                args.push(Expression::Literal(Literal::Null));
+              }
+              _ => {
+                return Err(self.create_error("Unsupported function argument type".to_string()));
+              }
             },
             FunctionArg::Named { name: _, arg } => match arg {
-              FunctionArgExpr::Expr(expr) => self.convert_expr(expr),
-              _ => Err(self.create_error("Unsupported function argument type".to_string())),
+              FunctionArgExpr::Expr(expr) => {
+                args.push(self.convert_expr(expr)?);
+              }
+              FunctionArgExpr::Wildcard => {
+                has_wildcard = true;
+                args.push(Expression::Literal(Literal::Null));
+              }
+              _ => {
+                return Err(self.create_error("Unsupported function argument type".to_string()));
+              }
             },
-          })
-          .collect::<Result<Vec<_>, _>>()?;
+          }
+        }
 
         // Check if it's an aggregate function
         if func.distinct {
@@ -338,17 +357,17 @@ impl SqlParser {
           name.to_uppercase().as_str(),
           "COUNT" | "SUM" | "AVG" | "MIN" | "MAX" | "FIRST" | "LAST"
         ) {
-          if args.len() == 1 {
-            Ok(Expression::Aggregate {
-              name: name.to_uppercase(),
-              arg: Box::new(args[0].clone()),
-              distinct: false,
-            })
-          } else if name.to_uppercase() == "COUNT" && args.is_empty() {
-            // COUNT(*) case
+          if has_wildcard && name.to_uppercase() == "COUNT" {
+            // COUNT(*) case - use Null as placeholder
             Ok(Expression::Aggregate {
               name: "COUNT".to_string(),
               arg: Box::new(Expression::Literal(Literal::Null)),
+              distinct: false,
+            })
+          } else if args.len() == 1 {
+            Ok(Expression::Aggregate {
+              name: name.to_uppercase(),
+              arg: Box::new(args[0].clone()),
               distinct: false,
             })
           } else {
@@ -531,7 +550,14 @@ mod tests {
   fn test_parse_select_with_group_by() {
     let parser = SqlParser::new();
     let result = parser.parse("SELECT user_id, COUNT(*) FROM events GROUP BY user_id");
-    assert!(result.is_ok());
+    if let Err(e) = &result {
+      eprintln!("Parse error: {}", e);
+    }
+    assert!(
+      result.is_ok(),
+      "Parsing failed: {:?}",
+      result.as_ref().err()
+    );
     let query = result.unwrap();
     assert!(query.group_by.is_some());
     let group_by = query.group_by.unwrap();
@@ -543,7 +569,14 @@ mod tests {
     let parser = SqlParser::new();
     let result =
       parser.parse("SELECT user_id, COUNT(*), SUM(amount) FROM purchases GROUP BY user_id");
-    assert!(result.is_ok());
+    if let Err(e) = &result {
+      eprintln!("Parse error: {}", e);
+    }
+    assert!(
+      result.is_ok(),
+      "Parsing failed: {:?}",
+      result.as_ref().err()
+    );
     let query = result.unwrap();
     // Check that COUNT and SUM are recognized as aggregates
     let select_items = &query.select.items;

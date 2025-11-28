@@ -536,50 +536,40 @@ mod tests {
 
   #[tokio::test]
   async fn test_database_producer_basic_query() {
-    let _pool = setup_test_db().await;
+    let pool = setup_test_db().await;
 
     let config = DatabaseProducerConfig::default()
-      .with_connection_url("sqlite::memory:".to_string())
+      .with_connection_url("sqlite::memory:?cache=shared".to_string())
       .with_database_type(DatabaseType::Sqlite)
       .with_query("SELECT id, name, email, age, active, balance FROM users ORDER BY id");
 
-    // Manually set the pool (in real usage, the producer creates it)
-    let producer = DatabaseProducer::new(config);
+    // Use the same pool from setup_test_db
+    let pool = DatabasePool::Sqlite(pool);
+    let db_config = config.clone();
+    let query_result = execute_query(&pool, &db_config).await.unwrap();
+    let mut rows: Vec<DatabaseRow> = Vec::new();
+    let mut stream = std::pin::pin!(query_result);
 
-    // Create pool and manually execute query for testing
-    let db_config = producer.db_config().clone();
-    let test_pool = create_pool(&db_config).await.unwrap();
-
-    match test_pool {
-      DatabasePool::Sqlite(sqlite_pool) => {
-        let pool = DatabasePool::Sqlite(sqlite_pool);
-        let query_result = execute_query(&pool, &db_config).await.unwrap();
-        let mut rows: Vec<DatabaseRow> = Vec::new();
-        let mut stream = std::pin::pin!(query_result);
-
-        while let Some(result) = stream.next().await {
-          rows.push(result.unwrap());
-        }
-
-        assert_eq!(rows.len(), 5);
-
-        // Verify first row
-        let first_row = &rows[0];
-        assert_eq!(
-          first_row.get("id"),
-          Some(&serde_json::Value::Number(1.into()))
-        );
-        assert_eq!(
-          first_row.get("name"),
-          Some(&serde_json::Value::String("Alice".to_string()))
-        );
-        assert_eq!(
-          first_row.get("email"),
-          Some(&serde_json::Value::String("alice@example.com".to_string()))
-        );
-      }
-      _ => panic!("Expected SQLite pool"),
+    while let Some(result) = stream.next().await {
+      rows.push(result.unwrap());
     }
+
+    assert_eq!(rows.len(), 5);
+
+    // Verify first row
+    let first_row = &rows[0];
+    assert_eq!(
+      first_row.get("id"),
+      Some(&serde_json::Value::Number(1.into()))
+    );
+    assert_eq!(
+      first_row.get("name"),
+      Some(&serde_json::Value::String("Alice".to_string()))
+    );
+    assert_eq!(
+      first_row.get("email"),
+      Some(&serde_json::Value::String("alice@example.com".to_string()))
+    );
   }
 
   #[tokio::test]
