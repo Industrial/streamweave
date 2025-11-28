@@ -1,0 +1,14 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc af1bc8408ec29bac14f307c6d953bea9d63c73e6820d1a9ecf09f9dac8eb74be # shrinks to inputs = [[0]]
+cc 14da0082f7ccb184d460c8114d20309efe82aea54cc02448a4589903c757fed0 # shrinks to name1 = "A", name2 = "A", retry_count = 1
+cc 65c88e9b2e0783f805e0ff2c0e2442b4ba747ef74c5da79669844d2731d737e7 # shrinks to input = []
+cc 18454f87021e606c9f54cb838982d908df9a6163a2832ea254ea35e96bd725c3 # shrinks to input = []
+cc 24c8b5c9799d2c9abeed1fca7d918df53e977b2d9e0b04d0a9eb78c923735746 # shrinks to input = []
+cc ffea2315e90dacbdf0a31b4b00ff6a463e5724e6a987a01d0643638885e677af # shrinks to name = "_", input1 = [], input2 = []
+cc 0a42387b87a21e0de7750f03b3105b1b8e51aaf4d56451386e07d85039513be7 # shrinks to name1 = "A", name2 = "A", retry_count = 1
+cc bdcdf1c502e890db369624489892c982ef21526f6a83d066d14cda83e66e4da3 # shrinks to items = [0]

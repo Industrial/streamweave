@@ -29,12 +29,13 @@
         "id": "3",
         "title": "Convert tests in consumers/array/consumer.rs to proptest",
         "description": "Rewrite all tests in src/consumers/array/consumer.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/array/consumer.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/array/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/array/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-28T23:22:11.625Z"
       },
       {
         "id": "4",
@@ -1513,9 +1514,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-11-28T23:16:45.086Z",
+      "lastModified": "2025-11-28T23:22:11.625Z",
       "taskCount": 137,
-      "completedCount": 2,
+      "completedCount": 3,
       "tags": [
         "master"
       ]
