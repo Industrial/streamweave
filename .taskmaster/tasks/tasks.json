@@ -5,12 +5,13 @@
         "id": "1",
         "title": "Ensure proptest is properly configured in Cargo.toml",
         "description": "Verify proptest is properly configured in Cargo.toml dev-dependencies. Ensure it's available for all test modules and properly set up.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe project uses proptest for property-based testing, which is the leading and most flexible property-based testing library for Rust. We need to ensure proptest is properly configured and available for all test modules.\n\n## Requirements\n\n- Verify `proptest = \"1.4\"` is in dev-dependencies\n- Ensure proptest is available for all test modules\n- Verify the dependency compiles correctly\n- Ensure proptest features are properly configured if needed\n\n## Acceptance Criteria\n\n- [ ] proptest is confirmed in Cargo.toml dev-dependencies\n- [ ] `cargo check` runs successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] proptest is confirmed in Cargo.toml dev-dependencies\n- [ ] `cargo check` runs successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-28T23:08:44.998Z"
       },
       {
         "id": "2",
@@ -1510,9 +1511,13 @@
       }
     ],
     "metadata": {
-      "created": "2025-11-25T23:37:23.909Z",
-      "updated": "2025-01-27T12:35:00.000Z",
-      "description": "Tasks for master context"
+      "version": "1.0.0",
+      "lastModified": "2025-11-28T23:08:44.998Z",
+      "taskCount": 137,
+      "completedCount": 1,
+      "tags": [
+        "master"
+      ]
     }
   }
 }
