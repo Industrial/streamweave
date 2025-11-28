@@ -358,7 +358,8 @@ impl Producer for HttpRequestProducer {
           yield req.clone();
 
           // If streaming is enabled and we have a body stream, stream the chunks
-          if stream_body && let Some(body) = body_stream {
+          if stream_body
+            && let Some(body) = body_stream {
               // Convert Axum Body to a stream of bytes
               // Note: Chunk size is controlled by the body's natural boundaries
               // Future enhancement: buffer and split chunks to exact chunk_size
@@ -443,7 +444,7 @@ impl Producer for HttpRequestProducer {
                   }
                 }
               }
-          }
+            }
         }
         None => {
           let error: StreamError<HttpRequest> = StreamError::new(

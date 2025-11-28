@@ -254,22 +254,22 @@ impl StreamSqlDialect {
     seconds: Option<u64>,
     rows: Option<u64>,
   ) -> Result<(), String> {
-    if let (Some(max_seconds), Some(secs)) = (self.max_window_size_seconds, seconds)
-      && secs > max_seconds
-    {
-      return Err(format!(
-        "Window size {} seconds exceeds maximum of {} seconds",
-        secs, max_seconds
-      ));
+    if let (Some(max_seconds), Some(secs)) = (self.max_window_size_seconds, seconds) {
+      if secs > max_seconds {
+        return Err(format!(
+          "Window size {} seconds exceeds maximum of {} seconds",
+          secs, max_seconds
+        ));
+      }
     }
 
-    if let (Some(max_rows), Some(row_count)) = (self.max_window_size_rows, rows)
-      && row_count > max_rows
-    {
-      return Err(format!(
-        "Window size {} rows exceeds maximum of {} rows",
-        row_count, max_rows
-      ));
+    if let (Some(max_rows), Some(row_count)) = (self.max_window_size_rows, rows) {
+      if row_count > max_rows {
+        return Err(format!(
+          "Window size {} rows exceeds maximum of {} rows",
+          row_count, max_rows
+        ));
+      }
     }
 
     Ok(())

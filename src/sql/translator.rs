@@ -203,19 +203,21 @@ impl QueryTranslator {
     let mut aggregations = Vec::new();
 
     for item in items {
-      if let SelectItem::Expression { expr, alias } = item
-        && let Expression::Aggregate {
+      #[allow(clippy::collapsible_if)]
+      if let SelectItem::Expression { expr, alias } = item {
+        if let Expression::Aggregate {
           name,
           arg,
           distinct,
         } = expr
-      {
-        aggregations.push(Aggregation {
-          function: name.clone(),
-          expression: *arg.clone(),
-          distinct: *distinct,
-          alias: alias.clone(),
-        });
+        {
+          aggregations.push(Aggregation {
+            function: name.clone(),
+            expression: *arg.clone(),
+            distinct: *distinct,
+            alias: alias.clone(),
+          });
+        }
       }
     }
 

@@ -130,15 +130,18 @@ impl Producer for RedisStreamsProducer {
                 };
 
                 // Acknowledge message if auto-ack is enabled and using consumer groups
-                if redis_config.auto_ack && let Some(ref group) = redis_config.group
-                  && let Err(e) = connection.xack::<&str, &str, &str, ()>(&stream_name, group, &[&stream_id.id]).await {
-                    warn!(
-                      component = %component_name,
-                      message_id = %stream_id.id,
-                      error = %e,
-                      "Failed to acknowledge message"
-                    );
+                if redis_config.auto_ack {
+                  if let Some(ref group) = redis_config.group {
+                    if let Err(e) = connection.xack::<&str, &str, &str, ()>(&stream_name, group, &[&stream_id.id]).await {
+                      warn!(
+                        component = %component_name,
+                        message_id = %stream_id.id,
+                        error = %e,
+                        "Failed to acknowledge message"
+                      );
+                    }
                   }
+                }
 
                 yield message;
                 start_id = stream_id.id.clone();

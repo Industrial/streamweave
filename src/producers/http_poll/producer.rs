@@ -65,16 +65,20 @@ fn create_http_poll_stream(
     // Poll loop
     loop {
       // Check max requests limit
-      if let Some(max) = http_config.max_requests && request_count >= max {
-        break;
+      if let Some(max) = http_config.max_requests {
+        if request_count >= max {
+          break;
+        }
       }
 
       // Rate limiting
-      if let Some(rps) = http_config.rate_limit && let Some(last_time) = last_request_time {
-        let elapsed = last_time.elapsed();
-        let min_interval = Duration::from_secs_f64(1.0 / rps);
-        if elapsed < min_interval {
-          sleep(min_interval - elapsed).await;
+      if let Some(rps) = http_config.rate_limit {
+        if let Some(last_time) = last_request_time {
+          let elapsed = last_time.elapsed();
+          let min_interval = Duration::from_secs_f64(1.0 / rps);
+          if elapsed < min_interval {
+            sleep(min_interval - elapsed).await;
+          }
         }
       }
 
@@ -491,10 +495,10 @@ fn extract_items_from_response(
 
   if let Some(array) = body.as_array() {
     for item in array {
-      if let Some(obj) = item.as_object()
-        && obj.contains_key(id_field)
-      {
-        items.push(obj.clone());
+      if let Some(obj) = item.as_object() {
+        if obj.contains_key(id_field) {
+          items.push(obj.clone());
+        }
       }
     }
   } else if let Some(obj) = body.as_object() {
@@ -522,10 +526,10 @@ fn has_data(body: &serde_json::Value) -> bool {
   } else if let Some(obj) = body.as_object() {
     // Check common data fields
     for field in &["data", "items", "results", "records"] {
-      if let Some(array) = obj.get(*field).and_then(|v| v.as_array())
-        && !array.is_empty()
-      {
-        return true;
+      if let Some(array) = obj.get(*field).and_then(|v| v.as_array()) {
+        if !array.is_empty() {
+          return true;
+        }
       }
     }
     false
@@ -544,10 +548,10 @@ fn is_last_page(body: &serde_json::Value) -> bool {
     if let Some(next) = obj.get("next") {
       return next.is_null();
     }
-    if let Some(page) = obj.get("page").and_then(|v| v.as_u64())
-      && let Some(total_pages) = obj.get("total_pages").and_then(|v| v.as_u64())
-    {
-      return page >= total_pages;
+    if let Some(page) = obj.get("page").and_then(|v| v.as_u64()) {
+      if let Some(total_pages) = obj.get("total_pages").and_then(|v| v.as_u64()) {
+        return page >= total_pages;
+      }
     }
   }
   false

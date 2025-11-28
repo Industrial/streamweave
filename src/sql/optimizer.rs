@@ -120,9 +120,10 @@ impl QueryOptimizer {
         // If both sides are literals, evaluate the expression
         if let (Expression::Literal(left_lit), Expression::Literal(right_lit)) =
           (&left_folded, &right_folded)
-          && let Some(result) = self.evaluate_binary_op(left_lit, &op, right_lit)?
         {
-          return Ok(Expression::Literal(result));
+          if let Some(result) = self.evaluate_binary_op(left_lit, &op, right_lit)? {
+            return Ok(Expression::Literal(result));
+          }
         }
 
         Ok(Expression::BinaryOp {
@@ -133,10 +134,10 @@ impl QueryOptimizer {
       }
       Expression::UnaryOp { op, operand } => {
         let operand_folded = self.fold_constants(*operand)?;
-        if let Expression::Literal(lit) = &operand_folded
-          && let Some(result) = self.evaluate_unary_op(lit, &op)?
-        {
-          return Ok(Expression::Literal(result));
+        if let Expression::Literal(lit) = &operand_folded {
+          if let Some(result) = self.evaluate_unary_op(lit, &op)? {
+            return Ok(Expression::Literal(result));
+          }
         }
         Ok(Expression::UnaryOp {
           op,
