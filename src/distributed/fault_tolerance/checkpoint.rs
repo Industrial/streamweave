@@ -142,23 +142,53 @@ impl CheckpointStore for InMemoryCheckpointStore {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
+  use tokio::runtime::Runtime;
 
-  #[tokio::test]
-  async fn test_in_memory_checkpoint_store() {
+  async fn test_in_memory_checkpoint_store_async(
+    checkpoint_id: String,
+    worker_id: String,
+    partition_id: usize,
+    offset: u64,
+    state_data: Vec<u8>,
+  ) {
     let store = InMemoryCheckpointStore::new();
     let checkpoint = Checkpoint {
-      checkpoint_id: "cp-1".to_string(),
+      checkpoint_id: checkpoint_id.clone(),
       timestamp: chrono::Utc::now(),
-      worker_id: "worker-1".to_string(),
-      partition_id: 0,
-      offset: 100,
-      state_data: vec![1, 2, 3],
+      worker_id: worker_id.clone(),
+      partition_id,
+      offset,
+      state_data: state_data.clone(),
       metadata: HashMap::new(),
     };
 
     store.save(&checkpoint).await.unwrap();
-    let loaded = store.load("cp-1").await.unwrap();
-    assert_eq!(loaded.checkpoint_id, "cp-1");
-    assert_eq!(loaded.offset, 100);
+    let loaded = store.load(&checkpoint_id).await.unwrap();
+    assert_eq!(loaded.checkpoint_id, checkpoint_id);
+    assert_eq!(loaded.worker_id, worker_id);
+    assert_eq!(loaded.partition_id, partition_id);
+    assert_eq!(loaded.offset, offset);
+    assert_eq!(loaded.state_data, state_data);
+  }
+
+  proptest! {
+    #[test]
+    fn test_in_memory_checkpoint_store(
+      checkpoint_id in prop::string::string_regex("[a-zA-Z0-9_-]+").unwrap(),
+      worker_id in prop::string::string_regex("[a-zA-Z0-9_-]+").unwrap(),
+      partition_id in 0usize..1000,
+      offset in 0u64..1000000,
+      state_data in prop::collection::vec(any::<u8>(), 0..1000),
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_in_memory_checkpoint_store_async(
+        checkpoint_id,
+        worker_id,
+        partition_id,
+        offset,
+        state_data,
+      ));
+    }
   }
 }
