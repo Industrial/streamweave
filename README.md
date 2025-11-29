@@ -139,7 +139,7 @@ Add StreamWeave to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave = "0.2.1"
+streamweave = "0.2.2"
 ```
 
 ### Basic Usage
