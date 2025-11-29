@@ -139,6 +139,8 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
+  use proptest::proptest;
   use serde::Serialize;
 
   #[derive(Debug, Clone, Serialize)]
@@ -147,32 +149,46 @@ mod tests {
     message: String,
   }
 
-  #[test]
-  fn test_redis_streams_producer_config_default() {
-    let config = RedisStreamsProducerConfig::default();
-    assert_eq!(config.connection_url, "redis://localhost:6379");
-    assert_eq!(config.maxlen, None);
-    assert!(!config.approximate_maxlen);
-  }
+  proptest! {
+    #[test]
+    fn test_redis_streams_producer_config_default(_ in prop::num::u8::ANY) {
+      let config = RedisStreamsProducerConfig::default();
+      prop_assert_eq!(config.connection_url, "redis://localhost:6379");
+      prop_assert_eq!(config.maxlen, None);
+      prop_assert!(!config.approximate_maxlen);
+    }
 
-  #[test]
-  fn test_redis_streams_producer_config_builder() {
-    let config = RedisStreamsProducerConfig::default()
-      .with_connection_url("redis://redis:6379")
-      .with_stream("test-stream")
-      .with_maxlen(1000)
-      .with_approximate_maxlen(true);
+    #[test]
+    fn test_redis_streams_producer_config_builder(
+      connection_url in "redis://[a-zA-Z0-9.-]+:[0-9]+",
+      stream in "[a-zA-Z0-9-_]+",
+      maxlen in prop::option::of(1000usize..100000usize),
+      approximate_maxlen in prop::bool::ANY
+    ) {
+      let config = RedisStreamsProducerConfig::default()
+        .with_connection_url(connection_url.clone())
+        .with_stream(stream.clone())
+        .with_approximate_maxlen(approximate_maxlen);
 
-    assert_eq!(config.connection_url, "redis://redis:6379");
-    assert_eq!(config.stream, "test-stream");
-    assert_eq!(config.maxlen, Some(1000));
-    assert!(config.approximate_maxlen);
-  }
+      let config = if let Some(max) = maxlen {
+        config.with_maxlen(max)
+      } else {
+        config
+      };
 
-  #[test]
-  fn test_redis_streams_consumer_new() {
-    let redis_config = RedisStreamsProducerConfig::default().with_stream("test-stream");
-    let consumer = RedisStreamsConsumer::<TestEvent>::new(redis_config);
-    assert_eq!(consumer.redis_config().stream, "test-stream");
+      prop_assert_eq!(config.connection_url, connection_url);
+      prop_assert_eq!(config.stream, stream);
+      prop_assert_eq!(config.maxlen, maxlen);
+      prop_assert_eq!(config.approximate_maxlen, approximate_maxlen);
+    }
+
+    #[test]
+    fn test_redis_streams_consumer_new(
+      stream in "[a-zA-Z0-9-_]+"
+    ) {
+      let redis_config = RedisStreamsProducerConfig::default().with_stream(stream.clone());
+      let consumer = RedisStreamsConsumer::<TestEvent>::new(redis_config);
+      prop_assert_eq!(consumer.redis_config().stream.as_str(), stream.as_str());
+    }
   }
 }
