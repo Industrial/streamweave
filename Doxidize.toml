@@ -3,7 +3,7 @@
 
 [package]
 name = "streamweave"
-version = "0.2.1"
+version = "0.2.2"
 description = "Composable, async, stream-first computation in pure Rust"
 authors = ["Tom Wieland <tom.wieland@gmail.com>"]
 repository = "https://github.com/Industrial/streamweave"
