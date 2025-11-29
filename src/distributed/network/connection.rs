@@ -233,14 +233,23 @@ impl ConnectionManager for SimpleConnectionManager {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
+  use tokio::runtime::Runtime;
 
-  #[tokio::test]
-  async fn test_connection_manager_bind() {
+  async fn test_connection_manager_bind_async() {
     let mut manager = SimpleConnectionManager::new();
     let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
 
-    // Should bind successfully to any available port
+    // Should bind successfully to port 0 (OS assigns available port)
     let result = manager.bind(addr).await;
     assert!(result.is_ok());
+  }
+
+  proptest! {
+    #[test]
+    fn test_connection_manager_bind(_ in any::<u8>()) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_connection_manager_bind_async());
+    }
   }
 }
