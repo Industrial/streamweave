@@ -197,155 +197,169 @@
         "id": "17",
         "title": "Convert tests in consumers/hash_set/consumer.rs to proptest",
         "description": "Rewrite all tests in src/consumers/hash_set/consumer.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/hash_set/consumer.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/hash_set/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/hash_set/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T01:53:16.859Z"
       },
       {
         "id": "18",
         "title": "Convert tests in consumers/hash_set/input.rs to proptest",
         "description": "Rewrite all tests in src/consumers/hash_set/input.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/hash_set/input.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/hash_set/input.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/hash_set/input.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T02:01:06.925Z"
       },
       {
         "id": "19",
         "title": "Convert tests in consumers/jsonl/consumer.rs to proptest",
         "description": "Rewrite all tests in src/consumers/jsonl/consumer.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/jsonl/consumer.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/jsonl/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/jsonl/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T02:06:51.550Z"
       },
       {
         "id": "20",
         "title": "Convert tests in consumers/jsonl/jsonl_consumer.rs to proptest",
         "description": "Rewrite all tests in src/consumers/jsonl/jsonl_consumer.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/jsonl/jsonl_consumer.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/jsonl/jsonl_consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/jsonl/jsonl_consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T02:10:55.151Z"
       },
       {
         "id": "21",
         "title": "Convert tests in consumers/kafka/kafka_consumer.rs to proptest",
         "description": "Rewrite all tests in src/consumers/kafka/kafka_consumer.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/kafka/kafka_consumer.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/kafka/kafka_consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/kafka/kafka_consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T02:15:32.553Z"
       },
       {
         "id": "22",
         "title": "Convert tests in consumers/msgpack/consumer.rs to proptest",
         "description": "Rewrite all tests in src/consumers/msgpack/consumer.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/msgpack/consumer.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/msgpack/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/msgpack/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T02:20:30.299Z"
       },
       {
         "id": "23",
         "title": "Convert tests in consumers/msgpack/msgpack_consumer.rs to proptest",
         "description": "Rewrite all tests in src/consumers/msgpack/msgpack_consumer.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/msgpack/msgpack_consumer.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/msgpack/msgpack_consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/msgpack/msgpack_consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T02:26:08.889Z"
       },
       {
         "id": "24",
         "title": "Convert tests in consumers/parquet/consumer.rs to proptest",
         "description": "Rewrite all tests in src/consumers/parquet/consumer.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/parquet/consumer.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/parquet/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/parquet/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T02:33:24.702Z"
       },
       {
         "id": "25",
         "title": "Convert tests in consumers/parquet/parquet_consumer.rs to proptest",
         "description": "Rewrite all tests in src/consumers/parquet/parquet_consumer.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/parquet/parquet_consumer.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/parquet/parquet_consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/parquet/parquet_consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T02:39:25.028Z"
       },
       {
         "id": "26",
         "title": "Convert tests in consumers/redis_streams/redis_streams_consumer.rs to proptest",
         "description": "Rewrite all tests in src/consumers/redis_streams/redis_streams_consumer.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/redis_streams/redis_streams_consumer.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/redis_streams/redis_streams_consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/redis_streams/redis_streams_consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T02:44:42.528Z"
       },
       {
         "id": "27",
         "title": "Convert tests in consumers/string/consumer.rs to proptest",
         "description": "Rewrite all tests in src/consumers/string/consumer.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/string/consumer.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/string/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/string/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T02:49:46.617Z"
       },
       {
         "id": "28",
         "title": "Convert tests in consumers/string/input.rs to proptest",
         "description": "Rewrite all tests in src/consumers/string/input.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/string/input.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/string/input.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/string/input.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T02:54:40.335Z"
       },
       {
         "id": "29",
         "title": "Convert tests in consumers/vec/consumer.rs to proptest",
         "description": "Rewrite all tests in src/consumers/vec/consumer.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/vec/consumer.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/vec/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/vec/consumer.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T02:58:58.044Z"
       },
       {
         "id": "30",
         "title": "Convert tests in consumers/vec/input.rs to proptest",
         "description": "Rewrite all tests in src/consumers/vec/input.rs to use proptest for property-based testing instead of the current test implementation. Each test should be converted to use proptest's property testing macros and generators.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "## Context\n\nThe file src/consumers/vec/input.rs contains tests that need to be converted to use proptest for comprehensive property-based testing. We need to convert all existing tests to use proptest for better test coverage and more thorough testing.\n\n## Requirements\n\n- Convert all #[test] and #[tokio::test] functions to use proptest\n- Use proptest generators for test data generation\n- Maintain test coverage of all existing functionality\n- Ensure async tests work correctly with proptest\n- Replace any proptest usage with proptest equivalents\n\n## Acceptance Criteria\n\n- [ ] All tests in src/consumers/vec/input.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
         "testStrategy": "- [ ] All tests in src/consumers/vec/input.rs use proptest\n- [ ] All existing test functionality is preserved\n- [ ] Tests compile and run successfully\n- [ ] `bin/pre-commit` runs successfully (all checks pass)",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-11-29T03:09:17.718Z"
       },
       {
         "id": "31",
@@ -1527,9 +1541,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-11-29T01:40:27.483Z",
+      "lastModified": "2025-11-29T03:09:17.720Z",
       "taskCount": 137,
-      "completedCount": 16,
+      "completedCount": 30,
       "tags": [
         "master"
       ]
