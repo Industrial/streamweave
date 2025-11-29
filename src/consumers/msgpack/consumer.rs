@@ -184,9 +184,12 @@ where
 mod tests {
   use super::*;
   use futures::stream;
+  use proptest::prelude::*;
+  use proptest::proptest;
   use serde::{Deserialize, Serialize};
   use std::io::BufReader;
   use tempfile::NamedTempFile;
+  use tokio::runtime::Runtime;
 
   #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
   struct TestRecord {
@@ -194,21 +197,17 @@ mod tests {
     age: u32,
   }
 
-  #[tokio::test]
-  async fn test_msgpack_consumer_basic() {
+  fn test_record_strategy() -> impl Strategy<Value = TestRecord> {
+    (
+      prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(),
+      0u32..150u32,
+    )
+      .prop_map(|(name, age)| TestRecord { name, age })
+  }
+
+  async fn test_msgpack_consumer_basic_async(records: Vec<TestRecord>) {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
-
-    let records = vec![
-      TestRecord {
-        name: "Alice".to_string(),
-        age: 30,
-      },
-      TestRecord {
-        name: "Bob".to_string(),
-        age: 25,
-      },
-    ];
 
     let mut consumer = MsgPackConsumer::new(&path);
     let input_stream = Box::pin(stream::iter(records.clone()));
@@ -228,52 +227,13 @@ mod tests {
     drop(file);
   }
 
-  #[tokio::test]
-  async fn test_msgpack_consumer_empty_stream() {
-    let file = NamedTempFile::new().unwrap();
-    let path = file.path().to_str().unwrap().to_string();
-
-    let mut consumer = MsgPackConsumer::<TestRecord>::new(&path);
-    let input_stream = Box::pin(stream::iter(Vec::<TestRecord>::new()));
-    consumer.consume(input_stream).await;
-
-    // File should be empty
-    let content_len = std::fs::metadata(&path).unwrap().len();
-    assert_eq!(content_len, 0);
-    drop(file);
-  }
-
-  #[tokio::test]
-  async fn test_msgpack_consumer_component_info() {
-    let consumer = MsgPackConsumer::<TestRecord>::new("test.msgpack")
-      .with_name("my_msgpack_consumer".to_string());
-    let info = consumer.component_info();
-    assert_eq!(info.name, "my_msgpack_consumer");
-    assert_eq!(
-      info.type_name,
-      std::any::type_name::<MsgPackConsumer<TestRecord>>()
-    );
-  }
-
-  #[tokio::test]
-  async fn test_msgpack_roundtrip() {
+  async fn test_msgpack_roundtrip_async(records: Vec<TestRecord>) {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
 
     // Write
-    let original = vec![
-      TestRecord {
-        name: "Alice".to_string(),
-        age: 30,
-      },
-      TestRecord {
-        name: "Bob".to_string(),
-        age: 25,
-      },
-    ];
-
     let mut consumer = MsgPackConsumer::new(&path);
-    let input_stream = Box::pin(stream::iter(original.clone()));
+    let input_stream = Box::pin(stream::iter(records.clone()));
     consumer.consume(input_stream).await;
 
     // Read back
@@ -286,7 +246,57 @@ mod tests {
       result.push(item);
     }
 
-    assert_eq!(result, original);
+    assert_eq!(result, records);
     drop(file);
+  }
+
+  proptest! {
+    #[test]
+    fn test_msgpack_consumer_basic(
+      records in prop::collection::vec(test_record_strategy(), 0..20)
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_msgpack_consumer_basic_async(records));
+    }
+
+    #[test]
+    fn test_msgpack_consumer_empty_stream(_ in prop::num::u8::ANY) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(async {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut consumer = MsgPackConsumer::<TestRecord>::new(&path);
+        let input_stream = Box::pin(stream::iter(Vec::<TestRecord>::new()));
+        consumer.consume(input_stream).await;
+
+        // File should be empty
+        let content_len = std::fs::metadata(&path).unwrap().len();
+        assert_eq!(content_len, 0);
+        drop(file);
+      });
+    }
+
+    #[test]
+    fn test_msgpack_consumer_component_info(
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+    ) {
+      let consumer = MsgPackConsumer::<TestRecord>::new("test.msgpack")
+        .with_name(name.clone());
+      let info = consumer.component_info();
+      prop_assert_eq!(info.name, name);
+      prop_assert_eq!(
+        info.type_name,
+        std::any::type_name::<MsgPackConsumer<TestRecord>>()
+      );
+    }
+
+    #[test]
+    fn test_msgpack_roundtrip(
+      records in prop::collection::vec(test_record_strategy(), 0..20)
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_msgpack_roundtrip_async(records));
+    }
   }
 }
