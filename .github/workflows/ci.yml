@@ -228,7 +228,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Build WASM and check size
-        run: ./bin/wasm-build
+        run: ./bin/build-wasm
 
   # =============================================================================
   # CI SUCCESS GATE
