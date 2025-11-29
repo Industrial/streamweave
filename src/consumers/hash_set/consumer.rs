@@ -59,23 +59,37 @@ mod tests {
   use super::*;
   use crate::error::ErrorStrategy;
   use futures::stream;
+  use proptest::prelude::*;
+  use proptest::proptest;
+  use std::collections::HashSet;
+  use tokio::runtime::Runtime;
 
-  #[tokio::test]
-  async fn test_hash_set_consumer_basic() {
+  async fn test_hash_set_consumer_basic_async(input_data: Vec<i32>) {
     let mut consumer = HashSetConsumer::new();
-    let input = stream::iter(vec![1, 2, 3, 1]); // Duplicate 1
+    let input = stream::iter(input_data.clone());
     let boxed_input = Box::pin(input);
 
     consumer.consume(boxed_input).await;
     let set = consumer.into_set();
-    assert_eq!(set.len(), 3); // Should have 3 unique elements
-    assert!(set.contains(&1));
-    assert!(set.contains(&2));
-    assert!(set.contains(&3));
+
+    // Build expected set (HashSet automatically handles duplicates)
+    let expected_set: HashSet<i32> = input_data.into_iter().collect();
+
+    assert_eq!(set.len(), expected_set.len());
+    for item in expected_set {
+      assert!(set.contains(&item));
+    }
   }
 
-  #[tokio::test]
-  async fn test_hash_set_consumer_empty_input() {
+  proptest! {
+    #[test]
+    fn test_hash_set_consumer_basic(input_data in prop::collection::vec(any::<i32>(), 0..30)) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_hash_set_consumer_basic_async(input_data));
+    }
+  }
+
+  async fn test_hash_set_consumer_empty_input_async() {
     let mut consumer = HashSetConsumer::new();
     let input = stream::iter(Vec::<i32>::new());
     let boxed_input = Box::pin(input);
@@ -84,13 +98,28 @@ mod tests {
     assert!(consumer.into_set().is_empty());
   }
 
-  #[tokio::test]
-  async fn test_error_handling_strategies() {
-    let consumer = HashSetConsumer::new()
-      .with_error_strategy(ErrorStrategy::<i32>::Skip)
-      .with_name("test_consumer".to_string());
+  proptest! {
+    #[test]
+    fn test_hash_set_consumer_empty_input(_ in prop::num::u8::ANY) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_hash_set_consumer_empty_input_async());
+    }
+  }
 
-    assert_eq!(consumer.config().error_strategy, ErrorStrategy::<i32>::Skip);
-    assert_eq!(consumer.config().name, "test_consumer");
+  proptest! {
+    #[test]
+    fn test_error_handling_strategies(
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+    ) {
+      let consumer = HashSetConsumer::<i32>::new()
+        .with_error_strategy(ErrorStrategy::<i32>::Skip)
+        .with_name(name.clone());
+
+      prop_assert_eq!(
+        &consumer.config().error_strategy,
+        &ErrorStrategy::<i32>::Skip
+      );
+      prop_assert_eq!(consumer.config().name.as_str(), name.as_str());
+    }
   }
 }
