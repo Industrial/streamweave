@@ -224,9 +224,12 @@ where
 mod tests {
   use super::*;
   use futures::stream;
+  use proptest::prelude::*;
+  use proptest::proptest;
   use serde::{Deserialize, Serialize};
   use std::io::BufRead;
   use tempfile::NamedTempFile;
+  use tokio::runtime::Runtime;
 
   #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
   struct TestRecord {
@@ -234,21 +237,17 @@ mod tests {
     name: String,
   }
 
-  #[tokio::test]
-  async fn test_jsonl_consumer_basic() {
+  fn test_record_strategy() -> impl Strategy<Value = TestRecord> {
+    (
+      prop::num::u32::ANY,
+      prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(),
+    )
+      .prop_map(|(id, name)| TestRecord { id, name })
+  }
+
+  async fn test_jsonl_consumer_basic_async(records: Vec<TestRecord>) {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
-
-    let records = vec![
-      TestRecord {
-        id: 1,
-        name: "Alice".to_string(),
-      },
-      TestRecord {
-        id: 2,
-        name: "Bob".to_string(),
-      },
-    ];
 
     let mut consumer = JsonlConsumer::new(&path);
     let input_stream = Box::pin(stream::iter(records.clone()));
@@ -266,29 +265,18 @@ mod tests {
     drop(file);
   }
 
-  #[tokio::test]
-  async fn test_jsonl_consumer_append() {
+  async fn test_jsonl_consumer_append_async(records1: Vec<TestRecord>, records2: Vec<TestRecord>) {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
 
     // Write first batch
-    let records1 = vec![TestRecord {
-      id: 1,
-      name: "Alice".to_string(),
-    }];
-
     let mut consumer1 = JsonlConsumer::new(&path);
-    let input_stream1 = Box::pin(stream::iter(records1));
+    let input_stream1 = Box::pin(stream::iter(records1.clone()));
     consumer1.consume(input_stream1).await;
 
     // Append second batch
-    let records2 = vec![TestRecord {
-      id: 2,
-      name: "Bob".to_string(),
-    }];
-
     let mut consumer2 = JsonlConsumer::new(&path).with_append(true);
-    let input_stream2 = Box::pin(stream::iter(records2));
+    let input_stream2 = Box::pin(stream::iter(records2.clone()));
     consumer2.consume(input_stream2).await;
 
     // Read and verify the file
@@ -299,49 +287,25 @@ mod tests {
       .map(|l| serde_json::from_str(&l.unwrap()).unwrap())
       .collect();
 
-    assert_eq!(
-      lines,
-      vec![
-        TestRecord {
-          id: 1,
-          name: "Alice".to_string()
-        },
-        TestRecord {
-          id: 2,
-          name: "Bob".to_string()
-        },
-      ]
-    );
+    let mut expected = records1;
+    expected.extend(records2);
+    assert_eq!(lines, expected);
     drop(file);
   }
 
-  #[tokio::test]
-  async fn test_jsonl_consumer_overwrite() {
+  async fn test_jsonl_consumer_overwrite_async(
+    records1: Vec<TestRecord>,
+    records2: Vec<TestRecord>,
+  ) {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
 
     // Write first batch
-    let records1 = vec![
-      TestRecord {
-        id: 1,
-        name: "Alice".to_string(),
-      },
-      TestRecord {
-        id: 2,
-        name: "Bob".to_string(),
-      },
-    ];
-
     let mut consumer1 = JsonlConsumer::new(&path);
     let input_stream1 = Box::pin(stream::iter(records1));
     consumer1.consume(input_stream1).await;
 
     // Overwrite with second batch
-    let records2 = vec![TestRecord {
-      id: 3,
-      name: "Charlie".to_string(),
-    }];
-
     let mut consumer2 = JsonlConsumer::new(&path).with_append(false);
     let input_stream2 = Box::pin(stream::iter(records2.clone()));
     consumer2.consume(input_stream2).await;
@@ -358,8 +322,7 @@ mod tests {
     drop(file);
   }
 
-  #[tokio::test]
-  async fn test_jsonl_consumer_empty_stream() {
+  async fn test_jsonl_consumer_empty_stream_async() {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
 
@@ -373,28 +336,61 @@ mod tests {
     drop(file);
   }
 
-  #[tokio::test]
-  async fn test_jsonl_consumer_component_info() {
-    let consumer =
-      JsonlConsumer::<TestRecord>::new("test.jsonl").with_name("my_jsonl_consumer".to_string());
-    let info = consumer.component_info();
-    assert_eq!(info.name, "my_jsonl_consumer");
-    assert_eq!(
-      info.type_name,
-      std::any::type_name::<JsonlConsumer<TestRecord>>()
-    );
-  }
+  proptest! {
+    #[test]
+    fn test_jsonl_consumer_basic(
+      records in prop::collection::vec(test_record_strategy(), 0..20)
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_jsonl_consumer_basic_async(records));
+    }
 
-  #[tokio::test]
-  async fn test_jsonl_consumer_create_error_context() {
-    let consumer =
-      JsonlConsumer::<TestRecord>::new("test.jsonl").with_name("test_consumer".to_string());
-    let item = TestRecord {
-      id: 1,
-      name: "Test".to_string(),
-    };
-    let ctx = consumer.create_error_context(Some(item.clone()));
-    assert_eq!(ctx.component_name, "test_consumer");
-    assert_eq!(ctx.item, Some(item));
+    #[test]
+    fn test_jsonl_consumer_append(
+      records1 in prop::collection::vec(test_record_strategy(), 0..10),
+      records2 in prop::collection::vec(test_record_strategy(), 0..10)
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_jsonl_consumer_append_async(records1, records2));
+    }
+
+    #[test]
+    fn test_jsonl_consumer_overwrite(
+      records1 in prop::collection::vec(test_record_strategy(), 0..10),
+      records2 in prop::collection::vec(test_record_strategy(), 0..10)
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_jsonl_consumer_overwrite_async(records1, records2));
+    }
+
+    #[test]
+    fn test_jsonl_consumer_empty_stream(_ in prop::num::u8::ANY) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_jsonl_consumer_empty_stream_async());
+    }
+
+    #[test]
+    fn test_jsonl_consumer_component_info(
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+    ) {
+      let consumer = JsonlConsumer::<TestRecord>::new("test.jsonl").with_name(name.clone());
+      let info = consumer.component_info();
+      prop_assert_eq!(info.name, name);
+      prop_assert_eq!(
+        info.type_name,
+        std::any::type_name::<JsonlConsumer<TestRecord>>()
+      );
+    }
+
+    #[test]
+    fn test_jsonl_consumer_create_error_context(
+      record in test_record_strategy(),
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+    ) {
+      let consumer = JsonlConsumer::<TestRecord>::new("test.jsonl").with_name(name.clone());
+      let ctx = consumer.create_error_context(Some(record.clone()));
+      prop_assert_eq!(ctx.component_name, name);
+      prop_assert_eq!(ctx.item, Some(record));
+    }
   }
 }
