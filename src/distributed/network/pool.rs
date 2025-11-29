@@ -180,17 +180,78 @@ impl Default for ConnectionPool {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
+  use tokio::runtime::Runtime;
 
-  #[tokio::test]
-  async fn test_connection_pool_config() {
+  async fn test_connection_pool_config_async() {
     let config = ConnectionPoolConfig::default();
     assert_eq!(config.max_connections, 100);
     assert_eq!(config.max_idle, 10);
+    assert_eq!(config.connect_timeout, Duration::from_secs(30));
+    assert_eq!(config.idle_timeout, Duration::from_secs(300));
+    assert_eq!(config.max_retries, 3);
+    assert_eq!(config.retry_delay, Duration::from_secs(1));
   }
 
-  #[tokio::test]
-  async fn test_connection_pool_creation() {
-    let pool = ConnectionPool::new(ConnectionPoolConfig::default());
-    assert_eq!(pool.config.max_connections, 100);
+  async fn test_connection_pool_creation_async(
+    max_connections: usize,
+    max_idle: usize,
+    connect_timeout_secs: u64,
+    idle_timeout_secs: u64,
+    max_retries: usize,
+    retry_delay_secs: u64,
+  ) {
+    let config = ConnectionPoolConfig {
+      max_connections,
+      max_idle,
+      connect_timeout: Duration::from_secs(connect_timeout_secs),
+      idle_timeout: Duration::from_secs(idle_timeout_secs),
+      max_retries,
+      retry_delay: Duration::from_secs(retry_delay_secs),
+    };
+    let pool = ConnectionPool::new(config.clone());
+    assert_eq!(pool.config.max_connections, max_connections);
+    assert_eq!(pool.config.max_idle, max_idle);
+    assert_eq!(
+      pool.config.connect_timeout,
+      Duration::from_secs(connect_timeout_secs)
+    );
+    assert_eq!(
+      pool.config.idle_timeout,
+      Duration::from_secs(idle_timeout_secs)
+    );
+    assert_eq!(pool.config.max_retries, max_retries);
+    assert_eq!(
+      pool.config.retry_delay,
+      Duration::from_secs(retry_delay_secs)
+    );
+  }
+
+  proptest! {
+    #[test]
+    fn test_connection_pool_config(_ in any::<u8>()) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_connection_pool_config_async());
+    }
+
+    #[test]
+    fn test_connection_pool_creation(
+      max_connections in 1usize..1000,
+      max_idle in 1usize..100,
+      connect_timeout_secs in 1u64..3600,
+      idle_timeout_secs in 1u64..3600,
+      max_retries in 0usize..10,
+      retry_delay_secs in 0u64..60,
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_connection_pool_creation_async(
+        max_connections,
+        max_idle,
+        connect_timeout_secs,
+        idle_timeout_secs,
+        max_retries,
+        retry_delay_secs,
+      ));
+    }
   }
 }
