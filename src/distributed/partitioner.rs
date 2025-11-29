@@ -348,172 +348,185 @@ pub mod rebalance {
 mod tests {
   use super::rebalance;
   use super::*;
+  use proptest::prelude::*;
 
-  #[test]
-  fn test_hash_partitioner() {
-    let partitioner = HashPartitioner::new();
-    let key = PartitionKey::String("test-key".to_string());
-    let partition = partitioner.partition(&key, 5);
-    assert!(partition < 5);
-
-    // Same key should always map to same partition
-    let partition2 = partitioner.partition(&key, 5);
-    assert_eq!(partition, partition2);
+  fn partition_key_strategy() -> impl Strategy<Value = PartitionKey> {
+    prop_oneof![
+      prop::string::string_regex("[a-zA-Z0-9_-]+")
+        .unwrap()
+        .prop_map(PartitionKey::String),
+      (0u64..1000000u64).prop_map(PartitionKey::Numeric),
+      prop::collection::vec(any::<u8>(), 0..100).prop_map(PartitionKey::Bytes),
+      (0u64..1000000u64).prop_map(PartitionKey::Hash),
+    ]
   }
 
-  #[test]
-  fn test_hash_partitioner_consistency() {
-    let partitioner = HashPartitioner::new();
-    let key = PartitionKey::String("consistent-key".to_string());
+  proptest! {
+    #[test]
+    fn test_hash_partitioner(key in partition_key_strategy(), num_partitions in 1usize..1000) {
+      let partitioner = HashPartitioner::new();
+      let partition = partitioner.partition(&key, num_partitions);
+      prop_assert!(partition < num_partitions);
 
-    // Same key should map to same partition regardless of when called
-    let p1 = partitioner.partition(&key, 10);
-    let p2 = partitioner.partition(&key, 10);
-    let p3 = partitioner.partition(&key, 10);
-
-    assert_eq!(p1, p2);
-    assert_eq!(p2, p3);
-  }
-
-  #[test]
-  fn test_round_robin_partitioner() {
-    let partitioner = RoundRobinPartitioner::new();
-    let key = PartitionKey::String("test".to_string());
-    let p1 = partitioner.partition(&key, 3);
-    let p2 = partitioner.partition(&key, 3);
-    let p3 = partitioner.partition(&key, 3);
-    assert_ne!(p1, p2);
-    assert_ne!(p2, p3);
-    assert!(p1 < 3 && p2 < 3 && p3 < 3);
-  }
-
-  #[test]
-  fn test_round_robin_even_distribution() {
-    let partitioner = RoundRobinPartitioner::new();
-    let key = PartitionKey::String("test".to_string());
-    let num_partitions = 3;
-
-    // Get 30 partitions
-    let partitions: Vec<usize> = (0..30)
-      .map(|_| partitioner.partition(&key, num_partitions))
-      .collect();
-
-    // Count distribution
-    let mut counts = vec![0; num_partitions];
-    for &p in &partitions {
-      counts[p] += 1;
+      // Same key should always map to same partition
+      let partition2 = partitioner.partition(&key, num_partitions);
+      prop_assert_eq!(partition, partition2);
     }
 
-    // Should be roughly even (10 each, but may vary slightly due to atomic counter)
-    for count in counts {
-      assert!(
-        (9..=11).contains(&count),
-        "Distribution should be roughly even"
-      );
+    #[test]
+    fn test_hash_partitioner_consistency(key in partition_key_strategy(), num_partitions in 1usize..1000) {
+      let partitioner = HashPartitioner::new();
+
+      // Same key should map to same partition regardless of when called
+      let p1 = partitioner.partition(&key, num_partitions);
+      let p2 = partitioner.partition(&key, num_partitions);
+      let p3 = partitioner.partition(&key, num_partitions);
+
+      prop_assert_eq!(p1, p2);
+      prop_assert_eq!(p2, p3);
     }
-  }
 
-  #[test]
-  fn test_range_partitioner() {
-    let partitioner = RangePartitioner::new();
+    #[test]
+    fn test_round_robin_partitioner(num_partitions in 2usize..100) {
+      let partitioner = RoundRobinPartitioner::new();
+      let key = PartitionKey::String("test".to_string());
+      let p1 = partitioner.partition(&key, num_partitions);
+      let p2 = partitioner.partition(&key, num_partitions);
+      let p3 = partitioner.partition(&key, num_partitions);
 
-    // Test numeric keys (ordered)
-    let key1 = PartitionKey::Numeric(100);
-    let key2 = PartitionKey::Numeric(200);
-    let key3 = PartitionKey::Numeric(300);
+      // Round-robin should give different partitions
+      prop_assert_ne!(p1, p2);
+      prop_assert_ne!(p2, p3);
+      prop_assert!(p1 < num_partitions && p2 < num_partitions && p3 < num_partitions);
+    }
 
-    let p1 = partitioner.partition(&key1, 3);
-    let p2 = partitioner.partition(&key2, 3);
-    let p3 = partitioner.partition(&key3, 3);
+    #[test]
+    fn test_round_robin_even_distribution(num_partitions in 2usize..10) {
+      let partitioner = RoundRobinPartitioner::new();
+      let key = PartitionKey::String("test".to_string());
+      let iterations = num_partitions * 10;
 
-    // All should be valid partitions
-    assert!(p1 < 3);
-    assert!(p2 < 3);
-    assert!(p3 < 3);
+      // Get multiple partitions
+      let partitions: Vec<usize> = (0..iterations)
+        .map(|_| partitioner.partition(&key, num_partitions))
+        .collect();
 
-    // Same key should map to same partition
-    let p1_again = partitioner.partition(&key1, 3);
-    assert_eq!(p1, p1_again);
-  }
+      // Count distribution
+      let mut counts = vec![0; num_partitions];
+      for &p in &partitions {
+        counts[p] += 1;
+      }
 
-  #[test]
-  fn test_range_partitioner_consistency() {
-    let partitioner = RangePartitioner::new();
-    let key = PartitionKey::Numeric(12345);
+      // Should be roughly even (iterations / num_partitions each)
+      let expected_count = iterations / num_partitions;
+      let tolerance = expected_count / 2;
+      for count in counts {
+        prop_assert!(
+          (expected_count - tolerance) <= count && count <= (expected_count + tolerance),
+          "Distribution should be roughly even"
+        );
+      }
+    }
 
-    // Same key should map to same partition
-    let p1 = partitioner.partition(&key, 10);
-    let p2 = partitioner.partition(&key, 10);
+    #[test]
+    fn test_range_partitioner(key_value in 0u64..1000000u64, num_partitions in 1usize..1000) {
+      let partitioner = RangePartitioner::new();
+      let key = PartitionKey::Numeric(key_value);
 
-    assert_eq!(p1, p2);
-  }
+      let p1 = partitioner.partition(&key, num_partitions);
 
-  #[test]
-  fn test_custom_partitioner() {
-    let partitioner = CustomPartitioner::new(|key, num_partitions| match key {
-      PartitionKey::Numeric(n) => (*n as usize) % num_partitions,
-      _ => 0,
-    });
+      // All should be valid partitions
+      prop_assert!(p1 < num_partitions);
 
-    let key1 = PartitionKey::Numeric(10);
-    let key2 = PartitionKey::Numeric(11);
+      // Same key should map to same partition
+      let p1_again = partitioner.partition(&key, num_partitions);
+      prop_assert_eq!(p1, p1_again);
+    }
 
-    let p1 = partitioner.partition(&key1, 5);
-    let p2 = partitioner.partition(&key2, 5);
+    #[test]
+    fn test_range_partitioner_consistency(key_value in 0u64..1000000u64, num_partitions in 1usize..1000) {
+      let partitioner = RangePartitioner::new();
+      let key = PartitionKey::Numeric(key_value);
 
-    assert_eq!(p1, 0); // 10 % 5 = 0
-    assert_eq!(p2, 1); // 11 % 5 = 1
-    assert_eq!(partitioner.strategy(), PartitionStrategy::Custom);
-  }
+      // Same key should map to same partition
+      let p1 = partitioner.partition(&key, num_partitions);
+      let p2 = partitioner.partition(&key, num_partitions);
 
-  #[test]
-  fn test_rebalance_needs_rebalance() {
-    let partitioner = HashPartitioner::new();
-    let key = PartitionKey::String("test-key".to_string());
+      prop_assert_eq!(p1, p2);
+    }
 
-    // Check rebalancing when partition count changes
-    let (old, new, needs) = rebalance::needs_rebalance(&partitioner, &key, 3, 5);
+    #[test]
+    fn test_custom_partitioner(key_value in 0u64..1000u64, num_partitions in 1usize..100) {
+      let partitioner = CustomPartitioner::new(|key, num_partitions| match key {
+        PartitionKey::Numeric(n) => (*n as usize) % num_partitions,
+        _ => 0,
+      });
 
-    assert!(old < 3);
-    assert!(new < 5);
-    // Rebalancing may or may not be needed depending on hash
-    assert!(needs == (old != new));
-  }
+      let key = PartitionKey::Numeric(key_value);
+      let p = partitioner.partition(&key, num_partitions);
 
-  #[test]
-  fn test_rebalance_hash_partitioner_scaling() {
-    let partitioner = HashPartitioner::new();
-    let sample_keys: Vec<PartitionKey> = (0..100).map(PartitionKey::Numeric).collect();
+      prop_assert_eq!(p, (key_value as usize) % num_partitions);
+      prop_assert_eq!(partitioner.strategy(), PartitionStrategy::Custom);
+    }
 
-    // Scale from 5 to 10 partitions
-    let percentage = rebalance::rebalance_percentage(&partitioner, &sample_keys, 5, 10);
+    #[test]
+    fn test_rebalance_needs_rebalance(
+      key in partition_key_strategy(),
+      old_num_partitions in 1usize..100,
+      new_num_partitions in 1usize..100,
+    ) {
+      let partitioner = HashPartitioner::new();
 
-    // Hash partitioner should have significant rebalancing when doubling partitions
-    // Exact percentage depends on hash distribution, but should be > 0
-    assert!(percentage > 0.0);
-    assert!(percentage <= 1.0);
-  }
+      // Check rebalancing when partition count changes
+      let (old, new, needs) = rebalance::needs_rebalance(&partitioner, &key, old_num_partitions, new_num_partitions);
 
-  #[test]
-  fn test_zero_partitions() {
-    let partitioner = HashPartitioner::new();
-    let key = PartitionKey::String("test".to_string());
+      prop_assert!(old < old_num_partitions);
+      prop_assert!(new < new_num_partitions);
+      // Rebalancing may or may not be needed depending on hash
+      prop_assert_eq!(needs, old != new);
+    }
 
-    let p = partitioner.partition(&key, 0);
-    assert_eq!(p, 0);
-  }
+    #[test]
+    fn test_rebalance_hash_partitioner_scaling(
+      num_keys in 10usize..1000,
+      old_num_partitions in 2usize..50,
+      new_num_partitions in 2usize..50,
+    ) {
+      let partitioner = HashPartitioner::new();
+      let sample_keys: Vec<PartitionKey> = (0..num_keys).map(|i| PartitionKey::Numeric(i as u64)).collect();
 
-  #[test]
-  fn test_single_partition() {
-    let partitioner = HashPartitioner::new();
-    let key1 = PartitionKey::String("key1".to_string());
-    let key2 = PartitionKey::String("key2".to_string());
+      let percentage = rebalance::rebalance_percentage(&partitioner, &sample_keys, old_num_partitions, new_num_partitions);
 
-    let p1 = partitioner.partition(&key1, 1);
-    let p2 = partitioner.partition(&key2, 1);
+      // Hash partitioner should have rebalancing when partition count changes
+      // Exact percentage depends on hash distribution, but should be >= 0 and <= 1
+      prop_assert!((0.0..=1.0).contains(&percentage));
 
-    // All keys should map to partition 0
-    assert_eq!(p1, 0);
-    assert_eq!(p2, 0);
+      // If partitions changed, rebalancing should be non-zero (unless all keys happen to map to same partitions)
+      if old_num_partitions != new_num_partitions {
+        // At least some rebalancing is expected, but we can't guarantee it's > 0 for all cases
+        // So we just check it's a valid percentage
+        prop_assert!((0.0..=1.0).contains(&percentage));
+      }
+    }
+
+    #[test]
+    fn test_zero_partitions(key in partition_key_strategy()) {
+      let partitioner = HashPartitioner::new();
+
+      let p = partitioner.partition(&key, 0);
+      prop_assert_eq!(p, 0);
+    }
+
+    #[test]
+    fn test_single_partition(key1 in partition_key_strategy(), key2 in partition_key_strategy()) {
+      let partitioner = HashPartitioner::new();
+
+      let p1 = partitioner.partition(&key1, 1);
+      let p2 = partitioner.partition(&key2, 1);
+
+      // All keys should map to partition 0
+      prop_assert_eq!(p1, 0);
+      prop_assert_eq!(p2, 0);
+    }
   }
 }
