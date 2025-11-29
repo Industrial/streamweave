@@ -198,12 +198,55 @@ mod tests {
     }
   }
 
-  #[tokio::test]
-  async fn test_failure_detector_creation() {
+  use proptest::prelude::*;
+  use tokio::runtime::Runtime;
+
+  async fn test_failure_detector_creation_async(
+    heartbeat_timeout_secs: u64,
+    check_interval_secs: u64,
+    failure_threshold: usize,
+  ) {
     let coordinator = MockCoordinator {
       workers: HashMap::new(),
     };
-    let detector = FailureDetector::new(coordinator, FailureDetectorConfig::default());
-    assert_eq!(detector.config.failure_threshold, 3);
+    let config = FailureDetectorConfig {
+      heartbeat_timeout: Duration::from_secs(heartbeat_timeout_secs),
+      check_interval: Duration::from_secs(check_interval_secs),
+      failure_threshold,
+    };
+    let detector = FailureDetector::new(coordinator, config.clone());
+    assert_eq!(
+      detector.config.heartbeat_timeout,
+      Duration::from_secs(heartbeat_timeout_secs)
+    );
+    assert_eq!(
+      detector.config.check_interval,
+      Duration::from_secs(check_interval_secs)
+    );
+    assert_eq!(detector.config.failure_threshold, failure_threshold);
+  }
+
+  proptest! {
+    #[test]
+    fn test_failure_detector_creation(
+      heartbeat_timeout_secs in 1u64..3600,
+      check_interval_secs in 1u64..3600,
+      failure_threshold in 1usize..100,
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_failure_detector_creation_async(
+        heartbeat_timeout_secs,
+        check_interval_secs,
+        failure_threshold,
+      ));
+    }
+
+    #[test]
+    fn test_failure_detector_config_default(_ in any::<u8>()) {
+      let config = FailureDetectorConfig::default();
+      prop_assert_eq!(config.heartbeat_timeout, Duration::from_secs(30));
+      prop_assert_eq!(config.check_interval, Duration::from_secs(10));
+      prop_assert_eq!(config.failure_threshold, 3);
+    }
   }
 }
