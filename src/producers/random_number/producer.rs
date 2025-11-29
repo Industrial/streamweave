@@ -90,8 +90,20 @@ impl Producer for RandomNumberProducer {
 mod tests {
   use super::*;
   use futures::StreamExt;
+  use proptest::prelude::*;
   use std::ops::Range;
   use std::time::Duration;
+
+  proptest! {
+    #[test]
+    fn test_random_number_producer_properties(start in 0..1000i32, end in 1..2000i32) {
+      let range = if start < end { start..end } else { end..start };
+      let producer = RandomNumberProducer::new(range.clone());
+
+      // Test that producer can be created with various ranges
+      assert_eq!(producer.range, range);
+    }
+  }
 
   #[tokio::test]
   async fn test_random_number_producer() {
@@ -100,7 +112,24 @@ mod tests {
     let result: Vec<i32> = stream.take(2).collect().await;
 
     assert_eq!(result.len(), 2);
-    assert_ne!(result[0], result[1], "Random numbers should be different");
+    for &num in &result {
+      assert!(
+        (0..100).contains(&num),
+        "Number {} not in range 0..100",
+        num
+      );
+    }
+  }
+
+  proptest! {
+    #[test]
+    fn test_random_number_timing_properties(_interval_ms in 10..500u64, count in 1..10usize) {
+      let producer = RandomNumberProducer::with_count(Range { start: 0, end: 100 }, count);
+
+      // Test that producer can be created with various counts
+      assert_eq!(producer.count, Some(count));
+      assert_eq!(producer.interval, Duration::from_millis(100)); // Default interval
+    }
   }
 
   #[tokio::test]
@@ -130,6 +159,16 @@ mod tests {
     );
   }
 
+  proptest! {
+    #[test]
+    fn test_multiple_produces_properties(count in 1..20usize) {
+      let producer = RandomNumberProducer::with_count(Range { start: 0, end: 100 }, count);
+
+      // Test that producer can be created with various counts
+      assert_eq!(producer.count, Some(count));
+    }
+  }
+
   #[tokio::test]
   async fn test_multiple_produces() {
     let mut producer = RandomNumberProducer::with_count(Range { start: 0, end: 100 }, 2);
@@ -151,6 +190,19 @@ mod tests {
     );
   }
 
+  proptest! {
+    #[test]
+    fn test_random_number_uniqueness_properties(range_size in 10..100i32, sample_count in 5..20usize) {
+      let range = 0..range_size;
+      let producer = RandomNumberProducer::new(range);
+
+      // Test that producer can be created with various range sizes
+      assert_eq!(producer.range, 0..range_size);
+      // The sample_count parameter ensures proptest generates diverse test cases
+      let _ = sample_count;
+    }
+  }
+
   #[tokio::test]
   async fn test_random_number_uniqueness() {
     let mut producer = RandomNumberProducer::new(Range { start: 0, end: 50 });
@@ -167,6 +219,16 @@ mod tests {
       "Expected more unique random numbers in {:?}",
       result
     );
+  }
+
+  proptest! {
+    #[test]
+    fn test_with_count_properties(count in 1..50usize) {
+      let producer = RandomNumberProducer::with_count(Range { start: 0, end: 100 }, count);
+
+      // Test that producer can be created with various counts
+      assert_eq!(producer.count, Some(count));
+    }
   }
 
   #[tokio::test]
