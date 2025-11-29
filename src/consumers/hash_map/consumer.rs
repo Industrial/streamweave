@@ -60,46 +60,72 @@ mod tests {
   use super::*;
   use crate::error::ErrorStrategy;
   use futures::stream;
+  use proptest::prelude::*;
+  use proptest::proptest;
+  use std::collections::HashMap;
+  use tokio::runtime::Runtime;
 
-  #[tokio::test]
-  async fn test_hash_map_consumer_basic() {
+  async fn test_hash_map_consumer_basic_async(input_data: Vec<(i32, String)>) {
     let mut consumer = HashMapConsumer::new();
-    let input = stream::iter(vec![
-      (1, "one"),
-      (2, "two"),
-      (3, "three"),
-      (1, "one_updated"),
-    ]);
+    let input = stream::iter(input_data.clone());
     let boxed_input = Box::pin(input);
 
     consumer.consume(boxed_input).await;
     let map = consumer.into_map();
-    assert_eq!(map.len(), 3);
-    assert_eq!(map.get(&1), Some(&"one_updated"));
-    assert_eq!(map.get(&2), Some(&"two"));
-    assert_eq!(map.get(&3), Some(&"three"));
+
+    // Build expected map from input data (later values overwrite earlier ones)
+    let mut expected_map = HashMap::new();
+    for (key, value) in input_data {
+      expected_map.insert(key, value);
+    }
+
+    assert_eq!(map.len(), expected_map.len());
+    for (key, expected_value) in expected_map {
+      assert_eq!(map.get(&key), Some(&expected_value));
+    }
   }
 
-  #[tokio::test]
-  async fn test_hash_map_consumer_empty_input() {
+  proptest! {
+    #[test]
+    fn test_hash_map_consumer_basic(
+      input_data in prop::collection::vec((any::<i32>(), any::<String>()), 0..30)
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_hash_map_consumer_basic_async(input_data));
+    }
+  }
+
+  async fn test_hash_map_consumer_empty_input_async() {
     let mut consumer = HashMapConsumer::new();
-    let input = stream::iter(Vec::<(i32, &str)>::new());
+    let input = stream::iter(Vec::<(i32, String)>::new());
     let boxed_input = Box::pin(input);
 
     consumer.consume(boxed_input).await;
     assert!(consumer.into_map().is_empty());
   }
 
-  #[tokio::test]
-  async fn test_error_handling_strategies() {
-    let consumer = HashMapConsumer::new()
-      .with_error_strategy(ErrorStrategy::<(i32, &str)>::Skip)
-      .with_name("test_consumer".to_string());
+  proptest! {
+    #[test]
+    fn test_hash_map_consumer_empty_input(_ in prop::num::u8::ANY) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_hash_map_consumer_empty_input_async());
+    }
+  }
 
-    assert_eq!(
-      consumer.config().error_strategy,
-      ErrorStrategy::<(i32, &str)>::Skip
-    );
-    assert_eq!(consumer.config().name, "test_consumer");
+  proptest! {
+    #[test]
+    fn test_error_handling_strategies(
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+    ) {
+      let consumer = HashMapConsumer::<i32, String>::new()
+        .with_error_strategy(ErrorStrategy::<(i32, String)>::Skip)
+        .with_name(name.clone());
+
+      prop_assert_eq!(
+        &consumer.config().error_strategy,
+        &ErrorStrategy::<(i32, String)>::Skip
+      );
+      prop_assert_eq!(consumer.config().name.as_str(), name.as_str());
+    }
   }
 }
