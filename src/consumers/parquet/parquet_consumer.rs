@@ -191,54 +191,71 @@ impl ParquetConsumer {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
+  use proptest::proptest;
 
-  #[test]
-  fn test_parquet_consumer_new() {
-    let consumer = ParquetConsumer::new("test.parquet");
-    assert_eq!(consumer.path(), &PathBuf::from("test.parquet"));
-  }
+  proptest! {
+    #[test]
+    fn test_parquet_consumer_new(path in "[a-zA-Z0-9_./-]+\\.parquet") {
+      let consumer = ParquetConsumer::new(path.clone());
+      prop_assert_eq!(consumer.path(), &PathBuf::from(path));
+    }
 
-  #[test]
-  fn test_parquet_consumer_builder() {
-    let consumer = ParquetConsumer::new("test.parquet")
-      .with_name("test_consumer".to_string())
-      .with_compression(ParquetCompression::Zstd)
-      .with_max_row_group_size(2048);
+    #[test]
+    fn test_parquet_consumer_builder(
+      path in "[a-zA-Z0-9_./-]+\\.parquet",
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap(),
+      compression in prop::sample::select(vec![
+        ParquetCompression::Uncompressed,
+        ParquetCompression::Snappy,
+        ParquetCompression::Lz4,
+        ParquetCompression::Zstd,
+      ]),
+      max_row_group_size in 1024usize..1048576usize
+    ) {
+      let consumer = ParquetConsumer::new(path.clone())
+        .with_name(name.clone())
+        .with_compression(compression)
+        .with_max_row_group_size(max_row_group_size);
 
-    assert_eq!(consumer.path(), &PathBuf::from("test.parquet"));
-    assert_eq!(consumer.config.name, "test_consumer");
-    assert_eq!(
-      consumer.parquet_config.compression,
-      ParquetCompression::Zstd
-    );
-    assert_eq!(consumer.parquet_config.max_row_group_size, 2048);
-  }
+      prop_assert_eq!(consumer.path(), &PathBuf::from(path));
+      prop_assert_eq!(consumer.config.name, name);
+      prop_assert_eq!(consumer.parquet_config.compression, compression);
+      prop_assert_eq!(consumer.parquet_config.max_row_group_size, max_row_group_size);
+    }
 
-  #[test]
-  fn test_parquet_write_config_default() {
-    let config = ParquetWriteConfig::default();
-    assert_eq!(config.compression, ParquetCompression::Snappy);
-    assert_eq!(config.max_row_group_size, 1024 * 1024);
-    assert_eq!(config.writer_version, ParquetWriterVersion::V2);
-  }
+    #[test]
+    fn test_parquet_write_config_default(_ in prop::num::u8::ANY) {
+      let config = ParquetWriteConfig::default();
+      prop_assert_eq!(config.compression, ParquetCompression::Snappy);
+      prop_assert_eq!(config.max_row_group_size, 1024 * 1024);
+      prop_assert_eq!(config.writer_version, ParquetWriterVersion::V2);
+    }
 
-  #[test]
-  fn test_parquet_compression_conversion() {
-    assert!(matches!(
-      Compression::from(ParquetCompression::Uncompressed),
-      Compression::UNCOMPRESSED
-    ));
-    assert!(matches!(
-      Compression::from(ParquetCompression::Snappy),
-      Compression::SNAPPY
-    ));
-    assert!(matches!(
-      Compression::from(ParquetCompression::Lz4),
-      Compression::LZ4
-    ));
-    assert!(matches!(
-      Compression::from(ParquetCompression::Zstd),
-      Compression::ZSTD(_)
-    ));
+    #[test]
+    fn test_parquet_compression_conversion(
+      compression in prop::sample::select(vec![
+        ParquetCompression::Uncompressed,
+        ParquetCompression::Snappy,
+        ParquetCompression::Lz4,
+        ParquetCompression::Zstd,
+      ])
+    ) {
+      let result: Compression = compression.into();
+      match compression {
+        ParquetCompression::Uncompressed => {
+          prop_assert!(matches!(result, Compression::UNCOMPRESSED));
+        }
+        ParquetCompression::Snappy => {
+          prop_assert!(matches!(result, Compression::SNAPPY));
+        }
+        ParquetCompression::Lz4 => {
+          prop_assert!(matches!(result, Compression::LZ4));
+        }
+        ParquetCompression::Zstd => {
+          prop_assert!(matches!(result, Compression::ZSTD(_)));
+        }
+      }
+    }
   }
 }
