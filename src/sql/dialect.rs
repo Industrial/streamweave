@@ -249,6 +249,7 @@ impl StreamSqlDialect {
   }
 
   /// Validate window size against limits
+  #[allow(clippy::collapsible_if)]
   pub fn validate_window_size(
     &self,
     seconds: Option<u64>,

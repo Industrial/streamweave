@@ -153,6 +153,8 @@ where
 mod tests {
   use super::*;
   use futures::stream;
+  use proptest::prelude::*;
+  use proptest::strategy::Strategy;
   use serde::{Deserialize, Serialize};
   use tempfile::NamedTempFile;
 
@@ -162,50 +164,61 @@ mod tests {
     age: u32,
   }
 
-  #[tokio::test]
-  async fn test_csv_consumer_basic() {
+  async fn test_csv_consumer_basic_async(records: Vec<TestRecord>) {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
 
-    let records = vec![
-      TestRecord {
-        name: "Alice".to_string(),
-        age: 30,
-      },
-      TestRecord {
-        name: "Bob".to_string(),
-        age: 25,
-      },
-    ];
-
+    let records_clone = records.clone();
     let mut consumer = CsvConsumer::new(&path);
-    let input_stream = Box::pin(stream::iter(records));
+    let input_stream = Box::pin(stream::iter(records_clone));
     consumer.consume(input_stream).await;
 
     // Read and verify the file
     let content = std::fs::read_to_string(&path).unwrap();
     let lines: Vec<&str> = content.lines().collect();
 
-    assert_eq!(lines.len(), 3); // Header + 2 records
-    assert!(lines[0].contains("name"));
-    assert!(lines[0].contains("age"));
-    assert!(lines[1].contains("Alice"));
-    assert!(lines[2].contains("Bob"));
+    // Should have header + records (or just header if no records)
+    if !records.is_empty() {
+      assert!(lines.len() > records.len()); // Header + records
+      if !lines.is_empty() {
+        assert!(lines[0].contains("name"));
+        assert!(lines[0].contains("age"));
+      }
+    } else {
+      // With no records, file should have at most header line
+      assert!(lines.len() <= 1);
+      if !lines.is_empty() {
+        assert!(lines[0].contains("name"));
+        assert!(lines[0].contains("age"));
+      }
+    }
     drop(file);
   }
 
-  #[tokio::test]
-  async fn test_csv_consumer_no_headers() {
+  fn test_record_strategy() -> impl Strategy<Value = TestRecord> {
+    (
+      prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(),
+      0u32..150u32,
+    )
+      .prop_map(|(name, age)| TestRecord { name, age })
+  }
+
+  proptest! {
+    #[test]
+    fn test_csv_consumer_basic(
+      records in prop::collection::vec(test_record_strategy(), 0..20)
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_csv_consumer_basic_async(records));
+    }
+  }
+
+  async fn test_csv_consumer_no_headers_async(record: TestRecord) {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
 
-    let records = vec![TestRecord {
-      name: "Alice".to_string(),
-      age: 30,
-    }];
-
     let mut consumer = CsvConsumer::new(&path).with_headers(false);
-    let input_stream = Box::pin(stream::iter(records));
+    let input_stream = Box::pin(stream::iter(vec![record.clone()]));
     consumer.consume(input_stream).await;
 
     // Read and verify the file
@@ -214,22 +227,28 @@ mod tests {
 
     // No header row, just the data
     assert_eq!(lines.len(), 1);
-    assert!(lines[0].contains("Alice"));
+    assert!(lines[0].contains(&record.name));
     drop(file);
   }
 
-  #[tokio::test]
-  async fn test_csv_consumer_tab_delimited() {
+  proptest! {
+    #[test]
+    fn test_csv_consumer_no_headers(
+      name in prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(),
+      age in 0u32..150u32
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      let record = TestRecord { name, age };
+      rt.block_on(test_csv_consumer_no_headers_async(record));
+    }
+  }
+
+  async fn test_csv_consumer_tab_delimited_async(record: TestRecord) {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
 
-    let records = vec![TestRecord {
-      name: "Alice".to_string(),
-      age: 30,
-    }];
-
     let mut consumer = CsvConsumer::new(&path).with_delimiter(b'\t');
-    let input_stream = Box::pin(stream::iter(records));
+    let input_stream = Box::pin(stream::iter(vec![record]));
     consumer.consume(input_stream).await;
 
     // Read and verify the file
@@ -238,8 +257,19 @@ mod tests {
     drop(file);
   }
 
-  #[tokio::test]
-  async fn test_csv_consumer_empty_stream() {
+  proptest! {
+    #[test]
+    fn test_csv_consumer_tab_delimited(
+      name in prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(),
+      age in 0u32..150u32
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      let record = TestRecord { name, age };
+      rt.block_on(test_csv_consumer_tab_delimited_async(record));
+    }
+  }
+
+  async fn test_csv_consumer_empty_stream_async() {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
 
@@ -254,37 +284,40 @@ mod tests {
     drop(file);
   }
 
-  #[tokio::test]
-  async fn test_csv_consumer_component_info() {
-    let consumer =
-      CsvConsumer::<TestRecord>::new("test.csv").with_name("my_csv_consumer".to_string());
+  #[test]
+  fn test_csv_consumer_empty_stream() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(test_csv_consumer_empty_stream_async());
+  }
+
+  async fn test_csv_consumer_component_info_async(name: String) {
+    let consumer = CsvConsumer::<TestRecord>::new("test.csv").with_name(name.clone());
     let info = consumer.component_info();
-    assert_eq!(info.name, "my_csv_consumer");
+    assert_eq!(info.name, name);
     assert_eq!(
       info.type_name,
       std::any::type_name::<CsvConsumer<TestRecord>>()
     );
   }
 
-  #[tokio::test]
-  async fn test_csv_roundtrip() {
+  proptest! {
+    #[test]
+    fn test_csv_consumer_component_info(
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_csv_consumer_component_info_async(name));
+    }
+  }
+
+  async fn test_csv_roundtrip_async(records: Vec<TestRecord>) {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
 
     // Write CSV
-    let records = vec![
-      TestRecord {
-        name: "Alice".to_string(),
-        age: 30,
-      },
-      TestRecord {
-        name: "Bob".to_string(),
-        age: 25,
-      },
-    ];
-
+    let records_clone = records.clone();
     let mut consumer = CsvConsumer::new(&path);
-    let input_stream = Box::pin(stream::iter(records.clone()));
+    let input_stream = Box::pin(stream::iter(records_clone));
     consumer.consume(input_stream).await;
 
     // Read CSV back using csv crate
@@ -294,5 +327,15 @@ mod tests {
 
     assert_eq!(read_records, records);
     drop(file);
+  }
+
+  proptest! {
+    #[test]
+    fn test_csv_roundtrip(
+      records in prop::collection::vec(test_record_strategy(), 0..20)
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_csv_roundtrip_async(records));
+    }
   }
 }

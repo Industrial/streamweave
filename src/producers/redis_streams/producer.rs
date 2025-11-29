@@ -24,6 +24,7 @@ use tracing::{error, warn};
 
 #[async_trait]
 #[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
+#[allow(clippy::collapsible_if)]
 impl Producer for RedisStreamsProducer {
   /// Produces a stream of messages from Redis Streams.
   ///

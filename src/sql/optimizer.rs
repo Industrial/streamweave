@@ -111,6 +111,7 @@ impl QueryOptimizer {
 
   /// Fold constant expressions (evaluate at compile time)
   #[allow(clippy::result_large_err)] // Boxing errors intentionally to reduce Result size
+  #[allow(clippy::collapsible_if)]
   fn fold_constants(&self, expr: Expression) -> Result<Expression, StreamError<String>> {
     match expr {
       Expression::BinaryOp { left, op, right } => {

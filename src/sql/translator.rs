@@ -203,7 +203,7 @@ impl QueryTranslator {
     let mut aggregations = Vec::new();
 
     for item in items {
-      #[allow(clippy::collapsible_if)]
+      #[allow(clippy::collapsible_if, clippy::collapsible_match)]
       if let SelectItem::Expression { expr, alias } = item {
         if let Expression::Aggregate {
           name,

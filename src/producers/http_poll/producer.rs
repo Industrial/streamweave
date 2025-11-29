@@ -25,6 +25,7 @@ use tokio::time::sleep;
 use tracing::{error, warn};
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[allow(clippy::collapsible_if)]
 fn create_http_poll_stream(
   client_option: Option<reqwest::Client>,
   http_config: HttpPollProducerConfig,
@@ -487,6 +488,7 @@ async fn handle_pagination(
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[allow(clippy::collapsible_if)]
 fn extract_items_from_response(
   body: &serde_json::Value,
   id_field: &str,
@@ -520,6 +522,7 @@ fn extract_items_from_response(
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[allow(clippy::collapsible_if)]
 fn has_data(body: &serde_json::Value) -> bool {
   if let Some(array) = body.as_array() {
     !array.is_empty()
@@ -539,6 +542,7 @@ fn has_data(body: &serde_json::Value) -> bool {
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[allow(clippy::collapsible_if)]
 fn is_last_page(body: &serde_json::Value) -> bool {
   // Check for common pagination indicators
   if let Some(obj) = body.as_object() {
