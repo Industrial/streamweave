@@ -118,27 +118,38 @@ mod tests {
   use super::*;
   use crate::error::ErrorStrategy;
   use futures::stream;
+  use proptest::prelude::*;
+  use proptest::proptest;
   use tempfile::NamedTempFile;
   use tokio::fs as tokio_fs;
+  use tokio::runtime::Runtime;
 
-  #[tokio::test]
-  async fn test_file_consumer_basic() {
+  async fn test_file_consumer_basic_async(input_data: Vec<String>) {
     let temp_file = NamedTempFile::new().unwrap();
     let path = temp_file.path().to_str().unwrap().to_string();
     let mut consumer = FileConsumer::new(path.clone());
 
-    let input = stream::iter(vec!["line1", "line2"].into_iter().map(|s| s.to_string()));
+    let expected_contents = input_data.concat();
+    let input = stream::iter(input_data.clone());
     let boxed_input = Box::pin(input);
 
     consumer.consume(boxed_input).await;
 
     // Use async file reading to ensure all writes are complete
     let contents = tokio_fs::read_to_string(path).await.unwrap();
-    assert_eq!(contents, "line1line2");
+    assert_eq!(contents, expected_contents);
+    drop(temp_file);
   }
 
-  #[tokio::test]
-  async fn test_file_consumer_empty_input() {
+  proptest! {
+    #[test]
+    fn test_file_consumer_basic(input_data in prop::collection::vec(any::<String>(), 0..20)) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_file_consumer_basic_async(input_data));
+    }
+  }
+
+  async fn test_file_consumer_empty_input_async() {
     let temp_file = NamedTempFile::new().unwrap();
     let path = temp_file.path().to_str().unwrap().to_string();
     let mut consumer = FileConsumer::new(path.clone());
@@ -151,20 +162,33 @@ mod tests {
     // Use async file reading to ensure all writes are complete
     let contents = tokio_fs::read_to_string(path).await.unwrap();
     assert_eq!(contents, "");
+    drop(temp_file);
   }
 
-  #[tokio::test]
-  async fn test_error_handling_strategies() {
-    let temp_file = NamedTempFile::new().unwrap();
-    let path = temp_file.path().to_str().unwrap().to_string();
-    let consumer = FileConsumer::new(path)
-      .with_error_strategy(ErrorStrategy::<String>::Skip)
-      .with_name("test_consumer".to_string());
+  proptest! {
+    #[test]
+    fn test_file_consumer_empty_input(_ in prop::num::u8::ANY) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_file_consumer_empty_input_async());
+    }
+  }
 
-    assert_eq!(
-      consumer.config().error_strategy,
-      ErrorStrategy::<String>::Skip
-    );
-    assert_eq!(consumer.config().name, "test_consumer");
+  proptest! {
+    #[test]
+    fn test_error_handling_strategies(
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+    ) {
+      let temp_file = NamedTempFile::new().unwrap();
+      let path = temp_file.path().to_str().unwrap().to_string();
+      let consumer = FileConsumer::new(path)
+        .with_error_strategy(ErrorStrategy::<String>::Skip)
+        .with_name(name.clone());
+
+      prop_assert_eq!(
+        &consumer.config().error_strategy,
+        &ErrorStrategy::<String>::Skip
+      );
+      prop_assert_eq!(consumer.config().name.as_str(), name.as_str());
+    }
   }
 }
