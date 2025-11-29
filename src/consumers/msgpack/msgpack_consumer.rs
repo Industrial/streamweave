@@ -105,6 +105,8 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
+  use proptest::proptest;
   use serde::Serialize;
 
   #[derive(Debug, Clone, Serialize)]
@@ -113,29 +115,34 @@ mod tests {
     age: u32,
   }
 
-  #[test]
-  fn test_msgpack_consumer_new() {
-    let consumer = MsgPackConsumer::<TestRecord>::new("test.msgpack");
-    assert_eq!(consumer.path(), &PathBuf::from("test.msgpack"));
-  }
+  proptest! {
+    #[test]
+    fn test_msgpack_consumer_new(path in "[a-zA-Z0-9_./-]+\\.msgpack") {
+      let consumer = MsgPackConsumer::<TestRecord>::new(path.clone());
+      prop_assert_eq!(consumer.path(), &PathBuf::from(path));
+    }
 
-  #[test]
-  fn test_msgpack_consumer_builder() {
-    let consumer = MsgPackConsumer::<TestRecord>::new("test.msgpack")
-      .with_name("test_consumer".to_string())
-      .with_error_strategy(ErrorStrategy::Skip);
+    #[test]
+    fn test_msgpack_consumer_builder(
+      path in "[a-zA-Z0-9_./-]+\\.msgpack",
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+    ) {
+      let consumer = MsgPackConsumer::<TestRecord>::new(path.clone())
+        .with_name(name.clone())
+        .with_error_strategy(ErrorStrategy::Skip);
 
-    assert_eq!(consumer.path(), &PathBuf::from("test.msgpack"));
-    assert_eq!(consumer.config.name, "test_consumer");
-    assert!(matches!(
-      consumer.config.error_strategy,
-      ErrorStrategy::Skip
-    ));
-  }
+      prop_assert_eq!(consumer.path(), &PathBuf::from(path));
+      prop_assert_eq!(consumer.config.name, name);
+      prop_assert!(matches!(
+        consumer.config.error_strategy,
+        ErrorStrategy::Skip
+      ));
+    }
 
-  #[test]
-  fn test_msgpack_write_config_default() {
-    let config = MsgPackWriteConfig::default();
-    assert!(config.named_fields);
+    #[test]
+    fn test_msgpack_write_config_default(_ in prop::num::u8::ANY) {
+      let config = MsgPackWriteConfig::default();
+      prop_assert!(config.named_fields);
+    }
   }
 }
