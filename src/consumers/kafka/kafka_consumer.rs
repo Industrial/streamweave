@@ -192,6 +192,8 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
+  use proptest::proptest;
   use serde::Serialize;
 
   #[derive(Debug, Clone, Serialize)]
@@ -200,36 +202,47 @@ mod tests {
     message: String,
   }
 
-  #[test]
-  fn test_kafka_producer_config_default() {
-    let config = KafkaProducerConfig::default();
-    assert_eq!(config.bootstrap_servers, "localhost:9092");
-    assert_eq!(config.acks, "all");
-    assert_eq!(config.retries, 3);
-  }
+  proptest! {
+    #[test]
+    fn test_kafka_producer_config_default(_ in prop::num::u8::ANY) {
+      let config = KafkaProducerConfig::default();
+      prop_assert_eq!(config.bootstrap_servers, "localhost:9092");
+      prop_assert_eq!(config.acks, "all");
+      prop_assert_eq!(config.retries, 3);
+    }
 
-  #[test]
-  fn test_kafka_producer_config_builder() {
-    let config = KafkaProducerConfig::default()
-      .with_bootstrap_servers("kafka:9092")
-      .with_topic("test-topic")
-      .with_client_id("test-client")
-      .with_acks("1")
-      .with_retries(5)
-      .with_compression_type("gzip");
+    #[test]
+    fn test_kafka_producer_config_builder(
+      bootstrap_servers in "[a-zA-Z0-9.-]+:[0-9]+",
+      topic in "[a-zA-Z0-9-_]+",
+      client_id in prop::string::string_regex("[a-zA-Z0-9-_]+").unwrap(),
+      acks in prop::sample::select(vec!["0", "1", "all"]),
+      retries in 0u32..10u32,
+      compression in prop::sample::select(vec!["none", "gzip", "snappy", "lz4", "zstd"])
+    ) {
+      let config = KafkaProducerConfig::default()
+        .with_bootstrap_servers(bootstrap_servers.clone())
+        .with_topic(topic.clone())
+        .with_client_id(client_id.clone())
+        .with_acks(acks)
+        .with_retries(retries)
+        .with_compression_type(compression);
 
-    assert_eq!(config.bootstrap_servers, "kafka:9092");
-    assert_eq!(config.topic, "test-topic");
-    assert_eq!(config.client_id, Some("test-client".to_string()));
-    assert_eq!(config.acks, "1");
-    assert_eq!(config.retries, 5);
-    assert_eq!(config.compression_type, "gzip");
-  }
+      prop_assert_eq!(config.bootstrap_servers, bootstrap_servers);
+      prop_assert_eq!(config.topic, topic);
+      prop_assert_eq!(config.client_id, Some(client_id));
+      prop_assert_eq!(config.acks.as_str(), acks);
+      prop_assert_eq!(config.retries, retries);
+      prop_assert_eq!(config.compression_type.as_str(), compression);
+    }
 
-  #[test]
-  fn test_kafka_consumer_new() {
-    let kafka_config = KafkaProducerConfig::default().with_topic("test-topic");
-    let consumer = KafkaConsumer::<TestEvent>::new(kafka_config);
-    assert_eq!(consumer.kafka_config().topic, "test-topic");
+    #[test]
+    fn test_kafka_consumer_new(
+      topic in "[a-zA-Z0-9-_]+"
+    ) {
+      let kafka_config = KafkaProducerConfig::default().with_topic(topic.clone());
+      let consumer = KafkaConsumer::<TestEvent>::new(kafka_config);
+      prop_assert_eq!(consumer.kafka_config().topic.as_str(), topic.as_str());
+    }
   }
 }
