@@ -204,29 +204,27 @@ jobs:
       - name: Check licenses and dependencies
         run: cargo deny check
 
+   # =============================================================================
+   # WASM BUILD & SIZE CHECK
+   # =============================================================================
+   wasm:
+     name: 🌐 WASM Build & Size Check
+     runs-on: ubuntu-latest
+     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+     permissions:
+       contents: read
+     steps:
+       - name: Checkout code
+         uses: actions/checkout@v6
 
+       - name: Setup Rust
+         uses: dtolnay/rust-toolchain@stable
 
-  # =============================================================================
-  # WASM BUILD & SIZE CHECK
-  # =============================================================================
-  wasm:
-    name: 🌐 WASM Build & Size Check
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+       - name: Add wasm32 target
+         run: rustup target add wasm32-unknown-unknown
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Add wasm32 target
-        run: rustup target add wasm32-unknown-unknown
-
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
+       - name: Cache dependencies
+         uses: Swatinem/rust-cache@v2
 
        - name: Build WASM and check size
          run: ./bin/build-wasm
