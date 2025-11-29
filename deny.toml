@@ -4,22 +4,18 @@
 [advisories]
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
-unmaintained = "warn"
+unmaintained = "workspace"
 yanked = "warn"
-notice = "warn"
 
 # Allow known vulnerabilities with no fix available
 # RUSTSEC-2023-0071: rsa crate vulnerability in sqlx-mysql transitive dependency
 # No fixed upgrade available as of 2024. This is a medium severity timing sidechannel
 # issue that doesn't affect typical database query use cases.
-[[advisories.ignore]]
-id = "RUSTSEC-2023-0071"
-reason = "Transitive dependency of sqlx-mysql with no fix available"
+ignore = [
+    { id = "RUSTSEC-2023-0071", reason = "Transitive dependency of sqlx-mysql with no fix available" },
+]
 
 [licenses]
-unlicensed = "deny"
-copyleft = "warn"
 # List of explicitly allowed licenses
 allow = [
     "MIT",
@@ -31,6 +27,7 @@ allow = [
     "Zlib",
     "CC0-1.0",
     "Unicode-DFS-2016",
+    "Unicode-3.0",
     "BSL-1.0",
     "MPL-2.0",
     "CC-BY-SA-4.0",
