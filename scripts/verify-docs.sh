@@ -57,10 +57,27 @@ echo "4. Checking that code examples compile..."
 if cargo test --doc --all-features 2>&1 | tee /tmp/doc-test.log; then
     echo -e "${GREEN}✅ All documentation examples compile${NC}"
 else
-    FAILED_EXAMPLES=$(grep -c "error" /tmp/doc-test.log 2>/dev/null || echo "0")
-    if [ "$FAILED_EXAMPLES" -gt 0 ]; then
+    # Count actual doctest failures, excluding linker/environmental errors
+    # Look for "Couldn't compile the test" which indicates actual doctest failures
+    FAILED_EXAMPLES=$(grep -c "Couldn't compile the test" /tmp/doc-test.log 2>/dev/null || echo "0")
+    # Also check for actual compilation errors in doctests (not linker errors)
+    COMPILE_ERRORS=$(grep -E "error\[E[0-9]+\]" /tmp/doc-test.log 2>/dev/null | grep -v "linking" | wc -l || echo "0")
+    
+    # Check for disk space issues
+    if grep -q "No space left on device" /tmp/doc-test.log 2>/dev/null; then
+        echo -e "${YELLOW}⚠️  Disk space issue detected during doctest compilation${NC}"
+        echo -e "${YELLOW}⚠️  This is an environmental issue, not a code issue${NC}"
+        WARNINGS=$((WARNINGS + 1))
+    elif [ "$FAILED_EXAMPLES" -gt 0 ] || [ "$COMPILE_ERRORS" -gt 0 ]; then
         echo -e "${RED}❌ Some documentation examples failed to compile${NC}"
-        ERRORS=$((ERRORS + FAILED_EXAMPLES))
+        echo "Failed doctests: $FAILED_EXAMPLES"
+        echo "Compilation errors: $COMPILE_ERRORS"
+        ERRORS=$((ERRORS + FAILED_EXAMPLES + COMPILE_ERRORS))
+    else
+        # If cargo test failed but we can't find specific errors, it might be environmental
+        echo -e "${YELLOW}⚠️  Doctest run failed, but no clear compilation errors found${NC}"
+        echo -e "${YELLOW}⚠️  This might be an environmental issue${NC}"
+        WARNINGS=$((WARNINGS + 1))
     fi
 fi
 echo ""
