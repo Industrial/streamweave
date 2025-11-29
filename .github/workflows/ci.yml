@@ -114,17 +114,10 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install Doxidize
-        run: cargo install doxidize || echo "Doxidize installation failed, will use cargo doc"
+        run: cargo install doxidize
 
       - name: Generate documentation
-        run: |
-          # Try Doxidize first, fallback to cargo doc
-          if command -v doxidize &> /dev/null && ./bin/docs 2>&1; then
-            echo "✅ Documentation generated with Doxidize"
-          else
-            echo "⚠️  Using cargo doc as fallback"
-            cargo doc --all-features --no-deps
-          fi
+        run: ./bin/docs
 
       - name: Check documentation
         run: |
@@ -141,7 +134,7 @@ jobs:
         run: |
           # Run documentation verification script if available
           if [ -f "scripts/verify-docs.sh" ]; then
-            ./scripts/verify-docs.sh || echo "⚠️ Documentation verification found issues (non-fatal)"
+            ./scripts/verify-docs.sh
           fi
 
   # =============================================================================
@@ -178,7 +171,7 @@ jobs:
         uses: taiki-e/install-action@cargo-deny
 
       - name: Check licenses and dependencies
-        run: cargo deny check || echo "::warning::cargo-deny found issues"
+        run: cargo deny check
 
   # =============================================================================
   # COVERAGE
@@ -236,27 +229,6 @@ jobs:
 
       - name: Build WASM and check size
         run: ./bin/wasm-build
-
-  # =============================================================================
-  # DOCUMENTATION
-  # =============================================================================
-  docs:
-    name: 📚 Documentation
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
-
-      - name: Build documentation
-        run: RUSTDOCFLAGS='-D warnings' cargo doc --all-features --no-deps
 
   # =============================================================================
   # CI SUCCESS GATE
