@@ -142,7 +142,7 @@ async-stream = "0.3.3"
 # WebSocket and HTTP (native only)
 hyper-tungstenite = { version = "0.13", optional = true }
 hyper-util = { version = "0.1", features = ["full"], optional = true }
-tokio-tungstenite = { version = "0.21", optional = true }
+tokio-tungstenite = { version = "0.28", optional = true }
 
 # Kafka integration (native only - requires librdkafka)
 # Note: Requires cmake, pkg-config, openssl, zlib, and zstd to build
