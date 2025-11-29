@@ -196,13 +196,32 @@ mod tests {
     }
   }
 
-  #[tokio::test]
-  async fn test_recovery_manager_creation() {
+  use proptest::prelude::*;
+  use tokio::runtime::Runtime;
+
+  fn recovery_strategy_strategy() -> impl Strategy<Value = RecoveryStrategy> {
+    prop::sample::select(&[
+      RecoveryStrategy::FromCheckpoint,
+      RecoveryStrategy::FromBeginning,
+      RecoveryStrategy::Skip,
+      RecoveryStrategy::Manual,
+    ])
+  }
+
+  async fn test_recovery_manager_creation_async(strategy: RecoveryStrategy) {
     let coordinator = MockCoordinator {
       workers: std::collections::HashMap::new(),
     };
     let store = InMemoryCheckpointStore::new();
-    let manager = RecoveryManager::new(coordinator, store, RecoveryStrategy::FromCheckpoint);
-    assert_eq!(manager.strategy, RecoveryStrategy::FromCheckpoint);
+    let manager = RecoveryManager::new(coordinator, store, strategy);
+    assert_eq!(manager.strategy, strategy);
+  }
+
+  proptest! {
+    #[test]
+    fn test_recovery_manager_creation(strategy in recovery_strategy_strategy()) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_recovery_manager_creation_async(strategy));
+    }
   }
 }
