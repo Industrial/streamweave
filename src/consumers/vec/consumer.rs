@@ -67,46 +67,74 @@ mod tests {
   use super::*;
   use crate::error::ErrorStrategy;
   use futures::stream;
+  use proptest::prelude::*;
+  use proptest::proptest;
+  use tokio::runtime::Runtime;
 
-  #[tokio::test]
-  async fn test_vec_consumer_basic() {
+  async fn test_vec_consumer_basic_async(input_data: Vec<i32>) {
     let mut consumer = VecConsumer::new();
-    let input = stream::iter(vec![1, 2, 3]);
+    let input = stream::iter(input_data.clone());
     let boxed_input = Box::pin(input);
 
     consumer.consume(boxed_input).await;
     let vec = consumer.into_vec();
-    assert_eq!(vec, vec![1, 2, 3]);
+    assert_eq!(vec, input_data);
   }
 
-  #[tokio::test]
-  async fn test_vec_consumer_empty_input() {
-    let mut consumer = VecConsumer::new();
-    let input = stream::iter(Vec::<i32>::new());
+  async fn test_vec_consumer_with_capacity_async(input_data: Vec<i32>, capacity: usize) {
+    let mut consumer = VecConsumer::with_capacity(capacity);
+    let input = stream::iter(input_data.clone());
     let boxed_input = Box::pin(input);
 
     consumer.consume(boxed_input).await;
-    let vec = consumer.into_vec();
-    assert!(vec.is_empty());
+    assert_eq!(consumer.into_vec(), input_data);
   }
 
-  #[tokio::test]
-  async fn test_vec_consumer_with_capacity() {
-    let mut consumer = VecConsumer::with_capacity(100);
-    let input = stream::iter(vec![1, 2, 3]);
-    let boxed_input = Box::pin(input);
+  proptest! {
+    #[test]
+    fn test_vec_consumer_basic(
+      input_data in prop::collection::vec(any::<i32>(), 0..30)
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_vec_consumer_basic_async(input_data));
+    }
 
-    consumer.consume(boxed_input).await;
-    assert_eq!(consumer.into_vec(), vec![1, 2, 3]);
-  }
+    #[test]
+    fn test_vec_consumer_empty_input(_ in prop::num::u8::ANY) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(async {
+        let mut consumer = VecConsumer::new();
+        let input = stream::iter(Vec::<i32>::new());
+        let boxed_input = Box::pin(input);
 
-  #[tokio::test]
-  async fn test_error_handling_strategies() {
-    let consumer = VecConsumer::new()
-      .with_error_strategy(ErrorStrategy::<i32>::Skip)
-      .with_name("test_consumer".to_string());
+        consumer.consume(boxed_input).await;
+        let vec = consumer.into_vec();
+        assert!(vec.is_empty());
+      });
+    }
 
-    assert_eq!(consumer.config().error_strategy, ErrorStrategy::<i32>::Skip);
-    assert_eq!(consumer.config().name, "test_consumer");
+    #[test]
+    fn test_vec_consumer_with_capacity(
+      input_data in prop::collection::vec(any::<i32>(), 0..30),
+      capacity in 0usize..1000usize
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_vec_consumer_with_capacity_async(input_data, capacity));
+    }
+
+    #[test]
+    fn test_error_handling_strategies(
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+    ) {
+      let consumer = VecConsumer::<i32>::new()
+        .with_error_strategy(ErrorStrategy::<i32>::Skip)
+        .with_name(name.clone());
+
+      prop_assert_eq!(
+        &consumer.config().error_strategy,
+        &ErrorStrategy::<i32>::Skip
+      );
+      prop_assert_eq!(consumer.config().name.as_str(), name.as_str());
+    }
   }
 }
