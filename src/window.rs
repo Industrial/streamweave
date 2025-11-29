@@ -849,7 +849,7 @@ impl WindowAssigner for CountWindowAssigner {
       .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
     // Check if we need a new window
-    if prev_count > 0 && prev_count % self.count == 0 {
+    if prev_count > 0 && prev_count.is_multiple_of(self.count) {
       self
         .current_id
         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);

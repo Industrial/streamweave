@@ -5,20 +5,15 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 /// Database type supported by the producer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum DatabaseType {
   /// PostgreSQL database
+  #[default]
   Postgres,
   /// MySQL/MariaDB database
   Mysql,
   /// SQLite database (including in-memory)
   Sqlite,
-}
-
-impl Default for DatabaseType {
-  fn default() -> Self {
-    Self::Postgres
-  }
 }
 
 /// Configuration for database query producer behavior.

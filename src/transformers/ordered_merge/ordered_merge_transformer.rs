@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 
 /// Defines the ordering strategy for merging multiple streams.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum MergeStrategy {
   /// Process streams in order, exhaust one before moving to next.
   /// Elements from stream 0 come first, then stream 1, etc.
@@ -21,13 +21,8 @@ pub enum MergeStrategy {
 
   /// Fair interleaving using select_all (default futures behavior).
   /// Whichever stream has an element ready gets processed.
+  #[default]
   Interleave,
-}
-
-impl Default for MergeStrategy {
-  fn default() -> Self {
-    Self::Interleave
-  }
 }
 
 /// A transformer that merges multiple streams with configurable ordering.

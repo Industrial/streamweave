@@ -20,22 +20,17 @@ pub struct ParquetWriteConfig {
 }
 
 /// Supported Parquet compression codecs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ParquetCompression {
   /// No compression.
   Uncompressed,
   /// Snappy compression.
+  #[default]
   Snappy,
   /// LZ4 compression.
   Lz4,
   /// Zstd compression.
   Zstd,
-}
-
-impl Default for ParquetCompression {
-  fn default() -> Self {
-    Self::Snappy
-  }
 }
 
 impl From<ParquetCompression> for Compression {
@@ -50,18 +45,13 @@ impl From<ParquetCompression> for Compression {
 }
 
 /// Parquet writer version.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ParquetWriterVersion {
   /// Version 1.0.
   V1,
   /// Version 2.0.
+  #[default]
   V2,
-}
-
-impl Default for ParquetWriterVersion {
-  fn default() -> Self {
-    Self::V2
-  }
 }
 
 impl Default for ParquetWriteConfig {
