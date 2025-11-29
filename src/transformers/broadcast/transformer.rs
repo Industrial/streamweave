@@ -82,7 +82,8 @@ mod tests {
       assert_eq!(transformer.num_consumers(), num_consumers);
 
       // Verify the transformer can handle various input sizes
-      assert_eq!(values.len(), values.len()); // Dummy assertion to satisfy proptest
+      // The values parameter is used to ensure proptest generates diverse test cases
+      let _ = values;
     }
 
     #[test]
@@ -106,7 +107,7 @@ mod tests {
     #[test]
     fn test_broadcast_name_properties(
       num_consumers in 1..50usize,
-      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").expect("valid regex pattern")
     ) {
       // Test that broadcast transformer can handle different names
       let transformer = BroadcastTransformer::<i32>::new(num_consumers)
@@ -120,7 +121,7 @@ mod tests {
     #[test]
     fn test_broadcast_component_info_properties(
       num_consumers in 1..50usize,
-      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").expect("valid regex pattern")
     ) {
       // Test component info with various names
       let transformer = BroadcastTransformer::<i32>::new(num_consumers)
@@ -239,7 +240,7 @@ mod tests {
     #[test]
     fn test_broadcast_create_error_context_properties(
       num_consumers in 1..50usize,
-      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap(),
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").expect("valid regex pattern"),
       item in -100..100i32
     ) {
       let transformer = BroadcastTransformer::<i32>::new(num_consumers)
@@ -265,7 +266,8 @@ mod tests {
       // The actual async transformation is tested separately
       let transformer = BroadcastTransformer::<i32>::new(num_consumers);
       assert_eq!(transformer.num_consumers(), num_consumers);
-      assert_eq!(values.len(), values.len()); // Dummy assertion to satisfy proptest
+      // The values parameter is used to ensure proptest generates diverse test cases
+      let _ = values;
     }
   }
 
@@ -283,10 +285,11 @@ mod tests {
         // For now, we'll test the basic properties that don't require async
         let transformer = BroadcastTransformer::<i32>::new(num_consumers);
         assert_eq!(transformer.num_consumers(), num_consumers);
-        assert_eq!(values.len(), values.len());
+        // The values parameter is used to ensure proptest generates diverse test cases
+        let _ = values;
         Ok(())
       })
-      .unwrap();
+      .expect("proptest run failed");
   }
 
   // Direct async tests with proptest-generated random inputs
@@ -298,7 +301,9 @@ mod tests {
 
     // Generate a few test cases using proptest
     for _ in 0..50 {
-      let value_tree = strategy.new_tree(&mut runner).unwrap();
+      let value_tree = strategy
+        .new_tree(&mut runner)
+        .expect("failed to generate test case");
       let (num_consumers, values) = value_tree.current();
 
       let mut transformer = BroadcastTransformer::<i32>::new(num_consumers);
@@ -322,7 +327,9 @@ mod tests {
     let strategy = 1..50usize;
 
     for _ in 0..50 {
-      let value_tree = strategy.new_tree(&mut runner).unwrap();
+      let value_tree = strategy
+        .new_tree(&mut runner)
+        .expect("failed to generate test case");
       let num_consumers = value_tree.current();
 
       let mut transformer = BroadcastTransformer::<i32>::new(num_consumers);
@@ -341,7 +348,9 @@ mod tests {
     let strategy = (1..20usize, 1..50usize);
 
     for _ in 0..50 {
-      let value_tree = strategy.new_tree(&mut runner).unwrap();
+      let value_tree = strategy
+        .new_tree(&mut runner)
+        .expect("failed to generate test case");
       let (num_consumers, count) = value_tree.current();
 
       let mut transformer = BroadcastTransformer::<i32>::new(num_consumers);
@@ -366,7 +375,9 @@ mod tests {
     let strategy = (1..200usize, -1000..1000i32);
 
     for _ in 0..50 {
-      let value_tree = strategy.new_tree(&mut runner).unwrap();
+      let value_tree = strategy
+        .new_tree(&mut runner)
+        .expect("failed to generate test case");
       let (num_consumers, value) = value_tree.current();
 
       let mut transformer = BroadcastTransformer::<i32>::new(num_consumers);
@@ -391,7 +402,9 @@ mod tests {
     );
 
     for _ in 0..50 {
-      let value_tree = strategy.new_tree(&mut runner).unwrap();
+      let value_tree = strategy
+        .new_tree(&mut runner)
+        .expect("failed to generate test case");
       let (num_consumers, values1, values2) = value_tree.current();
 
       let mut transformer = BroadcastTransformer::<i32>::new(num_consumers);
