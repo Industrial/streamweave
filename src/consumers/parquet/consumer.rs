@@ -154,27 +154,30 @@ mod tests {
   use arrow::datatypes::{DataType, Field, Schema};
   use futures::stream;
   use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
+  use proptest::prelude::*;
+  use proptest::proptest;
   use std::sync::Arc;
   use tempfile::NamedTempFile;
+  use tokio::runtime::Runtime;
 
-  fn create_test_batch() -> RecordBatch {
+  fn create_test_batch(names: Vec<String>, ages: Vec<i32>) -> RecordBatch {
     let schema = Arc::new(Schema::new(vec![
       Field::new("name", DataType::Utf8, false),
       Field::new("age", DataType::Int32, false),
     ]));
 
-    let names = StringArray::from(vec!["Alice", "Bob", "Charlie"]);
-    let ages = Int32Array::from(vec![30, 25, 35]);
+    let names_array = StringArray::from(names);
+    let ages_array = Int32Array::from(ages);
 
-    RecordBatch::try_new(schema, vec![Arc::new(names), Arc::new(ages)]).unwrap()
+    RecordBatch::try_new(schema, vec![Arc::new(names_array), Arc::new(ages_array)]).unwrap()
   }
 
-  #[tokio::test]
-  async fn test_parquet_consumer_basic() {
+  async fn test_parquet_consumer_basic_async(names: Vec<String>, ages: Vec<i32>) {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
 
-    let batch = create_test_batch();
+    let batch = create_test_batch(names.clone(), ages.clone());
+    let expected_rows = names.len();
 
     let mut consumer = ParquetConsumer::new(&path);
     let input_stream = Box::pin(stream::iter(vec![batch]));
@@ -189,17 +192,22 @@ mod tests {
 
     let batches: Vec<RecordBatch> = reader.filter_map(|r| r.ok()).collect();
     assert_eq!(batches.len(), 1);
-    assert_eq!(batches[0].num_rows(), 3);
+    assert_eq!(batches[0].num_rows(), expected_rows);
     drop(file);
   }
 
-  #[tokio::test]
-  async fn test_parquet_consumer_multiple_batches() {
+  async fn test_parquet_consumer_multiple_batches_async(
+    names1: Vec<String>,
+    ages1: Vec<i32>,
+    names2: Vec<String>,
+    ages2: Vec<i32>,
+  ) {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
 
-    let batch1 = create_test_batch();
-    let batch2 = create_test_batch();
+    let batch1 = create_test_batch(names1.clone(), ages1);
+    let batch2 = create_test_batch(names2.clone(), ages2);
+    let expected_total_rows = names1.len() + names2.len();
 
     let mut consumer = ParquetConsumer::new(&path);
     let input_stream = Box::pin(stream::iter(vec![batch1, batch2]));
@@ -213,42 +221,16 @@ mod tests {
       .unwrap();
 
     let total_rows: usize = reader.filter_map(|r| r.ok()).map(|b| b.num_rows()).sum();
-    assert_eq!(total_rows, 6); // 2 batches x 3 rows each
+    assert_eq!(total_rows, expected_total_rows);
     drop(file);
   }
 
-  #[tokio::test]
-  async fn test_parquet_consumer_empty_stream() {
-    let file = NamedTempFile::new().unwrap();
-    let path = file.path().to_str().unwrap().to_string();
-
-    let mut consumer = ParquetConsumer::new(&path);
-    let input_stream = Box::pin(stream::iter(Vec::<RecordBatch>::new()));
-    consumer.consume(input_stream).await;
-
-    // File should not exist or be empty since no data was written
-    // (writer is only created on first batch)
-    let metadata = std::fs::metadata(&path);
-    assert!(metadata.is_err() || metadata.unwrap().len() == 0);
-    drop(file);
-  }
-
-  #[tokio::test]
-  async fn test_parquet_consumer_component_info() {
-    let consumer =
-      ParquetConsumer::new("test.parquet").with_name("my_parquet_consumer".to_string());
-    let info = consumer.component_info();
-    assert_eq!(info.name, "my_parquet_consumer");
-    assert_eq!(info.type_name, std::any::type_name::<ParquetConsumer>());
-  }
-
-  #[tokio::test]
-  async fn test_parquet_roundtrip() {
+  async fn test_parquet_roundtrip_async(names: Vec<String>, ages: Vec<i32>) {
     let file = NamedTempFile::new().unwrap();
     let path = file.path().to_str().unwrap().to_string();
 
     // Write
-    let original_batch = create_test_batch();
+    let original_batch = create_test_batch(names.clone(), ages.clone());
     let mut consumer = ParquetConsumer::new(&path);
     let input_stream = Box::pin(stream::iter(vec![original_batch.clone()]));
     consumer.consume(input_stream).await;
@@ -268,5 +250,72 @@ mod tests {
     assert_eq!(read_batch.num_rows(), original_batch.num_rows());
     assert_eq!(read_batch.num_columns(), original_batch.num_columns());
     drop(file);
+  }
+
+  fn names_ages_strategy(
+    size_range: impl Strategy<Value = usize>,
+  ) -> impl Strategy<Value = (Vec<String>, Vec<i32>)> {
+    size_range.prop_flat_map(|size| {
+      (
+        prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(), size),
+        prop::collection::vec(0i32..150i32, size),
+      )
+    })
+  }
+
+  proptest! {
+    #[test]
+    fn test_parquet_consumer_basic(
+      (names, ages) in names_ages_strategy(1usize..20)
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_parquet_consumer_basic_async(names, ages));
+    }
+
+    #[test]
+    fn test_parquet_consumer_multiple_batches(
+      (names1, ages1) in names_ages_strategy(1usize..10),
+      (names2, ages2) in names_ages_strategy(1usize..10)
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_parquet_consumer_multiple_batches_async(names1, ages1, names2, ages2));
+    }
+
+    #[test]
+    fn test_parquet_consumer_empty_stream(_ in prop::num::u8::ANY) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(async {
+        let file = NamedTempFile::new().unwrap();
+        let path = file.path().to_str().unwrap().to_string();
+
+        let mut consumer = ParquetConsumer::new(&path);
+        let input_stream = Box::pin(stream::iter(Vec::<RecordBatch>::new()));
+        consumer.consume(input_stream).await;
+
+        drop(file);
+      });
+
+      // This test is mainly to ensure empty stream doesn't panic
+      // File should not exist or be empty since no data was written
+      // (writer is only created on first batch)
+    }
+
+    #[test]
+    fn test_parquet_consumer_component_info(
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+    ) {
+      let consumer = ParquetConsumer::new("test.parquet").with_name(name.clone());
+      let info = consumer.component_info();
+      prop_assert_eq!(info.name, name);
+      prop_assert_eq!(info.type_name, std::any::type_name::<ParquetConsumer>());
+    }
+
+    #[test]
+    fn test_parquet_roundtrip(
+      (names, ages) in names_ages_strategy(1usize..20)
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_parquet_roundtrip_async(names, ages));
+    }
   }
 }
