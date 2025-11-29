@@ -140,7 +140,7 @@ pin-project = "1.0"
 async-stream = "0.3.3"
 
 # WebSocket and HTTP (native only)
-hyper-tungstenite = { version = "0.13", optional = true }
+hyper-tungstenite = { version = "0.19", optional = true }
 hyper-util = { version = "0.1", features = ["full"], optional = true }
 tokio-tungstenite = { version = "0.28", optional = true }
 
