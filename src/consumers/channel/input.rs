@@ -15,6 +15,7 @@ where
 mod tests {
   use super::*;
   use futures::{StreamExt, stream};
+  use proptest::prelude::*;
   use std::pin::Pin;
   use tokio::sync::mpsc::channel;
 
@@ -70,23 +71,32 @@ mod tests {
     // This compiles only if the InputStream type is correctly constrained
   }
 
-  #[tokio::test]
-  async fn test_channel_consumer_input_stream_send_bound() {
+  async fn test_channel_consumer_input_stream_send_bound_async(data: Vec<i32>) {
     // Test that the InputStream implements Send bound for async usage
     let (tx, _rx) = channel::<i32>(10);
     let _consumer = ChannelConsumer::new(tx);
 
     // Create a stream that matches the InputStream type
-    let data = vec![1, 2, 3, 4];
-    let stream: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(data));
+    let expected_sum: i32 = data.iter().sum();
+    let stream: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(data.clone()));
 
     // Test that we can spawn this stream in a task (requires Send)
     let handle = tokio::spawn(async move {
       let sum = stream.fold(0, |acc, x| async move { acc + x }).await;
-      assert_eq!(sum, 10);
+      assert_eq!(sum, expected_sum);
     });
 
     handle.await.unwrap();
+  }
+
+  proptest! {
+    #[test]
+    fn test_channel_consumer_input_stream_send_bound(
+      data in prop::collection::vec(-1000..1000i32, 0..100)
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_channel_consumer_input_stream_send_bound_async(data));
+    }
   }
 
   #[test]
@@ -136,44 +146,60 @@ mod tests {
     test_static_lifetime(ChannelConsumer::new(tx3));
   }
 
-  #[test]
-  fn test_channel_consumer_input_debug_clone_bounds() {
-    // Test that Debug and Clone bounds are correctly applied
-    #[derive(Debug, Clone)]
-    struct TestStruct {
-      _value: i32,
+  proptest! {
+    #[test]
+    fn test_channel_consumer_input_debug_clone_bounds(
+      value in -1000..1000i32
+    ) {
+      // Test that Debug and Clone bounds are correctly applied
+      #[derive(Debug, Clone)]
+      struct TestStruct {
+        _value: i32,
+      }
+
+      unsafe impl Send for TestStruct {}
+      unsafe impl Sync for TestStruct {}
+
+      // Verify that we can create a channel with TestStruct
+      let _test_value = TestStruct { _value: value };
+
+      let (tx, _rx) = channel::<TestStruct>(10);
+      let consumer = ChannelConsumer::new(tx);
+
+      // This should compile because TestStruct implements Debug and Clone
+      fn test_debug_clone<T: std::fmt::Debug + Clone + Send + Sync + 'static>(
+        _consumer: ChannelConsumer<T>,
+      ) where
+        ChannelConsumer<T>: Input,
+      {
+      }
+
+      test_debug_clone(consumer);
     }
-
-    unsafe impl Send for TestStruct {}
-    unsafe impl Sync for TestStruct {}
-
-    let (tx, _rx) = channel::<TestStruct>(10);
-    let consumer = ChannelConsumer::new(tx);
-
-    // This should compile because TestStruct implements Debug and Clone
-    fn test_debug_clone<T: std::fmt::Debug + Clone + Send + Sync + 'static>(
-      _consumer: ChannelConsumer<T>,
-    ) where
-      ChannelConsumer<T>: Input,
-    {
-    }
-
-    test_debug_clone(consumer);
   }
 
-  #[tokio::test]
-  async fn test_channel_consumer_input_stream_compatibility() {
+  async fn test_channel_consumer_input_stream_compatibility_async(data: Vec<i32>) {
     // Test that streams can be created and used with the Input trait
     let (tx, _rx) = channel::<i32>(10);
     let _consumer = ChannelConsumer::new(tx);
 
     // Create a stream that matches the expected InputStream type
-    let data = vec![1, 2, 3];
-    let stream: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(data));
+    let data_clone = data.clone();
+    let stream: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(data_clone));
 
     // Test that we can collect from the stream
     let result: Vec<i32> = stream.collect().await;
-    assert_eq!(result, vec![1, 2, 3]);
+    assert_eq!(result, data);
+  }
+
+  proptest! {
+    #[test]
+    fn test_channel_consumer_input_stream_compatibility(
+      data in prop::collection::vec(-1000..1000i32, 0..100)
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_channel_consumer_input_stream_compatibility_async(data));
+    }
   }
 
   #[test]

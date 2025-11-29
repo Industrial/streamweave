@@ -15,6 +15,7 @@ where
 mod tests {
   use super::*;
   use futures::{StreamExt, stream};
+  use proptest::prelude::*;
   use std::pin::Pin;
 
   #[test]
@@ -66,22 +67,31 @@ mod tests {
     // This compiles only if the InputStream type is correctly constrained
   }
 
-  #[tokio::test]
-  async fn test_command_consumer_input_stream_send_bound() {
+  async fn test_command_consumer_input_stream_send_bound_async(data: Vec<String>) {
     // Test that the InputStream implements Send bound for async usage
-    let _consumer = CommandConsumer::<&str>::new("echo".to_string(), vec![]);
+    let _consumer = CommandConsumer::<String>::new("echo".to_string(), vec![]);
 
     // Create a stream that matches the InputStream type
-    let data = vec!["hello", "world", "test"];
-    let stream: Pin<Box<dyn Stream<Item = &str> + Send>> = Box::pin(stream::iter(data));
+    let data_clone = data.clone();
+    let stream: Pin<Box<dyn Stream<Item = String> + Send>> = Box::pin(stream::iter(data_clone));
 
     // Test that we can spawn this stream in a task (requires Send)
     let handle = tokio::spawn(async move {
-      let result: Vec<&str> = stream.collect().await;
-      assert_eq!(result, vec!["hello", "world", "test"]);
+      let result: Vec<String> = stream.collect().await;
+      assert_eq!(result, data);
     });
 
     handle.await.unwrap();
+  }
+
+  proptest! {
+    #[test]
+    fn test_command_consumer_input_stream_send_bound(
+      data in prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(), 0..100)
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_command_consumer_input_stream_send_bound_async(data));
+    }
   }
 
   #[test]
@@ -124,50 +134,66 @@ mod tests {
     test_static_lifetime(CommandConsumer::<i32>::new("echo".to_string(), vec![]));
   }
 
-  #[test]
-  fn test_command_consumer_input_debug_clone_display_bounds() {
-    // Test that Debug, Clone, and Display bounds are correctly applied
-    #[derive(Debug, Clone)]
-    struct TestStruct {
-      value: i32,
-    }
-
-    impl std::fmt::Display for TestStruct {
-      fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.value)
+  proptest! {
+    #[test]
+    fn test_command_consumer_input_debug_clone_display_bounds(
+      value in -1000..1000i32
+    ) {
+      // Test that Debug, Clone, and Display bounds are correctly applied
+      #[derive(Debug, Clone)]
+      struct TestStruct {
+        value: i32,
       }
+
+      impl std::fmt::Display for TestStruct {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+          write!(f, "{}", self.value)
+        }
+      }
+
+      unsafe impl Send for TestStruct {}
+      unsafe impl Sync for TestStruct {}
+
+      // Verify that we can create a TestStruct with the generated value
+      let _test_value = TestStruct { value };
+
+      let consumer = CommandConsumer::<TestStruct>::new("echo".to_string(), vec![]);
+
+      // This should compile because TestStruct implements Debug, Clone, and Display
+      fn test_debug_clone_display<
+        T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
+      >(
+        _consumer: CommandConsumer<T>,
+      ) where
+        CommandConsumer<T>: Input,
+      {
+      }
+
+      test_debug_clone_display(consumer);
     }
-
-    unsafe impl Send for TestStruct {}
-    unsafe impl Sync for TestStruct {}
-
-    let consumer = CommandConsumer::<TestStruct>::new("echo".to_string(), vec![]);
-
-    // This should compile because TestStruct implements Debug, Clone, and Display
-    fn test_debug_clone_display<
-      T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
-    >(
-      _consumer: CommandConsumer<T>,
-    ) where
-      CommandConsumer<T>: Input,
-    {
-    }
-
-    test_debug_clone_display(consumer);
   }
 
-  #[tokio::test]
-  async fn test_command_consumer_input_stream_compatibility() {
+  async fn test_command_consumer_input_stream_compatibility_async(data: Vec<String>) {
     // Test that streams can be created and used with the Input trait
-    let _consumer = CommandConsumer::<&str>::new("echo".to_string(), vec![]);
+    let _consumer = CommandConsumer::<String>::new("echo".to_string(), vec![]);
 
     // Create a stream that matches the expected InputStream type
-    let data = vec!["hello", "world", "test"];
-    let stream: Pin<Box<dyn Stream<Item = &str> + Send>> = Box::pin(stream::iter(data));
+    let data_clone = data.clone();
+    let stream: Pin<Box<dyn Stream<Item = String> + Send>> = Box::pin(stream::iter(data_clone));
 
     // Test that we can collect from the stream
-    let result: Vec<&str> = stream.collect().await;
-    assert_eq!(result, vec!["hello", "world", "test"]);
+    let result: Vec<String> = stream.collect().await;
+    assert_eq!(result, data);
+  }
+
+  proptest! {
+    #[test]
+    fn test_command_consumer_input_stream_compatibility(
+      data in prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(), 0..100)
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_command_consumer_input_stream_compatibility_async(data));
+    }
   }
 
   #[test]

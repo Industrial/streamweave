@@ -63,15 +63,16 @@ mod tests {
   use super::*;
   use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
   use futures::stream;
+  use proptest::prelude::*;
   use tokio::sync::mpsc::{Receiver, Sender, channel};
 
-  #[tokio::test]
-  async fn test_channel_consumer_basic() {
+  async fn test_channel_consumer_basic_async(input: Vec<i32>) {
     let (tx, mut rx) = channel(10);
     let mut consumer = ChannelConsumer::new(tx);
 
-    let input = stream::iter(vec![1, 2, 3]);
-    let boxed_input = Box::pin(input);
+    let input_clone = input.clone();
+    let input_stream = stream::iter(input_clone);
+    let boxed_input = Box::pin(input_stream);
 
     // Spawn the consumer in a separate task
     let handle = tokio::spawn(async move {
@@ -79,17 +80,26 @@ mod tests {
     });
 
     // Wait for all items to be received
-    assert_eq!(rx.recv().await, Some(1));
-    assert_eq!(rx.recv().await, Some(2));
-    assert_eq!(rx.recv().await, Some(3));
+    for expected_item in input {
+      assert_eq!(rx.recv().await, Some(expected_item));
+    }
     assert_eq!(rx.recv().await, None);
 
     // Wait for the consumer task to complete
     handle.await.unwrap();
   }
 
-  #[tokio::test]
-  async fn test_channel_consumer_empty_input() {
+  proptest! {
+    #[test]
+    fn test_channel_consumer_basic(
+      input in prop::collection::vec(-1000..1000i32, 0..100)
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_channel_consumer_basic_async(input));
+    }
+  }
+
+  async fn test_channel_consumer_empty_input_async() {
     let (tx, mut rx) = channel(10);
     let mut consumer = ChannelConsumer::new(tx);
 
@@ -108,19 +118,33 @@ mod tests {
     handle.await.unwrap();
   }
 
-  #[tokio::test]
-  async fn test_error_handling_strategies() {
+  #[test]
+  fn test_channel_consumer_empty_input() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(test_channel_consumer_empty_input_async());
+  }
+
+  async fn test_error_handling_strategies_async(name: String) {
     let (tx, _rx) = channel(10);
     let consumer = ChannelConsumer::new(tx)
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
-      .with_name("test_consumer".to_string());
+      .with_name(name.clone());
 
     assert_eq!(consumer.config().error_strategy, ErrorStrategy::<i32>::Skip);
-    assert_eq!(consumer.config().name, "test_consumer");
+    assert_eq!(consumer.config().name, name);
   }
 
-  #[tokio::test]
-  async fn test_error_handling_during_consumption() {
+  proptest! {
+    #[test]
+    fn test_error_handling_strategies(
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_error_handling_strategies_async(name));
+    }
+  }
+
+  async fn test_error_handling_during_consumption_async(error_msg: String, item: i32) {
     let (tx, _rx) = channel(10);
     let consumer = ChannelConsumer::new(tx)
       .with_error_strategy(ErrorStrategy::<i32>::Skip)
@@ -128,10 +152,10 @@ mod tests {
 
     // Test that Skip strategy allows consumption to continue
     let action = consumer.handle_error(&StreamError {
-      source: Box::new(std::io::Error::other("test error")),
+      source: Box::new(std::io::Error::other(error_msg.clone())),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
-        item: Some(42),
+        item: Some(item),
         component_name: "test".to_string(),
         component_type: "test".to_string(),
       },
@@ -146,10 +170,10 @@ mod tests {
     // Test that Stop strategy halts consumption
     let consumer = consumer.with_error_strategy(ErrorStrategy::<i32>::Stop);
     let action = consumer.handle_error(&StreamError {
-      source: Box::new(std::io::Error::other("test error")),
+      source: Box::new(std::io::Error::other(error_msg)),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
-        item: Some(42),
+        item: Some(item),
         component_name: "test".to_string(),
         component_type: "test".to_string(),
       },
@@ -162,40 +186,70 @@ mod tests {
     assert_eq!(action, ErrorAction::Stop);
   }
 
-  #[tokio::test]
-  async fn test_component_info() {
+  proptest! {
+    #[test]
+    fn test_error_handling_during_consumption(
+      error_msg in prop::string::string_regex(".+").unwrap(),
+      item in -1000..1000i32
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_error_handling_during_consumption_async(error_msg, item));
+    }
+  }
+
+  async fn test_component_info_async(name: String) {
     let (tx, _rx): (Sender<i32>, Receiver<i32>) = channel(10);
-    let consumer = ChannelConsumer::new(tx).with_name("test_consumer".to_string());
+    let consumer = ChannelConsumer::new(tx).with_name(name.clone());
 
     let info = consumer.component_info();
-    assert_eq!(info.name, "test_consumer");
+    assert_eq!(info.name, name);
     assert_eq!(
       info.type_name,
       "streamweave::consumers::channel::channel_consumer::ChannelConsumer<i32>"
     );
   }
 
-  #[tokio::test]
-  async fn test_error_context_creation() {
-    let (tx, _rx): (Sender<i32>, Receiver<i32>) = channel(10);
-    let consumer = ChannelConsumer::new(tx).with_name("test_consumer".to_string());
+  proptest! {
+    #[test]
+    fn test_component_info(
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_component_info_async(name));
+    }
+  }
 
-    let context = consumer.create_error_context(Some(42));
-    assert_eq!(context.component_name, "test_consumer");
+  async fn test_error_context_creation_async(name: String, item: i32) {
+    let (tx, _rx): (Sender<i32>, Receiver<i32>) = channel(10);
+    let consumer = ChannelConsumer::new(tx).with_name(name.clone());
+
+    let context = consumer.create_error_context(Some(item));
+    assert_eq!(context.component_name, name);
     assert_eq!(
       context.component_type,
       "streamweave::consumers::channel::channel_consumer::ChannelConsumer<i32>"
     );
-    assert_eq!(context.item, Some(42));
+    assert_eq!(context.item, Some(item));
   }
 
-  #[tokio::test]
-  async fn test_channel_capacity() {
-    let (tx, mut rx): (Sender<i32>, Receiver<i32>) = channel(2); // Small capacity
+  proptest! {
+    #[test]
+    fn test_error_context_creation(
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap(),
+      item in -1000..1000i32
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_error_context_creation_async(name, item));
+    }
+  }
+
+  async fn test_channel_capacity_async(input: Vec<i32>, capacity: usize) {
+    let (tx, mut rx): (Sender<i32>, Receiver<i32>) = channel(capacity);
     let mut consumer = ChannelConsumer::new(tx);
 
-    let input = stream::iter(vec![1, 2, 3, 4]);
-    let boxed_input = Box::pin(input);
+    let input_clone = input.clone();
+    let input_stream = stream::iter(input_clone);
+    let boxed_input = Box::pin(input_stream);
 
     // Spawn the consumer in a separate task
     let handle = tokio::spawn(async move {
@@ -203,26 +257,35 @@ mod tests {
     });
 
     // Should receive all items despite capacity limit
-    assert_eq!(rx.recv().await, Some(1));
-    assert_eq!(rx.recv().await, Some(2));
-    assert_eq!(rx.recv().await, Some(3));
-    assert_eq!(rx.recv().await, Some(4));
+    for expected_item in input {
+      assert_eq!(rx.recv().await, Some(expected_item));
+    }
     assert_eq!(rx.recv().await, None);
 
     // Wait for the consumer task to complete
     handle.await.unwrap();
   }
 
-  #[tokio::test]
-  async fn test_dropped_channel() {
+  proptest! {
+    #[test]
+    fn test_channel_capacity(
+      input in prop::collection::vec(-1000..1000i32, 1..50),
+      capacity in 1..10usize
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_channel_capacity_async(input, capacity));
+    }
+  }
+
+  async fn test_dropped_channel_async(input: Vec<i32>) {
     let (tx, rx): (Sender<i32>, Receiver<i32>) = channel(10);
     let mut consumer = ChannelConsumer::new(tx);
 
     // Drop the receiver
     drop(rx);
 
-    let input = stream::iter(vec![1, 2, 3]);
-    let boxed_input = Box::pin(input);
+    let input_stream = stream::iter(input);
+    let boxed_input = Box::pin(input_stream);
 
     // Spawn the consumer in a separate task
     let handle = tokio::spawn(async move {
@@ -231,5 +294,15 @@ mod tests {
 
     // Should not panic when sending to dropped channel
     handle.await.unwrap();
+  }
+
+  proptest! {
+    #[test]
+    fn test_dropped_channel(
+      input in prop::collection::vec(-1000..1000i32, 0..50)
+    ) {
+      let rt = tokio::runtime::Runtime::new().unwrap();
+      rt.block_on(test_dropped_channel_async(input));
+    }
   }
 }

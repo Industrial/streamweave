@@ -152,6 +152,8 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
+  use proptest::proptest;
   use serde::Serialize;
 
   #[derive(Debug, Clone, Serialize)]
@@ -160,34 +162,42 @@ mod tests {
     age: u32,
   }
 
-  #[test]
-  fn test_csv_consumer_new() {
-    let consumer = CsvConsumer::<TestRecord>::new("test.csv");
-    assert_eq!(consumer.path(), &PathBuf::from("test.csv"));
-  }
+  proptest! {
+    #[test]
+    fn test_csv_consumer_new(path in "[a-zA-Z0-9_./-]+\\.csv") {
+      let consumer = CsvConsumer::<TestRecord>::new(path.clone());
+      prop_assert_eq!(consumer.path(), &PathBuf::from(path));
+    }
 
-  #[test]
-  fn test_csv_consumer_builder() {
-    let consumer = CsvConsumer::<TestRecord>::new("test.csv")
-      .with_name("test_consumer".to_string())
-      .with_headers(false)
-      .with_delimiter(b'\t')
-      .with_flush_on_write(true);
+    #[test]
+    fn test_csv_consumer_builder(
+      path in "[a-zA-Z0-9_./-]+\\.csv",
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap(),
+      write_headers in prop::bool::ANY,
+      delimiter in prop::num::u8::ANY,
+      flush_on_write in prop::bool::ANY
+    ) {
+      let consumer = CsvConsumer::<TestRecord>::new(path.clone())
+        .with_name(name.clone())
+        .with_headers(write_headers)
+        .with_delimiter(delimiter)
+        .with_flush_on_write(flush_on_write);
 
-    assert_eq!(consumer.path(), &PathBuf::from("test.csv"));
-    assert_eq!(consumer.config.name, "test_consumer");
-    assert!(!consumer.csv_config.write_headers);
-    assert_eq!(consumer.csv_config.delimiter, b'\t');
-    assert!(consumer.csv_config.flush_on_write);
-  }
+      prop_assert_eq!(consumer.path(), &PathBuf::from(path));
+      prop_assert_eq!(consumer.config.name, name);
+      prop_assert_eq!(consumer.csv_config.write_headers, write_headers);
+      prop_assert_eq!(consumer.csv_config.delimiter, delimiter);
+      prop_assert_eq!(consumer.csv_config.flush_on_write, flush_on_write);
+    }
 
-  #[test]
-  fn test_csv_write_config_default() {
-    let config = CsvWriteConfig::default();
-    assert!(config.write_headers);
-    assert_eq!(config.delimiter, b',');
-    assert_eq!(config.quote, b'"');
-    assert!(config.double_quote);
-    assert!(!config.flush_on_write);
+    #[test]
+    fn test_csv_write_config_default(_ in prop::num::u8::ANY) {
+      let config = CsvWriteConfig::default();
+      prop_assert!(config.write_headers);
+      prop_assert_eq!(config.delimiter, b',');
+      prop_assert_eq!(config.quote, b'"');
+      prop_assert!(config.double_quote);
+      prop_assert!(!config.flush_on_write);
+    }
   }
 }
