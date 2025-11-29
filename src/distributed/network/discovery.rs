@@ -121,20 +121,37 @@ impl Default for NodeDiscovery {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
+  use tokio::runtime::Runtime;
 
-  #[tokio::test]
-  async fn test_node_discovery_register() {
+  async fn test_node_discovery_register_async(node_id: String, capabilities: Vec<String>) {
     let discovery = NodeDiscovery::default();
+    let address: SocketAddr = "127.0.0.1:8080".parse().unwrap();
     let node = NodeInfo {
-      address: "127.0.0.1:8080".parse().unwrap(),
-      node_id: "node-1".to_string(),
-      capabilities: vec!["worker".to_string()],
+      address,
+      node_id: node_id.clone(),
+      capabilities: capabilities.clone(),
       last_seen: chrono::Utc::now(),
     };
 
-    discovery.register_node(node.clone()).await;
+    discovery.register_node(node).await;
     let nodes = discovery.get_nodes().await;
     assert_eq!(nodes.len(), 1);
-    assert_eq!(nodes[0].node_id, node.node_id);
+    assert_eq!(nodes[0].node_id, node_id);
+    assert_eq!(nodes[0].capabilities, capabilities);
+  }
+
+  proptest! {
+    #[test]
+    fn test_node_discovery_register(
+      node_id in prop::string::string_regex("[a-zA-Z0-9_-]+").unwrap(),
+      capabilities in prop::collection::vec(
+        prop::string::string_regex("[a-zA-Z0-9_-]+").unwrap(),
+        0..10
+      ),
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_node_discovery_register_async(node_id, capabilities));
+    }
   }
 }
