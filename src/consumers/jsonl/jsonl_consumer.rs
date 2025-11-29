@@ -133,6 +133,8 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
+  use proptest::proptest;
   use serde::Serialize;
 
   #[derive(Debug, Clone, Serialize)]
@@ -141,40 +143,50 @@ mod tests {
     name: String,
   }
 
-  #[test]
-  fn test_jsonl_consumer_new() {
-    let consumer = JsonlConsumer::<TestRecord>::new("test.jsonl");
-    assert_eq!(consumer.path(), &PathBuf::from("test.jsonl"));
-  }
+  proptest! {
+    #[test]
+    fn test_jsonl_consumer_new(path in "[a-zA-Z0-9_./-]+\\.jsonl") {
+      let consumer = JsonlConsumer::<TestRecord>::new(path.clone());
+      prop_assert_eq!(consumer.path(), &PathBuf::from(path));
+    }
 
-  #[test]
-  fn test_jsonl_consumer_builder() {
-    let consumer = JsonlConsumer::<TestRecord>::new("test.jsonl")
-      .with_name("test_consumer".to_string())
-      .with_append(true)
-      .with_buffer_size(16384);
+    #[test]
+    fn test_jsonl_consumer_builder(
+      path in "[a-zA-Z0-9_./-]+\\.jsonl",
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap(),
+      append in prop::bool::ANY,
+      buffer_size in 1024usize..65536usize
+    ) {
+      let consumer = JsonlConsumer::<TestRecord>::new(path.clone())
+        .with_name(name.clone())
+        .with_append(append)
+        .with_buffer_size(buffer_size);
 
-    assert_eq!(consumer.path(), &PathBuf::from("test.jsonl"));
-    assert_eq!(consumer.config.name, "test_consumer");
-    assert!(consumer.jsonl_config.append);
-    assert_eq!(consumer.jsonl_config.buffer_size, 16384);
-  }
+      prop_assert_eq!(consumer.path(), &PathBuf::from(path));
+      prop_assert_eq!(consumer.config.name, name);
+      prop_assert_eq!(consumer.jsonl_config.append, append);
+      prop_assert_eq!(consumer.jsonl_config.buffer_size, buffer_size);
+    }
 
-  #[test]
-  fn test_jsonl_write_config_default() {
-    let config = JsonlWriteConfig::default();
-    assert!(!config.append);
-    assert!(!config.pretty);
-    assert_eq!(config.buffer_size, 8192);
-  }
+    #[test]
+    fn test_jsonl_write_config_default(_ in prop::num::u8::ANY) {
+      let config = JsonlWriteConfig::default();
+      prop_assert!(!config.append);
+      prop_assert!(!config.pretty);
+      prop_assert_eq!(config.buffer_size, 8192);
+    }
 
-  #[test]
-  fn test_jsonl_write_config_builder() {
-    let config = JsonlWriteConfig::default()
-      .with_append(true)
-      .with_buffer_size(4096);
+    #[test]
+    fn test_jsonl_write_config_builder(
+      append in prop::bool::ANY,
+      buffer_size in 1024usize..65536usize
+    ) {
+      let config = JsonlWriteConfig::default()
+        .with_append(append)
+        .with_buffer_size(buffer_size);
 
-    assert!(config.append);
-    assert_eq!(config.buffer_size, 4096);
+      prop_assert_eq!(config.append, append);
+      prop_assert_eq!(config.buffer_size, buffer_size);
+    }
   }
 }
