@@ -148,56 +148,85 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
+  use proptest::prelude::*;
 
-  #[test]
-  fn test_merge_strategy_default() {
-    let strategy = MergeStrategy::default();
-    assert_eq!(strategy, MergeStrategy::Interleave);
-  }
+  proptest! {
+    #[test]
+    fn test_merge_strategy_default(_dummy in prop::num::u8::ANY) {
+      // Property: default() always returns Interleave regardless of input
+      let strategy = MergeStrategy::default();
+      prop_assert_eq!(strategy, MergeStrategy::Interleave);
+    }
 
-  #[test]
-  fn test_ordered_merge_transformer_new() {
-    let transformer = OrderedMergeTransformer::<i32>::new();
-    assert_eq!(transformer.strategy, MergeStrategy::Interleave);
-    assert_eq!(transformer.stream_count(), 0);
-  }
+    #[test]
+    fn test_ordered_merge_transformer_new(_dummy in prop::num::u8::ANY) {
+      // Property: new() always creates transformer with Interleave strategy and 0 streams
+      let transformer = OrderedMergeTransformer::<i32>::new();
+      prop_assert_eq!(&transformer.strategy, &MergeStrategy::Interleave);
+      prop_assert_eq!(transformer.stream_count(), 0);
+    }
 
-  #[test]
-  fn test_ordered_merge_transformer_with_strategy() {
-    let transformer =
-      OrderedMergeTransformer::<i32>::new().with_strategy(MergeStrategy::RoundRobin);
-    assert_eq!(transformer.strategy, MergeStrategy::RoundRobin);
-  }
+    #[test]
+    fn test_ordered_merge_transformer_with_strategy(
+      strategy in prop::sample::select(vec![
+        MergeStrategy::Sequential,
+        MergeStrategy::RoundRobin,
+        MergeStrategy::Priority,
+        MergeStrategy::Interleave,
+      ])
+    ) {
+      // Property: with_strategy correctly sets the strategy for any strategy variant
+      let transformer = OrderedMergeTransformer::<i32>::new().with_strategy(strategy.clone());
+      prop_assert_eq!(&transformer.strategy, &strategy);
+    }
 
-  #[test]
-  fn test_ordered_merge_transformer_add_stream() {
-    let mut transformer = OrderedMergeTransformer::<i32>::new();
-    let stream = Box::pin(futures::stream::iter(vec![1, 2, 3]));
-    transformer.add_stream(stream);
-    assert_eq!(transformer.stream_count(), 1);
-  }
+    #[test]
+    fn test_ordered_merge_transformer_add_stream(
+      values in prop::collection::vec(-1000..1000i32, 0..100)
+    ) {
+      // Property: add_stream increments stream_count by 1 for any stream size
+      let mut transformer = OrderedMergeTransformer::<i32>::new();
+      let initial_count = transformer.stream_count();
+      let stream = Box::pin(futures::stream::iter(values));
+      transformer.add_stream(stream);
+      prop_assert_eq!(transformer.stream_count(), initial_count + 1);
+    }
 
-  #[test]
-  fn test_ordered_merge_transformer_add_streams() {
-    let mut transformer = OrderedMergeTransformer::<i32>::new();
-    let streams = vec![
-      Box::pin(futures::stream::iter(vec![1, 2])) as Pin<Box<dyn Stream<Item = i32> + Send>>,
-      Box::pin(futures::stream::iter(vec![3, 4])) as Pin<Box<dyn Stream<Item = i32> + Send>>,
-    ];
-    transformer.add_streams(streams);
-    assert_eq!(transformer.stream_count(), 2);
-  }
+    #[test]
+    fn test_ordered_merge_transformer_add_streams(
+      num_streams in 0..10usize,
+      stream_size in 0..20usize
+    ) {
+      // Property: add_streams correctly adds multiple streams
+      let mut transformer = OrderedMergeTransformer::<i32>::new();
+      let initial_count = transformer.stream_count();
+      let streams: Vec<Pin<Box<dyn Stream<Item = i32> + Send>>> = (0..num_streams)
+        .map(|_| {
+          Box::pin(futures::stream::iter(
+            (0..stream_size).map(|i| i as i32)
+          )) as Pin<Box<dyn Stream<Item = i32> + Send>>
+        })
+        .collect();
+      transformer.add_streams(streams);
+      prop_assert_eq!(transformer.stream_count(), initial_count + num_streams);
+    }
 
-  #[test]
-  fn test_ordered_merge_transformer_default() {
-    let transformer = OrderedMergeTransformer::<i32>::default();
-    assert_eq!(transformer.strategy, MergeStrategy::Interleave);
-    assert_eq!(transformer.stream_count(), 0);
-  }
+    #[test]
+    fn test_ordered_merge_transformer_default(_dummy in prop::num::u8::ANY) {
+      // Property: default() always creates transformer with Interleave strategy and 0 streams
+      let transformer = OrderedMergeTransformer::<i32>::default();
+      prop_assert_eq!(&transformer.strategy, &MergeStrategy::Interleave);
+      prop_assert_eq!(transformer.stream_count(), 0);
+    }
 
-  #[test]
-  fn test_ordered_merge_transformer_with_name() {
-    let transformer = OrderedMergeTransformer::<i32>::new().with_name("test_merge".to_string());
-    assert_eq!(transformer.config.name, Some("test_merge".to_string()));
+    #[test]
+    fn test_ordered_merge_transformer_with_name(
+      name in "[a-zA-Z0-9_]{1,50}"
+    ) {
+      // Property: with_name correctly sets the name for any valid string
+      let name_clone = name.clone();
+      let transformer = OrderedMergeTransformer::<i32>::new().with_name(name);
+      prop_assert_eq!(transformer.config.name, Some(name_clone));
+    }
   }
 }
