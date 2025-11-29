@@ -55,55 +55,74 @@ mod tests {
   use super::*;
   use crate::error::ErrorStrategy;
   use futures::stream;
+  use proptest::prelude::*;
+  use proptest::proptest;
+  use tokio::runtime::Runtime;
 
-  #[tokio::test]
-  async fn test_string_consumer_basic() {
+  async fn test_string_consumer_basic_async(input_data: Vec<String>) {
     let mut consumer = StringConsumer::new();
-    let input = stream::iter(
-      vec!["hello", " ", "world"]
-        .into_iter()
-        .map(|s| s.to_string()),
-    );
+    let expected = input_data.concat();
+    let input = stream::iter(input_data.clone());
     let boxed_input = Box::pin(input);
 
     consumer.consume(boxed_input).await;
-    assert_eq!(consumer.into_string(), "hello world");
+    assert_eq!(consumer.into_string(), expected);
   }
 
-  #[tokio::test]
-  async fn test_string_consumer_empty_input() {
-    let mut consumer = StringConsumer::new();
-    let input = stream::iter(Vec::<String>::new());
+  async fn test_string_consumer_with_capacity_async(input_data: Vec<String>, capacity: usize) {
+    let mut consumer = StringConsumer::with_capacity(capacity);
+    let expected = input_data.concat();
+    let input = stream::iter(input_data.clone());
     let boxed_input = Box::pin(input);
 
     consumer.consume(boxed_input).await;
-    assert!(consumer.into_string().is_empty());
+    assert_eq!(consumer.into_string(), expected);
   }
 
-  #[tokio::test]
-  async fn test_string_consumer_with_capacity() {
-    let mut consumer = StringConsumer::with_capacity(100);
-    let input = stream::iter(
-      vec!["hello", " ", "world"]
-        .into_iter()
-        .map(|s| s.to_string()),
-    );
-    let boxed_input = Box::pin(input);
+  proptest! {
+    #[test]
+    fn test_string_consumer_basic(
+      input_data in prop::collection::vec(any::<String>(), 0..30)
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_string_consumer_basic_async(input_data));
+    }
 
-    consumer.consume(boxed_input).await;
-    assert_eq!(consumer.into_string(), "hello world");
-  }
+    #[test]
+    fn test_string_consumer_empty_input(_ in prop::num::u8::ANY) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(async {
+        let mut consumer = StringConsumer::new();
+        let input = stream::iter(Vec::<String>::new());
+        let boxed_input = Box::pin(input);
 
-  #[tokio::test]
-  async fn test_error_handling_strategies() {
-    let consumer = StringConsumer::new()
-      .with_error_strategy(ErrorStrategy::<String>::Skip)
-      .with_name("test_consumer".to_string());
+        consumer.consume(boxed_input).await;
+        assert!(consumer.into_string().is_empty());
+      });
+    }
 
-    assert_eq!(
-      consumer.config().error_strategy,
-      ErrorStrategy::<String>::Skip
-    );
-    assert_eq!(consumer.config().name, "test_consumer");
+    #[test]
+    fn test_string_consumer_with_capacity(
+      input_data in prop::collection::vec(any::<String>(), 0..30),
+      capacity in 0usize..1000usize
+    ) {
+      let rt = Runtime::new().unwrap();
+      rt.block_on(test_string_consumer_with_capacity_async(input_data, capacity));
+    }
+
+    #[test]
+    fn test_error_handling_strategies(
+      name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
+    ) {
+      let consumer = StringConsumer::new()
+        .with_error_strategy(ErrorStrategy::<String>::Skip)
+        .with_name(name.clone());
+
+      prop_assert_eq!(
+        &consumer.config().error_strategy,
+        &ErrorStrategy::<String>::Skip
+      );
+      prop_assert_eq!(consumer.config().name.as_str(), name.as_str());
+    }
   }
 }
