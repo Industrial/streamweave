@@ -288,10 +288,11 @@ impl HttpRequestProducer {
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use streamweave::http_server::HttpRequestProducer;
+  /// use streamweave::http_server::{HttpRequestProducer, HttpRequest};
   /// use std::collections::HashMap;
   ///
-  /// let mut producer = /* ... */;
+  /// let request = HttpRequest::new(axum::http::Method::GET, "/users/123".parse().unwrap());
+  /// let mut producer = HttpRequestProducer::new(request);
   /// let mut path_params = HashMap::new();
   /// path_params.insert("id".to_string(), "123".to_string());
   /// producer.set_path_params(path_params);

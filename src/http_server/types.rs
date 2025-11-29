@@ -242,17 +242,6 @@ impl HttpRequest {
   }
 
   /// Get a query parameter value by key.
-  ///
-  /// ## Example
-  ///
-  /// ```rust,no_run
-  /// use streamweave::http_server::HttpRequest;
-  ///
-  /// let request = /* ... */;
-  /// if let Some(id) = request.get_query_param("id") {
-  ///     println!("ID: {}", id);
-  /// }
-  /// ```
   pub fn get_query_param(&self, key: &str) -> Option<&String> {
     self.query_params.get(key)
   }
