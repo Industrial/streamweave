@@ -24,7 +24,7 @@
             "id": "1.2",
             "title": "Node types (ProducerNode, TransformerNode, ConsumerNode)",
             "description": "Create node types that wrap existing Producer, Transformer, and Consumer traits with port information",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "1.1"
             ],

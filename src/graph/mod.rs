@@ -7,17 +7,17 @@
 //! The graph API coexists with the existing linear pipeline API, allowing
 //! users to choose the appropriate model for their use case.
 
+mod node;
 mod port;
 
 // Modules to be implemented in later tasks:
 // mod connection;
 // mod graph;
-// mod node;
 
+pub use node::{ConsumerNode, ProducerNode, TransformerNode};
 pub use port::{GetPort, PortList, SinglePort};
 
 // Exports to be added in later tasks:
 // pub use connection::{Connection, ConnectionError};
 // pub use graph::Graph;
-// pub use node::{ConsumerNode, Node, ProducerNode, TransformerNode};
 
