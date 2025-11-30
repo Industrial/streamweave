@@ -33,6 +33,7 @@
 
 use crate::consumer::Consumer;
 use crate::graph::port::{GetPort, PortList};
+use crate::graph::traits::{NodeKind, NodeTrait};
 use crate::producer::Producer;
 use crate::transformer::Transformer;
 
@@ -354,6 +355,55 @@ where
   /// Returns a mutable reference to the wrapped consumer.
   pub fn consumer_mut(&mut self) -> &mut C {
     &mut self.consumer
+  }
+}
+
+// Implement NodeTrait for ProducerNode
+impl<P, Outputs> NodeTrait for ProducerNode<P, Outputs>
+where
+  P: Producer,
+  Outputs: PortList,
+  (): ValidateProducerPorts<P, Outputs>,
+{
+  fn name(&self) -> &str {
+    &self.name
+  }
+
+  fn node_kind(&self) -> NodeKind {
+    NodeKind::Producer
+  }
+}
+
+// Implement NodeTrait for TransformerNode
+impl<T, Inputs, Outputs> NodeTrait for TransformerNode<T, Inputs, Outputs>
+where
+  T: Transformer,
+  Inputs: PortList,
+  Outputs: PortList,
+  (): ValidateTransformerPorts<T, Inputs, Outputs>,
+{
+  fn name(&self) -> &str {
+    &self.name
+  }
+
+  fn node_kind(&self) -> NodeKind {
+    NodeKind::Transformer
+  }
+}
+
+// Implement NodeTrait for ConsumerNode
+impl<C, Inputs> NodeTrait for ConsumerNode<C, Inputs>
+where
+  C: Consumer,
+  Inputs: PortList,
+  (): ValidateConsumerPorts<C, Inputs>,
+{
+  fn name(&self) -> &str {
+    &self.name
+  }
+
+  fn node_kind(&self) -> NodeKind {
+    NodeKind::Consumer
   }
 }
 

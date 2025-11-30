@@ -45,7 +45,7 @@
             "id": "1.4",
             "title": "Basic graph structure",
             "description": "Create Graph struct that holds nodes and connections, with methods for querying topology",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "1.1",
               "1.2",

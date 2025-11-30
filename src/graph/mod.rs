@@ -8,16 +8,19 @@
 //! users to choose the appropriate model for their use case.
 
 mod connection;
+mod graph;
 mod node;
 mod port;
+mod traits;
 
 // Modules to be implemented in later tasks:
-// mod graph;
+// (none currently)
 
 pub use connection::{CompatibleWith, Connection, ConnectionError, HasInputPort, HasOutputPort};
+pub use graph::{
+  ConnectionInfo, Graph, GraphBuilder, GraphError, RuntimeGraphBuilder,
+};
 pub use node::{ConsumerNode, ProducerNode, TransformerNode};
 pub use port::{GetPort, PortList, SinglePort};
-
-// Exports to be added in later tasks:
-// pub use graph::Graph;
+pub use traits::{NodeKind, NodeTrait};
 
