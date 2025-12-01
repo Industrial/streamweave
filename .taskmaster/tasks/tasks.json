@@ -178,7 +178,7 @@
             "id": "4.2",
             "title": "Runtime management",
             "description": "Implement runtime management for starting, stopping, pausing, and resuming graph execution",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "4.1"
             ],

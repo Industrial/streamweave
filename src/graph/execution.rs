@@ -33,7 +33,8 @@
 use crate::graph::graph::{ConnectionInfo, Graph};
 use crate::graph::traits::{NodeKind, NodeTrait};
 use std::collections::HashMap;
-use tokio::sync::mpsc;
+use std::sync::Arc;
+use tokio::sync::{mpsc, RwLock};
 use tokio::task::JoinHandle;
 
 /// Error type for graph execution.
@@ -136,6 +137,9 @@ pub struct GraphExecutor {
   channel_receivers: HashMap<(String, usize), mpsc::Receiver<Vec<u8>>>,
   /// Execution state
   state: ExecutionState,
+  /// Pause signal shared across all node tasks
+  /// When true, nodes should pause execution
+  pause_signal: Arc<RwLock<bool>>,
 }
 
 impl GraphExecutor {
@@ -164,6 +168,7 @@ impl GraphExecutor {
       channel_senders: HashMap::new(),
       channel_receivers: HashMap::new(),
       state: ExecutionState::Stopped,
+      pause_signal: Arc::new(RwLock::new(false)),
     }
   }
 
@@ -256,6 +261,9 @@ impl GraphExecutor {
     self.channel_senders.clear();
     self.channel_receivers.clear();
 
+    // Clear pause signal
+    *self.pause_signal.write().await = false;
+
     self.state = ExecutionState::Stopped;
     Ok(())
   }
@@ -285,6 +293,114 @@ impl GraphExecutor {
   /// A reference to the `Graph` being executed.
   pub fn graph(&self) -> &Graph {
     &self.graph
+  }
+
+  /// Pauses graph execution.
+  ///
+  /// This method pauses all node tasks. Nodes will stop processing new items
+  /// but will not be terminated. Execution can be resumed with `resume()`.
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if execution was paused successfully, `Err(ExecutionError)` otherwise.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error if:
+  /// - The graph is not running
+  /// - The graph is already paused
+  ///
+  /// # Example
+  ///
+  /// ```rust,no_run
+  /// use streamweave::graph::{Graph, GraphExecution};
+  ///
+  /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+  /// let graph = Graph::new();
+  /// let mut executor = graph.executor();
+  ///
+  /// executor.start().await?;
+  /// executor.pause().await?;
+  /// // Graph is paused, nodes are waiting
+  /// executor.resume().await?;
+  /// # Ok(())
+  /// # }
+  /// ```
+  pub async fn pause(&mut self) -> Result<(), ExecutionError> {
+    if self.state != ExecutionState::Running {
+      return Err(ExecutionError::ExecutionFailed(format!(
+        "Cannot pause graph in {:?} state",
+        self.state
+      )));
+    }
+
+    // Set pause signal
+    *self.pause_signal.write().await = true;
+    self.state = ExecutionState::Paused;
+    Ok(())
+  }
+
+  /// Resumes graph execution from a paused state.
+  ///
+  /// This method resumes all node tasks that were paused. Nodes will continue
+  /// processing from where they left off.
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if execution was resumed successfully, `Err(ExecutionError)` otherwise.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error if:
+  /// - The graph is not paused
+  ///
+  /// # Example
+  ///
+  /// ```rust,no_run
+  /// use streamweave::graph::{Graph, GraphExecution};
+  ///
+  /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+  /// let graph = Graph::new();
+  /// let mut executor = graph.executor();
+  ///
+  /// executor.start().await?;
+  /// executor.pause().await?;
+  /// executor.resume().await?;
+  /// # Ok(())
+  /// # }
+  /// ```
+  pub async fn resume(&mut self) -> Result<(), ExecutionError> {
+    if self.state != ExecutionState::Paused {
+      return Err(ExecutionError::ExecutionFailed(format!(
+        "Cannot resume graph in {:?} state",
+        self.state
+      )));
+    }
+
+    // Clear pause signal
+    *self.pause_signal.write().await = false;
+    self.state = ExecutionState::Running;
+    Ok(())
+  }
+
+  /// Returns whether the graph is currently paused.
+  ///
+  /// # Returns
+  ///
+  /// `true` if the graph is paused, `false` otherwise.
+  pub fn is_paused(&self) -> bool {
+    self.state == ExecutionState::Paused
+  }
+
+  /// Returns a reference to the pause signal.
+  ///
+  /// This can be used by node tasks to check if they should pause.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the pause signal `Arc<RwLock<bool>>`.
+  pub fn pause_signal(&self) -> Arc<RwLock<bool>> {
+    self.pause_signal.clone()
   }
 
   /// Validates the graph topology before execution.
@@ -456,6 +572,66 @@ mod tests {
 
     // Stopping when already stopped should succeed
     assert!(executor.stop().await.is_ok());
+  }
+
+  #[tokio::test]
+  async fn test_graph_executor_pause_resume() {
+    let graph = Graph::new();
+    let mut executor = graph.executor();
+
+    // Cannot pause when not running
+    assert!(executor.pause().await.is_err());
+
+    // Start execution
+    assert!(executor.start().await.is_ok());
+
+    // Pause execution
+    assert!(executor.pause().await.is_ok());
+    assert!(executor.is_paused());
+    assert_eq!(executor.state(), ExecutionState::Paused);
+
+    // Resume execution
+    assert!(executor.resume().await.is_ok());
+    assert!(!executor.is_paused());
+    assert_eq!(executor.state(), ExecutionState::Running);
+
+    // Stop execution
+    assert!(executor.stop().await.is_ok());
+  }
+
+  #[tokio::test]
+  async fn test_graph_executor_resume_when_not_paused() {
+    let graph = Graph::new();
+    let mut executor = graph.executor();
+
+    // Cannot resume when not paused
+    assert!(executor.resume().await.is_err());
+
+    // Start execution
+    assert!(executor.start().await.is_ok());
+
+    // Cannot resume when running (not paused)
+    assert!(executor.resume().await.is_err());
+  }
+
+  #[tokio::test]
+  async fn test_graph_executor_pause_signal() {
+    let graph = Graph::new();
+    let executor = graph.executor();
+
+    // Get pause signal
+    let pause_signal = executor.pause_signal();
+
+    // Initially not paused
+    assert!(!*pause_signal.read().await);
+
+    // Set pause signal
+    *pause_signal.write().await = true;
+    assert!(*pause_signal.read().await);
+
+    // Clear pause signal
+    *pause_signal.write().await = false;
+    assert!(!*pause_signal.read().await);
   }
 }
 
