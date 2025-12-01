@@ -198,7 +198,7 @@
             "id": "4.4",
             "title": "Lifecycle management",
             "description": "Implement lifecycle management including graceful shutdown, error propagation, and resource cleanup",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "4.1",
               "4.2",

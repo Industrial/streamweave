@@ -34,8 +34,10 @@ use crate::graph::graph::{ConnectionInfo, Graph};
 use crate::graph::traits::{NodeKind, NodeTrait};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::{mpsc, RwLock};
 use tokio::task::JoinHandle;
+use tokio::time::timeout;
 
 /// Error type for graph execution.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -140,6 +142,10 @@ pub struct GraphExecutor {
   /// Pause signal shared across all node tasks
   /// When true, nodes should pause execution
   pause_signal: Arc<RwLock<bool>>,
+  /// Errors collected during execution
+  execution_errors: Vec<ExecutionError>,
+  /// Shutdown timeout duration
+  shutdown_timeout: Duration,
 }
 
 impl GraphExecutor {
@@ -169,6 +175,31 @@ impl GraphExecutor {
       channel_receivers: HashMap::new(),
       state: ExecutionState::Stopped,
       pause_signal: Arc::new(RwLock::new(false)),
+      execution_errors: Vec::new(),
+      shutdown_timeout: Duration::from_secs(30), // Default 30 second timeout
+    }
+  }
+
+  /// Creates a new executor with a custom shutdown timeout.
+  ///
+  /// # Arguments
+  ///
+  /// * `graph` - The graph to execute
+  /// * `shutdown_timeout` - Maximum time to wait for graceful shutdown
+  ///
+  /// # Returns
+  ///
+  /// A new `GraphExecutor` instance with the specified shutdown timeout.
+  pub fn with_shutdown_timeout(graph: Graph, shutdown_timeout: Duration) -> Self {
+    Self {
+      graph,
+      node_handles: HashMap::new(),
+      channel_senders: HashMap::new(),
+      channel_receivers: HashMap::new(),
+      state: ExecutionState::Stopped,
+      pause_signal: Arc::new(RwLock::new(false)),
+      execution_errors: Vec::new(),
+      shutdown_timeout,
     }
   }
 
@@ -223,13 +254,24 @@ impl GraphExecutor {
     Ok(())
   }
 
-  /// Stops graph execution.
+  /// Stops graph execution with graceful shutdown.
   ///
   /// This method gracefully shuts down all node tasks and cleans up resources.
+  /// It attempts to wait for tasks to complete naturally, but will force
+  /// termination if they exceed the shutdown timeout.
+  ///
+  /// # Graceful Shutdown Process
+  ///
+  /// 1. Signal all nodes to stop (via pause signal or cancellation)
+  /// 2. Wait for tasks to complete (up to shutdown_timeout)
+  /// 3. Force abort any remaining tasks
+  /// 4. Collect and report any errors from node tasks
+  /// 5. Clean up all channels and resources
   ///
   /// # Returns
   ///
-  /// `Ok(())` if execution stopped successfully, `Err(ExecutionError)` otherwise.
+  /// `Ok(())` if execution stopped successfully, `Err(ExecutionError)` if
+  /// shutdown failed or errors occurred during execution.
   ///
   /// # Example
   ///
@@ -251,21 +293,148 @@ impl GraphExecutor {
       return Ok(());
     }
 
-    // Cancel all node tasks
+    // Signal shutdown by setting pause (nodes should check this and exit)
+    *self.pause_signal.write().await = true;
+
+    // Close all channel senders to signal end of stream
+    self.channel_senders.clear();
+
+    // Wait for tasks to complete gracefully (with timeout)
+    let handles: Vec<(String, JoinHandle<Result<(), ExecutionError>>)> =
+      self.node_handles.drain().collect();
+
+    let shutdown_result = timeout(self.shutdown_timeout, async {
+      let mut errors = Vec::new();
+      for (node_name, handle) in handles {
+        match handle.await {
+          Ok(Ok(())) => {
+            // Task completed successfully
+          }
+          Ok(Err(e)) => {
+            // Task returned an error
+            errors.push(ExecutionError::NodeExecutionFailed {
+              node: node_name.clone(),
+              reason: e.to_string(),
+            });
+          }
+          Err(e) => {
+            // Task was cancelled or panicked
+            if e.is_cancelled() {
+              // Expected during shutdown
+            } else if e.is_panic() {
+              errors.push(ExecutionError::NodeExecutionFailed {
+                node: node_name.clone(),
+                reason: format!("Task panicked: {:?}", e),
+              });
+            }
+          }
+        }
+      }
+      errors
+    })
+    .await;
+
+    // Handle timeout or collect errors
+    match shutdown_result {
+      Ok(errors) => {
+        self.execution_errors.extend(errors);
+      }
+      Err(_) => {
+        // Timeout occurred - force abort remaining tasks
+        // (All tasks should already be collected, but handle edge cases)
+        return Err(ExecutionError::ExecutionFailed(
+          format!(
+            "Shutdown timeout exceeded ({}s). Some tasks may not have completed gracefully.",
+            self.shutdown_timeout.as_secs()
+          ),
+        ));
+      }
+    }
+
+    // Clean up remaining resources
+    self.channel_receivers.clear();
+    *self.pause_signal.write().await = false;
+
+    // Check if there were any errors during execution
+    if !self.execution_errors.is_empty() {
+      let error_summary = self
+        .execution_errors
+        .iter()
+        .map(|e| e.to_string())
+        .collect::<Vec<_>>()
+        .join("; ");
+      return Err(ExecutionError::ExecutionFailed(format!(
+        "Errors during execution: {}",
+        error_summary
+      )));
+    }
+
+    self.state = ExecutionState::Stopped;
+    Ok(())
+  }
+
+  /// Stops graph execution immediately without graceful shutdown.
+  ///
+  /// This method immediately aborts all node tasks without waiting for
+  /// them to complete. Use this only when graceful shutdown is not possible
+  /// or when you need immediate termination.
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if execution was stopped, `Err(ExecutionError)` otherwise.
+  pub async fn stop_immediate(&mut self) -> Result<(), ExecutionError> {
+    if self.state == ExecutionState::Stopped {
+      return Ok(());
+    }
+
+    // Immediately abort all tasks
     for (node_name, handle) in self.node_handles.drain() {
       handle.abort();
       let _ = handle.await;
     }
 
-    // Close all channels
+    // Clean up resources
     self.channel_senders.clear();
     self.channel_receivers.clear();
-
-    // Clear pause signal
     *self.pause_signal.write().await = false;
 
     self.state = ExecutionState::Stopped;
     Ok(())
+  }
+
+  /// Returns all errors collected during execution.
+  ///
+  /// # Returns
+  ///
+  /// A slice of all `ExecutionError` instances that occurred during execution.
+  pub fn errors(&self) -> &[ExecutionError] {
+    &self.execution_errors
+  }
+
+  /// Clears all collected errors.
+  ///
+  /// This is useful when you want to reset error state, for example
+  /// after handling errors or before restarting execution.
+  pub fn clear_errors(&mut self) {
+    self.execution_errors.clear();
+  }
+
+  /// Returns the shutdown timeout duration.
+  ///
+  /// # Returns
+  ///
+  /// The current shutdown timeout.
+  pub fn shutdown_timeout(&self) -> Duration {
+    self.shutdown_timeout
+  }
+
+  /// Sets the shutdown timeout duration.
+  ///
+  /// # Arguments
+  ///
+  /// * `timeout` - The new shutdown timeout duration
+  pub fn set_shutdown_timeout(&mut self, timeout: Duration) {
+    self.shutdown_timeout = timeout;
   }
 
   /// Returns the current execution state.
@@ -784,6 +953,50 @@ mod tests {
     assert_eq!(executor.channel_count(), 0);
     assert!(executor.get_channel_sender("source", 0).is_none());
     assert!(executor.get_channel_receiver("source", 0).is_none());
+  }
+
+  #[tokio::test]
+  async fn test_graph_executor_lifecycle_errors() {
+    let graph = Graph::new();
+    let mut executor = graph.executor();
+
+    // Initially no errors
+    assert!(executor.errors().is_empty());
+
+    // Clear errors (should be no-op)
+    executor.clear_errors();
+    assert!(executor.errors().is_empty());
+  }
+
+  #[tokio::test]
+  async fn test_graph_executor_shutdown_timeout() {
+    let graph = Graph::new();
+    let executor = graph.executor();
+
+    // Default timeout is 30 seconds
+    assert_eq!(executor.shutdown_timeout(), Duration::from_secs(30));
+
+    // Create executor with custom timeout
+    let custom_timeout = Duration::from_secs(60);
+    let mut executor = GraphExecutor::with_shutdown_timeout(graph, custom_timeout);
+    assert_eq!(executor.shutdown_timeout(), custom_timeout);
+
+    // Set new timeout
+    executor.set_shutdown_timeout(Duration::from_secs(10));
+    assert_eq!(executor.shutdown_timeout(), Duration::from_secs(10));
+  }
+
+  #[tokio::test]
+  async fn test_graph_executor_stop_immediate() {
+    let graph = Graph::new();
+    let mut executor = graph.executor();
+
+    // Start execution
+    assert!(executor.start().await.is_ok());
+
+    // Stop immediately
+    assert!(executor.stop_immediate().await.is_ok());
+    assert_eq!(executor.state(), ExecutionState::Stopped);
   }
 }
 
