@@ -23,6 +23,6 @@ pub use graph::{
 };
 pub use node::{ConsumerNode, ProducerNode, TransformerNode};
 pub use port::{GetPort, PortList, SinglePort};
-pub use router::{InputRouter, RouterError};
+pub use router::{InputRouter, OutputRouter, RouterError};
 pub use traits::{NodeKind, NodeTrait};
 

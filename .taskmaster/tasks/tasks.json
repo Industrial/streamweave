@@ -80,7 +80,7 @@
             "id": "2.2",
             "title": "OutputRouter trait",
             "description": "Define OutputRouter trait for routing a single output stream to multiple nodes",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentId": "undefined"
           },
