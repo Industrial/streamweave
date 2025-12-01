@@ -20,7 +20,8 @@ mod traits;
 
 pub use connection::{CompatibleWith, Connection, ConnectionError, HasInputPort, HasOutputPort};
 pub use graph::{
-  ConnectionInfo, Graph, GraphBuilder, GraphError, RuntimeGraphBuilder,
+  AppendNode, ConnectionInfo, Graph, GraphBuilder, GraphError, HasConnections, HasNodes,
+  RuntimeGraphBuilder,
 };
 pub use node::{ConsumerNode, ProducerNode, TransformerNode};
 pub use port::{GetPort, PortList, SinglePort};

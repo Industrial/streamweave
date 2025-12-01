@@ -25,6 +25,80 @@ use crate::graph::traits::{NodeKind, NodeTrait};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
+/// Trait for appending a node type to a tuple of node types.
+///
+/// This trait enables type-level tuple concatenation for tracking node types
+/// in the graph builder state machine.
+///
+/// # Example
+///
+/// ```rust
+/// // Append Node2 to (Node1,)
+/// type Result = <(Node1,) as AppendNode<Node2>>::Output;
+/// // Result = (Node1, Node2)
+/// ```
+pub trait AppendNode<NewNode> {
+  /// The resulting tuple type after appending `NewNode`.
+  type Output;
+}
+
+// Implementations for various tuple sizes (up to 12, matching port system)
+impl<NewNode> AppendNode<NewNode> for () {
+  type Output = (NewNode,);
+}
+
+impl<N1, NewNode> AppendNode<NewNode> for (N1,) {
+  type Output = (N1, NewNode);
+}
+
+impl<N1, N2, NewNode> AppendNode<NewNode> for (N1, N2) {
+  type Output = (N1, N2, NewNode);
+}
+
+impl<N1, N2, N3, NewNode> AppendNode<NewNode> for (N1, N2, N3) {
+  type Output = (N1, N2, N3, NewNode);
+}
+
+impl<N1, N2, N3, N4, NewNode> AppendNode<NewNode> for (N1, N2, N3, N4) {
+  type Output = (N1, N2, N3, N4, NewNode);
+}
+
+impl<N1, N2, N3, N4, N5, NewNode> AppendNode<NewNode> for (N1, N2, N3, N4, N5) {
+  type Output = (N1, N2, N3, N4, N5, NewNode);
+}
+
+impl<N1, N2, N3, N4, N5, N6, NewNode> AppendNode<NewNode> for (N1, N2, N3, N4, N5, N6) {
+  type Output = (N1, N2, N3, N4, N5, N6, NewNode);
+}
+
+impl<N1, N2, N3, N4, N5, N6, N7, NewNode> AppendNode<NewNode> for (N1, N2, N3, N4, N5, N6, N7) {
+  type Output = (N1, N2, N3, N4, N5, N6, N7, NewNode);
+}
+
+impl<N1, N2, N3, N4, N5, N6, N7, N8, NewNode> AppendNode<NewNode>
+  for (N1, N2, N3, N4, N5, N6, N7, N8)
+{
+  type Output = (N1, N2, N3, N4, N5, N6, N7, N8, NewNode);
+}
+
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, NewNode> AppendNode<NewNode>
+  for (N1, N2, N3, N4, N5, N6, N7, N8, N9)
+{
+  type Output = (N1, N2, N3, N4, N5, N6, N7, N8, N9, NewNode);
+}
+
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, NewNode> AppendNode<NewNode>
+  for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10)
+{
+  type Output = (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, NewNode);
+}
+
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, NewNode> AppendNode<NewNode>
+  for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11)
+{
+  type Output = (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, NewNode);
+}
+
 /// Runtime representation of a connection between nodes.
 ///
 /// This stores the connection information needed for topology queries,
@@ -248,26 +322,42 @@ pub struct Empty;
 
 /// State indicating nodes have been added to the graph.
 ///
+/// This state tracks the actual node types that have been added, enabling
+/// compile-time validation of operations on the graph builder.
+///
 /// # Type Parameters
 ///
-/// * `Nodes` - A type-level representation of the nodes that have been added
+/// * `Nodes` - Tuple of node types that have been added (e.g., `(Node1, Node2)`)
+///
+/// # Example
+///
+/// ```rust
+/// // After adding first node
+/// type Builder1 = GraphBuilder<HasNodes<(ProducerNode<...>,)>>;
+///
+/// // After adding second node
+/// type Builder2 = GraphBuilder<HasNodes<(ProducerNode<...>, TransformerNode<...>)>>;
+/// ```
 pub struct HasNodes<Nodes>(PhantomData<Nodes>);
 
 /// State indicating connections have been added to the graph.
 ///
+/// This state tracks both the node types and connection types, enabling
+/// compile-time validation of the graph structure.
+///
 /// # Type Parameters
 ///
-/// * `Nodes` - A type-level representation of the nodes
-/// * `Connections` - A type-level representation of the connections
+/// * `Nodes` - Tuple of node types
+/// * `Connections` - Tuple of connection types (currently `()` for simplicity,
+///   but can be extended for type-level connection tracking)
+///
+/// # Example
+///
+/// ```rust
+/// // After adding first connection
+/// type Builder = GraphBuilder<HasConnections<(Node1, Node2), ()>>;
+/// ```
 pub struct HasConnections<Nodes, Connections>(PhantomData<(Nodes, Connections)>);
-
-/// Complete state indicating the graph is ready to be built.
-///
-/// # Type Parameters
-///
-/// * `Nodes` - A type-level representation of the nodes
-/// * `Connections` - A type-level representation of the connections
-pub struct Complete<Nodes, Connections>(PhantomData<(Nodes, Connections)>);
 
 /// Builder for constructing graphs with compile-time type validation.
 ///
@@ -341,12 +431,12 @@ impl<State> GraphBuilder<State> {
   }
 }
 
-// Methods for adding nodes (works from Empty or HasNodes state)
-impl<State> GraphBuilder<State> {
-  /// Adds a node to the graph.
+// Methods for adding nodes from Empty state
+impl GraphBuilder<Empty> {
+  /// Adds the first node to the graph.
   ///
-  /// This method transitions the builder from `Empty` to `HasNodes` state,
-  /// or remains in `HasNodes` state if nodes already exist.
+  /// This method transitions the builder from `Empty` to `HasNodes<(N,)>` state,
+  /// tracking the node type in the state.
   ///
   /// # Arguments
   ///
@@ -355,17 +445,26 @@ impl<State> GraphBuilder<State> {
   ///
   /// # Returns
   ///
-  /// A new `GraphBuilder` in the `HasNodes` state, or `Err(GraphError)` if
+  /// A new `GraphBuilder` in the `HasNodes<(N,)>` state, or `Err(GraphError)` if
   /// a node with the same name already exists.
   ///
   /// # Type Parameters
   ///
   /// * `N` - The node type being added
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// let builder = GraphBuilder::new();
+  /// let producer = ProducerNode::new("source".to_string(), ...);
+  /// let builder = builder.add_node("source".to_string(), producer)?;
+  /// // builder is now GraphBuilder<HasNodes<(ProducerNode<...>,)>>
+  /// ```
   pub fn add_node<N>(
     self,
     name: String,
     node: N,
-  ) -> Result<GraphBuilder<HasNodes<()>>, GraphError>
+  ) -> Result<GraphBuilder<HasNodes<(N,)>>, GraphError>
   where
     N: NodeTrait + 'static,
   {
@@ -380,6 +479,180 @@ impl<State> GraphBuilder<State> {
       nodes,
       connections: self.connections,
       _state: HasNodes(PhantomData),
+    })
+  }
+}
+
+// Methods for adding nodes from HasNodes state
+impl<Nodes> GraphBuilder<HasNodes<Nodes>> {
+  /// Adds another node to the graph.
+  ///
+  /// This method extends the node type tuple, tracking the new node type
+  /// in the state: `HasNodes<Nodes>` → `HasNodes<Append<Nodes, N>>`.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name of the node
+  /// * `node` - The node to add (must implement `NodeTrait`)
+  ///
+  /// # Returns
+  ///
+  /// A new `GraphBuilder` in the `HasNodes<Append<Nodes, N>>` state, or
+  /// `Err(GraphError)` if a node with the same name already exists.
+  ///
+  /// # Type Parameters
+  ///
+  /// * `N` - The node type being added
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// // builder is GraphBuilder<HasNodes<(ProducerNode<...>,)>>
+  /// let transformer = TransformerNode::new("transform".to_string(), ...);
+  /// let builder = builder.add_node("transform".to_string(), transformer)?;
+  /// // builder is now GraphBuilder<HasNodes<(ProducerNode<...>, TransformerNode<...>)>>
+  /// ```
+  pub fn add_node<N>(
+    self,
+    name: String,
+    node: N,
+  ) -> Result<GraphBuilder<HasNodes<<Nodes as AppendNode<N>>::Output>>, GraphError>
+  where
+    N: NodeTrait + 'static,
+    Nodes: AppendNode<N>,
+  {
+    if self.nodes.contains_key(&name) {
+      return Err(GraphError::DuplicateNode { name });
+    }
+
+    let mut nodes = self.nodes;
+    nodes.insert(name, Box::new(node));
+
+    Ok(GraphBuilder {
+      nodes,
+      connections: self.connections,
+      _state: HasNodes(PhantomData),
+    })
+  }
+}
+
+// Methods for adding nodes from HasConnections state
+impl<Nodes, Connections> GraphBuilder<HasConnections<Nodes, Connections>> {
+  /// Adds another node to the graph.
+  ///
+  /// This method extends the node type tuple and transitions back to `HasNodes`
+  /// state (since adding a node doesn't require connections).
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name of the node
+  /// * `node` - The node to add (must implement `NodeTrait`)
+  ///
+  /// # Returns
+  ///
+  /// A new `GraphBuilder` in the `HasNodes<Append<Nodes, N>>` state, or
+  /// `Err(GraphError)` if a node with the same name already exists.
+  ///
+  /// # Type Parameters
+  ///
+  /// * `N` - The node type being added
+  pub fn add_node<N>(
+    self,
+    name: String,
+    node: N,
+  ) -> Result<GraphBuilder<HasNodes<<Nodes as AppendNode<N>>::Output>>, GraphError>
+  where
+    N: NodeTrait + 'static,
+    Nodes: AppendNode<N>,
+  {
+    if self.nodes.contains_key(&name) {
+      return Err(GraphError::DuplicateNode { name });
+    }
+
+    let mut nodes = self.nodes;
+    nodes.insert(name, Box::new(node));
+
+    Ok(GraphBuilder {
+      nodes,
+      connections: self.connections,
+      _state: HasNodes(PhantomData),
+    })
+  }
+
+  /// Adds another connection to the graph.
+  ///
+  /// This method allows adding additional connections while remaining in the
+  /// `HasConnections` state, preserving the node types in the state.
+  ///
+  /// # Type Parameters
+  ///
+  /// * `Source` - The source node type (must implement `HasOutputPort<SP>`)
+  /// * `Target` - The target node type (must implement `HasInputPort<TP>`)
+  /// * `SP` - The source port index (compile-time constant)
+  /// * `TP` - The target port index (compile-time constant)
+  ///
+  /// # Arguments
+  ///
+  /// * `source_name` - The name of the source node
+  /// * `target_name` - The name of the target node
+  /// * `source_port` - The source port index
+  /// * `target_port` - The target port index
+  ///
+  /// # Returns
+  ///
+  /// A new `GraphBuilder` in the `HasConnections<Nodes, Connections>` state,
+  /// or `Err(GraphError)` if the connection is invalid.
+  pub fn connect<Source, Target, const SP: usize, const TP: usize>(
+    self,
+    source_name: &str,
+    target_name: &str,
+    source_port: usize,
+    target_port: usize,
+  ) -> Result<GraphBuilder<HasConnections<Nodes, Connections>>, GraphError>
+  where
+    Source: HasOutputPort<SP> + 'static,
+    Target: HasInputPort<TP> + 'static,
+    <Source as HasOutputPort<SP>>::OutputType: CompatibleWith<<Target as HasInputPort<TP>>::InputType>,
+  {
+    // Validate that source_port matches SP and target_port matches TP
+    if source_port != SP {
+      return Err(GraphError::InvalidConnection {
+        source: source_name.to_string(),
+        target: target_name.to_string(),
+        reason: format!("Source port index {} doesn't match compile-time constant {}", source_port, SP),
+      });
+    }
+    if target_port != TP {
+      return Err(GraphError::InvalidConnection {
+        source: source_name.to_string(),
+        target: target_name.to_string(),
+        reason: format!("Target port index {} doesn't match compile-time constant {}", target_port, TP),
+      });
+    }
+
+    // Validate nodes exist
+    if !self.nodes.contains_key(source_name) {
+      return Err(GraphError::NodeNotFound {
+        name: source_name.to_string(),
+      });
+    }
+    if !self.nodes.contains_key(target_name) {
+      return Err(GraphError::NodeNotFound {
+        name: target_name.to_string(),
+      });
+    }
+
+    // Create connection info
+    let mut connections = self.connections;
+    connections.push(ConnectionInfo::new(
+      (source_name.to_string(), source_port),
+      (target_name.to_string(), target_port),
+    ));
+
+    Ok(GraphBuilder {
+      nodes: self.nodes,
+      connections,
+      _state: HasConnections(PhantomData),
     })
   }
 }
@@ -637,7 +910,7 @@ mod tests {
       0,
     >("source", "transform1", 0, 0).unwrap();
 
-    builder.connect::<
+    let builder = builder.connect::<
       ProducerNode<VecProducer<i32>, (i32,)>,
       TransformerNode<MapTransformer<i32, i32>, (i32,), (i32,)>,
       0,
