@@ -331,9 +331,6 @@ impl std::fmt::Display for GraphError {
       GraphError::TypeMismatch { expected, actual } => {
         write!(f, "Type mismatch: expected {}, got {}", expected, actual)
       }
-      GraphError::InvalidPortName { port_name } => {
-        write!(f, "Invalid port name format: {}", port_name)
-      }
     }
   }
 }
@@ -367,38 +364,46 @@ fn parse_port_spec(port_spec: &str) -> Result<(Option<&str>, String), GraphError
   }
 }
 
-/// Helper function to resolve a port name to an index.
+/// Helper function to resolve a port name to an index using node's port resolution.
 ///
-/// For now, this uses a simple convention: port names like "out0", "out1", "in0", "in1"
-/// map to indices 0, 1, etc. This is a temporary solution until task 3.4 implements
-/// proper port name resolution.
+/// This function queries the node for port name resolution, supporting both
+/// named ports (e.g., "out0", "in1") and numeric indices.
 ///
 /// # Arguments
 ///
-/// * `port_name` - The port name to resolve
+/// * `node` - The node to query for port resolution
+/// * `port_name` - The port name or index to resolve
 /// * `is_output` - Whether this is an output port (true) or input port (false)
 ///
 /// # Returns
 ///
 /// The port index, or an error if the port name cannot be resolved.
-fn resolve_port_name(port_name: &str, is_output: bool) -> Result<usize, GraphError> {
-  // Try to parse as a numeric index first
-  if let Ok(index) = port_name.parse::<usize>() {
+fn resolve_port_name(
+  node: &dyn NodeTrait,
+  port_name: &str,
+  is_output: bool,
+) -> Result<usize, GraphError> {
+  // Try to resolve using node's port resolution methods
+  let resolved = if is_output {
+    node.resolve_output_port(port_name)
+  } else {
+    node.resolve_input_port(port_name)
+  };
+
+  if let Some(index) = resolved {
     return Ok(index);
   }
 
-  // Try to parse port names like "out0", "out1", "in0", "in1"
-  let prefix = if is_output { "out" } else { "in" };
-  if port_name.starts_with(prefix) {
-    if let Ok(index) = port_name[prefix.len()..].parse::<usize>() {
+  // If node resolution failed, try numeric index as fallback
+  if let Ok(index) = port_name.parse::<usize>() {
+    let port_count = if is_output {
+      node.output_port_count()
+    } else {
+      node.input_port_count()
+    };
+    if index < port_count {
       return Ok(index);
     }
-  }
-
-  // For now, default to index 0 for single-port nodes
-  // This will be improved in task 3.4 with proper port name resolution
-  if port_name == "out" || port_name == "in" || port_name.is_empty() {
-    return Ok(0);
   }
 
   Err(GraphError::InvalidPortName {
@@ -826,6 +831,90 @@ impl<Nodes> GraphBuilder<HasNodes<Nodes>> {
     let name = node.name().to_string();
     self.add_node(name, node)
   }
+
+  /// Connects two nodes by name using port name resolution.
+  ///
+  /// This method provides a fluent API for connecting nodes using string-based
+  /// port specifications. Ports can be specified as:
+  /// - Node names only (defaults to port 0): `"source"` → `"source:0"`
+  /// - Node and port: `"source:out0"` or `"source:0"`
+  /// - Just port name (for current node context): `"out0"` or `"0"`
+  ///
+  /// # Arguments
+  ///
+  /// * `source` - Source node name and optional port (e.g., `"source"`, `"source:out0"`, `"source:0"`)
+  /// * `target` - Target node name and optional port (e.g., `"target"`, `"target:in0"`, `"target:0"`)
+  ///
+  /// # Returns
+  ///
+  /// A new `GraphBuilder` in the `HasConnections<Nodes, ()>` state, or
+  /// `Err(GraphError)` if the connection is invalid.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// let builder = GraphBuilder::new()
+  ///     .node(producer).unwrap()
+  ///     .node(transformer).unwrap()
+  ///     .connect_by_name("source", "transform").unwrap()  // Uses default port 0
+  ///     .connect_by_name("source:out0", "transform:in0").unwrap();  // Explicit ports
+  /// ```
+  pub fn connect_by_name(
+    self,
+    source: &str,
+    target: &str,
+  ) -> Result<GraphBuilder<HasConnections<Nodes, ()>>, GraphError> {
+    // Parse source specification
+    let (source_node_name, source_port_spec) = parse_port_spec(source)?;
+    let source_node_name = source_node_name.unwrap_or(source);
+
+    // Parse target specification
+    let (target_node_name, target_port_spec) = parse_port_spec(target)?;
+    let target_node_name = target_node_name.unwrap_or(target);
+
+    // Get nodes
+    let source_node = self
+      .nodes
+      .get(source_node_name)
+      .ok_or_else(|| GraphError::NodeNotFound {
+        name: source_node_name.to_string(),
+      })?;
+
+    let target_node = self
+      .nodes
+      .get(target_node_name)
+      .ok_or_else(|| GraphError::NodeNotFound {
+        name: target_node_name.to_string(),
+      })?;
+
+    // Resolve port names to indices
+    let source_port = if source_port_spec.is_empty() {
+      0 // Default to port 0 if not specified
+    } else {
+      resolve_port_name(source_node.as_ref(), &source_port_spec, true)?
+    };
+
+    let target_port = if target_port_spec.is_empty() {
+      0 // Default to port 0 if not specified
+    } else {
+      resolve_port_name(target_node.as_ref(), &target_port_spec, false)?
+    };
+
+    // Use the type-safe connect method
+    // Since we're using runtime resolution, we need to use a different approach
+    // For now, we'll create the connection directly and validate at runtime
+    let mut connections = self.connections;
+    connections.push(ConnectionInfo::new(
+      (source_node_name.to_string(), source_port),
+      (target_node_name.to_string(), target_port),
+    ));
+
+    Ok(GraphBuilder {
+      nodes: self.nodes,
+      connections,
+      _state: HasConnections(PhantomData),
+    })
+  }
 }
 
 // Methods for adding nodes from HasConnections state
@@ -898,6 +987,88 @@ impl<Nodes, Connections> GraphBuilder<HasConnections<Nodes, Connections>> {
   {
     let name = node.name().to_string();
     self.add_node(name, node)
+  }
+
+  /// Connects two nodes by name using port name resolution.
+  ///
+  /// This method provides a fluent API for connecting nodes using string-based
+  /// port specifications. Ports can be specified as:
+  /// - Node names only (defaults to port 0): `"source"` → `"source:0"`
+  /// - Node and port: `"source:out0"` or `"source:0"`
+  /// - Just port name (for current node context): `"out0"` or `"0"`
+  ///
+  /// # Arguments
+  ///
+  /// * `source` - Source node name and optional port (e.g., `"source"`, `"source:out0"`, `"source:0"`)
+  /// * `target` - Target node name and optional port (e.g., `"target"`, `"target:in0"`, `"target:0"`)
+  ///
+  /// # Returns
+  ///
+  /// A new `GraphBuilder` in the `HasConnections<Nodes, Connections>` state, or
+  /// `Err(GraphError)` if the connection is invalid.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// let builder = GraphBuilder::new()
+  ///     .node(producer).unwrap()
+  ///     .node(transformer).unwrap()
+  ///     .connect_by_name("source", "transform").unwrap()  // Uses default port 0
+  ///     .connect_by_name("source:out0", "transform:in0").unwrap();  // Explicit ports
+  /// ```
+  pub fn connect_by_name(
+    self,
+    source: &str,
+    target: &str,
+  ) -> Result<GraphBuilder<HasConnections<Nodes, Connections>>, GraphError> {
+    // Parse source specification
+    let (source_node_name, source_port_spec) = parse_port_spec(source)?;
+    let source_node_name = source_node_name.unwrap_or(source);
+
+    // Parse target specification
+    let (target_node_name, target_port_spec) = parse_port_spec(target)?;
+    let target_node_name = target_node_name.unwrap_or(target);
+
+    // Get nodes
+    let source_node = self
+      .nodes
+      .get(source_node_name)
+      .ok_or_else(|| GraphError::NodeNotFound {
+        name: source_node_name.to_string(),
+      })?;
+
+    let target_node = self
+      .nodes
+      .get(target_node_name)
+      .ok_or_else(|| GraphError::NodeNotFound {
+        name: target_node_name.to_string(),
+      })?;
+
+    // Resolve port names to indices
+    let source_port = if source_port_spec.is_empty() {
+      0 // Default to port 0 if not specified
+    } else {
+      resolve_port_name(source_node.as_ref(), &source_port_spec, true)?
+    };
+
+    let target_port = if target_port_spec.is_empty() {
+      0 // Default to port 0 if not specified
+    } else {
+      resolve_port_name(target_node.as_ref(), &target_port_spec, false)?
+    };
+
+    // Create connection directly (runtime validation only)
+    let mut connections = self.connections;
+    connections.push(ConnectionInfo::new(
+      (source_node_name.to_string(), source_port),
+      (target_node_name.to_string(), target_port),
+    ));
+
+    Ok(GraphBuilder {
+      nodes: self.nodes,
+      connections,
+      _state: HasConnections(PhantomData),
+    })
   }
 
   /// Adds another connection to the graph.
@@ -1335,6 +1506,140 @@ mod tests {
     //     TransformerNode<MapTransformer<String, usize>, (String,), (usize,)>,
     //     0, 0
     //   >("source", "string_transform", 0, 0).unwrap();
+  }
+
+  #[test]
+  fn test_port_name_resolution() {
+    // Test port name resolution for different node types
+    let producer = ProducerNode::new(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    );
+    let transformer = TransformerNode::new(
+      "transform".to_string(),
+      MapTransformer::new(|x: i32| x * 2),
+    );
+    let consumer = ConsumerNode::new(
+      "sink".to_string(),
+      VecConsumer::new(),
+    );
+
+    // Test producer output port names
+    assert_eq!(producer.output_port_name(0), Some("out0".to_string()));
+    assert_eq!(producer.resolve_output_port("out0"), Some(0));
+    assert_eq!(producer.resolve_output_port("0"), Some(0));
+    assert_eq!(producer.resolve_output_port("out"), Some(0)); // Single port default
+    assert_eq!(producer.input_port_name(0), None); // No input ports
+
+    // Test transformer port names
+    assert_eq!(transformer.input_port_name(0), Some("in0".to_string()));
+    assert_eq!(transformer.output_port_name(0), Some("out0".to_string()));
+    assert_eq!(transformer.resolve_input_port("in0"), Some(0));
+    assert_eq!(transformer.resolve_input_port("0"), Some(0));
+    assert_eq!(transformer.resolve_output_port("out0"), Some(0));
+    assert_eq!(transformer.resolve_output_port("0"), Some(0));
+
+    // Test consumer input port names
+    assert_eq!(consumer.input_port_name(0), Some("in0".to_string()));
+    assert_eq!(consumer.resolve_input_port("in0"), Some(0));
+    assert_eq!(consumer.resolve_input_port("0"), Some(0));
+    assert_eq!(consumer.resolve_input_port("in"), Some(0)); // Single port default
+    assert_eq!(consumer.output_port_name(0), None); // No output ports
+  }
+
+  #[test]
+  fn test_port_name_resolution_invalid() {
+    // Test invalid port name resolution
+    let producer = ProducerNode::new(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    );
+
+    // Invalid port names should return None
+    assert_eq!(producer.resolve_output_port("invalid"), None);
+    assert_eq!(producer.resolve_output_port("out1"), None); // Only port 0 exists
+    assert_eq!(producer.resolve_output_port("in0"), None); // Wrong prefix for output
+    assert_eq!(producer.input_port_name(0), None); // No input ports
+  }
+
+  #[test]
+  fn test_connect_by_name_port_resolution() {
+    // Test connect_by_name with various port name formats
+    let builder = GraphBuilder::new();
+    let producer = ProducerNode::new(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    );
+    let transformer = TransformerNode::new(
+      "transform".to_string(),
+      MapTransformer::new(|x: i32| x * 2),
+    );
+    let consumer = ConsumerNode::new(
+      "sink".to_string(),
+      VecConsumer::new(),
+    );
+
+    let builder = builder.node(producer).unwrap();
+    let builder = builder.node(transformer).unwrap();
+    let builder = builder.node(consumer).unwrap();
+
+    // Test various port name formats
+    // 1. Node names only (defaults to port 0)
+    let builder = builder.connect_by_name("source", "transform").unwrap();
+    assert_eq!(builder.connection_count(), 1);
+
+    // 2. Explicit port names
+    let builder = builder.connect_by_name("source:out0", "transform:in0").unwrap();
+    assert_eq!(builder.connection_count(), 2);
+
+    // 3. Numeric port indices
+    let builder = builder.connect_by_name("transform:0", "sink:0").unwrap();
+    assert_eq!(builder.connection_count(), 3);
+
+    // 4. Mixed formats
+    let builder = builder.connect_by_name("source:0", "transform:in0").unwrap();
+    assert_eq!(builder.connection_count(), 4);
+
+    let graph = builder.build();
+    assert_eq!(graph.get_connections().len(), 4);
+  }
+
+  #[test]
+  fn test_connect_by_name_invalid_ports() {
+    // Test connect_by_name with invalid port names
+    let builder = GraphBuilder::new();
+    let producer = ProducerNode::new(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    );
+    let transformer = TransformerNode::new(
+      "transform".to_string(),
+      MapTransformer::new(|x: i32| x * 2),
+    );
+
+    let builder = builder.node(producer).unwrap();
+    let builder = builder.node(transformer).unwrap();
+
+    // Invalid port names should fail
+    assert!(builder.connect_by_name("source:invalid", "transform").is_err());
+    assert!(builder.connect_by_name("source", "transform:invalid").is_err());
+    assert!(builder.connect_by_name("source:out1", "transform").is_err()); // Port 1 doesn't exist
+  }
+
+  #[test]
+  fn test_connect_by_name_node_not_found() {
+    // Test connect_by_name with non-existent nodes
+    let builder = GraphBuilder::new();
+    let producer = ProducerNode::new(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    );
+
+    let builder = builder.node(producer).unwrap();
+
+    // Non-existent nodes should fail
+    assert!(builder.connect_by_name("nonexistent", "source").is_err());
+    assert!(builder.connect_by_name("source", "nonexistent").is_err());
   }
 
   #[test]

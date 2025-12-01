@@ -13,6 +13,56 @@ pub trait NodeTrait: Send + Sync {
 
   /// Returns the kind of this node (Producer, Transformer, or Consumer).
   fn node_kind(&self) -> NodeKind;
+
+  /// Returns the number of input ports.
+  fn input_port_count(&self) -> usize;
+
+  /// Returns the number of output ports.
+  fn output_port_count(&self) -> usize;
+
+  /// Returns the name of an input port by index.
+  ///
+  /// # Arguments
+  ///
+  /// * `index` - The port index (0-based)
+  ///
+  /// # Returns
+  ///
+  /// `Some(port_name)` if the port exists, `None` otherwise.
+  fn input_port_name(&self, index: usize) -> Option<String>;
+
+  /// Returns the name of an output port by index.
+  ///
+  /// # Arguments
+  ///
+  /// * `index` - The port index (0-based)
+  ///
+  /// # Returns
+  ///
+  /// `Some(port_name)` if the port exists, `None` otherwise.
+  fn output_port_name(&self, index: usize) -> Option<String>;
+
+  /// Resolves an input port name to an index.
+  ///
+  /// # Arguments
+  ///
+  /// * `port_name` - The port name to resolve
+  ///
+  /// # Returns
+  ///
+  /// `Some(index)` if the port name exists, `None` otherwise.
+  fn resolve_input_port(&self, port_name: &str) -> Option<usize>;
+
+  /// Resolves an output port name to an index.
+  ///
+  /// # Arguments
+  ///
+  /// * `port_name` - The port name to resolve
+  ///
+  /// # Returns
+  ///
+  /// `Some(index)` if the port name exists, `None` otherwise.
+  fn resolve_output_port(&self, port_name: &str) -> Option<usize>;
 }
 
 /// Represents the kind of a graph node.

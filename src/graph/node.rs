@@ -372,6 +372,57 @@ where
   fn node_kind(&self) -> NodeKind {
     NodeKind::Producer
   }
+
+  fn input_port_count(&self) -> usize {
+    0 // Producers have no input ports
+  }
+
+  fn output_port_count(&self) -> usize {
+    Outputs::LEN
+  }
+
+  fn input_port_name(&self, _index: usize) -> Option<String> {
+    // Producers have no input ports
+    None
+  }
+
+  fn output_port_name(&self, index: usize) -> Option<String> {
+    if index < Outputs::LEN {
+      Some(format!("out{}", index))
+    } else {
+      None
+    }
+  }
+
+  fn resolve_input_port(&self, _port_name: &str) -> Option<usize> {
+    // Producers have no input ports
+    None
+  }
+
+  fn resolve_output_port(&self, port_name: &str) -> Option<usize> {
+    // Try numeric index first
+    if let Ok(index) = port_name.parse::<usize>() {
+      if index < Outputs::LEN {
+        return Some(index);
+      }
+    }
+
+    // Try "out0", "out1", etc.
+    if port_name.starts_with("out") {
+      if let Ok(index) = port_name[3..].parse::<usize>() {
+        if index < Outputs::LEN {
+          return Some(index);
+        }
+      }
+    }
+
+    // Default to "out" for single-port nodes
+    if port_name == "out" && Outputs::LEN == 1 {
+      return Some(0);
+    }
+
+    None
+  }
 }
 
 // Implement NodeTrait for TransformerNode
@@ -389,6 +440,80 @@ where
   fn node_kind(&self) -> NodeKind {
     NodeKind::Transformer
   }
+
+  fn input_port_count(&self) -> usize {
+    Inputs::LEN
+  }
+
+  fn output_port_count(&self) -> usize {
+    Outputs::LEN
+  }
+
+  fn input_port_name(&self, index: usize) -> Option<String> {
+    if index < Inputs::LEN {
+      Some(format!("in{}", index))
+    } else {
+      None
+    }
+  }
+
+  fn output_port_name(&self, index: usize) -> Option<String> {
+    if index < Outputs::LEN {
+      Some(format!("out{}", index))
+    } else {
+      None
+    }
+  }
+
+  fn resolve_input_port(&self, port_name: &str) -> Option<usize> {
+    // Try numeric index first
+    if let Ok(index) = port_name.parse::<usize>() {
+      if index < Inputs::LEN {
+        return Some(index);
+      }
+    }
+
+    // Try "in0", "in1", etc.
+    if port_name.starts_with("in") {
+      if let Ok(index) = port_name[2..].parse::<usize>() {
+        if index < Inputs::LEN {
+          return Some(index);
+        }
+      }
+    }
+
+    // Default to "in" for single-port nodes
+    if port_name == "in" && Inputs::LEN == 1 {
+      return Some(0);
+    }
+
+    None
+  }
+
+  fn resolve_output_port(&self, port_name: &str) -> Option<usize> {
+    // Try numeric index first
+    if let Ok(index) = port_name.parse::<usize>() {
+      if index < Outputs::LEN {
+        return Some(index);
+      }
+    }
+
+    // Try "out0", "out1", etc.
+    if port_name.starts_with("out") {
+      if let Ok(index) = port_name[3..].parse::<usize>() {
+        if index < Outputs::LEN {
+          return Some(index);
+        }
+      }
+    }
+
+    // Default to "out" for single-port nodes
+    if port_name == "out" && Outputs::LEN == 1 {
+      return Some(0);
+    }
+
+    None
+  }
 }
 
 // Implement NodeTrait for ConsumerNode
@@ -404,6 +529,57 @@ where
 
   fn node_kind(&self) -> NodeKind {
     NodeKind::Consumer
+  }
+
+  fn input_port_count(&self) -> usize {
+    Inputs::LEN
+  }
+
+  fn output_port_count(&self) -> usize {
+    0 // Consumers have no output ports
+  }
+
+  fn input_port_name(&self, index: usize) -> Option<String> {
+    if index < Inputs::LEN {
+      Some(format!("in{}", index))
+    } else {
+      None
+    }
+  }
+
+  fn output_port_name(&self, _index: usize) -> Option<String> {
+    // Consumers have no output ports
+    None
+  }
+
+  fn resolve_input_port(&self, port_name: &str) -> Option<usize> {
+    // Try numeric index first
+    if let Ok(index) = port_name.parse::<usize>() {
+      if index < Inputs::LEN {
+        return Some(index);
+      }
+    }
+
+    // Try "in0", "in1", etc.
+    if port_name.starts_with("in") {
+      if let Ok(index) = port_name[2..].parse::<usize>() {
+        if index < Inputs::LEN {
+          return Some(index);
+        }
+      }
+    }
+
+    // Default to "in" for single-port nodes
+    if port_name == "in" && Inputs::LEN == 1 {
+      return Some(0);
+    }
+
+    None
+  }
+
+  fn resolve_output_port(&self, _port_name: &str) -> Option<usize> {
+    // Consumers have no output ports
+    None
   }
 }
 
