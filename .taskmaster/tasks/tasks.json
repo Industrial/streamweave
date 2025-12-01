@@ -227,7 +227,7 @@
             "id": "5.1",
             "title": "Subgraph support",
             "description": "Implement subgraph support allowing a graph to be used as a node in another graph",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentId": "undefined"
           },

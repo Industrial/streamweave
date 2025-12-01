@@ -74,5 +74,7 @@ pub enum NodeKind {
   Transformer,
   /// A consumer node that consumes data
   Consumer,
+  /// A subgraph node that contains another graph
+  Subgraph,
 }
 

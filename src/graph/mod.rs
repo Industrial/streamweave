@@ -14,6 +14,7 @@ mod node;
 mod port;
 mod router;
 mod routers;
+mod subgraph;
 mod traits;
 
 // Modules to be implemented in later tasks:
@@ -29,5 +30,6 @@ pub use node::{ConsumerNode, ProducerNode, TransformerNode};
 pub use port::{GetPort, PortList, SinglePort};
 pub use router::{InputRouter, OutputRouter, RouterError};
 pub use routers::{BroadcastRouter, KeyBasedRouter, MergeRouter, RoundRobinRouter};
+pub use subgraph::SubgraphNode;
 pub use traits::{NodeKind, NodeTrait};
 
