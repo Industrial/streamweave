@@ -178,7 +178,7 @@ tower-http = { version = "0.5", optional = true, features = ["cors", "trace", "c
 http-body-util = { version = "0.1", optional = true }
 
 # SQL parser for SQL-like querying (native only)
-sqlparser = { version = "0.40", optional = true }
+sqlparser = { version = "0.59", optional = true }
 
 # ONNX Runtime for machine learning inference (native only)
 ort = { version = "2.0.0-rc.10", optional = true }
