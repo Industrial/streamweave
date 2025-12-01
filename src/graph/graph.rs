@@ -157,6 +157,11 @@ pub enum GraphError {
     /// Actual type description
     actual: String,
   },
+  /// Invalid port name format
+  InvalidPortName {
+    /// The invalid port name
+    port_name: String,
+  },
 }
 
 impl std::fmt::Display for GraphError {
@@ -178,11 +183,85 @@ impl std::fmt::Display for GraphError {
       GraphError::PortNotFound { node, port } => {
         write!(f, "Port {} not found on node {}", port, node)
       }
+      GraphError::InvalidPortName { port_name } => {
+        write!(f, "Invalid port name format: {}", port_name)
+      }
       GraphError::TypeMismatch { expected, actual } => {
         write!(f, "Type mismatch: expected {}, got {}", expected, actual)
       }
+      GraphError::InvalidPortName { port_name } => {
+        write!(f, "Invalid port name format: {}", port_name)
+      }
     }
   }
+}
+
+/// Helper function to parse a port specification.
+///
+/// Ports can be specified as:
+/// - A numeric string (e.g., "0", "1") representing a port index
+/// - A node:port format (e.g., "source:out1") for named ports
+///
+/// # Arguments
+///
+/// * `port_spec` - The port specification string
+///
+/// # Returns
+///
+/// A tuple of (node_name, port_name_or_index) if in "node:port" format,
+/// or (None, port_index) if just a numeric string.
+fn parse_port_spec(port_spec: &str) -> Result<(Option<&str>, String), GraphError> {
+  if let Some(colon_pos) = port_spec.find(':') {
+    // Format: "node_name:port_name"
+    let (node_name, port_name) = port_spec.split_at(colon_pos);
+    let port_name = &port_name[1..]; // Skip the ':'
+    Ok((Some(node_name), port_name.to_string()))
+  } else if port_spec.chars().all(|c| c.is_ascii_digit()) {
+    // Format: numeric port index
+    Ok((None, port_spec.to_string()))
+  } else {
+    // Just a port name (no node prefix)
+    Ok((None, port_spec.to_string()))
+  }
+}
+
+/// Helper function to resolve a port name to an index.
+///
+/// For now, this uses a simple convention: port names like "out0", "out1", "in0", "in1"
+/// map to indices 0, 1, etc. This is a temporary solution until task 3.4 implements
+/// proper port name resolution.
+///
+/// # Arguments
+///
+/// * `port_name` - The port name to resolve
+/// * `is_output` - Whether this is an output port (true) or input port (false)
+///
+/// # Returns
+///
+/// The port index, or an error if the port name cannot be resolved.
+fn resolve_port_name(port_name: &str, is_output: bool) -> Result<usize, GraphError> {
+  // Try to parse as a numeric index first
+  if let Ok(index) = port_name.parse::<usize>() {
+    return Ok(index);
+  }
+
+  // Try to parse port names like "out0", "out1", "in0", "in1"
+  let prefix = if is_output { "out" } else { "in" };
+  if port_name.starts_with(prefix) {
+    if let Ok(index) = port_name[prefix.len()..].parse::<usize>() {
+      return Ok(index);
+    }
+  }
+
+  // For now, default to index 0 for single-port nodes
+  // This will be improved in task 3.4 with proper port name resolution
+  if port_name == "out" || port_name == "in" || port_name.is_empty() {
+    return Ok(0);
+  }
+
+  Err(GraphError::InvalidPortName {
+    port_name: port_name.to_string(),
+  })
 }
 
 impl std::error::Error for GraphError {}
@@ -481,6 +560,40 @@ impl GraphBuilder<Empty> {
       _state: HasNodes(PhantomData),
     })
   }
+
+  /// Adds a node with a fluent API, using the node's own name.
+  ///
+  /// This is a convenience method that extracts the name from the node itself,
+  /// making the API more ergonomic.
+  ///
+  /// # Arguments
+  ///
+  /// * `node` - The node to add (must implement `NodeTrait`)
+  ///
+  /// # Returns
+  ///
+  /// A new `GraphBuilder` in the `HasNodes<(N,)>` state, or `Err(GraphError)` if
+  /// a node with the same name already exists.
+  ///
+  /// # Type Parameters
+  ///
+  /// * `N` - The node type being added
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// let builder = GraphBuilder::new();
+  /// let producer = ProducerNode::new("source".to_string(), ...);
+  /// let builder = builder.node(producer)?;
+  /// // builder is now GraphBuilder<HasNodes<(ProducerNode<...>,)>>
+  /// ```
+  pub fn node<N>(self, node: N) -> Result<GraphBuilder<HasNodes<(N,)>>, GraphError>
+  where
+    N: NodeTrait + 'static,
+  {
+    let name = node.name().to_string();
+    self.add_node(name, node)
+  }
 }
 
 // Methods for adding nodes from HasNodes state
@@ -534,6 +647,43 @@ impl<Nodes> GraphBuilder<HasNodes<Nodes>> {
       _state: HasNodes(PhantomData),
     })
   }
+
+  /// Adds a node with a fluent API, using the node's own name.
+  ///
+  /// This is a convenience method that extracts the name from the node itself,
+  /// making the API more ergonomic and enabling method chaining.
+  ///
+  /// # Arguments
+  ///
+  /// * `node` - The node to add (must implement `NodeTrait`)
+  ///
+  /// # Returns
+  ///
+  /// A new `GraphBuilder` in the `HasNodes<Append<Nodes, N>>` state, or
+  /// `Err(GraphError)` if a node with the same name already exists.
+  ///
+  /// # Type Parameters
+  ///
+  /// * `N` - The node type being added
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// let builder = GraphBuilder::new()
+  ///     .node(ProducerNode::new("source".to_string(), ...))?
+  ///     .node(TransformerNode::new("transform".to_string(), ...))?;
+  /// ```
+  pub fn node<N>(
+    self,
+    node: N,
+  ) -> Result<GraphBuilder<HasNodes<<Nodes as AppendNode<N>>::Output>>, GraphError>
+  where
+    N: NodeTrait + 'static,
+    Nodes: AppendNode<N>,
+  {
+    let name = node.name().to_string();
+    self.add_node(name, node)
+  }
 }
 
 // Methods for adding nodes from HasConnections state
@@ -577,6 +727,35 @@ impl<Nodes, Connections> GraphBuilder<HasConnections<Nodes, Connections>> {
       connections: self.connections,
       _state: HasNodes(PhantomData),
     })
+  }
+
+  /// Adds a node with a fluent API, using the node's own name.
+  ///
+  /// This is a convenience method that extracts the name from the node itself,
+  /// making the API more ergonomic and enabling method chaining.
+  ///
+  /// # Arguments
+  ///
+  /// * `node` - The node to add (must implement `NodeTrait`)
+  ///
+  /// # Returns
+  ///
+  /// A new `GraphBuilder` in the `HasNodes<Append<Nodes, N>>` state, or
+  /// `Err(GraphError)` if a node with the same name already exists.
+  ///
+  /// # Type Parameters
+  ///
+  /// * `N` - The node type being added
+  pub fn node<N>(
+    self,
+    node: N,
+  ) -> Result<GraphBuilder<HasNodes<<Nodes as AppendNode<N>>::Output>>, GraphError>
+  where
+    N: NodeTrait + 'static,
+    Nodes: AppendNode<N>,
+  {
+    let name = node.name().to_string();
+    self.add_node(name, node)
   }
 
   /// Adds another connection to the graph.
@@ -828,6 +1007,81 @@ mod tests {
     let graph = builder.build();
     assert_eq!(graph.len(), 2);
     assert_eq!(graph.get_connections().len(), 1);
+  }
+
+  #[test]
+  fn test_fluent_node_api() {
+    // Test the fluent node() method
+    let builder = GraphBuilder::new();
+    let producer = ProducerNode::new(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    );
+    let transformer = TransformerNode::new(
+      "transform".to_string(),
+      MapTransformer::new(|x: i32| x * 2),
+    );
+
+    // Use fluent API
+    let builder = builder.node(producer).unwrap();
+    let builder = builder.node(transformer).unwrap();
+    assert_eq!(builder.node_count(), 2);
+  }
+
+  #[test]
+  fn test_fluent_connect_by_name() {
+    // Test the fluent connect_by_name() method
+    let builder = GraphBuilder::new();
+    let producer = ProducerNode::new(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    );
+    let transformer = TransformerNode::new(
+      "transform".to_string(),
+      MapTransformer::new(|x: i32| x * 2),
+    );
+
+    let builder = builder.node(producer).unwrap();
+    let builder = builder.node(transformer).unwrap();
+
+    // Connect using port names
+    let builder = builder.connect_by_name("source", "transform").unwrap();
+    assert_eq!(builder.connection_count(), 1);
+
+    // Connect using explicit port names
+    let builder = builder.connect_by_name("source:0", "transform:0").unwrap();
+    assert_eq!(builder.connection_count(), 2);
+
+    let graph = builder.build();
+    assert_eq!(graph.get_connections().len(), 2);
+  }
+
+  #[test]
+  fn test_fluent_api_chaining() {
+    // Test method chaining with fluent API
+    let producer = ProducerNode::new(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    );
+    let transformer = TransformerNode::new(
+      "transform".to_string(),
+      MapTransformer::new(|x: i32| x * 2),
+    );
+    let consumer = ConsumerNode::new(
+      "sink".to_string(),
+      VecConsumer::new(),
+    );
+
+    let graph = GraphBuilder::new()
+      .node(producer).unwrap()
+      .node(transformer).unwrap()
+      .node(consumer).unwrap()
+      .connect_by_name("source", "transform").unwrap()
+      .connect_by_name("transform", "sink").unwrap()
+      .build();
+
+    assert_eq!(graph.len(), 3);
+    assert_eq!(graph.get_connections().len(), 2);
   }
 
   #[test]

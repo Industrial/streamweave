@@ -114,7 +114,7 @@
             "id": "3.1",
             "title": "Builder state machine",
             "description": "Implement state machine using PhantomData to track graph construction state at compile time",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentId": "undefined"
           },
