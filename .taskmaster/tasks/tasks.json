@@ -243,7 +243,7 @@
             "id": "5.3",
             "title": "Windowing operations",
             "description": "Implement windowing operations that work with graph topology for time-based and count-based windows",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentId": "undefined"
           }

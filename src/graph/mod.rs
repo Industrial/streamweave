@@ -17,6 +17,7 @@ mod routers;
 mod stateful;
 mod subgraph;
 mod traits;
+mod windowing;
 
 // Modules to be implemented in later tasks:
 // (none currently)
@@ -34,4 +35,7 @@ pub use routers::{BroadcastRouter, KeyBasedRouter, MergeRouter, RoundRobinRouter
 pub use stateful::{get_node_state, is_stateful_node, StatefulNode};
 pub use subgraph::SubgraphNode;
 pub use traits::{NodeKind, NodeTrait};
+pub use windowing::{
+  create_window_node, is_windowed_node, GraphWindowConfig, WindowSize, WindowType, WindowedNode,
+};
 
