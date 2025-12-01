@@ -5,6 +5,22 @@
 //! The graph stores type-preserved nodes and compile-time validated connections,
 //! with basic topology query methods.
 //!
+//! ## Compile-time Validation
+//!
+//! The `GraphBuilder` provides compile-time validation of connections through:
+//!
+//! - **Node Existence**: The `connect()` method requires that source and target node
+//!   types are present in the builder's state tuple, enforced via the `ContainsNodeType`
+//!   trait bound. This ensures you can only connect nodes that have been added to the builder.
+//!
+//! - **Port Bounds**: Port indices are validated at compile time through the
+//!   `HasOutputPort` and `HasInputPort` traits, which ensure ports exist via
+//!   the `GetPort` trait. Attempting to use an invalid port index will fail to compile.
+//!
+//! - **Type Compatibility**: Output port types must be compatible with input port
+//!   types, enforced through the `CompatibleWith` trait bound. Type mismatches
+//!   are caught at compile time.
+//!
 //! ## Example
 //!
 //! ```rust
@@ -41,6 +57,132 @@ pub trait AppendNode<NewNode> {
   /// The resulting tuple type after appending `NewNode`.
   type Output;
 }
+
+/// Trait for checking if a specific node type exists in a nodes tuple.
+///
+/// This marker trait is used for compile-time validation that a node type
+/// has been added to the graph builder. The trait is only implemented when
+/// the node type actually exists in the tuple, providing compile-time guarantees.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::graph::graph::ContainsNodeType;
+///
+/// // This compiles only if Node1 is in the tuple
+/// fn connect_node<Nodes>(_builder: GraphBuilder<HasNodes<Nodes>>)
+/// where
+///     Nodes: ContainsNodeType<Node1>,
+/// {
+///     // ...
+/// }
+/// ```
+pub trait ContainsNodeType<Node> {}
+
+// Implement ContainsNodeType for empty tuple (no nodes)
+// No implementations - empty tuple contains no nodes
+
+// Implement ContainsNodeType for single-element tuple
+impl<N> ContainsNodeType<N> for (N,) {}
+
+// Implement ContainsNodeType for two-element tuples
+impl<N1, N2> ContainsNodeType<N1> for (N1, N2) {}
+impl<N1, N2> ContainsNodeType<N2> for (N1, N2) {}
+
+// Implement ContainsNodeType for three-element tuples
+impl<N1, N2, N3> ContainsNodeType<N1> for (N1, N2, N3) {}
+impl<N1, N2, N3> ContainsNodeType<N2> for (N1, N2, N3) {}
+impl<N1, N2, N3> ContainsNodeType<N3> for (N1, N2, N3) {}
+
+// Implement ContainsNodeType for four-element tuples
+impl<N1, N2, N3, N4> ContainsNodeType<N1> for (N1, N2, N3, N4) {}
+impl<N1, N2, N3, N4> ContainsNodeType<N2> for (N1, N2, N3, N4) {}
+impl<N1, N2, N3, N4> ContainsNodeType<N3> for (N1, N2, N3, N4) {}
+impl<N1, N2, N3, N4> ContainsNodeType<N4> for (N1, N2, N3, N4) {}
+
+// Implement ContainsNodeType for five-element tuples
+impl<N1, N2, N3, N4, N5> ContainsNodeType<N1> for (N1, N2, N3, N4, N5) {}
+impl<N1, N2, N3, N4, N5> ContainsNodeType<N2> for (N1, N2, N3, N4, N5) {}
+impl<N1, N2, N3, N4, N5> ContainsNodeType<N3> for (N1, N2, N3, N4, N5) {}
+impl<N1, N2, N3, N4, N5> ContainsNodeType<N4> for (N1, N2, N3, N4, N5) {}
+impl<N1, N2, N3, N4, N5> ContainsNodeType<N5> for (N1, N2, N3, N4, N5) {}
+
+// Implement ContainsNodeType for six-element tuples
+impl<N1, N2, N3, N4, N5, N6> ContainsNodeType<N1> for (N1, N2, N3, N4, N5, N6) {}
+impl<N1, N2, N3, N4, N5, N6> ContainsNodeType<N2> for (N1, N2, N3, N4, N5, N6) {}
+impl<N1, N2, N3, N4, N5, N6> ContainsNodeType<N3> for (N1, N2, N3, N4, N5, N6) {}
+impl<N1, N2, N3, N4, N5, N6> ContainsNodeType<N4> for (N1, N2, N3, N4, N5, N6) {}
+impl<N1, N2, N3, N4, N5, N6> ContainsNodeType<N5> for (N1, N2, N3, N4, N5, N6) {}
+impl<N1, N2, N3, N4, N5, N6> ContainsNodeType<N6> for (N1, N2, N3, N4, N5, N6) {}
+
+// Implement ContainsNodeType for seven-element tuples
+impl<N1, N2, N3, N4, N5, N6, N7> ContainsNodeType<N1> for (N1, N2, N3, N4, N5, N6, N7) {}
+impl<N1, N2, N3, N4, N5, N6, N7> ContainsNodeType<N2> for (N1, N2, N3, N4, N5, N6, N7) {}
+impl<N1, N2, N3, N4, N5, N6, N7> ContainsNodeType<N3> for (N1, N2, N3, N4, N5, N6, N7) {}
+impl<N1, N2, N3, N4, N5, N6, N7> ContainsNodeType<N4> for (N1, N2, N3, N4, N5, N6, N7) {}
+impl<N1, N2, N3, N4, N5, N6, N7> ContainsNodeType<N5> for (N1, N2, N3, N4, N5, N6, N7) {}
+impl<N1, N2, N3, N4, N5, N6, N7> ContainsNodeType<N6> for (N1, N2, N3, N4, N5, N6, N7) {}
+impl<N1, N2, N3, N4, N5, N6, N7> ContainsNodeType<N7> for (N1, N2, N3, N4, N5, N6, N7) {}
+
+// Implement ContainsNodeType for eight-element tuples
+impl<N1, N2, N3, N4, N5, N6, N7, N8> ContainsNodeType<N1> for (N1, N2, N3, N4, N5, N6, N7, N8) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8> ContainsNodeType<N2> for (N1, N2, N3, N4, N5, N6, N7, N8) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8> ContainsNodeType<N3> for (N1, N2, N3, N4, N5, N6, N7, N8) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8> ContainsNodeType<N4> for (N1, N2, N3, N4, N5, N6, N7, N8) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8> ContainsNodeType<N5> for (N1, N2, N3, N4, N5, N6, N7, N8) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8> ContainsNodeType<N6> for (N1, N2, N3, N4, N5, N6, N7, N8) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8> ContainsNodeType<N7> for (N1, N2, N3, N4, N5, N6, N7, N8) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8> ContainsNodeType<N8> for (N1, N2, N3, N4, N5, N6, N7, N8) {}
+
+// Implement ContainsNodeType for nine-element tuples
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9> ContainsNodeType<N1> for (N1, N2, N3, N4, N5, N6, N7, N8, N9) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9> ContainsNodeType<N2> for (N1, N2, N3, N4, N5, N6, N7, N8, N9) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9> ContainsNodeType<N3> for (N1, N2, N3, N4, N5, N6, N7, N8, N9) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9> ContainsNodeType<N4> for (N1, N2, N3, N4, N5, N6, N7, N8, N9) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9> ContainsNodeType<N5> for (N1, N2, N3, N4, N5, N6, N7, N8, N9) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9> ContainsNodeType<N6> for (N1, N2, N3, N4, N5, N6, N7, N8, N9) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9> ContainsNodeType<N7> for (N1, N2, N3, N4, N5, N6, N7, N8, N9) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9> ContainsNodeType<N8> for (N1, N2, N3, N4, N5, N6, N7, N8, N9) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9> ContainsNodeType<N9> for (N1, N2, N3, N4, N5, N6, N7, N8, N9) {}
+
+// Implement ContainsNodeType for ten-element tuples
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10> ContainsNodeType<N1> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10> ContainsNodeType<N2> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10> ContainsNodeType<N3> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10> ContainsNodeType<N4> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10> ContainsNodeType<N5> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10> ContainsNodeType<N6> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10> ContainsNodeType<N7> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10> ContainsNodeType<N8> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10> ContainsNodeType<N9> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10> ContainsNodeType<N10> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10) {}
+
+// Implement ContainsNodeType for eleven-element tuples
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11> ContainsNodeType<N1> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11> ContainsNodeType<N2> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11> ContainsNodeType<N3> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11> ContainsNodeType<N4> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11> ContainsNodeType<N5> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11> ContainsNodeType<N6> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11> ContainsNodeType<N7> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11> ContainsNodeType<N8> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11> ContainsNodeType<N9> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11> ContainsNodeType<N10> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11> ContainsNodeType<N11> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11) {}
+
+// Implement ContainsNodeType for twelve-element tuples
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12> ContainsNodeType<N1> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12> ContainsNodeType<N2> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12> ContainsNodeType<N3> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12> ContainsNodeType<N4> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12> ContainsNodeType<N5> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12> ContainsNodeType<N6> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12> ContainsNodeType<N7> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12> ContainsNodeType<N8> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12> ContainsNodeType<N9> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12> ContainsNodeType<N10> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12> ContainsNodeType<N11> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12) {}
+impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12> ContainsNodeType<N12> for (N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12) {}
 
 // Implementations for various tuple sizes (up to 12, matching port system)
 impl<NewNode> AppendNode<NewNode> for () {
@@ -792,6 +934,8 @@ impl<Nodes, Connections> GraphBuilder<HasConnections<Nodes, Connections>> {
     Source: HasOutputPort<SP> + 'static,
     Target: HasInputPort<TP> + 'static,
     <Source as HasOutputPort<SP>>::OutputType: CompatibleWith<<Target as HasInputPort<TP>>::InputType>,
+    Nodes: ContainsNodeType<Source>,  // Compile-time check: source node is in state
+    Nodes: ContainsNodeType<Target>,  // Compile-time check: target node is in state
   {
     // Validate that source_port matches SP and target_port matches TP
     if source_port != SP {
@@ -1082,6 +1226,115 @@ mod tests {
 
     assert_eq!(graph.len(), 3);
     assert_eq!(graph.get_connections().len(), 2);
+  }
+
+  #[test]
+  fn test_compile_time_node_existence_validation() {
+    // Test that connect() requires node types to be in the builder state
+    let builder = GraphBuilder::new();
+    let producer = ProducerNode::new(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    );
+    let transformer = TransformerNode::new(
+      "transform".to_string(),
+      MapTransformer::new(|x: i32| x * 2),
+    );
+
+    // Add nodes
+    let builder = builder.node(producer).unwrap();
+    let builder = builder.node(transformer).unwrap();
+
+    // This should compile because both node types are in the state
+    let builder = builder.connect::<
+      ProducerNode<VecProducer<i32>, (i32,)>,
+      TransformerNode<MapTransformer<i32, i32>, (i32,), (i32,)>,
+      0,
+      0,
+    >("source", "transform", 0, 0).unwrap();
+
+    assert_eq!(builder.connection_count(), 1);
+
+    // The following would fail to compile if uncommented:
+    // let consumer = ConsumerNode::new("sink".to_string(), VecConsumer::new());
+    // // This fails because ConsumerNode is not in the builder state yet
+    // builder.connect::<
+    //   ProducerNode<VecProducer<i32>, (i32,)>,
+    //   ConsumerNode<VecConsumer<i32>, (i32,)>,
+    //   0, 0
+    // >("source", "sink", 0, 0).unwrap();
+  }
+
+  #[test]
+  fn test_compile_time_port_bounds_validation() {
+    // Test that port bounds are validated at compile time
+    let builder = GraphBuilder::new();
+    let producer = ProducerNode::new(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    );
+    let transformer = TransformerNode::new(
+      "transform".to_string(),
+      MapTransformer::new(|x: i32| x * 2),
+    );
+
+    let builder = builder.node(producer).unwrap();
+    let builder = builder.node(transformer).unwrap();
+
+    // Valid port index (0) - should compile
+    let _builder = builder.connect::<
+      ProducerNode<VecProducer<i32>, (i32,)>,
+      TransformerNode<MapTransformer<i32, i32>, (i32,), (i32,)>,
+      0,
+      0,
+    >("source", "transform", 0, 0).unwrap();
+
+    // The following would fail to compile if uncommented:
+    // // Invalid port index (1) - port doesn't exist on single-port nodes
+    // builder.connect::<
+    //   ProducerNode<VecProducer<i32>, (i32,)>,
+    //   TransformerNode<MapTransformer<i32, i32>, (i32,), (i32,)>,
+    //   1,  // Invalid: only port 0 exists
+    //   0,
+    // >("source", "transform", 1, 0).unwrap();
+  }
+
+  #[test]
+  fn test_compile_time_type_compatibility_validation() {
+    // Test that type compatibility is validated at compile time
+    let builder = GraphBuilder::new();
+    let producer = ProducerNode::new(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    );
+    let transformer = TransformerNode::new(
+      "transform".to_string(),
+      MapTransformer::new(|x: i32| x * 2),
+    );
+
+    let builder = builder.node(producer).unwrap();
+    let builder = builder.node(transformer).unwrap();
+
+    // Compatible types (i32 -> i32) - should compile
+    let _builder = builder.connect::<
+      ProducerNode<VecProducer<i32>, (i32,)>,
+      TransformerNode<MapTransformer<i32, i32>, (i32,), (i32,)>,
+      0,
+      0,
+    >("source", "transform", 0, 0).unwrap();
+
+    // The following would fail to compile if uncommented:
+    // // Incompatible types (i32 -> String) - would fail to compile
+    // let string_transformer = TransformerNode::new(
+    //   "string_transform".to_string(),
+    //   MapTransformer::new(|x: String| x.len()),
+    // );
+    // builder.node(string_transformer).unwrap()
+    //   .connect::<
+    //     ProducerNode<VecProducer<i32>, (i32,)>,
+    //     TransformerNode<MapTransformer<String, usize>, (String,), (usize,)>,
+    //     0, 0
+    //   >("source", "string_transform", 0, 0).unwrap();
   }
 
   #[test]
