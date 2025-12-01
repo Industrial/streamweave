@@ -148,7 +148,7 @@ tokio-tungstenite = { version = "0.28", optional = true }
 # Note: Requires cmake, pkg-config, openssl, zlib, and zstd to build
 # These are provided by devenv.nix when using devenv.sh
 # To use SSL, the system must have OpenSSL available (provided by devenv)
-rdkafka = { version = "0.36", optional = true, features = ["cmake-build"] }
+rdkafka = { version = "0.38", optional = true, features = ["cmake-build"] }
 
 # Redis Streams integration (native only - requires Redis)
 redis = { version = "0.32", optional = true, features = ["tokio-comp", "streams", "connection-manager"] }
