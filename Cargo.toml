@@ -151,7 +151,7 @@ tokio-tungstenite = { version = "0.28", optional = true }
 rdkafka = { version = "0.36", optional = true, features = ["cmake-build"] }
 
 # Redis Streams integration (native only - requires Redis)
-redis = { version = "0.26", optional = true, features = ["tokio-comp", "streams", "connection-manager"] }
+redis = { version = "0.32", optional = true, features = ["tokio-comp", "streams", "connection-manager"] }
 
 # Database integration (native only - requires PostgreSQL/MySQL/SQLite)
 # sqlx with runtime mode for dynamic queries and connection pooling
