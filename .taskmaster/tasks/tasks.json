@@ -235,7 +235,7 @@
             "id": "5.2",
             "title": "Stateful nodes",
             "description": "Implement stateful processing nodes that maintain state across stream items",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentId": "undefined"
           },

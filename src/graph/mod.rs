@@ -14,6 +14,7 @@ mod node;
 mod port;
 mod router;
 mod routers;
+mod stateful;
 mod subgraph;
 mod traits;
 
@@ -30,6 +31,7 @@ pub use node::{ConsumerNode, ProducerNode, TransformerNode};
 pub use port::{GetPort, PortList, SinglePort};
 pub use router::{InputRouter, OutputRouter, RouterError};
 pub use routers::{BroadcastRouter, KeyBasedRouter, MergeRouter, RoundRobinRouter};
+pub use stateful::{get_node_state, is_stateful_node, StatefulNode};
 pub use subgraph::SubgraphNode;
 pub use traits::{NodeKind, NodeTrait};
 
