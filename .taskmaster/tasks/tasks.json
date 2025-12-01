@@ -5,7 +5,7 @@
         "id": "1",
         "title": "Phase 1: Core Graph Infrastructure",
         "description": "Implement the foundational graph infrastructure including port type system, node types, connection types with compile-time validation, and basic graph structure.",
-        "status": "in-progress",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "details": "This phase establishes the type-safe foundation for the graph API. It includes port type system using tuples, node types (ProducerNode, TransformerNode, ConsumerNode), connection types with compile-time validation, and basic graph structure.",
@@ -72,7 +72,7 @@
             "id": "2.1",
             "title": "InputRouter trait",
             "description": "Define InputRouter trait for routing multiple input streams to a single node",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentId": "undefined"
           },
