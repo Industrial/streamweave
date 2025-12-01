@@ -464,16 +464,45 @@ impl GraphExecutor {
   /// Creates channels for all connections in the graph.
   ///
   /// This method creates bounded channels for routing data between nodes.
-  /// Each connection gets a channel pair (sender, receiver).
+  /// Each connection gets a channel pair (sender, receiver) with configurable
+  /// buffer size for backpressure control.
+  ///
+  /// # Channel Routing Strategy
+  ///
+  /// Channels are created for each connection in the graph:
+  /// - Source node output port -> Channel sender
+  /// - Channel receiver -> Target node input port
+  ///
+  /// Bounded channels provide automatic backpressure: when the buffer is full,
+  /// senders will block until space is available, preventing memory issues.
   ///
   /// # Returns
   ///
   /// `Ok(())` if channels were created successfully, `Err(ExecutionError)` otherwise.
   fn create_channels(&mut self) -> Result<(), ExecutionError> {
-    const CHANNEL_BUFFER_SIZE: usize = 1024;
+    self.create_channels_with_buffer_size(1024)
+  }
 
+  /// Creates channels with a custom buffer size.
+  ///
+  /// # Arguments
+  ///
+  /// * `buffer_size` - The buffer size for each channel (number of items)
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if channels were created successfully, `Err(ExecutionError)` otherwise.
+  ///
+  /// # Note
+  ///
+  /// Smaller buffer sizes provide tighter backpressure control but may reduce
+  /// throughput. Larger buffer sizes improve throughput but use more memory.
+  pub fn create_channels_with_buffer_size(
+    &mut self,
+    buffer_size: usize,
+  ) -> Result<(), ExecutionError> {
     for conn in self.graph.get_connections() {
-      let (sender, receiver) = mpsc::channel(CHANNEL_BUFFER_SIZE);
+      let (sender, receiver) = mpsc::channel(buffer_size);
 
       // Store sender for source node's output port
       self
@@ -487,6 +516,83 @@ impl GraphExecutor {
     }
 
     Ok(())
+  }
+
+  /// Returns a reference to the channel sender for a given node and port.
+  ///
+  /// # Arguments
+  ///
+  /// * `node_name` - The name of the node
+  /// * `port_index` - The output port index
+  ///
+  /// # Returns
+  ///
+  /// `Some(&mpsc::Sender<Vec<u8>>)` if the channel exists, `None` otherwise.
+  ///
+  /// # Note
+  ///
+  /// This method is used by node tasks to send data to downstream nodes.
+  /// The sender will block when the channel buffer is full, providing
+  /// automatic backpressure.
+  pub fn get_channel_sender(
+    &self,
+    node_name: &str,
+    port_index: usize,
+  ) -> Option<&mpsc::Sender<Vec<u8>>> {
+    self.channel_senders.get(&(node_name.to_string(), port_index))
+  }
+
+  /// Returns a mutable reference to the channel receiver for a given node and port.
+  ///
+  /// # Arguments
+  ///
+  /// * `node_name` - The name of the node
+  /// * `port_index` - The input port index
+  ///
+  /// # Returns
+  ///
+  /// `Some(&mut mpsc::Receiver<Vec<u8>>)` if the channel exists, `None` otherwise.
+  ///
+  /// # Note
+  ///
+  /// This method is used by node tasks to receive data from upstream nodes.
+  pub fn get_channel_receiver(
+    &mut self,
+    node_name: &str,
+    port_index: usize,
+  ) -> Option<&mut mpsc::Receiver<Vec<u8>>> {
+    self
+      .channel_receivers
+      .get_mut(&(node_name.to_string(), port_index))
+  }
+
+  /// Returns the number of channels created for routing.
+  ///
+  /// # Returns
+  ///
+  /// The number of channel pairs (one per connection).
+  pub fn channel_count(&self) -> usize {
+    self.channel_senders.len()
+  }
+
+  /// Checks if a channel exists for a given node and port.
+  ///
+  /// # Arguments
+  ///
+  /// * `node_name` - The name of the node
+  /// * `port_index` - The port index
+  /// * `is_output` - `true` for output port (sender), `false` for input port (receiver)
+  ///
+  /// # Returns
+  ///
+  /// `true` if the channel exists, `false` otherwise.
+  pub fn has_channel(&self, node_name: &str, port_index: usize, is_output: bool) -> bool {
+    let key = (node_name.to_string(), port_index);
+    if is_output {
+      self.channel_senders.contains_key(&key)
+    } else {
+      self.channel_receivers.contains_key(&key)
+    }
   }
 }
 
@@ -632,6 +738,52 @@ mod tests {
     // Clear pause signal
     *pause_signal.write().await = false;
     assert!(!*pause_signal.read().await);
+  }
+
+  #[tokio::test]
+  async fn test_graph_executor_channel_creation() {
+    use crate::graph::{GraphBuilder, ProducerNode};
+    use crate::producers::vec::VecProducer;
+
+    // Create a simple graph with one node (no connections yet)
+    let graph = GraphBuilder::new()
+      .node(ProducerNode::new(
+        "source".to_string(),
+        VecProducer::new(vec![1, 2, 3]),
+      ))
+      .unwrap()
+      .build()
+      .unwrap();
+
+    let mut executor = graph.executor();
+
+    // Create channels (even though there are no connections, this should succeed)
+    assert!(executor.create_channels_with_buffer_size(64).is_ok());
+    assert_eq!(executor.channel_count(), 0);
+  }
+
+  #[tokio::test]
+  async fn test_graph_executor_channel_helpers() {
+    use crate::graph::{GraphBuilder, ProducerNode};
+    use crate::producers::vec::VecProducer;
+
+    // Create a simple graph
+    let graph = GraphBuilder::new()
+      .node(ProducerNode::new(
+        "source".to_string(),
+        VecProducer::new(vec![1, 2, 3]),
+      ))
+      .unwrap()
+      .build()
+      .unwrap();
+
+    let mut executor = graph.executor();
+
+    // No channels exist yet
+    assert!(!executor.has_channel("source", 0, true));
+    assert_eq!(executor.channel_count(), 0);
+    assert!(executor.get_channel_sender("source", 0).is_none());
+    assert!(executor.get_channel_receiver("source", 0).is_none());
   }
 }
 

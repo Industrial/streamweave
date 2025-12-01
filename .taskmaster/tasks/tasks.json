@@ -188,7 +188,7 @@
             "id": "4.3",
             "title": "Stream routing via bounded channels",
             "description": "Implement stream routing between nodes using bounded channels with backpressure support",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "4.1"
             ],
