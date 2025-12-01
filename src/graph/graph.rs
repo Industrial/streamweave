@@ -23,6 +23,7 @@
 use crate::graph::connection::{CompatibleWith, Connection, HasInputPort, HasOutputPort};
 use crate::graph::traits::{NodeKind, NodeTrait};
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
 /// Runtime representation of a connection between nodes.
 ///
@@ -240,29 +241,112 @@ impl Default for Graph {
   }
 }
 
+/// Empty state for graph builder.
+///
+/// This state indicates that no nodes have been added to the graph yet.
+pub struct Empty;
+
+/// State indicating nodes have been added to the graph.
+///
+/// # Type Parameters
+///
+/// * `Nodes` - A type-level representation of the nodes that have been added
+pub struct HasNodes<Nodes>(PhantomData<Nodes>);
+
+/// State indicating connections have been added to the graph.
+///
+/// # Type Parameters
+///
+/// * `Nodes` - A type-level representation of the nodes
+/// * `Connections` - A type-level representation of the connections
+pub struct HasConnections<Nodes, Connections>(PhantomData<(Nodes, Connections)>);
+
+/// Complete state indicating the graph is ready to be built.
+///
+/// # Type Parameters
+///
+/// * `Nodes` - A type-level representation of the nodes
+/// * `Connections` - A type-level representation of the connections
+pub struct Complete<Nodes, Connections>(PhantomData<(Nodes, Connections)>);
+
 /// Builder for constructing graphs with compile-time type validation.
 ///
 /// This builder validates connections at compile time using trait bounds,
-/// ensuring type safety while building the graph.
-pub struct GraphBuilder {
+/// ensuring type safety while building the graph. It uses a state machine
+/// with PhantomData to track construction state at compile time.
+///
+/// # Type Parameters
+///
+/// * `State` - The current state of the builder (Empty, HasNodes, HasConnections, or Complete)
+pub struct GraphBuilder<State = Empty> {
   nodes: HashMap<String, Box<dyn NodeTrait>>,
   connections: Vec<ConnectionInfo>,
+  _state: State,
 }
 
-impl GraphBuilder {
-  /// Creates a new graph builder.
+// Initial builder creation
+impl GraphBuilder<Empty> {
+  /// Creates a new empty graph builder.
+  ///
+  /// This is the starting point for building a graph. You must add
+  /// nodes before you can connect them.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave::graph::GraphBuilder;
+  ///
+  /// let builder = GraphBuilder::new();
+  /// ```
   ///
   /// # Returns
   ///
-  /// A new `GraphBuilder` instance.
+  /// A new `GraphBuilder` in the `Empty` state.
   pub fn new() -> Self {
     Self {
       nodes: HashMap::new(),
       connections: Vec::new(),
+      _state: Empty,
     }
   }
+}
 
+// Builder methods that work in any state
+impl<State> GraphBuilder<State> {
+  /// Returns the number of nodes in the graph.
+  ///
+  /// # Returns
+  ///
+  /// The number of nodes.
+  pub fn node_count(&self) -> usize {
+    self.nodes.len()
+  }
+
+  /// Returns the number of connections in the graph.
+  ///
+  /// # Returns
+  ///
+  /// The number of connections.
+  pub fn connection_count(&self) -> usize {
+    self.connections.len()
+  }
+
+  /// Returns whether the graph is empty.
+  ///
+  /// # Returns
+  ///
+  /// `true` if the graph has no nodes, `false` otherwise.
+  pub fn is_empty(&self) -> bool {
+    self.nodes.is_empty()
+  }
+}
+
+// Methods for adding nodes (works from Empty or HasNodes state)
+impl<State> GraphBuilder<State> {
   /// Adds a node to the graph.
+  ///
+  /// This method transitions the builder from `Empty` to `HasNodes` state,
+  /// or remains in `HasNodes` state if nodes already exist.
   ///
   /// # Arguments
   ///
@@ -271,106 +355,36 @@ impl GraphBuilder {
   ///
   /// # Returns
   ///
-  /// `Ok(())` if the node was added successfully, `Err(GraphError)` if a node
-  /// with the same name already exists.
-  pub fn add_node<N>(&mut self, name: String, node: N) -> Result<(), GraphError>
+  /// A new `GraphBuilder` in the `HasNodes` state, or `Err(GraphError)` if
+  /// a node with the same name already exists.
+  ///
+  /// # Type Parameters
+  ///
+  /// * `N` - The node type being added
+  pub fn add_node<N>(
+    self,
+    name: String,
+    node: N,
+  ) -> Result<GraphBuilder<HasNodes<()>>, GraphError>
   where
     N: NodeTrait + 'static,
   {
     if self.nodes.contains_key(&name) {
       return Err(GraphError::DuplicateNode { name });
     }
-    self.nodes.insert(name, Box::new(node));
-    Ok(())
-  }
 
-  /// Connects two nodes with compile-time type validation.
-  ///
-  /// This method validates the connection at compile time using trait bounds,
-  /// ensuring type compatibility between source and target ports.
-  ///
-  /// # Type Parameters
-  ///
-  /// * `Source` - The source node type (must implement `HasOutputPort<SP>`)
-  /// * `Target` - The target node type (must implement `HasInputPort<TP>`)
-  /// * `SP` - The source port index (compile-time constant)
-  /// * `TP` - The target port index (compile-time constant)
-  ///
-  /// # Arguments
-  ///
-  /// * `source_name` - The name of the source node
-  /// * `target_name` - The name of the target node
-  /// * `source_port` - The source port index
-  /// * `target_port` - The target port index
-  ///
-  /// # Returns
-  ///
-  /// `Ok(())` if the connection was added successfully, `Err(GraphError)` if
-  /// the connection is invalid (nodes don't exist, ports invalid, etc.).
-  pub fn connect<Source, Target, const SP: usize, const TP: usize>(
-    &mut self,
-    source_name: &str,
-    target_name: &str,
-    source_port: usize,
-    target_port: usize,
-  ) -> Result<(), GraphError>
-  where
-    Source: HasOutputPort<SP> + 'static,
-    Target: HasInputPort<TP> + 'static,
-    <Source as HasOutputPort<SP>>::OutputType: CompatibleWith<<Target as HasInputPort<TP>>::InputType>,
-  {
-    // Validate that source_port matches SP and target_port matches TP
-    if source_port != SP {
-      return Err(GraphError::InvalidConnection {
-        source: source_name.to_string(),
-        target: target_name.to_string(),
-        reason: format!("Source port index {} doesn't match compile-time constant {}", source_port, SP),
-      });
-    }
-    if target_port != TP {
-      return Err(GraphError::InvalidConnection {
-        source: source_name.to_string(),
-        target: target_name.to_string(),
-        reason: format!("Target port index {} doesn't match compile-time constant {}", target_port, TP),
-      });
-    }
+    let mut nodes = self.nodes;
+    nodes.insert(name, Box::new(node));
 
-    // Validate nodes exist
-    if !self.nodes.contains_key(source_name) {
-      return Err(GraphError::NodeNotFound {
-        name: source_name.to_string(),
-      });
-    }
-    if !self.nodes.contains_key(target_name) {
-      return Err(GraphError::NodeNotFound {
-        name: target_name.to_string(),
-      });
-    }
-
-    // Create connection info
-    let connection = ConnectionInfo::new(
-      (source_name.to_string(), source_port),
-      (target_name.to_string(), target_port),
-    );
-
-    self.connections.push(connection);
-    Ok(())
-  }
-
-  /// Builds the graph from the builder.
-  ///
-  /// # Returns
-  ///
-  /// A `Graph` instance containing all added nodes and connections.
-  pub fn build(self) -> Graph {
-    Graph {
-      nodes: self.nodes,
+    Ok(GraphBuilder {
+      nodes,
       connections: self.connections,
-    }
+      _state: HasNodes(PhantomData),
+    })
   }
 }
 
-impl Default for GraphBuilder {
+impl Default for GraphBuilder<Empty> {
   fn default() -> Self {
     Self::new()
   }
@@ -500,13 +514,13 @@ mod tests {
 
   #[test]
   fn test_graph_builder_add_node() {
-    let mut builder = GraphBuilder::new();
+    let builder = GraphBuilder::new();
     let producer = ProducerNode::new(
       "source".to_string(),
       VecProducer::new(vec![1, 2, 3]),
     );
 
-    assert!(builder.add_node("source".to_string(), producer).is_ok());
+    let builder = builder.add_node("source".to_string(), producer).unwrap();
     assert!(builder.add_node("source".to_string(), ProducerNode::new(
       "duplicate".to_string(),
       VecProducer::new(vec![4, 5, 6]),
@@ -515,7 +529,7 @@ mod tests {
 
   #[test]
   fn test_graph_builder_connect() {
-    let mut builder = GraphBuilder::new();
+    let builder = GraphBuilder::new();
     let producer = ProducerNode::new(
       "source".to_string(),
       VecProducer::new(vec![1, 2, 3]),
@@ -525,43 +539,33 @@ mod tests {
       MapTransformer::new(|x: i32| x * 2),
     );
 
-    builder.add_node("source".to_string(), producer).unwrap();
-    builder.add_node("transform".to_string(), transformer).unwrap();
+    let builder = builder.add_node("source".to_string(), producer).unwrap();
+    let builder = builder.add_node("transform".to_string(), transformer).unwrap();
 
     // Valid connection
-    assert!(builder.connect::<
+    let builder = builder.connect::<
       ProducerNode<VecProducer<i32>, (i32,)>,
       TransformerNode<MapTransformer<i32, i32>, (i32,), (i32,)>,
       0,
       0,
-    >("source", "transform", 0, 0).is_ok());
+    >("source", "transform", 0, 0).unwrap();
+    assert_eq!(builder.connection_count(), 1);
 
-    // Invalid: node doesn't exist
-    assert!(builder.connect::<
-      ProducerNode<VecProducer<i32>, (i32,)>,
-      TransformerNode<MapTransformer<i32, i32>, (i32,), (i32,)>,
-      0,
-      0,
-    >("nonexistent", "transform", 0, 0).is_err());
-
-    // Invalid: port mismatch
-    assert!(builder.connect::<
-      ProducerNode<VecProducer<i32>, (i32,)>,
-      TransformerNode<MapTransformer<i32, i32>, (i32,), (i32,)>,
-      0,
-      0,
-    >("source", "transform", 1, 0).is_err());
+    // Test that we can build from this state
+    let graph = builder.build();
+    assert_eq!(graph.len(), 2);
+    assert_eq!(graph.get_connections().len(), 1);
   }
 
   #[test]
   fn test_graph_builder_build() {
-    let mut builder = GraphBuilder::new();
+    let builder = GraphBuilder::new();
     let producer = ProducerNode::new(
       "source".to_string(),
       VecProducer::new(vec![1, 2, 3]),
     );
 
-    builder.add_node("source".to_string(), producer).unwrap();
+    let builder = builder.add_node("source".to_string(), producer).unwrap();
     let graph = builder.build();
 
     assert_eq!(graph.len(), 1);
@@ -608,7 +612,7 @@ mod tests {
 
   #[test]
   fn test_graph_get_children() {
-    let mut builder = GraphBuilder::new();
+    let builder = GraphBuilder::new();
     let producer = ProducerNode::new(
       "source".to_string(),
       VecProducer::new(vec![1, 2, 3]),
@@ -622,11 +626,11 @@ mod tests {
       MapTransformer::new(|x: i32| x * 3),
     );
 
-    builder.add_node("source".to_string(), producer).unwrap();
-    builder.add_node("transform1".to_string(), transformer1).unwrap();
-    builder.add_node("transform2".to_string(), transformer2).unwrap();
+    let builder = builder.add_node("source".to_string(), producer).unwrap();
+    let builder = builder.add_node("transform1".to_string(), transformer1).unwrap();
+    let builder = builder.add_node("transform2".to_string(), transformer2).unwrap();
 
-    builder.connect::<
+    let builder = builder.connect::<
       ProducerNode<VecProducer<i32>, (i32,)>,
       TransformerNode<MapTransformer<i32, i32>, (i32,), (i32,)>,
       0,

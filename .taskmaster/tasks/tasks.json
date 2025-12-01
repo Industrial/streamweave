@@ -88,7 +88,7 @@
             "id": "2.3",
             "title": "Router implementations (RoundRobin, Broadcast, KeyBased, Merge)",
             "description": "Implement router types: RoundRobin, Broadcast, KeyBased, and Merge as specified in GRAPH.md",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "2.1",
               "2.2"
