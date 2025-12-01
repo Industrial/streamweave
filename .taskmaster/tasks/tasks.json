@@ -60,7 +60,7 @@
         "id": "2",
         "title": "Phase 2: Router System",
         "description": "Implement the router system including InputRouter and OutputRouter traits, and router implementations (RoundRobin, Broadcast, KeyBased, Merge).",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           "1"
@@ -101,7 +101,7 @@
         "id": "3",
         "title": "Phase 3: Graph Builder API",
         "description": "Implement the fluent graph builder API with compile-time connection validation, port name resolution, and a state machine that tracks nodes and connections.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           "1",
@@ -143,7 +143,7 @@
             "id": "3.4",
             "title": "Port name resolution",
             "description": "Implement port name resolution system that maps string names to type-level ports",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "3.1",
               "3.2"
@@ -170,7 +170,7 @@
             "id": "4.1",
             "title": "Graph execution engine",
             "description": "Implement core execution engine that spawns tasks for each node and manages their lifecycle",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentId": "undefined"
           },

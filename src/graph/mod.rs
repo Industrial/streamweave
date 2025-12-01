@@ -8,6 +8,7 @@
 //! users to choose the appropriate model for their use case.
 
 mod connection;
+mod execution;
 mod graph;
 mod node;
 mod port;
@@ -19,6 +20,7 @@ mod traits;
 // (none currently)
 
 pub use connection::{CompatibleWith, Connection, ConnectionError, HasInputPort, HasOutputPort};
+pub use execution::{ExecutionError, ExecutionState, GraphExecution, GraphExecutor};
 pub use graph::{
   AppendNode, ContainsNodeType, ConnectionInfo, Graph, GraphBuilder, GraphError, HasConnections,
   HasNodes, RuntimeGraphBuilder,
