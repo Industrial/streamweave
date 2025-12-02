@@ -12,6 +12,9 @@ impl<T> Transformer for OrderedMergeTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = (T,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let strategy = self.strategy.clone();
     let mut all_streams = vec![input];

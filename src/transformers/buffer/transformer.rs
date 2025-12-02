@@ -9,6 +9,9 @@ impl<T> Transformer for BufferTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = (T,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let capacity = self.capacity;
     Box::pin(input.ready_chunks(capacity).flat_map(futures::stream::iter))

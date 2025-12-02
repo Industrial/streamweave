@@ -212,6 +212,8 @@ fn create_http_poll_stream(
 #[async_trait]
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
 impl Producer for HttpPollProducer {
+  type OutputPorts = (crate::producers::http_poll::http_poll_producer::HttpPollResponse,);
+
   /// Produces a stream of HTTP responses from polling the configured endpoint.
   ///
   /// # Error Handling

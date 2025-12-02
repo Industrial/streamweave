@@ -9,6 +9,9 @@ impl<T> Transformer for BatchTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = (Vec<T>,);
+
   fn transform(&mut self, mut input: Self::InputStream) -> Self::OutputStream {
     let size = self.size;
     let mut current_batch: Vec<T> = Vec::with_capacity(size);

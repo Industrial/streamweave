@@ -10,6 +10,7 @@ use futures::StreamExt;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::pin::Pin;
+use std::sync::Arc;
 
 /// A router that routes items based on a key extraction function.
 ///
@@ -39,14 +40,14 @@ pub struct KeyBasedRouter<O, K> {
   /// The output port indices this router manages
   output_ports: Vec<usize>,
   /// Function to extract key from items
-  key_fn: Box<dyn Fn(&O) -> K + Send + Sync>,
+  key_fn: Arc<dyn Fn(&O) -> K + Send + Sync>,
   /// Mapping from keys to port indices
   key_to_port: HashMap<K, usize>,
 }
 
 impl<O, K> KeyBasedRouter<O, K>
 where
-  K: Hash + Eq + Send + Sync + 'static,
+  K: Hash + Eq + Clone + Send + Sync + 'static,
 {
   /// Creates a new KeyBasedRouter with the specified key function and ports.
   ///
@@ -70,7 +71,7 @@ where
     let key_to_port = HashMap::new();
     Self {
       output_ports,
-      key_fn: Box::new(key_fn),
+      key_fn: Arc::new(key_fn),
       key_to_port,
     }
   }
@@ -96,7 +97,7 @@ where
   {
     Self {
       output_ports,
-      key_fn: Box::new(key_fn),
+      key_fn: Arc::new(key_fn),
       key_to_port,
     }
   }
@@ -106,7 +107,7 @@ where
 impl<O, K> OutputRouter<O> for KeyBasedRouter<O, K>
 where
   O: Send + Sync + 'static,
-  K: Hash + Eq + Send + Sync + 'static,
+  K: Hash + Eq + Clone + Send + Sync + 'static,
 {
   async fn route_stream(
     &mut self,
@@ -129,8 +130,8 @@ where
 
     // Spawn task to route items based on key
     let mut input_stream = stream;
-    let mut senders_clone = senders.clone();
-    let key_fn = &self.key_fn;
+    let senders_clone = senders.clone();
+    let key_fn = self.key_fn.clone();
     let num_ports = self.output_ports.len();
     let key_to_port = self.key_to_port.clone();
 
@@ -144,23 +145,21 @@ where
           port
         } else {
           // Hash-based distribution if no explicit mapping
-          use std::hash::{Hash, Hasher};
+          use std::hash::Hasher;
           let mut hasher = std::collections::hash_map::DefaultHasher::new();
           key.hash(&mut hasher);
           (hasher.finish() as usize) % num_ports
         };
 
-        if port_idx < senders_clone.len() {
-          if let Err(_) = senders_clone[port_idx].send(item).await {
-            // Receiver dropped, continue
-          }
+        if port_idx < senders_clone.len() && senders_clone[port_idx].send(item).await.is_err() {
+          // Receiver dropped, continue
         }
       }
     });
 
     // Create streams from receivers
-    let mut output_streams = Vec::new();
-    for (i, &port) in self.output_ports.iter().enumerate() {
+    let mut output_streams: Vec<(usize, Pin<Box<dyn Stream<Item = O> + Send>>)> = Vec::new();
+    for &port in self.output_ports.iter() {
       let mut rx = receivers.remove(0);
       let stream = Box::pin(async_stream::stream! {
         while let Some(item) = rx.recv().await {
@@ -218,4 +217,3 @@ mod tests {
     assert_eq!(router.output_ports(), vec![0, 1, 2]);
   }
 }
-

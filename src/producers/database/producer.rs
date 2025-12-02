@@ -22,6 +22,8 @@ use tracing::{error, warn};
 #[async_trait]
 #[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
 impl Producer for DatabaseProducer {
+  type OutputPorts = (crate::producers::database::database_producer::DatabaseRow,);
+
   /// Produces a stream of database rows from the configured query.
   ///
   /// # Error Handling

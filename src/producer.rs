@@ -1,4 +1,5 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+use crate::graph::PortList;
 use crate::output::Output;
 use async_trait::async_trait;
 
@@ -55,6 +56,28 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> ProducerConfig<T> {
   }
 }
 
+/// Helper trait for providing default port types for Producers.
+///
+/// This trait provides default implementations of the `OutputPorts` associated type.
+/// All Producers automatically get `OutputPorts = (Self::Output,)` unless they
+/// explicitly override it.
+pub trait ProducerPorts: Producer
+where
+  Self::Output: std::fmt::Debug + Clone + Send + Sync,
+{
+  /// The default output port tuple type (single port with the producer's output type).
+  type DefaultOutputPorts: crate::graph::PortList;
+}
+
+/// Blanket implementation: all Producers get default single-port output.
+impl<P> ProducerPorts for P
+where
+  P: Producer,
+  P::Output: std::fmt::Debug + Clone + Send + Sync,
+{
+  type DefaultOutputPorts = (P::Output,);
+}
+
 /// Trait for components that produce data streams.
 ///
 /// Producers generate items that flow through the pipeline. They are the
@@ -82,6 +105,19 @@ pub trait Producer: Output
 where
   Self::Output: std::fmt::Debug + Clone + Send + Sync,
 {
+  /// The output port tuple type for this producer.
+  ///
+  /// This associated type specifies the port tuple that represents this producer's
+  /// outputs in the graph API. By default, producers have a single output port
+  /// containing their output type: `(Self::Output,)`.
+  ///
+  /// For multi-port producers, override this type to specify a tuple with multiple
+  /// output types, e.g., `(i32, String)` for two outputs.
+  ///
+  /// **Note**: If you don't specify this type, use `ProducerNode::from_producer()`
+  /// which will automatically infer the port types using `ProducerPorts::DefaultOutputPorts`.
+  type OutputPorts: PortList;
+
   /// Produces a stream of items.
   ///
   /// This method is called by the pipeline to generate the input stream.
@@ -294,6 +330,8 @@ mod tests {
 
   #[async_trait]
   impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Producer for TestProducer<T> {
+    type OutputPorts = (T,);
+
     fn produce(&mut self) -> Self::OutputStream {
       let items = self.items.clone();
       Box::pin(futures::stream::iter(items))

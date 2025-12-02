@@ -5,12 +5,16 @@ use async_trait::async_trait;
 use futures::StreamExt;
 
 #[async_trait]
+#[allow(dead_code)]
 impl<F, I, O> Transformer for MapTransformer<F, I, O>
 where
   F: FnMut(I) -> O + Send + Clone + 'static,
   I: std::fmt::Debug + Clone + Send + Sync + 'static,
   O: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (I,);
+  type OutputPorts = (O,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let f = self.f.clone();
     Box::pin(input.map(f))

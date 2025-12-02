@@ -326,6 +326,8 @@ impl Clone for HttpRequestProducer {
 #[async_trait]
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 impl Producer for HttpRequestProducer {
+  type OutputPorts = (HttpRequest,);
+
   /// Produces a stream containing HTTP request items.
   ///
   /// When streaming is enabled, the stream yields:

@@ -8,6 +8,9 @@ impl<T> Transformer for InterleaveTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = (T,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let other = std::mem::replace(&mut self.other, Box::pin(futures::stream::empty()));
     Box::pin(futures::stream::select(input, other))

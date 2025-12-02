@@ -464,6 +464,8 @@ mod tests {
   }
 
   impl Producer for NumberProducer {
+    type OutputPorts = (i32,);
+
     fn produce(&mut self) -> Self::OutputStream {
       Box::pin(futures::stream::iter(self.numbers.clone()))
     }
@@ -506,6 +508,9 @@ mod tests {
   }
 
   impl Transformer for DoubleTransformer {
+    type InputPorts = (i32,);
+    type OutputPorts = (i32,);
+
     fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
       Box::pin(input.map(|x| x * 2))
     }
@@ -546,6 +551,8 @@ mod tests {
 
   #[async_trait]
   impl Consumer for CollectConsumer {
+    type InputPorts = (i32,);
+
     async fn consume(&mut self, input: Self::InputStream) {
       let mut items = Vec::new();
       input
@@ -597,6 +604,9 @@ mod tests {
   }
 
   impl Transformer for AddTransformer {
+    type InputPorts = (i32,);
+    type OutputPorts = (i32,);
+
     fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
       let value = self.value;
       Box::pin(input.map(move |x| x + value))

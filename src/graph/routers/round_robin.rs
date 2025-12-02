@@ -7,6 +7,7 @@ use crate::graph::router::OutputRouter;
 use async_trait::async_trait;
 use futures::Stream;
 use futures::StreamExt;
+use std::marker::PhantomData;
 use std::pin::Pin;
 
 /// A router that distributes items in round-robin fashion.
@@ -35,6 +36,8 @@ pub struct RoundRobinRouter<O> {
   output_ports: Vec<usize>,
   /// The next port to send an item to (state)
   next_port: usize,
+  /// Phantom data to consume the type parameter
+  _phantom: PhantomData<O>,
 }
 
 impl<O> RoundRobinRouter<O> {
@@ -51,6 +54,7 @@ impl<O> RoundRobinRouter<O> {
     Self {
       output_ports,
       next_port: 0,
+      _phantom: PhantomData,
     }
   }
 }
@@ -81,7 +85,7 @@ where
 
     // Spawn task to distribute items round-robin
     let mut input_stream = stream;
-    let mut senders_clone = senders.clone();
+    let senders_clone = senders.clone();
     let mut next_port = self.next_port;
     let num_ports = self.output_ports.len();
 
@@ -89,7 +93,7 @@ where
       while let Some(item) = input_stream.next().await {
         // Send to current port
         let port_idx = next_port % num_ports;
-        if let Err(_) = senders_clone[port_idx].send(item).await {
+        if senders_clone[port_idx].send(item).await.is_err() {
           // Receiver dropped, continue to next port
         }
         next_port = (next_port + 1) % num_ports;
@@ -100,8 +104,8 @@ where
     self.next_port = (self.next_port + receivers.len()) % num_ports.max(1);
 
     // Create streams from receivers
-    let mut output_streams = Vec::new();
-    for (i, &port) in self.output_ports.iter().enumerate() {
+    let mut output_streams: Vec<(usize, Pin<Box<dyn Stream<Item = O> + Send>>)> = Vec::new();
+    for &port in self.output_ports.iter() {
       let mut rx = receivers.remove(0);
       let stream = Box::pin(async_stream::stream! {
         while let Some(item) = rx.recv().await {
@@ -160,4 +164,3 @@ mod tests {
     assert_eq!(router.output_ports(), vec![0, 1, 2]);
   }
 }
-

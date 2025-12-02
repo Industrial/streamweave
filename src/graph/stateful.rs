@@ -13,7 +13,7 @@
 
 use crate::graph::node::TransformerNode;
 use crate::graph::traits::NodeTrait;
-use crate::stateful_transformer::{StateError, StatefulTransformer, StateResult};
+use crate::stateful_transformer::{StateError, StateResult, StatefulTransformer};
 use crate::transformer::Transformer;
 
 /// Trait for accessing state from stateful nodes.
@@ -78,9 +78,11 @@ pub trait StatefulNode: NodeTrait {
 /// a `StatefulTransformer`, providing state access through the graph API.
 impl<T, Inputs, Outputs> StatefulNode for TransformerNode<T, Inputs, Outputs>
 where
-  T: Transformer + StatefulTransformer + 'static,
-  Inputs: crate::graph::port::PortList,
-  Outputs: crate::graph::port::PortList,
+  T: Transformer + StatefulTransformer + Send + Sync + 'static,
+  T::Input: std::fmt::Debug + Clone + Send + Sync,
+  T::Output: std::fmt::Debug + Clone + Send + Sync,
+  Inputs: crate::graph::port::PortList + Send + Sync,
+  Outputs: crate::graph::port::PortList + Send + Sync,
   (): crate::graph::node::ValidateTransformerPorts<T, Inputs, Outputs>,
 {
   fn get_state(&self) -> StateResult<Option<Box<dyn std::any::Any + Send + Sync>>> {
@@ -129,7 +131,7 @@ where
 /// # Returns
 ///
 /// `true` if the node implements `StatefulNode` and is stateful, `false` otherwise.
-pub fn is_stateful_node(node: &dyn NodeTrait) -> bool {
+pub fn is_stateful_node(_node: &dyn NodeTrait) -> bool {
   // Use dynamic dispatch to check if node is stateful
   // This requires downcasting, which we'll handle in the graph execution
   false // Placeholder - will be implemented with proper type checking
@@ -149,7 +151,7 @@ pub fn is_stateful_node(node: &dyn NodeTrait) -> bool {
 ///
 /// Returns an error if state access fails.
 pub fn get_node_state(
-  node: &dyn NodeTrait,
+  _node: &dyn NodeTrait,
 ) -> StateResult<Option<Box<dyn std::any::Any + Send + Sync>>> {
   // This will need to use dynamic dispatch and downcasting
   // For now, return an error indicating the node is not stateful
@@ -171,15 +173,25 @@ mod tests {
     // Check that the node is stateful
     assert!(node.is_stateful());
 
-    // Initially, state should not be initialized
-    assert!(!node.has_state());
+    // Initially, state is initialized with T::default() (0 for i32)
+    assert!(node.has_state());
 
-    // Get state should return None for uninitialized state
+    // Get state should return Some(0) for initialized state
     let state = node.get_state().unwrap();
-    assert!(state.is_none());
+    assert!(state.is_some());
+    // Verify the state value is 0 (the default for i32)
+    if let Some(state_box) = state {
+      let state_value = state_box
+        .downcast_ref::<i32>()
+        .expect("State should be i32");
+      assert_eq!(*state_value, 0);
+    } else {
+      panic!("State should be Some");
+    }
 
-    // Reset should succeed even when not initialized
+    // Reset should succeed and return state to initial value
     assert!(node.reset_state().is_ok());
+    assert!(node.has_state()); // State is still initialized after reset
   }
 
   #[test]
@@ -188,20 +200,38 @@ mod tests {
     let node: TransformerNode<RunningSumTransformer<i32>, (i32,), (i32,)> =
       TransformerNode::new("sum".to_string(), transformer);
 
-    // Set initial state
-    let initial_state: Box<dyn std::any::Any + Send + Sync> = Box::new(10i32);
-    assert!(node.set_state(initial_state).is_ok());
+    // Set state to a new value
+    let new_state: Box<dyn std::any::Any + Send + Sync> = Box::new(10i32);
+    assert!(node.set_state(new_state).is_ok());
 
-    // Now state should be initialized
+    // State should be initialized
     assert!(node.has_state());
 
     // Get state should return the set value
     let state = node.get_state().unwrap();
     assert!(state.is_some());
+    // Verify the state value is 10
+    if let Some(state_box) = state {
+      let state_value = state_box
+        .downcast_ref::<i32>()
+        .expect("State should be i32");
+      assert_eq!(*state_value, 10);
+    } else {
+      panic!("State should be Some");
+    }
 
-    // Reset state
+    // Reset state returns to initial value (T::default() = 0 for i32)
     assert!(node.reset_state().is_ok());
-    assert!(!node.has_state());
+    assert!(node.has_state()); // State is still initialized after reset, just with default value
+    let reset_state = node.get_state().unwrap();
+    assert!(reset_state.is_some());
+    if let Some(state_box) = reset_state {
+      let state_value = state_box
+        .downcast_ref::<i32>()
+        .expect("State should be i32");
+      assert_eq!(*state_value, 0); // Reset returns to default value
+    } else {
+      panic!("State should be Some");
+    }
   }
 }
-

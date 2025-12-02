@@ -12,6 +12,8 @@ impl<T> Producer for MsgPackProducer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + DeserializeOwned + 'static,
 {
+  type OutputPorts = (T,);
+
   /// Produces a stream of deserialized MessagePack objects from a file.
   ///
   /// # Error Handling

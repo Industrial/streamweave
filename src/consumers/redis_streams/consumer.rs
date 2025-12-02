@@ -21,6 +21,8 @@ impl<T> Consumer for RedisStreamsConsumer<T>
 where
   T: Serialize + std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+
   /// Consumes a stream and sends each item as a message to a Redis stream.
   ///
   /// # Error Handling

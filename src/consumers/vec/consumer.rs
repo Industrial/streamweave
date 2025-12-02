@@ -9,6 +9,8 @@ impl<T> Consumer for VecConsumer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     let consumer_name = self.config.name.clone();
     println!("📥 [{}] Starting to consume stream", consumer_name);

@@ -10,6 +10,8 @@ use tracing::{error, warn};
 
 #[async_trait]
 impl Consumer for ParquetConsumer {
+  type InputPorts = (arrow::record_batch::RecordBatch,);
+
   /// Consumes a stream of Arrow RecordBatches and writes them to a Parquet file.
   ///
   /// # Error Handling

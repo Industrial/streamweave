@@ -1,6 +1,29 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+use crate::graph::PortList;
 use crate::input::Input;
 use async_trait::async_trait;
+
+/// Helper trait for providing default port types for Consumers.
+///
+/// This trait provides default implementations of the `InputPorts` associated type.
+/// All Consumers automatically get `InputPorts = (Self::Input,)` unless they
+/// explicitly override it.
+pub trait ConsumerPorts: Consumer
+where
+  Self::Input: std::fmt::Debug + Clone + Send + Sync,
+{
+  /// The default input port tuple type (single port with the consumer's input type).
+  type DefaultInputPorts: PortList;
+}
+
+/// Blanket implementation: all Consumers get default single-port input.
+impl<C> ConsumerPorts for C
+where
+  C: Consumer,
+  C::Input: std::fmt::Debug + Clone + Send + Sync,
+{
+  type DefaultInputPorts = (C::Input,);
+}
 
 /// Configuration for a consumer component.
 ///
@@ -54,6 +77,16 @@ pub trait Consumer: Input
 where
   Self::Input: std::fmt::Debug + Clone + Send + Sync,
 {
+  /// The input port tuple type for this consumer.
+  ///
+  /// This associated type specifies the port tuple that represents this consumer's
+  /// inputs in the graph API. By default, consumers have a single input port
+  /// containing their input type: `(Self::Input,)`.
+  ///
+  /// For multi-port consumers, override this type to specify a tuple with multiple
+  /// input types, e.g., `(i32, String)` for two inputs.
+  type InputPorts: PortList;
+
   /// Consumes a stream of items.
   ///
   /// This method is called by the pipeline to process the final stream.
@@ -232,6 +265,8 @@ mod tests {
 
   #[async_trait]
   impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Consumer for CollectorConsumer<T> {
+    type InputPorts = (T,);
+
     async fn consume(&mut self, mut stream: Self::InputStream) {
       while let Some(item) = stream.next().await {
         self.items.lock().await.push(item);
@@ -272,6 +307,8 @@ mod tests {
 
   #[async_trait]
   impl Consumer for FailingConsumer {
+    type InputPorts = (i32,);
+
     async fn consume(&mut self, _input: Self::InputStream) {
       // This consumer just drops the stream without processing
     }

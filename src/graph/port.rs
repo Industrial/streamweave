@@ -301,43 +301,63 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8> PortList for (T0, T1, T2, T3, T4, T5, T
 }
 
 // Ten ports: (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9)
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<0> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<0>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9)
+{
   type Type = T0;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<1> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<1>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9)
+{
   type Type = T1;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<2> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<2>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9)
+{
   type Type = T2;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<3> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<3>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9)
+{
   type Type = T3;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<4> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<4>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9)
+{
   type Type = T4;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<5> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<5>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9)
+{
   type Type = T5;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<6> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<6>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9)
+{
   type Type = T6;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<7> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<7>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9)
+{
   type Type = T7;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<8> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<8>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9)
+{
   type Type = T8;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<9> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> GetPort<9>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9)
+{
   type Type = T9;
 }
 
@@ -346,104 +366,154 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> PortList for (T0, T1, T2, T3, T4, T
 }
 
 // Eleven ports: (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<0> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<0>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
+{
   type Type = T0;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<1> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<1>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
+{
   type Type = T1;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<2> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<2>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
+{
   type Type = T2;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<3> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<3>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
+{
   type Type = T3;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<4> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<4>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
+{
   type Type = T4;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<5> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<5>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
+{
   type Type = T5;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<6> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<6>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
+{
   type Type = T6;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<7> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<7>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
+{
   type Type = T7;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<8> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<8>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
+{
   type Type = T8;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<9> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<9>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
+{
   type Type = T9;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<10> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> GetPort<10>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
+{
   type Type = T10;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> PortList for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> PortList
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
+{
   const LEN: usize = 11;
 }
 
 // Twelve ports: (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<0> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<0>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
+{
   type Type = T0;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<1> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<1>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
+{
   type Type = T1;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<2> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<2>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
+{
   type Type = T2;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<3> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<3>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
+{
   type Type = T3;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<4> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<4>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
+{
   type Type = T4;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<5> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<5>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
+{
   type Type = T5;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<6> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<6>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
+{
   type Type = T6;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<7> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<7>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
+{
   type Type = T7;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<8> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<8>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
+{
   type Type = T8;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<9> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<9>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
+{
   type Type = T9;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<10> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<10>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
+{
   type Type = T10;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<11> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> GetPort<11>
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
+{
   type Type = T11;
 }
 
-impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> PortList for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11) {
+impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> PortList
+  for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11)
+{
   const LEN: usize = 12;
 }
 
@@ -476,7 +546,7 @@ mod tests {
   fn test_single_port() {
     type Ports = (i32,);
     assert_eq!(<Ports as PortList>::LEN, 1);
-    
+
     type First = <Ports as GetPort<0>>::Type;
     let _: First = 42i32;
   }
@@ -485,10 +555,10 @@ mod tests {
   fn test_two_ports() {
     type Ports = (i32, String);
     assert_eq!(<Ports as PortList>::LEN, 2);
-    
+
     type First = <Ports as GetPort<0>>::Type;
     type Second = <Ports as GetPort<1>>::Type;
-    
+
     let _: First = 42i32;
     let _: Second = "hello".to_string();
   }
@@ -497,11 +567,11 @@ mod tests {
   fn test_three_ports() {
     type Ports = (i32, String, bool);
     assert_eq!(<Ports as PortList>::LEN, 3);
-    
+
     type First = <Ports as GetPort<0>>::Type;
     type Second = <Ports as GetPort<1>>::Type;
     type Third = <Ports as GetPort<2>>::Type;
-    
+
     let _: First = 42i32;
     let _: Second = "hello".to_string();
     let _: Third = true;
@@ -511,23 +581,23 @@ mod tests {
   fn test_four_ports() {
     type Ports = (i32, String, bool, f64);
     assert_eq!(<Ports as PortList>::LEN, 4);
-    
+
     type First = <Ports as GetPort<0>>::Type;
     type Second = <Ports as GetPort<1>>::Type;
     type Third = <Ports as GetPort<2>>::Type;
     type Fourth = <Ports as GetPort<3>>::Type;
-    
+
     let _: First = 42i32;
     let _: Second = "hello".to_string();
     let _: Third = true;
-    let _: Fourth = 3.14;
+    let _: Fourth = std::f64::consts::PI;
   }
 
   #[test]
   fn test_single_port_alias() {
     type MyPort = SinglePort<i32>;
     assert_eq!(<MyPort as PortList>::LEN, 1);
-    
+
     type PortType = <MyPort as GetPort<0>>::Type;
     let _: PortType = 42i32;
   }
@@ -536,18 +606,18 @@ mod tests {
   fn test_port_extraction_compile_time() {
     // This test verifies that port extraction works at compile time
     type Ports = (i32, String, bool);
-    
+
     // These should all compile successfully
     fn extract_ports() {
       type P0 = <Ports as GetPort<0>>::Type;
       type P1 = <Ports as GetPort<1>>::Type;
       type P2 = <Ports as GetPort<2>>::Type;
-      
+
       let _: P0 = 0i32;
       let _: P1 = String::new();
       let _: P2 = false;
     }
-    
+
     extract_ports();
   }
 
@@ -556,15 +626,14 @@ mod tests {
     // Test that we can handle up to 12 ports
     type Ports = (i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32);
     assert_eq!(<Ports as PortList>::LEN, 12);
-    
+
     // Test extraction from various positions
     type First = <Ports as GetPort<0>>::Type;
     type Middle = <Ports as GetPort<6>>::Type;
     type Last = <Ports as GetPort<11>>::Type;
-    
+
     let _: First = 0i32;
     let _: Middle = 6i32;
     let _: Last = 11i32;
   }
 }
-

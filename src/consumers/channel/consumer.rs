@@ -9,6 +9,8 @@ impl<T> Consumer for ChannelConsumer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+
   async fn consume(&mut self, input: Self::InputStream) -> () {
     let mut stream = input;
     while let Some(value) = stream.next().await {

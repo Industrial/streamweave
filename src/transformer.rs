@@ -1,6 +1,32 @@
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+use crate::graph::PortList;
 use crate::{input::Input, output::Output};
 use async_trait::async_trait;
+
+/// Helper trait for providing default port types for Transformers.
+///
+/// This trait provides default implementations of the `InputPorts` and `OutputPorts` associated types.
+/// All Transformers automatically get `InputPorts = (Self::Input,)` and `OutputPorts = (Self::Output,)`
+/// unless they explicitly override them.
+pub trait TransformerPorts: Transformer
+where
+  Self::Input: std::fmt::Debug + Clone + Send + Sync,
+{
+  /// The default input port tuple type (single port with the transformer's input type).
+  type DefaultInputPorts: PortList;
+  /// The default output port tuple type (single port with the transformer's output type).
+  type DefaultOutputPorts: PortList;
+}
+
+/// Blanket implementation: all Transformers get default single-port inputs and outputs.
+impl<T> TransformerPorts for T
+where
+  T: Transformer,
+  T::Input: std::fmt::Debug + Clone + Send + Sync,
+{
+  type DefaultInputPorts = (T::Input,);
+  type DefaultOutputPorts = (T::Output,);
+}
 
 /// Configuration for transformers, including error handling strategy and naming.
 ///
@@ -84,6 +110,26 @@ pub trait Transformer: Input + Output
 where
   Self::Input: std::fmt::Debug + Clone + Send + Sync,
 {
+  /// The input port tuple type for this transformer.
+  ///
+  /// This associated type specifies the port tuple that represents this transformer's
+  /// inputs in the graph API. By default, transformers have a single input port
+  /// containing their input type: `(Self::Input,)`.
+  ///
+  /// For multi-port transformers, override this type to specify a tuple with multiple
+  /// input types, e.g., `(i32, String)` for two inputs.
+  type InputPorts: PortList;
+
+  /// The output port tuple type for this transformer.
+  ///
+  /// This associated type specifies the port tuple that represents this transformer's
+  /// outputs in the graph API. By default, transformers have a single output port
+  /// containing their output type: `(Self::Output,)`.
+  ///
+  /// For multi-port transformers, override this type to specify a tuple with multiple
+  /// output types, e.g., `(i32, String)` for two outputs.
+  type OutputPorts: PortList;
+
   /// Transforms a stream of input items into a stream of output items.
   ///
   /// This method is called by the pipeline to process items. The transformer
@@ -314,6 +360,9 @@ mod tests {
 
   #[async_trait]
   impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for TestTransformer<T> {
+    type InputPorts = (T,);
+    type OutputPorts = (T,);
+
     fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
       Box::pin(input)
     }

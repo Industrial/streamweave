@@ -39,6 +39,8 @@ impl ConsumerContext for StreamWeaveConsumerContext {}
 #[async_trait]
 #[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
 impl Producer for KafkaProducer {
+  type OutputPorts = (crate::producers::kafka::kafka_producer::KafkaMessage,);
+
   /// Produces a stream of messages from Kafka topics.
   ///
   /// # Error Handling

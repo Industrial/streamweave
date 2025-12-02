@@ -392,7 +392,7 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::{stream, StreamExt};
+  use futures::{StreamExt, stream};
 
   // Test helper: Simple stateless merge router
   struct TestMergeRouter {
@@ -425,10 +425,8 @@ mod tests {
     };
 
     // Create test streams
-    let stream1: Pin<Box<dyn Stream<Item = i32> + Send>> =
-      Box::pin(stream::iter(vec![1, 2, 3]));
-    let stream2: Pin<Box<dyn Stream<Item = i32> + Send>> =
-      Box::pin(stream::iter(vec![4, 5, 6]));
+    let stream1: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(vec![1, 2, 3]));
+    let stream2: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(vec![4, 5, 6]));
 
     let streams = vec![(0, stream1), (1, stream2)];
     let mut merged = router.route_streams(streams).await;
@@ -455,7 +453,7 @@ mod tests {
       expected_ports: vec![0, 1, 2],
     };
 
-    let ports = router.expected_ports();
+    let ports = <TestMergeRouter as InputRouter<i32>>::expected_ports(&router);
     assert_eq!(ports, vec![0, 1, 2]);
   }
 
@@ -528,7 +526,7 @@ mod tests {
 
     // Verify port index is valid
     if let Some((port, _)) = output_streams.first() {
-      assert!(router.output_ports().contains(port));
+      assert!(<TestPassThroughRouter as OutputRouter<i32>>::output_ports(&router).contains(port));
     }
   }
 
@@ -538,8 +536,7 @@ mod tests {
       output_ports: vec![0, 1, 2],
     };
 
-    let ports = router.output_ports();
+    let ports = <TestPassThroughRouter as OutputRouter<i32>>::output_ports(&router);
     assert_eq!(ports, vec![0, 1, 2]);
   }
 }
-

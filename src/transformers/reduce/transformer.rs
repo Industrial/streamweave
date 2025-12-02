@@ -11,6 +11,9 @@ where
   Acc: std::fmt::Debug + Clone + Send + Sync + 'static,
   F: FnMut(Acc, T) -> Acc + Send + Clone + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = (Acc,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let mut reducer = self.reducer.clone();
     let initial = self.accumulator.clone();

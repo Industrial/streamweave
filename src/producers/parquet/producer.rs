@@ -9,6 +9,8 @@ use tracing::error;
 
 #[async_trait]
 impl Producer for ParquetProducer {
+  type OutputPorts = (arrow::record_batch::RecordBatch,);
+
   /// Produces a stream of Arrow RecordBatches from a Parquet file.
   ///
   /// # Error Handling

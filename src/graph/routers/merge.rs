@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use futures::Stream;
 use futures::StreamExt;
 use futures::stream::select_all;
+use std::marker::PhantomData;
 use std::pin::Pin;
 
 /// A router that merges multiple input streams into a single output stream.
@@ -42,6 +43,8 @@ pub struct MergeRouter<I> {
   expected_ports: Vec<usize>,
   /// The merge strategy to use
   strategy: MergeStrategy,
+  /// Phantom data to consume the type parameter
+  _phantom: PhantomData<I>,
 }
 
 impl<I> MergeRouter<I> {
@@ -59,6 +62,7 @@ impl<I> MergeRouter<I> {
     Self {
       expected_ports,
       strategy,
+      _phantom: PhantomData,
     }
   }
 }
@@ -97,11 +101,11 @@ where
         Box::pin(async_stream::stream! {
           let mut streams: Vec<_> = streams.into_iter().map(|(_, s)| s).collect();
           let mut indices: Vec<usize> = (0..streams.len()).collect();
-          
+
           loop {
             let mut any_ready = false;
             let mut items = Vec::new();
-            
+
             // Try to get one item from each stream in round-robin order
             for &idx in &indices {
               if let Some(item) = streams[idx].next().await {
@@ -109,19 +113,19 @@ where
                 any_ready = true;
               }
             }
-            
+
             if !any_ready {
               break;
             }
-            
+
             // Yield items in round-robin order
             items.sort_by_key(|(idx, _)| *idx);
             for (_, item) in items {
               yield item;
             }
-            
+
             // Remove exhausted streams
-            indices.retain(|&idx| {
+            indices.retain(|&_idx| {
               // Check if stream is exhausted (simplified - in practice would need peek)
               true // Keep all for now, streams will naturally end
             });
@@ -131,8 +135,8 @@ where
       MergeStrategy::Priority => {
         // Priority: process streams in order of priority (lower index = higher priority)
         Box::pin(async_stream::stream! {
-          let mut streams: Vec<_> = streams.into_iter().map(|(_, s)| s).collect();
-          
+          let streams: Vec<_> = streams.into_iter().map(|(_, s)| s).collect();
+
           // Process streams in priority order (index order)
           for mut stream in streams {
             while let Some(item) = stream.next().await {
@@ -158,10 +162,8 @@ mod tests {
   #[tokio::test]
   async fn test_merge_router_interleave() {
     let mut router = MergeRouter::new(vec![0, 1], MergeStrategy::Interleave);
-    let stream1: Pin<Box<dyn Stream<Item = i32> + Send>> =
-      Box::pin(stream::iter(vec![1, 3, 5]));
-    let stream2: Pin<Box<dyn Stream<Item = i32> + Send>> =
-      Box::pin(stream::iter(vec![2, 4, 6]));
+    let stream1: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(vec![1, 3, 5]));
+    let stream2: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(vec![2, 4, 6]));
 
     let streams = vec![(0, stream1), (1, stream2)];
     let mut merged = router.route_streams(streams).await;
@@ -186,10 +188,8 @@ mod tests {
   #[tokio::test]
   async fn test_merge_router_sequential() {
     let mut router = MergeRouter::new(vec![0, 1], MergeStrategy::Sequential);
-    let stream1: Pin<Box<dyn Stream<Item = i32> + Send>> =
-      Box::pin(stream::iter(vec![1, 2, 3]));
-    let stream2: Pin<Box<dyn Stream<Item = i32> + Send>> =
-      Box::pin(stream::iter(vec![4, 5, 6]));
+    let stream1: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(vec![1, 2, 3]));
+    let stream2: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(vec![4, 5, 6]));
 
     let streams = vec![(0, stream1), (1, stream2)];
     let mut merged = router.route_streams(streams).await;
@@ -211,4 +211,3 @@ mod tests {
     assert_eq!(router.expected_ports(), vec![0, 1, 2]);
   }
 }
-

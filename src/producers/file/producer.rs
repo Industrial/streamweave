@@ -10,6 +10,8 @@ use tracing::{error, warn};
 
 #[async_trait]
 impl Producer for FileProducer {
+  type OutputPorts = (String,);
+
   /// Produces a stream of lines from the file.
   ///
   /// # Error Handling

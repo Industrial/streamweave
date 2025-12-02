@@ -7,6 +7,8 @@ use rand::{Rng, SeedableRng};
 use tokio::time;
 
 impl Producer for RandomNumberProducer {
+  type OutputPorts = (i32,);
+
   fn produce(&mut self) -> Self::OutputStream {
     let range = self.range.clone();
     let interval_duration = self.interval;

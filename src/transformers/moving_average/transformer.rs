@@ -67,6 +67,9 @@ impl StateStore<MovingAverageState> for SharedMovingAverageStore {
 
 #[async_trait]
 impl Transformer for MovingAverageTransformer {
+  type InputPorts = (f64,);
+  type OutputPorts = (f64,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let state_store_clone = Arc::clone(&self.state_store);
     let window_size = self.window_size;

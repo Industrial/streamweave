@@ -12,6 +12,9 @@ impl<T> Transformer for RateLimitTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = (T,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let rate_limit = self.rate_limit;
     let time_window = self.time_window;

@@ -10,6 +10,9 @@ impl<T> Transformer for DedupeTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = (T,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     Box::pin(
       futures::stream::unfold((input, self.seen.clone()), |state| async move {

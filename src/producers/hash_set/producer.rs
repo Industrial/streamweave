@@ -8,6 +8,8 @@ impl<T> Producer for HashSetProducer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
+  type OutputPorts = (T,);
+
   fn produce(&mut self) -> Self::OutputStream {
     let data = self.data.clone();
     Box::pin(stream::iter(data))

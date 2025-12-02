@@ -5,6 +5,8 @@ use futures::{Stream, stream};
 use std::pin::Pin;
 
 impl Producer for EnvVarProducer {
+  type OutputPorts = ((String, String),);
+
   fn produce(&mut self) -> Self::OutputStream {
     let _config = self.config.clone();
 
@@ -104,6 +106,8 @@ mod tests {
   }
 
   impl Producer for TestEnvVarProducer {
+    type OutputPorts = ((String, String),);
+
     fn produce(&mut self) -> Self::OutputStream {
       let _config = self.config.clone();
       match &self.filter {

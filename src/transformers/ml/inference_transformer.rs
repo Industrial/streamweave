@@ -240,6 +240,9 @@ mod transformer_impl {
     B::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
     B::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
   {
+    type InputPorts = (B::Input,);
+    type OutputPorts = (B::Output,);
+
     fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
       let backend = Arc::clone(&self.backend);
       Box::pin(

@@ -9,6 +9,8 @@ where
   K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
   V: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type OutputPorts = ((K, V),);
+
   fn produce(&mut self) -> Self::OutputStream {
     let data = self.data.clone();
     Box::pin(stream::iter(data))

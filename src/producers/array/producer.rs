@@ -7,6 +7,8 @@ use async_trait::async_trait;
 impl<T: Send + Sync + 'static + Clone + std::fmt::Debug, const N: usize> Producer
   for ArrayProducer<T, N>
 {
+  type OutputPorts = (T,);
+
   fn produce(&mut self) -> Self::OutputStream {
     let array = self.array.clone();
     Box::pin(futures::stream::iter(array))

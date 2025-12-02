@@ -61,6 +61,9 @@ pub mod visualization;
 /// Window-based processing utilities.
 pub mod window;
 
+/// Graph-based API for Flow-Based Programming patterns.
+pub mod graph;
+
 #[cfg(all(not(target_arch = "wasm32"), feature = "native"))]
 /// Distributed processing support.
 pub mod distributed;
@@ -85,6 +88,12 @@ pub use stateful_transformer::{
   InMemoryStateStore, StateStore, StateStoreExt, StatefulTransformer,
 };
 pub use transformer::Transformer;
+
+// Graph API re-exports
+pub use graph::{
+  BroadcastRouter, ConsumerNode, Graph, GraphBuilder, GraphExecution, GraphExecutor,
+  KeyBasedRouter, MergeRouter, ProducerNode, RoundRobinRouter, SubgraphNode, TransformerNode,
+};
 
 // Feature-gated re-exports
 #[cfg(feature = "file-formats")]

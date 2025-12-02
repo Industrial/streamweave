@@ -5,6 +5,8 @@ use futures::stream;
 use tokio::time;
 
 impl Producer for IntervalProducer {
+  type OutputPorts = ((),);
+
   fn produce(&mut self) -> Self::OutputStream {
     let interval = self.interval;
     Box::pin(stream::unfold((), move |_| async move {

@@ -7,6 +7,9 @@ use futures::StreamExt;
 
 #[async_trait]
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for TimeoutTransformer<T> {
+  type InputPorts = (T,);
+  type OutputPorts = (T,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let duration = self.duration;
     Box::pin(async_stream::stream! {

@@ -10,6 +10,12 @@ where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
   F: Fn(&T) -> RouteTarget + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = ((
+    crate::transformers::router::router_transformer::RouteTarget,
+    T,
+  ),);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let router_fn = self.router_fn.clone();
     let default_target = self.default_target.clone();

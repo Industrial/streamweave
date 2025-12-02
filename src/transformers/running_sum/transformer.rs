@@ -76,6 +76,8 @@ impl<T> Transformer for RunningSumTransformer<T>
 where
   T: Add<Output = T> + Default + Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = (T,);
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let state_store_clone = Arc::clone(&self.state_store);
 

@@ -9,6 +9,8 @@ use tracing::{error, warn};
 
 #[async_trait]
 impl Consumer for FileConsumer {
+  type InputPorts = (String,);
+
   /// Consumes a stream and writes each item to the file.
   ///
   /// # Error Handling

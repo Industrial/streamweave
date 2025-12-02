@@ -10,6 +10,9 @@ impl<T> Transformer for RoundRobinTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = ((usize, T),);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let num_consumers = self.rr_config.num_consumers;
     let current_index = Arc::clone(&self.current_index);

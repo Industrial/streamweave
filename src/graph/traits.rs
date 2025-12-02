@@ -77,4 +77,3 @@ pub enum NodeKind {
   /// A subgraph node that contains another graph
   Subgraph,
 }
-

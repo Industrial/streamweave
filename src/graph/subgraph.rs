@@ -72,7 +72,12 @@ impl SubgraphNode {
   ///
   /// After creating a SubgraphNode, you must map the ports to internal nodes
   /// using `map_input_port()` and `map_output_port()`.
-  pub fn new(name: String, graph: Graph, input_port_count: usize, output_port_count: usize) -> Self {
+  pub fn new(
+    name: String,
+    graph: Graph,
+    input_port_count: usize,
+    output_port_count: usize,
+  ) -> Self {
     Self {
       name,
       graph,
@@ -120,7 +125,9 @@ impl SubgraphNode {
       return Err(format!("Internal node '{}' does not exist", internal_node));
     }
 
-    self.input_port_map.insert(subgraph_port, (internal_node, internal_port));
+    self
+      .input_port_map
+      .insert(subgraph_port, (internal_node, internal_port));
     Ok(())
   }
 
@@ -161,7 +168,9 @@ impl SubgraphNode {
       return Err(format!("Internal node '{}' does not exist", internal_node));
     }
 
-    self.output_port_map.insert(subgraph_port, (internal_node, internal_port));
+    self
+      .output_port_map
+      .insert(subgraph_port, (internal_node, internal_port));
     Ok(())
   }
 
@@ -245,19 +254,18 @@ impl NodeTrait for SubgraphNode {
 
   fn resolve_input_port(&self, port_name: &str) -> Option<usize> {
     // Try numeric index first
-    if let Ok(index) = port_name.parse::<usize>() {
-      if index < self.input_port_count {
-        return Some(index);
-      }
+    if let Ok(index) = port_name.parse::<usize>()
+      && index < self.input_port_count
+    {
+      return Some(index);
     }
 
     // Try "in0", "in1", etc.
-    if port_name.starts_with("in") {
-      if let Ok(index) = port_name[2..].parse::<usize>() {
-        if index < self.input_port_count {
-          return Some(index);
-        }
-      }
+    if let Some(stripped) = port_name.strip_prefix("in")
+      && let Ok(index) = stripped.parse::<usize>()
+      && index < self.input_port_count
+    {
+      return Some(index);
     }
 
     // Default to "in" for single-port subgraphs
@@ -270,19 +278,18 @@ impl NodeTrait for SubgraphNode {
 
   fn resolve_output_port(&self, port_name: &str) -> Option<usize> {
     // Try numeric index first
-    if let Ok(index) = port_name.parse::<usize>() {
-      if index < self.output_port_count {
-        return Some(index);
-      }
+    if let Ok(index) = port_name.parse::<usize>()
+      && index < self.output_port_count
+    {
+      return Some(index);
     }
 
     // Try "out0", "out1", etc.
-    if port_name.starts_with("out") {
-      if let Ok(index) = port_name[3..].parse::<usize>() {
-        if index < self.output_port_count {
-          return Some(index);
-        }
-      }
+    if let Some(stripped) = port_name.strip_prefix("out")
+      && let Ok(index) = stripped.parse::<usize>()
+      && index < self.output_port_count
+    {
+      return Some(index);
     }
 
     // Default to "out" for single-port subgraphs
@@ -341,17 +348,16 @@ mod tests {
   #[test]
   fn test_subgraph_node_port_mapping() {
     use crate::graph::{GraphBuilder, ProducerNode};
-    use crate::producers::vec::VecProducer;
+    use crate::producers::vec::vec_producer::VecProducer;
 
     // Create a simple graph with one node
     let inner_graph = GraphBuilder::new()
-      .node(ProducerNode::new(
+      .node(ProducerNode::from_producer(
         "source".to_string(),
         VecProducer::new(vec![1, 2, 3]),
       ))
       .unwrap()
-      .build()
-      .unwrap();
+      .build();
 
     let mut subgraph = SubgraphNode::new("subgraph".to_string(), inner_graph, 0, 1);
 
@@ -365,8 +371,16 @@ mod tests {
     );
 
     // Invalid port mapping should fail
-    assert!(subgraph.map_output_port(1, "source".to_string(), 0).is_err()); // Port 1 doesn't exist
-    assert!(subgraph.map_output_port(0, "nonexistent".to_string(), 0).is_err()); // Node doesn't exist
+    assert!(
+      subgraph
+        .map_output_port(1, "source".to_string(), 0)
+        .is_err()
+    ); // Port 1 doesn't exist
+    assert!(
+      subgraph
+        .map_output_port(0, "nonexistent".to_string(), 0)
+        .is_err()
+    ); // Node doesn't exist
   }
 
   #[test]
@@ -379,10 +393,9 @@ mod tests {
 
     // Add subgraph to a graph
     let graph = GraphBuilder::new()
-      .add_node("subgraph".to_string(), Box::new(subgraph))
+      .add_node("subgraph".to_string(), subgraph)
       .unwrap()
-      .build()
-      .unwrap();
+      .build();
 
     // Verify the subgraph is in the graph
     let node = graph.get_node("subgraph");
@@ -392,4 +405,3 @@ mod tests {
     assert_eq!(node.unwrap().output_port_count(), 1);
   }
 }
-

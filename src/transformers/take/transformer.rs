@@ -6,6 +6,9 @@ use futures::StreamExt;
 
 #[async_trait]
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for TakeTransformer<T> {
+  type InputPorts = (T,);
+  type OutputPorts = (T,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let take = self.take;
     Box::pin(input.take(take))

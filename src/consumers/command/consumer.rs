@@ -9,6 +9,8 @@ impl<T> Consumer for CommandConsumer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + std::fmt::Display + 'static,
 {
+  type InputPorts = (T,);
+
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some(value) = stream.next().await {
       if let Some(cmd) = &mut self.command {

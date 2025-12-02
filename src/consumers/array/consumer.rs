@@ -9,6 +9,8 @@ impl<T, const N: usize> Consumer for ArrayConsumer<T, N>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some(value) = stream.next().await {
       if self.index < N {

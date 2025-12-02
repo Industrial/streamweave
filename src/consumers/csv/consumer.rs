@@ -13,6 +13,8 @@ impl<T> Consumer for CsvConsumer<T>
 where
   T: Serialize + std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+
   /// Consumes a stream and writes each item as a CSV row to the file.
   ///
   /// # Error Handling

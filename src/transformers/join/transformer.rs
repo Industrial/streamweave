@@ -8,6 +8,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[async_trait]
+#[allow(dead_code)]
 impl<L, R, K, LF, RF> Transformer for JoinTransformer<L, R, K, LF, RF>
 where
   L: std::fmt::Debug + Clone + Send + Sync + 'static,
@@ -16,6 +17,9 @@ where
   LF: Fn(&L) -> K + Clone + Send + Sync + 'static,
   RF: Fn(&R) -> K + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (L,);
+  type OutputPorts = (crate::transformers::join::join_transformer::JoinResult<L, R>,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let left_key_fn = self.left_key_fn.clone();
     let right_key_fn = self.right_key_fn.clone();

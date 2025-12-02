@@ -8,6 +8,8 @@ impl<T> Producer for RangeProducer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + Num + Copy + PartialOrd + 'static,
 {
+  type OutputPorts = (T,);
+
   fn produce(&mut self) -> Self::OutputStream {
     if self.start >= self.end || self.step <= T::zero() {
       return Box::pin(stream::empty());

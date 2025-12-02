@@ -10,6 +10,9 @@ impl<T> Transformer for SortTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static + Ord,
 {
+  type InputPorts = (T,);
+  type OutputPorts = (T,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     Box::pin(futures::stream::unfold(input, |mut input| async move {
       let mut items = Vec::new();

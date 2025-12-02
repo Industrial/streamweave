@@ -7,6 +7,9 @@ use std::collections::VecDeque;
 
 #[async_trait]
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for WindowTransformer<T> {
+  type InputPorts = (T,);
+  type OutputPorts = (Vec<T>,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let size = self.size;
     Box::pin(async_stream::stream! {

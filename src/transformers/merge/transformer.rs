@@ -8,6 +8,9 @@ impl<T> Transformer for MergeTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = (T,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let mut all_streams = vec![input];
     all_streams.extend(std::mem::take(&mut self.streams));

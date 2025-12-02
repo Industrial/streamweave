@@ -37,6 +37,11 @@ use crate::graph::traits::{NodeKind, NodeTrait};
 use crate::producer::Producer;
 use crate::transformer::Transformer;
 
+// Import helper traits for default port types
+use crate::consumer::ConsumerPorts;
+use crate::producer::ProducerPorts;
+use crate::transformer::TransformerPorts;
+
 /// Trait for validating that a ProducerNode's output ports match the producer's output type.
 ///
 /// This trait ensures type safety by requiring that the Outputs port tuple matches
@@ -44,6 +49,7 @@ use crate::transformer::Transformer;
 pub trait ValidateProducerPorts<P, Outputs>
 where
   P: Producer,
+  P::Output: std::fmt::Debug + Clone + Send + Sync,
   Outputs: PortList,
 {
 }
@@ -55,6 +61,8 @@ where
 pub trait ValidateTransformerPorts<T, Inputs, Outputs>
 where
   T: Transformer,
+  T::Input: std::fmt::Debug + Clone + Send + Sync,
+  T::Output: std::fmt::Debug + Clone + Send + Sync,
   Inputs: PortList,
   Outputs: PortList,
 {
@@ -67,6 +75,7 @@ where
 pub trait ValidateConsumerPorts<C, Inputs>
 where
   C: Consumer,
+  C::Input: std::fmt::Debug + Clone + Send + Sync,
   Inputs: PortList,
 {
 }
@@ -76,6 +85,7 @@ where
 impl<P, Outputs> ValidateProducerPorts<P, Outputs> for ()
 where
   P: Producer,
+  P::Output: std::fmt::Debug + Clone + Send + Sync,
   Outputs: PortList,
   Outputs: GetPort<0, Type = P::Output>,
 {
@@ -86,6 +96,8 @@ where
 impl<T, Inputs, Outputs> ValidateTransformerPorts<T, Inputs, Outputs> for ()
 where
   T: Transformer,
+  T::Input: std::fmt::Debug + Clone + Send + Sync,
+  T::Output: std::fmt::Debug + Clone + Send + Sync,
   Inputs: PortList,
   Outputs: PortList,
   Inputs: GetPort<0, Type = T::Input>,
@@ -98,6 +110,7 @@ where
 impl<C, Inputs> ValidateConsumerPorts<C, Inputs> for ()
 where
   C: Consumer,
+  C::Input: std::fmt::Debug + Clone + Send + Sync,
   Inputs: PortList,
   Inputs: GetPort<0, Type = C::Input>,
 {
@@ -128,17 +141,20 @@ where
 pub struct ProducerNode<P, Outputs>
 where
   P: Producer,
+  P::Output: std::fmt::Debug + Clone + Send + Sync,
   Outputs: PortList,
   (): ValidateProducerPorts<P, Outputs>,
 {
   name: String,
   producer: P,
+  _phantom: std::marker::PhantomData<Outputs>,
   // Router deferred to Phase 2
 }
 
 impl<P, Outputs> ProducerNode<P, Outputs>
 where
   P: Producer,
+  P::Output: std::fmt::Debug + Clone + Send + Sync,
   Outputs: PortList,
   (): ValidateProducerPorts<P, Outputs>,
 {
@@ -153,7 +169,11 @@ where
   ///
   /// A new `ProducerNode` instance.
   pub fn new(name: String, producer: P) -> Self {
-    Self { name, producer }
+    Self {
+      name,
+      producer,
+      _phantom: std::marker::PhantomData,
+    }
   }
 
   /// Sets the name of this node.
@@ -187,6 +207,80 @@ where
   }
 }
 
+/// Type inference helper for ProducerNode using default port types.
+///
+/// This implementation allows creating ProducerNode instances without
+/// explicitly specifying the Outputs type parameter. The port tuple is
+/// automatically inferred from the producer's default output ports.
+impl<P> ProducerNode<P, <P as ProducerPorts>::DefaultOutputPorts>
+where
+  P: Producer + ProducerPorts,
+  P::Output: std::fmt::Debug + Clone + Send + Sync,
+  (): ValidateProducerPorts<P, <P as ProducerPorts>::DefaultOutputPorts>,
+{
+  /// Creates a new ProducerNode with type inference from the producer's OutputPorts.
+  ///
+  /// This method automatically infers the output port tuple from the producer's
+  /// `OutputPorts` associated type, eliminating the need for explicit type annotations.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name of this node
+  /// * `producer` - The producer component to wrap
+  ///
+  /// # Returns
+  ///
+  /// A new `ProducerNode` instance with inferred port types.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave::graph::node::ProducerNode;
+  /// use streamweave::producers::vec::VecProducer;
+  ///
+  /// // Type inference: OutputPorts is automatically (i32,)
+  /// let node = ProducerNode::from_producer(
+  ///     "source".to_string(),
+  ///     VecProducer::new(vec![1, 2, 3])
+  /// );
+  /// ```
+  pub fn from_producer(name: String, producer: P) -> Self {
+    Self {
+      name,
+      producer,
+      _phantom: std::marker::PhantomData,
+    }
+  }
+
+  /// Creates a new ProducerNode from a producer, using the producer's name if available.
+  ///
+  /// This is a convenience method that extracts the name from the producer's config
+  /// if available, otherwise uses a default name.
+  ///
+  /// # Arguments
+  ///
+  /// * `producer` - The producer component to wrap
+  ///
+  /// # Returns
+  ///
+  /// A new `ProducerNode` instance with inferred port types.
+  pub fn from(producer: P) -> Self
+  where
+    P: Producer,
+  {
+    let name = producer
+      .config()
+      .name()
+      .clone()
+      .unwrap_or_else(|| "producer".to_string());
+    Self {
+      name,
+      producer,
+      _phantom: std::marker::PhantomData,
+    }
+  }
+}
+
 /// A node that wraps a Transformer component.
 ///
 /// TransformerNode represents a processing node in the graph that transforms data streams.
@@ -213,18 +307,23 @@ where
 pub struct TransformerNode<T, Inputs, Outputs>
 where
   T: Transformer,
+  T::Input: std::fmt::Debug + Clone + Send + Sync,
+  T::Output: std::fmt::Debug + Clone + Send + Sync,
   Inputs: PortList,
   Outputs: PortList,
   (): ValidateTransformerPorts<T, Inputs, Outputs>,
 {
   name: String,
   transformer: T,
+  _phantom: std::marker::PhantomData<(Inputs, Outputs)>,
   // Routers deferred to Phase 2
 }
 
 impl<T, Inputs, Outputs> TransformerNode<T, Inputs, Outputs>
 where
   T: Transformer,
+  T::Input: std::fmt::Debug + Clone + Send + Sync,
+  T::Output: std::fmt::Debug + Clone + Send + Sync,
   Inputs: PortList,
   Outputs: PortList,
   (): ValidateTransformerPorts<T, Inputs, Outputs>,
@@ -240,7 +339,11 @@ where
   ///
   /// A new `TransformerNode` instance.
   pub fn new(name: String, transformer: T) -> Self {
-    Self { name, transformer }
+    Self {
+      name,
+      transformer,
+      _phantom: std::marker::PhantomData,
+    }
   }
 
   /// Sets the name of this node.
@@ -274,6 +377,91 @@ where
   }
 }
 
+/// Type inference helper for TransformerNode using default port types.
+///
+/// This implementation allows creating TransformerNode instances without
+/// explicitly specifying the Inputs and Outputs type parameters. The port tuples
+/// are automatically inferred from the transformer's default port types.
+impl<T>
+  TransformerNode<
+    T,
+    <T as TransformerPorts>::DefaultInputPorts,
+    <T as TransformerPorts>::DefaultOutputPorts,
+  >
+where
+  T: Transformer + TransformerPorts,
+  T::Input: std::fmt::Debug + Clone + Send + Sync,
+  T::Output: std::fmt::Debug + Clone + Send + Sync,
+  (): ValidateTransformerPorts<
+      T,
+      <T as TransformerPorts>::DefaultInputPorts,
+      <T as TransformerPorts>::DefaultOutputPorts,
+    >,
+{
+  /// Creates a new TransformerNode with type inference from the transformer's port types.
+  ///
+  /// This method automatically infers the input and output port tuples from the transformer's
+  /// `InputPorts` and `OutputPorts` associated types, eliminating the need for explicit
+  /// type annotations.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name of this node
+  /// * `transformer` - The transformer component to wrap
+  ///
+  /// # Returns
+  ///
+  /// A new `TransformerNode` instance with inferred port types.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave::graph::node::TransformerNode;
+  /// use streamweave::transformers::map::MapTransformer;
+  ///
+  /// // Type inference: InputPorts is (i32,), OutputPorts is (i32,)
+  /// let node = TransformerNode::from_transformer(
+  ///     "mapper".to_string(),
+  ///     MapTransformer::new(|x: i32| x * 2)
+  /// );
+  /// ```
+  pub fn from_transformer(name: String, transformer: T) -> Self {
+    Self {
+      name,
+      transformer,
+      _phantom: std::marker::PhantomData,
+    }
+  }
+
+  /// Creates a new TransformerNode from a transformer, using the transformer's name if available.
+  ///
+  /// This is a convenience method that extracts the name from the transformer's config
+  /// if available, otherwise uses a default name.
+  ///
+  /// # Arguments
+  ///
+  /// * `transformer` - The transformer component to wrap
+  ///
+  /// # Returns
+  ///
+  /// A new `TransformerNode` instance with inferred port types.
+  pub fn from(transformer: T) -> Self
+  where
+    T: Transformer,
+  {
+    let name = transformer
+      .config()
+      .name()
+      .clone()
+      .unwrap_or_else(|| "transformer".to_string());
+    Self {
+      name,
+      transformer,
+      _phantom: std::marker::PhantomData,
+    }
+  }
+}
+
 /// A node that wraps a Consumer component.
 ///
 /// ConsumerNode represents a sink node in the graph that consumes data streams.
@@ -299,17 +487,20 @@ where
 pub struct ConsumerNode<C, Inputs>
 where
   C: Consumer,
+  C::Input: std::fmt::Debug + Clone + Send + Sync,
   Inputs: PortList,
   (): ValidateConsumerPorts<C, Inputs>,
 {
   name: String,
   consumer: C,
+  _phantom: std::marker::PhantomData<Inputs>,
   // Router deferred to Phase 2
 }
 
 impl<C, Inputs> ConsumerNode<C, Inputs>
 where
   C: Consumer,
+  C::Input: std::fmt::Debug + Clone + Send + Sync,
   Inputs: PortList,
   (): ValidateConsumerPorts<C, Inputs>,
 {
@@ -324,7 +515,11 @@ where
   ///
   /// A new `ConsumerNode` instance.
   pub fn new(name: String, consumer: C) -> Self {
-    Self { name, consumer }
+    Self {
+      name,
+      consumer,
+      _phantom: std::marker::PhantomData,
+    }
   }
 
   /// Sets the name of this node.
@@ -358,11 +553,82 @@ where
   }
 }
 
+/// Type inference helper for ConsumerNode using default port types.
+///
+/// This implementation allows creating ConsumerNode instances without
+/// explicitly specifying the Inputs type parameter. The port tuple is
+/// automatically inferred from the consumer's default input ports.
+impl<C> ConsumerNode<C, <C as ConsumerPorts>::DefaultInputPorts>
+where
+  C: Consumer + ConsumerPorts,
+  C::Input: std::fmt::Debug + Clone + Send + Sync,
+  (): ValidateConsumerPorts<C, <C as ConsumerPorts>::DefaultInputPorts>,
+{
+  /// Creates a new ConsumerNode with type inference from the consumer's InputPorts.
+  ///
+  /// This method automatically infers the input port tuple from the consumer's
+  /// `InputPorts` associated type, eliminating the need for explicit type annotations.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name of this node
+  /// * `consumer` - The consumer component to wrap
+  ///
+  /// # Returns
+  ///
+  /// A new `ConsumerNode` instance with inferred port types.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave::graph::node::ConsumerNode;
+  /// use streamweave::consumers::vec::VecConsumer;
+  ///
+  /// // Type inference: InputPorts is automatically (i32,)
+  /// let node = ConsumerNode::from_consumer(
+  ///     "sink".to_string(),
+  ///     VecConsumer::new()
+  /// );
+  /// ```
+  pub fn from_consumer(name: String, consumer: C) -> Self {
+    Self {
+      name,
+      consumer,
+      _phantom: std::marker::PhantomData,
+    }
+  }
+
+  /// Creates a new ConsumerNode from a consumer, using the consumer's name if available.
+  ///
+  /// This is a convenience method that extracts the name from the consumer's config
+  /// if available, otherwise uses a default name.
+  ///
+  /// # Arguments
+  ///
+  /// * `consumer` - The consumer component to wrap
+  ///
+  /// # Returns
+  ///
+  /// A new `ConsumerNode` instance with inferred port types.
+  pub fn from(consumer: C) -> Self
+  where
+    C: Consumer,
+  {
+    let name = consumer.config().name.clone();
+    Self {
+      name,
+      consumer,
+      _phantom: std::marker::PhantomData,
+    }
+  }
+}
+
 // Implement NodeTrait for ProducerNode
 impl<P, Outputs> NodeTrait for ProducerNode<P, Outputs>
 where
-  P: Producer,
-  Outputs: PortList,
+  P: Producer + Send + Sync,
+  P::Output: std::fmt::Debug + Clone + Send + Sync,
+  Outputs: PortList + Send + Sync,
   (): ValidateProducerPorts<P, Outputs>,
 {
   fn name(&self) -> &str {
@@ -401,19 +667,18 @@ where
 
   fn resolve_output_port(&self, port_name: &str) -> Option<usize> {
     // Try numeric index first
-    if let Ok(index) = port_name.parse::<usize>() {
-      if index < Outputs::LEN {
-        return Some(index);
-      }
+    if let Ok(index) = port_name.parse::<usize>()
+      && index < Outputs::LEN
+    {
+      return Some(index);
     }
 
     // Try "out0", "out1", etc.
-    if port_name.starts_with("out") {
-      if let Ok(index) = port_name[3..].parse::<usize>() {
-        if index < Outputs::LEN {
-          return Some(index);
-        }
-      }
+    if let Some(stripped) = port_name.strip_prefix("out")
+      && let Ok(index) = stripped.parse::<usize>()
+      && index < Outputs::LEN
+    {
+      return Some(index);
     }
 
     // Default to "out" for single-port nodes
@@ -428,9 +693,11 @@ where
 // Implement NodeTrait for TransformerNode
 impl<T, Inputs, Outputs> NodeTrait for TransformerNode<T, Inputs, Outputs>
 where
-  T: Transformer,
-  Inputs: PortList,
-  Outputs: PortList,
+  T: Transformer + Send + Sync,
+  T::Input: std::fmt::Debug + Clone + Send + Sync,
+  T::Output: std::fmt::Debug + Clone + Send + Sync,
+  Inputs: PortList + Send + Sync,
+  Outputs: PortList + Send + Sync,
   (): ValidateTransformerPorts<T, Inputs, Outputs>,
 {
   fn name(&self) -> &str {
@@ -467,19 +734,18 @@ where
 
   fn resolve_input_port(&self, port_name: &str) -> Option<usize> {
     // Try numeric index first
-    if let Ok(index) = port_name.parse::<usize>() {
-      if index < Inputs::LEN {
-        return Some(index);
-      }
+    if let Ok(index) = port_name.parse::<usize>()
+      && index < Inputs::LEN
+    {
+      return Some(index);
     }
 
     // Try "in0", "in1", etc.
-    if port_name.starts_with("in") {
-      if let Ok(index) = port_name[2..].parse::<usize>() {
-        if index < Inputs::LEN {
-          return Some(index);
-        }
-      }
+    if let Some(stripped) = port_name.strip_prefix("in")
+      && let Ok(index) = stripped.parse::<usize>()
+      && index < Inputs::LEN
+    {
+      return Some(index);
     }
 
     // Default to "in" for single-port nodes
@@ -492,19 +758,18 @@ where
 
   fn resolve_output_port(&self, port_name: &str) -> Option<usize> {
     // Try numeric index first
-    if let Ok(index) = port_name.parse::<usize>() {
-      if index < Outputs::LEN {
-        return Some(index);
-      }
+    if let Ok(index) = port_name.parse::<usize>()
+      && index < Outputs::LEN
+    {
+      return Some(index);
     }
 
     // Try "out0", "out1", etc.
-    if port_name.starts_with("out") {
-      if let Ok(index) = port_name[3..].parse::<usize>() {
-        if index < Outputs::LEN {
-          return Some(index);
-        }
-      }
+    if let Some(stripped) = port_name.strip_prefix("out")
+      && let Ok(index) = stripped.parse::<usize>()
+      && index < Outputs::LEN
+    {
+      return Some(index);
     }
 
     // Default to "out" for single-port nodes
@@ -519,8 +784,9 @@ where
 // Implement NodeTrait for ConsumerNode
 impl<C, Inputs> NodeTrait for ConsumerNode<C, Inputs>
 where
-  C: Consumer,
-  Inputs: PortList,
+  C: Consumer + Send + Sync,
+  C::Input: std::fmt::Debug + Clone + Send + Sync,
+  Inputs: PortList + Send + Sync,
   (): ValidateConsumerPorts<C, Inputs>,
 {
   fn name(&self) -> &str {
@@ -554,19 +820,18 @@ where
 
   fn resolve_input_port(&self, port_name: &str) -> Option<usize> {
     // Try numeric index first
-    if let Ok(index) = port_name.parse::<usize>() {
-      if index < Inputs::LEN {
-        return Some(index);
-      }
+    if let Ok(index) = port_name.parse::<usize>()
+      && index < Inputs::LEN
+    {
+      return Some(index);
     }
 
     // Try "in0", "in1", etc.
-    if port_name.starts_with("in") {
-      if let Ok(index) = port_name[2..].parse::<usize>() {
-        if index < Inputs::LEN {
-          return Some(index);
-        }
-      }
+    if let Some(stripped) = port_name.strip_prefix("in")
+      && let Ok(index) = stripped.parse::<usize>()
+      && index < Inputs::LEN
+    {
+      return Some(index);
     }
 
     // Default to "in" for single-port nodes
@@ -586,9 +851,9 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::consumers::vec::VecConsumer;
-  use crate::producers::vec::VecProducer;
-  use crate::transformers::map::MapTransformer;
+  use crate::consumers::vec::vec_consumer::VecConsumer;
+  use crate::producers::vec::vec_producer::VecProducer;
+  use crate::transformers::map::map_transformer::MapTransformer;
 
   #[test]
   fn test_producer_node_creation() {
@@ -600,23 +865,24 @@ mod tests {
   #[test]
   fn test_producer_node_with_name() {
     let producer = VecProducer::new(vec![1, 2, 3]);
-    let node: ProducerNode<_, (i32,)> = ProducerNode::new("source".to_string(), producer)
-      .with_name("new_source".to_string());
+    let node: ProducerNode<_, (i32,)> =
+      ProducerNode::new("source".to_string(), producer).with_name("new_source".to_string());
     assert_eq!(node.name(), "new_source");
   }
 
   #[test]
   fn test_transformer_node_creation() {
     let transformer = MapTransformer::new(|x: i32| x * 2);
-    let node: TransformerNode<_, (i32,), (i32,)> = TransformerNode::new("mapper".to_string(), transformer);
+    let node: TransformerNode<_, (i32,), (i32,)> =
+      TransformerNode::new("mapper".to_string(), transformer);
     assert_eq!(node.name(), "mapper");
   }
 
   #[test]
   fn test_transformer_node_with_name() {
     let transformer = MapTransformer::new(|x: i32| x * 2);
-    let node: TransformerNode<_, (i32,), (i32,)> = TransformerNode::new("mapper".to_string(), transformer)
-      .with_name("new_mapper".to_string());
+    let node: TransformerNode<_, (i32,), (i32,)> =
+      TransformerNode::new("mapper".to_string(), transformer).with_name("new_mapper".to_string());
     assert_eq!(node.name(), "new_mapper");
   }
 
@@ -630,8 +896,8 @@ mod tests {
   #[test]
   fn test_consumer_node_with_name() {
     let consumer = VecConsumer::new();
-    let node: ConsumerNode<_, (i32,)> = ConsumerNode::new("sink".to_string(), consumer)
-      .with_name("new_sink".to_string());
+    let node: ConsumerNode<_, (i32,)> =
+      ConsumerNode::new("sink".to_string(), consumer).with_name("new_sink".to_string());
     assert_eq!(node.name(), "new_sink");
   }
 
@@ -639,7 +905,7 @@ mod tests {
   fn test_producer_node_accessors() {
     let producer = VecProducer::new(vec![1, 2, 3]);
     let mut node: ProducerNode<_, (i32,)> = ProducerNode::new("source".to_string(), producer);
-    
+
     assert_eq!(node.name(), "source");
     let _producer_ref = node.producer();
     let _producer_mut = node.producer_mut();
@@ -648,8 +914,9 @@ mod tests {
   #[test]
   fn test_transformer_node_accessors() {
     let transformer = MapTransformer::new(|x: i32| x * 2);
-    let mut node: TransformerNode<_, (i32,), (i32,)> = TransformerNode::new("mapper".to_string(), transformer);
-    
+    let mut node: TransformerNode<_, (i32,), (i32,)> =
+      TransformerNode::new("mapper".to_string(), transformer);
+
     assert_eq!(node.name(), "mapper");
     let _transformer_ref = node.transformer();
     let _transformer_mut = node.transformer_mut();
@@ -659,10 +926,9 @@ mod tests {
   fn test_consumer_node_accessors() {
     let consumer = VecConsumer::new();
     let mut node: ConsumerNode<_, (i32,)> = ConsumerNode::new("sink".to_string(), consumer);
-    
+
     assert_eq!(node.name(), "sink");
     let _consumer_ref = node.consumer();
     let _consumer_mut = node.consumer_mut();
   }
 }
-

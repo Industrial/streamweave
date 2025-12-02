@@ -11,6 +11,8 @@ where
   K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
   V: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = ((K, V),);
+
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some((key, value)) = stream.next().await {
       self.map.insert(key, value);

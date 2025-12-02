@@ -6,6 +6,8 @@ use tokio::sync::mpsc;
 
 #[async_trait]
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Producer for ChannelProducer<T> {
+  type OutputPorts = (T,);
+
   fn produce(&mut self) -> Self::OutputStream {
     let rx = std::mem::replace(&mut self.rx, mpsc::channel(1).1);
     Box::pin(futures::stream::unfold(rx, |mut rx| async move {

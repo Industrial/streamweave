@@ -21,6 +21,9 @@ browser-specific stream primitives.
 - Pure Rust API with zero-cost abstractions
 - Full async/await compatibility via `futures::Stream`
 - Fluent pipeline-style API with type-safe builder pattern
+- **Graph-based API** for complex topologies with fan-in/fan-out patterns
+- **Flow-Based Programming (FBP)** patterns with type-safe routing
+- **Multiple routing strategies**: Broadcast, Round-Robin, Merge, Key-Based
 - Comprehensive error handling system with multiple strategies (Stop, Skip, Retry, Custom)
 - Code-as-configuration — no external DSLs
 - Comprehensive test infrastructure
@@ -38,14 +41,13 @@ browser-specific stream primitives.
 ### 🚧 Planned
 
 - Support distributed processing
-- Fan-in/fan-out support
 - WASM-specific optimizations and documentation
 - Additional specialized transformers and utilities
 - Reusable pipeline components
 - Add machine learning integration
 - Implement monitoring and metrics
 - Add SQL-like querying
-- Add visualization tools
+- Graph visualization tools
 
 ## 📦 Core Concepts
 
@@ -57,7 +59,33 @@ StreamWeave breaks computation into **three primary building blocks**:
 | **Transformer** | Transforms stream items (e.g., map/filter) |
 | **Consumer**    | Consumes the stream, e.g. writing, logging |
 
-All components can be chained together fluently.
+All components can be chained together fluently. These components can be used in both the **Pipeline API** (for simple linear flows) and the **Graph API** (for complex topologies with fan-in/fan-out patterns).
+
+## 🔀 Pipeline vs Graph API
+
+StreamWeave provides two APIs for building data processing workflows:
+
+| Feature | Pipeline API | Graph API |
+|---------|-------------|-----------|
+| **Use Case** | Simple linear flows | Complex topologies |
+| **Topology** | Single path: Producer → Transformer → Consumer | Multiple paths, fan-in/fan-out |
+| **Routing** | Sequential processing | Configurable routing strategies |
+| **Complexity** | Lower complexity, easier to use | Higher flexibility, more powerful |
+| **Best For** | ETL pipelines, simple transformations | Complex workflows, parallel processing, data distribution |
+
+**When to use Pipeline API:**
+- Simple linear data flows
+- Single transformation path
+- Quick prototyping
+- Straightforward ETL operations
+
+**When to use Graph API:**
+- Multiple data paths
+- Fan-out (one source to many destinations)
+- Fan-in (many sources to one destination)
+- Complex routing requirements
+- Parallel processing needs
+- Flow-Based Programming (FBP) patterns
 
 ## 🔄 Example Pipeline
 
@@ -88,6 +116,95 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+## 🕸️ Example Graph
+
+### ✅ Currently Possible
+
+```rust
+use streamweave::graph::{GraphBuilder, ProducerNode, TransformerNode, ConsumerNode};
+use streamweave::producers::vec::VecProducer;
+use streamweave::transformers::map::MapTransformer;
+use streamweave::consumers::vec::VecConsumer;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create a graph that:
+    // 1. Produces numbers from a vector
+    // 2. Doubles each number
+    // 3. Collects the results
+    let graph = GraphBuilder::new()
+        .add_node(
+            "source".to_string(),
+            ProducerNode::from_producer(
+                "source".to_string(),
+                VecProducer::new(vec![1, 2, 3, 4, 5]),
+            ),
+        )?
+        .add_node(
+            "transform".to_string(),
+            TransformerNode::from_transformer(
+                "transform".to_string(),
+                MapTransformer::new(|x: i32| x * 2),
+            ),
+        )?
+        .add_node(
+            "sink".to_string(),
+            ConsumerNode::from_consumer(
+                "sink".to_string(),
+                VecConsumer::new(),
+            ),
+        )?
+        .connect_by_name("source", "transform")?
+        .connect_by_name("transform", "sink")?
+        .build();
+
+    // Execute the graph
+    let mut executor = graph.executor();
+    executor.start().await?;
+    // Graph runs asynchronously - use stop() when done
+    executor.stop().await?;
+    Ok(())
+}
+```
+
+### Fan-Out Example
+
+The Graph API excels at fan-out patterns where one source feeds multiple destinations:
+
+```rust
+use streamweave::graph::{GraphBuilder, ProducerNode, TransformerNode, ConsumerNode};
+use streamweave::producers::vec::VecProducer;
+use streamweave::transformers::map::MapTransformer;
+use streamweave::consumers::vec::VecConsumer;
+
+// Create a producer that feeds multiple transformers (fan-out)
+let producer = ProducerNode::from_producer(
+    "source".to_string(),
+    VecProducer::new(vec![1, 2, 3]),
+);
+
+// Multiple transformers process the same data
+let double = TransformerNode::from_transformer(
+    "double".to_string(),
+    MapTransformer::new(|x: i32| x * 2),
+);
+let triple = TransformerNode::from_transformer(
+    "triple".to_string(),
+    MapTransformer::new(|x: i32| x * 3),
+);
+
+// Connect producer to both transformers (fan-out)
+let graph = GraphBuilder::new()
+    .add_node("source".to_string(), producer)?
+    .add_node("double".to_string(), double)?
+    .add_node("triple".to_string(), triple)?
+    .connect_by_name("source", "double")?
+    .connect_by_name("source", "triple")?
+    .build();
+```
+
+For advanced patterns including fan-in, custom routing strategies (Broadcast, Round-Robin, Merge, Key-Based), subgraphs, and stateful nodes, see [GRAPH.md](GRAPH.md).
+
 ## 🧱 API Overview
 
 ### ✅ Implemented Pipeline Construction
@@ -98,6 +215,19 @@ PipelineBuilder::new()
     .transformer(...) // Add transformation
     .consumer(...)    // Add data sink
     .run()           // Execute pipeline
+```
+
+### ✅ Implemented Graph Construction
+
+```rust
+GraphBuilder::new()
+    .add_node("name", ProducerNode::from_producer(...))    // Add producer node
+    .add_node("name", TransformerNode::from_transformer(...)) // Add transformer node
+    .add_node("name", ConsumerNode::from_consumer(...))    // Add consumer node
+    .connect_by_name("source", "target")?  // Connect nodes
+    .build()                                // Build graph
+    .executor()                             // Get executor
+    .start().await?                         // Execute graph
 ```
 
 ### ✅ Error Handling
@@ -142,7 +272,7 @@ Add StreamWeave to your `Cargo.toml`:
 streamweave = "0.2.2"
 ```
 
-### Basic Usage
+### Basic Usage (Pipeline API)
 
 ```rust
 use streamweave::{
@@ -165,6 +295,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ((), result) = pipeline.run().await?;
     println!("Result: {:?}", result.collected);
+    Ok(())
+}
+```
+
+### Using the Graph API
+
+```rust
+use streamweave::graph::{GraphBuilder, ProducerNode, TransformerNode, ConsumerNode};
+use streamweave::producers::array::ArrayProducer;
+use streamweave::transformers::map::MapTransformer;
+use streamweave::consumers::vec::VecConsumer;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let graph = GraphBuilder::new()
+        .add_node(
+            "source".to_string(),
+            ProducerNode::from_producer(
+                "source".to_string(),
+                ArrayProducer::new(vec![1, 2, 3, 4, 5]),
+            ),
+        )?
+        .add_node(
+            "transform".to_string(),
+            TransformerNode::from_transformer(
+                "transform".to_string(),
+                MapTransformer::new(|x: i32| x * 2),
+            ),
+        )?
+        .add_node(
+            "sink".to_string(),
+            ConsumerNode::from_consumer(
+                "sink".to_string(),
+                VecConsumer::new(),
+            ),
+        )?
+        .connect_by_name("source", "transform")?
+        .connect_by_name("transform", "sink")?
+        .build();
+
+    let mut executor = graph.executor();
+    executor.start().await?;
+    // Graph runs asynchronously - use stop() when done
+    executor.stop().await?;
     Ok(())
 }
 ```
@@ -196,6 +370,7 @@ assert_eq!(consumer.collected, vec!["1", "2", "3"]);
 
 - [API Documentation](https://docs.rs/streamweave)
 - [Local Documentation](target/doc/streamweave/index.html) - Generated with Doxidize (run `./bin/docs`)
+- [Graph API Guide](GRAPH.md) - Advanced graph patterns, routing strategies, and Flow-Based Programming
 - [Getting Started Guide](docs/getting_started.md)
 - [Architecture Overview](docs/architecture.md)
 - [Common Use Cases](docs/guides/common_use_cases.md)
@@ -225,6 +400,10 @@ StreamWeave includes comprehensive examples demonstrating all major features:
 ### Basic Examples
 - **[Basic Pipeline](examples/basic_pipeline/)** - Simple pipeline example
 - **[Advanced Pipeline](examples/advanced_pipeline/)** - Complex pipeline patterns
+
+### Graph API Examples
+- **[Graph Architecture](GRAPH.md)** - Comprehensive guide to the Graph API with examples
+- Graph API examples demonstrate fan-in/fan-out patterns, routing strategies, and complex topologies
 
 Run any example with:
 ```bash

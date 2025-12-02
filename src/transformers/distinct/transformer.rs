@@ -13,6 +13,9 @@ impl<T> Transformer for DistinctTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = (T,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let seen = Arc::new(RwLock::new(HashSet::new()));
     Box::pin(input.filter_map(move |item| {

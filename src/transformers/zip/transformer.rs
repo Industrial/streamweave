@@ -7,6 +7,9 @@ use futures::StreamExt;
 
 #[async_trait]
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for ZipTransformer<T> {
+  type InputPorts = (Vec<T>,);
+  type OutputPorts = (Vec<T>,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     Box::pin(async_stream::stream! {
       let mut input = input;

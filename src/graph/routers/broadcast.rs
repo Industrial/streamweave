@@ -6,7 +6,7 @@
 use crate::graph::router::OutputRouter;
 use async_trait::async_trait;
 use futures::Stream;
-use futures::StreamExt;
+use std::marker::PhantomData;
 use std::pin::Pin;
 
 /// A router that broadcasts each item to all output ports.
@@ -31,6 +31,8 @@ use std::pin::Pin;
 pub struct BroadcastRouter<O> {
   /// The output port indices this router manages
   output_ports: Vec<usize>,
+  /// Phantom data to consume the type parameter
+  _phantom: PhantomData<O>,
 }
 
 impl<O> BroadcastRouter<O> {
@@ -44,7 +46,10 @@ impl<O> BroadcastRouter<O> {
   ///
   /// A new `BroadcastRouter` instance.
   pub fn new(output_ports: Vec<usize>) -> Self {
-    Self { output_ports }
+    Self {
+      output_ports,
+      _phantom: PhantomData,
+    }
   }
 }
 
@@ -59,8 +64,8 @@ where
   ) -> Vec<(usize, Pin<Box<dyn Stream<Item = O> + Send>>)> {
     // For broadcast, we need to clone each item to all ports
     // We'll use individual mpsc channels for each port
-    use tokio::sync::mpsc;
     use futures::stream::StreamExt as _;
+    use tokio::sync::mpsc;
 
     if self.output_ports.is_empty() {
       return Vec::new();
@@ -83,7 +88,7 @@ where
       while let Some(item) = input_stream.next().await {
         // Clone and send to all receivers
         for sender in &senders_clone {
-          if let Err(_) = sender.send(item.clone()).await {
+          if sender.send(item.clone()).await.is_err() {
             // Receiver dropped, continue to next sender
           }
         }
@@ -91,8 +96,8 @@ where
     });
 
     // Create streams from receivers
-    let mut output_streams = Vec::new();
-    for (i, &port) in self.output_ports.iter().enumerate() {
+    let mut output_streams: Vec<(usize, Pin<Box<dyn Stream<Item = O> + Send>>)> = Vec::new();
+    for &port in self.output_ports.iter() {
       let mut rx = receivers.remove(0);
       let stream = Box::pin(async_stream::stream! {
         while let Some(item) = rx.recv().await {
@@ -121,13 +126,13 @@ mod tests {
     let input_stream: Pin<Box<dyn Stream<Item = i32> + Send>> =
       Box::pin(stream::iter(vec![1, 2, 3]));
 
-    let output_streams = router.route_stream(input_stream).await;
+    let mut output_streams = router.route_stream(input_stream).await;
 
     assert_eq!(output_streams.len(), 3);
 
     // Collect from first stream
     use futures::StreamExt;
-    let mut stream0 = &mut output_streams[0].1;
+    let stream0 = &mut output_streams[0].1;
     let mut results0 = Vec::new();
     while let Some(item) = stream0.next().await {
       results0.push(item);
@@ -145,4 +150,3 @@ mod tests {
     assert_eq!(router.output_ports(), vec![0, 1, 2]);
   }
 }
-

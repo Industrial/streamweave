@@ -14,6 +14,8 @@ impl<T> Producer for JsonlProducer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + DeserializeOwned + 'static,
 {
+  type OutputPorts = (T,);
+
   /// Produces a stream of deserialized JSON objects from a JSON Lines file.
   ///
   /// # Error Handling

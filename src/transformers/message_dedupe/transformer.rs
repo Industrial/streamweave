@@ -33,6 +33,8 @@ impl<T> Transformer for MessageDedupeTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (crate::message::Message<T>,);
+  type OutputPorts = (crate::message::Message<T>,);
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     // Move the state into the stream for filtering
     let seen_ids = std::mem::take(&mut self.seen_ids);

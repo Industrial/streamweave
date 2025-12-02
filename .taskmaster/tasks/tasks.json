@@ -212,7 +212,7 @@
         "id": "5",
         "title": "Phase 5: Advanced Features",
         "description": "Implement advanced graph features including subgraph support (graph as a node), stateful processing nodes, and windowing operations with graph topology.",
-        "status": "pending",
+        "status": "done",
         "priority": "high",
         "dependencies": [
           "1",

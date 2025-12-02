@@ -37,8 +37,8 @@
 
 use crate::graph::node::TransformerNode;
 use crate::graph::traits::NodeTrait;
-use crate::transformers::window::WindowTransformer;
-use crate::window::{TimeWindow, WindowAssigner, WindowConfig, WindowError, WindowResult};
+use crate::transformers::window::window_transformer::WindowTransformer;
+use crate::window::{WindowError, WindowResult};
 use std::time::Duration;
 
 /// Configuration for windowing operations in graphs.
@@ -217,10 +217,22 @@ impl GraphWindowConfig {
 ///
 /// Currently, this only supports count-based windows as `WindowTransformer` is count-based.
 /// Time-based windows will require additional implementation.
-pub fn create_window_node<T>(
-  name: String,
-  config: GraphWindowConfig,
-) -> WindowResult<TransformerNode<WindowTransformer<T>, (T,), (Vec<T>,)>>
+type WindowNode<T> = TransformerNode<WindowTransformer<T>, (T,), (Vec<T>,)>;
+
+/// Creates a window node for use in graph processing.
+///
+/// This function creates a transformer node that applies windowing operations
+/// to stream items according to the provided configuration.
+///
+/// # Arguments
+///
+/// * `name` - The name for the window node
+/// * `config` - Window configuration specifying size and type
+///
+/// # Returns
+///
+/// A `WindowResult` containing the created window node on success.
+pub fn create_window_node<T>(name: String, config: GraphWindowConfig) -> WindowResult<WindowNode<T>>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
@@ -262,8 +274,8 @@ pub trait WindowedNode: NodeTrait {
 impl<T, Inputs, Outputs> WindowedNode for TransformerNode<WindowTransformer<T>, Inputs, Outputs>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  Inputs: crate::graph::port::PortList,
-  Outputs: crate::graph::port::PortList,
+  Inputs: crate::graph::port::PortList + Send + Sync,
+  Outputs: crate::graph::port::PortList + Send + Sync,
   (): crate::graph::node::ValidateTransformerPorts<WindowTransformer<T>, Inputs, Outputs>,
 {
   fn window_config(&self) -> Option<GraphWindowConfig> {
@@ -272,7 +284,7 @@ where
     Some(GraphWindowConfig {
       size: WindowSize::Count(size),
       window_type: WindowType::Tumbling, // WindowTransformer is tumbling by default
-      emit_partial: true, // WindowTransformer emits partial windows
+      emit_partial: true,                // WindowTransformer emits partial windows
       late_data_policy: crate::window::LateDataPolicy::Drop,
     })
   }
@@ -291,7 +303,7 @@ where
 /// # Returns
 ///
 /// `true` if the node is a windowing node, `false` otherwise.
-pub fn is_windowed_node(node: &dyn NodeTrait) -> bool {
+pub fn is_windowed_node(_node: &dyn NodeTrait) -> bool {
   // This would require dynamic dispatch and downcasting
   // For now, return false as a placeholder
   false
@@ -342,4 +354,3 @@ mod tests {
     assert_eq!(config.size, WindowSize::Count(10));
   }
 }
-

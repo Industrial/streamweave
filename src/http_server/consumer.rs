@@ -438,6 +438,8 @@ impl Clone for HttpResponseConsumer {
 #[async_trait]
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 impl Consumer for HttpResponseConsumer {
+  type InputPorts = (HttpResponse,);
+
   /// Consumes a stream of HTTP response items.
   ///
   /// This collects all `HttpResponse` items from the stream and stores them

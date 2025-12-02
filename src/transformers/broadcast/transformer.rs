@@ -9,6 +9,9 @@ impl<T> Transformer for BroadcastTransformer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = (Vec<T>,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let num_consumers = self.broadcast_config.num_consumers;
 

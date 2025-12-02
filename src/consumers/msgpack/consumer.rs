@@ -13,6 +13,8 @@ impl<T> Consumer for MsgPackConsumer<T>
 where
   T: Serialize + std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+
   /// Consumes a stream and writes each item as MessagePack to the file.
   ///
   /// # Error Handling

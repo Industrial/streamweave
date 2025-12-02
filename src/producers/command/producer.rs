@@ -6,6 +6,8 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
 impl Producer for CommandProducer {
+  type OutputPorts = (String,);
+
   fn produce(&mut self) -> Self::OutputStream {
     let command_str = self.command.clone();
     let args = self.args.clone();

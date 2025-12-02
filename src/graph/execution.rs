@@ -30,12 +30,11 @@
 //! 3. **Execution**: Nodes run concurrently, with data flowing through channels
 //! 4. **Shutdown**: Gracefully stop all nodes and clean up resources
 
-use crate::graph::graph::{ConnectionInfo, Graph};
-use crate::graph::traits::{NodeKind, NodeTrait};
+use crate::graph::graph::Graph;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
@@ -72,7 +71,11 @@ impl std::fmt::Display for ExecutionError {
       ExecutionError::NodeExecutionFailed { node, reason } => {
         write!(f, "Node '{}' execution failed: {}", node, reason)
       }
-      ExecutionError::ConnectionError { source, target, reason } => {
+      ExecutionError::ConnectionError {
+        source,
+        target,
+        reason,
+      } => {
         write!(
           f,
           "Connection error from {}:{} to {}:{}: {}",
@@ -342,12 +345,10 @@ impl GraphExecutor {
       Err(_) => {
         // Timeout occurred - force abort remaining tasks
         // (All tasks should already be collected, but handle edge cases)
-        return Err(ExecutionError::ExecutionFailed(
-          format!(
-            "Shutdown timeout exceeded ({}s). Some tasks may not have completed gracefully.",
-            self.shutdown_timeout.as_secs()
-          ),
-        ));
+        return Err(ExecutionError::ExecutionFailed(format!(
+          "Shutdown timeout exceeded ({}s). Some tasks may not have completed gracefully.",
+          self.shutdown_timeout.as_secs()
+        )));
       }
     }
 
@@ -388,7 +389,7 @@ impl GraphExecutor {
     }
 
     // Immediately abort all tasks
-    for (node_name, handle) in self.node_handles.drain() {
+    for (_node_name, handle) in self.node_handles.drain() {
       handle.abort();
       let _ = handle.await;
     }
@@ -608,22 +609,22 @@ impl GraphExecutor {
       }
 
       // Validate port indices
-      if let Some(source_node) = self.graph.get_node(&conn.source.0) {
-        if conn.source.1 >= source_node.output_port_count() {
-          return Err(ExecutionError::InvalidTopology(format!(
-            "Source node '{}' does not have output port {}",
-            conn.source.0, conn.source.1
-          )));
-        }
+      if let Some(source_node) = self.graph.get_node(&conn.source.0)
+        && conn.source.1 >= source_node.output_port_count()
+      {
+        return Err(ExecutionError::InvalidTopology(format!(
+          "Source node '{}' does not have output port {}",
+          conn.source.0, conn.source.1
+        )));
       }
 
-      if let Some(target_node) = self.graph.get_node(&conn.target.0) {
-        if conn.target.1 >= target_node.input_port_count() {
-          return Err(ExecutionError::InvalidTopology(format!(
-            "Target node '{}' does not have input port {}",
-            conn.target.0, conn.target.1
-          )));
-        }
+      if let Some(target_node) = self.graph.get_node(&conn.target.0)
+        && conn.target.1 >= target_node.input_port_count()
+      {
+        return Err(ExecutionError::InvalidTopology(format!(
+          "Target node '{}' does not have input port {}",
+          conn.target.0, conn.target.1
+        )));
       }
     }
 
@@ -708,7 +709,9 @@ impl GraphExecutor {
     node_name: &str,
     port_index: usize,
   ) -> Option<&mpsc::Sender<Vec<u8>>> {
-    self.channel_senders.get(&(node_name.to_string(), port_index))
+    self
+      .channel_senders
+      .get(&(node_name.to_string(), port_index))
   }
 
   /// Returns a mutable reference to the channel receiver for a given node and port.
@@ -795,6 +798,8 @@ impl GraphExecution for Graph {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::graph::{GraphBuilder, ProducerNode};
+  use crate::producers::vec::vec_producer::VecProducer;
 
   #[tokio::test]
   async fn test_graph_executor_creation() {
@@ -807,7 +812,14 @@ mod tests {
 
   #[tokio::test]
   async fn test_graph_executor_start_stop() {
-    let graph = Graph::new();
+    // Create a graph with at least one node
+    let graph = GraphBuilder::new()
+      .node(ProducerNode::from_producer(
+        "source".to_string(),
+        VecProducer::new(vec![1, 2, 3]),
+      ))
+      .unwrap()
+      .build();
     let mut executor = graph.executor();
 
     // Start execution
@@ -823,7 +835,14 @@ mod tests {
 
   #[tokio::test]
   async fn test_graph_executor_double_start() {
-    let graph = Graph::new();
+    // Create a graph with at least one node
+    let graph = GraphBuilder::new()
+      .node(ProducerNode::from_producer(
+        "source".to_string(),
+        VecProducer::new(vec![1, 2, 3]),
+      ))
+      .unwrap()
+      .build();
     let mut executor = graph.executor();
 
     assert!(executor.start().await.is_ok());
@@ -851,7 +870,14 @@ mod tests {
 
   #[tokio::test]
   async fn test_graph_executor_pause_resume() {
-    let graph = Graph::new();
+    // Create a graph with at least one node
+    let graph = GraphBuilder::new()
+      .node(ProducerNode::from_producer(
+        "source".to_string(),
+        VecProducer::new(vec![1, 2, 3]),
+      ))
+      .unwrap()
+      .build();
     let mut executor = graph.executor();
 
     // Cannot pause when not running
@@ -876,7 +902,14 @@ mod tests {
 
   #[tokio::test]
   async fn test_graph_executor_resume_when_not_paused() {
-    let graph = Graph::new();
+    // Create a graph with at least one node
+    let graph = GraphBuilder::new()
+      .node(ProducerNode::from_producer(
+        "source".to_string(),
+        VecProducer::new(vec![1, 2, 3]),
+      ))
+      .unwrap()
+      .build();
     let mut executor = graph.executor();
 
     // Cannot resume when not paused
@@ -912,17 +945,16 @@ mod tests {
   #[tokio::test]
   async fn test_graph_executor_channel_creation() {
     use crate::graph::{GraphBuilder, ProducerNode};
-    use crate::producers::vec::VecProducer;
+    use crate::producers::vec::vec_producer::VecProducer;
 
     // Create a simple graph with one node (no connections yet)
     let graph = GraphBuilder::new()
-      .node(ProducerNode::new(
+      .node(ProducerNode::from_producer(
         "source".to_string(),
         VecProducer::new(vec![1, 2, 3]),
       ))
       .unwrap()
-      .build()
-      .unwrap();
+      .build();
 
     let mut executor = graph.executor();
 
@@ -934,17 +966,16 @@ mod tests {
   #[tokio::test]
   async fn test_graph_executor_channel_helpers() {
     use crate::graph::{GraphBuilder, ProducerNode};
-    use crate::producers::vec::VecProducer;
+    use crate::producers::vec::vec_producer::VecProducer;
 
     // Create a simple graph
     let graph = GraphBuilder::new()
-      .node(ProducerNode::new(
+      .node(ProducerNode::from_producer(
         "source".to_string(),
         VecProducer::new(vec![1, 2, 3]),
       ))
       .unwrap()
-      .build()
-      .unwrap();
+      .build();
 
     let mut executor = graph.executor();
 
@@ -976,9 +1007,10 @@ mod tests {
     // Default timeout is 30 seconds
     assert_eq!(executor.shutdown_timeout(), Duration::from_secs(30));
 
-    // Create executor with custom timeout
+    // Create executor with custom timeout (need new graph since previous one was moved)
+    let graph2 = Graph::new();
     let custom_timeout = Duration::from_secs(60);
-    let mut executor = GraphExecutor::with_shutdown_timeout(graph, custom_timeout);
+    let mut executor = GraphExecutor::with_shutdown_timeout(graph2, custom_timeout);
     assert_eq!(executor.shutdown_timeout(), custom_timeout);
 
     // Set new timeout
@@ -988,7 +1020,14 @@ mod tests {
 
   #[tokio::test]
   async fn test_graph_executor_stop_immediate() {
-    let graph = Graph::new();
+    // Create a graph with at least one node
+    let graph = GraphBuilder::new()
+      .node(ProducerNode::from_producer(
+        "source".to_string(),
+        VecProducer::new(vec![1, 2, 3]),
+      ))
+      .unwrap()
+      .build();
     let mut executor = graph.executor();
 
     // Start execution
@@ -999,4 +1038,3 @@ mod tests {
     assert_eq!(executor.state(), ExecutionState::Stopped);
   }
 }
-

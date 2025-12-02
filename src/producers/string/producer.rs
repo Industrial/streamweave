@@ -3,6 +3,8 @@ use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, Stre
 use crate::producer::{Producer, ProducerConfig};
 
 impl Producer for StringProducer {
+  type OutputPorts = (String,);
+
   fn produce(&mut self) -> Self::OutputStream {
     if self.chunk_size == 0 {
       return Box::pin(futures::stream::empty());

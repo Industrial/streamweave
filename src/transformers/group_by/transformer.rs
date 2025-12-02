@@ -14,6 +14,9 @@ where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
   K: std::fmt::Debug + Clone + Send + Sync + Hash + Eq + Ord + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = ((K, Vec<T>),);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let key_fn = self.key_fn.clone();
     Box::pin(async_stream::stream! {

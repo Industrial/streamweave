@@ -6,6 +6,8 @@ use futures::StreamExt;
 
 #[async_trait]
 impl Consumer for StringConsumer {
+  type InputPorts = (String,);
+
   async fn consume(&mut self, mut stream: Self::InputStream) -> () {
     while let Some(value) = stream.next().await {
       self.buffer.push_str(&value);

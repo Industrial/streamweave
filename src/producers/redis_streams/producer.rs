@@ -26,6 +26,9 @@ use tracing::{error, warn};
 #[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
 #[allow(clippy::collapsible_if)]
 impl Producer for RedisStreamsProducer {
+  type OutputPorts =
+    (crate::producers::redis_streams::redis_streams_producer::RedisStreamsMessage,);
+
   /// Produces a stream of messages from Redis Streams.
   ///
   /// # Error Handling

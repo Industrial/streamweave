@@ -12,6 +12,9 @@ where
   F: FnMut(&T) -> bool + Send + Clone + 'static,
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
+  type InputPorts = (T,);
+  type OutputPorts = (Vec<T>,);
+
   fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
     let predicate = self.predicate.clone();
 
