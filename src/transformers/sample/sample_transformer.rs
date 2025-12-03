@@ -63,3 +63,67 @@ where
     self
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_sample_transformer_new() {
+    let transformer = SampleTransformer::<i32>::new(0.5);
+    assert_eq!(transformer.probability, 0.5);
+  }
+
+  #[test]
+  fn test_sample_transformer_new_zero() {
+    let transformer = SampleTransformer::<i32>::new(0.0);
+    assert_eq!(transformer.probability, 0.0);
+  }
+
+  #[test]
+  fn test_sample_transformer_new_one() {
+    let transformer = SampleTransformer::<i32>::new(1.0);
+    assert_eq!(transformer.probability, 1.0);
+  }
+
+  #[test]
+  #[should_panic(expected = "Probability must be between 0 and 1")]
+  fn test_sample_transformer_new_invalid_negative() {
+    let _ = SampleTransformer::<i32>::new(-0.1);
+  }
+
+  #[test]
+  #[should_panic(expected = "Probability must be between 0 and 1")]
+  fn test_sample_transformer_new_invalid_above_one() {
+    let _ = SampleTransformer::<i32>::new(1.1);
+  }
+
+  #[test]
+  fn test_sample_transformer_with_error_strategy() {
+    let transformer =
+      SampleTransformer::<i32>::new(0.5).with_error_strategy(ErrorStrategy::<i32>::Skip);
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_sample_transformer_with_name() {
+    let transformer = SampleTransformer::<i32>::new(0.5).with_name("test_sample".to_string());
+    assert_eq!(transformer.config.name, Some("test_sample".to_string()));
+  }
+
+  #[test]
+  fn test_sample_transformer_chaining() {
+    let transformer = SampleTransformer::<i32>::new(0.75)
+      .with_error_strategy(ErrorStrategy::<i32>::Retry(3))
+      .with_name("chained_sample".to_string());
+    assert_eq!(transformer.probability, 0.75);
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Retry(3)
+    ));
+    assert_eq!(transformer.config.name, Some("chained_sample".to_string()));
+  }
+}

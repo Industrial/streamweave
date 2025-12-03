@@ -251,8 +251,60 @@ impl GraphExecutor {
     self.create_channels()?;
 
     // Spawn tasks for each node
-    // Note: Full implementation will be added in subsequent tasks (4.2, 4.3)
-    // For now, this is a placeholder that sets the state to Running
+    for node_name in self.graph.node_names() {
+      if let Some(node) = self.graph.get_node(node_name) {
+        // Collect input channels for this node
+        let mut input_channels = HashMap::new();
+        let parents = self.graph.get_parents(node_name);
+        for (parent_name, parent_port) in parents {
+          // Find which input port this connection targets
+          for conn in self.graph.get_connections() {
+            if conn.source.0 == parent_name
+              && conn.source.1 == parent_port
+              && conn.target.0 == node_name
+            {
+              let key = (parent_name.to_string(), parent_port);
+              if let Some(receiver) = self.channel_receivers.remove(&key) {
+                input_channels.insert(conn.target.1, receiver);
+              }
+              break;
+            }
+          }
+        }
+
+        // Collect output channels for this node
+        let mut output_channels = HashMap::new();
+        let children = self.graph.get_children(node_name);
+        for (child_name, child_port) in children {
+          // Find which output port this connection comes from
+          for conn in self.graph.get_connections() {
+            if conn.source.0 == node_name
+              && conn.target.0 == child_name
+              && conn.target.1 == child_port
+            {
+              let key = (node_name.to_string(), conn.source.1);
+              if let Some(sender) = self.channel_senders.get(&key).cloned() {
+                output_channels.insert(conn.source.1, sender);
+              }
+              break;
+            }
+          }
+        }
+
+        // Spawn execution task using the NodeTrait method
+        if let Some(handle) =
+          node.spawn_execution_task(input_channels, output_channels, self.pause_signal.clone())
+        {
+          self.node_handles.insert(node_name.to_string(), handle);
+        } else {
+          return Err(ExecutionError::NodeExecutionFailed {
+            node: node_name.to_string(),
+            reason: "Node does not support execution".to_string(),
+          });
+        }
+      }
+    }
+
     self.state = ExecutionState::Running;
     Ok(())
   }

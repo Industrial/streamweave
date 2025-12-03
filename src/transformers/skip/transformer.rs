@@ -34,6 +34,7 @@ where
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      ErrorStrategy::Custom(ref handler) => handler(error),
       _ => ErrorAction::Stop,
     }
   }
@@ -519,5 +520,204 @@ mod tests {
 
     // Should skip first 2 elements, keep last 3
     assert_eq!(result, vec![3, 4, 5]);
+  }
+
+  #[test]
+  fn test_skip_transformer_custom_error_handler() {
+    let transformer = SkipTransformer::<i32>::new(3).with_error_strategy(
+      ErrorStrategy::new_custom(|error: &StreamError<i32>| {
+        if error.retries < 2 {
+          ErrorAction::Retry
+        } else {
+          ErrorAction::Skip
+        }
+      }),
+    );
+
+    let error = StreamError {
+      source: Box::new(std::io::Error::other("test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "SkipTransformer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "SkipTransformer".to_string(),
+      },
+      retries: 1,
+    };
+
+    // Should retry when retries < 2
+    assert!(matches!(
+      transformer.handle_error(&error),
+      ErrorAction::Retry
+    ));
+
+    let error_exhausted = StreamError {
+      source: Box::new(std::io::Error::other("test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "SkipTransformer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "SkipTransformer".to_string(),
+      },
+      retries: 2,
+    };
+
+    // Should skip when retries >= 2
+    assert!(matches!(
+      transformer.handle_error(&error_exhausted),
+      ErrorAction::Skip
+    ));
+  }
+
+  #[test]
+  fn test_skip_transformer_set_config_impl() {
+    let mut transformer = SkipTransformer::<i32>::new(2);
+    let new_config = TransformerConfig {
+      name: Some("new_name".to_string()),
+      error_strategy: ErrorStrategy::Skip,
+    };
+
+    transformer.set_config_impl(new_config.clone());
+
+    let retrieved_config = transformer.get_config_impl();
+    assert_eq!(retrieved_config.name(), Some("new_name".to_string()));
+    assert!(matches!(
+      retrieved_config.error_strategy(),
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_skip_transformer_get_config_mut_impl() {
+    let mut transformer = SkipTransformer::<i32>::new(2);
+    let config_mut = transformer.get_config_mut_impl();
+    config_mut.name = Some("mutated_name".to_string());
+    config_mut.error_strategy = ErrorStrategy::Retry(5);
+
+    let config = transformer.get_config_impl();
+    assert_eq!(config.name(), Some("mutated_name".to_string()));
+    assert!(matches!(config.error_strategy(), ErrorStrategy::Retry(5)));
+  }
+
+  #[test]
+  fn test_skip_transformer_create_error_context_with_none() {
+    let transformer = SkipTransformer::<i32>::new(2).with_name("test_skip".to_string());
+
+    let context = transformer.create_error_context(None);
+    assert_eq!(context.component_name, "test_skip");
+    assert_eq!(
+      context.component_type,
+      std::any::type_name::<SkipTransformer<i32>>()
+    );
+    assert_eq!(context.item, None);
+  }
+
+  #[test]
+  fn test_skip_transformer_retry_exhausted() {
+    let transformer = SkipTransformer::<i32>::new(3).with_error_strategy(ErrorStrategy::Retry(2));
+
+    // Error with retries >= max_retries should trigger the fallback case
+    let error = StreamError {
+      source: Box::new(std::io::Error::other("test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "SkipTransformer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "SkipTransformer".to_string(),
+      },
+      retries: 2, // Equal to max_retries, should fall through to Stop
+    };
+
+    // Should stop when retries >= max_retries
+    assert!(matches!(
+      transformer.handle_error(&error),
+      ErrorAction::Stop
+    ));
+
+    // Error with retries > max_retries should also stop
+    let error_exceeded = StreamError {
+      source: Box::new(std::io::Error::other("test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "SkipTransformer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "SkipTransformer".to_string(),
+      },
+      retries: 3, // Greater than max_retries
+    };
+
+    assert!(matches!(
+      transformer.handle_error(&error_exceeded),
+      ErrorAction::Stop
+    ));
+  }
+
+  #[test]
+  fn test_skip_transformer_get_config_impl() {
+    let transformer = SkipTransformer::<i32>::new(5).with_name("test".to_string());
+    let config = transformer.get_config_impl();
+    assert_eq!(config.name, Some("test".to_string()));
+  }
+
+  #[test]
+  fn test_skip_transformer_handle_error_custom() {
+    let custom_handler = |_error: &StreamError<i32>| ErrorAction::Skip;
+    let transformer =
+      SkipTransformer::<i32>::new(5).with_error_strategy(ErrorStrategy::new_custom(custom_handler));
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "test")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 0,
+    };
+    assert_eq!(transformer.handle_error(&error), ErrorAction::Skip);
+  }
+
+  #[test]
+  fn test_skip_transformer_create_error_context() {
+    let transformer = SkipTransformer::<i32>::new(5).with_name("test_skip".to_string());
+    let context = transformer.create_error_context(Some(42));
+    assert_eq!(context.component_name, "test_skip");
+    assert_eq!(context.item, Some(42));
+    assert!(context.component_type.contains("SkipTransformer"));
+  }
+
+  #[test]
+  fn test_skip_transformer_create_error_context_no_item() {
+    let transformer = SkipTransformer::<i32>::new(5);
+    let context = transformer.create_error_context(None);
+    assert_eq!(context.component_name, "skip_transformer");
+    assert_eq!(context.item, None);
+  }
+
+  #[test]
+  fn test_skip_transformer_component_info_default() {
+    let transformer = SkipTransformer::<i32>::new(5);
+    let info = transformer.component_info();
+    assert_eq!(info.name, "skip_transformer");
   }
 }

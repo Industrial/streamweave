@@ -93,3 +93,77 @@ where
     Self::new()
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_running_sum_transformer_new() {
+    let _transformer = RunningSumTransformer::<i32>::new();
+    // Test that it can be created
+  }
+
+  #[test]
+  fn test_running_sum_transformer_with_initial() {
+    let _transformer = RunningSumTransformer::<i32>::with_initial(100);
+    // Test that it can be created with initial value
+  }
+
+  #[test]
+  fn test_running_sum_transformer_with_initial_float() {
+    let _transformer = RunningSumTransformer::<f64>::with_initial(42.5);
+    // Test that it can be created with initial float value
+  }
+
+  #[test]
+  fn test_running_sum_transformer_default() {
+    let _transformer = RunningSumTransformer::<i32>::default();
+    // Test that default creates a new transformer
+  }
+
+  #[test]
+  fn test_running_sum_transformer_with_name() {
+    let transformer = RunningSumTransformer::<i32>::new().with_name("test_running_sum".to_string());
+    assert_eq!(
+      transformer.config.name,
+      Some("test_running_sum".to_string())
+    );
+  }
+
+  #[test]
+  fn test_running_sum_transformer_with_error_strategy() {
+    let transformer =
+      RunningSumTransformer::<i32>::new().with_error_strategy(ErrorStrategy::<i32>::Skip);
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_running_sum_transformer_clone() {
+    let transformer1 = RunningSumTransformer::<i32>::with_initial(50);
+    let transformer2 = transformer1.clone();
+
+    // Clone should work - both should be independent instances
+    let _t1 = transformer1;
+    let _t2 = transformer2;
+  }
+
+  #[test]
+  fn test_running_sum_transformer_chaining() {
+    let transformer = RunningSumTransformer::<i32>::with_initial(10)
+      .with_error_strategy(ErrorStrategy::<i32>::Retry(5))
+      .with_name("chained_running_sum".to_string());
+
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Retry(5)
+    ));
+    assert_eq!(
+      transformer.config.name,
+      Some("chained_running_sum".to_string())
+    );
+  }
+}

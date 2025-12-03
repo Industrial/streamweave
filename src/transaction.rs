@@ -974,6 +974,71 @@ mod tests {
   }
 
   #[tokio::test]
+  async fn test_begin_with_timeout() {
+    let manager = create_manager();
+    let id = manager
+      .begin_with_timeout(Duration::from_millis(50))
+      .await
+      .unwrap();
+
+    let info = manager.get_transaction(&id).await.unwrap();
+    assert!(info.remaining_time.is_some());
+    assert!(info.remaining_time.unwrap() <= Duration::from_millis(50));
+  }
+
+  #[tokio::test]
+  async fn test_transaction_config_with_auto_rollback() {
+    let config = TransactionConfig::default().with_auto_rollback_on_timeout(true);
+    assert!(config.auto_rollback_on_timeout);
+
+    let config = TransactionConfig::default().with_auto_rollback_on_timeout(false);
+    assert!(!config.auto_rollback_on_timeout);
+  }
+
+  #[tokio::test]
+  async fn test_transaction_elapsed_and_remaining_time() {
+    let manager = create_manager();
+    let id = manager.begin().await.unwrap();
+
+    // Wait a bit
+    tokio::time::sleep(Duration::from_millis(10)).await;
+
+    let info = manager.get_transaction(&id).await.unwrap();
+    assert!(info.elapsed >= Duration::from_millis(10));
+    assert!(info.remaining_time.is_some());
+  }
+
+  #[tokio::test]
+  async fn test_transactional_context_with_timeout() {
+    let manager = create_manager();
+
+    let ctx = TransactionalContext::with_timeout(&manager, Duration::from_secs(30))
+      .await
+      .unwrap();
+    let id = *ctx.id();
+
+    assert_eq!(
+      manager.get_state(&id).await.unwrap(),
+      TransactionState::Active
+    );
+  }
+
+  #[tokio::test]
+  async fn test_transactional_context_savepoint() {
+    let manager = create_manager();
+
+    let ctx = TransactionalContext::new(&manager).await.unwrap();
+    ctx.buffer_offset("s1", Offset::Sequence(1)).await.unwrap();
+    ctx.savepoint("sp1").await.unwrap();
+    ctx.buffer_offset("s2", Offset::Sequence(2)).await.unwrap();
+    ctx.rollback_to("sp1").await.unwrap();
+
+    let id = *ctx.id();
+    let info = manager.get_transaction(&id).await.unwrap();
+    assert_eq!(info.buffered_offset_count, 1);
+  }
+
+  #[tokio::test]
   async fn test_cannot_rollback_non_active() {
     let manager = create_manager();
 

@@ -2,4 +2,8 @@
 set -euo pipefail
 exec > >(tee log/test.log) 2>&1 
 
-RUSTFLAGS='-D warnings' cargo llvm-cov nextest
+# Run tests with coverage and enforce 95% minimum coverage for all types
+RUSTFLAGS='-D warnings' cargo llvm-cov nextest \
+  --fail-under-functions 95 \
+  --fail-under-lines 95 \
+  --fail-under-regions 95

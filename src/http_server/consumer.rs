@@ -396,6 +396,7 @@ impl HttpResponseConsumer {
     }
 
     HttpResponse {
+      request_id: first.request_id.clone(),
       status,
       headers,
       body: merged_body,
@@ -532,5 +533,248 @@ impl Consumer for HttpResponseConsumer {
 
   fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<HttpResponse> {
     &mut self.config
+  }
+}
+
+/// Consumer that correlates HTTP responses with their original requests.
+///
+/// This consumer accepts `Message<HttpResponse>` items from the graph and
+/// correlates them with their original requests using the `request_id` field.
+/// It maintains a mapping of request IDs to response senders and sends responses
+/// back to the correct HTTP clients.
+///
+/// ## Example
+///
+/// ```rust,no_run
+/// use streamweave::http_server::HttpResponseCorrelationConsumer;
+/// use streamweave::message::Message;
+/// use tokio::sync::mpsc;
+///
+/// let (tx, rx) = mpsc::channel(100);
+/// let mut consumer = HttpResponseCorrelationConsumer::new();
+/// // Register request with consumer
+/// consumer.register_request("req-123".to_string(), tx).await;
+/// // Consumer will send response when it arrives
+/// ```
+#[derive(Debug)]
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+pub struct HttpResponseCorrelationConsumer {
+  /// Consumer configuration
+  config: crate::consumer::ConsumerConfig<crate::message::Message<HttpResponse>>,
+  /// Mapping of request IDs to response senders
+  response_senders: std::sync::Arc<
+    tokio::sync::RwLock<
+      std::collections::HashMap<
+        String,
+        tokio::sync::mpsc::Sender<axum::response::Response<axum::body::Body>>,
+      >,
+    >,
+  >,
+  /// Request timeout duration
+  #[allow(dead_code)] // Will be used for timeout handling in future
+  request_timeout: std::time::Duration,
+}
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+impl HttpResponseCorrelationConsumer {
+  /// Creates a new response correlation consumer with default timeout (30 seconds).
+  pub fn new() -> Self {
+    Self::with_timeout(std::time::Duration::from_secs(30))
+  }
+
+  /// Creates a new response correlation consumer with custom timeout.
+  pub fn with_timeout(timeout: std::time::Duration) -> Self {
+    Self {
+      config: crate::consumer::ConsumerConfig::default(),
+      response_senders: std::sync::Arc::new(tokio::sync::RwLock::new(
+        std::collections::HashMap::new(),
+      )),
+      request_timeout: timeout,
+    }
+  }
+
+  /// Registers a request and returns a receiver for the response.
+  ///
+  /// # Arguments
+  ///
+  /// * `request_id` - The unique request ID
+  /// * `sender` - Channel sender for sending the response back
+  ///
+  /// # Returns
+  ///
+  /// A receiver that will receive the response when it arrives.
+  pub async fn register_request(
+    &self,
+    request_id: String,
+    sender: tokio::sync::mpsc::Sender<axum::response::Response<axum::body::Body>>,
+  ) {
+    let mut senders = self.response_senders.write().await;
+    senders.insert(request_id, sender);
+  }
+
+  /// Unregisters a request (removes it from the mapping).
+  ///
+  /// This is called when a request times out or is cancelled.
+  pub async fn unregister_request(&self, request_id: &str) {
+    let mut senders = self.response_senders.write().await;
+    senders.remove(request_id);
+  }
+
+  /// Converts an `HttpResponse` to an Axum `Response<Body>`.
+  fn http_response_to_axum(response: &HttpResponse) -> axum::response::Response<axum::body::Body> {
+    let mut axum_response = axum::response::Response::builder()
+      .status(response.status)
+      .body(axum::body::Body::from(response.body.clone()))
+      .unwrap_or_else(|_| {
+        axum::response::Response::builder()
+          .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+          .body(axum::body::Body::empty())
+          .unwrap()
+      });
+
+    // Copy headers
+    for (key, value) in response.headers.iter() {
+      if let Ok(header_name) = axum::http::HeaderName::from_bytes(key.as_str().as_bytes()) {
+        axum_response
+          .headers_mut()
+          .insert(header_name, value.clone());
+      }
+    }
+
+    axum_response
+  }
+}
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+impl Default for HttpResponseCorrelationConsumer {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[async_trait]
+impl crate::consumer::Consumer for HttpResponseCorrelationConsumer {
+  type InputPorts = (crate::message::Message<HttpResponse>,);
+
+  /// Consumes a stream of `Message<HttpResponse>` items and correlates them with requests.
+  ///
+  /// For each response message, this method:
+  /// 1. Extracts the `request_id` from the response
+  /// 2. Looks up the corresponding response sender
+  /// 3. Converts the `HttpResponse` to an Axum `Response<Body>`
+  /// 4. Sends the response to the client
+  /// 5. Removes the request from the mapping
+  async fn consume(&mut self, input: Self::InputStream) {
+    let component_name = if self.config.name.is_empty() {
+      "http_response_correlation_consumer".to_string()
+    } else {
+      self.config.name.clone()
+    };
+    let response_senders = self.response_senders.clone();
+    let _error_strategy = self.config.error_strategy.clone();
+
+    let mut input = std::pin::pin!(input);
+
+    while let Some(message) = input.next().await {
+      let response = message.payload();
+      let request_id = response.request_id.clone();
+
+      // Look up the response sender
+      let sender = {
+        let senders = response_senders.read().await;
+        senders.get(&request_id).cloned()
+      };
+
+      match sender {
+        Some(sender) => {
+          // Convert HttpResponse to Axum Response
+          let axum_response = Self::http_response_to_axum(response);
+
+          // Send response to client
+          if let Err(e) = sender.send(axum_response).await {
+            tracing::warn!(
+              component = %component_name,
+              request_id = %request_id,
+              error = %e,
+              "Failed to send response to client"
+            );
+          } else {
+            tracing::debug!(
+              component = %component_name,
+              request_id = %request_id,
+              "Response sent to client"
+            );
+          }
+
+          // Remove request from mapping
+          let mut senders = response_senders.write().await;
+          senders.remove(&request_id);
+        }
+        None => {
+          tracing::warn!(
+            component = %component_name,
+            request_id = %request_id,
+            "No sender found for request ID - request may have timed out"
+          );
+        }
+      }
+    }
+  }
+
+  fn set_config_impl(
+    &mut self,
+    config: crate::consumer::ConsumerConfig<crate::message::Message<HttpResponse>>,
+  ) {
+    self.config = config;
+  }
+
+  fn get_config_impl(
+    &self,
+  ) -> &crate::consumer::ConsumerConfig<crate::message::Message<HttpResponse>> {
+    &self.config
+  }
+
+  fn get_config_mut_impl(
+    &mut self,
+  ) -> &mut crate::consumer::ConsumerConfig<crate::message::Message<HttpResponse>> {
+    &mut self.config
+  }
+
+  fn handle_error(
+    &self,
+    error: &crate::error::StreamError<crate::message::Message<HttpResponse>>,
+  ) -> crate::error::ErrorAction {
+    match &self.config.error_strategy {
+      crate::error::ErrorStrategy::Stop => crate::error::ErrorAction::Stop,
+      crate::error::ErrorStrategy::Skip => crate::error::ErrorAction::Skip,
+      crate::error::ErrorStrategy::Retry(n) if error.retries < *n => {
+        crate::error::ErrorAction::Retry
+      }
+      _ => crate::error::ErrorAction::Stop,
+    }
+  }
+
+  fn create_error_context(
+    &self,
+    item: Option<crate::message::Message<HttpResponse>>,
+  ) -> crate::error::ErrorContext<crate::message::Message<HttpResponse>> {
+    crate::error::ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      component_name: self.component_info().name,
+      component_type: std::any::type_name::<Self>().to_string(),
+    }
+  }
+
+  fn component_info(&self) -> crate::error::ComponentInfo {
+    crate::error::ComponentInfo {
+      name: if self.config.name.is_empty() {
+        "http_response_correlation_consumer".to_string()
+      } else {
+        self.config.name.clone()
+      },
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
   }
 }

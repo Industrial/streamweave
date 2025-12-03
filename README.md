@@ -35,6 +35,7 @@ browser-specific stream primitives.
 - **Advanced Transformers**: CircuitBreaker, Retry, Batch, RateLimit
 - **Common Transformers**: Map, Filter, Flatten, Reduce, and many more
 - HTTP middleware support with Axum integration
+- **HTTP Graph Server**: Long-lived graph-based HTTP servers with path-based routing
 - WebSocket support
 - Server-Sent Events support
 
@@ -204,6 +205,102 @@ let graph = GraphBuilder::new()
 ```
 
 For advanced patterns including fan-in, custom routing strategies (Broadcast, Round-Robin, Merge, Key-Based), subgraphs, and stateful nodes, see [GRAPH.md](GRAPH.md).
+
+### HTTP Graph Server Example
+
+StreamWeave enables building HTTP servers where all traffic flows through a graph. Requests are routed to different handlers based on path patterns, and responses flow back through the graph:
+
+```rust
+use streamweave::http_server::{
+    HttpGraphServer, HttpGraphServerConfig,
+    LongLivedHttpRequestProducer, HttpRequestProducerConfig,
+    HttpResponseCorrelationConsumer,
+    transformers::{PathBasedRouterTransformer, PathRouterConfig, RoutePattern},
+};
+use streamweave::graph::{GraphBuilder, ProducerNode, TransformerNode, ConsumerNode};
+use axum::{Router, routing::get};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create channel for HTTP requests
+    let (request_sender, request_receiver) = tokio::sync::mpsc::channel(100);
+    
+    // Create HTTP request producer (injects requests into graph)
+    let http_producer = LongLivedHttpRequestProducer::new(
+        request_receiver,
+        HttpRequestProducerConfig::default(),
+    );
+    
+    // Create path-based router (routes by URL path)
+    let router = PathBasedRouterTransformer::new(PathRouterConfig {
+        routes: vec![
+            RoutePattern {
+                pattern: "/api/rest/*".to_string(),
+                port: 0, // Route to REST handler
+            },
+            RoutePattern {
+                pattern: "/api/graphql".to_string(),
+                port: 1, // Route to GraphQL handler
+            },
+        ],
+        default_port: Some(2), // Default/404 handler
+    });
+    
+    // Create response correlation consumer (matches responses to requests)
+    let response_consumer = HttpResponseCorrelationConsumer::with_timeout(
+        std::time::Duration::from_secs(30),
+    );
+    
+    // Build the graph
+    let graph = GraphBuilder::new()
+        .add_node(
+            "http_producer".to_string(),
+            ProducerNode::from_producer("http_producer".to_string(), http_producer),
+        )?
+        .add_node(
+            "router".to_string(),
+            TransformerNode::from_transformer("router".to_string(), router),
+        )?
+        // Add your handler nodes here (REST, GraphQL, RPC, Static, etc.)
+        .add_node(
+            "response_consumer".to_string(),
+            ConsumerNode::from_consumer("response_consumer".to_string(), response_consumer),
+        )?
+        .connect_by_name("http_producer", "router")?
+        // Connect router outputs to your handlers
+        // Connect handler outputs to response_consumer
+        .build();
+    
+    // Create the HTTP Graph Server
+    let (server, _) = HttpGraphServer::new(
+        graph,
+        HttpGraphServerConfig::default(),
+    ).await?;
+    
+    // Start the graph executor
+    server.start().await?;
+    
+    // Create Axum handler
+    let handler = server.create_handler();
+    
+    // Build Axum router
+    let app = Router::new()
+        .route("/*path", get(handler));
+    
+    // Start Axum server
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
+    axum::serve(listener, app).await?;
+    
+    Ok(())
+}
+```
+
+The HTTP Graph Server:
+- Maintains a long-lived graph executor
+- Injects HTTP requests into the graph as `Message<HttpRequest>` items
+- Routes requests by path using `PathBasedRouterTransformer`
+- Correlates responses with requests using `request_id`
+- Handles request timeouts and errors gracefully
 
 ## 🧱 API Overview
 
@@ -386,6 +483,7 @@ StreamWeave includes comprehensive examples demonstrating all major features:
 - **[Redis Streams Integration](examples/redis_streams_integration/)** - XADD and XREAD operations with consumer groups
 - **[Database Integration](examples/database_integration/)** - Query PostgreSQL, MySQL, and SQLite with streaming results
 - **[HTTP Polling Integration](examples/http_poll_integration/)** - Poll HTTP endpoints with pagination, delta detection, and rate limiting
+- **[HTTP Graph Server](examples/http_graph_server/)** - Long-lived graph-based HTTP servers with path-based routing
 
 ### File Format Examples
 - **[File Formats](examples/file_formats/)** - CSV, JSONL, and Parquet read/write with streaming parsing

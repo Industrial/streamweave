@@ -56,3 +56,55 @@ where
     self
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_skip_transformer_new() {
+    let transformer = SkipTransformer::<i32>::new(5);
+    assert_eq!(transformer.skip, 5);
+  }
+
+  #[test]
+  fn test_skip_transformer_with_error_strategy() {
+    let transformer =
+      SkipTransformer::<i32>::new(3).with_error_strategy(ErrorStrategy::<i32>::Skip);
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_skip_transformer_with_name() {
+    let transformer = SkipTransformer::<i32>::new(3).with_name("test_skip".to_string());
+    assert_eq!(transformer.config.name, Some("test_skip".to_string()));
+  }
+
+  #[test]
+  fn test_skip_transformer_clone() {
+    let transformer1 = SkipTransformer::<i32>::new(10)
+      .with_error_strategy(ErrorStrategy::<i32>::Retry(5))
+      .with_name("test_skip".to_string());
+    let transformer2 = transformer1.clone();
+
+    assert_eq!(transformer1.skip, transformer2.skip);
+    assert_eq!(transformer1.config.name, transformer2.config.name);
+  }
+
+  #[test]
+  fn test_skip_transformer_chaining() {
+    let transformer = SkipTransformer::<i32>::new(10)
+      .with_error_strategy(ErrorStrategy::<i32>::Retry(3))
+      .with_name("chained_skip".to_string());
+
+    assert_eq!(transformer.skip, 10);
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Retry(3)
+    ));
+    assert_eq!(transformer.config.name, Some("chained_skip".to_string()));
+  }
+}

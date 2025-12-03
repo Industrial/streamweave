@@ -32,6 +32,8 @@ pub mod consumer;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 pub mod error;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+pub mod graph_server;
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 pub mod handler;
 /// Input types for HTTP server integration.
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
@@ -45,6 +47,8 @@ pub mod output;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 pub mod producer;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+pub mod transformers;
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 pub mod types;
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
@@ -55,6 +59,8 @@ pub use error::{
   map_to_http_error,
 };
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+pub use graph_server::{HttpGraphServer, HttpGraphServerConfig};
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 pub use handler::{create_pipeline_handler, create_simple_handler};
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 pub use middleware::{
@@ -63,4 +69,6 @@ pub use middleware::{
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 pub use producer::{HttpRequestProducer, HttpRequestProducerConfig};
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
-pub use types::{ContentType, HttpMethod, HttpRequest, HttpResponse};
+pub use transformers::{PathBasedRouterTransformer, PathRouterConfig, RoutePattern};
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+pub use types::{ContentType, HttpMethod, HttpRequest, HttpResponse, RequestIdExtension};

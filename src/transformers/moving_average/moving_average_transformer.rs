@@ -124,3 +124,122 @@ impl MovingAverageTransformer {
     self.window_size
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_moving_average_state_new() {
+    let state = MovingAverageState::new(5);
+    assert_eq!(state.window_size, 5);
+    assert!(state.window.is_empty());
+  }
+
+  #[test]
+  fn test_moving_average_state_add_value() {
+    let mut state = MovingAverageState::new(3);
+    state.add_value(10.0);
+    assert_eq!(state.window.len(), 1);
+    assert_eq!(state.window[0], 10.0);
+  }
+
+  #[test]
+  fn test_moving_average_state_add_value_overflow() {
+    let mut state = MovingAverageState::new(2);
+    state.add_value(1.0);
+    state.add_value(2.0);
+    state.add_value(3.0); // Should remove 1.0
+    assert_eq!(state.window.len(), 2);
+    assert_eq!(state.window[0], 2.0);
+    assert_eq!(state.window[1], 3.0);
+  }
+
+  #[test]
+  fn test_moving_average_state_average_empty() {
+    let state = MovingAverageState::new(3);
+    assert_eq!(state.average(), 0.0);
+  }
+
+  #[test]
+  fn test_moving_average_state_average_single() {
+    let mut state = MovingAverageState::new(3);
+    state.add_value(10.0);
+    assert_eq!(state.average(), 10.0);
+  }
+
+  #[test]
+  fn test_moving_average_state_average_multiple() {
+    let mut state = MovingAverageState::new(3);
+    state.add_value(10.0);
+    state.add_value(20.0);
+    state.add_value(30.0);
+    assert_eq!(state.average(), 20.0);
+  }
+
+  #[test]
+  fn test_moving_average_state_clone() {
+    let mut state1 = MovingAverageState::new(3);
+    state1.add_value(5.0);
+    state1.add_value(10.0);
+
+    let state2 = state1.clone();
+    assert_eq!(state1.window, state2.window);
+    assert_eq!(state1.window_size, state2.window_size);
+    assert_eq!(state1.average(), state2.average());
+  }
+
+  #[test]
+  fn test_moving_average_transformer_new() {
+    let transformer = MovingAverageTransformer::new(5);
+    assert_eq!(transformer.window_size(), 5);
+  }
+
+  #[test]
+  #[should_panic(expected = "Window size must be greater than 0")]
+  fn test_moving_average_transformer_new_zero_panics() {
+    let _ = MovingAverageTransformer::new(0);
+  }
+
+  #[test]
+  fn test_moving_average_transformer_with_name() {
+    let transformer = MovingAverageTransformer::new(3).with_name("test_moving_avg".to_string());
+    assert_eq!(transformer.config.name, Some("test_moving_avg".to_string()));
+  }
+
+  #[test]
+  fn test_moving_average_transformer_with_error_strategy() {
+    let transformer =
+      MovingAverageTransformer::new(3).with_error_strategy(ErrorStrategy::<f64>::Skip);
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_moving_average_transformer_clone() {
+    let transformer1 = MovingAverageTransformer::new(5);
+    let transformer2 = transformer1.clone();
+
+    assert_eq!(transformer1.window_size(), transformer2.window_size());
+    assert_eq!(transformer1.window_size, transformer2.window_size);
+  }
+
+  #[test]
+  fn test_moving_average_transformer_chaining() {
+    let transformer = MovingAverageTransformer::new(7)
+      .with_error_strategy(ErrorStrategy::<f64>::Retry(3))
+      .with_name("chained_moving_avg".to_string());
+
+    assert_eq!(transformer.window_size(), 7);
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Retry(3)
+    ));
+    assert_eq!(
+      transformer.config.name,
+      Some("chained_moving_avg".to_string())
+    );
+  }
+}

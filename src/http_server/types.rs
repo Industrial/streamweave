@@ -16,6 +16,13 @@ use serde::{Deserialize, Serialize};
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use std::collections::HashMap;
 
+/// Extension type for passing request ID through Axum request extensions.
+/// Used by HttpGraphServer to ensure request_id consistency between
+/// the handler and the producer.
+#[derive(Clone, Debug)]
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+pub struct RequestIdExtension(pub String);
+
 /// HTTP method enumeration for type-safe method handling.
 ///
 /// This wraps Axum's `Method` type and provides additional convenience methods.
@@ -163,6 +170,8 @@ impl ContentType {
 #[derive(Debug, Clone)]
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 pub struct HttpRequest {
+  /// Unique request ID for correlation with responses
+  pub request_id: String,
   /// HTTP method (GET, POST, etc.)
   pub method: HttpMethod,
   /// Request URI/path
@@ -228,7 +237,25 @@ impl HttpRequest {
       None
     };
 
+    // Generate a unique request ID
+    // Check if a request_id was provided in extensions (for graph server integration)
+    let request_id = axum_request
+      .extensions()
+      .get::<RequestIdExtension>()
+      .map(|ext| ext.0.clone())
+      .unwrap_or_else(|| {
+        // For now, use a simple counter-based ID. In production, consider using UUIDs.
+        format!(
+          "req-{}",
+          std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos()
+        )
+      });
+
     Self {
+      request_id,
       method,
       uri,
       path,
@@ -367,6 +394,8 @@ impl HttpRequest {
 #[derive(Debug, Clone)]
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 pub struct HttpResponse {
+  /// Request ID for correlation with the original request
+  pub request_id: String,
   /// HTTP status code
   pub status: StatusCode,
   /// Response headers
@@ -394,12 +423,37 @@ impl HttpResponse {
   /// );
   /// ```
   pub fn new(status: StatusCode, body: Vec<u8>, content_type: ContentType) -> Self {
+    Self::with_request_id(status, body, content_type, String::new())
+  }
+
+  /// Create a new HTTP response with the given status code, body, and request ID.
+  ///
+  /// ## Example
+  ///
+  /// ```rust,no_run
+  /// use streamweave::http_server::{HttpResponse, ContentType};
+  /// use axum::http::StatusCode;
+  ///
+  /// let response = HttpResponse::with_request_id(
+  ///     StatusCode::OK,
+  ///     b"Hello, world!".to_vec(),
+  ///     ContentType::Text,
+  ///     "req-123".to_string(),
+  /// );
+  /// ```
+  pub fn with_request_id(
+    status: StatusCode,
+    body: Vec<u8>,
+    content_type: ContentType,
+    request_id: String,
+  ) -> Self {
     let mut headers = HeaderMap::new();
     let content_type_value = HeaderValue::from_str(content_type.as_str())
       .unwrap_or_else(|_| HeaderValue::from_static("application/octet-stream"));
     headers.insert("content-type", content_type_value);
 
     Self {
+      request_id,
       status,
       headers,
       body,
@@ -423,8 +477,22 @@ impl HttpResponse {
   /// let response = HttpResponse::json(StatusCode::OK, &data).unwrap();
   /// ```
   pub fn json<T: Serialize>(status: StatusCode, value: &T) -> Result<Self, serde_json::Error> {
+    Self::json_with_request_id(status, value, String::new())
+  }
+
+  /// Create a JSON response from a serializable value with a request ID.
+  pub fn json_with_request_id<T: Serialize>(
+    status: StatusCode,
+    value: &T,
+    request_id: String,
+  ) -> Result<Self, serde_json::Error> {
     let body = serde_json::to_vec(value)?;
-    Ok(Self::new(status, body, ContentType::Json))
+    Ok(Self::with_request_id(
+      status,
+      body,
+      ContentType::Json,
+      request_id,
+    ))
   }
 
   /// Create a text response.
@@ -438,7 +506,17 @@ impl HttpResponse {
   /// let response = HttpResponse::text(StatusCode::OK, "Hello, world!");
   /// ```
   pub fn text(status: StatusCode, text: &str) -> Self {
-    Self::new(status, text.as_bytes().to_vec(), ContentType::Text)
+    Self::text_with_request_id(status, text, String::new())
+  }
+
+  /// Create a text response with a request ID.
+  pub fn text_with_request_id(status: StatusCode, text: &str, request_id: String) -> Self {
+    Self::with_request_id(
+      status,
+      text.as_bytes().to_vec(),
+      ContentType::Text,
+      request_id,
+    )
   }
 
   /// Create a binary response.
@@ -453,7 +531,12 @@ impl HttpResponse {
   /// let response = HttpResponse::binary(StatusCode::OK, data);
   /// ```
   pub fn binary(status: StatusCode, body: Vec<u8>) -> Self {
-    Self::new(status, body, ContentType::Binary)
+    Self::binary_with_request_id(status, body, String::new())
+  }
+
+  /// Create a binary response with a request ID.
+  pub fn binary_with_request_id(status: StatusCode, body: Vec<u8>, request_id: String) -> Self {
+    Self::with_request_id(status, body, ContentType::Binary, request_id)
   }
 
   /// Create an error response.
@@ -470,11 +553,17 @@ impl HttpResponse {
   /// );
   /// ```
   pub fn error(status: StatusCode, message: &str) -> Self {
+    Self::error_with_request_id(status, message, String::new())
+  }
+
+  /// Create an error response with a request ID.
+  pub fn error_with_request_id(status: StatusCode, message: &str, request_id: String) -> Self {
     let error_json = serde_json::json!({
         "error": message,
         "status": status.as_u16(),
     });
-    Self::json(status, &error_json).unwrap_or_else(|_| Self::text(status, message))
+    Self::json_with_request_id(status, &error_json, request_id)
+      .unwrap_or_else(|_| Self::text_with_request_id(status, message, String::new()))
   }
 
   /// Add a header to the response.

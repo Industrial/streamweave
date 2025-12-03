@@ -63,6 +63,35 @@ pub trait NodeTrait: Send + Sync {
   ///
   /// `Some(index)` if the port name exists, `None` otherwise.
   fn resolve_output_port(&self, port_name: &str) -> Option<usize>;
+
+  /// Spawns an execution task for this node if it supports execution.
+  ///
+  /// This method creates a task that will execute the node's logic (produce,
+  /// transform, or consume) and communicate with other nodes via channels.
+  ///
+  /// # Arguments
+  ///
+  /// * `input_channels` - Map of (port_index, receiver) for input ports
+  /// * `output_channels` - Map of (port_index, sender) for output ports
+  /// * `pause_signal` - Shared signal for pausing execution
+  ///
+  /// # Returns
+  ///
+  /// `Some(JoinHandle)` if the node supports execution, `None` otherwise.
+  /// The handle resolves when the node's execution completes.
+  ///
+  /// # Note
+  ///
+  /// Default implementation returns `None`. Concrete node types should
+  /// override this method to provide execution capability.
+  fn spawn_execution_task(
+    &self,
+    _input_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Receiver<Vec<u8>>>,
+    _output_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Sender<Vec<u8>>>,
+    _pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
+  ) -> Option<tokio::task::JoinHandle<Result<(), crate::graph::execution::ExecutionError>>> {
+    None
+  }
 }
 
 /// Represents the kind of a graph node.

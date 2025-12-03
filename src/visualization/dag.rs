@@ -489,4 +489,247 @@ mod tests {
     dag.add_edge(edge);
     assert_eq!(dag.edges().len(), 1);
   }
+
+  #[test]
+  fn test_node_kind_variants() {
+    assert_eq!(NodeKind::Producer, NodeKind::Producer);
+    assert_eq!(NodeKind::Transformer, NodeKind::Transformer);
+    assert_eq!(NodeKind::Consumer, NodeKind::Consumer);
+    assert_ne!(NodeKind::Producer, NodeKind::Transformer);
+    assert_ne!(NodeKind::Producer, NodeKind::Consumer);
+    assert_ne!(NodeKind::Transformer, NodeKind::Consumer);
+  }
+
+  #[test]
+  fn test_node_metadata_default() {
+    let metadata = NodeMetadata::default();
+    assert_eq!(metadata.component_type, "");
+    assert_eq!(metadata.name, None);
+    assert_eq!(metadata.input_type, None);
+    assert_eq!(metadata.output_type, None);
+    assert_eq!(metadata.error_strategy, "Stop");
+    assert!(metadata.custom.is_empty());
+  }
+
+  #[test]
+  fn test_node_metadata_with_custom() {
+    let mut custom = HashMap::new();
+    custom.insert("key1".to_string(), "value1".to_string());
+    custom.insert("key2".to_string(), "value2".to_string());
+
+    let metadata = NodeMetadata {
+      component_type: "TestComponent".to_string(),
+      name: Some("test".to_string()),
+      input_type: Some("i32".to_string()),
+      output_type: Some("String".to_string()),
+      error_strategy: "Skip".to_string(),
+      custom: custom.clone(),
+    };
+
+    assert_eq!(metadata.custom.len(), 2);
+    assert_eq!(metadata.custom.get("key1"), Some(&"value1".to_string()));
+    assert_eq!(metadata.custom.get("key2"), Some(&"value2".to_string()));
+  }
+
+  #[test]
+  fn test_dag_edge_with_none_label() {
+    let edge = DagEdge::new("node_1".to_string(), "node_2".to_string(), None);
+    assert_eq!(edge.from, "node_1");
+    assert_eq!(edge.to, "node_2");
+    assert_eq!(edge.label, None);
+  }
+
+  #[test]
+  fn test_pipeline_dag_default() {
+    let dag = PipelineDag::default();
+    assert!(dag.nodes.is_empty());
+    assert!(dag.edges.is_empty());
+    assert!(dag.metadata.is_empty());
+  }
+
+  #[test]
+  fn test_pipeline_dag_nodes() {
+    let mut dag = PipelineDag::new();
+    let node1 = DagNode::new(
+      "node_1".to_string(),
+      NodeKind::Producer,
+      NodeMetadata::default(),
+    );
+    let node2 = DagNode::new(
+      "node_2".to_string(),
+      NodeKind::Transformer,
+      NodeMetadata::default(),
+    );
+    dag.add_node(node1);
+    dag.add_node(node2);
+
+    let nodes = dag.nodes();
+    assert_eq!(nodes.len(), 2);
+    assert_eq!(nodes[0].id, "node_1");
+    assert_eq!(nodes[1].id, "node_2");
+  }
+
+  #[test]
+  fn test_pipeline_dag_edges() {
+    let mut dag = PipelineDag::new();
+    let edge1 = DagEdge::new("node_1".to_string(), "node_2".to_string(), None);
+    let edge2 = DagEdge::new(
+      "node_2".to_string(),
+      "node_3".to_string(),
+      Some("i32".to_string()),
+    );
+    dag.add_edge(edge1);
+    dag.add_edge(edge2);
+
+    let edges = dag.edges();
+    assert_eq!(edges.len(), 2);
+    assert_eq!(edges[0].from, "node_1");
+    assert_eq!(edges[1].label, Some("i32".to_string()));
+  }
+
+  #[test]
+  fn test_format_type_name() {
+    assert_eq!(format_type_name("i32"), "i32");
+    assert_eq!(format_type_name("std::vec::Vec<i32>"), "Vec<i32>");
+    assert_eq!(
+      format_type_name("streamweave::producers::ArrayProducer"),
+      "ArrayProducer"
+    );
+    assert_eq!(format_type_name(""), "");
+  }
+
+  #[test]
+  fn test_format_error_strategy() {
+    use crate::error::ErrorStrategy;
+
+    assert_eq!(format_error_strategy(&ErrorStrategy::<i32>::Stop), "Stop");
+    assert_eq!(format_error_strategy(&ErrorStrategy::<i32>::Skip), "Skip");
+    assert_eq!(
+      format_error_strategy(&ErrorStrategy::<i32>::Retry(5)),
+      "Retry(5)"
+    );
+    assert_eq!(
+      format_error_strategy(&ErrorStrategy::<i32>::new_custom(|_| {
+        crate::error::ErrorAction::Skip
+      })),
+      "Custom"
+    );
+  }
+
+  #[test]
+  fn test_dag_node_transformer() {
+    let metadata = NodeMetadata {
+      component_type: "MapTransformer".to_string(),
+      name: Some("mapper".to_string()),
+      input_type: Some("i32".to_string()),
+      output_type: Some("i32".to_string()),
+      error_strategy: "Retry(3)".to_string(),
+      custom: HashMap::new(),
+    };
+
+    let node = DagNode::new("transformer_1".to_string(), NodeKind::Transformer, metadata);
+    assert_eq!(node.kind, NodeKind::Transformer);
+  }
+
+  #[test]
+  fn test_dag_node_consumer() {
+    let metadata = NodeMetadata {
+      component_type: "VecConsumer".to_string(),
+      name: Some("collector".to_string()),
+      input_type: Some("i32".to_string()),
+      output_type: None,
+      error_strategy: "Skip".to_string(),
+      custom: HashMap::new(),
+    };
+
+    let node = DagNode::new("consumer_1".to_string(), NodeKind::Consumer, metadata);
+    assert_eq!(node.kind, NodeKind::Consumer);
+  }
+
+  #[test]
+  fn test_pipeline_dag_multiple_nodes_and_edges() {
+    let mut dag = PipelineDag::new();
+
+    // Add multiple nodes
+    dag.add_node(DagNode::new(
+      "producer".to_string(),
+      NodeKind::Producer,
+      NodeMetadata::default(),
+    ));
+    dag.add_node(DagNode::new(
+      "transformer1".to_string(),
+      NodeKind::Transformer,
+      NodeMetadata::default(),
+    ));
+    dag.add_node(DagNode::new(
+      "transformer2".to_string(),
+      NodeKind::Transformer,
+      NodeMetadata::default(),
+    ));
+    dag.add_node(DagNode::new(
+      "consumer".to_string(),
+      NodeKind::Consumer,
+      NodeMetadata::default(),
+    ));
+
+    // Add multiple edges
+    dag.add_edge(DagEdge::new(
+      "producer".to_string(),
+      "transformer1".to_string(),
+      None,
+    ));
+    dag.add_edge(DagEdge::new(
+      "transformer1".to_string(),
+      "transformer2".to_string(),
+      Some("i32".to_string()),
+    ));
+    dag.add_edge(DagEdge::new(
+      "transformer2".to_string(),
+      "consumer".to_string(),
+      None,
+    ));
+
+    assert_eq!(dag.nodes().len(), 4);
+    assert_eq!(dag.edges().len(), 3);
+  }
+
+  #[test]
+  fn test_node_metadata_clone() {
+    let mut custom = HashMap::new();
+    custom.insert("test".to_string(), "value".to_string());
+
+    let metadata1 = NodeMetadata {
+      component_type: "Test".to_string(),
+      name: Some("test".to_string()),
+      input_type: Some("i32".to_string()),
+      output_type: Some("String".to_string()),
+      error_strategy: "Stop".to_string(),
+      custom: custom.clone(),
+    };
+
+    let metadata2 = metadata1.clone();
+    assert_eq!(metadata1, metadata2);
+  }
+
+  #[test]
+  fn test_dag_edge_clone() {
+    let edge1 = DagEdge::new(
+      "node_1".to_string(),
+      "node_2".to_string(),
+      Some("i32".to_string()),
+    );
+    let edge2 = edge1.clone();
+    assert_eq!(edge1, edge2);
+  }
+
+  #[test]
+  fn test_dag_node_clone() {
+    let node1 = DagNode::new(
+      "node_1".to_string(),
+      NodeKind::Producer,
+      NodeMetadata::default(),
+    );
+    let node2 = node1.clone();
+    assert_eq!(node1, node2);
+  }
 }

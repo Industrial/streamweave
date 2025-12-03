@@ -50,3 +50,55 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> TakeTransformer<T> {
     self
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_take_transformer_new() {
+    let transformer = TakeTransformer::<i32>::new(5);
+    assert_eq!(transformer.take, 5);
+  }
+
+  #[test]
+  fn test_take_transformer_with_error_strategy() {
+    let transformer =
+      TakeTransformer::<i32>::new(3).with_error_strategy(ErrorStrategy::<i32>::Skip);
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_take_transformer_with_name() {
+    let transformer = TakeTransformer::<i32>::new(3).with_name("test_take".to_string());
+    assert_eq!(transformer.config.name, Some("test_take".to_string()));
+  }
+
+  #[test]
+  fn test_take_transformer_clone() {
+    let transformer1 = TakeTransformer::<i32>::new(10)
+      .with_error_strategy(ErrorStrategy::<i32>::Retry(5))
+      .with_name("test_take".to_string());
+    let transformer2 = transformer1.clone();
+
+    assert_eq!(transformer1.take, transformer2.take);
+    assert_eq!(transformer1.config.name, transformer2.config.name);
+  }
+
+  #[test]
+  fn test_take_transformer_chaining() {
+    let transformer = TakeTransformer::<i32>::new(10)
+      .with_error_strategy(ErrorStrategy::<i32>::Retry(3))
+      .with_name("chained_take".to_string());
+
+    assert_eq!(transformer.take, 10);
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Retry(3)
+    ));
+    assert_eq!(transformer.config.name, Some("chained_take".to_string()));
+  }
+}

@@ -98,3 +98,108 @@ where
     }
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::error::{ErrorStrategy, StreamError};
+
+  #[test]
+  fn test_rate_limit_transformer_new() {
+    let transformer = RateLimitTransformer::<i32>::new(10, Duration::from_secs(1));
+    assert_eq!(transformer.rate_limit, 10);
+    assert_eq!(transformer.time_window, Duration::from_secs(1));
+    assert_eq!(transformer.count.load(Ordering::Relaxed), 0);
+  }
+
+  #[test]
+  fn test_rate_limit_transformer_with_error_strategy() {
+    let transformer = RateLimitTransformer::<i32>::new(5, Duration::from_secs(1))
+      .with_error_strategy(ErrorStrategy::<i32>::Skip);
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_rate_limit_transformer_with_name() {
+    let transformer = RateLimitTransformer::<i32>::new(5, Duration::from_secs(1))
+      .with_name("test_rate_limit".to_string());
+    assert_eq!(transformer.config.name, Some("test_rate_limit".to_string()));
+  }
+
+  #[tokio::test]
+  async fn test_check_rate_limit_within_limit() {
+    let transformer = RateLimitTransformer::<i32>::new(5, Duration::from_secs(1));
+    let result = transformer._check_rate_limit().await;
+    assert!(result.is_ok());
+    assert_eq!(transformer.count.load(Ordering::Relaxed), 1);
+  }
+
+  #[tokio::test]
+  async fn test_check_rate_limit_exceeded() {
+    let transformer = RateLimitTransformer::<i32>::new(2, Duration::from_secs(1));
+
+    // First two should succeed
+    assert!(transformer._check_rate_limit().await.is_ok());
+    assert!(transformer._check_rate_limit().await.is_ok());
+
+    // Third should fail
+    let result = transformer._check_rate_limit().await;
+    assert!(result.is_err());
+    let _: StreamError<i32> = result.unwrap_err();
+  }
+
+  #[tokio::test]
+  async fn test_check_rate_limit_window_reset() {
+    let transformer = RateLimitTransformer::<i32>::new(2, Duration::from_millis(100));
+
+    // Use up the limit
+    assert!(transformer._check_rate_limit().await.is_ok());
+    assert!(transformer._check_rate_limit().await.is_ok());
+    assert!(transformer._check_rate_limit().await.is_err());
+
+    // Wait for window to reset
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    // Should work again after window reset
+    let result = transformer._check_rate_limit().await;
+    assert!(result.is_ok());
+  }
+
+  #[tokio::test]
+  async fn test_check_rate_limit_multiple_windows() {
+    let transformer = RateLimitTransformer::<i32>::new(3, Duration::from_millis(50));
+
+    // First window
+    assert!(transformer._check_rate_limit().await.is_ok());
+    assert!(transformer._check_rate_limit().await.is_ok());
+    assert!(transformer._check_rate_limit().await.is_ok());
+    assert!(transformer._check_rate_limit().await.is_err());
+
+    // Wait for window reset
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    // Second window
+    assert!(transformer._check_rate_limit().await.is_ok());
+    assert!(transformer._check_rate_limit().await.is_ok());
+    assert!(transformer._check_rate_limit().await.is_ok());
+    assert!(transformer._check_rate_limit().await.is_err());
+  }
+
+  #[tokio::test]
+  async fn test_check_rate_limit_error_context() {
+    let transformer = RateLimitTransformer::<i32>::new(1, Duration::from_secs(1));
+
+    // Use the limit
+    assert!(transformer._check_rate_limit().await.is_ok());
+
+    // This should fail and create an error
+    let result = transformer._check_rate_limit().await;
+    assert!(result.is_err());
+    let error = result.unwrap_err();
+    assert!(!error.component.name.is_empty());
+    assert!(!error.component.type_name.is_empty());
+  }
+}

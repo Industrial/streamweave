@@ -57,3 +57,49 @@ where
     self
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_partition_transformer_new() {
+    let transformer = PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0);
+    // Test that it can be created
+    assert!((transformer.predicate)(&1));
+    assert!(!(transformer.predicate)(&-1));
+  }
+
+  #[test]
+  fn test_partition_transformer_with_error_strategy() {
+    let transformer = PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0)
+      .with_error_strategy(ErrorStrategy::<i32>::Skip);
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_partition_transformer_with_name() {
+    let transformer =
+      PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0).with_name("test_partition".to_string());
+    assert_eq!(transformer.config.name, Some("test_partition".to_string()));
+  }
+
+  #[test]
+  fn test_partition_transformer_chaining() {
+    let transformer = PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0)
+      .with_error_strategy(ErrorStrategy::<i32>::Retry(3))
+      .with_name("chained_partition".to_string());
+
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Retry(3)
+    ));
+    assert_eq!(
+      transformer.config.name,
+      Some("chained_partition".to_string())
+    );
+  }
+}

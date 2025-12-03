@@ -199,5 +199,44 @@ mod tests {
       prop_assert!(config.double_quote);
       prop_assert!(!config.flush_on_write);
     }
+
+    #[test]
+    fn test_csv_write_config_with_headers(
+      write_headers in prop::bool::ANY
+    ) {
+      let config = CsvWriteConfig::default().with_headers(write_headers);
+      prop_assert_eq!(config.write_headers, write_headers);
+    }
+
+    #[test]
+    fn test_csv_write_config_with_delimiter(
+      delimiter in prop::num::u8::ANY
+    ) {
+      let config = CsvWriteConfig::default().with_delimiter(delimiter);
+      prop_assert_eq!(config.delimiter, delimiter);
+    }
+
+    #[test]
+    fn test_csv_write_config_with_flush_on_write(
+      flush in prop::bool::ANY
+    ) {
+      let config = CsvWriteConfig::default().with_flush_on_write(flush);
+      prop_assert_eq!(config.flush_on_write, flush);
+    }
+
+    #[test]
+    fn test_csv_write_config_chaining(
+      write_headers in prop::bool::ANY,
+      delimiter in prop::num::u8::ANY,
+      flush in prop::bool::ANY
+    ) {
+      let config = CsvWriteConfig::default()
+        .with_headers(write_headers)
+        .with_delimiter(delimiter)
+        .with_flush_on_write(flush);
+      prop_assert_eq!(config.write_headers, write_headers);
+      prop_assert_eq!(config.delimiter, delimiter);
+      prop_assert_eq!(config.flush_on_write, flush);
+    }
   }
 }

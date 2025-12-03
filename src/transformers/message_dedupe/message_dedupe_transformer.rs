@@ -435,4 +435,71 @@ mod tests {
 
     assert_eq!(deduper.duplicates_filtered(), 2);
   }
+
+  #[test]
+  fn test_with_error_strategy() {
+    let deduper = MessageDedupeTransformer::<i32>::new()
+      .with_error_strategy(ErrorStrategy::<Message<i32>>::Skip);
+    assert!(matches!(deduper.config.error_strategy, ErrorStrategy::Skip));
+  }
+
+  #[test]
+  fn test_with_name_string() {
+    let deduper = MessageDedupeTransformer::<i32>::new().with_name("my-deduper");
+    assert_eq!(deduper.config.name, Some("my-deduper".to_string()));
+  }
+
+  #[test]
+  fn test_with_name_impl_into() {
+    let deduper = MessageDedupeTransformer::<i32>::new().with_name(String::from("deduper"));
+    assert_eq!(deduper.config.name, Some("deduper".to_string()));
+  }
+
+  #[test]
+  fn test_window_getter() {
+    let deduper =
+      MessageDedupeTransformer::<i32>::new().with_window(DeduplicationWindow::Count(100));
+    match deduper.window() {
+      DeduplicationWindow::Count(100) => {}
+      _ => panic!("Expected Count(100)"),
+    }
+  }
+
+  #[test]
+  fn test_default_impl() {
+    let deduper = MessageDedupeTransformer::<i32>::default();
+    assert_eq!(deduper.cache_size(), 0);
+    match deduper.window() {
+      DeduplicationWindow::Count(10000) => {}
+      _ => panic!("Expected default Count(10000)"),
+    }
+  }
+
+  #[test]
+  fn test_deduplication_window_default() {
+    let window = DeduplicationWindow::default();
+    match window {
+      DeduplicationWindow::Count(10000) => {}
+      _ => panic!("Expected default Count(10000)"),
+    }
+  }
+
+  #[test]
+  fn test_cache_entry_partial_eq() {
+    let entry1 = CacheEntry {
+      id: MessageId::new_sequence(1),
+      seen_at: Instant::now(),
+    };
+    let entry2 = CacheEntry {
+      id: MessageId::new_sequence(1),
+      seen_at: Instant::now(),
+    };
+    let entry3 = CacheEntry {
+      id: MessageId::new_sequence(2),
+      seen_at: Instant::now(),
+    };
+
+    assert_eq!(entry1, entry2);
+    assert_ne!(entry1, entry3);
+  }
 }

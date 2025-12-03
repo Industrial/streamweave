@@ -196,4 +196,124 @@ mod tests {
       rt.block_on(test_error_handling_strategies_async(name));
     }
   }
+
+  #[tokio::test]
+  async fn test_set_config_impl() {
+    let mut consumer = ConsoleConsumer::<i32>::new();
+    let new_config = ConsumerConfig::<i32> {
+      name: "test_consumer".to_string(),
+      error_strategy: ErrorStrategy::<i32>::Retry(5),
+    };
+
+    consumer.set_config_impl(new_config.clone());
+    assert_eq!(consumer.get_config_impl().name, new_config.name);
+    assert_eq!(
+      consumer.get_config_impl().error_strategy,
+      new_config.error_strategy
+    );
+  }
+
+  #[tokio::test]
+  async fn test_get_config_mut_impl() {
+    let mut consumer = ConsoleConsumer::<i32>::new();
+    let config_mut = consumer.get_config_mut_impl();
+    config_mut.name = "mutated_name".to_string();
+    assert_eq!(consumer.get_config_impl().name, "mutated_name");
+  }
+
+  #[tokio::test]
+  async fn test_handle_error_stop() {
+    let consumer = ConsoleConsumer::<i32>::new().with_error_strategy(ErrorStrategy::<i32>::Stop);
+    let error = StreamError::new(
+      Box::new(std::io::Error::other("test error")),
+      ErrorContext::default(),
+      ComponentInfo::default(),
+    );
+    assert_eq!(consumer.handle_error(&error), ErrorAction::Stop);
+  }
+
+  #[tokio::test]
+  async fn test_handle_error_skip() {
+    let consumer = ConsoleConsumer::<i32>::new().with_error_strategy(ErrorStrategy::<i32>::Skip);
+    let error = StreamError::new(
+      Box::new(std::io::Error::other("test error")),
+      ErrorContext::default(),
+      ComponentInfo::default(),
+    );
+    assert_eq!(consumer.handle_error(&error), ErrorAction::Skip);
+  }
+
+  #[tokio::test]
+  async fn test_handle_error_retry_within_limit() {
+    let consumer =
+      ConsoleConsumer::<i32>::new().with_error_strategy(ErrorStrategy::<i32>::Retry(5));
+    let mut error = StreamError::new(
+      Box::new(std::io::Error::other("test error")),
+      ErrorContext::default(),
+      ComponentInfo::default(),
+    );
+    error.retries = 3;
+    assert_eq!(consumer.handle_error(&error), ErrorAction::Retry);
+  }
+
+  #[tokio::test]
+  async fn test_handle_error_retry_exceeds_limit() {
+    let consumer =
+      ConsoleConsumer::<i32>::new().with_error_strategy(ErrorStrategy::<i32>::Retry(5));
+    let mut error = StreamError::new(
+      Box::new(std::io::Error::other("test error")),
+      ErrorContext::default(),
+      ComponentInfo::default(),
+    );
+    error.retries = 5;
+    assert_eq!(consumer.handle_error(&error), ErrorAction::Stop);
+  }
+
+  #[tokio::test]
+  async fn test_create_error_context() {
+    let consumer = ConsoleConsumer::<i32>::new().with_name("test_consumer".to_string());
+    let context = consumer.create_error_context(Some(42));
+    assert_eq!(context.item, Some(42));
+    assert_eq!(context.component_name, "test_consumer");
+    assert!(context.timestamp <= chrono::Utc::now());
+  }
+
+  #[tokio::test]
+  async fn test_create_error_context_no_item() {
+    let consumer = ConsoleConsumer::<i32>::new().with_name("test_consumer".to_string());
+    let context = consumer.create_error_context(None);
+    assert_eq!(context.item, None);
+    assert_eq!(context.component_name, "test_consumer");
+  }
+
+  #[tokio::test]
+  async fn test_component_info() {
+    let consumer = ConsoleConsumer::<i32>::new().with_name("test_consumer".to_string());
+    let info = consumer.component_info();
+    assert_eq!(info.name, "test_consumer");
+    assert_eq!(
+      info.type_name,
+      std::any::type_name::<ConsoleConsumer<i32>>()
+    );
+  }
+
+  #[tokio::test]
+  async fn test_component_info_default_name() {
+    let consumer = ConsoleConsumer::<i32>::new();
+    let info = consumer.component_info();
+    assert_eq!(info.name, "");
+    assert_eq!(
+      info.type_name,
+      std::any::type_name::<ConsoleConsumer<i32>>()
+    );
+  }
+
+  #[tokio::test]
+  async fn test_consume_empty_stream() {
+    let mut consumer = ConsoleConsumer::<i32>::new();
+    let input = stream::iter(Vec::<i32>::new());
+    let boxed_input = Box::pin(input);
+    consumer.consume(boxed_input).await;
+    // Should complete without error
+  }
 }

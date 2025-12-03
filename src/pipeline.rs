@@ -1099,4 +1099,20 @@ mod tests {
     let ((), consumer) = pipeline.run().await.unwrap();
     assert_eq!(consumer.items, vec![2, 4, 6]);
   }
+
+  #[tokio::test]
+  async fn test_pipeline_with_error_strategy_on_pipeline() {
+    let producer = NumberProducer::new(vec![1, 2, 3]);
+    let transformer = DoubleTransformer::new();
+    let consumer = CollectConsumer::new();
+
+    let pipeline = PipelineBuilder::new()
+      .producer(producer)
+      .transformer(transformer)
+      .consumer(consumer)
+      .with_error_strategy(ErrorStrategy::Skip);
+
+    let ((), consumer) = pipeline.run().await.unwrap();
+    assert_eq!(consumer.items, vec![2, 4, 6]);
+  }
 }

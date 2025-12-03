@@ -216,6 +216,7 @@ where
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
       ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      ErrorStrategy::Custom(ref handler) => handler(error),
       _ => ErrorAction::Stop,
     }
   }
@@ -471,5 +472,192 @@ mod tests {
     let stream = producer.produce();
     let result: Vec<String> = stream.collect().await;
     assert_eq!(result, vec!["hello".to_string(), "world".to_string()]);
+  }
+
+  #[test]
+  fn test_producer_config_default() {
+    let config = ProducerConfig::<i32>::default();
+    assert!(matches!(config.error_strategy(), ErrorStrategy::Stop));
+    assert_eq!(config.name(), None);
+  }
+
+  #[test]
+  fn test_producer_config_with_error_strategy() {
+    let config = ProducerConfig::<i32>::default().with_error_strategy(ErrorStrategy::<i32>::Skip);
+    assert!(matches!(config.error_strategy(), ErrorStrategy::Skip));
+
+    let config =
+      ProducerConfig::<i32>::default().with_error_strategy(ErrorStrategy::<i32>::Retry(5));
+    assert!(matches!(config.error_strategy(), ErrorStrategy::Retry(5)));
+  }
+
+  #[test]
+  fn test_producer_config_with_name() {
+    let config = ProducerConfig::<i32>::default().with_name("test_producer".to_string());
+    assert_eq!(config.name(), Some("test_producer".to_string()));
+  }
+
+  #[test]
+  fn test_producer_config_error_strategy() {
+    let config = ProducerConfig::<i32>::default().with_error_strategy(ErrorStrategy::<i32>::Skip);
+    let strategy = config.error_strategy();
+    assert!(matches!(strategy, ErrorStrategy::Skip));
+  }
+
+  #[test]
+  fn test_producer_config_name() {
+    let config = ProducerConfig::<i32>::default().with_name("test_name".to_string());
+    assert_eq!(config.name(), Some("test_name".to_string()));
+
+    let config = ProducerConfig::<i32>::default();
+    assert_eq!(config.name(), None);
+  }
+
+  #[test]
+  fn test_producer_handle_error_custom() {
+    let producer =
+      TestProducer::new(vec![1, 2, 3]).with_config(ProducerConfig::default().with_error_strategy(
+        ErrorStrategy::<i32>::new_custom(|error: &StreamError<i32>| {
+          if error.retries < 2 {
+            ErrorAction::Retry
+          } else {
+            ErrorAction::Skip
+          }
+        }),
+      ));
+
+    let error = StreamError {
+      source: Box::new(TestError("test error".to_string())),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "TestProducer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "TestProducer".to_string(),
+      },
+      retries: 1,
+    };
+
+    assert!(matches!(producer.handle_error(&error), ErrorAction::Retry));
+
+    let error_exhausted = StreamError {
+      source: Box::new(TestError("test error".to_string())),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "TestProducer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "TestProducer".to_string(),
+      },
+      retries: 2,
+    };
+
+    assert!(matches!(
+      producer.handle_error(&error_exhausted),
+      ErrorAction::Skip
+    ));
+  }
+
+  #[test]
+  fn test_producer_handle_error_retry_exhausted() {
+    let producer = TestProducer::new(vec![1, 2, 3])
+      .with_config(ProducerConfig::default().with_error_strategy(ErrorStrategy::<i32>::Retry(3)));
+
+    let error = StreamError {
+      source: Box::new(TestError("test error".to_string())),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "TestProducer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "TestProducer".to_string(),
+      },
+      retries: 3,
+    };
+
+    assert!(matches!(producer.handle_error(&error), ErrorAction::Stop));
+  }
+
+  #[test]
+  fn test_producer_create_error_context_with_none() {
+    let producer = TestProducer::new(vec![1, 2, 3]).with_name("test_producer".to_string());
+
+    let context = producer.create_error_context(None);
+    assert_eq!(context.component_name, "test_producer");
+    assert_eq!(
+      context.component_type,
+      "streamweave::producer::tests::TestProducer<i32>"
+    );
+    assert_eq!(context.item, None);
+  }
+
+  #[test]
+  fn test_producer_component_info_default_name() {
+    let producer = TestProducer::new(vec![1, 2, 3]);
+
+    let info = producer.component_info();
+    assert_eq!(info.name, "producer");
+    assert_eq!(
+      info.type_name,
+      "streamweave::producer::tests::TestProducer<i32>"
+    );
+  }
+
+  #[test]
+  fn test_producer_with_config() {
+    let producer1 = TestProducer::new(vec![1, 2, 3]);
+    let config = ProducerConfig::default()
+      .with_name("new_name".to_string())
+      .with_error_strategy(ErrorStrategy::<i32>::Skip);
+
+    let producer2 = producer1.with_config(config);
+    assert_eq!(producer2.config().name(), Some("new_name".to_string()));
+    assert!(matches!(
+      producer2.config().error_strategy(),
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_producer_set_config() {
+    let mut producer = TestProducer::new(vec![1, 2, 3]);
+    let config = ProducerConfig::default()
+      .with_name("set_name".to_string())
+      .with_error_strategy(ErrorStrategy::<i32>::Retry(5));
+
+    producer.set_config(config);
+    assert_eq!(producer.config().name(), Some("set_name".to_string()));
+    assert!(matches!(
+      producer.config().error_strategy(),
+      ErrorStrategy::Retry(5)
+    ));
+  }
+
+  #[test]
+  fn test_producer_config_clone() {
+    let config1 = ProducerConfig::default()
+      .with_name("test".to_string())
+      .with_error_strategy(ErrorStrategy::<i32>::Skip);
+    let config2 = config1.clone();
+
+    assert_eq!(config1.name(), config2.name());
+    assert!(matches!(config1.error_strategy(), ErrorStrategy::Skip));
+    assert!(matches!(config2.error_strategy(), ErrorStrategy::Skip));
+  }
+
+  #[test]
+  fn test_producer_config_debug() {
+    let config = ProducerConfig::<i32>::default().with_name("test".to_string());
+    let debug_str = format!("{:?}", config);
+    assert!(!debug_str.is_empty());
   }
 }

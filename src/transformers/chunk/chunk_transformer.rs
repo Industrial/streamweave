@@ -54,3 +54,44 @@ where
     self
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_chunk_transformer_new() {
+    let transformer = ChunkTransformer::<i32>::new(5);
+    assert_eq!(transformer.size, 5);
+  }
+
+  #[test]
+  fn test_chunk_transformer_with_error_strategy() {
+    let transformer =
+      ChunkTransformer::<i32>::new(3).with_error_strategy(ErrorStrategy::<i32>::Skip);
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_chunk_transformer_with_name() {
+    let transformer = ChunkTransformer::<i32>::new(3).with_name("test_chunk".to_string());
+    assert_eq!(transformer.config.name, Some("test_chunk".to_string()));
+  }
+
+  #[test]
+  fn test_chunk_transformer_chaining() {
+    let transformer = ChunkTransformer::<i32>::new(10)
+      .with_error_strategy(ErrorStrategy::<i32>::Retry(3))
+      .with_name("chained_chunk".to_string());
+
+    assert_eq!(transformer.size, 10);
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Retry(3)
+    ));
+    assert_eq!(transformer.config.name, Some("chained_chunk".to_string()));
+  }
+}

@@ -9,6 +9,8 @@ use crate::http_server::consumer::HttpResponseConsumer;
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use crate::http_server::error::{is_development_mode, map_to_http_error};
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+use crate::http_server::graph_server::HttpGraphServer;
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use crate::http_server::producer::{HttpRequestProducer, HttpRequestProducerConfig};
 #[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
 use crate::http_server::types::{HttpRequest, HttpResponse};
@@ -258,4 +260,55 @@ where
         .to_axum_response()
     }
   }
+}
+
+/// Creates a handler function for use with HttpGraphServer.
+///
+/// This function creates an Axum handler that processes requests through
+/// a long-lived graph server.
+///
+/// ## Example
+///
+/// ```rust,no_run
+/// use streamweave::http_server::{HttpGraphServer, HttpGraphServerConfig};
+/// use streamweave::http_server::create_graph_handler;
+/// use streamweave::graph::graph::GraphBuilder;
+/// use axum::{Router, routing::get};
+///
+/// // Build your graph...
+/// let graph = GraphBuilder::new().build();
+///
+/// // Create the graph server
+/// let (server, request_receiver) = HttpGraphServer::new(
+///     graph,
+///     HttpGraphServerConfig::default()
+/// ).await?;
+///
+/// // Start the server
+/// server.start().await?;
+///
+/// // Create the handler
+/// let handler = create_graph_handler(server);
+///
+/// // Use with Axum
+/// let app = Router::new()
+///     .route("/api/*", get(handler));
+/// ```
+///
+/// ## Arguments
+///
+/// * `server` - The HttpGraphServer instance
+///
+/// ## Returns
+///
+/// An Axum handler function
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+pub fn create_graph_handler(
+  server: HttpGraphServer,
+) -> impl Fn(Request) -> std::pin::Pin<Box<dyn std::future::Future<Output = Response<Body>> + Send>>
++ Send
++ Sync
++ Clone
++ 'static {
+  server.create_handler()
 }

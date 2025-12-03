@@ -340,4 +340,313 @@ mod tests {
       rt.block_on(test_csv_roundtrip_async(records));
     }
   }
+
+  #[test]
+  fn test_set_config_impl() {
+    let mut consumer = CsvConsumer::<TestRecord>::new("test.csv");
+    let new_config = ConsumerConfig {
+      name: "new_name".to_string(),
+      error_strategy: ErrorStrategy::<TestRecord>::Skip,
+    };
+
+    consumer.set_config_impl(new_config.clone());
+
+    let retrieved_config = consumer.get_config_impl();
+    assert_eq!(retrieved_config.name, "new_name");
+    assert!(matches!(
+      retrieved_config.error_strategy,
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_get_config_mut_impl() {
+    let mut consumer = CsvConsumer::<TestRecord>::new("test.csv");
+    let config_mut = consumer.get_config_mut_impl();
+    config_mut.name = "mutated_name".to_string();
+    config_mut.error_strategy = ErrorStrategy::<TestRecord>::Retry(5);
+
+    let config = consumer.get_config_impl();
+    assert_eq!(config.name, "mutated_name");
+    assert!(matches!(config.error_strategy, ErrorStrategy::Retry(5)));
+  }
+
+  #[test]
+  fn test_component_info_default_name() {
+    let consumer = CsvConsumer::<TestRecord>::new("test.csv");
+    let info = consumer.component_info();
+    // ConsumerConfig defaults to empty string, so component_info will return empty string
+    // But in consume(), it checks if name.is_empty() and uses "csv_consumer" as default
+    assert_eq!(info.name, "");
+    assert_eq!(
+      info.type_name,
+      std::any::type_name::<CsvConsumer<TestRecord>>()
+    );
+  }
+
+  #[tokio::test]
+  async fn test_consume_with_stop_error_strategy() {
+    let file = NamedTempFile::new().unwrap();
+    let path = file.path().to_str().unwrap().to_string();
+
+    let mut consumer =
+      CsvConsumer::<TestRecord>::new(&path).with_error_strategy(ErrorStrategy::<TestRecord>::Stop);
+
+    let input_stream = Box::pin(stream::iter(vec![TestRecord {
+      name: "test".to_string(),
+      age: 30,
+    }]));
+    consumer.consume(input_stream).await;
+
+    // The file should be created and written to
+    let content = std::fs::read_to_string(&path).unwrap();
+    assert!(!content.is_empty());
+    drop(file);
+  }
+
+  #[tokio::test]
+  async fn test_consume_with_skip_error_strategy() {
+    let file = NamedTempFile::new().unwrap();
+    let path = file.path().to_str().unwrap().to_string();
+
+    let mut consumer =
+      CsvConsumer::<TestRecord>::new(&path).with_error_strategy(ErrorStrategy::<TestRecord>::Skip);
+
+    let input_stream = Box::pin(stream::iter(vec![TestRecord {
+      name: "test".to_string(),
+      age: 30,
+    }]));
+    consumer.consume(input_stream).await;
+
+    let content = std::fs::read_to_string(&path).unwrap();
+    assert!(!content.is_empty());
+    drop(file);
+  }
+
+  #[tokio::test]
+  async fn test_consume_with_retry_error_strategy() {
+    let file = NamedTempFile::new().unwrap();
+    let path = file.path().to_str().unwrap().to_string();
+
+    let mut consumer = CsvConsumer::<TestRecord>::new(&path)
+      .with_error_strategy(ErrorStrategy::<TestRecord>::Retry(3));
+
+    let input_stream = Box::pin(stream::iter(vec![TestRecord {
+      name: "test".to_string(),
+      age: 30,
+    }]));
+    consumer.consume(input_stream).await;
+
+    let content = std::fs::read_to_string(&path).unwrap();
+    assert!(!content.is_empty());
+    drop(file);
+  }
+
+  #[tokio::test]
+  async fn test_consume_with_custom_error_strategy() {
+    let file = NamedTempFile::new().unwrap();
+    let path = file.path().to_str().unwrap().to_string();
+
+    let mut consumer = CsvConsumer::<TestRecord>::new(&path).with_error_strategy(ErrorStrategy::<
+      TestRecord,
+    >::new_custom(
+      |_error: &StreamError<TestRecord>| ErrorAction::Skip,
+    ));
+
+    let input_stream = Box::pin(stream::iter(vec![TestRecord {
+      name: "test".to_string(),
+      age: 30,
+    }]));
+    consumer.consume(input_stream).await;
+
+    let content = std::fs::read_to_string(&path).unwrap();
+    assert!(!content.is_empty());
+    drop(file);
+  }
+
+  #[tokio::test]
+  async fn test_consume_with_flush_on_write() {
+    let file = NamedTempFile::new().unwrap();
+    let path = file.path().to_str().unwrap().to_string();
+
+    let mut consumer = CsvConsumer::<TestRecord>::new(&path).with_flush_on_write(true);
+
+    let input_stream = Box::pin(stream::iter(vec![TestRecord {
+      name: "test".to_string(),
+      age: 30,
+    }]));
+    consumer.consume(input_stream).await;
+
+    let content = std::fs::read_to_string(&path).unwrap();
+    assert!(!content.is_empty());
+    drop(file);
+  }
+
+  #[test]
+  fn test_handle_error_strategy_stop() {
+    let strategy = ErrorStrategy::<TestRecord>::Stop;
+    let error = StreamError {
+      source: Box::new(std::io::Error::other("test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "CsvConsumer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "CsvConsumer".to_string(),
+      },
+      retries: 0,
+    };
+
+    assert!(matches!(
+      handle_error_strategy(&strategy, &error),
+      ErrorAction::Stop
+    ));
+  }
+
+  #[test]
+  fn test_handle_error_strategy_skip() {
+    let strategy = ErrorStrategy::<TestRecord>::Skip;
+    let error = StreamError {
+      source: Box::new(std::io::Error::other("test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "CsvConsumer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "CsvConsumer".to_string(),
+      },
+      retries: 0,
+    };
+
+    assert!(matches!(
+      handle_error_strategy(&strategy, &error),
+      ErrorAction::Skip
+    ));
+  }
+
+  #[test]
+  fn test_handle_error_strategy_retry() {
+    let strategy = ErrorStrategy::<TestRecord>::Retry(3);
+    let error = StreamError {
+      source: Box::new(std::io::Error::other("test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "CsvConsumer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "CsvConsumer".to_string(),
+      },
+      retries: 1,
+    };
+
+    assert!(matches!(
+      handle_error_strategy(&strategy, &error),
+      ErrorAction::Retry
+    ));
+  }
+
+  #[test]
+  fn test_handle_error_strategy_retry_exhausted() {
+    let strategy = ErrorStrategy::<TestRecord>::Retry(3);
+    let error = StreamError {
+      source: Box::new(std::io::Error::other("test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "CsvConsumer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "CsvConsumer".to_string(),
+      },
+      retries: 3,
+    };
+
+    assert!(matches!(
+      handle_error_strategy(&strategy, &error),
+      ErrorAction::Stop
+    ));
+  }
+
+  #[test]
+  fn test_handle_error_strategy_custom() {
+    let strategy = ErrorStrategy::<TestRecord>::new_custom(|error: &StreamError<TestRecord>| {
+      if error.retries < 2 {
+        ErrorAction::Retry
+      } else {
+        ErrorAction::Skip
+      }
+    });
+
+    let error = StreamError {
+      source: Box::new(std::io::Error::other("test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "CsvConsumer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "CsvConsumer".to_string(),
+      },
+      retries: 1,
+    };
+
+    assert!(matches!(
+      handle_error_strategy(&strategy, &error),
+      ErrorAction::Retry
+    ));
+
+    let error_exhausted = StreamError {
+      source: Box::new(std::io::Error::other("test error")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "CsvConsumer".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "CsvConsumer".to_string(),
+      },
+      retries: 2,
+    };
+
+    assert!(matches!(
+      handle_error_strategy(&strategy, &error_exhausted),
+      ErrorAction::Skip
+    ));
+  }
+
+  #[tokio::test]
+  async fn test_consume_with_empty_name() {
+    let file = NamedTempFile::new().unwrap();
+    let path = file.path().to_str().unwrap().to_string();
+
+    let mut consumer = CsvConsumer::<TestRecord>::new(&path);
+    consumer.config.name = String::new(); // Empty name
+
+    let input_stream = Box::pin(stream::iter(vec![TestRecord {
+      name: "test".to_string(),
+      age: 30,
+    }]));
+    consumer.consume(input_stream).await;
+
+    // component_info() returns the config.name directly (empty string)
+    // But consume() uses "csv_consumer" as default when name is empty
+    let info = consumer.component_info();
+    assert_eq!(info.name, "");
+    drop(file);
+  }
 }

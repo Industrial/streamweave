@@ -193,4 +193,145 @@ mod tests {
       prop_assert_eq!(consumer.config().name.as_str(), name.as_str());
     }
   }
+
+  #[tokio::test]
+  async fn test_set_config_impl() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let mut consumer = FileConsumer::new(path);
+    let new_config = ConsumerConfig::<String> {
+      name: "test_consumer".to_string(),
+      error_strategy: ErrorStrategy::<String>::Retry(5),
+    };
+
+    consumer.set_config_impl(new_config.clone());
+    assert_eq!(consumer.get_config_impl().name, new_config.name);
+    assert_eq!(
+      consumer.get_config_impl().error_strategy,
+      new_config.error_strategy
+    );
+  }
+
+  #[tokio::test]
+  async fn test_get_config_mut_impl() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let mut consumer = FileConsumer::new(path);
+    let config_mut = consumer.get_config_mut_impl();
+    config_mut.name = "mutated_name".to_string();
+    assert_eq!(consumer.get_config_impl().name, "mutated_name");
+  }
+
+  #[tokio::test]
+  async fn test_handle_error_stop() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let consumer = FileConsumer::new(path).with_error_strategy(ErrorStrategy::<String>::Stop);
+    let error = StreamError::new(
+      Box::new(std::io::Error::other("test error")),
+      ErrorContext::default(),
+      ComponentInfo::default(),
+    );
+    assert_eq!(consumer.handle_error(&error), ErrorAction::Stop);
+  }
+
+  #[tokio::test]
+  async fn test_handle_error_skip() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let consumer = FileConsumer::new(path).with_error_strategy(ErrorStrategy::<String>::Skip);
+    let error = StreamError::new(
+      Box::new(std::io::Error::other("test error")),
+      ErrorContext::default(),
+      ComponentInfo::default(),
+    );
+    assert_eq!(consumer.handle_error(&error), ErrorAction::Skip);
+  }
+
+  #[tokio::test]
+  async fn test_handle_error_retry_within_limit() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let consumer = FileConsumer::new(path).with_error_strategy(ErrorStrategy::<String>::Retry(5));
+    let mut error = StreamError::new(
+      Box::new(std::io::Error::other("test error")),
+      ErrorContext::default(),
+      ComponentInfo::default(),
+    );
+    error.retries = 3;
+    assert_eq!(consumer.handle_error(&error), ErrorAction::Retry);
+  }
+
+  #[tokio::test]
+  async fn test_handle_error_retry_exceeds_limit() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let consumer = FileConsumer::new(path).with_error_strategy(ErrorStrategy::<String>::Retry(5));
+    let mut error = StreamError::new(
+      Box::new(std::io::Error::other("test error")),
+      ErrorContext::default(),
+      ComponentInfo::default(),
+    );
+    error.retries = 5;
+    assert_eq!(consumer.handle_error(&error), ErrorAction::Stop);
+  }
+
+  #[tokio::test]
+  async fn test_create_error_context() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let consumer = FileConsumer::new(path).with_name("test_consumer".to_string());
+    let context = consumer.create_error_context(Some("test_item".to_string()));
+    assert_eq!(context.item, Some("test_item".to_string()));
+    assert_eq!(context.component_name, "test_consumer");
+    assert!(context.timestamp <= chrono::Utc::now());
+  }
+
+  #[tokio::test]
+  async fn test_create_error_context_no_item() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let consumer = FileConsumer::new(path).with_name("test_consumer".to_string());
+    let context = consumer.create_error_context(None);
+    assert_eq!(context.item, None);
+    assert_eq!(context.component_name, "test_consumer");
+  }
+
+  #[tokio::test]
+  async fn test_component_info() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let consumer = FileConsumer::new(path).with_name("test_consumer".to_string());
+    let info = consumer.component_info();
+    assert_eq!(info.name, "test_consumer");
+    assert_eq!(info.type_name, std::any::type_name::<FileConsumer>());
+  }
+
+  #[tokio::test]
+  async fn test_component_info_default_name() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let consumer = FileConsumer::new(path);
+    let info = consumer.component_info();
+    assert_eq!(info.name, "");
+    assert_eq!(info.type_name, std::any::type_name::<FileConsumer>());
+  }
+
+  #[tokio::test]
+  async fn test_consume_with_existing_file() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let path = temp_file.path().to_str().unwrap().to_string();
+    let mut consumer = FileConsumer::new(path.clone());
+
+    // Create file first
+    let _file = File::create(&path).await.unwrap();
+    consumer.file = Some(_file);
+
+    let input = stream::iter(vec!["test1".to_string(), "test2".to_string()]);
+    let boxed_input = Box::pin(input);
+    consumer.consume(boxed_input).await;
+
+    let contents = tokio_fs::read_to_string(path).await.unwrap();
+    assert_eq!(contents, "test1test2");
+  }
 }

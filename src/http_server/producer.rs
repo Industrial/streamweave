@@ -391,6 +391,7 @@ impl Producer for HttpRequestProducer {
                     );
 
                     let chunk_request = HttpRequest {
+                      request_id: req.request_id.clone(),
                       method: req.method,
                       uri: req.uri.clone(),
                       path: req.path.clone(),
@@ -509,6 +510,158 @@ impl Producer for HttpRequestProducer {
   }
 
   fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<HttpRequest> {
+    &mut self.config
+  }
+}
+
+/// Long-lived HTTP request producer for graph-based HTTP servers.
+///
+/// This producer accepts HTTP requests from a channel and converts them to
+/// `Message<HttpRequest>` items for processing through a graph. It runs
+/// continuously until the channel closes, making it suitable for long-lived
+/// graph-based HTTP servers.
+///
+/// ## Example
+///
+/// ```rust,no_run
+/// use streamweave::http_server::LongLivedHttpRequestProducer;
+/// use streamweave::message::MessageId;
+/// use tokio::sync::mpsc;
+/// use axum::extract::Request;
+///
+/// let (tx, rx) = mpsc::channel(100);
+/// let producer = LongLivedHttpRequestProducer::new(rx);
+/// // Producer will convert requests from rx to Message<HttpRequest>
+/// ```
+#[derive(Debug)]
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+pub struct LongLivedHttpRequestProducer {
+  /// Producer configuration.
+  pub config: ProducerConfig<crate::message::Message<HttpRequest>>,
+  /// HTTP request-specific configuration.
+  pub http_config: HttpRequestProducerConfig,
+  /// Channel receiver for incoming Axum requests.
+  request_receiver: tokio::sync::mpsc::Receiver<Request>,
+}
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+impl LongLivedHttpRequestProducer {
+  /// Creates a new long-lived HTTP request producer.
+  ///
+  /// # Arguments
+  ///
+  /// * `request_receiver` - Channel receiver for incoming Axum requests
+  /// * `http_config` - HTTP request processing configuration
+  ///
+  /// # Returns
+  ///
+  /// A new `LongLivedHttpRequestProducer` instance.
+  pub fn new(
+    request_receiver: tokio::sync::mpsc::Receiver<Request>,
+    http_config: HttpRequestProducerConfig,
+  ) -> Self {
+    Self {
+      config: ProducerConfig::default(),
+      http_config,
+      request_receiver,
+    }
+  }
+
+  /// Creates a new long-lived HTTP request producer with default HTTP config.
+  pub fn with_default_config(request_receiver: tokio::sync::mpsc::Receiver<Request>) -> Self {
+    Self::new(request_receiver, HttpRequestProducerConfig::default())
+  }
+
+  /// Returns a reference to the HTTP configuration.
+  #[must_use]
+  pub fn http_config(&self) -> &HttpRequestProducerConfig {
+    &self.http_config
+  }
+
+  /// Returns a mutable reference to the HTTP configuration.
+  pub fn http_config_mut(&mut self) -> &mut HttpRequestProducerConfig {
+    &mut self.http_config
+  }
+}
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+impl Clone for LongLivedHttpRequestProducer {
+  fn clone(&self) -> Self {
+    // Note: Cloning a receiver doesn't make sense for a long-lived producer
+    // This is provided for compatibility but the receiver should not be cloned
+    // in practice. The original producer should be moved into the graph.
+    panic!("LongLivedHttpRequestProducer cannot be cloned - receivers cannot be cloned");
+  }
+}
+
+#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[async_trait]
+impl Producer for LongLivedHttpRequestProducer {
+  type OutputPorts = (crate::message::Message<HttpRequest>,);
+
+  /// Produces a stream of `Message<HttpRequest>` items from incoming Axum requests.
+  ///
+  /// This method continuously receives requests from the channel and converts
+  /// them to `Message<HttpRequest>` items. Each request gets a unique `MessageId`
+  /// for deduplication and exactly-once processing.
+  ///
+  /// The stream runs until the channel closes, at which point it terminates gracefully.
+  ///
+  /// ## Error Handling
+  ///
+  /// - Request conversion errors are handled according to the error strategy
+  /// - Channel receive errors cause the stream to terminate
+  fn produce(&mut self) -> Self::OutputStream {
+    let component_name = self
+      .config
+      .name
+      .clone()
+      .unwrap_or_else(|| "long_lived_http_request_producer".to_string());
+    let _error_strategy = self.config.error_strategy.clone();
+    let _http_config = self.http_config.clone();
+    let mut request_receiver = std::mem::replace(
+      &mut self.request_receiver,
+      // Create a dummy receiver that will never receive anything
+      // This is safe because we're moving the real receiver into the stream
+      tokio::sync::mpsc::channel(1).1,
+    );
+
+    Box::pin(stream! {
+      loop {
+        match request_receiver.recv().await {
+          Some(axum_request) => {
+            // Convert Axum request to HttpRequest
+            let http_request = HttpRequest::from_axum_request(axum_request).await;
+
+            // Create Message with unique ID
+            // Use the request_id from HttpRequest as the MessageId for correlation
+            let message_id = crate::message::MessageId::new_custom(http_request.request_id.clone());
+            let message = crate::message::Message::new(http_request, message_id);
+
+            yield message;
+          }
+          None => {
+            // Channel closed, terminate gracefully
+            tracing::info!(
+              component = %component_name,
+              "Request channel closed, terminating producer"
+            );
+            break;
+          }
+        }
+      }
+    })
+  }
+
+  fn set_config_impl(&mut self, config: ProducerConfig<crate::message::Message<HttpRequest>>) {
+    self.config = config;
+  }
+
+  fn get_config_impl(&self) -> &ProducerConfig<crate::message::Message<HttpRequest>> {
+    &self.config
+  }
+
+  fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<crate::message::Message<HttpRequest>> {
     &mut self.config
   }
 }

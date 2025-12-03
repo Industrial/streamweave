@@ -245,6 +245,11 @@ path = "examples/http_server_integration/main.rs"
 required-features = ["http-server"]
 
 [[example]]
+name = "http_graph_server"
+path = "examples/http_graph_server/main.rs"
+required-features = ["http-server"]
+
+[[example]]
 name = "metrics_monitoring"
 path = "examples/metrics_monitoring/main.rs"
 

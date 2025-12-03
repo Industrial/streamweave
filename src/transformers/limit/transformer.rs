@@ -686,4 +686,145 @@ mod tests {
 
     assert_eq!(result, vec![1, -1, 2, -2, 3, -3]);
   }
+
+  #[test]
+  fn test_limit_transformer_set_config_impl() {
+    let mut transformer = LimitTransformer::<i32>::new(5);
+    let new_config = TransformerConfig::default()
+      .with_name("test_limit".to_string())
+      .with_error_strategy(ErrorStrategy::Skip);
+    transformer.set_config_impl(new_config);
+    assert_eq!(transformer.config.name, Some("test_limit".to_string()));
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_limit_transformer_get_config_impl() {
+    let transformer = LimitTransformer::<i32>::new(5).with_name("test".to_string());
+    let config = transformer.get_config_impl();
+    assert_eq!(config.name, Some("test".to_string()));
+  }
+
+  #[test]
+  fn test_limit_transformer_get_config_mut_impl() {
+    let mut transformer = LimitTransformer::<i32>::new(5);
+    let config = transformer.get_config_mut_impl();
+    config.name = Some("mutated".to_string());
+    assert_eq!(transformer.config.name, Some("mutated".to_string()));
+  }
+
+  #[test]
+  fn test_limit_transformer_handle_error_stop() {
+    let transformer = LimitTransformer::<i32>::new(5).with_error_strategy(ErrorStrategy::Stop);
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "test")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 0,
+    };
+    assert_eq!(transformer.handle_error(&error), ErrorAction::Stop);
+  }
+
+  #[test]
+  fn test_limit_transformer_handle_error_skip() {
+    let transformer = LimitTransformer::<i32>::new(5).with_error_strategy(ErrorStrategy::Skip);
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "test")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 0,
+    };
+    assert_eq!(transformer.handle_error(&error), ErrorAction::Skip);
+  }
+
+  #[test]
+  fn test_limit_transformer_handle_error_retry() {
+    let transformer = LimitTransformer::<i32>::new(5).with_error_strategy(ErrorStrategy::Retry(3));
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "test")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 1,
+    };
+    assert_eq!(transformer.handle_error(&error), ErrorAction::Retry);
+  }
+
+  #[test]
+  fn test_limit_transformer_handle_error_retry_exhausted() {
+    let transformer = LimitTransformer::<i32>::new(5).with_error_strategy(ErrorStrategy::Retry(3));
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "test")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 3,
+    };
+    assert_eq!(transformer.handle_error(&error), ErrorAction::Stop);
+  }
+
+  #[test]
+  fn test_limit_transformer_create_error_context() {
+    let transformer = LimitTransformer::<i32>::new(5).with_name("test_limit".to_string());
+    let context = transformer.create_error_context(Some(42));
+    assert_eq!(context.component_name, "test_limit");
+    assert_eq!(context.item, Some(42));
+    assert!(context.component_type.contains("LimitTransformer"));
+  }
+
+  #[test]
+  fn test_limit_transformer_create_error_context_no_item() {
+    let transformer = LimitTransformer::<i32>::new(5);
+    let context = transformer.create_error_context(None);
+    assert_eq!(context.component_name, "limit_transformer");
+    assert_eq!(context.item, None);
+  }
+
+  #[test]
+  fn test_limit_transformer_component_info() {
+    let transformer = LimitTransformer::<i32>::new(5).with_name("custom_limit".to_string());
+    let info = transformer.component_info();
+    assert_eq!(info.name, "custom_limit");
+    assert!(info.type_name.contains("LimitTransformer"));
+  }
+
+  #[test]
+  fn test_limit_transformer_component_info_default() {
+    let transformer = LimitTransformer::<i32>::new(5);
+    let info = transformer.component_info();
+    assert_eq!(info.name, "limit_transformer");
+  }
 }

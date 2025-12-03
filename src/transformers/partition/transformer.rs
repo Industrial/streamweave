@@ -654,4 +654,174 @@ mod tests {
       .await;
     assert_eq!(result_f64, vec![(vec![2.2], vec![-1.1, 0.0])]);
   }
+
+  #[test]
+  fn test_partition_transformer_set_config_impl() {
+    let mut transformer = PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0);
+    let new_config = TransformerConfig::default()
+      .with_name("test_partition".to_string())
+      .with_error_strategy(ErrorStrategy::Skip);
+    transformer.set_config_impl(new_config);
+    assert_eq!(transformer.config.name, Some("test_partition".to_string()));
+    assert!(matches!(
+      transformer.config.error_strategy,
+      ErrorStrategy::Skip
+    ));
+  }
+
+  #[test]
+  fn test_partition_transformer_get_config_impl() {
+    let transformer =
+      PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0).with_name("test".to_string());
+    let config = transformer.get_config_impl();
+    assert_eq!(config.name, Some("test".to_string()));
+  }
+
+  #[test]
+  fn test_partition_transformer_get_config_mut_impl() {
+    let mut transformer = PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0);
+    let config = transformer.get_config_mut_impl();
+    config.name = Some("mutated".to_string());
+    assert_eq!(transformer.config.name, Some("mutated".to_string()));
+  }
+
+  #[test]
+  fn test_partition_transformer_handle_error_stop() {
+    let transformer = PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0)
+      .with_error_strategy(ErrorStrategy::Stop);
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "test")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 0,
+    };
+    assert_eq!(transformer.handle_error(&error), ErrorAction::Stop);
+  }
+
+  #[test]
+  fn test_partition_transformer_handle_error_skip() {
+    let transformer = PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0)
+      .with_error_strategy(ErrorStrategy::Skip);
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "test")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 0,
+    };
+    assert_eq!(transformer.handle_error(&error), ErrorAction::Skip);
+  }
+
+  #[test]
+  fn test_partition_transformer_handle_error_retry() {
+    let transformer = PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0)
+      .with_error_strategy(ErrorStrategy::Retry(3));
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "test")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 1,
+    };
+    assert_eq!(transformer.handle_error(&error), ErrorAction::Retry);
+  }
+
+  #[test]
+  fn test_partition_transformer_handle_error_retry_exhausted() {
+    let transformer = PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0)
+      .with_error_strategy(ErrorStrategy::Retry(3));
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "test")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 3,
+    };
+    assert_eq!(transformer.handle_error(&error), ErrorAction::Stop);
+  }
+
+  #[test]
+  fn test_partition_transformer_handle_error_custom() {
+    let custom_handler = |_error: &StreamError<i32>| ErrorAction::Skip;
+    let transformer = PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0)
+      .with_error_strategy(ErrorStrategy::new_custom(custom_handler));
+    let error = StreamError {
+      source: Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "test")),
+      context: ErrorContext {
+        timestamp: chrono::Utc::now(),
+        item: None,
+        component_name: "test".to_string(),
+        component_type: "test".to_string(),
+      },
+      component: ComponentInfo {
+        name: "test".to_string(),
+        type_name: "test".to_string(),
+      },
+      retries: 0,
+    };
+    assert_eq!(transformer.handle_error(&error), ErrorAction::Skip);
+  }
+
+  #[test]
+  fn test_partition_transformer_create_error_context() {
+    let transformer =
+      PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0).with_name("test_partition".to_string());
+    let context = transformer.create_error_context(Some(42));
+    assert_eq!(context.component_name, "test_partition");
+    assert_eq!(context.item, Some(42));
+    assert!(context.component_type.contains("PartitionTransformer"));
+  }
+
+  #[test]
+  fn test_partition_transformer_create_error_context_no_item() {
+    let transformer = PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0);
+    let context = transformer.create_error_context(None);
+    assert_eq!(context.component_name, "partition_transformer");
+    assert_eq!(context.item, None);
+  }
+
+  #[test]
+  fn test_partition_transformer_component_info() {
+    let transformer = PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0)
+      .with_name("custom_partition".to_string());
+    let info = transformer.component_info();
+    assert_eq!(info.name, "custom_partition");
+    assert!(info.type_name.contains("PartitionTransformer"));
+  }
+
+  #[test]
+  fn test_partition_transformer_component_info_default() {
+    let transformer = PartitionTransformer::<_, i32>::new(|x: &i32| *x > 0);
+    let info = transformer.component_info();
+    assert_eq!(info.name, "partition_transformer");
+  }
 }
