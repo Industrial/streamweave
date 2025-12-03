@@ -15,11 +15,19 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   lint:
     name: 🔍 Lint & Format
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    if: |
+      github.event_name == 'push' || 
+      (github.event_name == 'pull_request' && 
+       (github.event.pull_request.draft == false || 
+        github.actor == 'dependabot[bot]'))
     permissions:
       contents: read
     steps:
@@ -55,7 +63,11 @@ jobs:
   test:
     name: 🧪 Test (${{ matrix.rust }})
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    if: |
+      github.event_name == 'push' || 
+      (github.event_name == 'pull_request' && 
+       (github.event.pull_request.draft == false || 
+        github.actor == 'dependabot[bot]'))
     permissions:
       contents: read
     strategy:
@@ -94,7 +106,11 @@ jobs:
   examples:
     name: 📦 Build Examples
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    if: |
+      github.event_name == 'push' || 
+      (github.event_name == 'pull_request' && 
+       (github.event.pull_request.draft == false || 
+        github.actor == 'dependabot[bot]'))
     permissions:
       contents: read
     steps:
@@ -116,7 +132,11 @@ jobs:
   docs:
     name: 📚 Documentation
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    if: |
+      github.event_name == 'push' || 
+      (github.event_name == 'pull_request' && 
+       (github.event.pull_request.draft == false || 
+        github.actor == 'dependabot[bot]'))
     permissions:
       contents: read
     steps:
@@ -156,7 +176,11 @@ jobs:
   security:
     name: 🔒 Security Audit
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    if: |
+      github.event_name == 'push' || 
+      (github.event_name == 'pull_request' && 
+       (github.event.pull_request.draft == false || 
+        github.actor == 'dependabot[bot]'))
     permissions:
       contents: read
     steps:
@@ -172,7 +196,11 @@ jobs:
   deny:
     name: 📋 Cargo Deny
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    if: |
+      github.event_name == 'push' || 
+      (github.event_name == 'pull_request' && 
+       (github.event.pull_request.draft == false || 
+        github.actor == 'dependabot[bot]'))
     permissions:
       contents: read
     steps:
@@ -188,7 +216,11 @@ jobs:
   wasm:
     name: 🌐 WASM Build & Size Check
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    if: |
+      github.event_name == 'push' || 
+      (github.event_name == 'pull_request' && 
+       (github.event.pull_request.draft == false || 
+        github.actor == 'dependabot[bot]'))
     permissions:
       contents: read
     steps:
