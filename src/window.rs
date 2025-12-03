@@ -2126,4 +2126,149 @@ mod tests {
     assert!(cloned.triggered);
     assert_eq!(cloned.values(), vec![42]);
   }
+
+  #[test]
+  fn test_count_window_display() {
+    let window = CountWindow::new(42, 100);
+    let s = format!("{}", window);
+    assert!(s.contains("id=42"));
+    assert!(s.contains("max=100"));
+  }
+
+  #[test]
+  fn test_session_window_new() {
+    let start = timestamp(10, 0, 0);
+    let end = timestamp(10, 5, 0);
+    let gap = Duration::from_secs(300);
+    let session = SessionWindow::new(start, end, gap);
+
+    assert_eq!(session.start(), start);
+    assert_eq!(session.end(), end);
+    assert_eq!(session.gap(), gap);
+  }
+
+  #[test]
+  fn test_session_window_display() {
+    let session = SessionWindow::from_element(timestamp(10, 0, 0), Duration::from_secs(300));
+    let s = format!("{}", session);
+    assert!(s.contains("Session"));
+    assert!(s.contains("gap="));
+  }
+
+  #[test]
+  fn test_session_window_hash() {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let s1 = SessionWindow::from_element(timestamp(10, 0, 0), Duration::from_secs(300));
+    let s2 = SessionWindow::from_element(timestamp(10, 0, 0), Duration::from_secs(300));
+    let s3 = SessionWindow::from_element(timestamp(10, 1, 0), Duration::from_secs(300));
+
+    let mut h1 = DefaultHasher::new();
+    let mut h2 = DefaultHasher::new();
+    let mut h3 = DefaultHasher::new();
+
+    s1.hash(&mut h1);
+    s2.hash(&mut h2);
+    s3.hash(&mut h3);
+
+    assert_eq!(h1.finish(), h2.finish()); // Same windows have same hash
+    assert_ne!(h1.finish(), h3.finish()); // Different windows have different hash
+  }
+
+  #[test]
+  fn test_time_window_ord() {
+    let w1 = TimeWindow::new(timestamp(10, 0, 0), timestamp(10, 5, 0));
+    let w2 = TimeWindow::new(timestamp(10, 5, 0), timestamp(10, 10, 0));
+    let w3 = TimeWindow::new(timestamp(10, 0, 0), timestamp(10, 5, 0));
+
+    assert!(w1 < w2);
+    assert_eq!(w1, w3);
+    assert!(w2 > w1);
+  }
+
+  #[test]
+  fn test_late_data_handler_new() {
+    let handler = LateDataHandler::new(LateDataPolicy::Drop);
+    assert!(matches!(handler.policy(), LateDataPolicy::Drop));
+    assert_eq!(handler.get_allowed_lateness(), Duration::ZERO);
+  }
+
+  #[test]
+  fn test_late_data_handler_allow_lateness() {
+    let handler = LateDataHandler::new(LateDataPolicy::AllowLateness(Duration::from_secs(10)));
+    assert_eq!(handler.get_allowed_lateness(), Duration::from_secs(10));
+    assert!(matches!(handler.policy(), LateDataPolicy::AllowLateness(_)));
+  }
+
+  #[test]
+  fn test_late_data_handler_stats() {
+    let handler = LateDataHandler::new(LateDataPolicy::Drop);
+    let stats = handler.stats();
+    assert_eq!(stats.dropped, 0);
+    assert_eq!(stats.within_lateness, 0);
+    assert_eq!(stats.side_output, 0);
+  }
+
+  #[test]
+  fn test_late_data_handler_reset_stats() {
+    let mut handler = LateDataHandler::new(LateDataPolicy::Drop);
+    // Note: We can't easily test handle_late_data without creating actual late elements
+    // But we can test reset_stats
+    handler.reset_stats();
+    let stats = handler.stats();
+    assert_eq!(stats.dropped, 0);
+  }
+
+  #[test]
+  fn test_window_state_new() {
+    let window = TimeWindow::new(timestamp(10, 0, 0), timestamp(10, 5, 0));
+    let state: WindowState<TimeWindow, i32> = WindowState::new(window);
+
+    assert_eq!(state.count, 0);
+    assert!(!state.triggered);
+    assert!(state.elements().is_empty());
+    assert_eq!(state.last_watermark, None);
+  }
+
+  #[test]
+  fn test_window_state_add_multiple() {
+    let window = TimeWindow::new(timestamp(10, 0, 0), timestamp(10, 5, 0));
+    let mut state: WindowState<TimeWindow, i32> = WindowState::new(window);
+
+    state.add(timestamp(10, 1, 0), 42);
+    state.add(timestamp(10, 2, 0), 43);
+    state.add(timestamp(10, 3, 0), 44);
+
+    assert_eq!(state.count, 3);
+    assert_eq!(state.elements().len(), 3);
+    assert_eq!(state.values(), vec![42, 43, 44]);
+  }
+
+  #[test]
+  fn test_window_state_can_be_gc_global_window() {
+    use crate::window::GlobalWindow;
+    let window = GlobalWindow;
+    let mut state: WindowState<GlobalWindow, i32> = WindowState::new(window);
+    state.mark_triggered();
+
+    let wm = Watermark::new(timestamp(11, 0, 0));
+    // Global windows are never GC'd
+    assert!(!state.can_be_gc(&wm, ChronoDuration::zero()));
+  }
+
+  #[test]
+  fn test_window_state_can_be_gc_with_lateness() {
+    let window = TimeWindow::new(timestamp(10, 0, 0), timestamp(10, 5, 0));
+    let mut state: WindowState<TimeWindow, i32> = WindowState::new(window);
+    state.mark_triggered();
+
+    // Watermark at end time, but with 1 minute lateness, should not be GC'd yet
+    let wm = Watermark::new(timestamp(10, 5, 0));
+    assert!(!state.can_be_gc(&wm, ChronoDuration::minutes(1)));
+
+    // Watermark past end + lateness, should be GC'd
+    let wm2 = Watermark::new(timestamp(10, 6, 1));
+    assert!(state.can_be_gc(&wm2, ChronoDuration::minutes(1)));
+  }
 }

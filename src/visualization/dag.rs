@@ -647,6 +647,95 @@ mod tests {
   }
 
   #[test]
+  fn test_pipeline_dag_from_components() {
+    use crate::consumers::vec::vec_consumer::VecConsumer;
+    use crate::producers::vec::vec_producer::VecProducer;
+    use crate::transformers::map::map_transformer::MapTransformer;
+
+    let producer = VecProducer::new(vec![1, 2, 3]);
+    let transformer = MapTransformer::new(|x: i32| x * 2);
+    let consumer = VecConsumer::<i32>::new();
+
+    let dag = PipelineDag::from_components(&producer, &transformer, &consumer);
+
+    assert_eq!(dag.nodes().len(), 3);
+    assert_eq!(dag.edges().len(), 2);
+
+    // Check producer node
+    let producer_node = dag.nodes().iter().find(|n| n.id == "producer").unwrap();
+    assert_eq!(producer_node.kind, NodeKind::Producer);
+    assert!(producer_node.metadata.output_type.is_some());
+    assert_eq!(producer_node.metadata.input_type, None);
+
+    // Check transformer node
+    let transformer_node = dag.nodes().iter().find(|n| n.id == "transformer").unwrap();
+    assert_eq!(transformer_node.kind, NodeKind::Transformer);
+    assert!(transformer_node.metadata.input_type.is_some());
+    assert!(transformer_node.metadata.output_type.is_some());
+
+    // Check consumer node
+    let consumer_node = dag.nodes().iter().find(|n| n.id == "consumer").unwrap();
+    assert_eq!(consumer_node.kind, NodeKind::Consumer);
+    assert!(consumer_node.metadata.input_type.is_some());
+    assert_eq!(consumer_node.metadata.output_type, None);
+
+    // Check edges
+    let edge1 = dag.edges().iter().find(|e| e.from == "producer" && e.to == "transformer").unwrap();
+    assert!(edge1.label.is_some());
+
+    let edge2 = dag.edges().iter().find(|e| e.from == "transformer" && e.to == "consumer").unwrap();
+    assert!(edge2.label.is_some());
+  }
+
+  #[test]
+  fn test_pipeline_dag_from_components_with_names() {
+    use crate::consumers::vec::vec_consumer::VecConsumer;
+    use crate::producers::vec::vec_producer::VecProducer;
+    use crate::transformers::map::map_transformer::MapTransformer;
+
+    let producer = VecProducer::new(vec![1, 2, 3]).with_name("my_producer".to_string());
+    let transformer = MapTransformer::new(|x: i32| x * 2).with_name("my_transformer".to_string());
+    let consumer = VecConsumer::<i32>::new().with_name("my_consumer".to_string());
+
+    let dag = PipelineDag::from_components(&producer, &transformer, &consumer);
+
+    let producer_node = dag.nodes().iter().find(|n| n.id == "producer").unwrap();
+    assert_eq!(producer_node.metadata.name, Some("my_producer".to_string()));
+
+    let transformer_node = dag.nodes().iter().find(|n| n.id == "transformer").unwrap();
+    assert_eq!(transformer_node.metadata.name, Some("my_transformer".to_string()));
+
+    let consumer_node = dag.nodes().iter().find(|n| n.id == "consumer").unwrap();
+    assert_eq!(consumer_node.metadata.name, Some("my_consumer".to_string()));
+  }
+
+  #[test]
+  fn test_pipeline_dag_from_components_with_error_strategies() {
+    use crate::consumers::vec::vec_consumer::VecConsumer;
+    use crate::error::ErrorStrategy;
+    use crate::producers::vec::vec_producer::VecProducer;
+    use crate::transformers::map::map_transformer::MapTransformer;
+
+    let producer = VecProducer::new(vec![1, 2, 3])
+      .with_error_strategy(ErrorStrategy::<i32>::Skip);
+    let transformer = MapTransformer::new(|x: i32| x * 2)
+      .with_error_strategy(ErrorStrategy::<i32>::Retry(3));
+    let consumer = VecConsumer::<i32>::new()
+      .with_error_strategy(ErrorStrategy::<i32>::Stop);
+
+    let dag = PipelineDag::from_components(&producer, &transformer, &consumer);
+
+    let producer_node = dag.nodes().iter().find(|n| n.id == "producer").unwrap();
+    assert_eq!(producer_node.metadata.error_strategy, "Skip");
+
+    let transformer_node = dag.nodes().iter().find(|n| n.id == "transformer").unwrap();
+    assert_eq!(transformer_node.metadata.error_strategy, "Retry(3)");
+
+    let consumer_node = dag.nodes().iter().find(|n| n.id == "consumer").unwrap();
+    assert_eq!(consumer_node.metadata.error_strategy, "Stop");
+  }
+
+  #[test]
   fn test_pipeline_dag_multiple_nodes_and_edges() {
     let mut dag = PipelineDag::new();
 

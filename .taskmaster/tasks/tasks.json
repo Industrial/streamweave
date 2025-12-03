@@ -2,300 +2,91 @@
   "master": {
     "tasks": [
       {
-        "id": "1",
-        "title": "Phase 1: Core Graph Infrastructure",
-        "description": "Implement the foundational graph infrastructure including port type system, node types, connection types with compile-time validation, and basic graph structure.",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [],
-        "details": "This phase establishes the type-safe foundation for the graph API. It includes port type system using tuples, node types (ProducerNode, TransformerNode, ConsumerNode), connection types with compile-time validation, and basic graph structure.",
-        "testStrategy": "Unit tests for each component, property-based tests for type validation",
-        "subtasks": [
-          {
-            "id": "1.1",
-            "title": "Port type system",
-            "description": "Implement type-level port lists using tuples (e.g., Node<Inputs = (I1, I2), Outputs = (O1, O2)>)",
-            "status": "done",
-            "dependencies": [],
-            "parentId": "undefined",
-            "updatedAt": "2025-11-30T23:01:58.966Z"
-          },
-          {
-            "id": "1.2",
-            "title": "Node types (ProducerNode, TransformerNode, ConsumerNode)",
-            "description": "Create node types that wrap existing Producer, Transformer, and Consumer traits with port information",
-            "status": "done",
-            "dependencies": [
-              "1.1"
-            ],
-            "parentId": "undefined"
-          },
-          {
-            "id": "1.3",
-            "title": "Connection types with compile-time validation",
-            "description": "Implement connection types that validate port compatibility at compile time using trait bounds",
-            "status": "done",
-            "dependencies": [
-              "1.1",
-              "1.2"
-            ],
-            "parentId": "undefined"
-          },
-          {
-            "id": "1.4",
-            "title": "Basic graph structure",
-            "description": "Create Graph struct that holds nodes and connections, with methods for querying topology",
-            "status": "done",
-            "dependencies": [
-              "1.1",
-              "1.2",
-              "1.3"
-            ],
-            "parentId": "undefined"
-          }
-        ],
-        "updatedAt": "2025-11-30T23:01:58.966Z"
-      },
-      {
-        "id": "2",
-        "title": "Phase 2: Router System",
-        "description": "Implement the router system including InputRouter and OutputRouter traits, and router implementations (RoundRobin, Broadcast, KeyBased, Merge).",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "1"
-        ],
-        "details": "This phase implements the router system as specified in GRAPH.md. Routers enable fan-out and fan-in patterns in the graph, allowing multiple inputs/outputs per node.",
-        "testStrategy": "Unit tests for each router type, integration tests for router behavior in graphs",
-        "subtasks": [
-          {
-            "id": "2.1",
-            "title": "InputRouter trait",
-            "description": "Define InputRouter trait for routing multiple input streams to a single node",
-            "status": "done",
-            "dependencies": [],
-            "parentId": "undefined"
-          },
-          {
-            "id": "2.2",
-            "title": "OutputRouter trait",
-            "description": "Define OutputRouter trait for routing a single output stream to multiple nodes",
-            "status": "done",
-            "dependencies": [],
-            "parentId": "undefined"
-          },
-          {
-            "id": "2.3",
-            "title": "Router implementations (RoundRobin, Broadcast, KeyBased, Merge)",
-            "description": "Implement router types: RoundRobin, Broadcast, KeyBased, and Merge as specified in GRAPH.md",
-            "status": "done",
-            "dependencies": [
-              "2.1",
-              "2.2"
-            ],
-            "parentId": "undefined"
-          }
-        ]
-      },
-      {
-        "id": "3",
-        "title": "Phase 3: Graph Builder API",
-        "description": "Implement the fluent graph builder API with compile-time connection validation, port name resolution, and a state machine that tracks nodes and connections.",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "1",
-          "2"
-        ],
-        "details": "This phase provides the ergonomic API for constructing graphs. It includes a builder state machine, fluent builder methods, compile-time connection validation, and port name resolution.",
-        "testStrategy": "Unit tests for builder API, compile-time validation tests, examples demonstrating fluent API usage",
-        "subtasks": [
-          {
-            "id": "3.1",
-            "title": "Builder state machine",
-            "description": "Implement state machine using PhantomData to track graph construction state at compile time",
-            "status": "done",
-            "dependencies": [],
-            "parentId": "undefined"
-          },
-          {
-            "id": "3.2",
-            "title": "Fluent builder API",
-            "description": "Implement fluent methods for adding nodes with named ports and connecting ports by name",
-            "status": "done",
-            "dependencies": [
-              "3.1"
-            ],
-            "parentId": "undefined"
-          },
-          {
-            "id": "3.3",
-            "title": "Compile-time connection validation",
-            "description": "Implement compile-time validation of port connections using trait bounds and type-level checks",
-            "status": "done",
-            "dependencies": [
-              "3.1",
-              "3.2"
-            ],
-            "parentId": "undefined"
-          },
-          {
-            "id": "3.4",
-            "title": "Port name resolution",
-            "description": "Implement port name resolution system that maps string names to type-level ports",
-            "status": "done",
-            "dependencies": [
-              "3.1",
-              "3.2"
-            ],
-            "parentId": "undefined"
-          }
-        ]
-      },
-      {
-        "id": "4",
-        "title": "Phase 4: Graph Execution Engine",
-        "description": "Implement the graph execution engine with concurrent node execution, stream routing via bounded channels, error handling, backpressure management, and lifecycle management.",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "1",
-          "2",
-          "3"
-        ],
-        "details": "This phase enables running the constructed graphs. It includes concurrent node execution, stream routing via bounded channels, error handling strategies, backpressure management, and lifecycle management (start, stop, pause).",
-        "testStrategy": "Integration tests for graph execution, property-based tests for concurrent behavior, stress tests for backpressure",
-        "subtasks": [
-          {
-            "id": "4.1",
-            "title": "Graph execution engine",
-            "description": "Implement core execution engine that spawns tasks for each node and manages their lifecycle",
-            "status": "done",
-            "dependencies": [],
-            "parentId": "undefined"
-          },
-          {
-            "id": "4.2",
-            "title": "Runtime management",
-            "description": "Implement runtime management for starting, stopping, pausing, and resuming graph execution",
-            "status": "done",
-            "dependencies": [
-              "4.1"
-            ],
-            "parentId": "undefined"
-          },
-          {
-            "id": "4.3",
-            "title": "Stream routing via bounded channels",
-            "description": "Implement stream routing between nodes using bounded channels with backpressure support",
-            "status": "done",
-            "dependencies": [
-              "4.1"
-            ],
-            "parentId": "undefined"
-          },
-          {
-            "id": "4.4",
-            "title": "Lifecycle management",
-            "description": "Implement lifecycle management including graceful shutdown, error propagation, and resource cleanup",
-            "status": "done",
-            "dependencies": [
-              "4.1",
-              "4.2",
-              "4.3"
-            ],
-            "parentId": "undefined"
-          }
-        ]
-      },
-      {
-        "id": "5",
-        "title": "Phase 5: Advanced Features",
-        "description": "Implement advanced graph features including subgraph support (graph as a node), stateful processing nodes, and windowing operations with graph topology.",
-        "status": "done",
-        "priority": "high",
-        "dependencies": [
-          "1",
-          "2",
-          "3",
-          "4"
-        ],
-        "details": "These features enable complex graph patterns. Subgraphs allow graphs to be used as nodes in other graphs. Stateful nodes maintain state across items. Windowing operations work with graph topology.",
-        "testStrategy": "Integration tests for subgraphs, unit tests for stateful nodes, property-based tests for windowing",
-        "subtasks": [
-          {
-            "id": "5.1",
-            "title": "Subgraph support",
-            "description": "Implement subgraph support allowing a graph to be used as a node in another graph",
-            "status": "done",
-            "dependencies": [],
-            "parentId": "undefined"
-          },
-          {
-            "id": "5.2",
-            "title": "Stateful nodes",
-            "description": "Implement stateful processing nodes that maintain state across stream items",
-            "status": "done",
-            "dependencies": [],
-            "parentId": "undefined"
-          },
-          {
-            "id": "5.3",
-            "title": "Windowing operations",
-            "description": "Implement windowing operations that work with graph topology for time-based and count-based windows",
-            "status": "done",
-            "dependencies": [],
-            "parentId": "undefined"
-          }
-        ]
-      },
-      {
         "id": "6",
-        "title": "Phase 6: Integration and Testing",
-        "description": "Integrate the graph module into lib.rs, add comprehensive tests, create examples, update documentation, and provide a migration guide from linear to graph API.",
+        "title": "Phase 6: Visualization Examples Implementation",
+        "description": "Implement comprehensive visualization examples based on DETAILED_VISUALIZATION_PLAN.md. Create 7 visualization examples demonstrating different aspects of pipeline and graph visualization with complete implementation, documentation, and testing.",
         "status": "pending",
-        "priority": "high",
+        "priority": "medium",
         "dependencies": [
-          "1",
-          "2",
-          "3",
-          "4",
           "5"
         ],
-        "details": "This phase completes the implementation by integrating everything, adding comprehensive tests, creating examples demonstrating various graph topologies, updating documentation, and providing migration guidance.",
-        "testStrategy": "Comprehensive test suite including unit, integration, and property-based tests. Examples demonstrating various graph patterns.",
+        "details": "This phase implements 7 visualization examples: visualization_basic (console export), visualization_html (web visualization), visualization_graph (graph API), visualization_dot_image (Graphviz images), visualization_metrics (real-time metrics), visualization_debug (debug mode), and visualization_server (HTTP server). Each example includes complete implementation, README.md documentation, and Cargo.toml registration. See DETAILED_VISUALIZATION_PLAN.md for detailed implementation steps.",
+        "testStrategy": "Compilation testing for all examples, runtime testing to verify output files are created, validation of generated visualizations, cross-platform testing where possible",
         "subtasks": [
           {
             "id": "6.1",
-            "title": "Module integration",
-            "description": "Integrate graph module into lib.rs, expose public API, ensure coexistence with linear pipeline API",
+            "title": "Example 1: visualization_basic (Enhanced Console Export)",
+            "description": "Create basic visualization example with enhanced console export demonstrating DOT and JSON format exports. Includes directory setup, pipeline module with multi-stage pipeline (producer, 2 transformers, consumer), main module with DAG generation and file export, comprehensive README.md, and testing. See DETAILED_VISUALIZATION_PLAN.md Phase 1 for detailed implementation steps.",
             "status": "pending",
-            "dependencies": [],
-            "parentId": "undefined"
+            "dependencies": []
           },
           {
             "id": "6.2",
-            "title": "Tests",
-            "description": "Add comprehensive tests: unit tests for all components, integration tests for graph execution, property-based tests for type validation",
+            "title": "Example 2: visualization_html (Enhanced Web Visualization)",
+            "description": "Create HTML visualization example with browser auto-open functionality. Includes cross-platform browser opening research and implementation (Linux/macOS/Windows), complex pipeline setup, standalone HTML generation, browser auto-open helper, comprehensive README with troubleshooting, and testing on multiple platforms. See DETAILED_VISUALIZATION_PLAN.md Example 2 for detailed implementation steps.",
             "status": "pending",
-            "dependencies": [],
-            "parentId": "undefined"
+            "dependencies": [
+              "6.1"
+            ]
           },
           {
             "id": "6.3",
-            "title": "Examples",
-            "description": "Create examples demonstrating various graph topologies: simple linear, fan-out, fan-in, complex topologies, subgraphs",
+            "title": "Example 3: visualization_graph (Graph API Visualization)",
+            "description": "Create graph API visualization example demonstrating fan-in and fan-out patterns. Includes graph to DAG conversion research and implementation, fan-out graph setup (producer to multiple transformers to consumers), fan-in graph setup (multiple producers to merge transformer to consumer), HTML visualization generation, comprehensive README with ASCII diagrams, and testing. See DETAILED_VISUALIZATION_PLAN.md Example 3 for detailed implementation steps.",
             "status": "pending",
-            "dependencies": [],
-            "parentId": "undefined"
+            "dependencies": [
+              "6.2"
+            ]
           },
           {
             "id": "6.4",
-            "title": "Documentation",
-            "description": "Update documentation including API docs, architecture docs, migration guide from linear to graph API, and usage examples",
+            "title": "Example 4: visualization_dot_image (Graphviz Image Generation)",
+            "description": "Create Graphviz image generation example producing PNG, SVG, and PDF outputs. Includes Graphviz availability detection, image conversion helper supporting multiple formats (PNG, SVG, PDF, JPG), main function with format generation, comprehensive README with installation instructions for all platforms, and testing with format validation. See DETAILED_VISUALIZATION_PLAN.md Example 4 for detailed implementation steps.",
             "status": "pending",
-            "dependencies": [],
-            "parentId": "undefined"
+            "dependencies": [
+              "6.1"
+            ]
+          },
+          {
+            "id": "6.5",
+            "title": "Example 5: visualization_metrics (Real-Time Metrics)",
+            "description": "Create real-time metrics visualization example with metrics collection integration. Includes MetricsCollector struct implementation, metrics aggregation and snapshot functionality, pipeline integration with metrics hooks, HTML enhancement with embedded metrics and charts, main function with metrics collection and export, and comprehensive documentation. See DETAILED_VISUALIZATION_PLAN.md Example 5 for detailed implementation steps.",
+            "status": "pending",
+            "dependencies": [
+              "6.2"
+            ]
+          },
+          {
+            "id": "6.6",
+            "title": "Example 6: visualization_debug (Debug Mode)",
+            "description": "Create debug mode visualization example with breakpoint support. Includes debugger API research and understanding, breakpoint setup functionality, debug visualization creation with enhanced DAG metadata, HTML generation with debug UI, breakpoint configuration JSON export, comprehensive README with debug workflow documentation, and testing. See DETAILED_VISUALIZATION_PLAN.md Example 6 for detailed implementation steps.",
+            "status": "pending",
+            "dependencies": [
+              "6.2"
+            ]
+          },
+          {
+            "id": "6.7",
+            "title": "Example 7: visualization_server (Conditional HTTP Server)",
+            "description": "Evaluate and conditionally implement HTTP server example for serving visualizations. Includes evaluation of server.rs implementation readiness, decision point based on server feature availability, if ready: implement server startup, DAG serving, UI serving, graceful shutdown, console output with URL, and README with server instructions. If not ready: document requirements and skip. See DETAILED_VISUALIZATION_PLAN.md Example 7 for detailed implementation steps.",
+            "status": "pending",
+            "dependencies": [
+              "6.2"
+            ]
+          },
+          {
+            "id": "6.8",
+            "title": "Global Testing and Documentation",
+            "description": "Comprehensive testing and documentation updates for all visualization examples. Includes compilation testing for all examples (cargo check --examples), runtime testing to verify output files are created, documentation review and consistency check, update main README.md with visualization examples section listing all examples with links and descriptions, and final validation of all examples. See DETAILED_VISUALIZATION_PLAN.md Global Tasks section for detailed steps.",
+            "status": "pending",
+            "dependencies": [
+              "6.1",
+              "6.2",
+              "6.3",
+              "6.4",
+              "6.5",
+              "6.6"
+            ]
           }
         ]
       }
@@ -303,11 +94,13 @@
     "metadata": {
       "version": "1.0.0",
       "lastModified": "2025-11-30T23:01:58.967Z",
-      "taskCount": 6,
+      "taskCount": 7,
       "completedCount": 0,
       "tags": [
         "master"
-      ]
+      ],
+      "created": "2025-12-03T20:23:40.196Z",
+      "description": "Tasks for master context"
     }
   }
 }

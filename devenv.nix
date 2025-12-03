@@ -4,6 +4,13 @@
 
   # Languages
   languages = {
+    javascript = {
+      enable = true;
+      bun = {
+        enable = true;
+      };
+    };
+
     rust = {
       enable = true;
       channel = "stable";
