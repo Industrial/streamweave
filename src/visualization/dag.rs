@@ -680,10 +680,18 @@ mod tests {
     assert_eq!(consumer_node.metadata.output_type, None);
 
     // Check edges
-    let edge1 = dag.edges().iter().find(|e| e.from == "producer" && e.to == "transformer").unwrap();
+    let edge1 = dag
+      .edges()
+      .iter()
+      .find(|e| e.from == "producer" && e.to == "transformer")
+      .unwrap();
     assert!(edge1.label.is_some());
 
-    let edge2 = dag.edges().iter().find(|e| e.from == "transformer" && e.to == "consumer").unwrap();
+    let edge2 = dag
+      .edges()
+      .iter()
+      .find(|e| e.from == "transformer" && e.to == "consumer")
+      .unwrap();
     assert!(edge2.label.is_some());
   }
 
@@ -703,7 +711,10 @@ mod tests {
     assert_eq!(producer_node.metadata.name, Some("my_producer".to_string()));
 
     let transformer_node = dag.nodes().iter().find(|n| n.id == "transformer").unwrap();
-    assert_eq!(transformer_node.metadata.name, Some("my_transformer".to_string()));
+    assert_eq!(
+      transformer_node.metadata.name,
+      Some("my_transformer".to_string())
+    );
 
     let consumer_node = dag.nodes().iter().find(|n| n.id == "consumer").unwrap();
     assert_eq!(consumer_node.metadata.name, Some("my_consumer".to_string()));
@@ -716,12 +727,10 @@ mod tests {
     use crate::producers::vec::vec_producer::VecProducer;
     use crate::transformers::map::map_transformer::MapTransformer;
 
-    let producer = VecProducer::new(vec![1, 2, 3])
-      .with_error_strategy(ErrorStrategy::<i32>::Skip);
-    let transformer = MapTransformer::new(|x: i32| x * 2)
-      .with_error_strategy(ErrorStrategy::<i32>::Retry(3));
-    let consumer = VecConsumer::<i32>::new()
-      .with_error_strategy(ErrorStrategy::<i32>::Stop);
+    let producer = VecProducer::new(vec![1, 2, 3]).with_error_strategy(ErrorStrategy::<i32>::Skip);
+    let transformer =
+      MapTransformer::new(|x: i32| x * 2).with_error_strategy(ErrorStrategy::<i32>::Retry(3));
+    let consumer = VecConsumer::<i32>::new().with_error_strategy(ErrorStrategy::<i32>::Stop);
 
     let dag = PipelineDag::from_components(&producer, &transformer, &consumer);
 

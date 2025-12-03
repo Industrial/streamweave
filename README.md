@@ -499,6 +499,16 @@ StreamWeave includes comprehensive examples demonstrating all major features:
 - **[Basic Pipeline](examples/basic_pipeline/)** - Simple pipeline example
 - **[Advanced Pipeline](examples/advanced_pipeline/)** - Complex pipeline patterns
 
+### Visualization Examples
+
+- **[Basic Visualization](examples/visualization_basic/)** - Console export with DOT and JSON formats
+- **[HTML Visualization](examples/visualization_html/)** - Web visualization with browser auto-open
+- **[Graph Visualization](examples/visualization_graph/)** - Graph API visualization with fan-out and fan-in patterns
+- **[Graphviz Image Generation](examples/visualization_dot_image/)** - Generate PNG, SVG, PDF, and JPG images from DAGs
+- **[Metrics Visualization](examples/visualization_metrics/)** - Real-time metrics collection and visualization
+- **[Debug Visualization](examples/visualization_debug/)** - Debug mode with breakpoint support
+- **[Visualization Server](examples/visualization_server/)** - HTTP server for serving visualizations (requires `http-server` feature)
+
 ### Graph API Examples
 - **[Graph Architecture](GRAPH.md)** - Comprehensive guide to the Graph API with examples
 - Graph API examples demonstrate fan-in/fan-out patterns, routing strategies, and complex topologies

@@ -275,6 +275,35 @@ name = "visualization_web"
 path = "examples/visualization_web/main.rs"
 
 [[example]]
+name = "visualization_basic"
+path = "examples/visualization_basic/main.rs"
+
+[[example]]
+name = "visualization_html"
+path = "examples/visualization_html/main.rs"
+
+[[example]]
+name = "visualization_graph"
+path = "examples/visualization_graph/main.rs"
+
+[[example]]
+name = "visualization_dot_image"
+path = "examples/visualization_dot_image/main.rs"
+
+[[example]]
+name = "visualization_metrics"
+path = "examples/visualization_metrics/main.rs"
+
+[[example]]
+name = "visualization_debug"
+path = "examples/visualization_debug/main.rs"
+
+[[example]]
+name = "visualization_server"
+path = "examples/visualization_server/main.rs"
+required-features = ["http-server"]
+
+[[example]]
 name = "sql_parser"
 path = "examples/sql_parser/main.rs"
 required-features = ["sql"]
