@@ -1,0 +1,15 @@
+{
+  "name": "streamweave",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "task-master-ai": "^0.37.0"
+  }
+}
