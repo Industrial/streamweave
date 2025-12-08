@@ -183,7 +183,7 @@ sqlparser = { version = "0.40", optional = true }
 # ONNX Runtime for machine learning inference (native only)
 ort = { version = "2.0.0-rc.10", optional = true }
 # Array operations for tensor handling
-ndarray = { version = "0.15", optional = true }
+ndarray = { version = "0.17", optional = true }
 
 # OpenTelemetry integration (native only)
 # Using latest versions - all updated to 0.31 for compatibility
