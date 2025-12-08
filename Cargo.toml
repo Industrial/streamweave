@@ -212,7 +212,7 @@ tokio-util = { version = "0.7.14", optional = true }
 
 # Configure getrandom for WASM support (required for some dependencies)
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2", features = ["js"] }
+getrandom = { version = "0.3", features = ["js"] }
 
 [[example]]
 name = "basic_pipeline"
