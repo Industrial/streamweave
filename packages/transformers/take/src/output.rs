@@ -1,7 +1,7 @@
 use crate::take_transformer::TakeTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Output for TakeTransformer<T> {
   type Output = T;

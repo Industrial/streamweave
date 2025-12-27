@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use streamweave_core::{Transformer, TransformerConfig};
+use streamweave::{Transformer, TransformerConfig};
 use streamweave_error::ErrorStrategy;
 use tokio::time::Duration;
 

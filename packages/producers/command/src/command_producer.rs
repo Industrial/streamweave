@@ -1,4 +1,4 @@
-use streamweave_core::ProducerConfig;
+use streamweave::ProducerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// A producer that executes shell commands and produces their output.
@@ -25,7 +25,7 @@ impl CommandProducer {
     Self {
       command: command.into(),
       args: args.into_iter().map(|arg| arg.into()).collect(),
-      config: streamweave_core::ProducerConfig::default(),
+      config: streamweave::ProducerConfig::default(),
     }
   }
 

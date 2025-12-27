@@ -6,7 +6,7 @@
 use std::collections::{HashSet, VecDeque};
 use std::hash::{Hash, Hasher};
 use std::time::{Duration, Instant};
-use streamweave_core::TransformerConfig;
+use streamweave::TransformerConfig;
 use streamweave_error::ErrorStrategy;
 use streamweave_message::{Message, MessageId};
 

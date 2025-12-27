@@ -13,7 +13,24 @@ cd "$PROJECT_DIR"
 
 # Calculate publish order based on dependencies
 echo "> publish > Calculating publish order..."
-ORDER=$(scripts/publish-order.sh)
+# Get all package directories and convert to package name format
+ORDER=$(find packages -name Cargo.toml -type f | while read -r toml; do
+    dir=$(dirname "$toml")
+    rel_path=${dir#packages/}
+    
+    # Convert path to package name format
+    # streamweave -> streamweave
+    # producers/kafka -> producer-kafka
+    if [[ "$rel_path" == *"/"* ]]; then
+        # Has subdirectory (producers/kafka)
+        category=$(echo "$rel_path" | cut -d'/' -f1)
+        name=$(echo "$rel_path" | cut -d'/' -f2)
+        echo "${category}-${name}"
+    else
+        # Top-level package (streamweave, pipeline, etc.)
+        echo "$rel_path"
+    fi
+done | sort)
 
 if [ -z "$ORDER" ]; then
     echo "❌ Error: Could not determine publish order"
@@ -22,7 +39,11 @@ fi
 
 echo "> publish > Publishing packages in dependency order:"
 for pkg in $ORDER; do
-    echo "  - streamweave-$pkg"
+    if [[ "$pkg" == "streamweave" ]]; then
+        echo "  - $pkg"
+    else
+        echo "  - streamweave-$pkg"
+    fi
 done
 
 # Ask for confirmation
@@ -36,8 +57,13 @@ fi
 # Publish each package
 for pkg in $ORDER; do
     echo ""
-    echo "📦 Publishing streamweave-$pkg..."
-    cargo publish -p "streamweave-$pkg"
+    if [[ "$pkg" == "streamweave" ]]; then
+        echo "📦 Publishing $pkg..."
+        cargo publish -p "$pkg"
+    else
+        echo "📦 Publishing streamweave-$pkg..."
+        cargo publish -p "streamweave-$pkg"
+    fi
     sleep 5  # Rate limiting
 done
 

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use parquet::arrow::ArrowWriter;
 use std::fs::File;
-use streamweave_core::{Consumer, ConsumerConfig};
+use streamweave::{Consumer, ConsumerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tracing::{error, warn};
 

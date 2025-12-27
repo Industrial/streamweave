@@ -2,7 +2,7 @@ use crate::jsonl_producer::JsonlProducer;
 use futures::Stream;
 use serde::de::DeserializeOwned;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl<T> Output for JsonlProducer<T>
 where

@@ -3,7 +3,7 @@ use arrow::record_batch::RecordBatch;
 use async_trait::async_trait;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use std::fs::File;
-use streamweave_core::{Producer, ProducerConfig};
+use streamweave::{Producer, ProducerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tracing::error;
 

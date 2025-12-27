@@ -1,7 +1,7 @@
 use crate::split_transformer::SplitTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<F, T> Input for SplitTransformer<F, T>
 where

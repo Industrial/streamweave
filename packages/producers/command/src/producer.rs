@@ -1,6 +1,6 @@
 use super::command_producer::CommandProducer;
 use std::process::Stdio;
-use streamweave_core::{Producer, ProducerConfig};
+use streamweave::{Producer, ProducerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;

@@ -13,7 +13,7 @@ description = "Offset tracking for StreamWeave"
 
 [dependencies]
 chrono = { workspace = true }
-streamweave-core = { path = "../core" }
+streamweave = { path = "../streamweave" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

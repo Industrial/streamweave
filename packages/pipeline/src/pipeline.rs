@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use streamweave_core::{Consumer, Producer, Transformer};
+use streamweave::{Consumer, Producer, Transformer};
 use streamweave_error::{ErrorAction, ErrorStrategy, PipelineError, StreamError};
 
 /// Empty state for pipeline builder.
@@ -434,7 +434,7 @@ mod tests {
   use futures::{Stream, StreamExt};
   use proptest::prelude::*;
   use std::pin::Pin;
-  use streamweave_core::{
+  use streamweave::{
     Consumer, ConsumerConfig, Input, Output, Producer, ProducerConfig, Transformer,
     TransformerConfig,
   };

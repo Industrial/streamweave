@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use streamweave_core::TransformerConfig;
+use streamweave::TransformerConfig;
 use streamweave_error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
 
 /// A transformer that groups items in a stream into batches of a specified size.

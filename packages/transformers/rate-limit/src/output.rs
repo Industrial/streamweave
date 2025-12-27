@@ -1,7 +1,7 @@
 use crate::rate_limit_transformer::RateLimitTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl<T> Output for RateLimitTransformer<T>
 where

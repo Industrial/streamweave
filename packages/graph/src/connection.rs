@@ -31,9 +31,9 @@ use crate::node::{
   ValidateTransformerPorts,
 };
 use crate::port::{GetPort, PortList};
-use streamweave_core::Consumer;
-use streamweave_core::Producer;
-use streamweave_core::Transformer;
+use streamweave::Consumer;
+use streamweave::Producer;
+use streamweave::Transformer;
 
 /// Trait for extracting an output port type from a node at a specific index.
 ///

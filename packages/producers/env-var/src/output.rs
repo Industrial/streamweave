@@ -1,7 +1,7 @@
 use super::env_var_producer::EnvVarProducer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl Output for EnvVarProducer {
   type Output = (String, String);

@@ -1,7 +1,7 @@
 use futures::Stream;
 use std::marker::PhantomData;
 use std::pin::Pin;
-use streamweave_core::TransformerConfig;
+use streamweave::TransformerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// Defines the ordering strategy for merging multiple streams.

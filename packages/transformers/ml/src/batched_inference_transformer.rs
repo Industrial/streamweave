@@ -29,7 +29,7 @@ use crate::InferenceBackend;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
-use streamweave_core::TransformerConfig;
+use streamweave::TransformerConfig;
 use streamweave_error::ErrorStrategy;
 use tokio::sync::RwLock;
 
@@ -265,9 +265,9 @@ mod transformer_impl {
   use std::pin::Pin;
   use std::sync::Arc;
   use std::time::Duration;
-  use streamweave_core::Input;
-  use streamweave_core::Output;
-  use streamweave_core::{Transformer, TransformerConfig};
+  use streamweave::Input;
+  use streamweave::Output;
+  use streamweave::{Transformer, TransformerConfig};
   use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
   use tokio::time::{Instant, sleep};
 

@@ -2,9 +2,9 @@
 
 use async_trait::async_trait;
 use futures::stream::{self, StreamExt};
-use streamweave_core::Input;
-use streamweave_core::Output;
-use streamweave_core::{Transformer, TransformerConfig};
+use streamweave::Input;
+use streamweave::Output;
+use streamweave::{Transformer, TransformerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave_message::Message;
 

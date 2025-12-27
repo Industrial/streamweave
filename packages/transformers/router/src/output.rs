@@ -1,7 +1,7 @@
 use crate::router_transformer::{RouteTarget, RouterTransformer};
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl<T, F> Output for RouterTransformer<T, F>
 where

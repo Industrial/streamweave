@@ -1,7 +1,7 @@
 use super::file_consumer::FileConsumer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl Input for FileConsumer {
   type Input = String;

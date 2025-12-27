@@ -1,7 +1,7 @@
 use crate::reduce_transformer::ReduceTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<T, Acc, F> Input for ReduceTransformer<T, Acc, F>
 where

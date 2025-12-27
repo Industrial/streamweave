@@ -1,5 +1,5 @@
 use num_traits::Num;
-use streamweave_core::ProducerConfig;
+use streamweave::ProducerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// A producer that generates items in a numeric range.

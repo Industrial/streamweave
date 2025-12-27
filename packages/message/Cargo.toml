@@ -12,7 +12,7 @@ categories.workspace = true
 description = "Message envelope types for StreamWeave"
 
 [dependencies]
-streamweave-core = { path = "../core", optional = true }
+streamweave = { path = "../streamweave", optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }

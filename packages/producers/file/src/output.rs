@@ -1,7 +1,7 @@
 use super::file_producer::FileProducer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl Output for FileProducer {
   type Output = String;

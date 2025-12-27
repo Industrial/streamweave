@@ -2,7 +2,7 @@ use crate::sort_transformer::SortTransformer;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
-use streamweave_core::{Transformer, TransformerConfig};
+use streamweave::{Transformer, TransformerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 #[async_trait]

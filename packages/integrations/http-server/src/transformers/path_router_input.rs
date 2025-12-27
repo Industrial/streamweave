@@ -7,7 +7,7 @@ use futures::Stream;
 #[cfg(feature = "http-server")]
 use std::pin::Pin;
 #[cfg(feature = "http-server")]
-use streamweave_core::Input;
+use streamweave::Input;
 #[cfg(feature = "http-server")]
 use streamweave_message::Message;
 

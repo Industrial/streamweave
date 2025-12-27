@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use std::collections::HashMap;
 use std::hash::Hash;
-use streamweave_core::{Transformer, TransformerConfig};
+use streamweave::{Transformer, TransformerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 #[async_trait]

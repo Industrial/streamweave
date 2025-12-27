@@ -1,7 +1,7 @@
 use super::console_consumer::ConsoleConsumer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<T> Input for ConsoleConsumer<T>
 where

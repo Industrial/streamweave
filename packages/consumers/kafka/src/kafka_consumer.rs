@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::collections::HashMap;
-use streamweave_core::ConsumerConfig;
+use streamweave::ConsumerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// Configuration for Kafka producer behavior.

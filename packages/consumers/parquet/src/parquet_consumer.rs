@@ -5,7 +5,7 @@ use parquet::basic::Compression;
 use parquet::file::properties::WriterProperties;
 use std::fs::File;
 use std::path::PathBuf;
-use streamweave_core::ConsumerConfig;
+use streamweave::ConsumerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// Configuration for Parquet writing behavior.

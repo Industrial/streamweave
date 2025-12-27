@@ -4,7 +4,7 @@ use csv::Trim;
 use serde::de::DeserializeOwned;
 use std::fs::File;
 use std::io::BufReader;
-use streamweave_core::{Producer, ProducerConfig};
+use streamweave::{Producer, ProducerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tracing::error;
 

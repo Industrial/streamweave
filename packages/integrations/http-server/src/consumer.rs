@@ -16,7 +16,7 @@ use axum::{body::Body, response::Response};
 #[cfg(feature = "http-server")]
 use futures::StreamExt;
 #[cfg(feature = "http-server")]
-use streamweave_core::{Consumer, ConsumerConfig};
+use streamweave::{Consumer, ConsumerConfig};
 #[cfg(feature = "http-server")]
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 #[cfg(feature = "http-server")]
@@ -560,7 +560,7 @@ impl Consumer for HttpResponseConsumer {
 #[cfg(feature = "http-server")]
 pub struct HttpResponseCorrelationConsumer {
   /// Consumer configuration
-  config: streamweave_core::ConsumerConfig<streamweave_message::Message<HttpResponse>>,
+  config: streamweave::ConsumerConfig<streamweave_message::Message<HttpResponse>>,
   /// Mapping of request IDs to response senders
   response_senders: std::sync::Arc<
     tokio::sync::RwLock<
@@ -585,7 +585,7 @@ impl HttpResponseCorrelationConsumer {
   /// Creates a new response correlation consumer with custom timeout.
   pub fn with_timeout(timeout: std::time::Duration) -> Self {
     Self {
-      config: streamweave_core::ConsumerConfig::default(),
+      config: streamweave::ConsumerConfig::default(),
       response_senders: std::sync::Arc::new(tokio::sync::RwLock::new(
         std::collections::HashMap::new(),
       )),
@@ -654,7 +654,7 @@ impl Default for HttpResponseCorrelationConsumer {
 
 #[cfg(feature = "http-server")]
 #[async_trait]
-impl streamweave_core::Consumer for HttpResponseCorrelationConsumer {
+impl streamweave::Consumer for HttpResponseCorrelationConsumer {
   type InputPorts = (streamweave_message::Message<HttpResponse>,);
 
   /// Consumes a stream of `Message<HttpResponse>` items and correlates them with requests.
@@ -724,20 +724,20 @@ impl streamweave_core::Consumer for HttpResponseCorrelationConsumer {
 
   fn set_config_impl(
     &mut self,
-    config: streamweave_core::ConsumerConfig<streamweave_message::Message<HttpResponse>>,
+    config: streamweave::ConsumerConfig<streamweave_message::Message<HttpResponse>>,
   ) {
     self.config = config;
   }
 
   fn get_config_impl(
     &self,
-  ) -> &streamweave_core::ConsumerConfig<streamweave_message::Message<HttpResponse>> {
+  ) -> &streamweave::ConsumerConfig<streamweave_message::Message<HttpResponse>> {
     &self.config
   }
 
   fn get_config_mut_impl(
     &mut self,
-  ) -> &mut streamweave_core::ConsumerConfig<streamweave_message::Message<HttpResponse>> {
+  ) -> &mut streamweave::ConsumerConfig<streamweave_message::Message<HttpResponse>> {
     &mut self.config
   }
 

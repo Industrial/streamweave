@@ -19,7 +19,7 @@ use futures::StreamExt;
 #[allow(unused_imports)] // BodyExt is used via trait method into_data_stream()
 use http_body_util::BodyExt;
 #[cfg(feature = "http-server")]
-use streamweave_core::{Producer, ProducerConfig};
+use streamweave::{Producer, ProducerConfig};
 #[cfg(feature = "http-server")]
 use streamweave_error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
 #[cfg(feature = "http-server")]

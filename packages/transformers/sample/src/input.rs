@@ -1,7 +1,7 @@
 use crate::sample_transformer::SampleTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<T> Input for SampleTransformer<T>
 where

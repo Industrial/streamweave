@@ -10,7 +10,7 @@ use redis::{AsyncCommands, Client, RedisResult, aio::ConnectionManager};
 use serde::Serialize;
 #[cfg(feature = "redis")]
 use std::collections::HashMap;
-use streamweave_core::{Consumer, ConsumerConfig};
+use streamweave::{Consumer, ConsumerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 #[cfg(feature = "redis")]
 use tracing::{error, warn};

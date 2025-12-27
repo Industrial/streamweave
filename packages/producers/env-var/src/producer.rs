@@ -1,7 +1,7 @@
 use super::env_var_producer::EnvVarProducer;
 use futures::{Stream, stream};
 use std::pin::Pin;
-use streamweave_core::{Producer, ProducerConfig};
+use streamweave::{Producer, ProducerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 impl Producer for EnvVarProducer {
@@ -79,7 +79,7 @@ mod tests {
   use std::collections::HashMap;
   use std::env;
   use std::sync::{Arc, Mutex};
-  use streamweave_core::Output;
+  use streamweave::Output;
 
   // Global state for environment variable testing
   static ENV_LOCK: Mutex<()> = Mutex::new(());

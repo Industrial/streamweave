@@ -2,7 +2,7 @@ use crate::jsonl_consumer::JsonlConsumer;
 use futures::Stream;
 use serde::Serialize;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<T> Input for JsonlConsumer<T>
 where

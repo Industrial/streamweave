@@ -2,7 +2,7 @@ use crate::consumer::HttpResponseConsumer;
 use crate::types::HttpResponse;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl Input for HttpResponseConsumer {
   type Input = HttpResponse;

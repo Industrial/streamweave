@@ -1,7 +1,7 @@
 [workspace]
 members = [
   # Core packages
-  "packages/core",
+  "packages/streamweave",
   "packages/pipeline",
   "packages/graph",
   "packages/message",
@@ -74,8 +74,6 @@ members = [
   "packages/integrations/http-server",
   "packages/integrations/sql",
   "packages/integrations/opentelemetry",
-  # Meta-package (last)
-  "packages/streamweave",
 ]
 
 resolver = "2"

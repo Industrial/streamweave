@@ -1,7 +1,7 @@
 use crate::circuit_breaker_transformer::CircuitBreakerTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<T> Input for CircuitBreakerTransformer<T>
 where

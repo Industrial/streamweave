@@ -1,4 +1,4 @@
-use streamweave_core::TransformerConfig;
+use streamweave::TransformerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// A transformer that applies a function to each item in the stream.

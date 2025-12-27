@@ -1,7 +1,7 @@
 use crate::split_at_transformer::SplitAtTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl<T> Output for SplitAtTransformer<T>
 where

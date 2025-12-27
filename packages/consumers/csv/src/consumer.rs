@@ -4,7 +4,7 @@ use csv::WriterBuilder;
 use futures::StreamExt;
 use serde::Serialize;
 use std::fs::File;
-use streamweave_core::{Consumer, ConsumerConfig};
+use streamweave::{Consumer, ConsumerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tracing::{error, warn};
 

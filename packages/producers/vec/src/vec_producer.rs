@@ -1,4 +1,4 @@
-use streamweave_core::ProducerConfig;
+use streamweave::ProducerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// A producer that yields items from a Vec.
@@ -24,7 +24,7 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> VecProducer<T> {
   pub fn new(data: Vec<T>) -> Self {
     Self {
       data,
-      config: streamweave_core::ProducerConfig::default(),
+      config: streamweave::ProducerConfig::default(),
     }
   }
 

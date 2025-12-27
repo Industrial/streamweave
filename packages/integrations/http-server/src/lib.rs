@@ -18,6 +18,6 @@ pub use handler::*;
 pub use middleware::*;
 pub use producer::*;
 pub use types::*;
-// pub use input::*;  // Unused - input/output traits are in streamweave-core
-// pub use output::*;  // Unused - input/output traits are in streamweave-core
+// pub use input::*;  // Unused - input/output traits are in streamweave
+// pub use output::*;  // Unused - input/output traits are in streamweave
 pub use transformers::*;

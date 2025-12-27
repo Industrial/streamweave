@@ -1,7 +1,7 @@
 use super::channel_consumer::ChannelConsumer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<T> Input for ChannelConsumer<T>
 where

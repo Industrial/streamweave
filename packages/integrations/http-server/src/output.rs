@@ -7,7 +7,7 @@ use futures::Stream;
 #[cfg(feature = "http-server")]
 use std::pin::Pin;
 #[cfg(feature = "http-server")]
-use streamweave_core::Output;
+use streamweave::Output;
 
 #[cfg(feature = "http-server")]
 impl Output for HttpRequestProducer {

@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use streamweave_core::TransformerConfig;
+use streamweave::TransformerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// A transformer that splits a stream of items into groups based on a predicate.

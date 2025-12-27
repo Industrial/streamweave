@@ -1,7 +1,7 @@
 use crate::ordered_merge_transformer::OrderedMergeTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl<T> Output for OrderedMergeTransformer<T>
 where

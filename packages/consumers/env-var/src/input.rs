@@ -1,5 +1,5 @@
 use super::env_var_consumer::EnvVarConsumer;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl Input for EnvVarConsumer {
   type Input = (String, String);

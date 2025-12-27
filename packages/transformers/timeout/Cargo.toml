@@ -14,7 +14,7 @@ description = "Timeout transformer for StreamWeave"
 [dependencies]
 chrono = { workspace = true }
 async-stream = { workspace = true }
-streamweave-core = { path = "../../core" }
+streamweave = { path = "../../streamweave" }
 streamweave-error = { path = "../../error" }
 tokio = { workspace = true, features = ["macros", "rt", "time"] }
 futures = { workspace = true }

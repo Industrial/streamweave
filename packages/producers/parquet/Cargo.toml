@@ -14,7 +14,7 @@ description = "Parquet producer for StreamWeave"
 [dependencies]
 chrono = { workspace = true }
 async-stream = { workspace = true }
-streamweave-core = { path = "../../core" }
+streamweave = { path = "../../streamweave" }
 streamweave-error = { path = "../../error" }
 streamweave-message = { path = "../../message", optional = true }
 parquet = { workspace = true, optional = true, features = ["arrow"] }

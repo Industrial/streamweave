@@ -1,4 +1,4 @@
-use streamweave_core::ProducerConfig;
+use streamweave::ProducerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// A producer that emits items from a fixed-size array.
@@ -24,7 +24,7 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug, const N: usize> ArrayPr
   pub fn new(array: [T; N]) -> Self {
     Self {
       array,
-      config: streamweave_core::ProducerConfig::<T>::default(),
+      config: streamweave::ProducerConfig::<T>::default(),
       _phantom: std::marker::PhantomData,
     }
   }

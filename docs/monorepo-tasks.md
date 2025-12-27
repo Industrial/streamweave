@@ -1,7 +1,5 @@
 - [x] Update root `Cargo.toml` to workspace configuration.
-- [x] Create `scripts` directory.
-  - [x] Create `scripts/publish-order.sh`.
-  - [x] Create `scripts/workspace-info.sh`.
+- [x] Publish order logic inlined into `bin/publish`.
 - [x] Update `bin/build` script for workspace.
 - [x] Update `bin/test` script for workspace.
 - [x] Update `bin/check` script for workspace.

@@ -2,7 +2,7 @@ use crate::redis_consumer::RedisConsumer;
 use futures::Stream;
 use serde::Serialize;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<T> Input for RedisConsumer<T>
 where

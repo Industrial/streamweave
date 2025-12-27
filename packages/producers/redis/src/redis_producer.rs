@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use streamweave_core::ProducerConfig;
+use streamweave::ProducerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// Configuration for Redis Streams consumer behavior.

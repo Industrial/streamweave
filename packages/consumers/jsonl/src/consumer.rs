@@ -2,7 +2,7 @@ use super::jsonl_consumer::JsonlConsumer;
 use async_trait::async_trait;
 use futures::StreamExt;
 use serde::Serialize;
-use streamweave_core::{Consumer, ConsumerConfig};
+use streamweave::{Consumer, ConsumerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncWriteExt, BufWriter};

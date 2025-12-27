@@ -2,7 +2,7 @@ use crate::csv_consumer::CsvConsumer;
 use futures::Stream;
 use serde::Serialize;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<T> Input for CsvConsumer<T>
 where

@@ -2,7 +2,7 @@ use super::range_producer::RangeProducer;
 use futures::Stream;
 use num_traits::Num;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl<T> Output for RangeProducer<T>
 where

@@ -1,7 +1,7 @@
 use crate::batch_transformer::BatchTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<T> Input for BatchTransformer<T>
 where

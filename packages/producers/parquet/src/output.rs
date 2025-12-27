@@ -2,7 +2,7 @@ use crate::parquet_producer::ParquetProducer;
 use arrow::record_batch::RecordBatch;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl Output for ParquetProducer {
   type Output = RecordBatch;

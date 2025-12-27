@@ -13,7 +13,7 @@ description = "Skip transformer for StreamWeave"
 
 [dependencies]
 chrono = { workspace = true }
-streamweave-core = { path = "../../core" }
+streamweave = { path = "../../streamweave" }
 streamweave-error = { path = "../../error" }
 tokio = { workspace = true, features = ["macros", "rt"] }
 futures = { workspace = true }

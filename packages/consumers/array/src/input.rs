@@ -1,7 +1,7 @@
 use crate::array_consumer::ArrayConsumer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<T, const N: usize> Input for ArrayConsumer<T, N>
 where

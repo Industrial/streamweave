@@ -1,7 +1,7 @@
 use super::array_producer::ArrayProducer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl<T: Send + Sync + 'static + Clone + std::fmt::Debug, const N: usize> Output
   for ArrayProducer<T, N>

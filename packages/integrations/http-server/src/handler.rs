@@ -25,7 +25,7 @@ use futures::StreamExt;
 #[cfg(feature = "http-server")]
 use std::sync::Arc;
 #[cfg(feature = "http-server")]
-use streamweave_core::Producer;
+use streamweave::Producer;
 #[cfg(feature = "http-server")]
 use streamweave_pipeline::PipelineBuilder;
 #[cfg(feature = "http-server")]
@@ -152,18 +152,18 @@ pub fn create_pipeline_handler<T>(
   transformer_fn: impl Fn() -> T + Send + Sync + Clone + 'static,
 ) -> impl Fn(Request) -> std::pin::Pin<Box<dyn std::future::Future<Output = Response<Body>> + Send>>
 where
-  T: streamweave_core::Transformer + 'static,
+  T: streamweave::Transformer + 'static,
   T::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
   T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
-  HttpRequestProducer: streamweave_core::Producer,
-  <HttpRequestProducer as streamweave_core::Output>::Output:
+  HttpRequestProducer: streamweave::Producer,
+  <HttpRequestProducer as streamweave::Output>::Output:
     std::fmt::Debug + Clone + Send + Sync + 'static,
-  <HttpRequestProducer as streamweave_core::Output>::OutputStream: 'static,
-  T::InputStream: From<<HttpRequestProducer as streamweave_core::Output>::OutputStream>,
-  HttpResponseConsumer: streamweave_core::Consumer,
-  <HttpResponseConsumer as streamweave_core::Input>::Input:
+  <HttpRequestProducer as streamweave::Output>::OutputStream: 'static,
+  T::InputStream: From<<HttpRequestProducer as streamweave::Output>::OutputStream>,
+  HttpResponseConsumer: streamweave::Consumer,
+  <HttpResponseConsumer as streamweave::Input>::Input:
     std::fmt::Debug + Clone + Send + Sync + 'static,
-  <HttpResponseConsumer as streamweave_core::Input>::InputStream: From<T::OutputStream>,
+  <HttpResponseConsumer as streamweave::Input>::InputStream: From<T::OutputStream>,
 {
   let transformer_fn: Arc<dyn Fn() -> T + Send + Sync> = Arc::new(transformer_fn);
   move |request: Request| {
@@ -181,18 +181,18 @@ async fn handle_request_with_pipeline<T, F>(
 ) -> Response<Body>
 where
   F: FnOnce() -> T + Send + 'static,
-  T: streamweave_core::Transformer + 'static,
+  T: streamweave::Transformer + 'static,
   T::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
   T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
-  HttpRequestProducer: streamweave_core::Producer,
-  <HttpRequestProducer as streamweave_core::Output>::Output:
+  HttpRequestProducer: streamweave::Producer,
+  <HttpRequestProducer as streamweave::Output>::Output:
     std::fmt::Debug + Clone + Send + Sync + 'static,
-  <HttpRequestProducer as streamweave_core::Output>::OutputStream: 'static,
-  T::InputStream: From<<HttpRequestProducer as streamweave_core::Output>::OutputStream>,
-  HttpResponseConsumer: streamweave_core::Consumer,
-  <HttpResponseConsumer as streamweave_core::Input>::Input:
+  <HttpRequestProducer as streamweave::Output>::OutputStream: 'static,
+  T::InputStream: From<<HttpRequestProducer as streamweave::Output>::OutputStream>,
+  HttpResponseConsumer: streamweave::Consumer,
+  <HttpResponseConsumer as streamweave::Input>::Input:
     std::fmt::Debug + Clone + Send + Sync + 'static,
-  <HttpResponseConsumer as streamweave_core::Input>::InputStream: From<T::OutputStream>,
+  <HttpResponseConsumer as streamweave::Input>::InputStream: From<T::OutputStream>,
 {
   // Create HTTP request producer from Axum request
   let producer = HttpRequestProducer::from_axum_request(

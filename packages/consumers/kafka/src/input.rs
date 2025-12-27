@@ -2,7 +2,7 @@ use crate::kafka_consumer::KafkaConsumer;
 use futures::Stream;
 use serde::Serialize;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<T> Input for KafkaConsumer<T>
 where

@@ -238,9 +238,9 @@ impl PipelineDag {
   #[must_use]
   pub fn from_components<P, T, C>(producer: &P, transformer: &T, consumer: &C) -> Self
   where
-    P: streamweave_core::Producer,
-    T: streamweave_core::Transformer,
-    C: streamweave_core::Consumer,
+    P: streamweave::Producer,
+    T: streamweave::Transformer,
+    C: streamweave::Consumer,
     P::Output: std::fmt::Debug + Clone + Send + Sync,
     T::Input: std::fmt::Debug + Clone + Send + Sync,
     T::Output: std::fmt::Debug + Clone + Send + Sync,

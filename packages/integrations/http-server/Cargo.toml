@@ -13,7 +13,7 @@ description = "HTTP server integration for StreamWeave"
 
 [dependencies]
 async-stream = { workspace = true }
-streamweave-core = { path = "../../core" }
+streamweave = { path = "../../streamweave" }
 streamweave-graph = { path = "../../graph" }
 streamweave-pipeline = { path = "../../pipeline" }
 streamweave-message = { path = "../../message" }

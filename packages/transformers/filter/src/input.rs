@@ -1,7 +1,7 @@
 use crate::filter_transformer::FilterTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<F, T> Input for FilterTransformer<F, T>
 where

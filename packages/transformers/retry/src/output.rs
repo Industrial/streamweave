@@ -1,7 +1,7 @@
 use crate::retry_transformer::RetryTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl<T> Output for RetryTransformer<T>
 where

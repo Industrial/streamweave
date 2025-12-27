@@ -1,7 +1,7 @@
 use crate::merge_transformer::MergeTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<T> Input for MergeTransformer<T>
 where

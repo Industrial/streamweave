@@ -1,7 +1,7 @@
 use crate::round_robin_transformer::RoundRobinTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl<T> Output for RoundRobinTransformer<T>
 where

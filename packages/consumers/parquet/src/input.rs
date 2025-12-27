@@ -2,7 +2,7 @@ use crate::parquet_consumer::ParquetConsumer;
 use arrow::record_batch::RecordBatch;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl Input for ParquetConsumer {
   type Input = RecordBatch;

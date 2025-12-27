@@ -12,7 +12,7 @@ use async_trait::async_trait;
 #[cfg(feature = "http-server")]
 use futures::StreamExt;
 #[cfg(feature = "http-server")]
-use streamweave_core::{Transformer, TransformerConfig};
+use streamweave::{Transformer, TransformerConfig};
 #[cfg(feature = "http-server")]
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 #[cfg(feature = "http-server")]

@@ -1,6 +1,6 @@
 use serde::de::DeserializeOwned;
 use std::marker::PhantomData;
-use streamweave_core::ProducerConfig;
+use streamweave::ProducerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// A producer that reads JSON Lines (JSONL) files.

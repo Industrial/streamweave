@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::marker::PhantomData;
 use std::path::PathBuf;
-use streamweave_core::ConsumerConfig;
+use streamweave::ConsumerConfig;
 use streamweave_error::ErrorStrategy;
 use tokio::fs::File;
 use tokio::io::BufWriter;

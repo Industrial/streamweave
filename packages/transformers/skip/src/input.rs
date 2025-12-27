@@ -1,7 +1,7 @@
 use crate::skip_transformer::SkipTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<T> Input for SkipTransformer<T>
 where

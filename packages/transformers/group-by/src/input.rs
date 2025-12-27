@@ -2,7 +2,7 @@ use crate::group_by_transformer::GroupByTransformer;
 use futures::Stream;
 use std::hash::Hash;
 use std::pin::Pin;
-use streamweave_core::Input;
+use streamweave::Input;
 
 impl<F, T, K> Input for GroupByTransformer<F, T, K>
 where

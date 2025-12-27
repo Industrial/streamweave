@@ -12,7 +12,7 @@ categories.workspace = true
 description = "SQL query support for StreamWeave"
 
 [dependencies]
-streamweave-core = { path = "../../core" }
+streamweave = { path = "../../streamweave" }
 streamweave-error = { path = "../../error" }
 sqlparser = { workspace = true, optional = true }
 serde = { workspace = true }

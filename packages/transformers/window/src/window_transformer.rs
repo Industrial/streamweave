@@ -1,4 +1,4 @@
-use streamweave_core::TransformerConfig;
+use streamweave::TransformerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// A transformer that creates sliding windows of items from a stream.

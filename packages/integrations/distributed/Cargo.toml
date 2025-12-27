@@ -12,7 +12,7 @@ categories.workspace = true
 description = "Distributed processing integration for StreamWeave"
 
 [dependencies]
-streamweave-core = { path = "../../core" }
+streamweave = { path = "../../streamweave" }
 streamweave-graph = { path = "../../graph" }
 chrono = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "full"] }

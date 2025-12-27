@@ -2,7 +2,7 @@ use crate::csv_producer::CsvProducer;
 use futures::Stream;
 use serde::de::DeserializeOwned;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl<T> Output for CsvProducer<T>
 where

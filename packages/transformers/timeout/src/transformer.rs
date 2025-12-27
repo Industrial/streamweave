@@ -2,7 +2,7 @@ use crate::timeout_transformer::TimeoutTransformer;
 use async_stream;
 use async_trait::async_trait;
 use futures::StreamExt;
-use streamweave_core::{Transformer, TransformerConfig};
+use streamweave::{Transformer, TransformerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 #[async_trait]

@@ -1,5 +1,5 @@
 use arrow::record_batch::RecordBatch;
-use streamweave_core::ProducerConfig;
+use streamweave::ProducerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// Configuration for Parquet reading behavior.

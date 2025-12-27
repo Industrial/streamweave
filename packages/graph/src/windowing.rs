@@ -274,8 +274,8 @@ pub trait WindowedNode: NodeTrait {
 impl<T, Inputs, Outputs> WindowedNode for TransformerNode<WindowTransformer<T>, Inputs, Outputs>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,
-  Inputs: streamweave_core::port::PortList + Send + Sync,
-  Outputs: streamweave_core::port::PortList + Send + Sync,
+  Inputs: streamweave::port::PortList + Send + Sync,
+  Outputs: streamweave::port::PortList + Send + Sync,
   (): crate::node::ValidateTransformerPorts<WindowTransformer<T>, Inputs, Outputs>,
 {
   fn window_config(&self) -> Option<GraphWindowConfig> {

@@ -1,5 +1,5 @@
 use serde::Serialize;
-use streamweave_core::ConsumerConfig;
+use streamweave::ConsumerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// Configuration for Redis Streams producer behavior.

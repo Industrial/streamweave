@@ -13,7 +13,7 @@
 
 use crate::node::TransformerNode;
 use crate::traits::NodeTrait;
-use streamweave_core::Transformer;
+use streamweave::Transformer;
 use streamweave_stateful::{StateError, StateResult, StatefulTransformer};
 
 /// Trait for accessing state from stateful nodes.
@@ -81,8 +81,8 @@ where
   T: Transformer + StatefulTransformer + Send + Sync + 'static,
   T::Input: std::fmt::Debug + Clone + Send + Sync,
   T::Output: std::fmt::Debug + Clone + Send + Sync,
-  Inputs: streamweave_core::port::PortList + Send + Sync,
-  Outputs: streamweave_core::port::PortList + Send + Sync,
+  Inputs: streamweave::port::PortList + Send + Sync,
+  Outputs: streamweave::port::PortList + Send + Sync,
   (): crate::node::ValidateTransformerPorts<T, Inputs, Outputs>,
 {
   fn get_state(&self) -> StateResult<Option<Box<dyn std::any::Any + Send + Sync>>> {

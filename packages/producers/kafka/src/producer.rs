@@ -4,7 +4,7 @@ use super::kafka_producer::{KafkaMessage, KafkaProducer};
 use async_stream::stream;
 #[cfg(feature = "kafka")]
 use async_trait::async_trait;
-use streamweave_core::{Producer, ProducerConfig};
+use streamweave::{Producer, ProducerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 #[cfg(feature = "kafka")]

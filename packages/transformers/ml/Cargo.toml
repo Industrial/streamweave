@@ -13,7 +13,7 @@ description = "ML transformers for StreamWeave"
 
 [dependencies]
 async-stream = { workspace = true }
-streamweave-core = { path = "../../core" }
+streamweave = { path = "../../streamweave" }
 streamweave-error = { path = "../../error" }
 ort = { workspace = true, optional = true }
 ndarray = { workspace = true, optional = true }

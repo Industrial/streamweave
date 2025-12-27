@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use streamweave_core::{Transformer, TransformerConfig};
+use streamweave::{Transformer, TransformerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tokio::time::Instant;
 

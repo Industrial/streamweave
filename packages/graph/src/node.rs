@@ -33,14 +33,14 @@
 
 use crate::port::{GetPort, PortList};
 use crate::traits::{NodeKind, NodeTrait};
-use streamweave_core::Consumer;
-use streamweave_core::Producer;
-use streamweave_core::Transformer;
+use streamweave::Consumer;
+use streamweave::Producer;
+use streamweave::Transformer;
 
 // Import helper traits for default port types
-use streamweave_core::ConsumerPorts;
-use streamweave_core::ProducerPorts;
-use streamweave_core::TransformerPorts;
+use streamweave::ConsumerPorts;
+use streamweave::ProducerPorts;
+use streamweave::TransformerPorts;
 
 /// Trait for validating that a ProducerNode's output ports match the producer's output type.
 ///

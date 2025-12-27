@@ -1,4 +1,4 @@
-use streamweave_core::ConsumerConfig;
+use streamweave::ConsumerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// A consumer that collects items into a `Vec`.

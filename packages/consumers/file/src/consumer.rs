@@ -1,7 +1,7 @@
 use super::file_consumer::FileConsumer;
 use async_trait::async_trait;
 use futures::StreamExt;
-use streamweave_core::{Consumer, ConsumerConfig};
+use streamweave::{Consumer, ConsumerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;

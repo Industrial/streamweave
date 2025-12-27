@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use futures::Stream;
 #[cfg(feature = "http-poll")]
 use std::pin::Pin;
-use streamweave_core::{Producer, ProducerConfig};
+use streamweave::{Producer, ProducerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 #[cfg(feature = "http-poll")]

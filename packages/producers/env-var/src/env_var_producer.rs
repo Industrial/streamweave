@@ -1,4 +1,4 @@
-use streamweave_core::ProducerConfig;
+use streamweave::ProducerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// A producer that yields environment variables as key-value pairs.

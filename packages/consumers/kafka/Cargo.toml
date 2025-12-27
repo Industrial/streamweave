@@ -13,7 +13,7 @@ description = "Kafka consumer for StreamWeave"
 
 [dependencies]
 chrono = { workspace = true }
-streamweave-core = { path = "../../core" }
+streamweave = { path = "../../streamweave" }
 streamweave-error = { path = "../../error" }
 streamweave-message = { path = "../../message", optional = true }
 rdkafka = { workspace = true, optional = true }

@@ -1,7 +1,7 @@
 use crate::map_transformer::MapTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl<F, I, O> Output for MapTransformer<F, I, O>
 where

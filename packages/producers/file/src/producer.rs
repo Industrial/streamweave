@@ -1,6 +1,6 @@
 use super::file_producer::FileProducer;
 use async_trait::async_trait;
-use streamweave_core::{Producer, ProducerConfig};
+use streamweave::{Producer, ProducerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, BufReader};

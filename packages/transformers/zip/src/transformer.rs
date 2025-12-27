@@ -2,7 +2,7 @@ use crate::zip_transformer::ZipTransformer;
 use async_stream;
 use async_trait::async_trait;
 use futures::StreamExt;
-use streamweave_core::Transformer;
+use streamweave::Transformer;
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 #[async_trait]
@@ -42,15 +42,15 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Transformer for ZipTran
     })
   }
 
-  fn set_config_impl(&mut self, config: streamweave_core::TransformerConfig<Vec<T>>) {
+  fn set_config_impl(&mut self, config: streamweave::TransformerConfig<Vec<T>>) {
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> &streamweave_core::TransformerConfig<Vec<T>> {
+  fn get_config_impl(&self) -> &streamweave::TransformerConfig<Vec<T>> {
     &self.config
   }
 
-  fn get_config_mut_impl(&mut self) -> &mut streamweave_core::TransformerConfig<Vec<T>> {
+  fn get_config_mut_impl(&mut self) -> &mut streamweave::TransformerConfig<Vec<T>> {
     &mut self.config
   }
 

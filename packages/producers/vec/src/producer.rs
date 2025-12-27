@@ -1,6 +1,6 @@
 use super::vec_producer::VecProducer;
 use futures::stream;
-use streamweave_core::{Producer, ProducerConfig};
+use streamweave::{Producer, ProducerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Producer for VecProducer<T> {

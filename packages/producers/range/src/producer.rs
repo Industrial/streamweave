@@ -1,7 +1,7 @@
 use super::range_producer::RangeProducer;
 use futures::stream;
 use num_traits::Num;
-use streamweave_core::{Producer, ProducerConfig};
+use streamweave::{Producer, ProducerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 impl<T> Producer for RangeProducer<T>

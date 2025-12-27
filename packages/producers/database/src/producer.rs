@@ -14,7 +14,7 @@ use futures::StreamExt;
 use sqlx::{Column, TypeInfo};
 #[cfg(feature = "database")]
 use std::collections::HashMap;
-use streamweave_core::{Producer, ProducerConfig};
+use streamweave::{Producer, ProducerConfig};
 use streamweave_error::{ErrorAction, ErrorStrategy, StreamError};
 #[cfg(feature = "database")]
 use tracing::{error, warn};

@@ -12,7 +12,7 @@ categories.workspace = true
 description = "Stateful transformer support for StreamWeave"
 
 [dependencies]
-streamweave-core = { path = "../core" }
+streamweave = { path = "../streamweave" }
 streamweave-error = { path = "../error" }
 tokio = { workspace = true, features = ["macros", "rt"] }
 futures = { workspace = true }

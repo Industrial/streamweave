@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use streamweave_core::TransformerConfig;
+use streamweave::TransformerConfig;
 use streamweave_error::ErrorStrategy;
 use tokio::time::Duration;
 

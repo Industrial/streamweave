@@ -1,4 +1,4 @@
-use streamweave_core::ProducerConfig;
+use streamweave::ProducerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// A producer that reads items from a file.
@@ -20,7 +20,7 @@ impl FileProducer {
   pub fn new(path: String) -> Self {
     Self {
       path,
-      config: streamweave_core::ProducerConfig::default(),
+      config: streamweave::ProducerConfig::default(),
     }
   }
 

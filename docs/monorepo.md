@@ -102,9 +102,6 @@ streamweave/
 │   └── ...
 ├── docs/                         # Documentation
 │   └── ...
-└── scripts/                      # Helper scripts
-    ├── publish-order.sh          # Calculate publish order
-    └── workspace-info.sh         # Workspace utilities
 ```
 
 ### Root Cargo.toml (Workspace)
@@ -249,7 +246,18 @@ devenv shell -- cargo doc --workspace --no-deps
 # Publish packages in dependency order
 
 # Calculate publish order based on dependencies
-ORDER=$(scripts/publish-order.sh)
+# Calculate publish order inline
+ORDER=$(find packages -name Cargo.toml -type f | while read -r toml; do
+    dir=$(dirname "$toml")
+    rel_path=${dir#packages/}
+    if [[ "$rel_path" == *"/"* ]]; then
+        category=$(echo "$rel_path" | cut -d'/' -f1)
+        name=$(echo "$rel_path" | cut -d'/' -f2)
+        echo "${category}-${name}"
+    else
+        echo "$rel_path"
+    fi
+done | sort)
 
 for pkg in $ORDER; do
     echo "Publishing streamweave-$pkg..."

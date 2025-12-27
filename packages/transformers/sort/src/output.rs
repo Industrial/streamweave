@@ -1,7 +1,7 @@
 use crate::sort_transformer::SortTransformer;
 use futures::Stream;
 use std::pin::Pin;
-use streamweave_core::Output;
+use streamweave::Output;
 
 impl<T> Output for SortTransformer<T>
 where

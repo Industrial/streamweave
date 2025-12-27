@@ -1,4 +1,4 @@
-use streamweave_core::ConsumerConfig;
+use streamweave::ConsumerConfig;
 use streamweave_error::ErrorStrategy;
 
 /// A consumer that collects stream items into a fixed-size array.
