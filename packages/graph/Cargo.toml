@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-graph"
-version.workspace = true
+version = "0.3.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -14,13 +14,13 @@ description = "Graph API for StreamWeave"
 [dependencies]
 async-stream = { workspace = true }
 async-trait = { workspace = true }
-streamweave = { path = "../streamweave" }
-streamweave-error = { path = "../error" }
-streamweave-pipeline = { path = "../pipeline" }
-streamweave-stateful = { path = "../stateful" }
-streamweave-window = { path = "../window" }
-streamweave-transformer-ordered-merge = { path = "../transformers/ordered-merge" }
-streamweave-transformer-window = { path = "../transformers/window" }
+streamweave = { path = "../streamweave", version = "0.3.0" }
+streamweave-error = { path = "../error", version = "0.3.0" }
+streamweave-pipeline = { path = "../pipeline", version = "0.3.0" }
+streamweave-stateful = { path = "../stateful", version = "0.3.0" }
+streamweave-window = { path = "../window", version = "0.3.0" }
+streamweave-transformer-ordered-merge = { path = "../transformers/ordered-merge", version = "0.3.0" }
+streamweave-transformer-window = { path = "../transformers/window", version = "0.3.0" }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
 futures = { workspace = true }
 chrono = { workspace = true }
@@ -28,9 +28,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 [dev-dependencies]
-streamweave-producer-vec = { path = "../producers/vec" }
-streamweave-consumer-vec = { path = "../consumers/vec" }
-streamweave-transformer-map = { path = "../transformers/map" }
-streamweave-transformer-running-sum = { path = "../transformers/running-sum" }
+streamweave-producer-vec = { path = "../producers/vec", version = "0.3.0" }
+streamweave-consumer-vec = { path = "../consumers/vec", version = "0.3.0" }
+streamweave-transformer-map = { path = "../transformers/map", version = "0.3.0" }
+streamweave-transformer-running-sum = { path = "../transformers/running-sum", version = "0.3.0" }
 
 [features]

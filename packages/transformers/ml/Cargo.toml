@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-transformer-ml"
-version.workspace = true
+version = "0.3.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -13,8 +13,8 @@ description = "ML transformers for StreamWeave"
 
 [dependencies]
 async-stream = { workspace = true }
-streamweave = { path = "../../streamweave" }
-streamweave-error = { path = "../../error" }
+streamweave = { path = "../../streamweave", version = "0.3.0" }
+streamweave-error = { path = "../../error", version = "0.3.0" }
 ort = { workspace = true, optional = true }
 ndarray = { workspace = true, optional = true }
 chrono = { workspace = true }

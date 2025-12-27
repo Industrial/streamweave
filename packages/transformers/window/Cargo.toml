@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-transformer-window"
-version.workspace = true
+version = "0.3.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -13,9 +13,9 @@ description = "Window transformer for StreamWeave"
 
 [dependencies]
 async-stream = { workspace = true }
-streamweave = { path = "../../streamweave" }
-streamweave-window = { path = "../../window", optional = true }
-streamweave-error = { path = "../../error" }
+streamweave = { path = "../../streamweave", version = "0.3.0" }
+streamweave-window = { path = "../../window", version = "0.3.0", optional = true }
+streamweave-error = { path = "../../error", version = "0.3.0" }
 tokio = { workspace = true, features = ["macros", "rt", "time"] }
 futures = { workspace = true }
 async-trait = { workspace = true }

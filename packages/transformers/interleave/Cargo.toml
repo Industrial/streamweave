@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-transformer-interleave"
-version.workspace = true
+version = "0.3.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -13,8 +13,8 @@ description = "Interleave transformer for StreamWeave"
 
 [dependencies]
 chrono = { workspace = true }
-streamweave = { path = "../../streamweave" }
-streamweave-error = { path = "../../error" }
+streamweave = { path = "../../streamweave", version = "0.3.0" }
+streamweave-error = { path = "../../error", version = "0.3.0" }
 tokio = { workspace = true, features = ["macros", "rt"] }
 futures = { workspace = true }
 async-trait = { workspace = true }

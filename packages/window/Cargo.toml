@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-window"
-version.workspace = true
+version = "0.3.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -12,8 +12,8 @@ categories.workspace = true
 description = "Windowing operations for StreamWeave"
 
 [dependencies]
-streamweave = { path = "../streamweave" }
-streamweave-message = { path = "../message", optional = true }
+streamweave = { path = "../streamweave", version = "0.3.0" }
+streamweave-message = { path = "../message", version = "0.3.0", optional = true }
 chrono = { workspace = true }
 
 [features]

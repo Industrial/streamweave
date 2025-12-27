@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-consumer-tokio-channel"
-version.workspace = true
+version = "0.3.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -13,9 +13,9 @@ description = "Tokio channel consumer for StreamWeave"
 
 [dependencies]
 chrono = { workspace = true }
-streamweave = { path = "../../streamweave" }
-streamweave-error = { path = "../../error" }
-streamweave-message = { path = "../../message", optional = true }
+streamweave = { path = "../../streamweave", version = "0.3.0" }
+streamweave-error = { path = "../../error", version = "0.3.0" }
+streamweave-message = { path = "../../message", version = "0.3.0", optional = true }
 tokio = { workspace = true, features = ["macros", "rt", "sync"] }
 futures = { workspace = true }
 async-trait = { workspace = true }

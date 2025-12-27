@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-producer-kafka"
-version.workspace = true
+version = "0.3.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -14,9 +14,9 @@ description = "Kafka producer for StreamWeave"
 [dependencies]
 chrono = { workspace = true }
 async-stream = { workspace = true }
-streamweave = { path = "../../streamweave" }
-streamweave-error = { path = "../../error" }
-streamweave-message = { path = "../../message", optional = true }
+streamweave = { path = "../../streamweave", version = "0.3.0" }
+streamweave-error = { path = "../../error", version = "0.3.0" }
+streamweave-message = { path = "../../message", version = "0.3.0", optional = true }
 rdkafka = { workspace = true, optional = true }
 serde = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "full"] }
