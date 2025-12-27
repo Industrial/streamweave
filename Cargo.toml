@@ -72,7 +72,7 @@ reqwest = "0.12"
 axum = "0.7"
 sqlparser = "0.40"
 tower = "0.4"
-tower-http = "0.5"
+tower-http = "0.6"
 http-body-util = "0.1"
 parquet = { version = "54", default-features = false }
 arrow = { version = "54", default-features = false }
