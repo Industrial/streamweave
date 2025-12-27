@@ -3,24 +3,24 @@
 //! This module demonstrates how to use StreamWeave's HTTP server capabilities
 //! to build REST microservices with Axum integration.
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::{
   Router,
   http::StatusCode,
   routing::{delete, get, post, put},
 };
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use chrono::Utc;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use std::net::SocketAddr;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave::http_server::{
   ContentType, HttpRequest, HttpResponse, create_custom_error, create_pipeline_handler,
   create_simple_handler, is_development_mode, map_to_http_error,
 };
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave::transformers::map::map_transformer::MapTransformer;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use tokio::net::TcpListener;
 
 /// Runs the HTTP server with multiple example endpoints.
@@ -32,7 +32,7 @@ use tokio::net::TcpListener;
 /// - Task 16.4: Axum route handler integration
 /// - Task 16.5: Streaming request bodies
 // Task 16.5: Handler for streaming request bodies
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 async fn handle_stream_upload(
   request: axum::extract::Request,
 ) -> axum::response::Response<axum::body::Body> {
@@ -120,7 +120,7 @@ async fn handle_stream_upload(
 }
 
 // Task 16.6: Handler for streaming response bodies
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 async fn handle_stream_download(
   _request: axum::extract::Request,
 ) -> axum::response::Response<axum::body::Body> {
@@ -157,7 +157,7 @@ async fn handle_stream_download(
 }
 
 // Helper function to create async handler from simple handler
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 async fn echo_handler(
   request: axum::extract::Request,
 ) -> axum::response::Response<axum::body::Body> {
@@ -184,7 +184,7 @@ async fn echo_handler(
   handler(request).await
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
   // Build the router with various endpoints demonstrating different capabilities
   let app = Router::new()

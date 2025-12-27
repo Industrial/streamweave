@@ -4,7 +4,7 @@ mod pipeline;
 use pipeline::{consume_from_kafka, produce_to_kafka, round_trip_example};
 
 #[tokio::main]
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Get command line arguments
   let args: Vec<String> = std::env::args().collect();
@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   Ok(())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "kafka")))]
+#[cfg(not(feature = "kafka"))]
 fn main() {
   eprintln!("❌ Error: Kafka feature is not enabled");
   eprintln!();

@@ -7,7 +7,7 @@ use pipeline::{
 };
 
 #[tokio::main]
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Get command line arguments
   let args: Vec<String> = std::env::args().collect();
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   Ok(())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "database")))]
+#[cfg(not(feature = "database"))]
 fn main() {
   eprintln!("❌ Error: Database feature is not enabled");
   eprintln!();

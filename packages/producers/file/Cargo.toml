@@ -17,7 +17,7 @@ async-stream = { workspace = true }
 streamweave-core = { path = "../../core" }
 streamweave-error = { path = "../../error" }
 streamweave-message = { path = "../../message", optional = true }
-tokio = { workspace = true, features = ["macros", "rt", "fs"] }
+tokio = { workspace = true, features = ["macros", "rt", "fs", "io-util"] }
 tokio-stream = { workspace = true }
 futures = { workspace = true }
 async-trait = { workspace = true }

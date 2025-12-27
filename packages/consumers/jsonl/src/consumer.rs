@@ -231,7 +231,6 @@ mod tests {
   use serde::{Deserialize, Serialize};
   use std::io::BufRead;
   use tempfile::NamedTempFile;
-  use tokio::runtime::Runtime;
 
   #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
   struct TestRecord {
@@ -343,7 +342,7 @@ mod tests {
     fn test_jsonl_consumer_basic(
       records in prop::collection::vec(test_record_strategy(), 0..20)
     ) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_jsonl_consumer_basic_async(records));
     }
 
@@ -352,7 +351,7 @@ mod tests {
       records1 in prop::collection::vec(test_record_strategy(), 0..10),
       records2 in prop::collection::vec(test_record_strategy(), 0..10)
     ) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_jsonl_consumer_append_async(records1, records2));
     }
 
@@ -361,13 +360,13 @@ mod tests {
       records1 in prop::collection::vec(test_record_strategy(), 0..10),
       records2 in prop::collection::vec(test_record_strategy(), 0..10)
     ) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_jsonl_consumer_overwrite_async(records1, records2));
     }
 
     #[test]
     fn test_jsonl_consumer_empty_stream(_ in prop::num::u8::ANY) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_jsonl_consumer_empty_stream_async());
     }
 

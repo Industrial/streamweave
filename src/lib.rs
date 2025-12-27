@@ -64,11 +64,11 @@ pub mod window;
 /// Graph-based API for Flow-Based Programming patterns.
 pub mod graph;
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "native"))]
+#[cfg(feature = "native")]
 /// Distributed processing support.
 pub mod distributed;
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 /// HTTP server integration for stream processing.
 pub mod http_server;
 

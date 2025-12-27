@@ -1,8 +1,8 @@
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use serde::{Deserialize, Serialize};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use std::time::Duration;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use streamweave::{
   consumers::vec::vec_consumer::VecConsumer,
   error::ErrorStrategy,
@@ -21,7 +21,7 @@ use streamweave::{
 /// - Polling an HTTP endpoint at a configurable interval
 /// - Handling HTTP responses
 /// - Basic error handling
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 pub async fn basic_polling() -> Result<(), Box<dyn std::error::Error>> {
   println!("📡 Setting up basic HTTP polling...");
 
@@ -78,7 +78,7 @@ pub async fn basic_polling() -> Result<(), Box<dyn std::error::Error>> {
 /// - Query parameter-based pagination
 /// - Fetching multiple pages automatically
 /// - Handling paginated responses
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 pub async fn pagination_example() -> Result<(), Box<dyn std::error::Error>> {
   println!("📡 Setting up pagination example...");
 
@@ -166,7 +166,7 @@ pub async fn pagination_example() -> Result<(), Box<dyn std::error::Error>> {
 /// - Tracking seen items by ID
 /// - Emitting only new items
 /// - Maintaining state across polls
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 pub async fn delta_detection_example() -> Result<(), Box<dyn std::error::Error>> {
   println!("📡 Setting up delta detection example...");
 
@@ -235,7 +235,7 @@ pub async fn delta_detection_example() -> Result<(), Box<dyn std::error::Error>>
 /// - Configuring rate limits (requests per second)
 /// - Respecting API rate limits
 /// - Throttling requests automatically
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 pub async fn rate_limited_polling() -> Result<(), Box<dyn std::error::Error>> {
   println!("📡 Setting up rate-limited polling...");
 
@@ -289,7 +289,7 @@ pub async fn rate_limited_polling() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Simple post structure for delta detection example
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Post {
   id: u32,

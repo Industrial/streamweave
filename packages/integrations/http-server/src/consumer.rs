@@ -3,28 +3,28 @@
 //! Consumer that converts stream items into HTTP responses for sending back to clients
 //! via Axum.
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use crate::types::HttpResponse;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use async_stream::stream;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use async_trait::async_trait;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::body::Bytes;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::{body::Body, response::Response};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use futures::StreamExt;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave_core::{Consumer, ConsumerConfig};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use tracing::{error, warn};
 
 /// Configuration for HTTP response consumer behavior.
 #[derive(Debug, Clone)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct HttpResponseConsumerConfig {
   /// Whether to stream responses (chunked transfer encoding).
   pub stream_response: bool,
@@ -37,7 +37,7 @@ pub struct HttpResponseConsumerConfig {
   pub default_status: axum::http::StatusCode,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl Default for HttpResponseConsumerConfig {
   fn default() -> Self {
     Self {
@@ -49,7 +49,7 @@ impl Default for HttpResponseConsumerConfig {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl HttpResponseConsumerConfig {
   /// Sets whether to stream responses.
   #[must_use]
@@ -99,7 +99,7 @@ impl HttpResponseConsumerConfig {
 /// }
 /// ```
 #[derive(Debug)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct HttpResponseConsumer {
   /// Consumer configuration.
   pub config: ConsumerConfig<HttpResponse>,
@@ -111,7 +111,7 @@ pub struct HttpResponseConsumer {
   pub finished: bool,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl HttpResponseConsumer {
   /// Creates a new HTTP response consumer with default configuration.
   ///
@@ -417,14 +417,14 @@ impl HttpResponseConsumer {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl Default for HttpResponseConsumer {
   fn default() -> Self {
     Self::new()
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl Clone for HttpResponseConsumer {
   fn clone(&self) -> Self {
     Self {
@@ -437,7 +437,7 @@ impl Clone for HttpResponseConsumer {
 }
 
 #[async_trait]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl Consumer for HttpResponseConsumer {
   type InputPorts = (HttpResponse,);
 
@@ -557,7 +557,7 @@ impl Consumer for HttpResponseConsumer {
 /// // Consumer will send response when it arrives
 /// ```
 #[derive(Debug)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct HttpResponseCorrelationConsumer {
   /// Consumer configuration
   config: streamweave_core::ConsumerConfig<streamweave_message::Message<HttpResponse>>,
@@ -575,7 +575,7 @@ pub struct HttpResponseCorrelationConsumer {
   request_timeout: std::time::Duration,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl HttpResponseCorrelationConsumer {
   /// Creates a new response correlation consumer with default timeout (30 seconds).
   pub fn new() -> Self {
@@ -645,14 +645,14 @@ impl HttpResponseCorrelationConsumer {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl Default for HttpResponseCorrelationConsumer {
   fn default() -> Self {
     Self::new()
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 #[async_trait]
 impl streamweave_core::Consumer for HttpResponseCorrelationConsumer {
   type InputPorts = (streamweave_message::Message<HttpResponse>,);

@@ -27,12 +27,12 @@
 //! # }
 //! ```
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
+#[cfg(feature = "opentelemetry")]
 use opentelemetry::{
   KeyValue, global,
   trace::{Tracer, TracerProvider},
 };
-#[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
+#[cfg(feature = "opentelemetry")]
 use opentelemetry_sdk::{
   Resource,
   metrics::SdkMeterProvider,
@@ -59,7 +59,7 @@ use opentelemetry_sdk::{
 /// # Ok(())
 /// # }
 /// ```
-#[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
+#[cfg(feature = "opentelemetry")]
 #[derive(Debug, Clone)]
 pub struct OpenTelemetryConfig {
   /// Service name for traces and metrics.
@@ -72,7 +72,7 @@ pub struct OpenTelemetryConfig {
   resource_attributes: Vec<KeyValue>,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
+#[cfg(feature = "opentelemetry")]
 impl Default for OpenTelemetryConfig {
   fn default() -> Self {
     Self {
@@ -84,7 +84,7 @@ impl Default for OpenTelemetryConfig {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
+#[cfg(feature = "opentelemetry")]
 impl OpenTelemetryConfig {
   /// Creates a new OpenTelemetry configuration with default values.
   ///
@@ -319,13 +319,13 @@ impl OpenTelemetryConfig {
 /// # Ok(())
 /// # }
 /// ```
-#[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
+#[cfg(feature = "opentelemetry")]
 pub struct PipelineTracer {
   tracer: SdkTracer,
   pipeline_name: String,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
+#[cfg(feature = "opentelemetry")]
 impl PipelineTracer {
   /// Creates a new pipeline tracer.
   ///
@@ -448,7 +448,7 @@ impl PipelineTracer {
 /// # Ok(())
 /// # }
 /// ```
-#[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
+#[cfg(feature = "opentelemetry")]
 pub struct MetricsExporter {
   #[allow(dead_code)] // Kept for potential future use
   meter: opentelemetry::metrics::Meter,
@@ -458,7 +458,7 @@ pub struct MetricsExporter {
   error_counter: opentelemetry::metrics::Counter<u64>,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "opentelemetry"))]
+#[cfg(feature = "opentelemetry")]
 impl MetricsExporter {
   /// Creates a new metrics exporter.
   ///
@@ -534,18 +534,18 @@ impl MetricsExporter {
   }
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "opentelemetry")))]
+#[cfg(not(feature = "opentelemetry"))]
 // Placeholder implementations for when OpenTelemetry is not enabled
 pub struct OpenTelemetryConfig;
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "opentelemetry")))]
+#[cfg(not(feature = "opentelemetry"))]
 impl Default for OpenTelemetryConfig {
   fn default() -> Self {
     Self
   }
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "opentelemetry")))]
+#[cfg(not(feature = "opentelemetry"))]
 impl OpenTelemetryConfig {
   #[must_use]
   pub fn new() -> Self {

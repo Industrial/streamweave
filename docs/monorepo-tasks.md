@@ -165,14 +165,14 @@
       - [x] Copy `src/producers/kafka/output.rs` to `packages/producers/kafka/src/output.rs`.
       - [x] Copy `src/producers/kafka/kafka_producer.rs` to `packages/producers/kafka/src/kafka_producer.rs`.
       - [x] Create `packages/producers/kafka/src/lib.rs`.
-    - [x] Create `packages/producers/redis-streams` directory.
-      - [x] Create `packages/producers/redis-streams/Cargo.toml`.
-      - [x] Create `packages/producers/redis-streams/src` directory.
-      - [x] Copy `src/producers/redis_streams/mod.rs` to `packages/producers/redis-streams/src/mod.rs`.
-      - [x] Copy `src/producers/redis_streams/producer.rs` to `packages/producers/redis-streams/src/producer.rs`.
-      - [x] Copy `src/producers/redis_streams/output.rs` to `packages/producers/redis-streams/src/output.rs`.
-      - [x] Copy `src/producers/redis_streams/redis_streams_producer.rs` to `packages/producers/redis-streams/src/redis_streams_producer.rs`.
-      - [x] Create `packages/producers/redis-streams/src/lib.rs`.
+    - [x] Create `packages/producers/redis` directory.
+      - [x] Create `packages/producers/redis/Cargo.toml`.
+      - [x] Create `packages/producers/redis/src` directory.
+      - [x] Copy `src/producers/redis/mod.rs` to `packages/producers/redis/src/mod.rs`.
+      - [x] Copy `src/producers/redis/producer.rs` to `packages/producers/redis/src/producer.rs`.
+      - [x] Copy `src/producers/redis/output.rs` to `packages/producers/redis/src/output.rs`.
+      - [x] Copy `src/producers/redis/redis_producer.rs` to `packages/producers/redis/src/redis_producer.rs`.
+      - [x] Create `packages/producers/redis/src/lib.rs`.
     - [x] Create `packages/producers/database` directory.
       - [x] Create `packages/producers/database/Cargo.toml`.
       - [x] Create `packages/producers/database/src` directory.
@@ -264,15 +264,15 @@
       - [x] Copy `src/consumers/kafka/output.rs` to `packages/consumers/kafka/src/output.rs`.
       - [x] Copy `src/consumers/kafka/kafka_consumer.rs` to `packages/consumers/kafka/src/kafka_consumer.rs`.
       - [x] Create `packages/consumers/kafka/src/lib.rs`.
-    - [x] Create `packages/consumers/redis-streams` directory.
-      - [x] Create `packages/consumers/redis-streams/Cargo.toml`.
-      - [x] Create `packages/consumers/redis-streams/src` directory.
-      - [x] Copy `src/consumers/redis_streams/mod.rs` to `packages/consumers/redis-streams/src/mod.rs`.
-      - [x] Copy `src/consumers/redis_streams/consumer.rs` to `packages/consumers/redis-streams/src/consumer.rs`.
-      - [x] Copy `src/consumers/redis_streams/input.rs` to `packages/consumers/redis-streams/src/input.rs`.
-      - [x] Copy `src/consumers/redis_streams/output.rs` to `packages/consumers/redis-streams/src/output.rs`.
-      - [x] Copy `src/consumers/redis_streams/redis_streams_consumer.rs` to `packages/consumers/redis-streams/src/redis_streams_consumer.rs`.
-      - [x] Create `packages/consumers/redis-streams/src/lib.rs`.
+    - [x] Create `packages/consumers/redis` directory.
+      - [x] Create `packages/consumers/redis/Cargo.toml`.
+      - [x] Create `packages/consumers/redis/src` directory.
+      - [x] Copy `src/consumers/redis/mod.rs` to `packages/consumers/redis/src/mod.rs`.
+      - [x] Copy `src/consumers/redis/consumer.rs` to `packages/consumers/redis/src/consumer.rs`.
+      - [x] Copy `src/consumers/redis/input.rs` to `packages/consumers/redis/src/input.rs`.
+      - [x] Copy `src/consumers/redis/output.rs` to `packages/consumers/redis/src/output.rs`.
+      - [x] Copy `src/consumers/redis/redis_consumer.rs` to `packages/consumers/redis/src/redis_consumer.rs`.
+      - [x] Create `packages/consumers/redis/src/lib.rs`.
     - [x] Create `packages/consumers/database` directory.
       - [x] Create `packages/consumers/database/Cargo.toml`.
       - [x] Create `packages/consumers/database/src` directory.

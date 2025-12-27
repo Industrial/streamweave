@@ -11,7 +11,7 @@ Before running this example, you need:
    - Docker with Redis
    - Remote Redis instance
 
-2. **Redis Streams feature enabled** - Build with `--features redis-streams`
+2. **Redis Streams feature enabled** - Build with `--features redis`
 
 ## Quick Start with devenv.sh (Recommended)
 
@@ -63,11 +63,11 @@ redis-cli ping
 This example creates sample events and sends them to a Redis stream:
 
 ```bash
-cargo run --example redis_streams_integration --features redis-streams produce
+cargo run --example redis_integration --features redis produce
 ```
 
 **What it demonstrates:**
-- Creating a `RedisStreamsConsumer` (producer in Redis Streams terms)
+- Creating a `RedisConsumer` (producer in Redis Streams terms)
 - Serializing events to JSON and storing in stream fields
 - Error handling with retry strategy
 - Stream length management (maxlen with approximate trimming)
@@ -99,7 +99,7 @@ redis-cli XRANGE example-stream - + COUNT 10
 This example reads messages from a Redis stream using a consumer group:
 
 ```bash
-cargo run --example redis_streams_integration --features redis-streams consume
+cargo run --example redis_integration --features redis consume
 ```
 
 **What it demonstrates:**
@@ -112,10 +112,10 @@ cargo run --example redis_streams_integration --features redis-streams consume
 **Before running, make sure you've produced some messages:**
 ```bash
 # First, produce some messages
-cargo run --example redis_streams_integration --features redis-streams produce
+cargo run --example redis_integration --features redis produce
 
 # Then in another terminal, consume them
-cargo run --example redis_streams_integration --features redis-streams consume
+cargo run --example redis_integration --features redis consume
 ```
 
 **Expected output:**
@@ -154,7 +154,7 @@ This example demonstrates a complete pipeline:
 - Writes to `output-stream`
 
 ```bash
-cargo run --example redis_streams_integration --features redis-streams roundtrip
+cargo run --example redis_integration --features redis roundtrip
 ```
 
 **Before running, populate the input stream:**
@@ -192,10 +192,10 @@ Consumer groups allow multiple consumers to process the same stream:
 
 ## Configuration Options
 
-### Producer Configuration (RedisStreamsProducerConfig)
+### Producer Configuration (RedisProducerConfig)
 
 ```rust
-RedisStreamsConsumerConfig::default()
+RedisConsumerConfig::default()
     .with_connection_url("redis://localhost:6379")  // Redis connection URL
     .with_stream("my-stream")                       // Stream name
     .with_group("my-group")                         // Consumer group (optional)
@@ -206,10 +206,10 @@ RedisStreamsConsumerConfig::default()
     .with_auto_ack(true)                            // Auto-acknowledge messages
 ```
 
-### Consumer Configuration (RedisStreamsProducerConfig)
+### Consumer Configuration (RedisProducerConfig)
 
 ```rust
-RedisStreamsProducerConfig::default()
+RedisProducerConfig::default()
     .with_connection_url("redis://localhost:6379")  // Redis connection URL
     .with_stream("my-stream")                       // Stream name
     .with_maxlen(1000)                              // Maximum stream length (trims old messages)
@@ -348,7 +348,7 @@ Use StreamWeave transformers to process Redis Streams messages:
 
 ```rust
 // Map transformer to transform messages
-let transformer = MapTransformer::new(|msg: RedisStreamsMessage| {
+let transformer = MapTransformer::new(|msg: RedisMessage| {
     // Transform message
 });
 
@@ -356,7 +356,7 @@ let transformer = MapTransformer::new(|msg: RedisStreamsMessage| {
 let batch = BatchTransformer::new(100);
 
 // Filter transformer to filter messages
-let filter = FilterTransformer::new(|msg: &RedisStreamsMessage| {
+let filter = FilterTransformer::new(|msg: &RedisMessage| {
     // Filter condition
 });
 ```

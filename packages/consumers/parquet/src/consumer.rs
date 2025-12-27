@@ -160,7 +160,6 @@ mod tests {
   use proptest::proptest;
   use std::sync::Arc;
   use tempfile::NamedTempFile;
-  use tokio::runtime::Runtime;
 
   fn create_test_batch(names: Vec<String>, ages: Vec<i32>) -> RecordBatch {
     let schema = Arc::new(Schema::new(vec![
@@ -270,7 +269,7 @@ mod tests {
     fn test_parquet_consumer_basic(
       (names, ages) in names_ages_strategy(1usize..20)
     ) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_parquet_consumer_basic_async(names, ages));
     }
 
@@ -279,13 +278,13 @@ mod tests {
       (names1, ages1) in names_ages_strategy(1usize..10),
       (names2, ages2) in names_ages_strategy(1usize..10)
     ) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_parquet_consumer_multiple_batches_async(names1, ages1, names2, ages2));
     }
 
     #[test]
     fn test_parquet_consumer_empty_stream(_ in prop::num::u8::ANY) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(async {
         let file = NamedTempFile::new().unwrap();
         let path = file.path().to_str().unwrap().to_string();
@@ -316,7 +315,7 @@ mod tests {
     fn test_parquet_roundtrip(
       (names, ages) in names_ages_strategy(1usize..20)
     ) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_parquet_roundtrip_async(names, ages));
     }
   }

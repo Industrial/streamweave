@@ -159,6 +159,7 @@ mod tests {
   use proptest::strategy::Strategy;
   use serde::{Deserialize, Serialize};
   use tempfile::NamedTempFile;
+  use tokio::runtime::Builder;
 
   #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
   struct TestRecord {
@@ -210,7 +211,7 @@ mod tests {
     fn test_csv_consumer_basic(
       records in prop::collection::vec(test_record_strategy(), 0..20)
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_csv_consumer_basic_async(records));
     }
   }
@@ -239,7 +240,7 @@ mod tests {
       name in prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(),
       age in 0u32..150u32
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = Builder::new_current_thread().enable_all().build().unwrap();
       let record = TestRecord { name, age };
       rt.block_on(test_csv_consumer_no_headers_async(record));
     }
@@ -265,7 +266,7 @@ mod tests {
       name in prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(),
       age in 0u32..150u32
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = Builder::new_current_thread().enable_all().build().unwrap();
       let record = TestRecord { name, age };
       rt.block_on(test_csv_consumer_tab_delimited_async(record));
     }
@@ -288,7 +289,7 @@ mod tests {
 
   #[test]
   fn test_csv_consumer_empty_stream() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let rt = Builder::new_current_thread().enable_all().build().unwrap();
     rt.block_on(test_csv_consumer_empty_stream_async());
   }
 
@@ -307,7 +308,7 @@ mod tests {
     fn test_csv_consumer_component_info(
       name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_csv_consumer_component_info_async(name));
     }
   }
@@ -336,7 +337,7 @@ mod tests {
     fn test_csv_roundtrip(
       records in prop::collection::vec(test_record_strategy(), 0..20)
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_csv_roundtrip_async(records));
     }
   }

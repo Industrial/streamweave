@@ -5,29 +5,29 @@
 //! These types wrap Axum's request/response types with additional metadata and provide
 //! a clean interface for working with HTTP in StreamWeave pipelines.
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::{
   body::Body,
   extract::Request,
   http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Uri},
 };
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use serde::{Deserialize, Serialize};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use std::collections::HashMap;
 
 /// Extension type for passing request ID through Axum request extensions.
 /// Used by HttpGraphServer to ensure request_id consistency between
 /// the handler and the producer.
 #[derive(Clone, Debug)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct RequestIdExtension(pub String);
 
 /// HTTP method enumeration for type-safe method handling.
 ///
 /// This wraps Axum's `Method` type and provides additional convenience methods.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub enum HttpMethod {
   /// GET request
   Get,
@@ -49,7 +49,7 @@ pub enum HttpMethod {
   Connect,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl From<Method> for HttpMethod {
   fn from(method: Method) -> Self {
     match method {
@@ -67,7 +67,7 @@ impl From<Method> for HttpMethod {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl From<HttpMethod> for Method {
   fn from(method: HttpMethod) -> Self {
     match method {
@@ -88,7 +88,7 @@ impl From<HttpMethod> for Method {
 ///
 /// This provides type-safe handling of common content types used in REST APIs.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub enum ContentType {
   /// JSON content type (`application/json`)
   Json,
@@ -108,7 +108,7 @@ pub enum ContentType {
   Custom(String),
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl ContentType {
   /// Get the MIME type string for this content type.
   pub fn as_str(&self) -> &str {
@@ -168,7 +168,7 @@ impl ContentType {
 /// }
 /// ```
 #[derive(Debug, Clone)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct HttpRequest {
   /// Unique request ID for correlation with responses
   pub request_id: String,
@@ -192,7 +192,7 @@ pub struct HttpRequest {
   pub remote_addr: Option<String>,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl HttpRequest {
   /// Create an `HttpRequest` from an Axum `Request`.
   ///
@@ -392,7 +392,7 @@ impl HttpRequest {
 /// };
 /// ```
 #[derive(Debug, Clone)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct HttpResponse {
   /// Request ID for correlation with the original request
   pub request_id: String,
@@ -406,7 +406,7 @@ pub struct HttpResponse {
   pub content_type: ContentType,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl HttpResponse {
   /// Create a new HTTP response with the given status code and body.
   ///
@@ -616,7 +616,7 @@ impl HttpResponse {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl Default for HttpResponse {
   fn default() -> Self {
     Self::new(StatusCode::OK, Vec::new(), ContentType::Text)
@@ -643,7 +643,7 @@ impl Default for HttpResponse {
 /// let item = HttpRequestItem::BodyChunk(chunk);
 /// ```
 #[derive(Debug, Clone)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 #[allow(clippy::large_enum_variant)]
 pub enum HttpRequestItem {
   /// HTTP request with metadata (method, path, headers, etc.)

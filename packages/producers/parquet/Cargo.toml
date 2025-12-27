@@ -17,9 +17,9 @@ async-stream = { workspace = true }
 streamweave-core = { path = "../../core" }
 streamweave-error = { path = "../../error" }
 streamweave-message = { path = "../../message", optional = true }
-parquet = { workspace = true, optional = true }
+parquet = { workspace = true, optional = true, features = ["arrow"] }
 arrow = { workspace = true, optional = true }
-tokio = { workspace = true, features = ["macros", "rt", "fs"] }
+tokio = { workspace = true, features = ["macros", "rt", "fs", "sync"] }
 futures = { workspace = true }
 async-trait = { workspace = true }
 thiserror = { workspace = true }

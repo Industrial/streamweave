@@ -3,13 +3,13 @@
 //! This module implements various handler types that process HTTP requests
 //! within the graph. Each handler demonstrates different patterns and use cases.
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::http::StatusCode;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use serde_json::json;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave::http_server::{HttpRequest, HttpResponse};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave::message::Message;
 
 /// Handles REST API requests
@@ -19,7 +19,7 @@ use streamweave::message::Message;
 /// - POST requests for resource creation
 /// - Path parameter extraction
 /// - Query parameter handling
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn handle_rest_request(msg: Message<HttpRequest>) -> Message<HttpResponse> {
   let request = msg.payload();
   let request_id = request.request_id.clone();
@@ -82,7 +82,7 @@ pub fn handle_rest_request(msg: Message<HttpRequest>) -> Message<HttpResponse> {
 /// - POST requests with JSON body
 /// - Query parsing and execution
 /// - Response formatting
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn handle_graphql_request(msg: Message<HttpRequest>) -> Message<HttpResponse> {
   let request = msg.payload();
   let request_id = request.request_id.clone();
@@ -143,7 +143,7 @@ pub fn handle_graphql_request(msg: Message<HttpRequest>) -> Message<HttpResponse
 /// - Method-based routing
 /// - JSON-RPC style request/response
 /// - Error handling
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn handle_rpc_request(msg: Message<HttpRequest>) -> Message<HttpResponse> {
   let request = msg.payload();
   let request_id = request.request_id.clone();
@@ -224,7 +224,7 @@ pub fn handle_rpc_request(msg: Message<HttpRequest>) -> Message<HttpResponse> {
 /// - File path extraction
 /// - Content type detection
 /// - Simple file serving
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn handle_static_request(msg: Message<HttpRequest>) -> Message<HttpResponse> {
   let request = msg.payload();
   let request_id = request.request_id.clone();
@@ -280,7 +280,7 @@ h1 { color: #333; }"#,
 ///
 /// This handler demonstrates fan-out patterns where one request
 /// is processed by multiple handlers and results are combined.
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn handle_fanout_request(msg: Message<HttpRequest>) -> Message<HttpResponse> {
   let request = msg.payload();
   let request_id = request.request_id.clone();
@@ -312,7 +312,7 @@ pub fn handle_fanout_request(msg: Message<HttpRequest>) -> Message<HttpResponse>
 /// Creates a default/404 handler
 ///
 /// This handler processes requests that don't match any route pattern.
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn handle_default_request(msg: Message<HttpRequest>) -> Message<HttpResponse> {
   let request = msg.payload();
   let request_id = request.request_id.clone();

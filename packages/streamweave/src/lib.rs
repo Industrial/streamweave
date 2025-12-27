@@ -65,8 +65,8 @@ pub use streamweave_producer_parquet::*;
 #[cfg(feature = "producer-kafka")]
 pub use streamweave_producer_kafka::*;
 
-#[cfg(feature = "producer-redis-streams")]
-pub use streamweave_producer_redis_streams::*;
+#[cfg(feature = "producer-redis")]
+pub use streamweave_producer_redis::*;
 
 #[cfg(feature = "producer-database")]
 pub use streamweave_producer_database::*;
@@ -102,14 +102,14 @@ pub use streamweave_consumer_parquet::*;
 #[cfg(feature = "consumer-kafka")]
 pub use streamweave_consumer_kafka::*;
 
-#[cfg(feature = "consumer-redis-streams")]
-pub use streamweave_consumer_redis_streams::*;
+#[cfg(feature = "consumer-redis")]
+pub use streamweave_consumer_redis::*;
 
 #[cfg(feature = "consumer-console")]
 pub use streamweave_consumer_console::*;
 
-#[cfg(feature = "consumer-channel")]
-pub use streamweave_consumer_channel::*;
+#[cfg(feature = "consumer-tokio-channel")]
+pub use streamweave_consumer_tokio_channel::*;
 
 #[cfg(feature = "consumer-command")]
 pub use streamweave_consumer_command::*;

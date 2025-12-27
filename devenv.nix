@@ -22,9 +22,7 @@
         "rustfmt"
         "llvm-tools"
       ];
-      targets = [
-        "wasm32-unknown-unknown"
-      ];
+      targets = [];
     };
   };
 
@@ -46,8 +44,6 @@
     rust-analyzer
     rustc
     rustfmt
-    wasm-bindgen-cli
-    wasm-pack
 
     # Development tools
     direnv
@@ -58,7 +54,7 @@
 
     # Publishing tools
     cargo-watch
-    cargo-audit
+    # cargo-audit
     cargo-llvm-cov
     cargo-nextest
 

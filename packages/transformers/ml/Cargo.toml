@@ -18,7 +18,7 @@ streamweave-error = { path = "../../error" }
 ort = { workspace = true, optional = true }
 ndarray = { workspace = true, optional = true }
 chrono = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt"] }
+tokio = { workspace = true, features = ["macros", "rt", "sync"] }
 futures = { workspace = true }
 async-trait = { workspace = true }
 thiserror = { workspace = true }

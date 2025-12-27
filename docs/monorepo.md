@@ -43,7 +43,7 @@ streamweave/
 │   │   ├── jsonl/
 │   │   ├── parquet/
 │   │   ├── kafka/
-│   │   ├── redis-streams/
+│   │   ├── redis/
 │   │   ├── database/
 │   │   ├── http-poll/
 │   │   ├── env-var/
@@ -56,7 +56,7 @@ streamweave/
 │   │   ├── jsonl/
 │   │   ├── parquet/
 │   │   ├── kafka/
-│   │   ├── redis-streams/
+│   │   ├── redis/
 │   │   ├── database/
 │   │   ├── console/
 │   │   ├── channel/
@@ -382,7 +382,7 @@ Each producer is a separate package:
 - `streamweave-producer-jsonl` - JSONL producer
 - `streamweave-producer-parquet` - Parquet producer (depends on parquet crate)
 - `streamweave-producer-kafka` - Kafka producer (depends on rdkafka)
-- `streamweave-producer-redis-streams` - Redis Streams producer (depends on redis)
+- `streamweave-producer-redis` - Redis Streams producer (depends on redis)
 - `streamweave-producer-database` - Database producer (depends on sqlx)
 - `streamweave-producer-http-poll` - HTTP polling producer (depends on reqwest)
 - `streamweave-producer-env-var` - Environment variable producer
@@ -402,10 +402,10 @@ Each consumer is a separate package:
 - `streamweave-consumer-jsonl` - JSONL consumer
 - `streamweave-consumer-parquet` - Parquet consumer
 - `streamweave-consumer-kafka` - Kafka consumer
-- `streamweave-consumer-redis-streams` - Redis Streams consumer
+- `streamweave-consumer-redis` - Redis Streams consumer
 - `streamweave-consumer-database` - Database consumer
 - `streamweave-consumer-console` - Console consumer
-- `streamweave-consumer-channel` - Channel consumer
+- `streamweave-consumer-tokio-channel` - Channel consumer
 - `streamweave-consumer-command` - Command consumer
 
 All depend on: `streamweave-core`  

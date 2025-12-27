@@ -4,31 +4,31 @@
 //! with StreamWeave pipelines, allowing users to define REST endpoints using
 //! StreamWeave for processing.
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use crate::consumer::HttpResponseConsumer;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use crate::error::{is_development_mode, map_to_http_error};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use crate::graph_server::HttpGraphServer;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use crate::producer::{HttpRequestProducer, HttpRequestProducerConfig};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use crate::types::{HttpRequest, HttpResponse};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::http::StatusCode;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::{body::Body, extract::Request, response::Response};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use chrono::Utc;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use futures::StreamExt;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use std::sync::Arc;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave_core::Producer;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave_pipeline::PipelineBuilder;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use tracing::{error, warn};
 
 /// Creates a simple handler that processes requests with a transformer function.
@@ -302,7 +302,7 @@ where
 /// ## Returns
 ///
 /// An Axum handler function
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn create_graph_handler(
   server: HttpGraphServer,
 ) -> impl Fn(Request) -> std::pin::Pin<Box<dyn std::future::Future<Output = Response<Body>> + Send>>

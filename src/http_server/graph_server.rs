@@ -4,34 +4,34 @@
 //! It integrates Axum HTTP requests with StreamWeave graphs, allowing requests to flow
 //! through a graph and responses to be correlated and returned to clients.
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use crate::graph::execution::{ExecutionError, ExecutionState, GraphExecutor};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use crate::graph::graph::Graph;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use crate::http_server::consumer::HttpResponseCorrelationConsumer;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::body::Body;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::extract::Request;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::http::StatusCode;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::response::Response;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use std::sync::Arc;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use std::time::Duration;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use tokio::sync::mpsc;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use tokio::time::timeout;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use tracing::{error, warn};
 
 /// Configuration for the HTTP Graph Server.
 #[derive(Debug, Clone)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct HttpGraphServerConfig {
   /// Request timeout duration (default: 30 seconds)
   pub request_timeout: Duration,
@@ -39,7 +39,7 @@ pub struct HttpGraphServerConfig {
   pub request_channel_buffer: usize,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl Default for HttpGraphServerConfig {
   fn default() -> Self {
     Self {
@@ -56,7 +56,7 @@ impl Default for HttpGraphServerConfig {
 /// - Accepts HTTP requests via Axum and injects them into the graph
 /// - Correlates responses with requests and returns them to clients
 /// - Handles request timeouts and errors
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct HttpGraphServer {
   /// Graph executor for running the graph
   executor: Arc<tokio::sync::RwLock<GraphExecutor>>,
@@ -68,7 +68,7 @@ pub struct HttpGraphServer {
   config: HttpGraphServerConfig,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl HttpGraphServer {
   /// Creates a new HTTP Graph Server from a constructed graph.
   ///
@@ -263,7 +263,7 @@ impl HttpGraphServer {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl Clone for HttpGraphServer {
   fn clone(&self) -> Self {
     Self {

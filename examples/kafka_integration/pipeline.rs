@@ -1,6 +1,6 @@
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use serde::{Deserialize, Serialize};
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use streamweave::{
   consumers::kafka::kafka_consumer::{KafkaConsumer, KafkaProducerConfig},
   error::ErrorStrategy,
@@ -10,7 +10,7 @@ use streamweave::{
 };
 
 /// A simple event structure for demonstration
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
   pub id: u32,
@@ -24,7 +24,7 @@ pub struct Event {
 /// - Consuming messages from a Kafka topic with a consumer group
 /// - Extracting and parsing message payloads
 /// - Error handling for deserialization failures
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 pub async fn consume_from_kafka() -> Result<(), Box<dyn std::error::Error>> {
   println!("📥 Setting up Kafka consumer...");
 
@@ -88,7 +88,7 @@ pub async fn consume_from_kafka() -> Result<(), Box<dyn std::error::Error>> {
 /// - Creating events and sending them to Kafka
 /// - Producer batching configuration for efficiency
 /// - Error handling for send failures
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 pub async fn produce_to_kafka() -> Result<(), Box<dyn std::error::Error>> {
   println!("📤 Setting up Kafka producer...");
 
@@ -173,7 +173,7 @@ pub async fn produce_to_kafka() -> Result<(), Box<dyn std::error::Error>> {
 /// - Transforming messages
 /// - Writing to another topic
 /// - Offset management through consumer groups
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
   println!("🔄 Setting up round-trip Kafka pipeline...");
 
@@ -228,19 +228,19 @@ pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
   Ok(())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "kafka")))]
+#[cfg(not(feature = "kafka"))]
 #[allow(dead_code)]
 pub async fn consume_from_kafka() -> Result<(), Box<dyn std::error::Error>> {
   Err("Kafka feature is not enabled. Build with --features kafka".into())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "kafka")))]
+#[cfg(not(feature = "kafka"))]
 #[allow(dead_code)]
 pub async fn produce_to_kafka() -> Result<(), Box<dyn std::error::Error>> {
   Err("Kafka feature is not enabled. Build with --features kafka".into())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "kafka")))]
+#[cfg(not(feature = "kafka"))]
 #[allow(dead_code)]
 pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Kafka feature is not enabled. Build with --features kafka".into())

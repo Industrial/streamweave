@@ -12,13 +12,13 @@
 //! - Graceful shutdown support
 //! - Console output with server URL
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 mod pipeline;
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use pipeline::create_multi_stage_pipeline;
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::{
   Router,
   body::Body,
@@ -26,20 +26,20 @@ use axum::{
   response::IntoResponse,
   routing::get,
 };
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use std::net::SocketAddr;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use std::sync::Arc;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave::visualization::{
   DagEdge, DagExporter, DagNode, NodeKind, NodeMetadata, PipelineDag, generate_standalone_html,
 };
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use tokio::signal;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use tokio::sync::RwLock;
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 /// Creates a DAG from a multi-stage pipeline manually.
 fn create_dag_from_multi_stage_pipeline(
   producer: &impl streamweave::Producer<Output = i32>,
@@ -141,7 +141,7 @@ fn create_dag_from_multi_stage_pipeline(
   dag
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("🎨 StreamWeave Visualization HTTP Server Example");
@@ -195,7 +195,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   Ok(())
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 /// Serves the visualization UI (HTML)
 async fn serve_ui(
   axum::extract::State(dag_state): axum::extract::State<Arc<RwLock<PipelineDag>>>,
@@ -210,7 +210,7 @@ async fn serve_ui(
     .unwrap()
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 /// Serves the DAG as JSON
 async fn serve_dag_json(
   axum::extract::State(dag_state): axum::extract::State<Arc<RwLock<PipelineDag>>>,
@@ -229,7 +229,7 @@ async fn serve_dag_json(
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 /// Serves the DAG as DOT format
 async fn serve_dag_dot(
   axum::extract::State(dag_state): axum::extract::State<Arc<RwLock<PipelineDag>>>,
@@ -244,7 +244,7 @@ async fn serve_dag_dot(
     .unwrap()
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 /// Handles graceful shutdown signal
 async fn shutdown_signal() {
   let ctrl_c = async {
@@ -273,7 +273,7 @@ async fn shutdown_signal() {
   println!("🛑 Shutdown signal received, stopping server...");
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "http-server")))]
+#[cfg(not(feature = "http-server"))]
 fn main() {
   println!("❌ HTTP server feature is not enabled");
   println!();

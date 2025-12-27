@@ -5,22 +5,22 @@
 //! This transformer is designed for graph-based HTTP servers where requests need to be
 //! routed to different handlers (REST, GraphQL, RPC, Static Files, etc.) based on their path.
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use crate::types::HttpRequest;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use async_trait::async_trait;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use futures::StreamExt;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave_core::{Transformer, TransformerConfig};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave_message::Message;
 
 /// Route pattern configuration for path-based routing.
 #[derive(Debug, Clone)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct RoutePattern {
   /// The path pattern to match (supports wildcards like `/api/*`)
   pub pattern: String,
@@ -30,7 +30,7 @@ pub struct RoutePattern {
 
 /// Configuration for path-based routing transformer.
 #[derive(Debug, Clone, Default)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct PathRouterConfig {
   /// Route patterns to match against request paths
   pub routes: Vec<RoutePattern>,
@@ -63,7 +63,7 @@ pub struct PathRouterConfig {
 /// router.set_default_port(Some(4)); // Route unmatched requests to port 4
 /// ```
 #[derive(Debug, Clone)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct PathBasedRouterTransformer {
   /// Transformer configuration
   config: TransformerConfig<Message<HttpRequest>>,
@@ -71,7 +71,7 @@ pub struct PathBasedRouterTransformer {
   router_config: PathRouterConfig,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl PathBasedRouterTransformer {
   /// Creates a new path-based router transformer with the given configuration.
   ///
@@ -169,7 +169,7 @@ impl PathBasedRouterTransformer {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 #[async_trait]
 impl Transformer for PathBasedRouterTransformer {
   type InputPorts = (Message<HttpRequest>,);

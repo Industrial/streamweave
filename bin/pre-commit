@@ -7,7 +7,6 @@ bin/format
 bin/check
 bin/lint
 bin/build
-bin/build-wasm
 bin/test
 bin/audit
 bin/check-docs

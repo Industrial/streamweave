@@ -16,7 +16,7 @@ chrono = { workspace = true }
 streamweave-core = { path = "../../core" }
 streamweave-error = { path = "../../error" }
 streamweave-message = { path = "../../message", optional = true }
-parquet = { workspace = true, optional = true, features = ["arrow"] }
+parquet = { workspace = true, optional = true, features = ["arrow", "snap"] }
 arrow = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["macros", "rt", "fs"] }
 futures = { workspace = true }

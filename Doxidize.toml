@@ -56,8 +56,6 @@ additional_docs = [
   "docs/architecture.md",
   "docs/guides/common_use_cases.md",
   "docs/troubleshooting.md",
-  "docs/WASM_GUIDE.md",
-  "docs/WASM_COMPATIBILITY.md",
   "docs/KAFKA_SETUP.md",
   "docs/BUNDLE_SIZE.md",
 ]

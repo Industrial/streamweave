@@ -234,7 +234,6 @@ impl ConnectionManager for SimpleConnectionManager {
 mod tests {
   use super::*;
   use proptest::prelude::*;
-  use tokio::runtime::Runtime;
 
   async fn test_connection_manager_bind_async() {
     let mut manager = SimpleConnectionManager::new();
@@ -248,7 +247,7 @@ mod tests {
   proptest! {
     #[test]
     fn test_connection_manager_bind(_ in any::<u8>()) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_connection_manager_bind_async());
     }
   }

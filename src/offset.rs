@@ -7,10 +7,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{self, Display};
-#[cfg(not(target_arch = "wasm32"))]
 use std::fs;
 use std::io::{self};
-#[cfg(not(target_arch = "wasm32"))]
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
@@ -234,15 +232,13 @@ impl OffsetStore for InMemoryOffsetStore {
 ///
 /// Persists offsets to a JSON file on disk.
 ///
-/// This is only available on native platforms (not WASM).
-#[cfg(not(target_arch = "wasm32"))]
+/// File-based offset store implementation.
 #[derive(Debug, Clone)]
 pub struct FileOffsetStore {
   path: PathBuf,
   cache: Arc<RwLock<HashMap<String, Offset>>>,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl FileOffsetStore {
   /// Creates a new file-based offset store.
   pub fn new<P: AsRef<Path>>(path: P) -> OffsetResult<Self> {
@@ -285,7 +281,6 @@ impl FileOffsetStore {
   }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl OffsetStore for FileOffsetStore {
   fn get(&self, source: &str) -> OffsetResult<Option<Offset>> {
     let cache = self
@@ -520,7 +515,6 @@ impl OffsetTracker {
 #[cfg(test)]
 mod tests {
   use super::*;
-  #[cfg(not(target_arch = "wasm32"))]
   use tempfile::tempdir;
 
   // Offset tests
@@ -607,7 +601,6 @@ mod tests {
   }
 
   // FileOffsetStore tests (native only)
-  #[cfg(not(target_arch = "wasm32"))]
   #[test]
   fn test_file_store_basic() {
     let dir = tempdir().unwrap();
@@ -625,7 +618,6 @@ mod tests {
     assert_eq!(store2.get("source1").unwrap(), Some(Offset::Sequence(10)));
   }
 
-  #[cfg(not(target_arch = "wasm32"))]
   #[test]
   fn test_file_store_clear() {
     let dir = tempdir().unwrap();
@@ -644,7 +636,6 @@ mod tests {
     assert_eq!(store2.get("source2").unwrap(), Some(Offset::Sequence(20)));
   }
 
-  #[cfg(not(target_arch = "wasm32"))]
   #[test]
   fn test_file_store_creates_parent_dirs() {
     let dir = tempdir().unwrap();
@@ -824,7 +815,6 @@ mod tests {
     assert_eq!(custom, Offset::Custom("my-offset".to_string()));
   }
 
-  #[cfg(not(target_arch = "wasm32"))]
   #[test]
   fn test_file_store_path() {
     let dir = tempdir().unwrap();

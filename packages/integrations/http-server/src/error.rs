@@ -28,13 +28,13 @@
 //! assert_eq!(http_error.status, StatusCode::BAD_REQUEST);
 //! ```
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::http::StatusCode;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use serde::{Deserialize, Serialize};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use std::fmt;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave_error::StreamError;
 
 /// Structured error response for HTTP endpoints.
@@ -56,7 +56,7 @@ use streamweave_error::StreamError;
 /// };
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct ErrorResponse {
   /// HTTP status code for the error
   pub status: u16,
@@ -75,7 +75,7 @@ pub struct ErrorResponse {
 /// This contains additional context about the error that may be useful
 /// for debugging but should not be exposed in production.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct ErrorDetails {
   /// The underlying error message
   pub error: String,
@@ -136,7 +136,7 @@ pub struct ErrorDetails {
 /// let http_error = map_to_http_error(&stream_error, false);
 /// assert_eq!(http_error.status, StatusCode::BAD_REQUEST.as_u16());
 /// ```
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn map_to_http_error<T>(error: &StreamError<T>, include_details: bool) -> ErrorResponse
 where
   T: fmt::Debug + Clone + Send + Sync,
@@ -237,7 +237,7 @@ where
 /// let error = std::io::Error::other("Something went wrong");
 /// let http_error = map_generic_error(&error, Some(StatusCode::BAD_REQUEST), false);
 /// ```
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn map_generic_error(
   error: &dyn std::error::Error,
   status: Option<StatusCode>,
@@ -294,7 +294,7 @@ pub fn map_generic_error(
 ///     false,
 /// );
 /// ```
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn create_custom_error(
   status: StatusCode,
   message: impl Into<String>,
@@ -327,7 +327,7 @@ pub fn create_custom_error(
 /// ## Returns
 ///
 /// `true` if in development mode, `false` otherwise.
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn is_development_mode() -> bool {
   std::env::var("RUST_ENV")
     .or_else(|_| std::env::var("ENVIRONMENT"))

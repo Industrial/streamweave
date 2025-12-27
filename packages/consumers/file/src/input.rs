@@ -15,7 +15,6 @@ mod tests {
   use proptest::prelude::*;
   use proptest::proptest;
   use std::pin::Pin;
-  use tokio::runtime::Runtime;
 
   async fn test_file_consumer_input_stream_send_bound_async(data: Vec<String>) {
     // Test that the InputStream implements Send bound for async usage
@@ -80,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_file_consumer_input_stream_send_bound(data in prop::collection::vec(any::<String>(), 0..20)) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_file_consumer_input_stream_send_bound_async(data));
     }
 
@@ -115,7 +114,7 @@ mod tests {
 
     #[test]
     fn test_file_consumer_input_stream_compatibility(data in prop::collection::vec(any::<String>(), 0..20)) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(async {
         // Test that streams can be created and used with the Input trait
         let _consumer = FileConsumer::new("test.txt".to_string());

@@ -1,6 +1,6 @@
-#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+#[cfg(feature = "file-formats")]
 use serde::{Deserialize, Serialize};
-#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+#[cfg(feature = "file-formats")]
 use streamweave::{
   consumers::csv::csv_consumer::CsvConsumer, consumers::jsonl::jsonl_consumer::JsonlConsumer,
   consumers::parquet::parquet_consumer::ParquetConsumer, consumers::vec::vec_consumer::VecConsumer,
@@ -9,17 +9,17 @@ use streamweave::{
   transformers::map::map_transformer::MapTransformer,
 };
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+#[cfg(feature = "file-formats")]
 use arrow::array::{ArrayRef, Int64Array, StringArray};
-#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+#[cfg(feature = "file-formats")]
 use arrow::datatypes::{DataType, Field, Schema};
-#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+#[cfg(feature = "file-formats")]
 use arrow::record_batch::RecordBatch;
-#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+#[cfg(feature = "file-formats")]
 use std::sync::Arc;
 
 /// Example data structure for CSV and JSONL
-#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+#[cfg(feature = "file-formats")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Person {
   id: u32,
@@ -36,7 +36,7 @@ struct Person {
 /// - Streaming CSV parsing (doesn't load entire file)
 /// - Writing CSV files with headers
 /// - Handling different data types in CSV
-#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+#[cfg(feature = "file-formats")]
 pub async fn csv_example() -> Result<(), Box<dyn std::error::Error>> {
   println!("📄 Setting up CSV read/write example...");
 
@@ -131,7 +131,7 @@ pub async fn csv_example() -> Result<(), Box<dyn std::error::Error>> {
 /// - Streaming JSONL parsing (line-by-line, doesn't load entire file)
 /// - Handling large files efficiently
 /// - Writing JSONL files
-#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+#[cfg(feature = "file-formats")]
 pub async fn jsonl_example() -> Result<(), Box<dyn std::error::Error>> {
   println!("📄 Setting up JSONL streaming example...");
 
@@ -210,7 +210,7 @@ pub async fn jsonl_example() -> Result<(), Box<dyn std::error::Error>> {
 /// - Efficient columnar reading
 /// - Writing Parquet files
 /// - Working with Arrow RecordBatches
-#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+#[cfg(feature = "file-formats")]
 pub async fn parquet_example() -> Result<(), Box<dyn std::error::Error>> {
   println!("📄 Setting up Parquet column projection example...");
 

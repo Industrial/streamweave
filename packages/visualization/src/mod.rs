@@ -38,7 +38,6 @@ pub mod exporter;
 pub mod realtime;
 pub mod ui;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub mod server;
 
 pub use dag::{DagEdge, DagNode, NodeKind, NodeMetadata, PipelineDag};
@@ -47,5 +46,4 @@ pub use exporter::DagExporter;
 pub use realtime::{NodeMetrics, NodeMetricsSnapshot, PipelineMetrics};
 pub use ui::generate_standalone_html;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub use server::VisualizationServer;

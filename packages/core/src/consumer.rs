@@ -337,7 +337,7 @@ mod tests {
   #[test]
   fn test_collector_consumer() {
     proptest::proptest!(|(input in prop::collection::vec(-1000..1000i32, 0..100))| {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_consumer_with_input(input));
     });
   }
@@ -361,7 +361,7 @@ mod tests {
   #[test]
   fn test_string_consumer() {
     proptest::proptest!(|(input in prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9_]+").unwrap(), 0..50))| {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_string_consumer_with_input(input));
     });
   }
@@ -376,7 +376,7 @@ mod tests {
   #[test]
   fn test_failing_consumer() {
     proptest::proptest!(|(input in prop::collection::vec(-1000..1000i32, 0..100))| {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_failing_consumer_with_input(input));
     });
   }
@@ -501,7 +501,7 @@ mod tests {
       prop_assert_eq!(info.name, name);
       prop_assert_eq!(
         info.type_name,
-        "streamweave::consumer::tests::CollectorConsumer<i32>"
+        "streamweave_core::consumer::tests::CollectorConsumer<i32>"
       );
     }
 
@@ -517,7 +517,7 @@ mod tests {
       prop_assert_eq!(context.component_name, name);
       prop_assert_eq!(
         context.component_type,
-        "streamweave::consumer::tests::CollectorConsumer<i32>"
+        "streamweave_core::consumer::tests::CollectorConsumer<i32>"
       );
       prop_assert!(context.item.is_none());
     }
@@ -535,7 +535,7 @@ mod tests {
       prop_assert_eq!(context.component_name, name);
       prop_assert_eq!(
         context.component_type,
-        "streamweave::consumer::tests::CollectorConsumer<i32>"
+        "streamweave_core::consumer::tests::CollectorConsumer<i32>"
       );
       prop_assert_eq!(context.item, Some(item));
     }
@@ -574,7 +574,7 @@ mod tests {
       name2 in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap(),
       retry_count in 1..10usize
     )| {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_configuration_changes_async(name1, name2, retry_count));
     });
   }
@@ -610,7 +610,7 @@ mod tests {
       input1 in prop::collection::vec(-1000..1000i32, 0..50),
       input2 in prop::collection::vec(-1000..1000i32, 0..50)
     )| {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_configuration_persistence_async(name, input1, input2));
     });
   }
@@ -711,7 +711,7 @@ mod tests {
       prop::collection::vec(-1000..1000i32, 1..10),
       1..10
     ))| {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_concurrent_consumption_async(inputs));
     });
   }
@@ -753,7 +753,7 @@ mod tests {
   #[test]
   fn test_stream_backpressure() {
     proptest::proptest!(|(items in prop::collection::vec(-1000..1000i32, 1..100))| {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_stream_backpressure_async(items));
     });
   }
@@ -803,7 +803,7 @@ mod tests {
       name2 in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap(),
       retry_count in 1..10usize
     )| {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_thread_local_configuration_async(name1, name2, retry_count));
     });
   }

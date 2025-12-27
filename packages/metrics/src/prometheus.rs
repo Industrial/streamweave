@@ -28,9 +28,9 @@
 //! # }
 //! ```
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "prometheus"))]
+#[cfg(feature = "prometheus")]
 use crate::types::PipelineMetrics;
-#[cfg(all(not(target_arch = "wasm32"), feature = "prometheus"))]
+#[cfg(feature = "prometheus")]
 use std::collections::HashMap;
 
 /// Exports StreamWeave metrics in Prometheus text format.
@@ -53,7 +53,7 @@ use std::collections::HashMap;
 /// # Ok(())
 /// # }
 /// ```
-#[cfg(all(not(target_arch = "wasm32"), feature = "prometheus"))]
+#[cfg(feature = "prometheus")]
 #[derive(Debug, Clone)]
 pub struct PrometheusExporter {
   /// Metric name prefix for all exported metrics.
@@ -62,7 +62,7 @@ pub struct PrometheusExporter {
   default_labels: HashMap<String, String>,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "prometheus"))]
+#[cfg(feature = "prometheus")]
 impl PrometheusExporter {
   /// Creates a new Prometheus exporter.
   ///
@@ -450,11 +450,11 @@ impl PrometheusExporter {
   }
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "prometheus")))]
+#[cfg(not(feature = "prometheus"))]
 // Placeholder implementation for when Prometheus is not enabled
 pub struct PrometheusExporter;
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "prometheus")))]
+#[cfg(not(feature = "prometheus"))]
 impl PrometheusExporter {
   #[must_use]
   pub fn new(_metric_prefix: impl Into<String>) -> Self {
@@ -472,7 +472,7 @@ impl PrometheusExporter {
 }
 
 #[cfg(test)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "prometheus"))]
+#[cfg(feature = "prometheus")]
 mod tests {
   use super::*;
   use crate::types::PipelineMetrics;

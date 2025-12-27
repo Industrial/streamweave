@@ -1,6 +1,6 @@
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 use sqlx::SqlitePool;
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 use streamweave::{
   consumers::console::console_consumer::ConsoleConsumer,
   error::ErrorStrategy,
@@ -18,7 +18,7 @@ use streamweave::{
 /// - Executing a simple SELECT query
 /// - Streaming query results through a pipeline
 /// - Displaying results to the console
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 pub async fn basic_query_example() -> Result<(), Box<dyn std::error::Error>> {
   println!("📊 Setting up basic database query example...");
 
@@ -73,7 +73,7 @@ pub async fn basic_query_example() -> Result<(), Box<dyn std::error::Error>> {
 /// - Using parameterized queries to prevent SQL injection
 /// - Binding parameters to queries
 /// - Filtering results based on parameters
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 pub async fn parameterized_query_example() -> Result<(), Box<dyn std::error::Error>> {
   println!("📊 Setting up parameterized query example...");
 
@@ -127,7 +127,7 @@ pub async fn parameterized_query_example() -> Result<(), Box<dyn std::error::Err
 /// - Cursor-based streaming for large datasets
 /// - Memory-efficient processing of large result sets
 /// - Connection pooling configuration
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 pub async fn large_result_set_example() -> Result<(), Box<dyn std::error::Error>> {
   println!("📊 Setting up large result set streaming example...");
 
@@ -187,7 +187,7 @@ pub async fn large_result_set_example() -> Result<(), Box<dyn std::error::Error>
 /// - Configuring connection pool settings
 /// - Understanding pool behavior
 /// - Optimizing for different workloads
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 pub async fn connection_pooling_example() -> Result<(), Box<dyn std::error::Error>> {
   println!("📊 Setting up connection pooling example...");
 
@@ -234,7 +234,7 @@ pub async fn connection_pooling_example() -> Result<(), Box<dyn std::error::Erro
 }
 
 /// Helper function to set up a test database with sample data
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 async fn setup_test_database() -> Result<SqlitePool, Box<dyn std::error::Error>> {
   // Create an in-memory SQLite database
   // Using "?cache=shared" allows multiple connections to the same in-memory database
@@ -272,7 +272,7 @@ async fn setup_test_database() -> Result<SqlitePool, Box<dyn std::error::Error>>
 }
 
 /// Helper function to set up a test database with a large dataset
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 async fn setup_large_test_database() -> Result<SqlitePool, Box<dyn std::error::Error>> {
   // Create an in-memory SQLite database
   let pool = SqlitePool::connect("sqlite::memory:?cache=shared").await?;
@@ -311,25 +311,25 @@ async fn setup_large_test_database() -> Result<SqlitePool, Box<dyn std::error::E
   Ok(pool)
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "database")))]
+#[cfg(not(feature = "database"))]
 #[allow(dead_code)]
 pub async fn basic_query_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Database feature is not enabled. Build with --features database".into())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "database")))]
+#[cfg(not(feature = "database"))]
 #[allow(dead_code)]
 pub async fn parameterized_query_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Database feature is not enabled. Build with --features database".into())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "database")))]
+#[cfg(not(feature = "database"))]
 #[allow(dead_code)]
 pub async fn large_result_set_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Database feature is not enabled. Build with --features database".into())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "database")))]
+#[cfg(not(feature = "database"))]
 #[allow(dead_code)]
 pub async fn connection_pooling_example() -> Result<(), Box<dyn std::error::Error>> {
   Err("Database feature is not enabled. Build with --features database".into())

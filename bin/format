@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
-# Format all packages
-
 set -euo pipefail
 exec > >(tee log/format.log) 2>&1 
 
 echo "> format"
 
-echo "> format > cargo fmt"
-devenv shell -- cargo fmt --all
+# echo "> format > cargo fmt"
+# cargo fmt --all
 
 echo "> format > treefmt"
-devenv shell -- treefmt --config-file treefmt.toml
+treefmt

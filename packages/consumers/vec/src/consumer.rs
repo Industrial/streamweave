@@ -71,7 +71,6 @@ mod tests {
   use proptest::prelude::*;
   use proptest::proptest;
   use streamweave_error::ErrorStrategy;
-  use tokio::runtime::Runtime;
 
   async fn test_vec_consumer_basic_async(input_data: Vec<i32>) {
     let mut consumer = VecConsumer::new();
@@ -97,13 +96,13 @@ mod tests {
     fn test_vec_consumer_basic(
       input_data in prop::collection::vec(any::<i32>(), 0..30)
     ) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_vec_consumer_basic_async(input_data));
     }
 
     #[test]
     fn test_vec_consumer_empty_input(_ in prop::num::u8::ANY) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(async {
         let mut consumer = VecConsumer::new();
         let input = stream::iter(Vec::<i32>::new());
@@ -120,7 +119,7 @@ mod tests {
       input_data in prop::collection::vec(any::<i32>(), 0..30),
       capacity in 0usize..1000usize
     ) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_vec_consumer_with_capacity_async(input_data, capacity));
     }
 

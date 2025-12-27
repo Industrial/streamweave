@@ -1,10 +1,10 @@
 mod pipeline;
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use pipeline::run_server;
 
 #[tokio::main]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("🚀 StreamWeave HTTP Server Integration Example");
   println!("==============================================");
@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   Ok(())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "http-server")))]
+#[cfg(not(feature = "http-server"))]
 fn main() {
   eprintln!("❌ Error: HTTP server feature is not enabled");
   eprintln!();

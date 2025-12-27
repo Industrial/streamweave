@@ -1,23 +1,19 @@
-#[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
+#[cfg(feature = "redis")]
 use serde::{Deserialize, Serialize};
-#[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
+#[cfg(feature = "redis")]
 use std::time::{SystemTime, UNIX_EPOCH};
-#[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
+#[cfg(feature = "redis")]
 use streamweave::{
-  consumers::redis_streams::redis_streams_consumer::{
-    RedisStreamsConsumer, RedisStreamsProducerConfig,
-  },
+  consumers::redis::redis_consumer::{RedisConsumer, RedisProducerConfig},
   error::ErrorStrategy,
   pipeline::PipelineBuilder,
-  producers::redis_streams::redis_streams_producer::{
-    RedisStreamsConsumerConfig, RedisStreamsMessage, RedisStreamsProducer,
-  },
+  producers::redis::redis_producer::{RedisConsumerConfig, RedisMessage, RedisProducer},
   producers::vec::vec_producer::VecProducer,
   transformers::map::map_transformer::MapTransformer,
 };
 
 /// A simple event structure for demonstration
-#[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
+#[cfg(feature = "redis")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
   pub id: u32,
@@ -32,12 +28,12 @@ pub struct Event {
 /// - Using consumer groups for distributed processing
 /// - Message acknowledgment patterns
 /// - Error handling for deserialization failures
-#[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
+#[cfg(feature = "redis")]
 pub async fn consume_from_redis() -> Result<(), Box<dyn std::error::Error>> {
   println!("📥 Setting up Redis Streams consumer...");
 
   // Configure Redis Streams consumer (which acts as a producer in StreamWeave)
-  let redis_config = RedisStreamsConsumerConfig::default()
+  let redis_config = RedisConsumerConfig::default()
     .with_connection_url("redis://localhost:6379")
     .with_stream("example-stream")
     .with_group("streamweave-example-group") // Consumer group for distributed processing
@@ -47,12 +43,12 @@ pub async fn consume_from_redis() -> Result<(), Box<dyn std::error::Error>> {
     .with_count(10) // Read up to 10 messages per call
     .with_auto_ack(true); // Automatically acknowledge messages
 
-  let producer = RedisStreamsProducer::new(redis_config)
-    .with_name("redis-streams-consumer".to_string())
+  let producer = RedisProducer::new(redis_config)
+    .with_name("redis-consumer".to_string())
     .with_error_strategy(ErrorStrategy::Skip); // Skip messages that fail to deserialize
 
   // Transform Redis Streams messages to extract JSON payloads
-  let transformer = MapTransformer::new(|msg: RedisStreamsMessage| -> Result<Event, String> {
+  let transformer = MapTransformer::new(|msg: RedisMessage| -> Result<Event, String> {
     // Try to deserialize the message fields as JSON
     // Redis Streams stores fields as key-value pairs, we look for a "data" field
     if let Some(data_str) = msg.fields.get("data") {
@@ -115,7 +111,7 @@ pub async fn consume_from_redis() -> Result<(), Box<dyn std::error::Error>> {
 /// - Creating events and sending them to Redis Streams
 /// - Serializing events to JSON
 /// - Error handling for send failures
-#[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
+#[cfg(feature = "redis")]
 pub async fn produce_to_redis() -> Result<(), Box<dyn std::error::Error>> {
   println!("📤 Setting up Redis Streams producer...");
 
@@ -155,14 +151,14 @@ pub async fn produce_to_redis() -> Result<(), Box<dyn std::error::Error>> {
   ];
 
   // Configure Redis Streams producer (which acts as a consumer in StreamWeave)
-  let redis_config = RedisStreamsProducerConfig::default()
+  let redis_config = RedisProducerConfig::default()
     .with_connection_url("redis://localhost:6379")
     .with_stream("example-stream")
     .with_maxlen(1000) // Keep only the last 1000 messages
     .with_approximate_maxlen(true); // Use approximate trimming for efficiency
 
-  let consumer = RedisStreamsConsumer::new(redis_config)
-    .with_name("redis-streams-producer".to_string())
+  let consumer = RedisConsumer::new(redis_config)
+    .with_name("redis-producer".to_string())
     .with_error_strategy(ErrorStrategy::Retry(3)); // Retry failed sends
 
   println!("🚀 Starting pipeline to produce to Redis Streams...");
@@ -193,12 +189,12 @@ pub async fn produce_to_redis() -> Result<(), Box<dyn std::error::Error>> {
 /// - Transforming messages
 /// - Writing to another stream
 /// - Consumer group offset management
-#[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
+#[cfg(feature = "redis")]
 pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
   println!("🔄 Setting up round-trip Redis Streams pipeline...");
 
   // Consumer configuration (reads from input stream)
-  let consumer_config = RedisStreamsConsumerConfig::default()
+  let consumer_config = RedisConsumerConfig::default()
     .with_connection_url("redis://localhost:6379")
     .with_stream("input-stream")
     .with_group("streamweave-roundtrip-group")
@@ -207,12 +203,12 @@ pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
     .with_block_ms(1000)
     .with_auto_ack(true);
 
-  let redis_producer = RedisStreamsProducer::new(consumer_config)
+  let redis_producer = RedisProducer::new(consumer_config)
     .with_name("redis-input".to_string())
     .with_error_strategy(ErrorStrategy::Skip);
 
   // Transform: parse JSON and add processing metadata
-  let transformer = MapTransformer::new(|msg: RedisStreamsMessage| -> Result<Event, String> {
+  let transformer = MapTransformer::new(|msg: RedisMessage| -> Result<Event, String> {
     // Extract event from message fields
     if let Some(data_str) = msg.fields.get("data") {
       match serde_json::from_str::<Event>(data_str) {
@@ -231,13 +227,13 @@ pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
   .with_error_strategy(ErrorStrategy::Skip);
 
   // Producer configuration (writes to output stream)
-  let producer_config = RedisStreamsProducerConfig::default()
+  let producer_config = RedisProducerConfig::default()
     .with_connection_url("redis://localhost:6379")
     .with_stream("output-stream")
     .with_maxlen(5000) // Larger buffer for output
     .with_approximate_maxlen(true);
 
-  let redis_consumer = RedisStreamsConsumer::new(producer_config)
+  let redis_consumer = RedisConsumer::new(producer_config)
     .with_name("redis-output".to_string())
     .with_error_strategy(ErrorStrategy::Retry(5));
 
@@ -257,20 +253,20 @@ pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
   Ok(())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "redis-streams")))]
+#[cfg(not(feature = "redis"))]
 #[allow(dead_code)]
 pub async fn consume_from_redis() -> Result<(), Box<dyn std::error::Error>> {
-  Err("Redis Streams feature is not enabled. Build with --features redis-streams".into())
+  Err("Redis Streams feature is not enabled. Build with --features redis".into())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "redis-streams")))]
+#[cfg(not(feature = "redis"))]
 #[allow(dead_code)]
 pub async fn produce_to_redis() -> Result<(), Box<dyn std::error::Error>> {
-  Err("Redis Streams feature is not enabled. Build with --features redis-streams".into())
+  Err("Redis Streams feature is not enabled. Build with --features redis".into())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "redis-streams")))]
+#[cfg(not(feature = "redis"))]
 #[allow(dead_code)]
 pub async fn round_trip_example() -> Result<(), Box<dyn std::error::Error>> {
-  Err("Redis Streams feature is not enabled. Build with --features redis-streams".into())
+  Err("Redis Streams feature is not enabled. Build with --features redis".into())
 }

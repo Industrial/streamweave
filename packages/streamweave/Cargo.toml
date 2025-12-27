@@ -35,7 +35,7 @@ streamweave-producer-csv = { path = "../producers/csv", optional = true }
 streamweave-producer-jsonl = { path = "../producers/jsonl", optional = true }
 streamweave-producer-parquet = { path = "../producers/parquet", optional = true }
 streamweave-producer-kafka = { path = "../producers/kafka", optional = true }
-streamweave-producer-redis-streams = { path = "../producers/redis-streams", optional = true }
+streamweave-producer-redis = { path = "../producers/redis", optional = true }
 streamweave-producer-database = { path = "../producers/database", optional = true }
 streamweave-producer-http-poll = { path = "../producers/http-poll", optional = true }
 streamweave-producer-env-var = { path = "../producers/env-var", optional = true }
@@ -49,11 +49,12 @@ streamweave-consumer-csv = { path = "../consumers/csv", optional = true }
 streamweave-consumer-jsonl = { path = "../consumers/jsonl", optional = true }
 streamweave-consumer-parquet = { path = "../consumers/parquet", optional = true }
 streamweave-consumer-kafka = { path = "../consumers/kafka", optional = true }
-streamweave-consumer-redis-streams = { path = "../consumers/redis-streams", optional = true }
+streamweave-consumer-redis = { path = "../consumers/redis", optional = true }
 streamweave-consumer-database = { path = "../consumers/database", optional = true }
 streamweave-consumer-console = { path = "../consumers/console", optional = true }
-streamweave-consumer-channel = { path = "../consumers/channel", optional = true }
+streamweave-consumer-tokio-channel = { path = "../consumers/tokio-channel", optional = true }
 streamweave-consumer-command = { path = "../consumers/command", optional = true }
+streamweave-consumer-env-var = { path = "../consumers/env-var", optional = true }
 
 # Transformer packages
 streamweave-transformer-map = { path = "../transformers/map", optional = true }
@@ -129,7 +130,7 @@ all-producers = [
   "producer-jsonl",
   "producer-parquet",
   "producer-kafka",
-  "producer-redis-streams",
+  "producer-redis",
   "producer-database",
   "producer-http-poll",
   "producer-env-var",
@@ -143,7 +144,7 @@ producer-csv = ["dep:streamweave-producer-csv"]
 producer-jsonl = ["dep:streamweave-producer-jsonl"]
 producer-parquet = ["dep:streamweave-producer-parquet"]
 producer-kafka = ["dep:streamweave-producer-kafka"]
-producer-redis-streams = ["dep:streamweave-producer-redis-streams"]
+producer-redis = ["dep:streamweave-producer-redis"]
 producer-database = ["dep:streamweave-producer-database"]
 producer-http-poll = ["dep:streamweave-producer-http-poll"]
 producer-env-var = ["dep:streamweave-producer-env-var"]
@@ -158,11 +159,12 @@ all-consumers = [
   "consumer-jsonl",
   "consumer-parquet",
   "consumer-kafka",
-  "consumer-redis-streams",
+  "consumer-redis",
   "consumer-database",
   "consumer-console",
-  "consumer-channel",
+  "consumer-tokio-channel",
   "consumer-command",
+  "consumer-env-var",
 ]
 consumer-array = ["dep:streamweave-consumer-array"]
 consumer-vec = ["dep:streamweave-consumer-vec"]
@@ -171,11 +173,12 @@ consumer-csv = ["dep:streamweave-consumer-csv"]
 consumer-jsonl = ["dep:streamweave-consumer-jsonl"]
 consumer-parquet = ["dep:streamweave-consumer-parquet"]
 consumer-kafka = ["dep:streamweave-consumer-kafka"]
-consumer-redis-streams = ["dep:streamweave-consumer-redis-streams"]
+consumer-redis = ["dep:streamweave-consumer-redis"]
 consumer-database = ["dep:streamweave-consumer-database"]
 consumer-console = ["dep:streamweave-consumer-console"]
-consumer-channel = ["dep:streamweave-consumer-channel"]
+consumer-tokio-channel = ["dep:streamweave-consumer-tokio-channel"]
 consumer-command = ["dep:streamweave-consumer-command"]
+consumer-env-var = ["dep:streamweave-consumer-env-var"]
 
 # Transformer features
 all-transformers = [

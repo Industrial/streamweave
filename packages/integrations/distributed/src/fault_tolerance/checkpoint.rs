@@ -143,7 +143,6 @@ impl CheckpointStore for InMemoryCheckpointStore {
 mod tests {
   use super::*;
   use proptest::prelude::*;
-  use tokio::runtime::Runtime;
 
   async fn test_in_memory_checkpoint_store_async(
     checkpoint_id: String,
@@ -181,7 +180,7 @@ mod tests {
       offset in 0u64..1000000,
       state_data in prop::collection::vec(any::<u8>(), 0..1000),
     ) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_in_memory_checkpoint_store_async(
         checkpoint_id,
         worker_id,

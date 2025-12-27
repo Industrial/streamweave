@@ -76,7 +76,7 @@ mod tests {
     fn test_console_consumer_integers(
       input in prop::collection::vec(-1000..1000i32, 0..100)
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_console_consumer_integers_async(input));
     }
   }
@@ -95,7 +95,7 @@ mod tests {
     fn test_console_consumer_strings(
       input in prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(), 0..100)
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_console_consumer_strings_async(input));
     }
   }
@@ -114,7 +114,7 @@ mod tests {
     fn test_console_consumer_floats(
       input in prop::collection::vec(-1000.0..1000.0f64, 0..100)
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_console_consumer_floats_async(input));
     }
   }
@@ -146,7 +146,7 @@ mod tests {
     fn test_console_consumer_custom_type(
       values in prop::collection::vec(-1000..1000i32, 0..100)
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_console_consumer_custom_type_async(values));
     }
   }
@@ -173,7 +173,7 @@ mod tests {
       input1 in prop::collection::vec(-1000..1000i32, 0..50),
       input2 in prop::collection::vec(-1000..1000i32, 0..50)
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_console_consumer_reuse_async(input1, input2));
     }
   }
@@ -192,7 +192,7 @@ mod tests {
     fn test_error_handling_strategies(
       name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_error_handling_strategies_async(name));
     }
   }

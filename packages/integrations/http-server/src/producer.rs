@@ -3,31 +3,31 @@
 //! Producer that converts incoming HTTP requests into stream items for processing
 //! through StreamWeave pipelines.
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use crate::types::HttpRequest;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use async_stream::stream;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use async_trait::async_trait;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::extract::Request;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use chrono;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use futures::StreamExt;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 #[allow(unused_imports)] // BodyExt is used via trait method into_data_stream()
 use http_body_util::BodyExt;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave_core::{Producer, ProducerConfig};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave_error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use tracing::{error, warn};
 
 /// Configuration for HTTP request producer behavior.
 #[derive(Debug, Clone)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct HttpRequestProducerConfig {
   /// Whether to extract the request body as bytes.
   pub extract_body: bool,
@@ -47,7 +47,7 @@ pub struct HttpRequestProducerConfig {
   pub chunk_size: usize,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl Default for HttpRequestProducerConfig {
   fn default() -> Self {
     Self {
@@ -62,7 +62,7 @@ impl Default for HttpRequestProducerConfig {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl HttpRequestProducerConfig {
   /// Sets whether to extract the request body.
   #[must_use]
@@ -152,7 +152,7 @@ impl HttpRequestProducerConfig {
 /// }
 /// ```
 #[derive(Debug)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct HttpRequestProducer {
   /// Producer configuration.
   pub config: ProducerConfig<HttpRequest>,
@@ -165,7 +165,7 @@ pub struct HttpRequestProducer {
   pub body_stream: Option<axum::body::Body>,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl HttpRequestProducer {
   /// Creates a new HTTP request producer from an Axum request.
   ///
@@ -308,7 +308,7 @@ impl HttpRequestProducer {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl Clone for HttpRequestProducer {
   fn clone(&self) -> Self {
     // Note: body_stream cannot be cloned, so cloned producers won't have streaming capability
@@ -322,7 +322,7 @@ impl Clone for HttpRequestProducer {
 }
 
 #[async_trait]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl Producer for HttpRequestProducer {
   type OutputPorts = (HttpRequest,);
 
@@ -532,7 +532,7 @@ impl Producer for HttpRequestProducer {
 /// // Producer will convert requests from rx to Message<HttpRequest>
 /// ```
 #[derive(Debug)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub struct LongLivedHttpRequestProducer {
   /// Producer configuration.
   pub config: ProducerConfig<streamweave_message::Message<HttpRequest>>,
@@ -542,7 +542,7 @@ pub struct LongLivedHttpRequestProducer {
   request_receiver: tokio::sync::mpsc::Receiver<Request>,
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl LongLivedHttpRequestProducer {
   /// Creates a new long-lived HTTP request producer.
   ///
@@ -582,7 +582,7 @@ impl LongLivedHttpRequestProducer {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 impl Clone for LongLivedHttpRequestProducer {
   fn clone(&self) -> Self {
     // Note: Cloning a receiver doesn't make sense for a long-lived producer
@@ -592,7 +592,7 @@ impl Clone for LongLivedHttpRequestProducer {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 #[async_trait]
 impl Producer for LongLivedHttpRequestProducer {
   type OutputPorts = (streamweave_message::Message<HttpRequest>,);

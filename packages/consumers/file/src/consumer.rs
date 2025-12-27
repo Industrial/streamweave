@@ -124,7 +124,6 @@ mod tests {
   use streamweave_error::ErrorStrategy;
   use tempfile::NamedTempFile;
   use tokio::fs as tokio_fs;
-  use tokio::runtime::Runtime;
 
   async fn test_file_consumer_basic_async(input_data: Vec<String>) {
     let temp_file = NamedTempFile::new().unwrap();
@@ -146,7 +145,7 @@ mod tests {
   proptest! {
     #[test]
     fn test_file_consumer_basic(input_data in prop::collection::vec(any::<String>(), 0..20)) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_file_consumer_basic_async(input_data));
     }
   }
@@ -170,7 +169,7 @@ mod tests {
   proptest! {
     #[test]
     fn test_file_consumer_empty_input(_ in prop::num::u8::ANY) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_file_consumer_empty_input_async());
     }
   }

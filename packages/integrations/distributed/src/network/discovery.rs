@@ -122,7 +122,6 @@ impl Default for NodeDiscovery {
 mod tests {
   use super::*;
   use proptest::prelude::*;
-  use tokio::runtime::Runtime;
 
   async fn test_node_discovery_register_async(node_id: String, capabilities: Vec<String>) {
     let discovery = NodeDiscovery::default();
@@ -150,7 +149,7 @@ mod tests {
         0..10
       ),
     ) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_node_discovery_register_async(node_id, capabilities));
     }
   }

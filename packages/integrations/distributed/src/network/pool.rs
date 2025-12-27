@@ -181,7 +181,6 @@ impl Default for ConnectionPool {
 mod tests {
   use super::*;
   use proptest::prelude::*;
-  use tokio::runtime::Runtime;
 
   async fn test_connection_pool_config_async() {
     let config = ConnectionPoolConfig::default();
@@ -230,7 +229,7 @@ mod tests {
   proptest! {
     #[test]
     fn test_connection_pool_config(_ in any::<u8>()) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_connection_pool_config_async());
     }
 
@@ -243,7 +242,7 @@ mod tests {
       max_retries in 0usize..10,
       retry_delay_secs in 0u64..60,
     ) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_connection_pool_creation_async(
         max_connections,
         max_idle,

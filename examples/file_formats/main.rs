@@ -3,7 +3,7 @@ mod pipeline;
 use pipeline::{csv_example, jsonl_example, parquet_example};
 
 #[tokio::main]
-#[cfg(all(not(target_arch = "wasm32"), feature = "file-formats"))]
+#[cfg(feature = "file-formats")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Get command line arguments
   let args: Vec<String> = std::env::args().collect();
@@ -45,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   Ok(())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "file-formats")))]
+#[cfg(not(feature = "file-formats"))]
 fn main() {
   eprintln!("❌ Error: File formats feature is not enabled");
   eprintln!();

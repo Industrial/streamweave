@@ -135,7 +135,7 @@ mod tests {
       prop_assert_eq!(info.name.as_str(), name.as_str());
       prop_assert_eq!(
         info.type_name,
-        "streamweave::consumers::array::array_consumer::ArrayConsumer<i32, 3>"
+        "streamweave_consumer_array::array_consumer::ArrayConsumer<i32, 3>"
       );
     }
 
@@ -150,7 +150,7 @@ mod tests {
       prop_assert_eq!(context.component_name.as_str(), name.as_str());
       prop_assert_eq!(
         context.component_type,
-        "streamweave::consumers::array::array_consumer::ArrayConsumer<i32, 3>"
+        "streamweave_consumer_array::array_consumer::ArrayConsumer<i32, 3>"
       );
       prop_assert_eq!(context.item, Some(item));
     }
@@ -172,7 +172,7 @@ mod tests {
   #[test]
   fn test_array_consumer_basic() {
     proptest::proptest!(|(input in prop::collection::vec(-1000..1000i32, 1..10))| {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_array_consumer_basic_async(input));
     });
   }
@@ -206,7 +206,7 @@ mod tests {
   #[test]
   fn test_array_consumer_capacity_exceeded() {
     proptest::proptest!(|(input in prop::collection::vec(-1000..1000i32, 3..20))| {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_array_consumer_capacity_exceeded_async(input, 2));
     });
   }

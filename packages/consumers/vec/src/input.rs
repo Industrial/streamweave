@@ -18,7 +18,6 @@ mod tests {
   use proptest::prelude::*;
   use proptest::proptest;
   use std::pin::Pin;
-  use tokio::runtime::Runtime;
 
   proptest! {
     #[test]
@@ -72,7 +71,7 @@ mod tests {
 
     #[test]
     fn test_vec_consumer_input_stream_send_bound(data in prop::collection::vec(any::<i32>(), 0..20)) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_vec_consumer_input_stream_send_bound_async(data));
     }
 
@@ -113,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_vec_consumer_input_stream_compatibility(data in prop::collection::vec(any::<i32>(), 0..20)) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_vec_consumer_input_stream_compatibility_async(data));
     }
 

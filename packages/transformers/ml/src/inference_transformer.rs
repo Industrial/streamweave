@@ -241,11 +241,11 @@ mod transformer_impl {
     type OutputPorts = (B::Output,);
 
     fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-      let backend = Arc::clone(&self.backend);
+      let backend: Arc<tokio::sync::RwLock<B>> = Arc::clone(&self.backend);
       Box::pin(
         input
           .then(move |item| {
-            let backend = Arc::clone(&backend);
+            let backend: Arc<tokio::sync::RwLock<B>> = Arc::clone(&backend);
             async move {
               let backend_guard = backend.read().await;
               match backend_guard.infer(item).await {

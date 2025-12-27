@@ -4,7 +4,7 @@ mod pipeline;
 use pipeline::{consume_from_redis, produce_to_redis, round_trip_example};
 
 #[tokio::main]
-#[cfg(all(not(target_arch = "wasm32"), feature = "redis-streams"))]
+#[cfg(feature = "redis")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Get command line arguments
   let args: Vec<String> = std::env::args().collect();
@@ -32,15 +32,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     _ => {
       println!(
-        "Usage: cargo run --example redis_streams_integration --features redis-streams [consume|produce|roundtrip]"
+        "Usage: cargo run --example redis_integration --features redis [consume|produce|roundtrip]"
       );
       println!();
       println!("Examples:");
-      println!("  cargo run --example redis_streams_integration --features redis-streams produce");
-      println!("  cargo run --example redis_streams_integration --features redis-streams consume");
-      println!(
-        "  cargo run --example redis_streams_integration --features redis-streams roundtrip"
-      );
+      println!("  cargo run --example redis_integration --features redis produce");
+      println!("  cargo run --example redis_integration --features redis consume");
+      println!("  cargo run --example redis_integration --features redis roundtrip");
       return Ok(());
     }
   }
@@ -48,11 +46,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   Ok(())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "redis-streams")))]
+#[cfg(not(feature = "redis"))]
 fn main() {
   eprintln!("❌ Error: Redis Streams feature is not enabled");
   eprintln!();
-  eprintln!("This example requires the 'redis-streams' feature to be enabled.");
-  eprintln!("Build with: cargo run --example redis_streams_integration --features redis-streams");
+  eprintln!("This example requires the 'redis' feature to be enabled.");
+  eprintln!("Build with: cargo run --example redis_integration --features redis");
   std::process::exit(1);
 }

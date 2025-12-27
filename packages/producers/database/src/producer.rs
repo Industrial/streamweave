@@ -1,26 +1,26 @@
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 use super::database_producer::{
   DatabaseProducer, DatabaseProducerConfig, DatabaseRow, DatabaseType,
 };
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 use async_stream::stream;
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 use async_trait::async_trait;
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 use futures::StreamExt;
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 use sqlx::{Column, TypeInfo};
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 use std::collections::HashMap;
 use streamweave_core::{Producer, ProducerConfig};
 use streamweave_error::{ErrorAction, ErrorStrategy, StreamError};
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 use tracing::{error, warn};
 
 #[async_trait]
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 impl Producer for DatabaseProducer {
   type OutputPorts = (crate::database_producer::DatabaseRow,);
 
@@ -108,10 +108,10 @@ impl Producer for DatabaseProducer {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 use super::database_producer::DatabasePool;
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 async fn create_pool(
   config: &DatabaseProducerConfig,
 ) -> Result<DatabasePool, Box<dyn std::error::Error + Send + Sync>> {
@@ -151,7 +151,7 @@ async fn create_pool(
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 async fn execute_query<'a>(
   pool: &'a DatabasePool,
   config: &'a DatabaseProducerConfig,
@@ -223,7 +223,7 @@ async fn execute_query<'a>(
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 fn bind_parameter_postgres<'q>(
   query: sqlx::query::Query<'q, sqlx::Postgres, sqlx::postgres::PgArguments>,
   param: &serde_json::Value,
@@ -253,7 +253,7 @@ fn bind_parameter_postgres<'q>(
   Ok(bound_query)
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 fn bind_parameter_mysql<'q>(
   query: sqlx::query::Query<'q, sqlx::MySql, sqlx::mysql::MySqlArguments>,
   param: &serde_json::Value,
@@ -283,7 +283,7 @@ fn bind_parameter_mysql<'q>(
   Ok(bound_query)
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 fn bind_parameter_sqlite<'q>(
   query: sqlx::query::Query<'q, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'q>>,
   param: &serde_json::Value,
@@ -313,7 +313,7 @@ fn bind_parameter_sqlite<'q>(
   Ok(bound_query)
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 fn convert_row_to_database_row(row: &sqlx::postgres::PgRow) -> DatabaseRow {
   use sqlx::Row;
   let mut fields = HashMap::new();
@@ -367,7 +367,7 @@ fn convert_row_to_database_row(row: &sqlx::postgres::PgRow) -> DatabaseRow {
   DatabaseRow::new(fields)
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 fn convert_mysql_row_to_database_row(row: &sqlx::mysql::MySqlRow) -> DatabaseRow {
   use sqlx::Row;
   let mut fields = HashMap::new();
@@ -420,7 +420,7 @@ fn convert_mysql_row_to_database_row(row: &sqlx::mysql::MySqlRow) -> DatabaseRow
   DatabaseRow::new(fields)
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 fn convert_sqlite_row_to_database_row(row: &sqlx::sqlite::SqliteRow) -> DatabaseRow {
   use sqlx::Row;
   let mut fields = HashMap::new();
@@ -472,7 +472,7 @@ fn convert_sqlite_row_to_database_row(row: &sqlx::sqlite::SqliteRow) -> Database
   DatabaseRow::new(fields)
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 #[allow(dead_code)]
 fn handle_error_strategy<T>(strategy: &ErrorStrategy<T>, error: &StreamError<T>) -> ErrorAction
 where
@@ -488,7 +488,7 @@ where
 }
 
 #[cfg(test)]
-#[cfg(all(not(target_arch = "wasm32"), feature = "database"))]
+#[cfg(feature = "database")]
 mod tests {
   use super::*;
   use futures::StreamExt;

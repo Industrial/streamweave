@@ -1,26 +1,26 @@
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use super::kafka_consumer::KafkaConsumer;
 use crate::consumer::{Consumer, ConsumerConfig};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use async_trait::async_trait;
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use futures::StreamExt;
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use rdkafka::{
   config::ClientConfig,
   producer::{FutureProducer, FutureRecord},
   util::Timeout,
 };
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use serde::Serialize;
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use std::time::Duration;
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use tracing::{error, warn};
 
 #[async_trait]
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 impl<T> Consumer for KafkaConsumer<T>
 where
   T: Serialize + std::fmt::Debug + Clone + Send + Sync + 'static,
@@ -203,7 +203,7 @@ where
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 fn handle_error_strategy<T>(strategy: &ErrorStrategy<T>, error: &StreamError<T>) -> ErrorAction
 where
   T: std::fmt::Debug + Clone + Send + Sync,

@@ -32,3 +32,5 @@ streamweave-producer-vec = { path = "../producers/vec" }
 streamweave-consumer-vec = { path = "../consumers/vec" }
 streamweave-transformer-map = { path = "../transformers/map" }
 streamweave-transformer-running-sum = { path = "../transformers/running-sum" }
+
+[features]

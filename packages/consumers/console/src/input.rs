@@ -89,7 +89,7 @@ mod tests {
     fn test_console_consumer_input_stream_send_bound(
       data in prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(), 0..100)
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_console_consumer_input_stream_send_bound_async(data));
     }
   }
@@ -191,7 +191,7 @@ mod tests {
     fn test_console_consumer_input_stream_compatibility(
       data in prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(), 0..100)
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_console_consumer_input_stream_compatibility_async(data));
     }
   }

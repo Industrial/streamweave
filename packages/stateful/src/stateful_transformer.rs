@@ -1,7 +1,7 @@
 //! Stateful transformer trait for stream processing with persistent state.
 //!
 //! This module provides the [`StatefulTransformer`] trait which extends the base
-//! [`Transformer`](streamweave_core::Transformer) trait with state management capabilities.
+//! [`Transformer`] trait with state management capabilities.
 //! State is thread-safe and persists across stream items, enabling use cases like:
 //!
 //! - Running aggregations (sum, average, count)

@@ -18,7 +18,7 @@ streamweave-error = { path = "../../error" }
 streamweave-message = { path = "../../message", optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt", "fs"] }
+tokio = { workspace = true, features = ["macros", "rt", "fs", "io-util"] }
 futures = { workspace = true }
 async-trait = { workspace = true }
 thiserror = { workspace = true }

@@ -81,7 +81,7 @@ mod tests {
     fn test_command_consumer_basic(
       input in prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(), 0..20)
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_command_consumer_basic_async(input));
     }
   }
@@ -96,7 +96,10 @@ mod tests {
 
   #[test]
   fn test_command_consumer_empty_input() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let rt = tokio::runtime::Builder::new_current_thread()
+      .enable_all()
+      .build()
+      .unwrap();
     rt.block_on(test_command_consumer_empty_input_async());
   }
 
@@ -117,7 +120,7 @@ mod tests {
     fn test_error_handling_strategies(
       name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap()
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_error_handling_strategies_async(name));
     }
   }
@@ -169,7 +172,7 @@ mod tests {
       error_msg in prop::string::string_regex(".+").unwrap(),
       item in prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap()
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_error_handling_during_consumption_async(error_msg, item));
     }
   }
@@ -180,13 +183,16 @@ mod tests {
     assert_eq!(info.name, "");
     assert_eq!(
       info.type_name,
-      "streamweave::consumers::command::command_consumer::CommandConsumer<alloc::string::String>"
+      "streamweave_consumer_command::command_consumer::CommandConsumer<alloc::string::String>"
     );
   }
 
   #[test]
   fn test_component_info() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let rt = tokio::runtime::Builder::new_current_thread()
+      .enable_all()
+      .build()
+      .unwrap();
     rt.block_on(test_component_info_async());
   }
 
@@ -196,7 +202,7 @@ mod tests {
     assert_eq!(context.component_name, "");
     assert_eq!(
       context.component_type,
-      "streamweave::consumers::command::command_consumer::CommandConsumer<alloc::string::String>"
+      "streamweave_consumer_command::command_consumer::CommandConsumer<alloc::string::String>"
     );
     assert_eq!(context.item, Some(item));
   }
@@ -206,7 +212,7 @@ mod tests {
     fn test_error_context_creation(
       item in prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap()
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_error_context_creation_async(item));
     }
   }
@@ -226,7 +232,7 @@ mod tests {
       input in prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(), 0..10),
       args in prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9-]+").unwrap(), 0..5)
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_command_with_arguments_async(input, args));
     }
   }
@@ -247,7 +253,7 @@ mod tests {
     fn test_command_execution_failure(
       input in prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(), 0..10)
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_command_execution_failure_async(input));
     }
   }
@@ -266,7 +272,7 @@ mod tests {
     fn test_command_output_handling(
       input in prop::collection::vec(prop::string::string_regex("[a-zA-Z0-9 ]+").unwrap(), 0..10)
     ) {
-      let rt = tokio::runtime::Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_command_output_handling_async(input));
     }
   }

@@ -64,22 +64,22 @@ pub mod window;
 /// Zip transformer for zipping multiple streams.
 pub mod zip;
 
-// Transformers requiring tokio runtime features (available in both native and wasm)
-#[cfg(any(feature = "native", feature = "wasm"))]
+// Transformers requiring tokio runtime features
+#[cfg(feature = "native")]
 pub mod circuit_breaker;
-#[cfg(any(feature = "native", feature = "wasm"))]
+#[cfg(feature = "native")]
 pub mod debounce;
-#[cfg(any(feature = "native", feature = "wasm"))]
+#[cfg(feature = "native")]
 pub mod delay;
-#[cfg(any(feature = "native", feature = "wasm"))]
+#[cfg(feature = "native")]
 pub mod join;
-#[cfg(any(feature = "native", feature = "wasm"))]
+#[cfg(feature = "native")]
 pub mod ordered_merge;
-#[cfg(any(feature = "native", feature = "wasm"))]
+#[cfg(feature = "native")]
 pub mod rate_limit;
-#[cfg(any(feature = "native", feature = "wasm"))]
+#[cfg(feature = "native")]
 pub mod retry;
-#[cfg(any(feature = "native", feature = "wasm"))]
+#[cfg(feature = "native")]
 pub mod timeout;
 
 // Transformers requiring random number generation

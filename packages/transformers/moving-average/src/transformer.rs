@@ -22,7 +22,7 @@ impl Output for MovingAverageTransformer {
   type OutputStream = Pin<Box<dyn Stream<Item = f64> + Send>>;
 }
 
-/// Wrapper struct to implement StateStore on Arc<InMemoryStateStore<MovingAverageState>>
+/// Wrapper struct to implement StateStore on `Arc<InMemoryStateStore<MovingAverageState>>`
 #[derive(Debug)]
 pub struct SharedMovingAverageStore(pub Arc<InMemoryStateStore<MovingAverageState>>);
 

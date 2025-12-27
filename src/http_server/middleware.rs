@@ -15,9 +15,9 @@
 //!     .layer(middleware::logging_layer());
 //! ```
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::http::HeaderValue;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 /// Creates a CORS middleware layer with permissive defaults.
@@ -34,7 +34,7 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 /// let app = Router::new()
 ///     .layer(middleware::cors_layer());
 /// ```
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn cors_layer() -> CorsLayer {
   CorsLayer::new()
     .allow_origin(tower_http::cors::Any)
@@ -57,7 +57,7 @@ pub fn cors_layer() -> CorsLayer {
 ///         "https://example.com".parse().unwrap(),
 ///     ]));
 /// ```
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn cors_layer_with_origins(origins: Vec<HeaderValue>) -> CorsLayer {
   CorsLayer::new()
     .allow_origin(tower_http::cors::AllowOrigin::list(origins))
@@ -80,7 +80,7 @@ pub fn cors_layer_with_origins(origins: Vec<HeaderValue>) -> CorsLayer {
 /// let app = Router::new()
 ///     .layer(middleware::logging_layer());
 /// ```
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn logging_layer()
 -> TraceLayer<tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>>
 {
@@ -123,7 +123,7 @@ pub fn logging_layer()
 /// let app = Router::new()
 ///     .route_layer(axum::middleware::from_fn(auth_middleware));
 /// ```
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub async fn example_auth_middleware(
   request: axum::extract::Request,
   next: axum::middleware::Next,
@@ -158,7 +158,7 @@ pub async fn example_auth_middleware(
 /// // Note: This is a placeholder - implement actual rate limiting
 /// // using a library like tower-governor
 /// ```
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn rate_limit_layer() -> tower::layer::util::Identity {
   // Placeholder - users should implement rate limiting based on their needs
   // For example, using tower-governor:
@@ -183,7 +183,7 @@ pub fn rate_limit_layer() -> tower::layer::util::Identity {
 /// let app = Router::new()
 ///     .layer(middleware::common_middleware_stack());
 /// ```
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub fn common_middleware_stack()
 -> impl tower::Layer<axum::routing::Router> + Clone + Send + Sync + 'static {
   use tower::ServiceBuilder;

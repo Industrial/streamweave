@@ -30,7 +30,7 @@ where
   type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
 }
 
-/// Wrapper struct to implement StateStore on Arc<InMemoryStateStore<T>>
+/// Wrapper struct to implement StateStore on `Arc<InMemoryStateStore<T>>`
 #[derive(Debug)]
 pub struct SharedStateStore<T: Clone + Send + Sync>(pub Arc<InMemoryStateStore<T>>);
 

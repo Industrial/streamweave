@@ -1,30 +1,30 @@
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use super::http_poll_producer::{
   HttpPollProducer, HttpPollProducerConfig, HttpPollResponse, PaginationConfig,
 };
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use async_stream::stream;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use async_trait::async_trait;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use futures::Stream;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use std::pin::Pin;
 use streamweave_core::{Producer, ProducerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use chrono;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use std::collections::HashSet;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use std::time::{Duration, Instant};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use tokio::time::sleep;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use tracing::{error, warn};
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 #[allow(clippy::collapsible_if)]
 fn create_http_poll_stream(
   client_option: Option<reqwest::Client>,
@@ -210,7 +210,7 @@ fn create_http_poll_stream(
 }
 
 #[async_trait]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 impl Producer for HttpPollProducer {
   type OutputPorts = (crate::http_poll_producer::HttpPollResponse,);
 
@@ -249,7 +249,7 @@ impl Producer for HttpPollProducer {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 async fn make_request(
   client: &reqwest::Client,
   config: &HttpPollProducerConfig,
@@ -348,7 +348,7 @@ async fn make_request(
   Err(last_error.unwrap().into())
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 fn build_request_url(
   config: &HttpPollProducerConfig,
   request_num: usize,
@@ -371,7 +371,7 @@ fn build_request_url(
   Ok(url)
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 async fn handle_pagination(
   client: &reqwest::Client,
   config: &HttpPollProducerConfig,
@@ -489,7 +489,7 @@ async fn handle_pagination(
   Ok(responses)
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 #[allow(clippy::collapsible_if)]
 fn extract_items_from_response(
   body: &serde_json::Value,
@@ -523,7 +523,7 @@ fn extract_items_from_response(
   items
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 #[allow(clippy::collapsible_if)]
 fn has_data(body: &serde_json::Value) -> bool {
   if let Some(array) = body.as_array() {
@@ -543,7 +543,7 @@ fn has_data(body: &serde_json::Value) -> bool {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 #[allow(clippy::collapsible_if)]
 fn is_last_page(body: &serde_json::Value) -> bool {
   // Check for common pagination indicators
@@ -563,7 +563,7 @@ fn is_last_page(body: &serde_json::Value) -> bool {
   false
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 fn extract_next_url_from_link_header(
   headers: &std::collections::HashMap<String, String>,
 ) -> Option<String> {
@@ -583,7 +583,7 @@ fn extract_next_url_from_link_header(
   })
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 fn handle_error_strategy<T>(strategy: &ErrorStrategy<T>, error: &StreamError<T>) -> ErrorAction
 where
   T: std::fmt::Debug + Clone + Send + Sync,

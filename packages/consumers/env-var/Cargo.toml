@@ -1,0 +1,30 @@
+[package]
+name = "streamweave-consumer-env-var"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Environment variable consumer for StreamWeave"
+
+[dependencies]
+chrono = { workspace = true }
+streamweave-core = { path = "../../core" }
+streamweave-error = { path = "../../error" }
+streamweave-message = { path = "../../message", optional = true }
+tokio = { workspace = true, features = ["macros", "rt"] }
+futures = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[features]
+default = []
+message-envelope = ["dep:streamweave-message"]

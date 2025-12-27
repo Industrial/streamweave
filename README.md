@@ -11,8 +11,6 @@
 
 StreamWeave is a general-purpose Rust framework built around the concept of
 **streaming data**, with a focus on simplicity, composability, and performance.
-It supports WASM targets for the browser or server and does not rely on
-browser-specific stream primitives.
 
 ## ✨ Key Features
 
@@ -42,7 +40,6 @@ browser-specific stream primitives.
 ### 🚧 Planned
 
 - Support distributed processing
-- WASM-specific optimizations and documentation
 - Additional specialized transformers and utilities
 - Reusable pipeline components
 - Add machine learning integration
@@ -480,7 +477,7 @@ StreamWeave includes comprehensive examples demonstrating all major features:
 
 ### Integration Examples
 - **[Kafka Integration](examples/kafka_integration/)** - Produce to and consume from Kafka topics
-- **[Redis Streams Integration](examples/redis_streams_integration/)** - XADD and XREAD operations with consumer groups
+- **[Redis Streams Integration](examples/redis_integration/)** - XADD and XREAD operations with consumer groups
 - **[Database Integration](examples/database_integration/)** - Query PostgreSQL, MySQL, and SQLite with streaming results
 - **[HTTP Polling Integration](examples/http_poll_integration/)** - Poll HTTP endpoints with pagination, delta detection, and rate limiting
 - **[HTTP Graph Server](examples/http_graph_server/)** - Long-lived graph-based HTTP servers with path-based routing

@@ -3,26 +3,26 @@
 //! This module sets up the complete HTTP Graph Server with all handlers
 //! and demonstrates various graph patterns.
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use crate::handlers;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use axum::{Router, routing::get, routing::post};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave::graph::{ConsumerNode, GraphBuilder, ProducerNode, TransformerNode};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave::http_server::consumer::HttpResponseCorrelationConsumer;
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave::http_server::producer::{HttpRequestProducerConfig, LongLivedHttpRequestProducer};
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use streamweave::http_server::{
   HttpGraphServer, HttpGraphServerConfig,
   transformers::{PathBasedRouterTransformer, PathRouterConfig, RoutePattern},
 };
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 use tokio::sync::mpsc;
 
 /// Creates and starts the HTTP Graph Server
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-server"))]
+#[cfg(feature = "http-server")]
 pub async fn create_graph_server() -> Result<(), Box<dyn std::error::Error>> {
   // Create channel for HTTP requests
   let (_request_sender, request_receiver) = mpsc::channel(100);

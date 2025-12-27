@@ -1,13 +1,13 @@
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use super::kafka_producer::{KafkaMessage, KafkaProducer};
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use async_stream::stream;
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use async_trait::async_trait;
 use streamweave_core::{Producer, ProducerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use rdkafka::{
   ClientContext, Statistics,
   config::{ClientConfig, RDKafkaLogLevel},
@@ -16,28 +16,28 @@ use rdkafka::{
   message::{BorrowedMessage, Headers, Message},
 };
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use std::time::Duration;
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use tokio::time::sleep;
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 use tracing::{error, warn};
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 struct StreamWeaveConsumerContext;
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 impl ClientContext for StreamWeaveConsumerContext {
   fn stats(&self, _statistics: Statistics) {
     // Statistics can be logged or collected here if needed
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 impl ConsumerContext for StreamWeaveConsumerContext {}
 
 #[async_trait]
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 impl Producer for KafkaProducer {
   type OutputPorts = (crate::kafka_producer::KafkaMessage,);
 
@@ -194,7 +194,7 @@ impl Producer for KafkaProducer {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 fn convert_message(message: &BorrowedMessage<'_>) -> KafkaMessage {
   let mut headers = std::collections::HashMap::new();
   if let Some(message_headers) = message.headers() {
@@ -216,7 +216,7 @@ fn convert_message(message: &BorrowedMessage<'_>) -> KafkaMessage {
   }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "kafka"))]
+#[cfg(feature = "kafka")]
 fn handle_error_strategy<T>(strategy: &ErrorStrategy<T>, error: &StreamError<T>) -> ErrorAction
 where
   T: std::fmt::Debug + Clone + Send + Sync,

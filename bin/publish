@@ -37,7 +37,7 @@ fi
 for pkg in $ORDER; do
     echo ""
     echo "📦 Publishing streamweave-$pkg..."
-    devenv shell -- cargo publish -p "streamweave-$pkg"
+    cargo publish -p "streamweave-$pkg"
     sleep 5  # Rate limiting
 done
 

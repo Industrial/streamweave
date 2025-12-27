@@ -199,7 +199,6 @@ mod tests {
   }
 
   use proptest::prelude::*;
-  use tokio::runtime::Runtime;
 
   async fn test_failure_detector_creation_async(
     heartbeat_timeout_secs: u64,
@@ -233,7 +232,7 @@ mod tests {
       check_interval_secs in 1u64..3600,
       failure_threshold in 1usize..100,
     ) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_failure_detector_creation_async(
         heartbeat_timeout_secs,
         check_interval_secs,

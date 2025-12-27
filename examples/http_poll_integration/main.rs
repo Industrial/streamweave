@@ -1,10 +1,10 @@
 mod pipeline;
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 use pipeline::{basic_polling, delta_detection_example, pagination_example, rate_limited_polling};
 
 #[tokio::main]
-#[cfg(all(not(target_arch = "wasm32"), feature = "http-poll"))]
+#[cfg(feature = "http-poll")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Get command line arguments
   let args: Vec<String> = std::env::args().collect();
@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   Ok(())
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), feature = "http-poll")))]
+#[cfg(not(feature = "http-poll"))]
 fn main() {
   eprintln!("❌ Error: HTTP polling feature is not enabled");
   eprintln!();

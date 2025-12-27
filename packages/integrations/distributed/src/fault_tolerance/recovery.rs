@@ -195,7 +195,6 @@ mod tests {
   }
 
   use proptest::prelude::*;
-  use tokio::runtime::Runtime;
 
   fn recovery_strategy_strategy() -> impl Strategy<Value = RecoveryStrategy> {
     prop::sample::select(&[
@@ -218,7 +217,7 @@ mod tests {
   proptest! {
     #[test]
     fn test_recovery_manager_creation(strategy in recovery_strategy_strategy()) {
-      let rt = Runtime::new().unwrap();
+      let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
       rt.block_on(test_recovery_manager_creation_async(strategy));
     }
   }
