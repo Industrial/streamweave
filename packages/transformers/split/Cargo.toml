@@ -1,0 +1,25 @@
+[package]
+name = "streamweave-transformer-split"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Split transformer for StreamWeave"
+
+[dependencies]
+chrono = { workspace = true }
+streamweave-core = { path = "../../core" }
+streamweave-error = { path = "../../error" }
+tokio = { workspace = true, features = ["macros", "rt"] }
+futures = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[features]
+default = []

@@ -1,0 +1,30 @@
+[package]
+name = "streamweave-visualization"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Visualization tools for StreamWeave"
+
+[dependencies]
+streamweave-core = { path = "../core" }
+streamweave-graph = { path = "../graph" }
+streamweave-error = { path = "../error" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+proptest = { workspace = true }
+streamweave-consumer-vec = { path = "../consumers/vec" }
+streamweave-producer-vec = { path = "../producers/vec" }
+streamweave-transformer-map = { path = "../transformers/map" }
+streamweave-transformer-running-sum = { path = "../transformers/running-sum" }
+
+[features]
+default = []

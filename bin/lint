@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
+# Lint all packages
+
 set -euo pipefail
 exec > >(tee log/lint.log) 2>&1 
 
-echo "🔍 Running rustfmt..."
-cargo fmt --all -- --check
+echo "> lint"
 
-echo "✅ Lint completed successfully!"
+echo "> lint > cargo fmt --check"
+devenv shell -- cargo fmt --all -- --check
+
+echo "> lint > cargo clippy"
+devenv shell -- cargo clippy --workspace -- -D warnings

@@ -1,55 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "Running pre-commit hooks..."
+echo "> pre-commit"
 
-# Run checks
-echo "Running bin/check..."
-if ! bin/check; then
-  echo "bin/check failed."
-  exit 1
-fi
-
-# Run lint
-echo "Running bin/lint..."
-if ! bin/lint; then
-  echo "bin/lint failed."
-  exit 1
-fi
-
-# Run build
-echo "Running bin/build..."
-if ! bin/build; then
-  echo "bin/build failed."
-  exit 1
-fi
-
-# Run build-wasm
-echo "Running bin/build-wasm..."
-if ! bin/build-wasm; then
-  echo "bin/build-wasm failed."
-  exit 1
-fi
-
-# Run tests
-echo "Running bin/test..."
-if ! bin/test; then
-  echo "bin/test failed."
-  exit 1
-fi
-
-# Run audit
-echo "Running bin/audit..."
-if ! bin/audit; then
-  echo "bin/audit failed."
-  exit 1
-fi
-
-# Run docs
-echo "Running bin/check-docs..."
-if ! bin/check-docs; then
-  echo "bin/check-docs failed."
-  exit 1
-fi
-
-echo "Pre-commit hooks passed."
+bin/format
+bin/check
+bin/lint
+bin/build
+bin/build-wasm
+bin/test
+bin/audit
+bin/check-docs

@@ -1,0 +1,27 @@
+[package]
+name = "streamweave-transformer-running-sum"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Running sum transformer for StreamWeave"
+
+[dependencies]
+chrono = { workspace = true }
+streamweave-core = { path = "../../core" }
+streamweave-error = { path = "../../error" }
+streamweave-stateful = { path = "../../stateful" }
+tokio = { workspace = true, features = ["macros", "rt"] }
+tokio-stream = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[features]
+default = []

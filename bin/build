@@ -1,5 +1,19 @@
 #!/usr/bin/env bash
+# Build all packages or specific package(s)
+
 set -euo pipefail
 exec > >(tee log/build.log) 2>&1 
 
-RUSTFLAGS='-D warnings' cargo build
+echo "> build"
+
+PACKAGES="${@:-all}"
+
+if [ "$PACKAGES" = "all" ]; then
+    echo "> build > cargo build --workspace"
+    RUSTFLAGS='-D warnings' devenv shell -- cargo build --workspace
+else
+    for pkg in $PACKAGES; do
+        echo "> build > cargo build -p streamweave-$pkg"
+        RUSTFLAGS='-D warnings' devenv shell -- cargo build -p "streamweave-$pkg"
+    done
+fi

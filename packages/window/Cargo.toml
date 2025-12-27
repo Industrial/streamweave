@@ -1,0 +1,21 @@
+[package]
+name = "streamweave-window"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Windowing operations for StreamWeave"
+
+[dependencies]
+streamweave-core = { path = "../core" }
+streamweave-message = { path = "../message", optional = true }
+chrono = { workspace = true }
+
+[features]
+default = []
+message-envelope = ["dep:streamweave-message"]

@@ -1,21 +1,10 @@
 #!/usr/bin/env bash
+# Generate docs for all packages
+
 set -euo pipefail
 exec > >(tee log/docs.log) 2>&1
 
-# Generate documentation using cargo doc
-# Doxidize appears to be broken/unconfigured, so we'll use cargo doc directly
+echo "> docs"
 
-echo "📚 Generating documentation with cargo doc..."
-
-# Generate documentation
-cargo doc --all-features --no-deps
-
-# Check if documentation was generated
-if [ -d "target/doc" ] && [ -f "target/doc/streamweave/index.html" ]; then
-    echo "✅ Documentation generated successfully"
-    echo "📖 Documentation available at: target/doc/streamweave/index.html"
-else
-    echo "❌ Documentation generation failed"
-    exit 1
-fi
-
+echo "> docs > cargo doc --workspace"
+devenv shell -- cargo doc --workspace --no-deps --all-features

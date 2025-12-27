@@ -2,4 +2,7 @@
 set -euo pipefail
 exec > >(tee log/lint-fix.log) 2>&1 
 
+echo "> lint-fix"
+
+echo "> lint-fix > rustfmt"
 rustfmt ./**/*.rs

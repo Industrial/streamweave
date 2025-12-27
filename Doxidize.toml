@@ -51,21 +51,20 @@ examples_dir = "examples"
 
 # Additional markdown documentation to include
 additional_docs = [
-    "README.md",
-    "docs/getting_started.md",
-    "docs/architecture.md",
-    "docs/guides/common_use_cases.md",
-    "docs/troubleshooting.md",
-    "docs/WASM_GUIDE.md",
-    "docs/WASM_COMPATIBILITY.md",
-    "docs/KAFKA_SETUP.md",
-    "docs/BUNDLE_SIZE.md"
+  "README.md",
+  "docs/getting_started.md",
+  "docs/architecture.md",
+  "docs/guides/common_use_cases.md",
+  "docs/troubleshooting.md",
+  "docs/WASM_GUIDE.md",
+  "docs/WASM_COMPATIBILITY.md",
+  "docs/KAFKA_SETUP.md",
+  "docs/BUNDLE_SIZE.md",
 ]
 
 [styling]
 # Custom CSS file (optional)
-custom_css = null
+# custom_css = ""
 
 # Custom theme colors (optional)
-theme_colors = null
-
+# theme_colors = {}

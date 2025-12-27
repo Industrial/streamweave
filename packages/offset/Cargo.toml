@@ -1,0 +1,24 @@
+[package]
+name = "streamweave-offset"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Offset tracking for StreamWeave"
+
+[dependencies]
+chrono = { workspace = true }
+streamweave-core = { path = "../core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[features]
+default = []

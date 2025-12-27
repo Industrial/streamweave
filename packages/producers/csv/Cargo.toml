@@ -1,0 +1,34 @@
+[package]
+name = "streamweave-producer-csv"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "CSV producer for StreamWeave"
+
+[dependencies]
+chrono = { workspace = true }
+async-stream = { workspace = true }
+streamweave-core = { path = "../../core" }
+streamweave-error = { path = "../../error" }
+streamweave-message = { path = "../../message", optional = true }
+serde = { workspace = true }
+csv = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["macros", "rt", "fs", "sync"] }
+futures = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[features]
+default = ["csv"]
+csv = ["dep:csv"]
+message-envelope = ["dep:streamweave-message"]

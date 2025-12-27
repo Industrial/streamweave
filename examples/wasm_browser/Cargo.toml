@@ -9,4 +9,3 @@ crate-type = ["cdylib"]
 [dependencies]
 streamweave = { path = "../../", features = ["wasm"], default-features = false }
 wasm-bindgen = "0.2"
-

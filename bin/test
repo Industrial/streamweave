@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
+# Test all packages or specific package(s)
+
 set -euo pipefail
 exec > >(tee log/test.log) 2>&1 
 
-# Run tests with coverage and enforce 95% minimum coverage for all types
-RUSTFLAGS='-D warnings' cargo llvm-cov nextest \
-  --fail-under-functions 95 \
-  --fail-under-lines 95 \
-  --fail-under-regions 95
+echo "> test"
+
+PACKAGES="${@:-all}"
+
+if [ "$PACKAGES" = "all" ]; then
+    echo "> test > cargo llvm-cov nextest --workspace"
+    RUSTFLAGS='-D warnings' devenv shell -- cargo llvm-cov nextest \
+      --workspace \
+      --fail-under-functions 95 \
+      --fail-under-lines 95 \
+      --fail-under-regions 95
+else
+    for pkg in $PACKAGES; do
+        echo "> test > cargo llvm-cov nextest -p streamweave-$pkg"
+        RUSTFLAGS='-D warnings' devenv shell -- cargo llvm-cov nextest \
+          -p "streamweave-$pkg" \
+          --fail-under-functions 95 \
+          --fail-under-lines 95 \
+          --fail-under-regions 95
+    done
+fi

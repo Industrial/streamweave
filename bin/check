@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
+# Check all packages with dependency order
+
 set -euo pipefail
 exec > >(tee log/check.log) 2>&1 
 
-echo "🔍 Running cargo check..."
-RUSTFLAGS='-D warnings' cargo check --all-targets --all-features
+echo "> check"
 
-echo "🔍 Running clippy..."
-cargo clippy --all-targets --all-features -- -D warnings
+echo "> check > cargo check --workspace"
+RUSTFLAGS='-D warnings' devenv shell -- cargo check --workspace --all-targets --all-features
 
-echo "✅ Check completed successfully!"
+echo "> check > cargo clippy --workspace"
+devenv shell -- cargo clippy --workspace --all-targets --all-features -- -D warnings

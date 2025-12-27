@@ -1,0 +1,37 @@
+[package]
+name = "streamweave-integration-opentelemetry"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "OpenTelemetry integration for StreamWeave"
+
+[dependencies]
+streamweave-core = { path = "../../core" }
+streamweave-metrics = { path = "../../metrics", optional = true }
+opentelemetry = { workspace = true, optional = true }
+opentelemetry_sdk = { workspace = true, optional = true }
+opentelemetry-otlp = { workspace = true, optional = true, features = [
+  "grpc-tonic",
+] }
+tracing-opentelemetry = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["macros", "rt"] }
+futures = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[features]
+default = ["opentelemetry"]
+opentelemetry = [
+  "dep:opentelemetry",
+  "dep:opentelemetry_sdk",
+  "dep:opentelemetry-otlp",
+  "dep:tracing-opentelemetry",
+]
+metrics = ["dep:streamweave-metrics"]

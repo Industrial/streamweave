@@ -1,10 +1,8 @@
 name: Rebase Behind Branches
-
 on:
   push:
     branches:
       - main
-
 jobs:
   rebase-branches:
     name: 🔄 Rebase Behind Branches
@@ -15,15 +13,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0  # Fetch all history for proper branch analysis
-
+          fetch-depth: 0 # Fetch all history for proper branch analysis
       - name: Setup Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
       - name: Find and rebase behind branches
-        run: |
+        run: |-
           # Get the current commit hash of main
           MAIN_COMMIT=$(git rev-parse HEAD)
           echo "Main branch is at commit: $MAIN_COMMIT"

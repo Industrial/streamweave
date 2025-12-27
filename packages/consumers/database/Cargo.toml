@@ -1,0 +1,29 @@
+[package]
+name = "streamweave-consumer-database"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Database consumer for StreamWeave"
+
+[dependencies]
+chrono = { workspace = true }
+streamweave-core = { path = "../../core" }
+streamweave-error = { path = "../../error" }
+streamweave-message = { path = "../../message", optional = true }
+sqlx = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["macros", "rt", "full"] }
+futures = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[features]
+default = ["database"]
+database = ["dep:sqlx"]
+message-envelope = ["dep:streamweave-message"]

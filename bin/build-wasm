@@ -1,54 +1,13 @@
 #!/usr/bin/env bash
-# Build WASM target and verify optimization settings
-
 set -euo pipefail
+exec > >(tee log/build-wasm.log) 2>&1 
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+echo "> build-wasm"
 
-cd "$PROJECT_ROOT"
-
-echo "🔨 Building WASM target..."
-
-# Build WASM release library (this produces rlib, not wasm directly)
+echo "> build-wasm > cargo build"
 RUSTFLAGS='-D warnings' cargo build \
   --target wasm32-unknown-unknown \
   --features wasm \
   --no-default-features \
   --release \
   --lib
-
-echo ""
-echo "✅ WASM build successful!"
-echo ""
-echo "📋 Optimization settings verified:"
-echo "   - LTO: enabled"
-echo "   - Codegen units: 1"
-echo "   - Panic: abort"
-echo "   - Strip: enabled"
-echo "   - Opt level: 3 (release) or z (wasm-release profile)"
-echo ""
-echo "📦 Bundle size note:"
-echo "   Library crates produce .rlib files. Actual .wasm bundle size"
-echo "   depends on the final binary that uses this library and which"
-echo "   features are enabled. With wasm-minimal features, target is"
-echo "   < 200KB gzipped. With full wasm features, target is < 500KB gzipped."
-echo ""
-echo "   To measure actual bundle size, build a binary that uses this library"
-echo "   or use wasm-pack to create a WASM module."
-
-# Check if rlib exists (for informational purposes)
-RLIB_FILE=$(find target/wasm32-unknown-unknown/release -name "libstreamweave*.rlib" -type f | head -1)
-
-if [ -n "$RLIB_FILE" ]; then
-  RAW_SIZE=$(stat -f%z "$RLIB_FILE" 2>/dev/null || stat -c%s "$RLIB_FILE" 2>/dev/null)
-  RAW_KB=$((RAW_SIZE / 1024))
-  echo "📊 Library size: ${RAW_KB} KB (rlib format - approximate)"
-  echo ""
-  echo "💡 Note: rlib is an archive format. Actual WASM bundle size when used"
-  echo "   in a binary will be significantly smaller after tree-shaking and"
-  echo "   wasm-opt optimization."
-fi
-
-exit 0
-

@@ -1,0 +1,33 @@
+[package]
+name = "streamweave-metrics"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Metrics collection for StreamWeave"
+
+[dependencies]
+streamweave-core = { path = "../core" }
+tokio = { workspace = true, features = ["macros", "rt"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+opentelemetry = { workspace = true, optional = true }
+opentelemetry_sdk = { workspace = true, optional = true }
+opentelemetry-otlp = { workspace = true, optional = true, features = [
+  "grpc-tonic",
+] }
+
+[features]
+default = []
+prometheus = []
+opentelemetry = [
+  "dep:opentelemetry",
+  "dep:opentelemetry_sdk",
+  "dep:opentelemetry-otlp",
+]

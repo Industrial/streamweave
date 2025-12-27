@@ -1,119 +1,98 @@
 {
-  "master": {
-    "tasks": [
-      {
-        "id": "6",
-        "title": "Phase 6: Visualization Examples Implementation",
-        "description": "Implement comprehensive visualization examples based on DETAILED_VISUALIZATION_PLAN.md. Create 7 visualization examples demonstrating different aspects of pipeline and graph visualization with complete implementation, documentation, and testing.",
-        "status": "done",
-        "priority": "medium",
-        "dependencies": [],
-        "details": "This phase implements 7 visualization examples: visualization_basic (console export), visualization_html (web visualization), visualization_graph (graph API), visualization_dot_image (Graphviz images), visualization_metrics (real-time metrics), visualization_debug (debug mode), and visualization_server (HTTP server). Each example includes complete implementation, README.md documentation, and Cargo.toml registration. See DETAILED_VISUALIZATION_PLAN.md for detailed implementation steps.",
-        "testStrategy": "Compilation testing for all examples, runtime testing to verify output files are created, validation of generated visualizations, cross-platform testing where possible",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Example 1: visualization_basic (Enhanced Console Export)",
-            "description": "Create basic visualization example with enhanced console export demonstrating DOT and JSON format exports. Includes directory setup, pipeline module with multi-stage pipeline (producer, 2 transformers, consumer), main module with DAG generation and file export, comprehensive README.md, and testing. See DETAILED_VISUALIZATION_PLAN.md Phase 1 for detailed implementation steps.",
-            "status": "done",
-            "dependencies": [],
-            "updatedAt": "2025-12-03T20:40:01.012Z",
-            "parentId": "undefined"
-          },
-          {
-            "id": 2,
-            "title": "Example 2: visualization_html (Enhanced Web Visualization)",
-            "description": "Create HTML visualization example with browser auto-open functionality. Includes cross-platform browser opening research and implementation (Linux/macOS/Windows), complex pipeline setup, standalone HTML generation, browser auto-open helper, comprehensive README with troubleshooting, and testing on multiple platforms. See DETAILED_VISUALIZATION_PLAN.md Example 2 for detailed implementation steps.",
-            "status": "done",
-            "dependencies": [
-              "6.1"
-            ],
-            "parentId": "undefined",
-            "updatedAt": "2025-12-03T20:41:53.619Z"
-          },
-          {
-            "id": 3,
-            "title": "Example 3: visualization_graph (Graph API Visualization)",
-            "description": "Create graph API visualization example demonstrating fan-in and fan-out patterns. Includes graph to DAG conversion research and implementation, fan-out graph setup (producer to multiple transformers to consumers), fan-in graph setup (multiple producers to merge transformer to consumer), HTML visualization generation, comprehensive README with ASCII diagrams, and testing. See DETAILED_VISUALIZATION_PLAN.md Example 3 for detailed implementation steps.",
-            "status": "done",
-            "dependencies": [
-              "6.2"
-            ],
-            "parentId": "undefined",
-            "updatedAt": "2025-12-03T20:44:46.326Z"
-          },
-          {
-            "id": 4,
-            "title": "Example 4: visualization_dot_image (Graphviz Image Generation)",
-            "description": "Create Graphviz image generation example producing PNG, SVG, and PDF outputs. Includes Graphviz availability detection, image conversion helper supporting multiple formats (PNG, SVG, PDF, JPG), main function with format generation, comprehensive README with installation instructions for all platforms, and testing with format validation. See DETAILED_VISUALIZATION_PLAN.md Example 4 for detailed implementation steps.",
-            "status": "done",
-            "dependencies": [
-              "6.1"
-            ],
-            "parentId": "undefined",
-            "updatedAt": "2025-12-03T20:46:58.599Z"
-          },
-          {
-            "id": 5,
-            "title": "Example 5: visualization_metrics (Real-Time Metrics)",
-            "description": "Create real-time metrics visualization example with metrics collection integration. Includes MetricsCollector struct implementation, metrics aggregation and snapshot functionality, pipeline integration with metrics hooks, HTML enhancement with embedded metrics and charts, main function with metrics collection and export, and comprehensive documentation. See DETAILED_VISUALIZATION_PLAN.md Example 5 for detailed implementation steps.",
-            "status": "done",
-            "dependencies": [
-              "6.2"
-            ],
-            "parentId": "undefined",
-            "updatedAt": "2025-12-03T20:48:40.322Z"
-          },
-          {
-            "id": 6,
-            "title": "Example 6: visualization_debug (Debug Mode)",
-            "description": "Create debug mode visualization example with breakpoint support. Includes debugger API research and understanding, breakpoint setup functionality, debug visualization creation with enhanced DAG metadata, HTML generation with debug UI, breakpoint configuration JSON export, comprehensive README with debug workflow documentation, and testing. See DETAILED_VISUALIZATION_PLAN.md Example 6 for detailed implementation steps.",
-            "status": "done",
-            "dependencies": [
-              "6.2"
-            ],
-            "parentId": "undefined",
-            "updatedAt": "2025-12-03T20:50:20.810Z"
-          },
-          {
-            "id": 7,
-            "title": "Example 7: visualization_server (Conditional HTTP Server)",
-            "description": "Evaluate and conditionally implement HTTP server example for serving visualizations. Includes evaluation of server.rs implementation readiness, decision point based on server feature availability, if ready: implement server startup, DAG serving, UI serving, graceful shutdown, console output with URL, and README with server instructions. If not ready: document requirements and skip. See DETAILED_VISUALIZATION_PLAN.md Example 7 for detailed implementation steps.",
-            "status": "done",
-            "dependencies": [
-              "6.2"
-            ],
-            "parentId": "undefined",
-            "updatedAt": "2025-12-03T20:52:37.814Z"
-          },
-          {
-            "id": 8,
-            "title": "Global Testing and Documentation",
-            "description": "Comprehensive testing and documentation updates for all visualization examples. Includes compilation testing for all examples (cargo check --examples), runtime testing to verify output files are created, documentation review and consistency check, update main README.md with visualization examples section listing all examples with links and descriptions, and final validation of all examples. See DETAILED_VISUALIZATION_PLAN.md Global Tasks section for detailed steps.",
-            "status": "done",
-            "dependencies": [
-              "6.1",
-              "6.2",
-              "6.3",
-              "6.4",
-              "6.5",
-              "6.6"
-            ],
-            "parentId": "undefined",
-            "updatedAt": "2025-12-03T20:53:01.024Z"
-          }
-        ],
-        "updatedAt": "2025-12-03T20:53:01.024Z"
-      }
-    ],
-    "metadata": {
-      "version": "1.0.0",
-      "lastModified": "2025-12-03T20:53:01.024Z",
-      "taskCount": 1,
-      "completedCount": 1,
-      "tags": [
-        "master"
-      ]
-    }
-  }
+	"master": {
+		"tasks": [
+			{
+				"id": "6",
+				"title": "Phase 6: Visualization Examples Implementation",
+				"description": "Implement comprehensive visualization examples based on DETAILED_VISUALIZATION_PLAN.md. Create 7 visualization examples demonstrating different aspects of pipeline and graph visualization with complete implementation, documentation, and testing.",
+				"status": "done",
+				"priority": "medium",
+				"dependencies": [],
+				"details": "This phase implements 7 visualization examples: visualization_basic (console export), visualization_html (web visualization), visualization_graph (graph API), visualization_dot_image (Graphviz images), visualization_metrics (real-time metrics), visualization_debug (debug mode), and visualization_server (HTTP server). Each example includes complete implementation, README.md documentation, and Cargo.toml registration. See DETAILED_VISUALIZATION_PLAN.md for detailed implementation steps.",
+				"testStrategy": "Compilation testing for all examples, runtime testing to verify output files are created, validation of generated visualizations, cross-platform testing where possible",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Example 1: visualization_basic (Enhanced Console Export)",
+						"description": "Create basic visualization example with enhanced console export demonstrating DOT and JSON format exports. Includes directory setup, pipeline module with multi-stage pipeline (producer, 2 transformers, consumer), main module with DAG generation and file export, comprehensive README.md, and testing. See DETAILED_VISUALIZATION_PLAN.md Phase 1 for detailed implementation steps.",
+						"status": "done",
+						"dependencies": [],
+						"updatedAt": "2025-12-03T20:40:01.012Z",
+						"parentId": "undefined"
+					},
+					{
+						"id": 2,
+						"title": "Example 2: visualization_html (Enhanced Web Visualization)",
+						"description": "Create HTML visualization example with browser auto-open functionality. Includes cross-platform browser opening research and implementation (Linux/macOS/Windows), complex pipeline setup, standalone HTML generation, browser auto-open helper, comprehensive README with troubleshooting, and testing on multiple platforms. See DETAILED_VISUALIZATION_PLAN.md Example 2 for detailed implementation steps.",
+						"status": "done",
+						"dependencies": ["6.1"],
+						"parentId": "undefined",
+						"updatedAt": "2025-12-03T20:41:53.619Z"
+					},
+					{
+						"id": 3,
+						"title": "Example 3: visualization_graph (Graph API Visualization)",
+						"description": "Create graph API visualization example demonstrating fan-in and fan-out patterns. Includes graph to DAG conversion research and implementation, fan-out graph setup (producer to multiple transformers to consumers), fan-in graph setup (multiple producers to merge transformer to consumer), HTML visualization generation, comprehensive README with ASCII diagrams, and testing. See DETAILED_VISUALIZATION_PLAN.md Example 3 for detailed implementation steps.",
+						"status": "done",
+						"dependencies": ["6.2"],
+						"parentId": "undefined",
+						"updatedAt": "2025-12-03T20:44:46.326Z"
+					},
+					{
+						"id": 4,
+						"title": "Example 4: visualization_dot_image (Graphviz Image Generation)",
+						"description": "Create Graphviz image generation example producing PNG, SVG, and PDF outputs. Includes Graphviz availability detection, image conversion helper supporting multiple formats (PNG, SVG, PDF, JPG), main function with format generation, comprehensive README with installation instructions for all platforms, and testing with format validation. See DETAILED_VISUALIZATION_PLAN.md Example 4 for detailed implementation steps.",
+						"status": "done",
+						"dependencies": ["6.1"],
+						"parentId": "undefined",
+						"updatedAt": "2025-12-03T20:46:58.599Z"
+					},
+					{
+						"id": 5,
+						"title": "Example 5: visualization_metrics (Real-Time Metrics)",
+						"description": "Create real-time metrics visualization example with metrics collection integration. Includes MetricsCollector struct implementation, metrics aggregation and snapshot functionality, pipeline integration with metrics hooks, HTML enhancement with embedded metrics and charts, main function with metrics collection and export, and comprehensive documentation. See DETAILED_VISUALIZATION_PLAN.md Example 5 for detailed implementation steps.",
+						"status": "done",
+						"dependencies": ["6.2"],
+						"parentId": "undefined",
+						"updatedAt": "2025-12-03T20:48:40.322Z"
+					},
+					{
+						"id": 6,
+						"title": "Example 6: visualization_debug (Debug Mode)",
+						"description": "Create debug mode visualization example with breakpoint support. Includes debugger API research and understanding, breakpoint setup functionality, debug visualization creation with enhanced DAG metadata, HTML generation with debug UI, breakpoint configuration JSON export, comprehensive README with debug workflow documentation, and testing. See DETAILED_VISUALIZATION_PLAN.md Example 6 for detailed implementation steps.",
+						"status": "done",
+						"dependencies": ["6.2"],
+						"parentId": "undefined",
+						"updatedAt": "2025-12-03T20:50:20.810Z"
+					},
+					{
+						"id": 7,
+						"title": "Example 7: visualization_server (Conditional HTTP Server)",
+						"description": "Evaluate and conditionally implement HTTP server example for serving visualizations. Includes evaluation of server.rs implementation readiness, decision point based on server feature availability, if ready: implement server startup, DAG serving, UI serving, graceful shutdown, console output with URL, and README with server instructions. If not ready: document requirements and skip. See DETAILED_VISUALIZATION_PLAN.md Example 7 for detailed implementation steps.",
+						"status": "done",
+						"dependencies": ["6.2"],
+						"parentId": "undefined",
+						"updatedAt": "2025-12-03T20:52:37.814Z"
+					},
+					{
+						"id": 8,
+						"title": "Global Testing and Documentation",
+						"description": "Comprehensive testing and documentation updates for all visualization examples. Includes compilation testing for all examples (cargo check --examples), runtime testing to verify output files are created, documentation review and consistency check, update main README.md with visualization examples section listing all examples with links and descriptions, and final validation of all examples. See DETAILED_VISUALIZATION_PLAN.md Global Tasks section for detailed steps.",
+						"status": "done",
+						"dependencies": ["6.1", "6.2", "6.3", "6.4", "6.5", "6.6"],
+						"parentId": "undefined",
+						"updatedAt": "2025-12-03T20:53:01.024Z"
+					}
+				],
+				"updatedAt": "2025-12-03T20:53:01.024Z"
+			}
+		],
+		"metadata": {
+			"version": "1.0.0",
+			"lastModified": "2025-12-03T20:53:01.024Z",
+			"taskCount": 1,
+			"completedCount": 1,
+			"tags": ["master"]
+		}
+	}
 }

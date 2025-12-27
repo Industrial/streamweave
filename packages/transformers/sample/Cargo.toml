@@ -1,0 +1,24 @@
+[package]
+name = "streamweave-transformer-sample"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Sample transformer for StreamWeave"
+
+[dependencies]
+async-stream = { workspace = true }
+streamweave-core = { path = "../../core" }
+streamweave-error = { path = "../../error" }
+chrono = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt"] }
+futures = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+rand = "0.9"

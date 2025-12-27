@@ -1,0 +1,250 @@
+[package]
+name = "streamweave"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Composable, async, stream-first computation in pure Rust - Meta package"
+readme = "../../README.md"
+
+[dependencies]
+# Core packages
+streamweave-core = { path = "../core", optional = true }
+streamweave-pipeline = { path = "../pipeline", optional = true }
+streamweave-graph = { path = "../graph", optional = true }
+streamweave-message = { path = "../message", optional = true }
+streamweave-error = { path = "../error", optional = true }
+streamweave-window = { path = "../window", optional = true }
+streamweave-stateful = { path = "../stateful", optional = true }
+streamweave-transaction = { path = "../transaction", optional = true }
+streamweave-offset = { path = "../offset", optional = true }
+streamweave-metrics = { path = "../metrics", optional = true }
+streamweave-visualization = { path = "../visualization", optional = true }
+
+# Producer packages
+streamweave-producer-array = { path = "../producers/array", optional = true }
+streamweave-producer-vec = { path = "../producers/vec", optional = true }
+streamweave-producer-range = { path = "../producers/range", optional = true }
+streamweave-producer-file = { path = "../producers/file", optional = true }
+streamweave-producer-csv = { path = "../producers/csv", optional = true }
+streamweave-producer-jsonl = { path = "../producers/jsonl", optional = true }
+streamweave-producer-parquet = { path = "../producers/parquet", optional = true }
+streamweave-producer-kafka = { path = "../producers/kafka", optional = true }
+streamweave-producer-redis-streams = { path = "../producers/redis-streams", optional = true }
+streamweave-producer-database = { path = "../producers/database", optional = true }
+streamweave-producer-http-poll = { path = "../producers/http-poll", optional = true }
+streamweave-producer-env-var = { path = "../producers/env-var", optional = true }
+streamweave-producer-command = { path = "../producers/command", optional = true }
+
+# Consumer packages
+streamweave-consumer-array = { path = "../consumers/array", optional = true }
+streamweave-consumer-vec = { path = "../consumers/vec", optional = true }
+streamweave-consumer-file = { path = "../consumers/file", optional = true }
+streamweave-consumer-csv = { path = "../consumers/csv", optional = true }
+streamweave-consumer-jsonl = { path = "../consumers/jsonl", optional = true }
+streamweave-consumer-parquet = { path = "../consumers/parquet", optional = true }
+streamweave-consumer-kafka = { path = "../consumers/kafka", optional = true }
+streamweave-consumer-redis-streams = { path = "../consumers/redis-streams", optional = true }
+streamweave-consumer-database = { path = "../consumers/database", optional = true }
+streamweave-consumer-console = { path = "../consumers/console", optional = true }
+streamweave-consumer-channel = { path = "../consumers/channel", optional = true }
+streamweave-consumer-command = { path = "../consumers/command", optional = true }
+
+# Transformer packages
+streamweave-transformer-map = { path = "../transformers/map", optional = true }
+streamweave-transformer-filter = { path = "../transformers/filter", optional = true }
+streamweave-transformer-batch = { path = "../transformers/batch", optional = true }
+streamweave-transformer-reduce = { path = "../transformers/reduce", optional = true }
+streamweave-transformer-merge = { path = "../transformers/merge", optional = true }
+streamweave-transformer-split = { path = "../transformers/split", optional = true }
+streamweave-transformer-retry = { path = "../transformers/retry", optional = true }
+streamweave-transformer-rate-limit = { path = "../transformers/rate-limit", optional = true }
+streamweave-transformer-circuit-breaker = { path = "../transformers/circuit-breaker", optional = true }
+streamweave-transformer-window = { path = "../transformers/window", optional = true }
+streamweave-transformer-group-by = { path = "../transformers/group-by", optional = true }
+streamweave-transformer-sort = { path = "../transformers/sort", optional = true }
+streamweave-transformer-take = { path = "../transformers/take", optional = true }
+streamweave-transformer-skip = { path = "../transformers/skip", optional = true }
+streamweave-transformer-sample = { path = "../transformers/sample", optional = true }
+streamweave-transformer-router = { path = "../transformers/router", optional = true }
+streamweave-transformer-round-robin = { path = "../transformers/round-robin", optional = true }
+streamweave-transformer-ordered-merge = { path = "../transformers/ordered-merge", optional = true }
+streamweave-transformer-message-dedupe = { path = "../transformers/message-dedupe", optional = true }
+streamweave-transformer-interleave = { path = "../transformers/interleave", optional = true }
+streamweave-transformer-partition = { path = "../transformers/partition", optional = true }
+streamweave-transformer-split-at = { path = "../transformers/split-at", optional = true }
+streamweave-transformer-timeout = { path = "../transformers/timeout", optional = true }
+streamweave-transformer-zip = { path = "../transformers/zip", optional = true }
+streamweave-transformer-limit = { path = "../transformers/limit", optional = true }
+streamweave-transformer-running-sum = { path = "../transformers/running-sum", optional = true }
+streamweave-transformer-moving-average = { path = "../transformers/moving-average", optional = true }
+streamweave-transformer-ml = { path = "../transformers/ml", optional = true }
+
+# Integration packages
+streamweave-integration-distributed = { path = "../integrations/distributed", optional = true }
+streamweave-integration-http-server = { path = "../integrations/http-server", optional = true }
+streamweave-integration-sql = { path = "../integrations/sql", optional = true }
+streamweave-integration-opentelemetry = { path = "../integrations/opentelemetry", optional = true }
+
+[features]
+default = [
+  "core",
+  "pipeline",
+  "graph",
+  "message",
+  "error",
+  "window",
+  "stateful",
+  "transaction",
+  "offset",
+  "metrics",
+  "visualization",
+]
+
+# Core features
+core = ["dep:streamweave-core"]
+pipeline = ["dep:streamweave-pipeline"]
+graph = ["dep:streamweave-graph"]
+message = ["dep:streamweave-message"]
+error = ["dep:streamweave-error"]
+window = ["dep:streamweave-window"]
+stateful = ["dep:streamweave-stateful"]
+transaction = ["dep:streamweave-transaction"]
+offset = ["dep:streamweave-offset"]
+metrics = ["dep:streamweave-metrics"]
+visualization = ["dep:streamweave-visualization"]
+
+# Producer features
+all-producers = [
+  "producer-array",
+  "producer-vec",
+  "producer-range",
+  "producer-file",
+  "producer-csv",
+  "producer-jsonl",
+  "producer-parquet",
+  "producer-kafka",
+  "producer-redis-streams",
+  "producer-database",
+  "producer-http-poll",
+  "producer-env-var",
+  "producer-command",
+]
+producer-array = ["dep:streamweave-producer-array"]
+producer-vec = ["dep:streamweave-producer-vec"]
+producer-range = ["dep:streamweave-producer-range"]
+producer-file = ["dep:streamweave-producer-file"]
+producer-csv = ["dep:streamweave-producer-csv"]
+producer-jsonl = ["dep:streamweave-producer-jsonl"]
+producer-parquet = ["dep:streamweave-producer-parquet"]
+producer-kafka = ["dep:streamweave-producer-kafka"]
+producer-redis-streams = ["dep:streamweave-producer-redis-streams"]
+producer-database = ["dep:streamweave-producer-database"]
+producer-http-poll = ["dep:streamweave-producer-http-poll"]
+producer-env-var = ["dep:streamweave-producer-env-var"]
+producer-command = ["dep:streamweave-producer-command"]
+
+# Consumer features
+all-consumers = [
+  "consumer-array",
+  "consumer-vec",
+  "consumer-file",
+  "consumer-csv",
+  "consumer-jsonl",
+  "consumer-parquet",
+  "consumer-kafka",
+  "consumer-redis-streams",
+  "consumer-database",
+  "consumer-console",
+  "consumer-channel",
+  "consumer-command",
+]
+consumer-array = ["dep:streamweave-consumer-array"]
+consumer-vec = ["dep:streamweave-consumer-vec"]
+consumer-file = ["dep:streamweave-consumer-file"]
+consumer-csv = ["dep:streamweave-consumer-csv"]
+consumer-jsonl = ["dep:streamweave-consumer-jsonl"]
+consumer-parquet = ["dep:streamweave-consumer-parquet"]
+consumer-kafka = ["dep:streamweave-consumer-kafka"]
+consumer-redis-streams = ["dep:streamweave-consumer-redis-streams"]
+consumer-database = ["dep:streamweave-consumer-database"]
+consumer-console = ["dep:streamweave-consumer-console"]
+consumer-channel = ["dep:streamweave-consumer-channel"]
+consumer-command = ["dep:streamweave-consumer-command"]
+
+# Transformer features
+all-transformers = [
+  "transformer-map",
+  "transformer-filter",
+  "transformer-batch",
+  "transformer-reduce",
+  "transformer-merge",
+  "transformer-split",
+  "transformer-retry",
+  "transformer-rate-limit",
+  "transformer-circuit-breaker",
+  "transformer-window",
+  "transformer-group-by",
+  "transformer-sort",
+  "transformer-take",
+  "transformer-skip",
+  "transformer-sample",
+  "transformer-router",
+  "transformer-round-robin",
+  "transformer-ordered-merge",
+  "transformer-message-dedupe",
+  "transformer-interleave",
+  "transformer-partition",
+  "transformer-split-at",
+  "transformer-timeout",
+  "transformer-zip",
+  "transformer-limit",
+  "transformer-running-sum",
+  "transformer-moving-average",
+  "transformer-ml",
+]
+transformer-map = ["dep:streamweave-transformer-map"]
+transformer-filter = ["dep:streamweave-transformer-filter"]
+transformer-batch = ["dep:streamweave-transformer-batch"]
+transformer-reduce = ["dep:streamweave-transformer-reduce"]
+transformer-merge = ["dep:streamweave-transformer-merge"]
+transformer-split = ["dep:streamweave-transformer-split"]
+transformer-retry = ["dep:streamweave-transformer-retry"]
+transformer-rate-limit = ["dep:streamweave-transformer-rate-limit"]
+transformer-circuit-breaker = ["dep:streamweave-transformer-circuit-breaker"]
+transformer-window = ["dep:streamweave-transformer-window"]
+transformer-group-by = ["dep:streamweave-transformer-group-by"]
+transformer-sort = ["dep:streamweave-transformer-sort"]
+transformer-take = ["dep:streamweave-transformer-take"]
+transformer-skip = ["dep:streamweave-transformer-skip"]
+transformer-sample = ["dep:streamweave-transformer-sample"]
+transformer-router = ["dep:streamweave-transformer-router"]
+transformer-round-robin = ["dep:streamweave-transformer-round-robin"]
+transformer-ordered-merge = ["dep:streamweave-transformer-ordered-merge"]
+transformer-message-dedupe = ["dep:streamweave-transformer-message-dedupe"]
+transformer-interleave = ["dep:streamweave-transformer-interleave"]
+transformer-partition = ["dep:streamweave-transformer-partition"]
+transformer-split-at = ["dep:streamweave-transformer-split-at"]
+transformer-timeout = ["dep:streamweave-transformer-timeout"]
+transformer-zip = ["dep:streamweave-transformer-zip"]
+transformer-limit = ["dep:streamweave-transformer-limit"]
+transformer-running-sum = ["dep:streamweave-transformer-running-sum"]
+transformer-moving-average = ["dep:streamweave-transformer-moving-average"]
+transformer-ml = ["dep:streamweave-transformer-ml"]
+
+# Integration features
+all-integrations = [
+  "integration-distributed",
+  "integration-http-server",
+  "integration-sql",
+  "integration-opentelemetry",
+]
+integration-distributed = ["dep:streamweave-integration-distributed"]
+integration-http-server = ["dep:streamweave-integration-http-server"]
+integration-sql = ["dep:streamweave-integration-sql"]
+integration-opentelemetry = ["dep:streamweave-integration-opentelemetry"]

@@ -1,0 +1,35 @@
+[package]
+name = "streamweave-producer-redis-streams"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Redis Streams producer for StreamWeave"
+
+[dependencies]
+chrono = { workspace = true }
+async-stream = { workspace = true }
+streamweave-core = { path = "../../core" }
+streamweave-error = { path = "../../error" }
+streamweave-message = { path = "../../message", optional = true }
+redis = { workspace = true, optional = true, features = [
+  "tokio-comp",
+  "connection-manager",
+] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "full"] }
+futures = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[features]
+default = ["redis-streams"]
+redis-streams = ["dep:redis"]
+message-envelope = ["dep:streamweave-message"]

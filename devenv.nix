@@ -28,6 +28,17 @@
     };
   };
 
+  services = {
+    kafka = {
+      enable = true;
+    };
+  };
+
+  env = {
+    RUST_BACKTRACE = "1";
+    CARGO_TERM_COLOR = "always";
+  };
+
   # Development packages
   packages = with pkgs; [
     # Rust tools
@@ -66,43 +77,35 @@
     openssl
     zlib
     zstd
+
+    # treefmt
+    actionlint
+    alejandra
+    beautysh
+    biome
+    deadnix
+    rustfmt
+    taplo
+    treefmt
+    vulnix
+    yamlfmt
   ];
 
   # Pre-commit hooks
   git-hooks = {
     hooks = {
-      cargo-check = {
+      commitizen = {
         enable = true;
+        stages = ["commit-msg"];
       };
-
-      clippy = {
-        enable = true;
-      };
-
-      rustfmt = {
-        enable = true;
-      };
-
-      # Use our unified pre-commit script
-      our-pre-commit-hook = {
+      pre-commit = {
         enable = true;
         name = "pre-commit";
-        description = "Run all pre-commit checks";
+        description = "Pre commit script, running all tasks in series";
         entry = "bin/pre-commit";
         language = "system";
         pass_filenames = false;
       };
     };
-  };
-
-  # Services
-  services.kafka = {
-    enable = true;
-  };
-
-  # Environment variables
-  env = {
-    RUST_BACKTRACE = "1";
-    CARGO_TERM_COLOR = "always";
   };
 }

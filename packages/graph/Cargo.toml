@@ -1,0 +1,34 @@
+[package]
+name = "streamweave-graph"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Graph API for StreamWeave"
+
+[dependencies]
+async-stream = { workspace = true }
+async-trait = { workspace = true }
+streamweave-core = { path = "../core" }
+streamweave-error = { path = "../error" }
+streamweave-pipeline = { path = "../pipeline" }
+streamweave-stateful = { path = "../stateful" }
+streamweave-window = { path = "../window" }
+streamweave-transformer-ordered-merge = { path = "../transformers/ordered-merge" }
+streamweave-transformer-window = { path = "../transformers/window" }
+tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
+futures = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+streamweave-producer-vec = { path = "../producers/vec" }
+streamweave-consumer-vec = { path = "../consumers/vec" }
+streamweave-transformer-map = { path = "../transformers/map" }
+streamweave-transformer-running-sum = { path = "../transformers/running-sum" }

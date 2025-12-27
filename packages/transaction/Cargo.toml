@@ -1,0 +1,24 @@
+[package]
+name = "streamweave-transaction"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Transaction management for StreamWeave"
+
+[dependencies]
+streamweave-core = { path = "../core" }
+streamweave-message = { path = "../message", optional = true }
+streamweave-offset = { path = "../offset" }
+tokio = { workspace = true, features = ["macros", "rt", "time", "sync"] }
+chrono = { workspace = true }
+futures = { workspace = true }
+
+[features]
+default = []
+message-envelope = ["dep:streamweave-message"]

@@ -62,7 +62,7 @@ else
     FAILED_EXAMPLES=$(grep -c "Couldn't compile the test" /tmp/doc-test.log 2>/dev/null || echo "0")
     # Also check for actual compilation errors in doctests (not linker errors)
     COMPILE_ERRORS=$(grep -E "error\[E[0-9]+\]" /tmp/doc-test.log 2>/dev/null | grep -v "linking" | wc -l || echo "0")
-    
+
     # Check for disk space issues
     if grep -q "No space left on device" /tmp/doc-test.log 2>/dev/null; then
         echo -e "${YELLOW}⚠️  Disk space issue detected during doctest compilation${NC}"

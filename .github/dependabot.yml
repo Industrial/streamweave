@@ -1,6 +1,5 @@
 # Dependabot configuration for automated dependency updates
 # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
-
 version: 2
 updates:
   # Rust dependencies (Cargo)
@@ -26,7 +25,6 @@ updates:
         update-types:
           - "minor"
           - "patch"
-
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -42,7 +40,6 @@ updates:
       - "dependencies"
       - "github-actions"
     open-pull-requests-limit: 5
-
   # Nix (devenv)
   - package-ecosystem: "devcontainers"
     directory: "/"
@@ -53,4 +50,3 @@ updates:
     labels:
       - "dependencies"
       - "nix"
-
