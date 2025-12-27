@@ -20,12 +20,17 @@ ORDER=$(find packages -name Cargo.toml -type f | while read -r toml; do
     
     # Convert path to package name format
     # streamweave -> streamweave
-    # producers/kafka -> producer-kafka
+    # consumers/array -> consumer-array (singularize category)
+    # producers/kafka -> producer-kafka (singularize category)
+    # transformers/map -> transformer-map (singularize category)
+    # integrations/http-server -> integration-http-server (singularize category)
     if [[ "$rel_path" == *"/"* ]]; then
-        # Has subdirectory (producers/kafka)
+        # Has subdirectory (consumers/array, producers/kafka, etc.)
         category=$(echo "$rel_path" | cut -d'/' -f1)
         name=$(echo "$rel_path" | cut -d'/' -f2)
-        echo "${category}-${name}"
+        # Singularize category: consumers -> consumer, producers -> producer, etc.
+        category_singular="${category%s}"
+        echo "${category_singular}-${name}"
     else
         # Top-level package (streamweave, pipeline, etc.)
         echo "$rel_path"

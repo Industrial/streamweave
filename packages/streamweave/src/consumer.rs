@@ -501,7 +501,7 @@ mod tests {
       prop_assert_eq!(info.name, name);
       prop_assert_eq!(
         info.type_name,
-        "streamweave_core::consumer::tests::CollectorConsumer<i32>"
+        "streamweave::consumer::tests::CollectorConsumer<i32>"
       );
     }
 
@@ -517,7 +517,7 @@ mod tests {
       prop_assert_eq!(context.component_name, name);
       prop_assert_eq!(
         context.component_type,
-        "streamweave_core::consumer::tests::CollectorConsumer<i32>"
+        "streamweave::consumer::tests::CollectorConsumer<i32>"
       );
       prop_assert!(context.item.is_none());
     }
@@ -535,7 +535,7 @@ mod tests {
       prop_assert_eq!(context.component_name, name);
       prop_assert_eq!(
         context.component_type,
-        "streamweave_core::consumer::tests::CollectorConsumer<i32>"
+        "streamweave::consumer::tests::CollectorConsumer<i32>"
       );
       prop_assert_eq!(context.item, Some(item));
     }

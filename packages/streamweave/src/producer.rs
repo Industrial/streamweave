@@ -435,7 +435,7 @@ mod tests {
     assert_eq!(info.name, "test_producer");
     assert_eq!(
       info.type_name,
-      "streamweave_core::producer::tests::TestProducer<i32>"
+      "streamweave::producer::tests::TestProducer<i32>"
     );
   }
 
@@ -447,7 +447,7 @@ mod tests {
     assert_eq!(context.component_name, "test_producer");
     assert_eq!(
       context.component_type,
-      "streamweave_core::producer::tests::TestProducer<i32>"
+      "streamweave::producer::tests::TestProducer<i32>"
     );
     assert_eq!(context.item, Some(42));
   }
@@ -595,7 +595,7 @@ mod tests {
     assert_eq!(context.component_name, "test_producer");
     assert_eq!(
       context.component_type,
-      "streamweave_core::producer::tests::TestProducer<i32>"
+      "streamweave::producer::tests::TestProducer<i32>"
     );
     assert_eq!(context.item, None);
   }
@@ -608,7 +608,7 @@ mod tests {
     assert_eq!(info.name, "producer");
     assert_eq!(
       info.type_name,
-      "streamweave_core::producer::tests::TestProducer<i32>"
+      "streamweave::producer::tests::TestProducer<i32>"
     );
   }
 
