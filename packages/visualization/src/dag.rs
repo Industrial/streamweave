@@ -648,7 +648,7 @@ mod tests {
 
   #[test]
   fn test_pipeline_dag_from_components() {
-    use streamweave_transformer_map::MapTransformer;
+    use streamweave_transformers::map::MapTransformer;
     use streamweave_vec::consumers::VecConsumer;
     use streamweave_vec::producers::VecProducer;
 
@@ -697,7 +697,7 @@ mod tests {
 
   #[test]
   fn test_pipeline_dag_from_components_with_names() {
-    use streamweave_transformer_map::MapTransformer;
+    use streamweave_transformers::map::MapTransformer;
     use streamweave_vec::consumers::VecConsumer;
     use streamweave_vec::producers::VecProducer;
 
@@ -723,7 +723,7 @@ mod tests {
   #[test]
   fn test_pipeline_dag_from_components_with_error_strategies() {
     use streamweave_error::ErrorStrategy;
-    use streamweave_transformer_map::MapTransformer;
+    use streamweave_transformers::map::MapTransformer;
     use streamweave_vec::consumers::VecConsumer;
     use streamweave_vec::producers::VecProducer;
 

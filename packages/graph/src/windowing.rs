@@ -38,8 +38,8 @@
 use crate::node::TransformerNode;
 use crate::traits::NodeTrait;
 use std::time::Duration;
-use streamweave_transformer_window::{TimeWindowTransformer, WindowTransformer};
 use streamweave_window::WindowResult;
+use streamweave_window::{TimeWindowTransformer, WindowTransformer};
 
 /// Configuration for windowing operations in graphs.
 ///
@@ -422,7 +422,7 @@ mod tests {
   #[test]
   fn test_is_windowed_node_helper() {
     use crate::node::TransformerNode;
-    use streamweave_transformer_map::MapTransformer;
+    use streamweave_transformers::map::MapTransformer;
 
     // Windowed node
     let window_transformer = WindowTransformer::<i32>::new(10);

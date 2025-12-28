@@ -1333,7 +1333,7 @@ impl Default for RuntimeGraphBuilder {
 mod tests {
   use super::*;
   use crate::node::{ConsumerNode, ProducerNode, TransformerNode};
-  use streamweave_transformer_map::MapTransformer;
+  use streamweave_transformers::map::MapTransformer;
   use streamweave_vec::consumers::VecConsumer;
   use streamweave_vec::producers::VecProducer;
 

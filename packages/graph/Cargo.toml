@@ -19,8 +19,7 @@ streamweave-error = { path = "../error", version = "0.3.0" }
 streamweave-pipeline = { path = "../pipeline", version = "0.3.0" }
 streamweave-stateful = { path = "../stateful", version = "0.3.0" }
 streamweave-window = { path = "../window", version = "0.3.0" }
-streamweave-transformer-ordered-merge = { path = "../transformers/ordered-merge", version = "0.3.0" }
-streamweave-transformer-window = { path = "../transformers/window", version = "0.3.0" }
+streamweave-transformers = { path = "../transformers", version = "0.3.0" }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
 futures = { workspace = true }
 chrono = { workspace = true }
@@ -30,7 +29,6 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 streamweave-vec = { path = "../vec", version = "0.3.0" }
-streamweave-transformer-map = { path = "../transformers/map", version = "0.3.0" }
-streamweave-transformer-running-sum = { path = "../transformers/running-sum", version = "0.3.0" }
+streamweave-transformers = { path = "../transformers", version = "0.3.0" }
 
 [features]

@@ -1333,7 +1333,7 @@ mod tests {
   use std::pin::Pin;
   use std::sync::Arc;
   use streamweave::{Producer, ProducerConfig};
-  use streamweave_transformer_map::MapTransformer;
+  use streamweave_transformers::map::MapTransformer;
   use streamweave_vec::consumers::VecConsumer;
   use streamweave_vec::producers::VecProducer;
   use tokio::sync::{RwLock, mpsc};

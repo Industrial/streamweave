@@ -14,7 +14,7 @@ use streamweave_graph::{
   execution::{ExecutionError, ExecutionState, GraphExecutor},
   node::{ConsumerNode, ProducerNode, TransformerNode},
 };
-use streamweave_transformer_map::MapTransformer;
+use streamweave_transformers::map::MapTransformer;
 use streamweave_vec::{consumers::VecConsumer, producers::VecProducer};
 use tokio::time::sleep;
 

@@ -10,7 +10,7 @@ use futures::StreamExt;
 use futures::stream::select_all;
 use std::marker::PhantomData;
 use std::pin::Pin;
-use streamweave_transformer_ordered_merge::MergeStrategy;
+use streamweave_transformers::ordered_merge::MergeStrategy;
 
 /// A router that merges multiple input streams into a single output stream.
 ///
@@ -157,7 +157,7 @@ where
 mod tests {
   use super::*;
   use futures::stream;
-  use streamweave_transformer_ordered_merge::MergeStrategy;
+  use streamweave_transformers::ordered_merge::MergeStrategy;
 
   #[tokio::test]
   async fn test_merge_router_interleave() {

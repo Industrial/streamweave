@@ -8,10 +8,10 @@ use streamweave_graph::{
   GraphBuilder, GraphExecution,
   node::{ConsumerNode, ProducerNode, TransformerNode},
 };
-use streamweave_transformer_map::MapTransformer;
-use streamweave_transformer_running_sum::RunningSumTransformer;
-use streamweave_transformer_window::{TimeWindowTransformer, WindowTransformer};
+use streamweave_transformers::map::MapTransformer;
+use streamweave_transformers::running_sum::RunningSumTransformer;
 use streamweave_vec::{consumers::VecConsumer, producers::VecProducer};
+use streamweave_window::{TimeWindowTransformer, WindowTransformer};
 use tokio::time::{sleep, timeout};
 
 /// Test utility to wait for graph execution to complete

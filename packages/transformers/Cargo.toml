@@ -1,0 +1,44 @@
+[package]
+name = "streamweave-transformers"
+version = "0.3.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Transformers for StreamWeave"
+
+[dependencies]
+# Core dependencies
+streamweave = { path = "../streamweave", version = "0.3.0" }
+streamweave-error = { path = "../error", version = "0.3.0" }
+streamweave-message = { path = "../message", version = "0.3.0" }
+streamweave-stateful = { path = "../stateful", version = "0.3.0" }
+
+# Async runtime and utilities
+tokio = { workspace = true, features = ["macros", "rt", "time", "sync"] }
+tokio-stream = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+async-stream = { workspace = true }
+
+# Utilities
+chrono = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+rand = "0.8"
+
+# ML dependencies (optional)
+ort = { workspace = true, optional = true }
+ndarray = { workspace = true, optional = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[features]
+default = []
+# Optional features
+ml = ["dep:ort", "dep:ndarray"]

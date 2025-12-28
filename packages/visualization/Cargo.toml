@@ -22,8 +22,7 @@ tokio = { workspace = true, features = ["sync"] }
 [dev-dependencies]
 proptest = { workspace = true }
 streamweave-vec = { path = "../vec", version = "0.3.0" }
-streamweave-transformer-map = { path = "../transformers/map", version = "0.3.0" }
-streamweave-transformer-running-sum = { path = "../transformers/running-sum", version = "0.3.0" }
+streamweave-transformers = { path = "../transformers", version = "0.3.0" }
 
 [features]
 default = []
