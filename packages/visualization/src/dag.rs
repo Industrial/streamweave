@@ -648,9 +648,9 @@ mod tests {
 
   #[test]
   fn test_pipeline_dag_from_components() {
-    use streamweave_consumer_vec::VecConsumer;
-    use streamweave_producer_vec::VecProducer;
     use streamweave_transformer_map::MapTransformer;
+    use vec::consumers::VecConsumer;
+    use vec::producers::VecProducer;
 
     let producer = VecProducer::new(vec![1, 2, 3]);
     let transformer = MapTransformer::new(|x: i32| x * 2);
@@ -697,9 +697,9 @@ mod tests {
 
   #[test]
   fn test_pipeline_dag_from_components_with_names() {
-    use streamweave_consumer_vec::VecConsumer;
-    use streamweave_producer_vec::VecProducer;
     use streamweave_transformer_map::MapTransformer;
+    use vec::consumers::VecConsumer;
+    use vec::producers::VecProducer;
 
     let producer = VecProducer::new(vec![1, 2, 3]).with_name("my_producer".to_string());
     let transformer = MapTransformer::new(|x: i32| x * 2).with_name("my_transformer".to_string());
@@ -722,10 +722,10 @@ mod tests {
 
   #[test]
   fn test_pipeline_dag_from_components_with_error_strategies() {
-    use streamweave_consumer_vec::VecConsumer;
     use streamweave_error::ErrorStrategy;
-    use streamweave_producer_vec::VecProducer;
     use streamweave_transformer_map::MapTransformer;
+    use vec::consumers::VecConsumer;
+    use vec::producers::VecProducer;
 
     let producer = VecProducer::new(vec![1, 2, 3]).with_error_strategy(ErrorStrategy::<i32>::Skip);
     let transformer =

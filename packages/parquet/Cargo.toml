@@ -1,0 +1,67 @@
+[package]
+name = "parquet"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Parquet producer and consumer for StreamWeave"
+
+[features]
+default = ["parquet"]
+parquet = ["dep:arrow", "dep:parquet"]
+message-envelope = ["dep:streamweave-message"]
+
+[dependencies.chrono]
+workspace = true
+
+[dependencies.async-stream]
+workspace = true
+
+[dependencies.streamweave]
+path = "../streamweave"
+version = "0.3.0"
+
+[dependencies.streamweave-error]
+path = "../error"
+version = "0.3.0"
+
+[dependencies.streamweave-message]
+path = "../message"
+version = "0.3.0"
+optional = true
+
+[dependencies.parquet]
+workspace = true
+optional = true
+features = ["arrow", "snap"]
+
+[dependencies.arrow]
+workspace = true
+optional = true
+
+[dependencies.tokio]
+workspace = true
+features = ["macros", "rt", "fs", "sync"]
+
+[dependencies.futures]
+workspace = true
+
+[dependencies.async-trait]
+workspace = true
+
+[dependencies.thiserror]
+workspace = true
+
+[dependencies.tracing]
+workspace = true
+
+[dev-dependencies.tempfile]
+workspace = true
+
+[dev-dependencies.proptest]
+workspace = true

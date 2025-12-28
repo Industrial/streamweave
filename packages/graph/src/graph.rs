@@ -1333,9 +1333,9 @@ impl Default for RuntimeGraphBuilder {
 mod tests {
   use super::*;
   use crate::node::{ConsumerNode, ProducerNode, TransformerNode};
-  use streamweave_consumer_vec::VecConsumer;
-  use streamweave_producer_vec::VecProducer;
   use streamweave_transformer_map::MapTransformer;
+  use vec::consumers::VecConsumer;
+  use vec::producers::VecProducer;
 
   #[test]
   fn test_graph_new() {

@@ -935,9 +935,9 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use streamweave_consumer_vec::VecConsumer;
-  use streamweave_producer_vec::VecProducer;
   use streamweave_transformer_map::MapTransformer;
+  use vec::consumers::VecConsumer;
+  use vec::producers::VecProducer;
 
   #[test]
   fn test_producer_node_creation() {

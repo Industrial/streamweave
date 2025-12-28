@@ -28,8 +28,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 [dev-dependencies]
-streamweave-producer-vec = { path = "../producers/vec", version = "0.3.0" }
-streamweave-consumer-vec = { path = "../consumers/vec", version = "0.3.0" }
+vec = { path = "../vec", version = "0.3.0" }
 streamweave-transformer-map = { path = "../transformers/map", version = "0.3.0" }
 streamweave-transformer-running-sum = { path = "../transformers/running-sum", version = "0.3.0" }
 
