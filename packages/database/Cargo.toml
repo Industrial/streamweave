@@ -15,8 +15,7 @@ description = "Database producer and consumer for StreamWeave"
 base64 = "0.22"
 
 [features]
-default = ["database"]
-database = ["dep:sqlx"]
+default = []
 message-envelope = ["dep:streamweave-message"]
 
 [dependencies.chrono]
@@ -40,7 +39,6 @@ optional = true
 
 [dependencies.sqlx]
 workspace = true
-optional = true
 features = ["postgres", "mysql", "sqlite", "runtime-tokio-native-tls"]
 
 [dependencies.serde]

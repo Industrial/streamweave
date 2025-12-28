@@ -3,4 +3,4 @@
 pub mod consumers;
 pub mod producers;
 
-pub use producers::DatabaseProducerConfig;
+pub use producers::{DatabaseConsumerConfig, DatabaseProducerConfig, DatabaseRow, DatabaseType};

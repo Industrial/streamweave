@@ -119,6 +119,143 @@ impl DatabaseProducerConfig {
   }
 }
 
+/// Configuration for database consumer behavior.
+#[derive(Debug, Clone)]
+pub struct DatabaseConsumerConfig {
+  /// Database connection URL (e.g., "postgresql://user:pass@localhost/dbname").
+  pub connection_url: String,
+  /// Type of database (PostgreSQL, MySQL, or SQLite).
+  pub database_type: DatabaseType,
+  /// Target table name for inserts.
+  pub table_name: String,
+  /// Custom INSERT query. If None, will be auto-generated from table_name and row columns.
+  pub insert_query: Option<String>,
+  /// Number of rows to batch before inserting.
+  pub batch_size: usize,
+  /// Maximum time to wait before flushing a batch (even if not full).
+  pub batch_timeout: Duration,
+  /// Column mapping: maps DatabaseRow field names to table column names.
+  /// If None, assumes field names match column names exactly.
+  pub column_mapping: Option<HashMap<String, String>>,
+  /// Whether to use transactions for batch inserts.
+  pub use_transactions: bool,
+  /// Commit transaction every N rows. If None, commits at end of stream.
+  pub transaction_size: Option<usize>,
+  /// Maximum number of connections in the pool.
+  pub max_connections: u32,
+  /// Minimum number of idle connections in the pool.
+  pub min_connections: u32,
+  /// Connection timeout.
+  pub connect_timeout: Duration,
+  /// Maximum idle time before closing a connection.
+  pub idle_timeout: Option<Duration>,
+  /// Maximum lifetime of a connection.
+  pub max_lifetime: Option<Duration>,
+  /// Whether to enable SSL/TLS for the connection.
+  pub enable_ssl: bool,
+}
+
+impl Default for DatabaseConsumerConfig {
+  fn default() -> Self {
+    Self {
+      connection_url: String::new(),
+      database_type: DatabaseType::Postgres,
+      table_name: String::new(),
+      insert_query: None,
+      batch_size: 100,
+      batch_timeout: Duration::from_secs(5),
+      column_mapping: None,
+      use_transactions: true,
+      transaction_size: None,
+      max_connections: 10,
+      min_connections: 2,
+      connect_timeout: Duration::from_secs(30),
+      idle_timeout: Some(Duration::from_secs(600)),
+      max_lifetime: Some(Duration::from_secs(1800)),
+      enable_ssl: false,
+    }
+  }
+}
+
+impl DatabaseConsumerConfig {
+  /// Sets the database connection URL.
+  #[must_use]
+  pub fn with_connection_url(mut self, url: impl Into<String>) -> Self {
+    self.connection_url = url.into();
+    self
+  }
+
+  /// Sets the database type.
+  #[must_use]
+  pub fn with_database_type(mut self, db_type: DatabaseType) -> Self {
+    self.database_type = db_type;
+    self
+  }
+
+  /// Sets the target table name.
+  #[must_use]
+  pub fn with_table_name(mut self, table: impl Into<String>) -> Self {
+    self.table_name = table.into();
+    self
+  }
+
+  /// Sets a custom INSERT query.
+  #[must_use]
+  pub fn with_insert_query(mut self, query: impl Into<String>) -> Self {
+    self.insert_query = Some(query.into());
+    self
+  }
+
+  /// Sets the batch size.
+  #[must_use]
+  pub fn with_batch_size(mut self, size: usize) -> Self {
+    self.batch_size = size;
+    self
+  }
+
+  /// Sets the batch timeout.
+  #[must_use]
+  pub fn with_batch_timeout(mut self, timeout: Duration) -> Self {
+    self.batch_timeout = timeout;
+    self
+  }
+
+  /// Sets column mapping.
+  #[must_use]
+  pub fn with_column_mapping(mut self, mapping: HashMap<String, String>) -> Self {
+    self.column_mapping = Some(mapping);
+    self
+  }
+
+  /// Sets whether to use transactions.
+  #[must_use]
+  pub fn with_transactions(mut self, use_transactions: bool) -> Self {
+    self.use_transactions = use_transactions;
+    self
+  }
+
+  /// Sets transaction commit size.
+  #[must_use]
+  pub fn with_transaction_size(mut self, size: Option<usize>) -> Self {
+    self.transaction_size = size;
+    self
+  }
+
+  /// Sets the maximum number of connections in the pool.
+  #[must_use]
+  pub fn with_max_connections(mut self, max: u32) -> Self {
+    self.max_connections = max;
+    self
+  }
+
+  /// Sets whether to enable SSL/TLS.
+  #[must_use]
+  pub fn with_ssl(mut self, enable: bool) -> Self {
+    self.enable_ssl = enable;
+    self
+  }
+}
+
 /// A row result from a database query.
 ///
 /// This type represents a single row from a database query result,
@@ -180,7 +317,6 @@ pub struct DatabaseProducer {
 
 /// Internal enum to hold different database connection pools.
 #[derive(Debug)]
-#[cfg(feature = "database")]
 pub(crate) enum DatabasePool {
   Postgres(sqlx::PgPool),
   Mysql(sqlx::MySqlPool),
