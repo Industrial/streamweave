@@ -57,12 +57,55 @@ pub enum ExecutionError {
     /// Error reason
     reason: String,
   },
+  /// Channel error during execution
+  ChannelError {
+    /// Node name where error occurred
+    node: String,
+    /// Port index where error occurred
+    port: usize,
+    /// Whether this is an input or output port
+    is_input: bool,
+    /// Error reason
+    reason: String,
+  },
+  /// Serialization error during execution
+  SerializationError {
+    /// Node name where error occurred
+    node: String,
+    /// Whether this is serialization or deserialization
+    is_deserialization: bool,
+    /// Error details
+    reason: String,
+  },
+  /// Stream error during execution
+  StreamError {
+    /// Node name where error occurred
+    node: String,
+    /// Error reason
+    reason: String,
+  },
   /// Graph execution was cancelled
   Cancelled,
   /// Graph execution failed with an error
   ExecutionFailed(String),
   /// Invalid graph topology
   InvalidTopology(String),
+  /// Shutdown timeout exceeded
+  ShutdownTimeout {
+    /// Timeout duration in seconds
+    timeout_secs: u64,
+    /// Nodes that failed to shutdown
+    nodes: Vec<String>,
+  },
+  /// Pause/resume operation failed
+  LifecycleError {
+    /// Operation that failed
+    operation: String,
+    /// Current state
+    current_state: ExecutionState,
+    /// Error reason
+    reason: String,
+  },
 }
 
 impl std::fmt::Display for ExecutionError {
@@ -82,9 +125,58 @@ impl std::fmt::Display for ExecutionError {
           source.0, source.1, target.0, target.1, reason
         )
       }
+      ExecutionError::ChannelError {
+        node,
+        port,
+        is_input,
+        reason,
+      } => {
+        let port_type = if *is_input { "input" } else { "output" };
+        write!(
+          f,
+          "Channel error on node '{}' {} port {}: {}",
+          node, port_type, port, reason
+        )
+      }
+      ExecutionError::SerializationError {
+        node,
+        is_deserialization,
+        reason,
+      } => {
+        let op_type = if *is_deserialization {
+          "deserialization"
+        } else {
+          "serialization"
+        };
+        write!(f, "{} error on node '{}': {}", op_type, node, reason)
+      }
+      ExecutionError::StreamError { node, reason } => {
+        write!(f, "Stream error on node '{}': {}", node, reason)
+      }
       ExecutionError::Cancelled => write!(f, "Graph execution was cancelled"),
       ExecutionError::ExecutionFailed(msg) => write!(f, "Execution failed: {}", msg),
       ExecutionError::InvalidTopology(msg) => write!(f, "Invalid graph topology: {}", msg),
+      ExecutionError::ShutdownTimeout {
+        timeout_secs,
+        nodes,
+      } => {
+        write!(
+          f,
+          "Shutdown timeout ({}) exceeded. Nodes that failed to shutdown: {:?}",
+          timeout_secs, nodes
+        )
+      }
+      ExecutionError::LifecycleError {
+        operation,
+        current_state,
+        reason,
+      } => {
+        write!(
+          f,
+          "Lifecycle operation '{}' failed in state {:?}: {}",
+          operation, current_state, reason
+        )
+      }
     }
   }
 }
@@ -358,6 +450,9 @@ impl GraphExecutor {
     let handles: Vec<(String, JoinHandle<Result<(), ExecutionError>>)> =
       self.node_handles.drain().collect();
 
+    // Collect node names before moving handles into the closure
+    let node_names: Vec<String> = handles.iter().map(|(name, _)| name.clone()).collect();
+
     let shutdown_result = timeout(self.shutdown_timeout, async {
       let mut errors = Vec::new();
       for (node_name, handle) in handles {
@@ -366,20 +461,23 @@ impl GraphExecutor {
             // Task completed successfully
           }
           Ok(Err(e)) => {
-            // Task returned an error
-            errors.push(ExecutionError::NodeExecutionFailed {
-              node: node_name.clone(),
-              reason: e.to_string(),
-            });
+            // Task returned an error - preserve the original error type
+            errors.push(e);
           }
           Err(e) => {
             // Task was cancelled or panicked
             if e.is_cancelled() {
-              // Expected during shutdown
+              // Expected during shutdown - don't report as error
             } else if e.is_panic() {
               errors.push(ExecutionError::NodeExecutionFailed {
                 node: node_name.clone(),
-                reason: format!("Task panicked: {:?}", e),
+                reason: format!("Task panicked: {}", e),
+              });
+            } else {
+              // Other join errors
+              errors.push(ExecutionError::NodeExecutionFailed {
+                node: node_name.clone(),
+                reason: format!("Task join error: {}", e),
               });
             }
           }
@@ -395,12 +493,11 @@ impl GraphExecutor {
         self.execution_errors.extend(errors);
       }
       Err(_) => {
-        // Timeout occurred - force abort remaining tasks
-        // (All tasks should already be collected, but handle edge cases)
-        return Err(ExecutionError::ExecutionFailed(format!(
-          "Shutdown timeout exceeded ({}s). Some tasks may not have completed gracefully.",
-          self.shutdown_timeout.as_secs()
-        )));
+        // Timeout occurred - use the node names we collected earlier
+        return Err(ExecutionError::ShutdownTimeout {
+          timeout_secs: self.shutdown_timeout.as_secs(),
+          nodes: node_names,
+        });
       }
     }
 
@@ -550,10 +647,11 @@ impl GraphExecutor {
   /// ```
   pub async fn pause(&mut self) -> Result<(), ExecutionError> {
     if self.state != ExecutionState::Running {
-      return Err(ExecutionError::ExecutionFailed(format!(
-        "Cannot pause graph in {:?} state",
-        self.state
-      )));
+      return Err(ExecutionError::LifecycleError {
+        operation: "pause".to_string(),
+        current_state: self.state,
+        reason: format!("Cannot pause graph in {:?} state", self.state),
+      });
     }
 
     // Set pause signal
@@ -593,10 +691,11 @@ impl GraphExecutor {
   /// ```
   pub async fn resume(&mut self) -> Result<(), ExecutionError> {
     if self.state != ExecutionState::Paused {
-      return Err(ExecutionError::ExecutionFailed(format!(
-        "Cannot resume graph in {:?} state",
-        self.state
-      )));
+      return Err(ExecutionError::LifecycleError {
+        operation: "resume".to_string(),
+        current_state: self.state,
+        reason: format!("Cannot resume graph in {:?} state", self.state),
+      });
     }
 
     // Clear pause signal

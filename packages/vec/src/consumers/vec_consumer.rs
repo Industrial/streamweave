@@ -5,6 +5,7 @@ use streamweave_error::ErrorStrategy;
 ///
 /// This consumer collects all items from the stream into an internal `Vec`,
 /// preserving the order in which they were received.
+#[derive(Clone)]
 pub struct VecConsumer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,

@@ -2,95 +2,452 @@
 	"master": {
 		"tasks": [
 			{
-				"id": "6",
-				"title": "Phase 6: Visualization Examples Implementation",
-				"description": "Implement comprehensive visualization examples based on DETAILED_VISUALIZATION_PLAN.md. Create 7 visualization examples demonstrating different aspects of pipeline and graph visualization with complete implementation, documentation, and testing.",
+				"id": "1",
+				"title": "Task 1: Serialization Infrastructure",
+				"description": "Implement serialization infrastructure for graph node execution. This task creates the foundation for serializing and deserializing data between nodes using serde_json. Use Serena MCP Server for code analysis and Context7 MCP Server for serde_json documentation lookup.",
 				"status": "done",
-				"priority": "medium",
+				"priority": "high",
 				"dependencies": [],
-				"details": "This phase implements 7 visualization examples: visualization_basic (console export), visualization_html (web visualization), visualization_graph (graph API), visualization_dot_image (Graphviz images), visualization_metrics (real-time metrics), visualization_debug (debug mode), and visualization_server (HTTP server). Each example includes complete implementation, README.md documentation, and Cargo.toml registration. See DETAILED_VISUALIZATION_PLAN.md for detailed implementation steps.",
-				"testStrategy": "Compilation testing for all examples, runtime testing to verify output files are created, validation of generated visualizations, cross-platform testing where possible",
+				"details": "Create serialization module with SerializationError type, serialize/deserialize functions using serde_json, and comprehensive test coverage. This is the foundation for all node execution implementations. Reference docs/graph-implementation-plan.md Task 1 for detailed requirements.",
+				"testStrategy": "100% test coverage including: primitive types, complex types, nested structures, error handling, round-trip tests, edge cases (empty data, large data, special characters). Use Serena MCP Server to analyze existing serialization patterns in the codebase.",
 				"subtasks": [
 					{
 						"id": 1,
-						"title": "Example 1: visualization_basic (Enhanced Console Export)",
-						"description": "Create basic visualization example with enhanced console export demonstrating DOT and JSON format exports. Includes directory setup, pipeline module with multi-stage pipeline (producer, 2 transformers, consumer), main module with DAG generation and file export, comprehensive README.md, and testing. See DETAILED_VISUALIZATION_PLAN.md Phase 1 for detailed implementation steps.",
+						"title": "Create SerializationError Type",
+						"description": "Create SerializationError enum with variants for serialization and deserialization errors. Use Serena MCP Server to find similar error types in the codebase for consistency. Use Context7 MCP Server to look up serde_json error handling best practices.",
 						"status": "done",
 						"dependencies": [],
-						"updatedAt": "2025-12-03T20:40:01.012Z",
-						"parentId": "undefined"
+						"parentId": "1",
+						"updatedAt": "2025-12-28T11:02:54.380Z"
 					},
 					{
 						"id": 2,
-						"title": "Example 2: visualization_html (Enhanced Web Visualization)",
-						"description": "Create HTML visualization example with browser auto-open functionality. Includes cross-platform browser opening research and implementation (Linux/macOS/Windows), complex pipeline setup, standalone HTML generation, browser auto-open helper, comprehensive README with troubleshooting, and testing on multiple platforms. See DETAILED_VISUALIZATION_PLAN.md Example 2 for detailed implementation steps.",
+						"title": "Implement Serialize Function",
+						"description": "Implement serialize<T: Serialize>(item: &T) -> Result<Vec<u8>, SerializationError> using serde_json. Use Context7 MCP Server to look up serde_json API documentation and best practices. Use Serena MCP Server to analyze existing serialization usage in packages/distributed and packages/visualization.",
 						"status": "done",
-						"dependencies": ["6.1"],
-						"parentId": "undefined",
-						"updatedAt": "2025-12-03T20:41:53.619Z"
+						"dependencies": ["1.1"],
+						"parentId": "1",
+						"updatedAt": "2025-12-28T11:02:56.933Z"
 					},
 					{
 						"id": 3,
-						"title": "Example 3: visualization_graph (Graph API Visualization)",
-						"description": "Create graph API visualization example demonstrating fan-in and fan-out patterns. Includes graph to DAG conversion research and implementation, fan-out graph setup (producer to multiple transformers to consumers), fan-in graph setup (multiple producers to merge transformer to consumer), HTML visualization generation, comprehensive README with ASCII diagrams, and testing. See DETAILED_VISUALIZATION_PLAN.md Example 3 for detailed implementation steps.",
+						"title": "Implement Deserialize Function",
+						"description": "Implement deserialize<T: Deserialize>(data: &[u8]) -> Result<T, SerializationError> using serde_json. Use Context7 MCP Server for serde_json deserialization documentation. Use Serena MCP Server to check for existing deserialization patterns.",
 						"status": "done",
-						"dependencies": ["6.2"],
-						"parentId": "undefined",
-						"updatedAt": "2025-12-03T20:44:46.326Z"
+						"dependencies": ["1.1"],
+						"parentId": "1",
+						"updatedAt": "2025-12-28T11:02:59.705Z"
 					},
 					{
 						"id": 4,
-						"title": "Example 4: visualization_dot_image (Graphviz Image Generation)",
-						"description": "Create Graphviz image generation example producing PNG, SVG, and PDF outputs. Includes Graphviz availability detection, image conversion helper supporting multiple formats (PNG, SVG, PDF, JPG), main function with format generation, comprehensive README with installation instructions for all platforms, and testing with format validation. See DETAILED_VISUALIZATION_PLAN.md Example 4 for detailed implementation steps.",
+						"title": "Comprehensive Test Suite",
+						"description": "Write tests for all serialization scenarios: primitives, complex types, nested structures, error cases, round-trips, edge cases. Use Serena MCP Server to find existing test patterns. Aim for 100% code coverage.",
 						"status": "done",
-						"dependencies": ["6.1"],
-						"parentId": "undefined",
-						"updatedAt": "2025-12-03T20:46:58.599Z"
+						"dependencies": ["1.2", "1.3"],
+						"parentId": "1",
+						"updatedAt": "2025-12-28T11:03:02.778Z"
+					}
+				],
+				"updatedAt": "2025-12-28T11:03:02.778Z"
+			},
+			{
+				"id": "2",
+				"title": "Task 2: Producer Node Execution",
+				"description": "Implement producer node execution with serialization support. Producers generate data streams and serialize output to channels. Use Serena MCP Server to analyze ProducerNode structure and Context7 MCP Server for tokio channel documentation.",
+				"status": "done",
+				"priority": "high",
+				"dependencies": ["1"],
+				"details": "Update ProducerNode::spawn_execution_task to clone producer, get output stream, serialize items, send to channels, handle pause/resume, and propagate errors. Reference docs/graph-implementation-plan.md Task 2 for detailed requirements.",
+				"testStrategy": "100% test coverage: single/multiple output ports, empty/finite/infinite streams, serialization errors, channel errors, pause/resume, graceful shutdown, error propagation, different types, backpressure, concurrent execution. Use Serena MCP Server to analyze existing producer implementations.",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Analyze ProducerNode Structure",
+						"description": "Use Serena MCP Server to analyze ProducerNode implementation, Producer trait, and Output trait. Understand how producers generate streams. Use Context7 MCP Server to look up tokio::sync::mpsc channel documentation.",
+						"status": "done",
+						"dependencies": [],
+						"parentId": "2",
+						"updatedAt": "2025-12-28T11:03:06.760Z"
+					},
+					{
+						"id": 2,
+						"title": "Implement Producer Stream Processing",
+						"description": "Implement logic to clone producer, call produce(), iterate stream, check pause signal, serialize items using serialization module. Use Serena MCP Server to find similar stream processing patterns. Use Context7 MCP Server for futures::StreamExt documentation.",
+						"status": "done",
+						"dependencies": ["2.1", "1"],
+						"parentId": "2",
+						"updatedAt": "2025-12-28T11:03:08.631Z"
+					},
+					{
+						"id": 3,
+						"title": "Implement Channel Communication",
+						"description": "Implement sending serialized data to output channels based on port mapping. Handle channel errors, backpressure, and graceful shutdown. Use Context7 MCP Server for tokio channel error handling patterns.",
+						"status": "done",
+						"dependencies": ["2.2"],
+						"parentId": "2",
+						"updatedAt": "2025-12-28T11:03:11.371Z"
+					},
+					{
+						"id": 4,
+						"title": "Implement Pause/Resume Support",
+						"description": "Add pause signal checking in producer execution loop. When paused, wait for resume. Use Serena MCP Server to check existing pause/resume implementations in execution.rs.",
+						"status": "done",
+						"dependencies": ["2.2"],
+						"parentId": "2",
+						"updatedAt": "2025-12-28T11:03:13.736Z"
 					},
 					{
 						"id": 5,
-						"title": "Example 5: visualization_metrics (Real-Time Metrics)",
-						"description": "Create real-time metrics visualization example with metrics collection integration. Includes MetricsCollector struct implementation, metrics aggregation and snapshot functionality, pipeline integration with metrics hooks, HTML enhancement with embedded metrics and charts, main function with metrics collection and export, and comprehensive documentation. See DETAILED_VISUALIZATION_PLAN.md Example 5 for detailed implementation steps.",
+						"title": "Comprehensive Producer Tests",
+						"description": "Write tests covering all producer execution scenarios. Create mock producers for testing. Use Serena MCP Server to find test utilities and patterns. Aim for 100% coverage.",
+						"status": "done",
+						"dependencies": ["2.3", "2.4"],
+						"parentId": "2"
+					}
+				],
+				"updatedAt": "2025-12-28T11:03:13.736Z"
+			},
+			{
+				"id": "3",
+				"title": "Task 3: Transformer Node Execution",
+				"description": "Implement transformer node execution with input deserialization and output serialization. Transformers process data streams between producers and consumers. Use Serena MCP Server to analyze TransformerNode and Context7 MCP Server for stream transformation patterns.",
+				"status": "done",
+				"priority": "high",
+				"dependencies": ["1", "2"],
+				"details": "Update TransformerNode::spawn_execution_task to handle multiple input ports (fan-in), deserialize inputs, apply transformer, serialize outputs, handle multiple output ports (fan-out). Reference docs/graph-implementation-plan.md Task 3.",
+				"testStrategy": "100% test coverage: single/multiple inputs/outputs, identity/filtering/mapping transformations, deserialization/serialization errors, channel errors, pause/resume, graceful shutdown, stateful transformers, backpressure, concurrent execution. Use Serena MCP Server to analyze transformer implementations.",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Analyze TransformerNode Structure",
+						"description": "Use Serena MCP Server to analyze TransformerNode, Transformer trait, Input/Output traits, and port system. Understand fan-in/fan-out patterns. Use Context7 MCP Server for async stream processing documentation.",
+						"status": "done",
+						"dependencies": [],
+						"parentId": "3"
+					},
+					{
+						"id": 2,
+						"title": "Implement Input Stream Merging",
+						"description": "Implement logic to deserialize items from multiple input channels and merge into single stream. Support fan-in patterns. Use Serena MCP Server to check router implementations for merge patterns. Use Context7 MCP Server for futures::stream documentation.",
+						"status": "done",
+						"dependencies": ["3.1", "1"],
+						"parentId": "3"
+					},
+					{
+						"id": 3,
+						"title": "Implement Transformer Application",
+						"description": "Apply transformer.transform() to merged input stream. Handle transformer errors and stream errors. Use Serena MCP Server to find existing transformer usage patterns.",
+						"status": "done",
+						"dependencies": ["3.2"],
+						"parentId": "3"
+					},
+					{
+						"id": 4,
+						"title": "Implement Output Distribution",
+						"description": "Serialize transformer output and distribute to multiple output channels (fan-out). Handle channel errors and backpressure. Use Context7 MCP Server for channel broadcasting patterns.",
+						"status": "done",
+						"dependencies": ["3.3"],
+						"parentId": "3"
+					},
+					{
+						"id": 5,
+						"title": "Comprehensive Transformer Tests",
+						"description": "Write tests for all transformer execution scenarios including stateful transformers. Create mock transformers. Use Serena MCP Server to find test patterns. Aim for 100% coverage.",
+						"status": "done",
+						"dependencies": ["3.4"],
+						"parentId": "3"
+					}
+				]
+			},
+			{
+				"id": "4",
+				"title": "Task 4: Consumer Node Execution",
+				"description": "Implement consumer node execution with input deserialization. Consumers terminate data streams. Use Serena MCP Server to analyze ConsumerNode and Context7 MCP Server for async consumer patterns.",
+				"status": "done",
+				"priority": "high",
+				"dependencies": ["1", "2"],
+				"details": "Update ConsumerNode::spawn_execution_task to handle multiple input ports, deserialize inputs, merge streams, call consumer.consume(). Reference docs/graph-implementation-plan.md Task 4.",
+				"testStrategy": "100% test coverage: single/multiple inputs, empty/finite/infinite streams, deserialization errors, channel errors, pause/resume, graceful shutdown, error propagation, different types, backpressure, concurrent execution, accumulating consumers. Use Serena MCP Server to analyze consumer implementations.",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Analyze ConsumerNode Structure",
+						"description": "Use Serena MCP Server to analyze ConsumerNode, Consumer trait, Input trait, and async consume() method. Understand how consumers process streams. Use Context7 MCP Server for async trait documentation.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "4"
+					},
+					{
+						"id": 2,
+						"title": "Implement Input Stream Merging",
+						"description": "Implement logic to deserialize items from multiple input channels and merge into single stream for consumer. Support fan-in patterns. Use Serena MCP Server to check merge router implementation.",
+						"status": "pending",
+						"dependencies": ["4.1", "1"],
+						"parentId": "4"
+					},
+					{
+						"id": 3,
+						"title": "Implement Consumer Invocation",
+						"description": "Call consumer.consume(stream).await with merged input stream. Handle consumer errors and stream completion. Use Context7 MCP Server for async trait method invocation patterns.",
+						"status": "pending",
+						"dependencies": ["4.2"],
+						"parentId": "4"
+					},
+					{
+						"id": 4,
+						"title": "Implement Pause/Resume Support",
+						"description": "Add pause signal checking in consumer execution. Handle pause/resume gracefully. Use Serena MCP Server to check existing pause/resume patterns.",
+						"status": "pending",
+						"dependencies": ["4.2"],
+						"parentId": "4"
+					},
+					{
+						"id": 5,
+						"title": "Comprehensive Consumer Tests",
+						"description": "Write tests for all consumer execution scenarios including accumulating consumers like VecConsumer. Create mock consumers. Use Serena MCP Server to find test patterns. Aim for 100% coverage.",
+						"status": "pending",
+						"dependencies": ["4.3", "4.4"],
+						"parentId": "4"
+					}
+				]
+			},
+			{
+				"id": "5",
+				"title": "Task 5: Helper Functions Implementation",
+				"description": "Implement dynamic dispatch helper functions for stateful and windowed nodes. Use Serena MCP Server to analyze NodeTrait and type erasure patterns, Context7 MCP Server for std::any::Any documentation.",
+				"status": "pending",
+				"priority": "medium",
+				"dependencies": ["2", "3", "4"],
+				"details": "Add as_stateful() and as_windowed() methods to NodeTrait trait, then implement helper functions that use these methods instead of unsafe downcasting. This approach is safer and more idiomatic Rust. Reference docs/graph-implementation-plan.md Task 5.",
+				"testStrategy": "100% test coverage: stateful/non-stateful nodes, windowed/non-windowed nodes, state operations (get/set/reset), type mismatches, error cases. Use Serena MCP Server to analyze existing stateful node implementation.",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Implement Dynamic Dispatch for Stateful Nodes",
+						"description": "Add as_stateful() method to NodeTrait that returns Option<&dyn StatefulNode>. Then implement is_stateful_node() and get_node_state() using this method instead of unsafe downcasting. This is the idiomatic Rust approach. Use Serena MCP Server to analyze StatefulNode trait implementation.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "5"
+					},
+					{
+						"id": 2,
+						"title": "Implement State Operations with Dynamic Dispatch",
+						"description": "Update set_node_state() and reset_node_state() to use node.as_stateful() method, then call set_state()/reset_state() on the result. Handle type mismatches and errors gracefully. Use Serena MCP Server to check existing stateful transformer patterns.",
+						"status": "pending",
+						"dependencies": ["5.1"],
+						"parentId": "5"
+					},
+					{
+						"id": 3,
+						"title": "Implement Dynamic Dispatch for Windowed Nodes",
+						"description": "Add as_windowed() method to NodeTrait that returns Option<&dyn WindowedNode>, then implement is_windowed_node() and window_config() helper using this method. This follows the same pattern as stateful nodes. Use Serena MCP Server to analyze WindowedNode implementation.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "5"
+					},
+					{
+						"id": 4,
+						"title": "Comprehensive Helper Function Tests",
+						"description": "Write tests for all helper functions with different node types (producer, transformer, consumer, stateful, windowed, non-stateful, non-windowed). Test error cases and type mismatches. Use Serena MCP Server to find test patterns. Aim for 100% coverage.",
+						"status": "pending",
+						"dependencies": ["5.1", "5.2", "5.3"],
+						"parentId": "5"
+					}
+				]
+			},
+			{
+				"id": "6",
+				"title": "Task 6: Time-based Windows",
+				"description": "Implement time-based window support for graph nodes. Integrate with time-based window transformers. Use Serena MCP Server to analyze windowing.rs and Context7 MCP Server for time-based windowing patterns.",
+				"status": "done",
+				"priority": "low",
+				"dependencies": ["3", "5"],
+				"details": "NOTE: Time-based window transformers do NOT exist yet. WindowTransformer only supports count-based windows (usize size). Task 6 is INCLUDED until time-based window transformers are implemented. Current create_window_node() returns error for WindowSize::Time. Reference docs/graph-implementation-plan.md Task 6.",
+				"testStrategy": "100% test coverage: time-based tumbling/sliding/session windows, valid/invalid durations, window execution, pause/resume, graceful shutdown. Use Serena MCP Server to check window transformer implementations.",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Implement TimeWindowTransformer",
+						"description": "Create TimeWindowTransformer struct in packages/transformers/window that accepts Duration parameter. Implement Transformer trait with time-based windowing logic using streamweave-window package (TumblingWindowAssigner, SlidingWindowAssigner, SessionWindowAssigner). Support async timer-based windowing with tokio::time.",
+						"status": "done",
+						"dependencies": [],
+						"parentId": "6"
+					},
+					{
+						"id": 2,
+						"title": "Update create_window_node() to Handle WindowSize::Time",
+						"description": "Update create_window_node() in packages/graph/src/windowing.rs to handle WindowSize::Time variant. Extract Duration from WindowSize::Time, create TimeWindowTransformer node, wrap in TransformerNode.",
+						"status": "done",
+						"dependencies": ["6.1"],
+						"parentId": "6"
+					},
+					{
+						"id": 3,
+						"title": "Implement Time-based Window Configuration Support",
+						"description": "Support time-based tumbling, sliding, and session window configurations. Handle WindowType variants (Tumbling, Sliding, Session) with WindowSize::Time. Validate window configurations.",
 						"status": "done",
 						"dependencies": ["6.2"],
-						"parentId": "undefined",
-						"updatedAt": "2025-12-03T20:48:40.322Z"
+						"parentId": "6"
+					},
+					{
+						"id": 4,
+						"title": "Implement WindowedNode Trait for TimeWindowTransformer",
+						"description": "Ensure TimeWindowTransformer implements WindowedNode trait for graph integration. Implement as_windowed() method for TransformerNode wrapping TimeWindowTransformer.",
+						"status": "done",
+						"dependencies": ["6.1"],
+						"parentId": "6"
+					},
+					{
+						"id": 5,
+						"title": "Write Comprehensive Tests",
+						"description": "Write tests for time-based windows: tumbling/sliding/session windows, valid/invalid durations, window execution, pause/resume, graceful shutdown, error cases.",
+						"status": "done",
+						"dependencies": ["6.3", "6.4"],
+						"parentId": "6"
+					}
+				]
+			},
+			{
+				"id": "7",
+				"title": "Task 7: Integration Tests",
+				"description": "Create comprehensive end-to-end integration tests for graph execution. Test complete graph topologies with all node types. Use Serena MCP Server to analyze graph execution patterns and Context7 MCP Server for integration testing best practices.",
+				"status": "done",
+				"priority": "high",
+				"dependencies": ["2", "3", "4", "5"],
+				"details": "Create integration test suite covering: linear graphs, fan-out, fan-in, complex topologies, stateful transformers, windowed transformers, subgraphs, routers, lifecycle, error handling, backpressure, concurrent execution. VERIFIED: No blockers - fully feasible with standard Rust testing patterns (tokio::test, async tests, mock patterns). Reference docs/graph-implementation-plan.md Task 7.",
+				"testStrategy": "Cover all graph execution scenarios: simple to complex topologies, all node types, all router types, lifecycle operations, error scenarios, performance scenarios. Use Serena MCP Server to find existing integration test patterns.",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Create Integration Test Infrastructure",
+						"description": "Set up integration test module with test utilities (mock components, test harnesses, graph builders). Use Serena MCP Server to analyze existing test infrastructure. Use Context7 MCP Server for Rust testing best practices.",
+						"status": "done",
+						"dependencies": [],
+						"parentId": "7"
+					},
+					{
+						"id": 2,
+						"title": "Simple Graph Integration Tests",
+						"description": "Write tests for simple linear graphs: Producer \u2192 Transformer \u2192 Consumer. Test data flow, serialization round-trip, execution lifecycle. Use Serena MCP Server to find simple graph examples.",
+						"status": "done",
+						"dependencies": ["7.1"],
+						"parentId": "7"
+					},
+					{
+						"id": 3,
+						"title": "Fan-out and Fan-in Graph Tests",
+						"description": "Write tests for fan-out (Producer \u2192 [Transformer1, Transformer2]) and fan-in ([Producer1, Producer2] \u2192 Transformer) patterns. Test router functionality. Use Serena MCP Server to analyze router implementations.",
+						"status": "done",
+						"dependencies": ["7.2"],
+						"parentId": "7"
+					},
+					{
+						"id": 4,
+						"title": "Complex Graph Integration Tests",
+						"description": "Write tests for complex graphs with multiple producers, transformers, consumers, stateful transformers, windowed transformers, subgraphs. Test all combinations. Use Serena MCP Server to find complex graph examples.",
+						"status": "done",
+						"dependencies": ["7.3"],
+						"parentId": "7"
+					},
+					{
+						"id": 5,
+						"title": "Router Integration Tests",
+						"description": "Write tests for all router types (broadcast, round-robin, merge, key-based) in graph execution context. Test router behavior with real data flow. Use Serena MCP Server to analyze router implementations.",
+						"status": "done",
+						"dependencies": ["7.3"],
+						"parentId": "7"
 					},
 					{
 						"id": 6,
-						"title": "Example 6: visualization_debug (Debug Mode)",
-						"description": "Create debug mode visualization example with breakpoint support. Includes debugger API research and understanding, breakpoint setup functionality, debug visualization creation with enhanced DAG metadata, HTML generation with debug UI, breakpoint configuration JSON export, comprehensive README with debug workflow documentation, and testing. See DETAILED_VISUALIZATION_PLAN.md Example 6 for detailed implementation steps.",
+						"title": "Lifecycle and Error Handling Tests",
+						"description": "Write tests for graph execution lifecycle (start, pause, resume, stop), error handling (node failures, channel errors), graceful shutdown, backpressure scenarios. Use Serena MCP Server to analyze execution.rs.",
 						"status": "done",
-						"dependencies": ["6.2"],
-						"parentId": "undefined",
-						"updatedAt": "2025-12-03T20:50:20.810Z"
+						"dependencies": ["7.4"],
+						"parentId": "7"
 					},
 					{
 						"id": 7,
-						"title": "Example 7: visualization_server (Conditional HTTP Server)",
-						"description": "Evaluate and conditionally implement HTTP server example for serving visualizations. Includes evaluation of server.rs implementation readiness, decision point based on server feature availability, if ready: implement server startup, DAG serving, UI serving, graceful shutdown, console output with URL, and README with server instructions. If not ready: document requirements and skip. See DETAILED_VISUALIZATION_PLAN.md Example 7 for detailed implementation steps.",
+						"title": "Performance and Concurrent Execution Tests",
+						"description": "Write tests for concurrent execution, different data types, serialization performance, memory usage. Use Serena MCP Server to find performance testing patterns. Use Context7 MCP Server for benchmarking best practices.",
 						"status": "done",
-						"dependencies": ["6.2"],
-						"parentId": "undefined",
-						"updatedAt": "2025-12-03T20:52:37.814Z"
+						"dependencies": ["7.5", "7.6"],
+						"parentId": "7"
+					}
+				]
+			},
+			{
+				"id": "8",
+				"title": "Task 8: Error Handling and Edge Cases",
+				"description": "Implement comprehensive error handling and edge case coverage for all execution components. Use Serena MCP Server to analyze existing error handling patterns and Context7 MCP Server for error handling best practices.",
+				"status": "done",
+				"priority": "medium",
+				"dependencies": ["2", "3", "4", "7"],
+				"details": "Handle all error scenarios: serialization/deserialization errors, channel errors, stream errors, node execution errors, pause/resume errors, shutdown timeout errors, invalid topology errors. VERIFIED: No blockers - fully feasible with standard Rust error handling patterns (Result types, error propagation, logging). Reference docs/graph-implementation-plan.md Task 8.",
+				"testStrategy": "100% error path coverage: all error scenarios, error propagation through graph, error recovery where applicable, error logging. Use Serena MCP Server to find error handling patterns.",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Analyze Existing Error Handling",
+						"description": "Use Serena MCP Server to analyze ExecutionError, SerializationError, and existing error handling patterns in execution.rs and node.rs. Identify gaps in error handling. Use Context7 MCP Server for Rust error handling best practices.",
+						"status": "done",
+						"dependencies": [],
+						"parentId": "8"
 					},
 					{
-						"id": 8,
-						"title": "Global Testing and Documentation",
-						"description": "Comprehensive testing and documentation updates for all visualization examples. Includes compilation testing for all examples (cargo check --examples), runtime testing to verify output files are created, documentation review and consistency check, update main README.md with visualization examples section listing all examples with links and descriptions, and final validation of all examples. See DETAILED_VISUALIZATION_PLAN.md Global Tasks section for detailed steps.",
+						"id": 2,
+						"title": "Implement Serialization Error Handling",
+						"description": "Ensure all serialization/deserialization errors are caught, logged, and propagated correctly. Add clear error messages. Use Serena MCP Server to check serialization.rs error handling.",
 						"status": "done",
-						"dependencies": ["6.1", "6.2", "6.3", "6.4", "6.5", "6.6"],
-						"parentId": "undefined",
-						"updatedAt": "2025-12-03T20:53:01.024Z"
+						"dependencies": ["8.1"],
+						"parentId": "8"
+					},
+					{
+						"id": 3,
+						"title": "Implement Channel Error Handling",
+						"description": "Handle channel errors (sender/receiver dropped, backpressure, channel closed) gracefully in all node types. Provide clear error messages. Use Context7 MCP Server for tokio channel error patterns.",
+						"status": "done",
+						"dependencies": ["8.1"],
+						"parentId": "8"
+					},
+					{
+						"id": 4,
+						"title": "Implement Stream Error Handling",
+						"description": "Handle stream errors (producer/transformer stream failures) gracefully. Propagate errors correctly through graph. Use Serena MCP Server to analyze stream error patterns.",
+						"status": "done",
+						"dependencies": ["8.1"],
+						"parentId": "8"
+					},
+					{
+						"id": 5,
+						"title": "Implement Node Execution Error Handling",
+						"description": "Handle node execution errors (task panics, execution failures) gracefully. Collect and report errors from node tasks. Use Serena MCP Server to check execution.rs error collection.",
+						"status": "done",
+						"dependencies": ["8.1"],
+						"parentId": "8"
+					},
+					{
+						"id": 6,
+						"title": "Implement Lifecycle Error Handling",
+						"description": "Handle pause/resume errors, shutdown timeout errors, invalid topology errors. Ensure graceful degradation. Use Serena MCP Server to analyze lifecycle error handling.",
+						"status": "done",
+						"dependencies": ["8.1"],
+						"parentId": "8"
+					},
+					{
+						"id": 7,
+						"title": "Comprehensive Error Handling Tests",
+						"description": "Write tests for all error scenarios: serialization, deserialization, channel, stream, node execution, lifecycle errors. Test error propagation, recovery, logging. Use Serena MCP Server to find error injection patterns. Aim for 100% error path coverage.",
+						"status": "done",
+						"dependencies": ["8.2", "8.3", "8.4", "8.5", "8.6"],
+						"parentId": "8"
 					}
-				],
-				"updatedAt": "2025-12-03T20:53:01.024Z"
+				]
 			}
 		],
 		"metadata": {
 			"version": "1.0.0",
-			"lastModified": "2025-12-03T20:53:01.024Z",
-			"taskCount": 1,
+			"lastModified": "2025-12-28T11:03:13.737Z",
+			"taskCount": 8,
 			"completedCount": 1,
 			"tags": ["master"]
 		}

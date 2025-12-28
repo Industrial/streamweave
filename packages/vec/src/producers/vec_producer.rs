@@ -5,6 +5,7 @@ use streamweave_error::ErrorStrategy;
 ///
 /// This producer iterates over all items in the Vec and produces them
 /// in order.
+#[derive(Clone)]
 pub struct VecProducer<T>
 where
   T: std::fmt::Debug + Clone + Send + Sync + 'static,

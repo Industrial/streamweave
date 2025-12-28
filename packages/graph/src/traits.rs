@@ -7,7 +7,7 @@
 ///
 /// This trait allows nodes to be stored in a type-erased HashMap while still
 /// providing access to basic node information.
-pub trait NodeTrait: Send + Sync {
+pub trait NodeTrait: Send + Sync + std::any::Any {
   /// Returns the name of this node.
   fn name(&self) -> &str;
 
@@ -90,6 +90,34 @@ pub trait NodeTrait: Send + Sync {
     _output_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Sender<Vec<u8>>>,
     _pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
+    None
+  }
+
+  /// Try to get a reference to the StatefulNode interface if this node is stateful.
+  ///
+  /// # Returns
+  ///
+  /// `Some(&dyn StatefulNode)` if this node implements StatefulNode, `None` otherwise.
+  ///
+  /// # Note
+  ///
+  /// Default implementation returns `None`. Nodes that implement StatefulNode
+  /// should override this method to return `Some(self)`.
+  fn as_stateful(&self) -> Option<&dyn crate::stateful::StatefulNode> {
+    None
+  }
+
+  /// Try to get a reference to the WindowedNode interface if this node is windowed.
+  ///
+  /// # Returns
+  ///
+  /// `Some(&dyn WindowedNode)` if this node implements WindowedNode, `None` otherwise.
+  ///
+  /// # Note
+  ///
+  /// Default implementation returns `None`. Nodes that implement WindowedNode
+  /// should override this method to return `Some(self)`.
+  fn as_windowed(&self) -> Option<&dyn crate::windowing::WindowedNode> {
     None
   }
 }
