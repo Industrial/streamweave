@@ -32,7 +32,8 @@ members = [
   "packages/producers/http-poll",
   # Consumer-only packages (no matching producer)
   "packages/consumers/console",
-  "packages/consumers/tokio-channel",
+  # Tokio integration (producer and consumer)
+  "packages/tokio",
   # Transformer package (unified)
   "packages/transformers",
   # Integration packages

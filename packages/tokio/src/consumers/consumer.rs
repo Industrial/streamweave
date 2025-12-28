@@ -210,7 +210,7 @@ mod tests {
     assert_eq!(info.name, name);
     assert_eq!(
       info.type_name,
-      "streamweave_consumer_tokio_channel::channel_consumer::ChannelConsumer<i32>"
+      "streamweave_tokio::consumers::channel_consumer::ChannelConsumer<i32>"
     );
   }
 
@@ -232,7 +232,7 @@ mod tests {
     assert_eq!(context.component_name, name);
     assert_eq!(
       context.component_type,
-      "streamweave_consumer_tokio_channel::channel_consumer::ChannelConsumer<i32>"
+      "streamweave_tokio::consumers::channel_consumer::ChannelConsumer<i32>"
     );
     assert_eq!(context.item, Some(item));
   }
