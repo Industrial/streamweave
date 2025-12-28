@@ -1,10 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
-use streamweave::ProducerConfig;
-use streamweave_error::ErrorStrategy;
 
-/// Database type supported by the producer.
+/// Database type supported by the producer and consumer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum DatabaseType {
   /// PostgreSQL database
@@ -16,12 +14,42 @@ pub enum DatabaseType {
   Sqlite,
 }
 
+/// A row result from a database query.
+///
+/// This type represents a single row from a database query result,
+/// with column names as keys and values as JSON values.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DatabaseRow {
+  /// Column names and their values.
+  pub fields: HashMap<String, serde_json::Value>,
+}
+
+impl DatabaseRow {
+  /// Creates a new database row from a HashMap of fields.
+  #[must_use]
+  pub fn new(fields: HashMap<String, serde_json::Value>) -> Self {
+    Self { fields }
+  }
+
+  /// Gets a value by column name.
+  #[must_use]
+  pub fn get(&self, column: &str) -> Option<&serde_json::Value> {
+    self.fields.get(column)
+  }
+
+  /// Gets all column names.
+  #[must_use]
+  pub fn columns(&self) -> Vec<String> {
+    self.fields.keys().cloned().collect()
+  }
+}
+
 /// Configuration for database query producer behavior.
 #[derive(Debug, Clone)]
 pub struct DatabaseProducerConfig {
   /// Database connection URL (e.g., "postgresql://user:pass@localhost/dbname").
   pub connection_url: String,
-  /// Type of database (PostgreSQL or MySQL).
+  /// Type of database (PostgreSQL, MySQL, or SQLite).
   pub database_type: DatabaseType,
   /// SQL query to execute.
   pub query: String,
@@ -256,157 +284,13 @@ impl DatabaseConsumerConfig {
   }
 }
 
-/// A row result from a database query.
-///
-/// This type represents a single row from a database query result,
-/// with column names as keys and values as JSON values.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DatabaseRow {
-  /// Column names and their values.
-  pub fields: HashMap<String, serde_json::Value>,
-}
-
-impl DatabaseRow {
-  /// Creates a new database row from a HashMap of fields.
-  #[must_use]
-  pub fn new(fields: HashMap<String, serde_json::Value>) -> Self {
-    Self { fields }
-  }
-
-  /// Gets a value by column name.
-  #[must_use]
-  pub fn get(&self, column: &str) -> Option<&serde_json::Value> {
-    self.fields.get(column)
-  }
-
-  /// Gets all column names.
-  #[must_use]
-  pub fn columns(&self) -> Vec<String> {
-    self.fields.keys().cloned().collect()
-  }
-}
-
-/// A producer that executes database queries and streams the results.
-///
-/// This producer supports both PostgreSQL and MySQL databases, uses
-/// connection pooling, and provides cursor-based iteration for large
-/// result sets to keep memory usage bounded.
-///
-/// # Example
-///
-/// ```ignore
-/// use streamweave::producers::streamweave_database::{DatabaseProducer, DatabaseProducerConfig, DatabaseType};
-///
-/// let producer = DatabaseProducer::new(
-///     DatabaseProducerConfig::default()
-///         .with_connection_url("postgresql://user:pass@localhost/dbname")
-///         .with_database_type(DatabaseType::Postgres)
-///         .with_query("SELECT id, name, email FROM users WHERE active = $1")
-///         .with_parameter(serde_json::Value::Bool(true))
-///         .with_fetch_size(100)
-/// );
-/// ```
-pub struct DatabaseProducer {
-  /// Producer configuration.
-  pub config: ProducerConfig<DatabaseRow>,
-  /// Database-specific configuration.
-  pub db_config: DatabaseProducerConfig,
-  /// Connection pool (initialized lazily).
-  pub(crate) pool: Option<DatabasePool>,
-}
-
-/// Internal enum to hold different database connection pools.
-#[derive(Debug)]
-pub(crate) enum DatabasePool {
-  Postgres(sqlx::PgPool),
-  Mysql(sqlx::MySqlPool),
-  Sqlite(sqlx::SqlitePool),
-}
-
-impl DatabaseProducer {
-  /// Creates a new database producer with the given configuration.
-  #[must_use]
-  pub fn new(db_config: DatabaseProducerConfig) -> Self {
-    Self {
-      config: ProducerConfig::default(),
-      db_config,
-      pool: None,
-    }
-  }
-
-  /// Sets the error strategy for the producer.
-  #[must_use]
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<DatabaseRow>) -> Self {
-    self.config.error_strategy = strategy;
-    self
-  }
-
-  /// Sets the name for the producer.
-  #[must_use]
-  pub fn with_name(mut self, name: String) -> Self {
-    self.config.name = Some(name);
-    self
-  }
-
-  /// Returns the database producer configuration.
-  #[must_use]
-  pub fn db_config(&self) -> &DatabaseProducerConfig {
-    &self.db_config
-  }
-}
-
-impl Clone for DatabaseProducer {
-  fn clone(&self) -> Self {
-    Self {
-      config: self.config.clone(),
-      db_config: self.db_config.clone(),
-      pool: None, // Pool cannot be cloned, will be re-created
-    }
-  }
-}
-
 #[cfg(test)]
 mod tests {
   use super::*;
 
   #[test]
-  fn test_database_producer_config_default() {
-    let config = DatabaseProducerConfig::default();
-    assert_eq!(config.database_type, DatabaseType::Postgres);
-    assert_eq!(config.max_connections, 10);
-    assert_eq!(config.fetch_size, 1000);
-    assert!(!config.enable_ssl);
-  }
-
-  #[test]
-  fn test_database_producer_config_builder() {
-    let config = DatabaseProducerConfig::default()
-      .with_connection_url("postgresql://user:pass@localhost/db")
-      .with_database_type(DatabaseType::Mysql)
-      .with_query("SELECT * FROM users")
-      .with_parameter(serde_json::Value::Number(1.into()))
-      .with_max_connections(20)
-      .with_fetch_size(500)
-      .with_ssl(true);
-
-    assert_eq!(config.connection_url, "postgresql://user:pass@localhost/db");
-    assert_eq!(config.database_type, DatabaseType::Mysql);
-    assert_eq!(config.query, "SELECT * FROM users");
-    assert_eq!(config.parameters.len(), 1);
-    assert_eq!(config.max_connections, 20);
-    assert_eq!(config.fetch_size, 500);
-    assert!(config.enable_ssl);
-  }
-
-  #[test]
-  fn test_database_producer_config_sqlite() {
-    let config = DatabaseProducerConfig::default()
-      .with_connection_url("sqlite::memory:")
-      .with_database_type(DatabaseType::Sqlite)
-      .with_query("SELECT * FROM users WHERE id = ?");
-
-    assert_eq!(config.connection_url, "sqlite::memory:");
-    assert_eq!(config.database_type, DatabaseType::Sqlite);
+  fn test_database_type() {
+    assert_eq!(DatabaseType::default(), DatabaseType::Postgres);
   }
 
   #[test]
@@ -425,5 +309,23 @@ mod tests {
       Some(&serde_json::Value::String("Alice".to_string()))
     );
     assert_eq!(row.columns().len(), 2);
+  }
+
+  #[test]
+  fn test_database_producer_config_default() {
+    let config = DatabaseProducerConfig::default();
+    assert_eq!(config.database_type, DatabaseType::Postgres);
+    assert_eq!(config.max_connections, 10);
+    assert_eq!(config.fetch_size, 1000);
+    assert!(!config.enable_ssl);
+  }
+
+  #[test]
+  fn test_database_consumer_config_default() {
+    let config = DatabaseConsumerConfig::default();
+    assert_eq!(config.database_type, DatabaseType::Postgres);
+    assert_eq!(config.batch_size, 100);
+    assert_eq!(config.batch_timeout, Duration::from_secs(5));
+    assert!(config.use_transactions);
   }
 }

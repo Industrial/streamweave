@@ -1,43 +1,26 @@
-use super::super::producers::database_producer::{
-  DatabaseConsumerConfig, DatabasePool, DatabaseRow,
-};
 use std::time::Instant;
 use streamweave::ConsumerConfig;
+use streamweave_database::{DatabaseConsumerConfig, DatabaseRow};
 use streamweave_error::ErrorStrategy;
 
-/// A consumer that writes database rows to a database table.
+/// A consumer that writes database rows to a MySQL table.
 ///
-/// This consumer supports batch insertion for performance, transaction management,
-/// and works with PostgreSQL, MySQL, and SQLite databases.
-///
-/// # Example
-///
-/// ```ignore
-/// use streamweave::consumers::streamweave_database::{DatabaseConsumer, DatabaseConsumerConfig, DatabaseType};
-///
-/// let consumer = DatabaseConsumer::new(
-///     DatabaseConsumerConfig::default()
-///         .with_connection_url("postgresql://user:pass@localhost/dbname")
-///         .with_database_type(DatabaseType::Postgres)
-///         .with_table_name("users")
-///         .with_batch_size(100)
-/// );
-/// ```
-pub struct DatabaseConsumer {
+/// This consumer supports batch insertion for performance and transaction management.
+pub struct MysqlConsumer {
   /// Consumer configuration.
   pub config: ConsumerConfig<DatabaseRow>,
   /// Database-specific configuration.
   pub db_config: DatabaseConsumerConfig,
   /// Connection pool (initialized lazily).
-  pub(crate) pool: Option<DatabasePool>,
+  pub(crate) pool: Option<sqlx::MySqlPool>,
   /// Buffer for batch insertion.
   pub(crate) batch_buffer: Vec<DatabaseRow>,
   /// Timestamp of last batch flush.
   pub(crate) last_flush: Instant,
 }
 
-impl DatabaseConsumer {
-  /// Creates a new database consumer with the given configuration.
+impl MysqlConsumer {
+  /// Creates a new MySQL consumer with the given configuration.
   #[must_use]
   pub fn new(db_config: DatabaseConsumerConfig) -> Self {
     Self {
@@ -70,12 +53,12 @@ impl DatabaseConsumer {
   }
 }
 
-impl Clone for DatabaseConsumer {
+impl Clone for MysqlConsumer {
   fn clone(&self) -> Self {
     Self {
       config: self.config.clone(),
       db_config: self.db_config.clone(),
-      pool: None, // Pool cannot be cloned, will be re-created
+      pool: None,
       batch_buffer: Vec::new(),
       last_flush: Instant::now(),
     }
