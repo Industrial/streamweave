@@ -1,5 +1,5 @@
 [package]
-name = "array"
+name = "streamweave-array"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

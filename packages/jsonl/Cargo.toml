@@ -1,5 +1,5 @@
 [package]
-name = "jsonl"
+name = "streamweave-jsonl"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

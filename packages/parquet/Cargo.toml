@@ -1,5 +1,5 @@
 [package]
-name = "parquet"
+name = "streamweave-parquet"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

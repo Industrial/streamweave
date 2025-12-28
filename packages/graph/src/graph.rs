@@ -1334,8 +1334,8 @@ mod tests {
   use super::*;
   use crate::node::{ConsumerNode, ProducerNode, TransformerNode};
   use streamweave_transformer_map::MapTransformer;
-  use vec::consumers::VecConsumer;
-  use vec::producers::VecProducer;
+  use streamweave_vec::consumers::VecConsumer;
+  use streamweave_vec::producers::VecProducer;
 
   #[test]
   fn test_graph_new() {

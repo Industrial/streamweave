@@ -52,7 +52,7 @@ impl JsonlWriteConfig {
 /// # Example
 ///
 /// ```ignore
-/// use streamweave::consumers::jsonl::jsonl_consumer::JsonlConsumer;
+/// use streamweave::consumers::streamweave_jsonl::jsonl_consumer::JsonlConsumer;
 /// use serde::Serialize;
 ///
 /// #[derive(Serialize)]

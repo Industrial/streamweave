@@ -1,5 +1,5 @@
 [package]
-name = "kafka"
+name = "streamweave-kafka"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

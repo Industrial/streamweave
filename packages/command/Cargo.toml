@@ -1,5 +1,5 @@
 [package]
-name = "command"
+name = "streamweave-command"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

@@ -281,8 +281,8 @@ impl std::error::Error for ConnectionError {}
 #[cfg(test)]
 mod tests {
   use super::*;
-  use vec::consumers::VecConsumer;
-  use vec::producers::VecProducer;
+  use streamweave_vec::consumers::VecConsumer;
+  use streamweave_vec::producers::VecProducer;
 
   // Note: Tests for transformer connections are covered in integration tests
   // Type alias tests with MapTransformer are removed due to closure type constraints

@@ -183,7 +183,7 @@ mod tests {
     assert_eq!(info.name, "");
     assert_eq!(
       info.type_name,
-      "command::consumers::command_consumer::CommandConsumer<alloc::string::String>"
+      "streamweave_command::consumers::command_consumer::CommandConsumer<alloc::string::String>"
     );
   }
 
@@ -202,7 +202,7 @@ mod tests {
     assert_eq!(context.component_name, "");
     assert_eq!(
       context.component_type,
-      "command::consumers::command_consumer::CommandConsumer<alloc::string::String>"
+      "streamweave_command::consumers::command_consumer::CommandConsumer<alloc::string::String>"
     );
     assert_eq!(context.item, Some(item));
   }

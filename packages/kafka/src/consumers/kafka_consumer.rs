@@ -118,7 +118,7 @@ impl KafkaProducerConfig {
 /// # Example
 ///
 /// ```ignore
-/// use streamweave::consumers::kafka::kafka_consumer::KafkaConsumer;
+/// use streamweave::consumers::rdkafka::kafka_consumer::KafkaConsumer;
 /// use serde::Serialize;
 ///
 /// #[derive(Serialize)]

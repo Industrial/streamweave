@@ -1,5 +1,5 @@
 [package]
-name = "redis"
+name = "streamweave-redis"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

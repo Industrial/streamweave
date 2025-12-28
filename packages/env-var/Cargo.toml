@@ -1,5 +1,5 @@
 [package]
-name = "env-var"
+name = "streamweave-env-var"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

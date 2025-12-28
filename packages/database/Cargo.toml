@@ -1,5 +1,5 @@
 [package]
-name = "database"
+name = "streamweave-database"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

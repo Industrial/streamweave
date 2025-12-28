@@ -134,7 +134,7 @@ pub struct KafkaMessage {
 /// # Example
 ///
 /// ```ignore
-/// use streamweave::producers::kafka::kafka_producer::KafkaProducer;
+/// use streamweave::producers::rdkafka::kafka_producer::KafkaProducer;
 ///
 /// let producer = KafkaProducer::new(
 ///     KafkaConsumerConfig::default()

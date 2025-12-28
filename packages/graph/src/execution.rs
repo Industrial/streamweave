@@ -851,7 +851,7 @@ impl GraphExecution for Graph {
 mod tests {
   use super::*;
   use crate::{GraphBuilder, ProducerNode};
-  use vec::producers::VecProducer;
+  use streamweave_vec::producers::VecProducer;
 
   #[tokio::test]
   async fn test_graph_executor_creation() {
@@ -997,7 +997,7 @@ mod tests {
   #[tokio::test]
   async fn test_graph_executor_channel_creation() {
     use crate::{GraphBuilder, ProducerNode};
-    use vec::producers::VecProducer;
+    use streamweave_vec::producers::VecProducer;
 
     // Create a simple graph with one node (no connections yet)
     let graph = GraphBuilder::new()
@@ -1018,7 +1018,7 @@ mod tests {
   #[tokio::test]
   async fn test_graph_executor_channel_helpers() {
     use crate::{GraphBuilder, ProducerNode};
-    use vec::producers::VecProducer;
+    use streamweave_vec::producers::VecProducer;
 
     // Create a simple graph
     let graph = GraphBuilder::new()

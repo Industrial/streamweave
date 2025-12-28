@@ -158,7 +158,7 @@ impl DatabaseRow {
 /// # Example
 ///
 /// ```ignore
-/// use streamweave::producers::database::{DatabaseProducer, DatabaseProducerConfig, DatabaseType};
+/// use streamweave::producers::streamweave_database::{DatabaseProducer, DatabaseProducerConfig, DatabaseType};
 ///
 /// let producer = DatabaseProducer::new(
 ///     DatabaseProducerConfig::default()

@@ -12,7 +12,7 @@ use streamweave_error::ErrorStrategy;
 /// # Example
 ///
 /// ```ignore
-/// use streamweave::producers::jsonl::jsonl_producer::JsonlProducer;
+/// use streamweave::producers::streamweave_jsonl::jsonl_producer::JsonlProducer;
 /// use serde::Deserialize;
 ///
 /// #[derive(Deserialize)]

@@ -135,7 +135,7 @@ mod tests {
       prop_assert_eq!(info.name.as_str(), name.as_str());
       prop_assert_eq!(
         info.type_name,
-        "array::consumers::array_consumer::ArrayConsumer<i32, 3>"
+        "streamweave_array::consumers::array_consumer::ArrayConsumer<i32, 3>"
       );
     }
 
@@ -150,7 +150,7 @@ mod tests {
       prop_assert_eq!(context.component_name.as_str(), name.as_str());
       prop_assert_eq!(
         context.component_type,
-        "array::consumers::array_consumer::ArrayConsumer<i32, 3>"
+        "streamweave_array::consumers::array_consumer::ArrayConsumer<i32, 3>"
       );
       prop_assert_eq!(context.item, Some(item));
     }
