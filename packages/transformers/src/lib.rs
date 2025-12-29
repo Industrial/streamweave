@@ -1,6 +1,4 @@
-//! Transformers for StreamWeave
-//!
-//! This package provides a collection of transformers for use in StreamWeave pipelines and graphs.
+#![doc = include_str!("../README.md")]
 
 // Declare all transformer modules
 // Note: Directory names use hyphens, but Rust modules use underscores

@@ -405,7 +405,7 @@
 				"id": "9",
 				"title": "Task 9: Transformers Package Documentation",
 				"description": "Create standalone README file for the transformers package. This is a large package containing many transformer implementations that should be comprehensively documented.",
-				"status": "pending",
+				"status": "done",
 				"priority": "high",
 				"dependencies": ["1"],
 				"details": "Create comprehensive README for the transformers package covering all transformer types. The README should be well-organized with sections for different transformer categories, quick start examples, and detailed usage examples for each transformer type. Include README in rustdoc.",
@@ -415,7 +415,7 @@
 						"id": 1,
 						"title": "Create transformers Package README Structure",
 						"description": "Create comprehensive README structure for streamweave-transformers package. Organize transformers into categories: basic (map, filter, reduce), advanced (batch, retry, circuit-breaker, rate-limit), stateful (running-sum, moving-average), windowing, routing (router, partition, round-robin), merging (merge, ordered-merge, interleave), ML (inference, batched-inference), and utility (sample, skip, take, limit, sort, split, zip, timeout, message-dedupe).",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "9"
 					},
@@ -423,7 +423,7 @@
 						"id": 2,
 						"title": "Document Basic Transformers",
 						"description": "Document basic transformers: MapTransformer, FilterTransformer, ReduceTransformer with examples for each. Include usage patterns, common use cases, and performance considerations.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["9.1"],
 						"parentId": "9"
 					},
@@ -431,7 +431,7 @@
 						"id": 3,
 						"title": "Document Advanced Transformers",
 						"description": "Document advanced transformers: BatchTransformer, RetryTransformer, CircuitBreakerTransformer, RateLimitTransformer with examples for each. Include configuration options, error handling, and resilience patterns.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["9.1"],
 						"parentId": "9"
 					},
@@ -439,7 +439,7 @@
 						"id": 4,
 						"title": "Document Stateful and Windowing Transformers",
 						"description": "Document stateful transformers: RunningSumTransformer, MovingAverageTransformer and windowing transformers with examples. Include state management patterns and window configuration.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["9.1"],
 						"parentId": "9"
 					},
@@ -447,7 +447,7 @@
 						"id": 5,
 						"title": "Document Routing and Merging Transformers",
 						"description": "Document routing transformers: RouterTransformer, PartitionTransformer, RoundRobinTransformer and merging transformers: MergeTransformer, OrderedMergeTransformer, InterleaveTransformer with examples. Include routing strategies and merge patterns.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["9.1"],
 						"parentId": "9"
 					},
@@ -455,7 +455,7 @@
 						"id": 6,
 						"title": "Document ML and Utility Transformers",
 						"description": "Document ML transformers: InferenceTransformer, BatchedInferenceTransformer and utility transformers: SampleTransformer, SkipTransformer, TakeTransformer, LimitTransformer, SortTransformer, SplitTransformer, ZipTransformer, TimeoutTransformer, MessageDedupeTransformer with examples. Include ML model integration and utility patterns.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["9.1"],
 						"parentId": "9"
 					}
