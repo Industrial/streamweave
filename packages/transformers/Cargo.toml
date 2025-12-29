@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-transformers"
-version = "0.3.0"
+version = "0.4.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -13,10 +13,10 @@ description = "Transformers for StreamWeave"
 
 [dependencies]
 # Core dependencies
-streamweave = { path = "../streamweave", version = "0.3.0" }
-streamweave-error = { path = "../error", version = "0.3.0" }
-streamweave-message = { path = "../message", version = "0.3.0" }
-streamweave-stateful = { path = "../stateful", version = "0.3.0" }
+streamweave = { path = "../streamweave", version = "0.4.0" }
+streamweave-error = { path = "../error", version = "0.4.0" }
+streamweave-message = { path = "../message", version = "0.4.0" }
+streamweave-stateful = { path = "../stateful", version = "0.4.0" }
 
 # Async runtime and utilities
 tokio = { workspace = true, features = ["macros", "rt", "time", "sync"] }
