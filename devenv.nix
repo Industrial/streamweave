@@ -61,7 +61,6 @@
     # Documentation tools
     mdbook
     mdbook-mermaid
-    # Doxidize will be installed via cargo install in devenv
 
     # Version management
     git

@@ -32,29 +32,21 @@ Thank you for your interest in contributing to StreamWeave! This guide will help
 
 ### Generating Documentation
 
-StreamWeave uses Doxidize for documentation generation:
+StreamWeave uses rustdoc for documentation generation:
 
-1. **Install Doxidize** (if not already installed)
-   ```bash
-   cargo install doxidize
-   ```
-
-2. **Generate documentation**
+1. **Generate documentation**
    ```bash
    ./bin/docs
    ```
 
    This will:
-   - Try to use Doxidize if available
-   - Fall back to `cargo doc` if Doxidize is not available
-   - Output documentation to `target/doc/` or `target/doc/doxidize/`
+   - Generate documentation using `cargo doc`
+   - Output documentation to `target/doc/`
 
-3. **View documentation**
+2. **View documentation**
    ```bash
-   # Open in browser (cargo doc)
+   # Open in browser
    cargo doc --open
-   
-   # Or navigate to target/doc/doxidize/index.html (Doxidize)
    ```
 
 ### Documentation Standards

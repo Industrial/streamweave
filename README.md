@@ -463,7 +463,7 @@ assert_eq!(consumer.collected, vec!["1", "2", "3"]);
 ## 📚 Documentation
 
 - [API Documentation](https://docs.rs/streamweave)
-- [Local Documentation](target/doc/streamweave/index.html) - Generated with Doxidize (run `./bin/docs`)
+- [Local Documentation](target/doc/streamweave/index.html) - Generated with rustdoc (run `./bin/docs`)
 - [Graph API Guide](GRAPH.md) - Advanced graph patterns, routing strategies, and Flow-Based Programming
 - [Getting Started Guide](docs/getting_started.md)
 - [Architecture Overview](docs/architecture.md)

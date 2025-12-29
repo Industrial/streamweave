@@ -31,7 +31,7 @@
 						"id": 3,
 						"title": "Remove Doxidize Configuration",
 						"description": "Remove Doxidize.toml file and any references to Doxidize in build scripts, documentation, or CI configurations. Ensure all documentation generation uses rustdoc only.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": [],
 						"parentId": "1"
 					},
