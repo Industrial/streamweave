@@ -1,4 +1,4 @@
-//! Windowing operations for StreamWeave
+#![doc = include_str!("../README.md")]
 
 pub mod transformers;
 pub mod window;

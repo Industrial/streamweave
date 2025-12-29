@@ -143,7 +143,7 @@
 						"id": 4,
 						"title": "Create window Package README",
 						"description": "Create README for streamweave-window package covering: Window types (tumbling, sliding, session), window assigners, time-based and count-based windows, window configuration. Include examples: tumbling window, sliding window, session window, time-based windows, count-based windows.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "3"
 					},
