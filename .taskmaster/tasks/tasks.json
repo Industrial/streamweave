@@ -67,7 +67,7 @@
 						"id": 1,
 						"title": "Create streamweave Core Package README",
 						"description": "Create README for streamweave core package covering: Producer, Transformer, Consumer traits, Input/Output traits, Port system, configuration system, error handling integration. Include examples for each trait, quick start pipeline example, and link to docs.rs/streamweave.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "2"
 					},

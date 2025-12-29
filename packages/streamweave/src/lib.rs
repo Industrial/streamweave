@@ -1,7 +1,4 @@
-//! Core traits and types for StreamWeave
-//!
-//! This package provides the foundational traits and types that all other
-//! StreamWeave packages depend on.
+#![doc = include_str!("../README.md")]
 
 pub mod consumer;
 pub mod input;
