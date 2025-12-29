@@ -1,4 +1,4 @@
-//! Stateful transformer support for StreamWeave
+#![doc = include_str!("../README.md")]
 
 pub mod stateful_transformer;
 
