@@ -249,7 +249,7 @@
 				"id": "6",
 				"title": "Task 6: Database Packages Documentation",
 				"description": "Create standalone README files for database packages: database, database-mysql, database-postgresql, database-sqlite. These packages provide database integration.",
-				"status": "pending",
+				"status": "done",
 				"priority": "medium",
 				"dependencies": ["1"],
 				"details": "Create comprehensive README files for the 4 database packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
@@ -259,7 +259,7 @@
 						"id": 1,
 						"title": "Create database Package README",
 						"description": "Create README for streamweave-database package covering: Generic database support, database traits, database abstraction, connection management, query execution patterns. Include examples: database producer setup, database consumer setup, query streaming, connection pooling.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "6"
 					},
@@ -267,7 +267,7 @@
 						"id": 2,
 						"title": "Create database-mysql Package README",
 						"description": "Create README for streamweave-database-mysql package covering: MySQL producer, MySQL consumer, MySQL connection, MySQL-specific features, MySQL query patterns. Include examples: MySQL query streaming, MySQL data insertion, MySQL connection setup, MySQL transaction handling.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "6"
 					},
@@ -275,7 +275,7 @@
 						"id": 3,
 						"title": "Create database-postgresql Package README",
 						"description": "Create README for streamweave-database-postgresql package covering: PostgreSQL producer, PostgreSQL consumer, PostgreSQL connection, PostgreSQL-specific features, PostgreSQL query patterns. Include examples: PostgreSQL query streaming, PostgreSQL data insertion, PostgreSQL connection setup, PostgreSQL transaction handling.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "6"
 					},
@@ -283,7 +283,7 @@
 						"id": 4,
 						"title": "Create database-sqlite Package README",
 						"description": "Create README for streamweave-database-sqlite package covering: SQLite producer, SQLite consumer, SQLite connection, SQLite-specific features, SQLite query patterns. Include examples: SQLite query streaming, SQLite data insertion, SQLite connection setup, SQLite transaction handling.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "6"
 					}
