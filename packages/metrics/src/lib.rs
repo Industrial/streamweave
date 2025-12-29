@@ -1,4 +1,4 @@
-//! Metrics collection for StreamWeave
+#![doc = include_str!("../README.md")]
 
 pub mod collector;
 pub mod health;

@@ -465,7 +465,7 @@
 				"id": "10",
 				"title": "Task 10: Integration and Utility Packages Documentation",
 				"description": "Create standalone README files for integration and utility packages: integrations/opentelemetry, integrations/sql, metrics, visualization. These packages provide observability and integration capabilities.",
-				"status": "pending",
+				"status": "done",
 				"priority": "medium",
 				"dependencies": ["1"],
 				"details": "Create comprehensive README files for the 4 integration and utility packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
@@ -475,7 +475,7 @@
 						"id": 1,
 						"title": "Create opentelemetry Integration Package README",
 						"description": "Create README for streamweave-integrations-opentelemetry package covering: OpenTelemetry integration, tracing support, metrics export, observability patterns. Include examples: OpenTelemetry setup, tracing pipelines, metrics collection, observability integration.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "10"
 					},
@@ -483,7 +483,7 @@
 						"id": 2,
 						"title": "Create sql Integration Package README",
 						"description": "Create README for streamweave-integrations-sql package covering: SQL integration, SQL query execution, SQL parsing, SQL dialect support. Include examples: SQL query execution, SQL parsing, SQL transformation, SQL dialect usage.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "10"
 					},
@@ -491,7 +491,7 @@
 						"id": 3,
 						"title": "Create metrics Package README",
 						"description": "Create README for streamweave-metrics package covering: Metrics collection, throughput metrics, latency metrics, error metrics, backpressure metrics, Prometheus integration, health checks. Include examples: metrics collection setup, throughput monitoring, latency tracking, Prometheus export, health check usage.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "10"
 					},
@@ -499,7 +499,7 @@
 						"id": 4,
 						"title": "Create visualization Package README",
 						"description": "Create README for streamweave-visualization package covering: Pipeline visualization, graph visualization, DAG generation, visualization formats (DOT, HTML, JSON), visualization server. Include examples: generating pipeline visualizations, graph visualization, DAG export, visualization server setup, interactive visualizations.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "10"
 					}
