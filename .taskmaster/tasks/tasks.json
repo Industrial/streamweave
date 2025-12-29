@@ -57,7 +57,7 @@
 				"id": "2",
 				"title": "Task 2: Core Foundation Packages Documentation",
 				"description": "Create standalone README files for core foundation packages: streamweave, error, message, offset, transaction. These are the foundational packages that other packages depend on.",
-				"status": "pending",
+				"status": "done",
 				"priority": "high",
 				"dependencies": ["1"],
 				"details": "Create comprehensive README files for the 5 core foundation packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
@@ -99,7 +99,7 @@
 						"id": 5,
 						"title": "Create transaction Package README",
 						"description": "Create README for streamweave-transaction package covering: Transaction support, transactional processing, transaction boundaries, rollback support. Include examples of transactional pipelines, error handling in transactions, and transaction guarantees.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "2"
 					}
