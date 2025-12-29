@@ -39,7 +39,7 @@
 						"id": 4,
 						"title": "Add Rustdoc README Integration Pattern",
 						"description": "Create pattern for including README in rustdoc using #![doc = include_str!(\"../README.md\")] in lib.rs files. Document this pattern for consistent application across all packages.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1"],
 						"parentId": "1"
 					},

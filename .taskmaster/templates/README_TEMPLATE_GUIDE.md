@@ -181,6 +181,8 @@ After creating the README, add this to the package's `lib.rs`:
 
 This will include the README content in the generated rustdoc documentation.
 
+For detailed information about this pattern, see [RUSTDOC_README_INTEGRATION.md](RUSTDOC_README_INTEGRATION.md).
+
 ## Example: Producer Package
 
 For a producer package like `streamweave-file`:
@@ -218,6 +220,7 @@ After creating a README using this template:
 1. Review against this guide
 2. Test all code examples
 3. Verify all links work
-4. Add rustdoc integration (`#![doc = include_str!("../README.md")]`)
+4. Add rustdoc integration (`#![doc = include_str!("../README.md")]` at the top of `lib.rs`)
+   - See [RUSTDOC_README_INTEGRATION.md](RUSTDOC_README_INTEGRATION.md) for details
 5. Update main README to link to package README
 
