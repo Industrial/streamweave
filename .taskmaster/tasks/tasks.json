@@ -213,7 +213,7 @@
 				"id": "5",
 				"title": "Task 5: Data Format Packages Documentation",
 				"description": "Create standalone README files for data format packages: csv, jsonl, parquet. These packages handle different data format parsing and serialization.",
-				"status": "pending",
+				"status": "done",
 				"priority": "medium",
 				"dependencies": ["1"],
 				"details": "Create comprehensive README files for the 3 data format packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
@@ -223,7 +223,7 @@
 						"id": 1,
 						"title": "Create csv Package README",
 						"description": "Create README for streamweave-csv package covering: CsvProducer, CsvConsumer, CSV parsing, CSV writing, streaming CSV processing, header handling, delimiter configuration. Include examples: reading CSV files, writing CSV files, CSV transformation, large CSV processing, custom delimiters.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "5"
 					},
@@ -231,7 +231,7 @@
 						"id": 2,
 						"title": "Create jsonl Package README",
 						"description": "Create README for streamweave-jsonl package covering: JsonlProducer, JsonlConsumer, JSON Lines format, streaming JSON parsing, JSON serialization. Include examples: reading JSONL files, writing JSONL files, JSONL transformation, streaming JSON processing, error handling.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "5"
 					},
@@ -239,7 +239,7 @@
 						"id": 3,
 						"title": "Create parquet Package README",
 						"description": "Create README for streamweave-parquet package covering: ParquetProducer, ParquetConsumer, Parquet format support, columnar data processing, Parquet schema handling. Include examples: reading Parquet files, writing Parquet files, Parquet transformation, schema management, columnar operations.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "5"
 					}
