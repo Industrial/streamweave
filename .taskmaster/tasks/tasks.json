@@ -179,7 +179,7 @@
 						"id": 2,
 						"title": "Create file Package README",
 						"description": "Create README for streamweave-file package covering: FileProducer, FileConsumer, file I/O operations, file reading/writing patterns, file streaming. Include examples: reading file line by line, writing to file, file processing pipeline, large file handling.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "4"
 					},
