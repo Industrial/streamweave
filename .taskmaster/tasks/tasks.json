@@ -293,7 +293,7 @@
 				"id": "7",
 				"title": "Task 7: Network Packages Documentation",
 				"description": "Create standalone README files for network packages: kafka, redis, http-server. These packages provide network protocol integration.",
-				"status": "pending",
+				"status": "done",
 				"priority": "high",
 				"dependencies": ["1"],
 				"details": "Create comprehensive README files for the 3 network packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
@@ -303,7 +303,7 @@
 						"id": 1,
 						"title": "Create kafka Package README",
 						"description": "Create README for streamweave-kafka package covering: KafkaProducer, KafkaConsumer, Kafka topic integration, consumer groups, offset management, Kafka configuration. Include examples: producing to Kafka, consuming from Kafka, consumer group setup, offset management, Kafka error handling.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "7"
 					},
@@ -311,7 +311,7 @@
 						"id": 2,
 						"title": "Create redis Package README",
 						"description": "Create README for streamweave-redis package covering: Redis Streams producer, Redis Streams consumer, XADD/XREAD operations, consumer groups, Redis Streams patterns. Include examples: producing to Redis Streams, consuming from Redis Streams, consumer group setup, stream processing, Redis error handling.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "7"
 					},
@@ -319,7 +319,7 @@
 						"id": 3,
 						"title": "Create http-server Package README",
 						"description": "Create README for streamweave-http-server package covering: HttpGraphServer, HTTP request/response handling, path-based routing, middleware support, Axum integration, WebSocket support, SSE support. Include examples: HTTP graph server setup, path routing, middleware usage, WebSocket handling, SSE streaming, request/response correlation.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "7"
 					}
