@@ -171,7 +171,7 @@
 						"id": 1,
 						"title": "Create stdio Package README",
 						"description": "Create README for streamweave-stdio package covering: StdinProducer, StdoutConsumer, StderrConsumer, standard I/O streaming, line-by-line processing. Include examples: reading from stdin, writing to stdout, error output, interactive pipelines.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "4"
 					},
