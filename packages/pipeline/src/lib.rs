@@ -1,6 +1,4 @@
-//! Pipeline API for StreamWeave
-//!
-//! This package provides the Pipeline builder and execution logic.
+#![doc = include_str!("../README.md")]
 
 pub mod pipeline;
 
