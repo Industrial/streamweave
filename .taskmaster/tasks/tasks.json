@@ -91,7 +91,7 @@
 						"id": 4,
 						"title": "Create offset Package README",
 						"description": "Create README for streamweave-offset package covering: Offset management for exactly-once processing, offset tracking, checkpointing, offset storage. Include examples of offset management in consumers, offset persistence, and recovery scenarios.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "2"
 					},

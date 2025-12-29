@@ -1,4 +1,4 @@
-//! Offset tracking for StreamWeave
+#![doc = include_str!("../README.md")]
 
 pub mod offset;
 
