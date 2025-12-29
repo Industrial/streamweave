@@ -1,6 +1,4 @@
-//! Graph API for StreamWeave
-//!
-//! This package provides the Graph API for complex topologies.
+#![doc = include_str!("../README.md")]
 
 pub mod connection;
 pub mod execution;

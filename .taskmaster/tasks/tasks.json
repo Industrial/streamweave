@@ -127,7 +127,7 @@
 						"id": 2,
 						"title": "Create graph Package README",
 						"description": "Create README for streamweave-graph package covering: GraphBuilder, Graph execution, node types (ProducerNode, TransformerNode, ConsumerNode), routing strategies, fan-in/fan-out patterns, subgraphs, lifecycle management. Include examples: simple graph, fan-out graph, fan-in graph, complex topology, routing examples, subgraph usage.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "3"
 					},
