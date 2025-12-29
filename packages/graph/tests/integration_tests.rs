@@ -744,7 +744,6 @@ mod router_tests {
   // These tests document the expected behavior once router integration is complete.
 
   #[tokio::test]
-  #[ignore] // Ignored until router integration is complete
   async fn test_broadcast_router() {
     // Test broadcast router: one producer → multiple transformers
     // All transformers should receive all items
@@ -790,10 +789,12 @@ mod router_tests {
     executor.start().await.unwrap();
     wait_for_completion().await;
     executor.stop().await.unwrap();
+
+    // Verify execution completed without errors
+    assert!(executor.errors().is_empty());
   }
 
   #[tokio::test]
-  #[ignore] // Ignored until router integration is complete
   async fn test_round_robin_router() {
     // Test round-robin router: one producer → multiple transformers
     // Items should be distributed in round-robin fashion
@@ -839,10 +840,12 @@ mod router_tests {
     executor.start().await.unwrap();
     wait_for_completion().await;
     executor.stop().await.unwrap();
+
+    // Verify execution completed without errors
+    assert!(executor.errors().is_empty());
   }
 
   #[tokio::test]
-  #[ignore] // Ignored until router integration is complete
   async fn test_merge_router() {
     // Test merge router: multiple producers → one transformer
     // Items from all producers should be merged
@@ -881,10 +884,12 @@ mod router_tests {
     executor.start().await.unwrap();
     wait_for_completion().await;
     executor.stop().await.unwrap();
+
+    // Verify execution completed without errors
+    assert!(executor.errors().is_empty());
   }
 
   #[tokio::test]
-  #[ignore] // Ignored until router integration is complete
   async fn test_key_based_router() {
     // Test key-based router: route items based on a key function
     // Items with the same key should go to the same port
@@ -930,5 +935,8 @@ mod router_tests {
     executor.start().await.unwrap();
     wait_for_completion().await;
     executor.stop().await.unwrap();
+
+    // Verify execution completed without errors
+    assert!(executor.errors().is_empty());
   }
 }
