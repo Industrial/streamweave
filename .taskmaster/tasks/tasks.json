@@ -187,7 +187,7 @@
 						"id": 3,
 						"title": "Create fs Package README",
 						"description": "Create README for streamweave-fs package covering: DirectoryProducer, DirectoryConsumer, file system operations, directory traversal, file system events. Include examples: directory listing, recursive directory processing, file system monitoring, directory synchronization.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "4"
 					},
