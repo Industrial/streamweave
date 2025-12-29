@@ -3,453 +3,583 @@
 		"tasks": [
 			{
 				"id": "1",
-				"title": "Task 1: Serialization Infrastructure",
-				"description": "Implement serialization infrastructure for graph node execution. This task creates the foundation for serializing and deserializing data between nodes using serde_json. Use Serena MCP Server for code analysis and Context7 MCP Server for serde_json documentation lookup.",
-				"status": "done",
+				"title": "Task 1: Documentation Infrastructure Setup",
+				"description": "Set up infrastructure for package documentation: create README template, update Cargo.toml repository links, remove Doxidize, add rustdoc integration, and update main README.",
+				"status": "pending",
 				"priority": "high",
 				"dependencies": [],
-				"details": "Create serialization module with SerializationError type, serialize/deserialize functions using serde_json, and comprehensive test coverage. This is the foundation for all node execution implementations. Reference docs/graph-implementation-plan.md Task 1 for detailed requirements.",
-				"testStrategy": "100% test coverage including: primitive types, complex types, nested structures, error handling, round-trip tests, edge cases (empty data, large data, special characters). Use Serena MCP Server to analyze existing serialization patterns in the codebase.",
+				"details": "This task establishes the foundation for all package documentation. It includes creating a README template structure, updating all Cargo.toml files with package-specific repository links pointing to subdirectories, removing Doxidize configuration, adding rustdoc include_str! integration pattern, and updating the main README to link to package READMEs instead of containing all content.",
+				"testStrategy": "Verify: repository links work correctly, rustdoc includes README content, main README links are valid, no Doxidize references remain.",
 				"subtasks": [
 					{
 						"id": 1,
-						"title": "Create SerializationError Type",
-						"description": "Create SerializationError enum with variants for serialization and deserialization errors. Use Serena MCP Server to find similar error types in the codebase for consistency. Use Context7 MCP Server to look up serde_json error handling best practices.",
+						"title": "Create README Template Structure",
+						"description": "Create a standardized README template that includes: package description, quick start example, key features, API overview, links to docs.rs, usage examples, dependencies and features. Template should be adaptable for different package types (core, producer, consumer, transformer, integration).",
 						"status": "done",
 						"dependencies": [],
-						"parentId": "1",
-						"updatedAt": "2025-12-28T11:02:54.380Z"
+						"parentId": "1"
 					},
 					{
 						"id": 2,
-						"title": "Implement Serialize Function",
-						"description": "Implement serialize<T: Serialize>(item: &T) -> Result<Vec<u8>, SerializationError> using serde_json. Use Context7 MCP Server to look up serde_json API documentation and best practices. Use Serena MCP Server to analyze existing serialization usage in packages/distributed and packages/visualization.",
-						"status": "done",
-						"dependencies": ["1.1"],
-						"parentId": "1",
-						"updatedAt": "2025-12-28T11:02:56.933Z"
+						"title": "Update All Cargo.toml Repository Links",
+						"description": "Update repository field in all 39 package Cargo.toml files to point to package subdirectories using format: https://github.com/Industrial/streamweave/tree/main/packages/<package-name>. Override workspace repository setting for each package.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
 					},
 					{
 						"id": 3,
-						"title": "Implement Deserialize Function",
-						"description": "Implement deserialize<T: Deserialize>(data: &[u8]) -> Result<T, SerializationError> using serde_json. Use Context7 MCP Server for serde_json deserialization documentation. Use Serena MCP Server to check for existing deserialization patterns.",
-						"status": "done",
-						"dependencies": ["1.1"],
-						"parentId": "1",
-						"updatedAt": "2025-12-28T11:02:59.705Z"
+						"title": "Remove Doxidize Configuration",
+						"description": "Remove Doxidize.toml file and any references to Doxidize in build scripts, documentation, or CI configurations. Ensure all documentation generation uses rustdoc only.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
 					},
 					{
 						"id": 4,
-						"title": "Comprehensive Test Suite",
-						"description": "Write tests for all serialization scenarios: primitives, complex types, nested structures, error cases, round-trips, edge cases. Use Serena MCP Server to find existing test patterns. Aim for 100% code coverage.",
-						"status": "done",
-						"dependencies": ["1.2", "1.3"],
-						"parentId": "1",
-						"updatedAt": "2025-12-28T11:03:02.778Z"
+						"title": "Add Rustdoc README Integration Pattern",
+						"description": "Create pattern for including README in rustdoc using #![doc = include_str!(\"../README.md\")] in lib.rs files. Document this pattern for consistent application across all packages.",
+						"status": "pending",
+						"dependencies": ["1.1"],
+						"parentId": "1"
+					},
+					{
+						"id": 5,
+						"title": "Update Main README to Link to Packages",
+						"description": "Refactor main README.md to be a high-level overview that links to individual package READMEs. Remove package-specific content and replace with organized links to all 39 packages grouped by category.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
 					}
-				],
-				"updatedAt": "2025-12-28T11:03:02.778Z"
+				]
 			},
 			{
 				"id": "2",
-				"title": "Task 2: Producer Node Execution",
-				"description": "Implement producer node execution with serialization support. Producers generate data streams and serialize output to channels. Use Serena MCP Server to analyze ProducerNode structure and Context7 MCP Server for tokio channel documentation.",
-				"status": "done",
+				"title": "Task 2: Core Foundation Packages Documentation",
+				"description": "Create standalone README files for core foundation packages: streamweave, error, message, offset, transaction. These are the foundational packages that other packages depend on.",
+				"status": "pending",
 				"priority": "high",
 				"dependencies": ["1"],
-				"details": "Update ProducerNode::spawn_execution_task to clone producer, get output stream, serialize items, send to channels, handle pause/resume, and propagate errors. Reference docs/graph-implementation-plan.md Task 2 for detailed requirements.",
-				"testStrategy": "100% test coverage: single/multiple output ports, empty/finite/infinite streams, serialization errors, channel errors, pause/resume, graceful shutdown, error propagation, different types, backpressure, concurrent execution. Use Serena MCP Server to analyze existing producer implementations.",
+				"details": "Create comprehensive README files for the 5 core foundation packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
+				"testStrategy": "Verify: READMEs are standalone and complete, examples compile and run, rustdoc includes README content, links to docs.rs work correctly.",
 				"subtasks": [
 					{
 						"id": 1,
-						"title": "Analyze ProducerNode Structure",
-						"description": "Use Serena MCP Server to analyze ProducerNode implementation, Producer trait, and Output trait. Understand how producers generate streams. Use Context7 MCP Server to look up tokio::sync::mpsc channel documentation.",
-						"status": "done",
-						"dependencies": [],
-						"parentId": "2",
-						"updatedAt": "2025-12-28T11:03:06.760Z"
+						"title": "Create streamweave Core Package README",
+						"description": "Create README for streamweave core package covering: Producer, Transformer, Consumer traits, Input/Output traits, Port system, configuration system, error handling integration. Include examples for each trait, quick start pipeline example, and link to docs.rs/streamweave.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
+						"parentId": "2"
 					},
 					{
 						"id": 2,
-						"title": "Implement Producer Stream Processing",
-						"description": "Implement logic to clone producer, call produce(), iterate stream, check pause signal, serialize items using serialization module. Use Serena MCP Server to find similar stream processing patterns. Use Context7 MCP Server for futures::StreamExt documentation.",
-						"status": "done",
-						"dependencies": ["2.1", "1"],
-						"parentId": "2",
-						"updatedAt": "2025-12-28T11:03:08.631Z"
+						"title": "Create error Package README",
+						"description": "Create README for streamweave-error package covering: ErrorStrategy enum (Stop, Skip, Retry, Custom), ErrorAction enum, StreamError type, ErrorContext, ComponentInfo. Include examples for each error strategy, custom error handlers, and error propagation patterns.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
+						"parentId": "2"
 					},
 					{
 						"id": 3,
-						"title": "Implement Channel Communication",
-						"description": "Implement sending serialized data to output channels based on port mapping. Handle channel errors, backpressure, and graceful shutdown. Use Context7 MCP Server for tokio channel error handling patterns.",
-						"status": "done",
-						"dependencies": ["2.2"],
-						"parentId": "2",
-						"updatedAt": "2025-12-28T11:03:11.371Z"
+						"title": "Create message Package README",
+						"description": "Create README for streamweave-message package covering: Message envelope type, message metadata, message wrapping/unwrapping, usage in pipelines and graphs. Include examples of creating messages, accessing metadata, and message flow patterns.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
+						"parentId": "2"
 					},
 					{
 						"id": 4,
-						"title": "Implement Pause/Resume Support",
-						"description": "Add pause signal checking in producer execution loop. When paused, wait for resume. Use Serena MCP Server to check existing pause/resume implementations in execution.rs.",
-						"status": "done",
-						"dependencies": ["2.2"],
-						"parentId": "2",
-						"updatedAt": "2025-12-28T11:03:13.736Z"
+						"title": "Create offset Package README",
+						"description": "Create README for streamweave-offset package covering: Offset management for exactly-once processing, offset tracking, checkpointing, offset storage. Include examples of offset management in consumers, offset persistence, and recovery scenarios.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
+						"parentId": "2"
 					},
 					{
 						"id": 5,
-						"title": "Comprehensive Producer Tests",
-						"description": "Write tests covering all producer execution scenarios. Create mock producers for testing. Use Serena MCP Server to find test utilities and patterns. Aim for 100% coverage.",
-						"status": "done",
-						"dependencies": ["2.3", "2.4"],
+						"title": "Create transaction Package README",
+						"description": "Create README for streamweave-transaction package covering: Transaction support, transactional processing, transaction boundaries, rollback support. Include examples of transactional pipelines, error handling in transactions, and transaction guarantees.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "2"
 					}
-				],
-				"updatedAt": "2025-12-28T11:03:13.736Z"
+				]
 			},
 			{
 				"id": "3",
-				"title": "Task 3: Transformer Node Execution",
-				"description": "Implement transformer node execution with input deserialization and output serialization. Transformers process data streams between producers and consumers. Use Serena MCP Server to analyze TransformerNode and Context7 MCP Server for stream transformation patterns.",
-				"status": "done",
+				"title": "Task 3: System Packages Documentation",
+				"description": "Create standalone README files for system packages: pipeline, graph, stateful, window, distributed. These packages provide core system functionality.",
+				"status": "pending",
 				"priority": "high",
-				"dependencies": ["1", "2"],
-				"details": "Update TransformerNode::spawn_execution_task to handle multiple input ports (fan-in), deserialize inputs, apply transformer, serialize outputs, handle multiple output ports (fan-out). Reference docs/graph-implementation-plan.md Task 3.",
-				"testStrategy": "100% test coverage: single/multiple inputs/outputs, identity/filtering/mapping transformations, deserialization/serialization errors, channel errors, pause/resume, graceful shutdown, stateful transformers, backpressure, concurrent execution. Use Serena MCP Server to analyze transformer implementations.",
+				"dependencies": ["1"],
+				"details": "Create comprehensive README files for the 5 system packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
+				"testStrategy": "Verify: READMEs are standalone and complete, examples compile and run, rustdoc includes README content, links to docs.rs work correctly.",
 				"subtasks": [
 					{
 						"id": 1,
-						"title": "Analyze TransformerNode Structure",
-						"description": "Use Serena MCP Server to analyze TransformerNode, Transformer trait, Input/Output traits, and port system. Understand fan-in/fan-out patterns. Use Context7 MCP Server for async stream processing documentation.",
-						"status": "done",
-						"dependencies": [],
+						"title": "Create pipeline Package README",
+						"description": "Create README for streamweave-pipeline package covering: PipelineBuilder, Pipeline execution, type-state builder pattern, error handling in pipelines, pipeline lifecycle. Include examples: simple pipeline, pipeline with multiple transformers, error handling strategies, pipeline configuration.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "3"
 					},
 					{
 						"id": 2,
-						"title": "Implement Input Stream Merging",
-						"description": "Implement logic to deserialize items from multiple input channels and merge into single stream. Support fan-in patterns. Use Serena MCP Server to check router implementations for merge patterns. Use Context7 MCP Server for futures::stream documentation.",
-						"status": "done",
-						"dependencies": ["3.1", "1"],
+						"title": "Create graph Package README",
+						"description": "Create README for streamweave-graph package covering: GraphBuilder, Graph execution, node types (ProducerNode, TransformerNode, ConsumerNode), routing strategies, fan-in/fan-out patterns, subgraphs, lifecycle management. Include examples: simple graph, fan-out graph, fan-in graph, complex topology, routing examples, subgraph usage.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "3"
 					},
 					{
 						"id": 3,
-						"title": "Implement Transformer Application",
-						"description": "Apply transformer.transform() to merged input stream. Handle transformer errors and stream errors. Use Serena MCP Server to find existing transformer usage patterns.",
-						"status": "done",
-						"dependencies": ["3.2"],
+						"title": "Create stateful Package README",
+						"description": "Create README for streamweave-stateful package covering: StatefulTransformer trait, state management, state persistence, stateful processing patterns, state operations (get/set/reset). Include examples: running sum transformer, stateful aggregation, state persistence, state recovery.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "3"
 					},
 					{
 						"id": 4,
-						"title": "Implement Output Distribution",
-						"description": "Serialize transformer output and distribute to multiple output channels (fan-out). Handle channel errors and backpressure. Use Context7 MCP Server for channel broadcasting patterns.",
-						"status": "done",
-						"dependencies": ["3.3"],
+						"title": "Create window Package README",
+						"description": "Create README for streamweave-window package covering: Window types (tumbling, sliding, session), window assigners, time-based and count-based windows, window configuration. Include examples: tumbling window, sliding window, session window, time-based windows, count-based windows.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "3"
 					},
 					{
 						"id": 5,
-						"title": "Comprehensive Transformer Tests",
-						"description": "Write tests for all transformer execution scenarios including stateful transformers. Create mock transformers. Use Serena MCP Server to find test patterns. Aim for 100% coverage.",
-						"status": "done",
-						"dependencies": ["3.4"],
+						"title": "Create distributed Package README",
+						"description": "Create README for streamweave-distributed package covering: Distributed processing, coordinator, workers, network communication, fault tolerance, partitioning. Include examples: distributed graph setup, worker configuration, fault tolerance patterns, network protocols.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "3"
 					}
 				]
 			},
 			{
 				"id": "4",
-				"title": "Task 4: Consumer Node Execution",
-				"description": "Implement consumer node execution with input deserialization. Consumers terminate data streams. Use Serena MCP Server to analyze ConsumerNode and Context7 MCP Server for async consumer patterns.",
-				"status": "done",
-				"priority": "high",
-				"dependencies": ["1", "2"],
-				"details": "Update ConsumerNode::spawn_execution_task to handle multiple input ports, deserialize inputs, merge streams, call consumer.consume(). Reference docs/graph-implementation-plan.md Task 4.",
-				"testStrategy": "100% test coverage: single/multiple inputs, empty/finite/infinite streams, deserialization errors, channel errors, pause/resume, graceful shutdown, error propagation, different types, backpressure, concurrent execution, accumulating consumers. Use Serena MCP Server to analyze consumer implementations.",
+				"title": "Task 4: I/O Packages Documentation",
+				"description": "Create standalone README files for I/O packages: stdio, file, fs, tempfile, path. These packages handle standard I/O and file system operations.",
+				"status": "pending",
+				"priority": "medium",
+				"dependencies": ["1"],
+				"details": "Create comprehensive README files for the 5 I/O packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
+				"testStrategy": "Verify: READMEs are standalone and complete, examples compile and run, rustdoc includes README content, links to docs.rs work correctly.",
 				"subtasks": [
 					{
 						"id": 1,
-						"title": "Analyze ConsumerNode Structure",
-						"description": "Use Serena MCP Server to analyze ConsumerNode, Consumer trait, Input trait, and async consume() method. Understand how consumers process streams. Use Context7 MCP Server for async trait documentation.",
+						"title": "Create stdio Package README",
+						"description": "Create README for streamweave-stdio package covering: StdinProducer, StdoutConsumer, StderrConsumer, standard I/O streaming, line-by-line processing. Include examples: reading from stdin, writing to stdout, error output, interactive pipelines.",
 						"status": "pending",
-						"dependencies": [],
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "4"
 					},
 					{
 						"id": 2,
-						"title": "Implement Input Stream Merging",
-						"description": "Implement logic to deserialize items from multiple input channels and merge into single stream for consumer. Support fan-in patterns. Use Serena MCP Server to check merge router implementation.",
+						"title": "Create file Package README",
+						"description": "Create README for streamweave-file package covering: FileProducer, FileConsumer, file I/O operations, file reading/writing patterns, file streaming. Include examples: reading file line by line, writing to file, file processing pipeline, large file handling.",
 						"status": "pending",
-						"dependencies": ["4.1", "1"],
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "4"
 					},
 					{
 						"id": 3,
-						"title": "Implement Consumer Invocation",
-						"description": "Call consumer.consume(stream).await with merged input stream. Handle consumer errors and stream completion. Use Context7 MCP Server for async trait method invocation patterns.",
+						"title": "Create fs Package README",
+						"description": "Create README for streamweave-fs package covering: DirectoryProducer, DirectoryConsumer, file system operations, directory traversal, file system events. Include examples: directory listing, recursive directory processing, file system monitoring, directory synchronization.",
 						"status": "pending",
-						"dependencies": ["4.2"],
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "4"
 					},
 					{
 						"id": 4,
-						"title": "Implement Pause/Resume Support",
-						"description": "Add pause signal checking in consumer execution. Handle pause/resume gracefully. Use Serena MCP Server to check existing pause/resume patterns.",
+						"title": "Create tempfile Package README",
+						"description": "Create README for streamweave-tempfile package covering: TempfileProducer, TempfileConsumer, temporary file handling, temp file lifecycle, cleanup patterns. Include examples: creating temp files, processing temp data, automatic cleanup, temp file patterns.",
 						"status": "pending",
-						"dependencies": ["4.2"],
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "4"
 					},
 					{
 						"id": 5,
-						"title": "Comprehensive Consumer Tests",
-						"description": "Write tests for all consumer execution scenarios including accumulating consumers like VecConsumer. Create mock consumers. Use Serena MCP Server to find test patterns. Aim for 100% coverage.",
+						"title": "Create path Package README",
+						"description": "Create README for streamweave-path package covering: Path transformers (file_name, parent, normalize), path manipulation, path operations, path processing patterns. Include examples: extracting file names, getting parent directories, normalizing paths, path transformations.",
 						"status": "pending",
-						"dependencies": ["4.3", "4.4"],
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "4"
 					}
 				]
 			},
 			{
 				"id": "5",
-				"title": "Task 5: Helper Functions Implementation",
-				"description": "Implement dynamic dispatch helper functions for stateful and windowed nodes. Use Serena MCP Server to analyze NodeTrait and type erasure patterns, Context7 MCP Server for std::any::Any documentation.",
+				"title": "Task 5: Data Format Packages Documentation",
+				"description": "Create standalone README files for data format packages: csv, jsonl, parquet. These packages handle different data format parsing and serialization.",
 				"status": "pending",
 				"priority": "medium",
-				"dependencies": ["2", "3", "4"],
-				"details": "Add as_stateful() and as_windowed() methods to NodeTrait trait, then implement helper functions that use these methods instead of unsafe downcasting. This approach is safer and more idiomatic Rust. Reference docs/graph-implementation-plan.md Task 5.",
-				"testStrategy": "100% test coverage: stateful/non-stateful nodes, windowed/non-windowed nodes, state operations (get/set/reset), type mismatches, error cases. Use Serena MCP Server to analyze existing stateful node implementation.",
+				"dependencies": ["1"],
+				"details": "Create comprehensive README files for the 3 data format packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
+				"testStrategy": "Verify: READMEs are standalone and complete, examples compile and run, rustdoc includes README content, links to docs.rs work correctly.",
 				"subtasks": [
 					{
 						"id": 1,
-						"title": "Implement Dynamic Dispatch for Stateful Nodes",
-						"description": "Add as_stateful() method to NodeTrait that returns Option<&dyn StatefulNode>. Then implement is_stateful_node() and get_node_state() using this method instead of unsafe downcasting. This is the idiomatic Rust approach. Use Serena MCP Server to analyze StatefulNode trait implementation.",
+						"title": "Create csv Package README",
+						"description": "Create README for streamweave-csv package covering: CsvProducer, CsvConsumer, CSV parsing, CSV writing, streaming CSV processing, header handling, delimiter configuration. Include examples: reading CSV files, writing CSV files, CSV transformation, large CSV processing, custom delimiters.",
 						"status": "pending",
-						"dependencies": [],
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "5"
 					},
 					{
 						"id": 2,
-						"title": "Implement State Operations with Dynamic Dispatch",
-						"description": "Update set_node_state() and reset_node_state() to use node.as_stateful() method, then call set_state()/reset_state() on the result. Handle type mismatches and errors gracefully. Use Serena MCP Server to check existing stateful transformer patterns.",
+						"title": "Create jsonl Package README",
+						"description": "Create README for streamweave-jsonl package covering: JsonlProducer, JsonlConsumer, JSON Lines format, streaming JSON parsing, JSON serialization. Include examples: reading JSONL files, writing JSONL files, JSONL transformation, streaming JSON processing, error handling.",
 						"status": "pending",
-						"dependencies": ["5.1"],
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "5"
 					},
 					{
 						"id": 3,
-						"title": "Implement Dynamic Dispatch for Windowed Nodes",
-						"description": "Add as_windowed() method to NodeTrait that returns Option<&dyn WindowedNode>, then implement is_windowed_node() and window_config() helper using this method. This follows the same pattern as stateful nodes. Use Serena MCP Server to analyze WindowedNode implementation.",
+						"title": "Create parquet Package README",
+						"description": "Create README for streamweave-parquet package covering: ParquetProducer, ParquetConsumer, Parquet format support, columnar data processing, Parquet schema handling. Include examples: reading Parquet files, writing Parquet files, Parquet transformation, schema management, columnar operations.",
 						"status": "pending",
-						"dependencies": [],
-						"parentId": "5"
-					},
-					{
-						"id": 4,
-						"title": "Comprehensive Helper Function Tests",
-						"description": "Write tests for all helper functions with different node types (producer, transformer, consumer, stateful, windowed, non-stateful, non-windowed). Test error cases and type mismatches. Use Serena MCP Server to find test patterns. Aim for 100% coverage.",
-						"status": "pending",
-						"dependencies": ["5.1", "5.2", "5.3"],
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "5"
 					}
 				]
 			},
 			{
 				"id": "6",
-				"title": "Task 6: Time-based Windows",
-				"description": "Implement time-based window support for graph nodes. Integrate with time-based window transformers. Use Serena MCP Server to analyze windowing.rs and Context7 MCP Server for time-based windowing patterns.",
-				"status": "done",
-				"priority": "low",
-				"dependencies": ["3", "5"],
-				"details": "NOTE: Time-based window transformers do NOT exist yet. WindowTransformer only supports count-based windows (usize size). Task 6 is INCLUDED until time-based window transformers are implemented. Current create_window_node() returns error for WindowSize::Time. Reference docs/graph-implementation-plan.md Task 6.",
-				"testStrategy": "100% test coverage: time-based tumbling/sliding/session windows, valid/invalid durations, window execution, pause/resume, graceful shutdown. Use Serena MCP Server to check window transformer implementations.",
+				"title": "Task 6: Database Packages Documentation",
+				"description": "Create standalone README files for database packages: database, database-mysql, database-postgresql, database-sqlite. These packages provide database integration.",
+				"status": "pending",
+				"priority": "medium",
+				"dependencies": ["1"],
+				"details": "Create comprehensive README files for the 4 database packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
+				"testStrategy": "Verify: READMEs are standalone and complete, examples compile and run, rustdoc includes README content, links to docs.rs work correctly.",
 				"subtasks": [
 					{
 						"id": 1,
-						"title": "Implement TimeWindowTransformer",
-						"description": "Create TimeWindowTransformer struct in packages/transformers/window that accepts Duration parameter. Implement Transformer trait with time-based windowing logic using streamweave-window package (TumblingWindowAssigner, SlidingWindowAssigner, SessionWindowAssigner). Support async timer-based windowing with tokio::time.",
-						"status": "done",
-						"dependencies": [],
+						"title": "Create database Package README",
+						"description": "Create README for streamweave-database package covering: Generic database support, database traits, database abstraction, connection management, query execution patterns. Include examples: database producer setup, database consumer setup, query streaming, connection pooling.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "6"
 					},
 					{
 						"id": 2,
-						"title": "Update create_window_node() to Handle WindowSize::Time",
-						"description": "Update create_window_node() in packages/graph/src/windowing.rs to handle WindowSize::Time variant. Extract Duration from WindowSize::Time, create TimeWindowTransformer node, wrap in TransformerNode.",
-						"status": "done",
-						"dependencies": ["6.1"],
+						"title": "Create database-mysql Package README",
+						"description": "Create README for streamweave-database-mysql package covering: MySQL producer, MySQL consumer, MySQL connection, MySQL-specific features, MySQL query patterns. Include examples: MySQL query streaming, MySQL data insertion, MySQL connection setup, MySQL transaction handling.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "6"
 					},
 					{
 						"id": 3,
-						"title": "Implement Time-based Window Configuration Support",
-						"description": "Support time-based tumbling, sliding, and session window configurations. Handle WindowType variants (Tumbling, Sliding, Session) with WindowSize::Time. Validate window configurations.",
-						"status": "done",
-						"dependencies": ["6.2"],
+						"title": "Create database-postgresql Package README",
+						"description": "Create README for streamweave-database-postgresql package covering: PostgreSQL producer, PostgreSQL consumer, PostgreSQL connection, PostgreSQL-specific features, PostgreSQL query patterns. Include examples: PostgreSQL query streaming, PostgreSQL data insertion, PostgreSQL connection setup, PostgreSQL transaction handling.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "6"
 					},
 					{
 						"id": 4,
-						"title": "Implement WindowedNode Trait for TimeWindowTransformer",
-						"description": "Ensure TimeWindowTransformer implements WindowedNode trait for graph integration. Implement as_windowed() method for TransformerNode wrapping TimeWindowTransformer.",
-						"status": "done",
-						"dependencies": ["6.1"],
-						"parentId": "6"
-					},
-					{
-						"id": 5,
-						"title": "Write Comprehensive Tests",
-						"description": "Write tests for time-based windows: tumbling/sliding/session windows, valid/invalid durations, window execution, pause/resume, graceful shutdown, error cases.",
-						"status": "done",
-						"dependencies": ["6.3", "6.4"],
+						"title": "Create database-sqlite Package README",
+						"description": "Create README for streamweave-database-sqlite package covering: SQLite producer, SQLite consumer, SQLite connection, SQLite-specific features, SQLite query patterns. Include examples: SQLite query streaming, SQLite data insertion, SQLite connection setup, SQLite transaction handling.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "6"
 					}
 				]
 			},
 			{
 				"id": "7",
-				"title": "Task 7: Integration Tests",
-				"description": "Create comprehensive end-to-end integration tests for graph execution. Test complete graph topologies with all node types. Use Serena MCP Server to analyze graph execution patterns and Context7 MCP Server for integration testing best practices.",
-				"status": "done",
+				"title": "Task 7: Network Packages Documentation",
+				"description": "Create standalone README files for network packages: kafka, redis, http-server. These packages provide network protocol integration.",
+				"status": "pending",
 				"priority": "high",
-				"dependencies": ["2", "3", "4", "5"],
-				"details": "Create integration test suite covering: linear graphs, fan-out, fan-in, complex topologies, stateful transformers, windowed transformers, subgraphs, routers, lifecycle, error handling, backpressure, concurrent execution. VERIFIED: No blockers - fully feasible with standard Rust testing patterns (tokio::test, async tests, mock patterns). Reference docs/graph-implementation-plan.md Task 7.",
-				"testStrategy": "Cover all graph execution scenarios: simple to complex topologies, all node types, all router types, lifecycle operations, error scenarios, performance scenarios. Use Serena MCP Server to find existing integration test patterns.",
+				"dependencies": ["1"],
+				"details": "Create comprehensive README files for the 3 network packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
+				"testStrategy": "Verify: READMEs are standalone and complete, examples compile and run, rustdoc includes README content, links to docs.rs work correctly.",
 				"subtasks": [
 					{
 						"id": 1,
-						"title": "Create Integration Test Infrastructure",
-						"description": "Set up integration test module with test utilities (mock components, test harnesses, graph builders). Use Serena MCP Server to analyze existing test infrastructure. Use Context7 MCP Server for Rust testing best practices.",
-						"status": "done",
-						"dependencies": [],
+						"title": "Create kafka Package README",
+						"description": "Create README for streamweave-kafka package covering: KafkaProducer, KafkaConsumer, Kafka topic integration, consumer groups, offset management, Kafka configuration. Include examples: producing to Kafka, consuming from Kafka, consumer group setup, offset management, Kafka error handling.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "7"
 					},
 					{
 						"id": 2,
-						"title": "Simple Graph Integration Tests",
-						"description": "Write tests for simple linear graphs: Producer \u2192 Transformer \u2192 Consumer. Test data flow, serialization round-trip, execution lifecycle. Use Serena MCP Server to find simple graph examples.",
-						"status": "done",
-						"dependencies": ["7.1"],
+						"title": "Create redis Package README",
+						"description": "Create README for streamweave-redis package covering: Redis Streams producer, Redis Streams consumer, XADD/XREAD operations, consumer groups, Redis Streams patterns. Include examples: producing to Redis Streams, consuming from Redis Streams, consumer group setup, stream processing, Redis error handling.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "7"
 					},
 					{
 						"id": 3,
-						"title": "Fan-out and Fan-in Graph Tests",
-						"description": "Write tests for fan-out (Producer \u2192 [Transformer1, Transformer2]) and fan-in ([Producer1, Producer2] \u2192 Transformer) patterns. Test router functionality. Use Serena MCP Server to analyze router implementations.",
-						"status": "done",
-						"dependencies": ["7.2"],
-						"parentId": "7"
-					},
-					{
-						"id": 4,
-						"title": "Complex Graph Integration Tests",
-						"description": "Write tests for complex graphs with multiple producers, transformers, consumers, stateful transformers, windowed transformers, subgraphs. Test all combinations. Use Serena MCP Server to find complex graph examples.",
-						"status": "done",
-						"dependencies": ["7.3"],
-						"parentId": "7"
-					},
-					{
-						"id": 5,
-						"title": "Router Integration Tests",
-						"description": "Write tests for all router types (broadcast, round-robin, merge, key-based) in graph execution context. Test router behavior with real data flow. Use Serena MCP Server to analyze router implementations.",
-						"status": "done",
-						"dependencies": ["7.3"],
-						"parentId": "7"
-					},
-					{
-						"id": 6,
-						"title": "Lifecycle and Error Handling Tests",
-						"description": "Write tests for graph execution lifecycle (start, pause, resume, stop), error handling (node failures, channel errors), graceful shutdown, backpressure scenarios. Use Serena MCP Server to analyze execution.rs.",
-						"status": "done",
-						"dependencies": ["7.4"],
-						"parentId": "7"
-					},
-					{
-						"id": 7,
-						"title": "Performance and Concurrent Execution Tests",
-						"description": "Write tests for concurrent execution, different data types, serialization performance, memory usage. Use Serena MCP Server to find performance testing patterns. Use Context7 MCP Server for benchmarking best practices.",
-						"status": "done",
-						"dependencies": ["7.5", "7.6"],
+						"title": "Create http-server Package README",
+						"description": "Create README for streamweave-http-server package covering: HttpGraphServer, HTTP request/response handling, path-based routing, middleware support, Axum integration, WebSocket support, SSE support. Include examples: HTTP graph server setup, path routing, middleware usage, WebSocket handling, SSE streaming, request/response correlation.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "7"
 					}
 				]
 			},
 			{
 				"id": "8",
-				"title": "Task 8: Error Handling and Edge Cases",
-				"description": "Implement comprehensive error handling and edge case coverage for all execution components. Use Serena MCP Server to analyze existing error handling patterns and Context7 MCP Server for error handling best practices.",
-				"status": "done",
+				"title": "Task 8: Producer/Consumer Packages Documentation",
+				"description": "Create standalone README files for producer/consumer packages: array, vec, env, command, process, signal, timer, tokio. These packages provide various data source and sink implementations.",
+				"status": "pending",
 				"priority": "medium",
-				"dependencies": ["2", "3", "4", "7"],
-				"details": "Handle all error scenarios: serialization/deserialization errors, channel errors, stream errors, node execution errors, pause/resume errors, shutdown timeout errors, invalid topology errors. VERIFIED: No blockers - fully feasible with standard Rust error handling patterns (Result types, error propagation, logging). Reference docs/graph-implementation-plan.md Task 8.",
-				"testStrategy": "100% error path coverage: all error scenarios, error propagation through graph, error recovery where applicable, error logging. Use Serena MCP Server to find error handling patterns.",
+				"dependencies": ["1"],
+				"details": "Create comprehensive README files for the 8 producer/consumer packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
+				"testStrategy": "Verify: READMEs are standalone and complete, examples compile and run, rustdoc includes README content, links to docs.rs work correctly.",
 				"subtasks": [
 					{
 						"id": 1,
-						"title": "Analyze Existing Error Handling",
-						"description": "Use Serena MCP Server to analyze ExecutionError, SerializationError, and existing error handling patterns in execution.rs and node.rs. Identify gaps in error handling. Use Context7 MCP Server for Rust error handling best practices.",
-						"status": "done",
-						"dependencies": [],
+						"title": "Create array Package README",
+						"description": "Create README for streamweave-array package covering: ArrayProducer, ArrayConsumer, array-based streaming, array processing patterns. Include examples: producing from arrays, consuming to arrays, array transformations, array processing pipelines.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "8"
 					},
 					{
 						"id": 2,
-						"title": "Implement Serialization Error Handling",
-						"description": "Ensure all serialization/deserialization errors are caught, logged, and propagated correctly. Add clear error messages. Use Serena MCP Server to check serialization.rs error handling.",
-						"status": "done",
-						"dependencies": ["8.1"],
+						"title": "Create vec Package README",
+						"description": "Create README for streamweave-vec package covering: VecProducer, VecConsumer, vector-based streaming, vector processing patterns. Include examples: producing from vectors, consuming to vectors, vector transformations, vector processing pipelines.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "8"
 					},
 					{
 						"id": 3,
-						"title": "Implement Channel Error Handling",
-						"description": "Handle channel errors (sender/receiver dropped, backpressure, channel closed) gracefully in all node types. Provide clear error messages. Use Context7 MCP Server for tokio channel error patterns.",
-						"status": "done",
-						"dependencies": ["8.1"],
+						"title": "Create env Package README",
+						"description": "Create README for streamweave-env package covering: EnvProducer, EnvConsumer, environment variable streaming, environment variable processing. Include examples: reading environment variables, writing environment variables, environment variable transformations, environment configuration pipelines.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "8"
 					},
 					{
 						"id": 4,
-						"title": "Implement Stream Error Handling",
-						"description": "Handle stream errors (producer/transformer stream failures) gracefully. Propagate errors correctly through graph. Use Serena MCP Server to analyze stream error patterns.",
-						"status": "done",
-						"dependencies": ["8.1"],
+						"title": "Create command Package README",
+						"description": "Create README for streamweave-command package covering: CommandProducer, CommandConsumer, command execution, process output streaming, command input streaming. Include examples: executing commands, streaming command output, piping command input, command processing pipelines.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "8"
 					},
 					{
 						"id": 5,
-						"title": "Implement Node Execution Error Handling",
-						"description": "Handle node execution errors (task panics, execution failures) gracefully. Collect and report errors from node tasks. Use Serena MCP Server to check execution.rs error collection.",
-						"status": "done",
-						"dependencies": ["8.1"],
+						"title": "Create process Package README",
+						"description": "Create README for streamweave-process package covering: ProcessProducer, ProcessConsumer, process management, process lifecycle, process monitoring. Include examples: spawning processes, monitoring process output, process input streaming, process management pipelines.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "8"
 					},
 					{
 						"id": 6,
-						"title": "Implement Lifecycle Error Handling",
-						"description": "Handle pause/resume errors, shutdown timeout errors, invalid topology errors. Ensure graceful degradation. Use Serena MCP Server to analyze lifecycle error handling.",
-						"status": "done",
-						"dependencies": ["8.1"],
+						"title": "Create signal Package README",
+						"description": "Create README for streamweave-signal package covering: SignalProducer, Unix signal handling, signal processing, signal-based triggers. Include examples: handling SIGINT, handling SIGTERM, signal-based pipelines, graceful shutdown patterns.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "8"
 					},
 					{
 						"id": 7,
-						"title": "Comprehensive Error Handling Tests",
-						"description": "Write tests for all error scenarios: serialization, deserialization, channel, stream, node execution, lifecycle errors. Test error propagation, recovery, logging. Use Serena MCP Server to find error injection patterns. Aim for 100% error path coverage.",
-						"status": "done",
-						"dependencies": ["8.2", "8.3", "8.4", "8.5", "8.6"],
+						"title": "Create timer Package README",
+						"description": "Create README for streamweave-timer package covering: TimerProducer, IntervalProducer, time-based streaming, interval-based processing, timer patterns. Include examples: interval producers, timer-based triggers, scheduled processing, time-based pipelines.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
 						"parentId": "8"
+					},
+					{
+						"id": 8,
+						"title": "Create tokio Package README",
+						"description": "Create README for streamweave-tokio package covering: ChannelProducer, ChannelConsumer, Tokio channel integration, async channel streaming, channel-based communication. Include examples: channel producers, channel consumers, channel-based pipelines, async channel patterns.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
+						"parentId": "8"
+					}
+				]
+			},
+			{
+				"id": "9",
+				"title": "Task 9: Transformers Package Documentation",
+				"description": "Create standalone README file for the transformers package. This is a large package containing many transformer implementations that should be comprehensively documented.",
+				"status": "pending",
+				"priority": "high",
+				"dependencies": ["1"],
+				"details": "Create comprehensive README for the transformers package covering all transformer types. The README should be well-organized with sections for different transformer categories, quick start examples, and detailed usage examples for each transformer type. Include README in rustdoc.",
+				"testStrategy": "Verify: README is standalone and complete, examples compile and run, rustdoc includes README content, links to docs.rs work correctly, all transformers are documented.",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Create transformers Package README Structure",
+						"description": "Create comprehensive README structure for streamweave-transformers package. Organize transformers into categories: basic (map, filter, reduce), advanced (batch, retry, circuit-breaker, rate-limit), stateful (running-sum, moving-average), windowing, routing (router, partition, round-robin), merging (merge, ordered-merge, interleave), ML (inference, batched-inference), and utility (sample, skip, take, limit, sort, split, zip, timeout, message-dedupe).",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
+						"parentId": "9"
+					},
+					{
+						"id": 2,
+						"title": "Document Basic Transformers",
+						"description": "Document basic transformers: MapTransformer, FilterTransformer, ReduceTransformer with examples for each. Include usage patterns, common use cases, and performance considerations.",
+						"status": "pending",
+						"dependencies": ["9.1"],
+						"parentId": "9"
+					},
+					{
+						"id": 3,
+						"title": "Document Advanced Transformers",
+						"description": "Document advanced transformers: BatchTransformer, RetryTransformer, CircuitBreakerTransformer, RateLimitTransformer with examples for each. Include configuration options, error handling, and resilience patterns.",
+						"status": "pending",
+						"dependencies": ["9.1"],
+						"parentId": "9"
+					},
+					{
+						"id": 4,
+						"title": "Document Stateful and Windowing Transformers",
+						"description": "Document stateful transformers: RunningSumTransformer, MovingAverageTransformer and windowing transformers with examples. Include state management patterns and window configuration.",
+						"status": "pending",
+						"dependencies": ["9.1"],
+						"parentId": "9"
+					},
+					{
+						"id": 5,
+						"title": "Document Routing and Merging Transformers",
+						"description": "Document routing transformers: RouterTransformer, PartitionTransformer, RoundRobinTransformer and merging transformers: MergeTransformer, OrderedMergeTransformer, InterleaveTransformer with examples. Include routing strategies and merge patterns.",
+						"status": "pending",
+						"dependencies": ["9.1"],
+						"parentId": "9"
+					},
+					{
+						"id": 6,
+						"title": "Document ML and Utility Transformers",
+						"description": "Document ML transformers: InferenceTransformer, BatchedInferenceTransformer and utility transformers: SampleTransformer, SkipTransformer, TakeTransformer, LimitTransformer, SortTransformer, SplitTransformer, ZipTransformer, TimeoutTransformer, MessageDedupeTransformer with examples. Include ML model integration and utility patterns.",
+						"status": "pending",
+						"dependencies": ["9.1"],
+						"parentId": "9"
+					}
+				]
+			},
+			{
+				"id": "10",
+				"title": "Task 10: Integration and Utility Packages Documentation",
+				"description": "Create standalone README files for integration and utility packages: integrations/opentelemetry, integrations/sql, metrics, visualization. These packages provide observability and integration capabilities.",
+				"status": "pending",
+				"priority": "medium",
+				"dependencies": ["1"],
+				"details": "Create comprehensive README files for the 4 integration and utility packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
+				"testStrategy": "Verify: READMEs are standalone and complete, examples compile and run, rustdoc includes README content, links to docs.rs work correctly.",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Create opentelemetry Integration Package README",
+						"description": "Create README for streamweave-integrations-opentelemetry package covering: OpenTelemetry integration, tracing support, metrics export, observability patterns. Include examples: OpenTelemetry setup, tracing pipelines, metrics collection, observability integration.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
+						"parentId": "10"
+					},
+					{
+						"id": 2,
+						"title": "Create sql Integration Package README",
+						"description": "Create README for streamweave-integrations-sql package covering: SQL integration, SQL query execution, SQL parsing, SQL dialect support. Include examples: SQL query execution, SQL parsing, SQL transformation, SQL dialect usage.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
+						"parentId": "10"
+					},
+					{
+						"id": 3,
+						"title": "Create metrics Package README",
+						"description": "Create README for streamweave-metrics package covering: Metrics collection, throughput metrics, latency metrics, error metrics, backpressure metrics, Prometheus integration, health checks. Include examples: metrics collection setup, throughput monitoring, latency tracking, Prometheus export, health check usage.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
+						"parentId": "10"
+					},
+					{
+						"id": 4,
+						"title": "Create visualization Package README",
+						"description": "Create README for streamweave-visualization package covering: Pipeline visualization, graph visualization, DAG generation, visualization formats (DOT, HTML, JSON), visualization server. Include examples: generating pipeline visualizations, graph visualization, DAG export, visualization server setup, interactive visualizations.",
+						"status": "pending",
+						"dependencies": ["1.1", "1.4"],
+						"parentId": "10"
+					}
+				]
+			},
+			{
+				"id": "11",
+				"title": "Task 11: Documentation Validation and Finalization",
+				"description": "Validate all documentation, ensure consistency, verify rustdoc integration, test all examples, and finalize the documentation suite.",
+				"status": "pending",
+				"priority": "high",
+				"dependencies": ["2", "3", "4", "5", "6", "7", "8", "9", "10"],
+				"details": "Comprehensive validation of all 39 package READMEs. Verify that all READMEs are standalone, all examples compile and run, all rustdoc integrations work, all repository links are correct, and documentation is consistent across packages.",
+				"testStrategy": "Verify: all READMEs exist, all examples compile, all rustdoc includes work, all repository links are correct, documentation is consistent, main README links are valid.",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Validate All README Files Exist",
+						"description": "Verify that all 39 packages have README.md files. Check that no packages are missing documentation. Create a checklist of all packages and verify each one.",
+						"status": "pending",
+						"dependencies": ["2", "3", "4", "5", "6", "7", "8", "9", "10"],
+						"parentId": "11"
+					},
+					{
+						"id": 2,
+						"title": "Validate Rustdoc Integration",
+						"description": "Verify that all packages have #![doc = include_str!(\"../README.md\")] in their lib.rs files. Test that rustdoc correctly includes README content. Run cargo doc for all packages and verify README content appears in documentation.",
+						"status": "pending",
+						"dependencies": ["11.1"],
+						"parentId": "11"
+					},
+					{
+						"id": 3,
+						"title": "Validate Repository Links",
+						"description": "Verify that all package Cargo.toml files have correct repository links pointing to package subdirectories. Test that links work correctly and point to the right locations in the monorepo.",
+						"status": "pending",
+						"dependencies": ["11.1"],
+						"parentId": "11"
+					},
+					{
+						"id": 4,
+						"title": "Test All Examples",
+						"description": "Compile and run all examples from all package READMEs. Verify that examples are correct, compile without errors, and demonstrate the intended functionality. Fix any broken examples.",
+						"status": "pending",
+						"dependencies": ["11.1"],
+						"parentId": "11"
+					},
+					{
+						"id": 5,
+						"title": "Validate Documentation Consistency",
+						"description": "Check that all READMEs follow the same structure and format. Verify consistent use of headings, code blocks, examples, and links. Ensure all READMEs link to docs.rs correctly.",
+						"status": "pending",
+						"dependencies": ["11.1"],
+						"parentId": "11"
+					},
+					{
+						"id": 6,
+						"title": "Validate Main README Links",
+						"description": "Verify that the main README correctly links to all 39 package READMEs. Test that all links work and are organized logically. Ensure the main README provides a good overview and navigation.",
+						"status": "pending",
+						"dependencies": ["11.1", "1.5"],
+						"parentId": "11"
+					},
+					{
+						"id": 7,
+						"title": "Final Documentation Review",
+						"description": "Perform final review of all documentation. Check for typos, formatting issues, broken links, and inconsistencies. Ensure documentation quality meets standards. Create summary of documentation coverage.",
+						"status": "pending",
+						"dependencies": ["11.2", "11.3", "11.4", "11.5", "11.6"],
+						"parentId": "11"
 					}
 				]
 			}
 		],
 		"metadata": {
 			"version": "1.0.0",
-			"lastModified": "2025-12-28T11:03:13.737Z",
-			"taskCount": 8,
-			"completedCount": 1,
-			"tags": ["master"]
+			"lastModified": "2025-01-27T00:00:00.000Z",
+			"taskCount": 11,
+			"completedCount": 0,
+			"tags": ["master", "documentation"]
 		}
 	}
 }
