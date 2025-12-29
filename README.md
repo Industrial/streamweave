@@ -14,38 +14,14 @@ StreamWeave is a general-purpose Rust framework built around the concept of
 
 ## ✨ Key Features
 
-### ✅ Implemented
-
 - Pure Rust API with zero-cost abstractions
 - Full async/await compatibility via `futures::Stream`
 - Fluent pipeline-style API with type-safe builder pattern
 - **Graph-based API** for complex topologies with fan-in/fan-out patterns
 - **Flow-Based Programming (FBP)** patterns with type-safe routing
-- **Multiple routing strategies**: Broadcast, Round-Robin, Merge, Key-Based
-- Comprehensive error handling system with multiple strategies (Stop, Skip, Retry, Custom)
+- Comprehensive error handling system with multiple strategies
 - Code-as-configuration — no external DSLs
-- Comprehensive test infrastructure
-- **Integration Examples**: Kafka, Redis Streams, Database (PostgreSQL/MySQL/SQLite), HTTP Polling
-- **File Format Support**: CSV, JSONL, Parquet with streaming parsing
-- **Stateful Processing**: RunningSum, MovingAverage transformers
-- **Exactly-Once Processing**: Message deduplication with configurable windows
-- **Windowing Operations**: Tumbling, sliding, and count-based windows
-- **Advanced Transformers**: CircuitBreaker, Retry, Batch, RateLimit
-- **Common Transformers**: Map, Filter, Flatten, Reduce, and many more
-- HTTP middleware support with Axum integration
-- **HTTP Graph Server**: Long-lived graph-based HTTP servers with path-based routing
-- WebSocket support
-- Server-Sent Events support
-
-### 🚧 Planned
-
-- Support distributed processing
-- Additional specialized transformers and utilities
-- Reusable pipeline components
-- Add machine learning integration
-- Implement monitoring and metrics
-- Add SQL-like querying
-- Graph visualization tools
+- Extensive package ecosystem for I/O, transformations, and integrations
 
 ## 📦 Core Concepts
 
@@ -71,291 +47,7 @@ StreamWeave provides two APIs for building data processing workflows:
 | **Complexity** | Lower complexity, easier to use | Higher flexibility, more powerful |
 | **Best For** | ETL pipelines, simple transformations | Complex workflows, parallel processing, data distribution |
 
-**When to use Pipeline API:**
-- Simple linear data flows
-- Single transformation path
-- Quick prototyping
-- Straightforward ETL operations
-
-**When to use Graph API:**
-- Multiple data paths
-- Fan-out (one source to many destinations)
-- Fan-in (many sources to one destination)
-- Complex routing requirements
-- Parallel processing needs
-- Flow-Based Programming (FBP) patterns
-
-## 🔄 Example Pipeline
-
-### ✅ Currently Possible
-
-```rust
-use streamweave::{
-    consumers::console::console_consumer::ConsoleConsumer,
-    pipeline::PipelineBuilder,
-    producers::range::range_producer::RangeProducer,
-    transformers::map::map_transformer::MapTransformer,
-};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a pipeline that:
-    // 1. Produces numbers from 1 to 5
-    // 2. Doubles each number
-    // 3. Prints the result to the console
-    let pipeline = PipelineBuilder::new()
-        .producer(RangeProducer::new(1, 6, 1))
-        .transformer(MapTransformer::new(|x: i32| x * 2))
-        .consumer(ConsoleConsumer::new());
-
-    // Run the pipeline
-    pipeline.run().await?;
-    Ok(())
-}
-```
-
-## 🕸️ Example Graph
-
-### ✅ Currently Possible
-
-```rust
-use streamweave::graph::{GraphBuilder, ProducerNode, TransformerNode, ConsumerNode};
-use streamweave::producers::vec::VecProducer;
-use streamweave::transformers::map::MapTransformer;
-use streamweave::consumers::vec::VecConsumer;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a graph that:
-    // 1. Produces numbers from a vector
-    // 2. Doubles each number
-    // 3. Collects the results
-    let graph = GraphBuilder::new()
-        .add_node(
-            "source".to_string(),
-            ProducerNode::from_producer(
-                "source".to_string(),
-                VecProducer::new(vec![1, 2, 3, 4, 5]),
-            ),
-        )?
-        .add_node(
-            "transform".to_string(),
-            TransformerNode::from_transformer(
-                "transform".to_string(),
-                MapTransformer::new(|x: i32| x * 2),
-            ),
-        )?
-        .add_node(
-            "sink".to_string(),
-            ConsumerNode::from_consumer(
-                "sink".to_string(),
-                VecConsumer::new(),
-            ),
-        )?
-        .connect_by_name("source", "transform")?
-        .connect_by_name("transform", "sink")?
-        .build();
-
-    // Execute the graph
-    let mut executor = graph.executor();
-    executor.start().await?;
-    // Graph runs asynchronously - use stop() when done
-    executor.stop().await?;
-    Ok(())
-}
-```
-
-### Fan-Out Example
-
-The Graph API excels at fan-out patterns where one source feeds multiple destinations:
-
-```rust
-use streamweave::graph::{GraphBuilder, ProducerNode, TransformerNode, ConsumerNode};
-use streamweave::producers::vec::VecProducer;
-use streamweave::transformers::map::MapTransformer;
-use streamweave::consumers::vec::VecConsumer;
-
-// Create a producer that feeds multiple transformers (fan-out)
-let producer = ProducerNode::from_producer(
-    "source".to_string(),
-    VecProducer::new(vec![1, 2, 3]),
-);
-
-// Multiple transformers process the same data
-let double = TransformerNode::from_transformer(
-    "double".to_string(),
-    MapTransformer::new(|x: i32| x * 2),
-);
-let triple = TransformerNode::from_transformer(
-    "triple".to_string(),
-    MapTransformer::new(|x: i32| x * 3),
-);
-
-// Connect producer to both transformers (fan-out)
-let graph = GraphBuilder::new()
-    .add_node("source".to_string(), producer)?
-    .add_node("double".to_string(), double)?
-    .add_node("triple".to_string(), triple)?
-    .connect_by_name("source", "double")?
-    .connect_by_name("source", "triple")?
-    .build();
-```
-
-For advanced patterns including fan-in, custom routing strategies (Broadcast, Round-Robin, Merge, Key-Based), subgraphs, and stateful nodes, see [GRAPH.md](GRAPH.md).
-
-### HTTP Graph Server Example
-
-StreamWeave enables building HTTP servers where all traffic flows through a graph. Requests are routed to different handlers based on path patterns, and responses flow back through the graph:
-
-```rust
-use streamweave::http_server::{
-    HttpGraphServer, HttpGraphServerConfig,
-    LongLivedHttpRequestProducer, HttpRequestProducerConfig,
-    HttpResponseCorrelationConsumer,
-    transformers::{PathBasedRouterTransformer, PathRouterConfig, RoutePattern},
-};
-use streamweave::graph::{GraphBuilder, ProducerNode, TransformerNode, ConsumerNode};
-use axum::{Router, routing::get};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create channel for HTTP requests
-    let (request_sender, request_receiver) = tokio::sync::mpsc::channel(100);
-    
-    // Create HTTP request producer (injects requests into graph)
-    let http_producer = LongLivedHttpRequestProducer::new(
-        request_receiver,
-        HttpRequestProducerConfig::default(),
-    );
-    
-    // Create path-based router (routes by URL path)
-    let router = PathBasedRouterTransformer::new(PathRouterConfig {
-        routes: vec![
-            RoutePattern {
-                pattern: "/api/rest/*".to_string(),
-                port: 0, // Route to REST handler
-            },
-            RoutePattern {
-                pattern: "/api/graphql".to_string(),
-                port: 1, // Route to GraphQL handler
-            },
-        ],
-        default_port: Some(2), // Default/404 handler
-    });
-    
-    // Create response correlation consumer (matches responses to requests)
-    let response_consumer = HttpResponseCorrelationConsumer::with_timeout(
-        std::time::Duration::from_secs(30),
-    );
-    
-    // Build the graph
-    let graph = GraphBuilder::new()
-        .add_node(
-            "http_producer".to_string(),
-            ProducerNode::from_producer("http_producer".to_string(), http_producer),
-        )?
-        .add_node(
-            "router".to_string(),
-            TransformerNode::from_transformer("router".to_string(), router),
-        )?
-        // Add your handler nodes here (REST, GraphQL, RPC, Static, etc.)
-        .add_node(
-            "response_consumer".to_string(),
-            ConsumerNode::from_consumer("response_consumer".to_string(), response_consumer),
-        )?
-        .connect_by_name("http_producer", "router")?
-        // Connect router outputs to your handlers
-        // Connect handler outputs to response_consumer
-        .build();
-    
-    // Create the HTTP Graph Server
-    let (server, _) = HttpGraphServer::new(
-        graph,
-        HttpGraphServerConfig::default(),
-    ).await?;
-    
-    // Start the graph executor
-    server.start().await?;
-    
-    // Create Axum handler
-    let handler = server.create_handler();
-    
-    // Build Axum router
-    let app = Router::new()
-        .route("/*path", get(handler));
-    
-    // Start Axum server
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
-    axum::serve(listener, app).await?;
-    
-    Ok(())
-}
-```
-
-The HTTP Graph Server:
-- Maintains a long-lived graph executor
-- Injects HTTP requests into the graph as `Message<HttpRequest>` items
-- Routes requests by path using `PathBasedRouterTransformer`
-- Correlates responses with requests using `request_id`
-- Handles request timeouts and errors gracefully
-
-## 🧱 API Overview
-
-### ✅ Implemented Pipeline Construction
-
-```rust
-PipelineBuilder::new()
-    .producer(...)    // Add data source
-    .transformer(...) // Add transformation
-    .consumer(...)    // Add data sink
-    .run()           // Execute pipeline
-```
-
-### ✅ Implemented Graph Construction
-
-```rust
-GraphBuilder::new()
-    .add_node("name", ProducerNode::from_producer(...))    // Add producer node
-    .add_node("name", TransformerNode::from_transformer(...)) // Add transformer node
-    .add_node("name", ConsumerNode::from_consumer(...))    // Add consumer node
-    .connect_by_name("source", "target")?  // Connect nodes
-    .build()                                // Build graph
-    .executor()                             // Get executor
-    .start().await?                         // Execute graph
-```
-
-### ✅ Error Handling
-
-StreamWeave provides two levels of error handling:
-
-1. **Pipeline Level**
-```rust
-// Default behavior: Pipeline stops on first error
-pipeline.run().await?;
-
-// Configure pipeline-wide error handling
-pipeline
-    .with_error_strategy(ErrorStrategy::Stop)  // Default
-    .with_error_strategy(ErrorStrategy::Skip)  // Skip errored items
-    .with_error_strategy(ErrorStrategy::Retry(3))  // Retry 3 times
-    .run()
-    .await?;
-```
-
-2. **Component Level**
-```rust
-// Override error handling for specific components
-MapTransformer::new(parse)
-    .with_error_strategy(ErrorStrategy::Stop)      // Stop component and pipeline
-    .with_error_strategy(ErrorStrategy::Skip)      // Skip errors, continue processing
-    .with_error_strategy(ErrorStrategy::Retry(3))  // Retry operation 3 times
-    .with_error_strategy(ErrorStrategy::Custom(|err| {
-        // Custom error handling logic
-        ErrorAction::Skip
-    }));
-```
-
-## 🚀 Getting Started
+## 🚀 Quick Start
 
 ### Installation
 
@@ -363,10 +55,10 @@ Add StreamWeave to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave = "0.2.2"
+streamweave = "0.3.0"
 ```
 
-### Basic Usage (Pipeline API)
+### Basic Example
 
 ```rust
 use streamweave::{
@@ -378,14 +70,10 @@ use streamweave::{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let producer = ArrayProducer::new(vec![1, 2, 3, 4, 5]);
-    let transformer = MapTransformer::new(|x: i32| x * 2);
-    let consumer = VecConsumer::new();
-
     let pipeline = PipelineBuilder::new()
-        .producer(producer)
-        .transformer(transformer)
-        .consumer(consumer);
+        .producer(ArrayProducer::new(vec![1, 2, 3, 4, 5]))
+        .transformer(MapTransformer::new(|x: i32| x * 2))
+        .consumer(VecConsumer::new());
 
     let ((), result) = pipeline.run().await?;
     println!("Result: {:?}", result.collected);
@@ -393,122 +81,122 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### Using the Graph API
+For more examples and detailed documentation, see the [package documentation](#-packages) below.
 
-```rust
-use streamweave::graph::{GraphBuilder, ProducerNode, TransformerNode, ConsumerNode};
-use streamweave::producers::array::ArrayProducer;
-use streamweave::transformers::map::MapTransformer;
-use streamweave::consumers::vec::VecConsumer;
+## 📦 Packages
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let graph = GraphBuilder::new()
-        .add_node(
-            "source".to_string(),
-            ProducerNode::from_producer(
-                "source".to_string(),
-                ArrayProducer::new(vec![1, 2, 3, 4, 5]),
-            ),
-        )?
-        .add_node(
-            "transform".to_string(),
-            TransformerNode::from_transformer(
-                "transform".to_string(),
-                MapTransformer::new(|x: i32| x * 2),
-            ),
-        )?
-        .add_node(
-            "sink".to_string(),
-            ConsumerNode::from_consumer(
-                "sink".to_string(),
-                VecConsumer::new(),
-            ),
-        )?
-        .connect_by_name("source", "transform")?
-        .connect_by_name("transform", "sink")?
-        .build();
+StreamWeave is organized as a monorepo with 39 packages, each providing specific functionality. Each package has its own README with detailed documentation, examples, and API reference.
 
-    let mut executor = graph.executor();
-    executor.start().await?;
-    // Graph runs asynchronously - use stop() when done
-    executor.stop().await?;
-    Ok(())
-}
-```
+### Core Foundation Packages
 
-## 🧪 Testing Pipelines
+These are the foundational packages that other packages depend on:
 
-### ✅ Implemented
+- **[streamweave](packages/streamweave/README.md)** - Core traits and types (Producer, Transformer, Consumer)
+- **[error](packages/error/README.md)** - Error handling system with multiple strategies
+- **[message](packages/message/README.md)** - Message envelope and metadata
+- **[offset](packages/offset/README.md)** - Offset management for exactly-once processing
+- **[transaction](packages/transaction/README.md)** - Transaction support and boundaries
 
-The framework includes comprehensive test infrastructure for unit testing pipelines and components:
+### System Packages
 
-```rust
-// Example from the test suite
-let producer = NumberProducer { numbers: vec![1, 2, 3] };
-let transformer = StringifyTransformer;
-let consumer = CollectConsumer { collected: Vec::new() };
+Core system functionality:
 
-let (_, consumer) = PipelineBuilder::new()
-    .producer(producer)
-    .transformer(transformer)
-    .consumer(consumer)
-    .run()
-    .await
-    .unwrap();
+- **[pipeline](packages/pipeline/README.md)** - Pipeline builder and execution
+- **[graph](packages/graph/README.md)** - Graph API for complex topologies
+- **[stateful](packages/stateful/README.md)** - Stateful processing and state management
+- **[window](packages/window/README.md)** - Windowing operations (tumbling, sliding, session)
+- **[distributed](packages/distributed/README.md)** - Distributed processing and coordination
 
-assert_eq!(consumer.collected, vec!["1", "2", "3"]);
-```
+### I/O Packages
+
+Standard I/O and file system operations:
+
+- **[stdio](packages/stdio/README.md)** - Standard input/output streaming
+- **[file](packages/file/README.md)** - File I/O operations
+- **[fs](packages/fs/README.md)** - File system operations and directory traversal
+- **[tempfile](packages/tempfile/README.md)** - Temporary file handling
+- **[path](packages/path/README.md)** - Path manipulation and transformations
+
+### Data Format Packages
+
+Data format parsing and serialization:
+
+- **[csv](packages/csv/README.md)** - CSV parsing and writing
+- **[jsonl](packages/jsonl/README.md)** - JSON Lines format support
+- **[parquet](packages/parquet/README.md)** - Parquet format support
+
+### Database Packages
+
+Database integration:
+
+- **[database](packages/database/README.md)** - Generic database support
+- **[database-mysql](packages/database-mysql/README.md)** - MySQL integration
+- **[database-postgresql](packages/database-postgresql/README.md)** - PostgreSQL integration
+- **[database-sqlite](packages/database-sqlite/README.md)** - SQLite integration
+
+### Network Packages
+
+Network protocol integration:
+
+- **[kafka](packages/kafka/README.md)** - Apache Kafka producer and consumer
+- **[redis](packages/redis/README.md)** - Redis Streams integration
+- **[http-server](packages/http-server/README.md)** - HTTP graph server with Axum integration
+
+### Producer/Consumer Packages
+
+Various data source and sink implementations:
+
+- **[array](packages/array/README.md)** - Array-based streaming
+- **[vec](packages/vec/README.md)** - Vector-based streaming
+- **[env](packages/env/README.md)** - Environment variable streaming
+- **[command](packages/command/README.md)** - Command execution and output streaming
+- **[process](packages/process/README.md)** - Process management and monitoring
+- **[signal](packages/signal/README.md)** - Unix signal handling
+- **[timer](packages/timer/README.md)** - Time-based and interval-based streaming
+- **[tokio](packages/tokio/README.md)** - Tokio channel integration
+
+### Transformers Package
+
+Comprehensive transformer implementations:
+
+- **[transformers](packages/transformers/README.md)** - All transformer types including:
+  - Basic: Map, Filter, Reduce
+  - Advanced: Batch, Retry, CircuitBreaker, RateLimit
+  - Stateful: RunningSum, MovingAverage
+  - Routing: Router, Partition, RoundRobin
+  - Merging: Merge, OrderedMerge, Interleave
+  - ML: Inference, BatchedInference
+  - Utility: Sample, Skip, Take, Limit, Sort, Split, Zip, Timeout, MessageDedupe
+
+### Integration and Utility Packages
+
+Observability and integration capabilities:
+
+- **[integrations/opentelemetry](packages/integrations/opentelemetry/README.md)** - OpenTelemetry integration
+- **[integrations/sql](packages/integrations/sql/README.md)** - SQL query support
+- **[metrics](packages/metrics/README.md)** - Metrics collection and Prometheus integration
+- **[visualization](packages/visualization/README.md)** - Pipeline and graph visualization
 
 ## 📚 Documentation
 
-- [API Documentation](https://docs.rs/streamweave)
+- [API Documentation](https://docs.rs/streamweave) - Full API reference on docs.rs
 - [Local Documentation](target/doc/streamweave/index.html) - Generated with rustdoc (run `./bin/docs`)
 - [Graph API Guide](GRAPH.md) - Advanced graph patterns, routing strategies, and Flow-Based Programming
 - [Getting Started Guide](docs/getting_started.md)
 - [Architecture Overview](docs/architecture.md)
 - [Common Use Cases](docs/guides/common_use_cases.md)
 - [Troubleshooting](docs/troubleshooting.md)
-- [Contributing Guide](https://github.com/yourusername/streamweave/blob/main/CONTRIBUTING.md)
+- [Contributing Guide](CONTRIBUTING.md)
 
 ## 📖 Examples
 
-StreamWeave includes comprehensive examples demonstrating all major features:
+StreamWeave includes comprehensive examples demonstrating all major features. See the [examples directory](examples/) for:
 
-### Integration Examples
-- **[Kafka Integration](examples/kafka_integration/)** - Produce to and consume from Kafka topics
-- **[Redis Streams Integration](examples/redis_integration/)** - XADD and XREAD operations with consumer groups
-- **[Database Integration](examples/database_integration/)** - Query PostgreSQL, MySQL, and SQLite with streaming results
-- **[HTTP Polling Integration](examples/http_poll_integration/)** - Poll HTTP endpoints with pagination, delta detection, and rate limiting
-- **[HTTP Graph Server](examples/http_graph_server/)** - Long-lived graph-based HTTP servers with path-based routing
-
-### File Format Examples
-- **[File Formats](examples/file_formats/)** - CSV, JSONL, and Parquet read/write with streaming parsing
-
-### Processing Examples
-- **[Stateful Processing](examples/stateful_processing/)** - RunningSum and MovingAverage transformers
-- **[Error Handling](examples/error_handling/)** - Stop, Skip, Retry, and Custom error strategies
-- **[Advanced Transformers](examples/advanced_transformers/)** - CircuitBreaker, Retry, Batch, RateLimit
-- **[Windowing Operations](examples/windowing/)** - Tumbling, sliding, and count-based windows
-- **[Exactly-Once Processing](examples/exactly_once/)** - Message deduplication and checkpointing
-
-### Basic Examples
-- **[Basic Pipeline](examples/basic_pipeline/)** - Simple pipeline example
-- **[Advanced Pipeline](examples/advanced_pipeline/)** - Complex pipeline patterns
-
-### Visualization Examples
-
-- **[Basic Visualization](examples/visualization_basic/)** - Console export with DOT and JSON formats
-- **[HTML Visualization](examples/visualization_html/)** - Web visualization with browser auto-open
-- **[Graph Visualization](examples/visualization_graph/)** - Graph API visualization with fan-out and fan-in patterns
-- **[Graphviz Image Generation](examples/visualization_dot_image/)** - Generate PNG, SVG, PDF, and JPG images from DAGs
-- **[Metrics Visualization](examples/visualization_metrics/)** - Real-time metrics collection and visualization
-- **[Debug Visualization](examples/visualization_debug/)** - Debug mode with breakpoint support
-- **[Visualization Server](examples/visualization_server/)** - HTTP server for serving visualizations (requires `http-server` feature)
-
-### Graph API Examples
-- **[Graph Architecture](GRAPH.md)** - Comprehensive guide to the Graph API with examples
-- Graph API examples demonstrate fan-in/fan-out patterns, routing strategies, and complex topologies
+- Integration examples (Kafka, Redis, Database, HTTP)
+- File format examples (CSV, JSONL, Parquet)
+- Processing examples (Stateful, Error Handling, Windowing)
+- Visualization examples
+- Graph API examples
 
 Run any example with:
 ```bash

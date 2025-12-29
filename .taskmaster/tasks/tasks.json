@@ -5,7 +5,7 @@
 				"id": "1",
 				"title": "Task 1: Documentation Infrastructure Setup",
 				"description": "Set up infrastructure for package documentation: create README template, update Cargo.toml repository links, remove Doxidize, add rustdoc integration, and update main README.",
-				"status": "pending",
+				"status": "done",
 				"priority": "high",
 				"dependencies": [],
 				"details": "This task establishes the foundation for all package documentation. It includes creating a README template structure, updating all Cargo.toml files with package-specific repository links pointing to subdirectories, removing Doxidize configuration, adding rustdoc include_str! integration pattern, and updating the main README to link to package READMEs instead of containing all content.",
@@ -47,10 +47,10 @@
 						"id": 5,
 						"title": "Update Main README to Link to Packages",
 						"description": "Refactor main README.md to be a high-level overview that links to individual package READMEs. Remove package-specific content and replace with organized links to all 39 packages grouped by category.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": [],
 						"parentId": "1"
-					}
+					},
 				]
 			},
 			{
