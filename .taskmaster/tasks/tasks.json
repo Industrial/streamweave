@@ -83,7 +83,7 @@
 						"id": 3,
 						"title": "Create message Package README",
 						"description": "Create README for streamweave-message package covering: Message envelope type, message metadata, message wrapping/unwrapping, usage in pipelines and graphs. Include examples of creating messages, accessing metadata, and message flow patterns.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "2"
 					},
