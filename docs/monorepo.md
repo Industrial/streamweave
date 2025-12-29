@@ -46,7 +46,7 @@ streamweave/
 │   │   ├── redis/
 │   │   ├── database/
 │   │   ├── http-poll/
-│   │   ├── env-var/
+│   │   ├── env/
 │   │   └── command/
 │   ├── consumers/                # Consumer implementations
 │   │   ├── array/
@@ -393,7 +393,7 @@ Each producer is a separate package:
 - `streamweave-producer-redis` - Redis Streams producer (depends on redis)
 - `streamweave-producer-database` - Database producer (depends on sqlx)
 - `streamweave-producer-http-poll` - HTTP polling producer (depends on reqwest)
-- `streamweave-producer-env-var` - Environment variable producer
+- `streamweave-env` - Environment variable producer
 - `streamweave-producer-command` - Command execution producer
 
 All depend on: `streamweave-core`  

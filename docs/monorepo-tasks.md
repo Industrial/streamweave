@@ -188,14 +188,14 @@
       - [x] Copy `src/producers/http_poll/output.rs` to `packages/producers/http-poll/src/output.rs`.
       - [x] Copy `src/producers/http_poll/http_poll_producer.rs` to `packages/producers/http-poll/src/http_poll_producer.rs`.
       - [x] Create `packages/producers/http-poll/src/lib.rs`.
-    - [x] Create `packages/producers/env-var` directory.
-      - [x] Create `packages/producers/env-var/Cargo.toml`.
-      - [x] Create `packages/producers/env-var/src` directory.
-      - [x] Copy `src/producers/env_var/mod.rs` to `packages/producers/env-var/src/mod.rs`.
-      - [x] Copy `src/producers/env_var/producer.rs` to `packages/producers/env-var/src/producer.rs`.
-      - [x] Copy `src/producers/env_var/output.rs` to `packages/producers/env-var/src/output.rs`.
-      - [x] Copy `src/producers/env_var/env_var_producer.rs` to `packages/producers/env-var/src/env_var_producer.rs`.
-      - [x] Create `packages/producers/env-var/src/lib.rs`.
+    - [x] Create `packages/env` directory (renamed from `env-var`).
+      - [x] Create `packages/env/Cargo.toml`.
+      - [x] Create `packages/env/src` directory.
+      - [x] Copy `src/producers/env_var/mod.rs` to `packages/env/src/mod.rs`.
+      - [x] Copy `src/producers/env_var/producer.rs` to `packages/env/src/producer.rs`.
+      - [x] Copy `src/producers/env_var/output.rs` to `packages/env/src/output.rs`.
+      - [x] Copy `src/producers/env_var/env_var_producer.rs` to `packages/env/src/env_var_producer.rs`.
+      - [x] Create `packages/env/src/lib.rs`.
     - [x] Create `packages/producers/command` directory.
       - [x] Create `packages/producers/command/Cargo.toml`.
       - [x] Create `packages/producers/command/src` directory.

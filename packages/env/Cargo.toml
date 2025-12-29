@@ -1,5 +1,5 @@
 [package]
-name = "streamweave-env-var"
+name = "streamweave-env"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -9,7 +9,7 @@ homepage.workspace = true
 documentation.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Env Var producer and consumer for StreamWeave"
+description = "Environment variable producer and consumer for StreamWeave"
 
 [features]
 default = []
