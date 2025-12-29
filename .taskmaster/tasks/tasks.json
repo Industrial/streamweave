@@ -109,7 +109,7 @@
 				"id": "3",
 				"title": "Task 3: System Packages Documentation",
 				"description": "Create standalone README files for system packages: pipeline, graph, stateful, window, distributed. These packages provide core system functionality.",
-				"status": "pending",
+				"status": "done",
 				"priority": "high",
 				"dependencies": ["1"],
 				"details": "Create comprehensive README files for the 5 system packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
@@ -151,7 +151,7 @@
 						"id": 5,
 						"title": "Create distributed Package README",
 						"description": "Create README for streamweave-distributed package covering: Distributed processing, coordinator, workers, network communication, fault tolerance, partitioning. Include examples: distributed graph setup, worker configuration, fault tolerance patterns, network protocols.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "3"
 					}

@@ -1,4 +1,4 @@
-//! Distributed processing integration for StreamWeave
+#![doc = include_str!("../README.md")]
 
 pub mod coordinator;
 pub mod fault_tolerance;
