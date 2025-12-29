@@ -1,4 +1,4 @@
-//! Error handling system for StreamWeave
+#![doc = include_str!("../README.md")]
 
 pub mod error;
 

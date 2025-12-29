@@ -75,7 +75,7 @@
 						"id": 2,
 						"title": "Create error Package README",
 						"description": "Create README for streamweave-error package covering: ErrorStrategy enum (Stop, Skip, Retry, Custom), ErrorAction enum, StreamError type, ErrorContext, ComponentInfo. Include examples for each error strategy, custom error handlers, and error propagation patterns.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "2"
 					},
