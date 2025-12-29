@@ -1,6 +1,4 @@
-//! Temporary file handling for StreamWeave
-//!
-//! This package provides producers and consumers for working with temporary files.
+#![doc = include_str!("../README.md")]
 
 pub mod consumers;
 pub mod producers;

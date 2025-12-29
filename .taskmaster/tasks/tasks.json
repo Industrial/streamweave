@@ -161,7 +161,7 @@
 				"id": "4",
 				"title": "Task 4: I/O Packages Documentation",
 				"description": "Create standalone README files for I/O packages: stdio, file, fs, tempfile, path. These packages handle standard I/O and file system operations.",
-				"status": "pending",
+				"status": "done",
 				"priority": "medium",
 				"dependencies": ["1"],
 				"details": "Create comprehensive README files for the 5 I/O packages. Each README should explain the package's purpose, provide quick start examples, document key APIs, and include package-specific usage examples. Include README in rustdoc for each package.",
@@ -195,7 +195,7 @@
 						"id": 4,
 						"title": "Create tempfile Package README",
 						"description": "Create README for streamweave-tempfile package covering: TempfileProducer, TempfileConsumer, temporary file handling, temp file lifecycle, cleanup patterns. Include examples: creating temp files, processing temp data, automatic cleanup, temp file patterns.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "4"
 					},
@@ -203,7 +203,7 @@
 						"id": 5,
 						"title": "Create path Package README",
 						"description": "Create README for streamweave-path package covering: Path transformers (file_name, parent, normalize), path manipulation, path operations, path processing patterns. Include examples: extracting file names, getting parent directories, normalizing paths, path transformations.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": ["1.1", "1.4"],
 						"parentId": "4"
 					}
