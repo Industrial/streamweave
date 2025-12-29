@@ -23,7 +23,7 @@
 						"id": 2,
 						"title": "Update All Cargo.toml Repository Links",
 						"description": "Update repository field in all 39 package Cargo.toml files to point to package subdirectories using format: https://github.com/Industrial/streamweave/tree/main/packages/<package-name>. Override workspace repository setting for each package.",
-						"status": "pending",
+						"status": "done",
 						"dependencies": [],
 						"parentId": "1"
 					},
