@@ -1,6 +1,4 @@
-//! Timer and interval producer for StreamWeave
-//!
-//! This package provides producers that generate events at regular intervals.
+#![doc = include_str!("../README.md")]
 
 pub mod producers;
 

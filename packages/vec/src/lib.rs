@@ -1,4 +1,4 @@
-//! Vec producer and consumer for StreamWeave
+#![doc = include_str!("../README.md")]
 
 pub mod consumers;
 pub mod producers;

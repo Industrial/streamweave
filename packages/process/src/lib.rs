@@ -1,6 +1,4 @@
-//! Process management for StreamWeave
-//!
-//! This package provides producers and consumers for managing external processes.
+#![doc = include_str!("../README.md")]
 
 pub mod consumers;
 pub mod producers;

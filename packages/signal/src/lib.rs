@@ -1,6 +1,4 @@
-//! Unix signal handling for StreamWeave
-//!
-//! This package provides producers that emit events when Unix signals are received.
+#![doc = include_str!("../README.md")]
 
 pub mod producers;
 
