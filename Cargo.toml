@@ -97,6 +97,7 @@ tokio-util = "0.7.14"
 uuid = { version = "1.10", features = ["v4", "serde"] }
 proptest = "1.5"
 tempfile = "3.10"
+bytes = { version = "1.x", features = ["serde"] }
 
 [workspace.lints.rust]
 # Shared lint configuration
