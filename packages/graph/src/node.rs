@@ -208,7 +208,7 @@ where
           let mut recv = receiver;
           while let Some(bytes) = recv.recv().await {
             let bytes_len = bytes.len();
-            match deserialize::<<T as Input>::Input>(bytes.clone()) {
+            match deserialize::<<T as Input>::Input>(bytes) {
               Ok(item) => yield item,
               Err(e) => {
                 // Log deserialization error but continue processing
@@ -1546,7 +1546,7 @@ mod tests {
         item1 = rx1.recv(), if !rx1_closed => {
           match item1 {
             Some(bytes) => {
-              let item: i32 = deserialize(&bytes).unwrap();
+              let item: i32 = deserialize(bytes).unwrap();
               received1.push(item);
             }
             None => {
@@ -1557,7 +1557,7 @@ mod tests {
         item2 = rx2.recv(), if !rx2_closed => {
           match item2 {
             Some(bytes) => {
-              let item: i32 = deserialize(&bytes).unwrap();
+              let item: i32 = deserialize(bytes).unwrap();
               received2.push(item);
             }
             None => {
@@ -1594,7 +1594,7 @@ mod tests {
 
     // Receive first item
     let bytes1 = rx.recv().await.unwrap();
-    let item1: i32 = deserialize(&bytes1).unwrap();
+    let item1: i32 = deserialize(bytes1).unwrap();
     assert_eq!(item1, 1);
 
     // Pause
@@ -1609,7 +1609,7 @@ mod tests {
     while let Ok(Some(bytes)) =
       tokio::time::timeout(tokio::time::Duration::from_millis(500), rx.recv()).await
     {
-      let item: i32 = deserialize(&bytes).unwrap();
+      let item: i32 = deserialize(bytes).unwrap();
       received.push(item);
     }
 
@@ -1658,7 +1658,7 @@ mod tests {
 
     let mut received = Vec::new();
     while let Some(bytes) = rx.recv().await {
-      let item: String = deserialize(&bytes).unwrap();
+      let item: String = deserialize(bytes).unwrap();
       received.push(item);
     }
 
@@ -1699,7 +1699,7 @@ mod tests {
 
     let mut received = Vec::new();
     while let Some(bytes) = rx.recv().await {
-      let item: TestStruct = deserialize(&bytes).unwrap();
+      let item: TestStruct = deserialize(bytes).unwrap();
       received.push(item);
     }
 
@@ -1728,7 +1728,7 @@ mod tests {
     let mut received = Vec::new();
     let mut count = 0;
     while let Some(bytes) = rx.recv().await {
-      let item: i32 = deserialize(&bytes).unwrap();
+      let item: i32 = deserialize(bytes).unwrap();
       received.push(item);
       count += 1;
 
@@ -1779,7 +1779,7 @@ mod tests {
     // Collect output
     let mut received = Vec::new();
     while let Some(bytes) = output_rx.recv().await {
-      let item: i32 = deserialize(&bytes).unwrap();
+      let item: i32 = deserialize(bytes).unwrap();
       received.push(item);
     }
 
@@ -1816,7 +1816,7 @@ mod tests {
     // Collect output
     let mut received = Vec::new();
     while let Some(bytes) = output_rx.recv().await {
-      let item: i32 = deserialize(&bytes).unwrap();
+      let item: i32 = deserialize(bytes).unwrap();
       received.push(item);
     }
 
@@ -1856,7 +1856,7 @@ mod tests {
     // Collect output
     let mut received = Vec::new();
     while let Some(bytes) = output_rx.recv().await {
-      let item: i32 = deserialize(&bytes).unwrap();
+      let item: i32 = deserialize(bytes).unwrap();
       received.push(item);
     }
 
@@ -1904,12 +1904,12 @@ mod tests {
       tokio::select! {
         item1 = output_rx1.recv() => {
           if let Some(bytes) = item1 {
-            let item: i32 = deserialize(&bytes).unwrap();
+            let item: i32 = deserialize(bytes).unwrap();
             received1.push(item);
           } else {
             // Channel closed, wait for the other one to finish
             while let Some(bytes) = output_rx2.recv().await {
-              let item: i32 = deserialize(&bytes).unwrap();
+              let item: i32 = deserialize(bytes).unwrap();
               received2.push(item);
             }
             break;
@@ -1917,12 +1917,12 @@ mod tests {
         }
         item2 = output_rx2.recv() => {
           if let Some(bytes) = item2 {
-            let item: i32 = deserialize(&bytes).unwrap();
+            let item: i32 = deserialize(bytes).unwrap();
             received2.push(item);
           } else {
             // Channel closed, wait for the other one to finish
             while let Some(bytes) = output_rx1.recv().await {
-              let item: i32 = deserialize(&bytes).unwrap();
+              let item: i32 = deserialize(bytes).unwrap();
               received1.push(item);
             }
             break;
@@ -1994,7 +1994,7 @@ mod tests {
 
     // Receive first item
     let bytes1 = output_rx.recv().await.unwrap();
-    let item1: i32 = deserialize(&bytes1).unwrap();
+    let item1: i32 = deserialize(bytes1).unwrap();
     assert_eq!(item1, 1);
 
     // Pause
@@ -2009,7 +2009,7 @@ mod tests {
     while let Ok(Some(bytes)) =
       tokio::time::timeout(tokio::time::Duration::from_millis(500), output_rx.recv()).await
     {
-      let item: i32 = deserialize(&bytes).unwrap();
+      let item: i32 = deserialize(bytes).unwrap();
       received.push(item);
     }
 

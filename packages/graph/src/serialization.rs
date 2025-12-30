@@ -63,7 +63,7 @@ impl From<serde_json::Error> for SerializationError {
   }
 }
 
-/// Serializes an item to Bytes.
+/// Serializes an item to bytes.
 ///
 /// This function serializes a value that implements `Serialize` to JSON
 /// bytes using `serde_json::to_vec` and converts the result to `Bytes`
@@ -100,15 +100,15 @@ pub fn serialize<T: Serialize>(item: &T) -> Result<Bytes, SerializationError> {
     .map(Bytes::from)
 }
 
-/// Deserializes an item from Bytes.
+/// Deserializes an item from bytes.
 ///
 /// This function deserializes JSON bytes to a value that implements
-/// `DeserializeOwned` using `serde_json::from_slice` with zero-copy access
-/// to the underlying slice via `Bytes::as_ref()`.
+/// `DeserializeOwned` using `serde_json::from_slice`. Accepts `Bytes`
+/// for zero-copy access to the underlying data.
 ///
 /// # Arguments
 ///
-/// * `data` - The Bytes containing JSON data to deserialize.
+/// * `data` - The bytes containing JSON data to deserialize.
 ///
 /// # Returns
 ///
@@ -118,9 +118,9 @@ pub fn serialize<T: Serialize>(item: &T) -> Result<Bytes, SerializationError> {
 /// # Example
 ///
 /// ```rust
+/// use bytes::Bytes;
 /// use serde::Deserialize;
 /// use streamweave_graph::deserialize;
-/// use bytes::Bytes;
 ///
 /// #[derive(Deserialize, Debug, PartialEq)]
 /// struct Point {
@@ -140,7 +140,6 @@ pub fn deserialize<T: DeserializeOwned>(data: Bytes) -> Result<T, SerializationE
 #[cfg(test)]
 mod tests {
   use super::*;
-  use bytes::Bytes;
   use serde::{Deserialize, Serialize};
   use std::error::Error;
 
@@ -179,8 +178,8 @@ mod tests {
   #[test]
   fn test_from_serde_json_error() {
     // Test deserialization error (has line number)
-    let invalid_json = Bytes::from(b"{ invalid json".as_slice());
-    let serde_err = serde_json::from_slice::<TestStruct>(invalid_json.as_ref()).unwrap_err();
+    let invalid_json = b"{ invalid json";
+    let serde_err = serde_json::from_slice::<TestStruct>(invalid_json).unwrap_err();
     let our_err: SerializationError = serde_err.into();
     match our_err {
       SerializationError::DeserializationFailed(_) => {}
@@ -193,21 +192,21 @@ mod tests {
   fn test_serialize_primitive_i32() {
     let value: i32 = 42;
     let bytes = serialize(&value).unwrap();
-    assert_eq!(bytes, b"42");
+    assert_eq!(&bytes[..], b"42");
   }
 
   #[test]
   fn test_serialize_primitive_string() {
     let value = "hello".to_string();
     let bytes = serialize(&value).unwrap();
-    assert_eq!(bytes, b"\"hello\"");
+    assert_eq!(&bytes[..], b"\"hello\"");
   }
 
   #[test]
   fn test_serialize_primitive_bool() {
     let value = true;
     let bytes = serialize(&value).unwrap();
-    assert_eq!(bytes, b"true");
+    assert_eq!(&bytes[..], b"true");
   }
 
   #[test]
@@ -218,47 +217,47 @@ mod tests {
     };
     let bytes = serialize(&value).unwrap();
     let expected = br#"{"value":42,"text":"test"}"#;
-    assert_eq!(bytes, expected);
+    assert_eq!(&bytes[..], expected);
   }
 
   #[test]
   fn test_serialize_enum() {
     let value = TestEnum::Variant1;
     let bytes = serialize(&value).unwrap();
-    assert_eq!(bytes, b"\"Variant1\"");
+    assert_eq!(&bytes[..], b"\"Variant1\"");
 
     let value = TestEnum::Variant2("test".to_string());
     let bytes = serialize(&value).unwrap();
-    assert_eq!(bytes, br#"{"Variant2":"test"}"#);
+    assert_eq!(bytes.as_ref(), br#"{"Variant2":"test"}"#);
 
     let value = TestEnum::Variant3 { field: 42 };
     let bytes = serialize(&value).unwrap();
-    assert_eq!(bytes, br#"{"Variant3":{"field":42}}"#);
+    assert_eq!(bytes.as_ref(), br#"{"Variant3":{"field":42}}"#);
   }
 
   #[test]
   fn test_serialize_vec() {
     let value = vec![1, 2, 3];
     let bytes = serialize(&value).unwrap();
-    assert_eq!(bytes, b"[1,2,3]");
+    assert_eq!(&bytes[..], b"[1,2,3]");
   }
 
   #[test]
   fn test_serialize_option() {
     let value: Option<i32> = Some(42);
     let bytes = serialize(&value).unwrap();
-    assert_eq!(bytes, b"42");
+    assert_eq!(&bytes[..], b"42");
 
     let value: Option<i32> = None;
     let bytes = serialize(&value).unwrap();
-    assert_eq!(bytes, b"null");
+    assert_eq!(&bytes[..], b"null");
   }
 
   #[test]
   fn test_serialize_empty_data() {
     let value: Vec<i32> = vec![];
     let bytes = serialize(&value).unwrap();
-    assert_eq!(bytes, b"[]");
+    assert_eq!(&bytes[..], b"[]");
   }
 
   // deserialize() tests
