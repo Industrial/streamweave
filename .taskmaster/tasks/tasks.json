@@ -49,119 +49,6 @@
 				"updatedAt": "2025-12-30T18:52:56.122Z"
 			},
 			{
-				"id": "14",
-				"title": "Task 14: Zero-Copy Architecture Implementation - Phase 3: Conditional Cloning with Cow",
-				"description": "Implement Phase 3 of zero-copy architecture: add ZeroCopyTransformer trait, update transformers to support zero-copy with Cow (Clone on Write), and implement conditional cloning patterns.",
-				"status": "done",
-				"priority": "high",
-				"dependencies": ["13"],
-				"details": "Phase 3 implements conditional cloning patterns using Cow to avoid unnecessary clones in transformer operations. Transformers that may or may not need to own data can use Cow for zero-copy when possible, cloning only when necessary.",
-				"subtasks": [
-					{
-						"id": 3,
-						"title": "Implement InPlaceTransform Trait",
-						"description": "Create InPlaceTransform trait for types that support in-place transformation without allocation. This enables even more efficient zero-copy transformations for mutable types.",
-						"status": "done",
-						"dependencies": ["14.2"],
-						"parentId": "14",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Define InPlaceTransform Trait",
-								"description": "Define InPlaceTransform trait in packages/graph/src/zero_copy.rs with transform_in_place method that takes self by value and returns Self. This allows zero-copy transformation for owned values.",
-								"status": "done",
-								"dependencies": ["14.2"],
-								"parentId": "14.3"
-							},
-							{
-								"id": 2,
-								"title": "Define MutateInPlace Trait",
-								"description": "Define MutateInPlace trait for types that can be mutated in-place. Add mutate_in_place method that takes &mut self and applies transformation via closure. This enables zero-allocation in-place mutations.",
-								"status": "done",
-								"dependencies": ["14.3.1"],
-								"parentId": "14.3"
-							},
-							{
-								"id": 3,
-								"title": "Export Traits from graph Module",
-								"description": "Add pub use zero_copy::InPlaceTransform; and pub use zero_copy::MutateInPlace; to packages/graph/src/lib.rs.",
-								"status": "done",
-								"dependencies": ["14.3.2"],
-								"parentId": "14.3"
-							}
-						]
-					},
-					{
-						"id": 4,
-						"title": "Update Additional Transformers for Zero-Copy",
-						"description": "Update other key transformers to implement ZeroCopyTransformer trait. Focus on high-frequency transformers like FilterTransformer, ReduceTransformer, and other commonly used transformers.",
-						"status": "done",
-						"dependencies": ["14.3"],
-						"parentId": "14",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Implement ZeroCopyTransformer for FilterTransformer",
-								"description": "Implement ZeroCopyTransformer trait for FilterTransformer. Handle Cow::Borrowed and Cow::Owned cases, ensuring filter operations work correctly with borrowed and owned values.",
-								"status": "done",
-								"dependencies": ["14.3"],
-								"parentId": "14.4"
-							},
-							{
-								"id": 2,
-								"title": "Implement ZeroCopyTransformer for ReduceTransformer",
-								"description": "Implement ZeroCopyTransformer trait for ReduceTransformer. Handle accumulator state appropriately, ensuring zero-copy when possible while maintaining correct reduction semantics.",
-								"status": "done",
-								"dependencies": ["14.4.1"],
-								"parentId": "14.4"
-							},
-							{
-								"id": 3,
-								"title": "Review and Update Other High-Frequency Transformers",
-								"description": "Review other transformers in packages/transformers/ that are frequently used. Identify which transformers can benefit from ZeroCopyTransformer implementation and implement the trait where appropriate.",
-								"status": "done",
-								"dependencies": ["14.4.2"],
-								"parentId": "14.4"
-							}
-						]
-					},
-					{
-						"id": 5,
-						"title": "Integrate ZeroCopyTransformer into Graph Execution",
-						"description": "Update graph execution code to use ZeroCopyTransformer when available. Add logic to detect if a transformer implements ZeroCopyTransformer and use transform_zero_copy method instead of regular transform when possible.",
-						"status": "done",
-						"dependencies": ["14.4"],
-						"parentId": "14",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Add ZeroCopyTransformer Detection Logic",
-								"description": "Add helper function or method to detect if a transformer implements ZeroCopyTransformer trait. This may require trait object casting or similar mechanism to check trait implementation.",
-								"status": "done",
-								"dependencies": ["14.4"],
-								"parentId": "14.5"
-							},
-							{
-								"id": 2,
-								"title": "Update TransformerNode Execution to Use ZeroCopyTransformer",
-								"description": "Update TransformerNode::spawn_execution_task to check if transformer implements ZeroCopyTransformer. If yes, use transform_zero_copy with Cow::Owned input. If no, fall back to regular transform method.",
-								"status": "done",
-								"dependencies": ["14.5.1"],
-								"parentId": "14.5"
-							},
-							{
-								"id": 3,
-								"title": "Handle Cow Return Values in Execution",
-								"description": "Update graph execution code to handle Cow return values from transform_zero_copy. Extract owned values from Cow::Owned, handle Cow::Borrowed appropriately, and ensure correct ownership transfer to downstream nodes.",
-								"status": "done",
-								"dependencies": ["14.5.2"],
-								"parentId": "14.5"
-							}
-						]
-					}
-				]
-			},
-			{
 				"id": "15",
 				"title": "Task 15: Zero-Copy Architecture Implementation - Phase 4: Dual-Mode Graph Execution",
 				"description": "Implement Phase 4 of zero-copy architecture: add ExecutionMode enum, implement in-process zero-copy execution path, add mode detection logic, and update graph builder API to support dual-mode execution.",
@@ -171,60 +58,10 @@
 				"details": "Phase 4 implements dual-mode execution where graphs can run in-process (zero-copy) or distributed (serialized) modes. In-process mode eliminates all serialization overhead, achieving 50-80% memory reduction and 30-50% CPU reduction.",
 				"subtasks": [
 					{
-						"id": 1,
-						"title": "Implement ExecutionMode Enum",
-						"description": "Create ExecutionMode enum in packages/graph/src/execution.rs (or create file if needed) with variants: InProcess, Distributed, and Hybrid. Define all necessary fields and configuration options for each mode.",
-						"status": "done",
-						"dependencies": ["14"],
-						"parentId": "15",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Define ExecutionMode Enum Structure",
-								"description": "Define ExecutionMode enum with InProcess { use_shared_memory: bool }, Distributed { serializer: Box<dyn Serializer>, compression: Option<CompressionAlgorithm>, batching: Option<BatchConfig> }, and Hybrid { local_threshold: usize, serializer: Box<dyn Serializer> } variants.",
-								"status": "done",
-								"dependencies": ["14"],
-								"parentId": "15.1"
-							},
-							{
-								"id": 2,
-								"title": "Define Serializer Trait",
-								"description": "Define Serializer trait in packages/graph/src/serialization.rs with serialize and deserialize methods. This trait abstracts over different serialization formats (JSON, bincode, MessagePack, etc.).",
-								"status": "done",
-								"dependencies": ["15.1.1"],
-								"parentId": "15.1"
-							},
-							{
-								"id": 3,
-								"title": "Define CompressionAlgorithm and BatchConfig Types",
-								"description": "Define CompressionAlgorithm enum (Gzip, Zstd, etc.) and BatchConfig structure (batch_size, batch_timeout, etc.) for distributed execution configuration. Add these types to execution.rs.",
-								"status": "done",
-								"dependencies": ["15.1.2"],
-								"parentId": "15.1"
-							},
-							{
-								"id": 4,
-								"title": "Add ExecutionMode Helper Methods",
-								"description": "Implement ExecutionMode::new_in_process, ExecutionMode::new_in_process_shared_memory, ExecutionMode::new_distributed, and ExecutionMode::new_hybrid constructor methods. Add documentation for each variant.",
-								"status": "in-progress",
-								"dependencies": ["15.1.3"],
-								"parentId": "15.1"
-							},
-							{
-								"id": 5,
-								"title": "Export ExecutionMode from graph Module",
-								"description": "Add pub use execution::ExecutionMode; (or appropriate module path) to packages/graph/src/lib.rs to export ExecutionMode enum.",
-								"status": "pending",
-								"dependencies": ["15.1.4"],
-								"parentId": "15.1"
-							}
-						]
-					},
-					{
 						"id": 2,
 						"title": "Implement In-Process Execution Path",
 						"description": "Implement zero-copy in-process execution path in GraphExecutor that passes data directly without serialization. Use direct stream connections and Arc for fan-out scenarios.",
-						"status": "pending",
+						"status": "in-progress",
 						"dependencies": ["15.1"],
 						"parentId": "15",
 						"subtasks": [
@@ -232,7 +69,7 @@
 								"id": 1,
 								"title": "Create execute_in_process Method",
 								"description": "Create execute_in_process method in GraphExecutor (or Graph struct) that implements zero-copy execution. This method should pass streams directly between nodes without serialization, using Arc for fan-out.",
-								"status": "pending",
+								"status": "in-progress",
 								"dependencies": ["15.1"],
 								"parentId": "15.2"
 							},
