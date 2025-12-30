@@ -35,6 +35,7 @@ use crate::port::{GetPort, PortList};
 use crate::serialization::{deserialize, serialize};
 use crate::traits::{NodeKind, NodeTrait};
 use async_stream::stream;
+use bytes::Bytes;
 use futures::StreamExt;
 use serde::{Serialize, de::DeserializeOwned};
 use std::marker::PhantomData;
@@ -146,15 +147,15 @@ where
   ///
   /// # Arguments
   ///
-  /// * `receiver` - Channel receiver that yields serialized `Vec<u8>`
+  /// * `receiver` - Channel receiver that yields serialized `Bytes`
   ///
   /// # Returns
   ///
   /// A new `StreamWrapper` that can be converted to `T::InputStream`.
-  fn from_receiver(mut receiver: tokio::sync::mpsc::Receiver<Vec<u8>>) -> Self {
+  fn from_receiver(mut receiver: tokio::sync::mpsc::Receiver<Bytes>) -> Self {
     let stream = Box::pin(stream! {
       while let Some(bytes) = receiver.recv().await {
-        match deserialize::<<T as Input>::Input>(&bytes) {
+        match deserialize::<<T as Input>::Input>(bytes) {
           Ok(item) => yield item,
           Err(e) => {
             // Log and skip invalid items on deserialization error
@@ -198,7 +199,7 @@ where
   ///
   /// A new `StreamWrapper` containing the merged stream from all inputs.
   fn from_multiple_receivers(
-    receivers: impl Iterator<Item = (usize, tokio::sync::mpsc::Receiver<Vec<u8>>)>,
+    receivers: impl Iterator<Item = (usize, tokio::sync::mpsc::Receiver<Bytes>)>,
   ) -> Self {
     // Create streams from each receiver
     let streams: Vec<_> = receivers
@@ -206,14 +207,15 @@ where
         Box::pin(stream! {
           let mut recv = receiver;
           while let Some(bytes) = recv.recv().await {
-            match deserialize::<<T as Input>::Input>(&bytes) {
+            let bytes_len = bytes.len();
+            match deserialize::<<T as Input>::Input>(bytes.clone()) {
               Ok(item) => yield item,
               Err(e) => {
                 // Log deserialization error but continue processing
                 // Errors are logged but items are skipped to prevent cascading failures
                 error!(
                   error = %e,
-                  bytes_len = bytes.len(),
+                  bytes_len = bytes_len,
                   "Failed to deserialize input item from channel, skipping"
                 );
                 continue;
@@ -858,15 +860,15 @@ where
 
   fn spawn_execution_task(
     &self,
-    _input_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Receiver<Vec<u8>>>,
-    output_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Sender<Vec<u8>>>,
+    _input_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Receiver<Bytes>>,
+    output_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Sender<Bytes>>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
     // Implementation requires P: Clone and P::Output: Serialize (added to trait bounds above)
     // This implementation:
     // 1. Clones the producer
     // 2. Calls producer.produce() to get the stream
-    // 3. Serializes each item to Vec<u8>
+    // 3. Serializes each item to Bytes
     // 4. Sends to output channels (broadcasts to all ports)
     // 5. Handles pause signal and errors
 
@@ -1069,8 +1071,8 @@ where
 
   fn spawn_execution_task(
     &self,
-    input_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Receiver<Vec<u8>>>,
-    output_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Sender<Vec<u8>>>,
+    input_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Receiver<Bytes>>,
+    output_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Sender<Bytes>>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
     let node_name = self.name.clone();
@@ -1270,8 +1272,8 @@ where
 
   fn spawn_execution_task(
     &self,
-    input_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Receiver<Vec<u8>>>,
-    _output_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Sender<Vec<u8>>>,
+    input_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Receiver<Bytes>>,
+    _output_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Sender<Bytes>>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
     let mut consumer_clone = self.consumer.clone();
