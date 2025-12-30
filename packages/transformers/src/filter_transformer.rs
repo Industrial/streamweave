@@ -160,7 +160,7 @@ where
         let mut predicate = self.predicate.clone();
         predicate(borrowed)
       }
-      Cow::Owned(ref owned) => {
+      Cow::Owned(owned) => {
         let mut predicate = self.predicate.clone();
         predicate(owned)
       }

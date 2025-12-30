@@ -171,6 +171,137 @@ pub fn deserialize<T: DeserializeOwned>(data: Bytes) -> Result<T, SerializationE
   serde_json::from_slice(data.as_ref()).map_err(SerializationError::from)
 }
 
+/// Zero-copy deserializer that holds a Bytes buffer for lifetime-aware deserialization.
+///
+/// This structure enables zero-copy deserialization by maintaining the lifetime
+/// of the serialized data. When deserializing string-heavy data, strings can be
+/// deserialized as `&str` references pointing into the buffer, avoiding allocations.
+///
+/// # Zero-Copy Semantics
+///
+/// - Holds `Bytes` buffer for shared ownership
+/// - Enables lifetime-aware deserialization with `serde_json::from_slice`
+/// - Strings can be deserialized as `&str` when data outlives deserialized value
+/// - Reduces allocations for string-heavy data structures
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave_graph::serialization::ZeroCopyDeserializer;
+/// use bytes::Bytes;
+///
+/// let buffer = Bytes::from(r#"{"text": "hello"}"#);
+/// let deserializer = ZeroCopyDeserializer::new(buffer);
+/// let result: serde_json::Value = deserializer.deserialize().unwrap();
+/// ```
+#[derive(Debug, Clone)]
+pub struct ZeroCopyDeserializer {
+  /// The buffer containing serialized data
+  buffer: Bytes,
+}
+
+impl ZeroCopyDeserializer {
+  /// Create a new zero-copy deserializer from a Bytes buffer.
+  ///
+  /// # Arguments
+  ///
+  /// * `buffer` - The Bytes buffer containing serialized data
+  ///
+  /// # Returns
+  ///
+  /// A new `ZeroCopyDeserializer` instance
+  #[must_use]
+  pub fn new(buffer: Bytes) -> Self {
+    Self { buffer }
+  }
+
+  /// Deserialize a value from the buffer.
+  ///
+  /// This method uses `serde_json::from_slice` with the buffer's lifetime,
+  /// enabling zero-copy string deserialization when the deserialized value
+  /// doesn't outlive the buffer.
+  ///
+  /// # Type Parameters
+  ///
+  /// * `T` - The type to deserialize, must implement `DeserializeOwned`
+  ///
+  /// # Returns
+  ///
+  /// The deserialized value, or an error if deserialization fails
+  ///
+  /// # Note
+  ///
+  /// For zero-copy string deserialization, use `deserialize_with_lifetime`
+  /// which returns values with lifetimes tied to the buffer.
+  pub fn deserialize<T: DeserializeOwned>(&self) -> Result<T, SerializationError> {
+    serde_json::from_slice(self.buffer.as_ref()).map_err(Into::into)
+  }
+
+  /// Get a reference to the underlying buffer.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the `Bytes` buffer
+  #[must_use]
+  pub fn buffer(&self) -> &Bytes {
+    &self.buffer
+  }
+}
+
+/// Deserialize a value with zero-copy string support.
+///
+/// This function accepts a `&[u8]` slice with a lifetime and deserializes
+/// strings as `&str` (zero-copy) when the data outlives the deserialized value.
+/// This is useful for string-heavy data structures where you want to avoid
+/// allocations.
+///
+/// # Arguments
+///
+/// * `data` - The byte slice to deserialize (must outlive the result)
+///
+/// # Returns
+///
+/// The deserialized value with strings as `&str` references
+///
+/// # Lifetime Requirements
+///
+/// The `data` slice must outlive the deserialized value. This function is
+/// most useful when deserializing into a temporary or when the buffer is
+/// kept alive for the lifetime of the deserialized value.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave_graph::serialization::deserialize_zero_copy_strings;
+///
+/// let data = b"{\"text\": \"hello\"}";
+/// let result: serde_json::Value = deserialize_zero_copy_strings(data).unwrap();
+/// // Strings in result are &str references pointing into data
+/// ```
+pub fn deserialize_zero_copy_strings<'de, T>(data: &'de [u8]) -> Result<T, SerializationError>
+where
+  T: serde::Deserialize<'de>,
+{
+  serde_json::from_slice(data).map_err(Into::into)
+}
+
+/// A JSON-based serializer implementation.
+///
+/// This serializer uses `serde_json` for serialization and deserialization.
+/// It's the default serializer used by the graph execution engine.
+#[derive(Debug, Clone, Default)]
+pub struct JsonSerializer;
+
+impl Serializer for JsonSerializer {
+  fn serialize<T: Serialize>(&self, item: &T) -> Result<Bytes, SerializationError> {
+    serialize(item)
+  }
+
+  fn deserialize<T: DeserializeOwned>(&self, bytes: Bytes) -> Result<T, SerializationError> {
+    deserialize(bytes)
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;

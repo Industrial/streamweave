@@ -74,6 +74,8 @@ pub trait NodeTrait: Send + Sync + std::any::Any {
   /// * `input_channels` - Map of (port_index, receiver) for input ports
   /// * `output_channels` - Map of (port_index, sender) for output ports
   /// * `pause_signal` - Shared signal for pausing execution
+  /// * `execution_mode` - The execution mode (InProcess, Distributed, or Hybrid)
+  /// * `batching_channels` - Optional map of (port_index, batching_channel) for batching
   ///
   /// # Returns
   ///
@@ -84,11 +86,21 @@ pub trait NodeTrait: Send + Sync + std::any::Any {
   ///
   /// Default implementation returns `None`. Concrete node types should
   /// override this method to provide execution capability.
+  /// When `execution_mode` is `ExecutionMode::InProcess`, nodes should use
+  /// `Arc<T>` channels instead of `Bytes` channels for zero-copy execution.
+  /// Nodes receive type-erased channels and extract the appropriate type
+  /// (Bytes or `Arc<T>`) based on ExecutionMode.
+  /// When batching is enabled, nodes should use `batching_channels` instead of `output_channels`.
   fn spawn_execution_task(
     &self,
-    _input_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Receiver<bytes::Bytes>>,
-    _output_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Sender<bytes::Bytes>>,
+    _input_channels: std::collections::HashMap<usize, crate::channels::TypeErasedReceiver>,
+    _output_channels: std::collections::HashMap<usize, crate::channels::TypeErasedSender>,
     _pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
+    _execution_mode: crate::execution::ExecutionMode,
+    _batching_channels: Option<
+      std::collections::HashMap<usize, std::sync::Arc<crate::batching::BatchingChannel>>,
+    >,
+    _arc_pool: Option<std::sync::Arc<crate::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
     None
   }

@@ -10,7 +10,27 @@ use futures::StreamExt;
 use futures::stream::select_all;
 use std::marker::PhantomData;
 use std::pin::Pin;
-use streamweave_transformers::MergeStrategy;
+
+/// Defines the ordering strategy for merging multiple streams.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum MergeStrategy {
+  /// Process streams in order, exhaust one before moving to next.
+  /// Elements from stream 0 come first, then stream 1, etc.
+  Sequential,
+
+  /// Take one element from each stream in turn (round-robin).
+  /// Stream 0, Stream 1, Stream 2, Stream 0, Stream 1, ...
+  RoundRobin,
+
+  /// Process streams based on priority index (lower index = higher priority).
+  /// When higher priority stream has elements, they are processed first.
+  Priority,
+
+  /// Fair interleaving using select_all (default futures behavior).
+  /// Whichever stream has an element ready gets processed.
+  #[default]
+  Interleave,
+}
 
 /// A router that merges multiple input streams into a single output stream.
 ///
@@ -21,7 +41,7 @@ use streamweave_transformers::MergeStrategy;
 ///
 /// ```rust
 /// use streamweave::graph::routers::MergeRouter;
-/// use streamweave_transformers::MergeStrategy;
+/// use streamweave_graph::routers::MergeStrategy;
 /// use futures::stream;
 /// use std::pin::Pin;
 ///
@@ -157,7 +177,6 @@ where
 mod tests {
   use super::*;
   use futures::stream;
-  use streamweave_transformers::MergeStrategy;
 
   #[tokio::test]
   async fn test_merge_router_interleave() {

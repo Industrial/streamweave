@@ -183,7 +183,7 @@ where
     // Extract the value from Cow (clone if Borrowed, move if Owned)
     let value = match input {
       Cow::Borrowed(borrowed) => borrowed.clone(), // Clone borrowed value
-      Cow::Owned(owned) => owned,                 // Use owned value directly
+      Cow::Owned(owned) => owned,                  // Use owned value directly
     };
 
     // Apply the transformation function

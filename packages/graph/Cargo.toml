@@ -19,7 +19,6 @@ streamweave-error = { path = "../error", version = "0.5.0" }
 streamweave-pipeline = { path = "../pipeline", version = "0.5.0" }
 streamweave-stateful = { path = "../stateful", version = "0.5.0" }
 streamweave-window = { path = "../window", version = "0.5.0" }
-streamweave-transformers = { path = "../transformers", version = "0.5.0" }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
 futures = { workspace = true }
 chrono = { workspace = true }
@@ -27,9 +26,34 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
 bytes = { workspace = true }
+shared_memory = "0.12"
+flate2 = { version = "1.0", features = ["zlib"] }
+zstd = "0.13"
+thiserror = { workspace = true }
 
 [dev-dependencies]
 streamweave-vec = { path = "../vec", version = "0.5.0" }
 streamweave-transformers = { path = "../transformers", version = "0.5.0" }
+criterion = { version = "0.5", features = [
+  "html_reports",
+  "async_tokio",
+  "async_futures",
+] }
+
+[[bench]]
+name = "zero_copy_bench"
+harness = false
+
+[[bench]]
+name = "shared_memory_bench"
+harness = false
+
+[[bench]]
+name = "compression_bench"
+harness = false
+
+[[bench]]
+name = "batching_bench"
+harness = false
 
 [features]

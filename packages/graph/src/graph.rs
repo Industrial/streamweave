@@ -329,6 +329,8 @@ pub struct Graph {
   nodes: HashMap<String, Box<dyn NodeTrait>>,
   /// Connections between nodes
   connections: Vec<ConnectionInfo>,
+  /// Execution mode for this graph
+  execution_mode: crate::execution::ExecutionMode,
 }
 
 impl Graph {
@@ -336,12 +338,48 @@ impl Graph {
   ///
   /// # Returns
   ///
-  /// A new empty `Graph` instance.
+  /// A new empty `Graph` instance with default in-process execution mode.
   pub fn new() -> Self {
     Self {
       nodes: HashMap::new(),
       connections: Vec::new(),
+      execution_mode: crate::execution::ExecutionMode::new_in_process(), // Default to in-process for zero-copy
     }
+  }
+
+  /// Sets the execution mode for this graph.
+  ///
+  /// # Arguments
+  ///
+  /// * `mode` - The execution mode to use
+  ///
+  /// # Returns
+  ///
+  /// `Self` for method chaining
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave::graph::Graph;
+  /// use streamweave_graph::execution::ExecutionMode;
+  ///
+  /// let graph = Graph::new()
+  ///   .with_execution_mode(ExecutionMode::new_in_process());
+  /// ```
+  #[must_use]
+  pub fn with_execution_mode(mut self, mode: crate::execution::ExecutionMode) -> Self {
+    self.execution_mode = mode;
+    self
+  }
+
+  /// Returns the execution mode for this graph.
+  ///
+  /// # Returns
+  ///
+  /// The current `ExecutionMode`
+  #[must_use]
+  pub fn execution_mode(&self) -> &crate::execution::ExecutionMode {
+    &self.execution_mode
   }
 
   /// Returns a reference to the node with the given name.
@@ -505,6 +543,7 @@ pub struct GraphBuilder<State = Empty> {
   nodes: HashMap<String, Box<dyn NodeTrait>>,
   connections: Vec<ConnectionInfo>,
   _state: State,
+  execution_mode: Option<crate::execution::ExecutionMode>,
 }
 
 // Initial builder creation
@@ -530,6 +569,7 @@ impl GraphBuilder<Empty> {
       nodes: HashMap::new(),
       connections: Vec::new(),
       _state: Empty,
+      execution_mode: None,
     }
   }
 }
@@ -543,6 +583,31 @@ impl<State> GraphBuilder<State> {
   /// The number of nodes.
   pub fn node_count(&self) -> usize {
     self.nodes.len()
+  }
+
+  /// Sets the execution mode for the graph being built.
+  ///
+  /// # Arguments
+  ///
+  /// * `mode` - The execution mode to use
+  ///
+  /// # Returns
+  ///
+  /// `Self` for method chaining
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave::graph::GraphBuilder;
+  /// use streamweave_graph::execution::ExecutionMode;
+  ///
+  /// let builder = GraphBuilder::new()
+  ///   .with_execution_mode(ExecutionMode::new_in_process());
+  /// ```
+  #[must_use]
+  pub fn with_execution_mode(mut self, mode: crate::execution::ExecutionMode) -> Self {
+    self.execution_mode = Some(mode);
+    self
   }
 
   /// Returns the number of connections in the graph.
@@ -612,6 +677,7 @@ impl GraphBuilder<Empty> {
       nodes,
       connections: self.connections,
       _state: HasNodes(PhantomData),
+      execution_mode: self.execution_mode,
     })
   }
 
@@ -699,6 +765,7 @@ impl<Nodes> GraphBuilder<HasNodes<Nodes>> {
       nodes,
       connections: self.connections,
       _state: HasNodes(PhantomData),
+      execution_mode: self.execution_mode,
     })
   }
 
@@ -832,6 +899,7 @@ impl<Nodes> GraphBuilder<HasNodes<Nodes>> {
       nodes: self.nodes,
       connections,
       _state: HasConnections(PhantomData),
+      execution_mode: self.execution_mode,
     })
   }
 
@@ -931,6 +999,7 @@ impl<Nodes> GraphBuilder<HasNodes<Nodes>> {
       nodes: self.nodes,
       connections,
       _state: HasConnections(PhantomData),
+      execution_mode: self.execution_mode,
     })
   }
 }
@@ -975,6 +1044,7 @@ impl<Nodes, Connections> GraphBuilder<HasConnections<Nodes, Connections>> {
       nodes,
       connections: self.connections,
       _state: HasNodes(PhantomData),
+      execution_mode: self.execution_mode,
     })
   }
 
@@ -1098,6 +1168,7 @@ impl<Nodes, Connections> GraphBuilder<HasConnections<Nodes, Connections>> {
       nodes: self.nodes,
       connections,
       _state: HasConnections(PhantomData),
+      execution_mode: self.execution_mode,
     })
   }
 
@@ -1185,6 +1256,7 @@ impl<Nodes, Connections> GraphBuilder<HasConnections<Nodes, Connections>> {
       nodes: self.nodes,
       connections,
       _state: HasConnections(PhantomData),
+      execution_mode: self.execution_mode,
     })
   }
 
@@ -1197,6 +1269,9 @@ impl<Nodes, Connections> GraphBuilder<HasConnections<Nodes, Connections>> {
     Graph {
       nodes: self.nodes,
       connections: self.connections,
+      execution_mode: self
+        .execution_mode
+        .unwrap_or_else(crate::execution::ExecutionMode::new_in_process),
     }
   }
 }
@@ -1212,6 +1287,9 @@ impl<Nodes> GraphBuilder<HasNodes<Nodes>> {
     Graph {
       nodes: self.nodes,
       connections: self.connections,
+      execution_mode: self
+        .execution_mode
+        .unwrap_or_else(crate::execution::ExecutionMode::new_in_process),
     }
   }
 }
@@ -1229,6 +1307,7 @@ impl Default for GraphBuilder<Empty> {
 pub struct RuntimeGraphBuilder {
   nodes: HashMap<String, Box<dyn NodeTrait>>,
   connections: Vec<ConnectionInfo>,
+  execution_mode: Option<crate::execution::ExecutionMode>,
 }
 
 impl RuntimeGraphBuilder {
@@ -1241,7 +1320,23 @@ impl RuntimeGraphBuilder {
     Self {
       nodes: HashMap::new(),
       connections: Vec::new(),
+      execution_mode: None,
     }
+  }
+
+  /// Sets the execution mode for the graph being built.
+  ///
+  /// # Arguments
+  ///
+  /// * `mode` - The execution mode to use
+  ///
+  /// # Returns
+  ///
+  /// `Self` for method chaining
+  #[must_use]
+  pub fn with_execution_mode(mut self, mode: crate::execution::ExecutionMode) -> Self {
+    self.execution_mode = Some(mode);
+    self
   }
 
   /// Adds a node to the graph.
@@ -1319,6 +1414,9 @@ impl RuntimeGraphBuilder {
     Graph {
       nodes: self.nodes,
       connections: self.connections,
+      execution_mode: self
+        .execution_mode
+        .unwrap_or_else(crate::execution::ExecutionMode::new_in_process),
     }
   }
 }

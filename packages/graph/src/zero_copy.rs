@@ -150,8 +150,19 @@ impl<T: Clone + Send + Sync + 'static> ZeroCopyShareWeak for T {
 /// pool.return_arc(arc); // Return to pool for reuse
 /// ```
 pub struct ArcPool<T: Clone + Send + Sync + 'static> {
-  pool: Arc<Mutex<Vec<Arc<T>>>>,
+  /// Pool of values (not `Arc<T>`) for reuse
+  /// Values are wrapped in Arc when retrieved from the pool
+  pool: Arc<Mutex<Vec<T>>>,
+  /// Maximum number of values to keep in the pool
   max_size: usize,
+  /// Number of times a value was successfully retrieved from the pool (hit)
+  hits: Arc<std::sync::atomic::AtomicU64>,
+  /// Number of times the pool was empty and a new value had to be allocated (miss)
+  misses: Arc<std::sync::atomic::AtomicU64>,
+  /// Number of times a value was successfully returned to the pool
+  returns: Arc<std::sync::atomic::AtomicU64>,
+  /// Number of times return_arc failed (Arc had multiple references or pool was full)
+  return_failures: Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
@@ -176,39 +187,53 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
     Self {
       pool: Arc::new(Mutex::new(Vec::with_capacity(max_size.min(16)))), // Pre-allocate some capacity
       max_size,
+      hits: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+      misses: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+      returns: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+      return_failures: Arc::new(std::sync::atomic::AtomicU64::new(0)),
     }
   }
 
   /// Get an `Arc<T>` from the pool, or create a new one with the given value.
   ///
-  /// This is the preferred method for getting `Arc` instances from the pool.
-  /// If the pool has a reusable `Arc`, it will be unwrapped and re-initialized
-  /// with the new value. Otherwise, a new `Arc` will be created.
+  /// This method tries to reuse a value from the pool. If the pool is empty,
+  /// it uses the provided value. The value is wrapped in `Arc` before returning.
   ///
   /// # Arguments
   ///
-  /// * `value` - The value to wrap in an `Arc`
+  /// * `value` - The value to wrap in an `Arc` (used if pool is empty)
   ///
   /// # Returns
   ///
-  /// An `Arc<T>` containing the value
+  /// An `Arc<T>` containing either a pooled value or the provided value
   ///
-  /// # Note
+  /// # Example
   ///
-  /// Currently, this always creates a new `Arc` since we can't easily reuse
-  /// existing `Arc` instances. Future optimizations may pool the underlying
-  /// values or use a more sophisticated pooling strategy.
+  /// ```rust
+  /// use streamweave_graph::ArcPool;
+  ///
+  /// let pool = ArcPool::<String>::new(10);
+  /// let arc1 = pool.get_or_create("hello".to_string());
+  /// // Use arc1...
+  /// pool.return_arc(arc1);
+  /// // Later, get from pool
+  /// let arc2 = pool.get_or_create("world".to_string()); // May reuse "hello" from pool
+  /// ```
   pub fn get_or_create(&self, value: T) -> Arc<T> {
-    let pool = self.pool.lock().unwrap();
-    // For now, always create new Arc. Future: try to unwrap and reuse from pool
-    if let Some(arc) = pool.last() {
-      // Check if we can unwrap (only one reference)
-      if Arc::strong_count(arc) == 1 {
-        // Can potentially reuse, but we'd need to unwrap which requires ownership
-        // For now, just create new
-      }
+    let mut pool = self.pool.lock().unwrap();
+
+    // Try to get a value from the pool
+    if let Some(pooled_value) = pool.pop() {
+      // Reuse pooled value (hit)
+      self.hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+      Arc::new(pooled_value)
+    } else {
+      // Pool is empty, use provided value (miss)
+      self
+        .misses
+        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+      Arc::new(value)
     }
-    Arc::new(value)
   }
 
   /// Return an `Arc<T>` to the pool for reuse.
@@ -221,23 +246,56 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
   ///
   /// * `arc` - The `Arc` to return to the pool
   ///
+  /// # Returns
+  ///
+  /// `true` if the value was successfully returned to the pool, `false` otherwise
+  ///
   /// # Note
   ///
-  /// Currently, this is a placeholder implementation. True Arc pooling would
-  /// require storing the unwrapped values and re-wrapping them, which has
-  /// limitations. This method exists for API completeness and future optimization.
-  pub fn return_arc(&self, arc: Arc<T>) {
-    // Only return to pool if this is the only reference
-    if let Ok(_value) = Arc::try_unwrap(arc) {
-      let pool = self.pool.lock().unwrap();
-      if pool.len() < self.max_size {
-        // Future: Store the value for reuse. For now, just drop it.
-        // The challenge is that we'd need to re-wrap in Arc when needed,
-        // which defeats some of the pooling benefits.
+  /// Only `Arc`s with a single reference can be returned to the pool. If the
+  /// `Arc` has multiple references (e.g., in fan-out scenarios), it cannot be
+  /// unwrapped and will be dropped when the last reference is dropped.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave_graph::ArcPool;
+  /// use std::sync::Arc;
+  ///
+  /// let pool = ArcPool::<String>::new(10);
+  /// let arc = pool.get_or_create("hello".to_string());
+  /// // Use arc...
+  /// let returned = pool.return_arc(arc); // Returns true if successful
+  /// ```
+  pub fn return_arc(&self, arc: Arc<T>) -> bool {
+    // Try to unwrap the Arc - only succeeds if this is the only reference
+    match Arc::try_unwrap(arc) {
+      Ok(value) => {
+        // Successfully unwrapped, can return to pool
+        let mut pool = self.pool.lock().unwrap();
+        if pool.len() < self.max_size {
+          pool.push(value);
+          self
+            .returns
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+          true
+        } else {
+          // Pool is full, drop the value
+          self
+            .return_failures
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+          false
+        }
       }
-      // Drop the value
+      Err(_) => {
+        // Arc has multiple references, cannot unwrap
+        // The Arc will be dropped when the last reference is dropped
+        self
+          .return_failures
+          .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        false
+      }
     }
-    // If arc has multiple references, just drop it
   }
 
   /// Get the current number of `Arc` instances in the pool.
@@ -260,11 +318,179 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
     self.pool.lock().unwrap().is_empty()
   }
 
-  /// Clear all `Arc` instances from the pool.
+  /// Clear all values from the pool.
   ///
-  /// This will drop all pooled `Arc` instances, freeing their memory.
+  /// This will drop all pooled values, freeing their memory.
+  /// Statistics are not reset by this method.
   pub fn clear(&self) {
     self.pool.lock().unwrap().clear();
+  }
+
+  /// Get pool statistics.
+  ///
+  /// # Returns
+  ///
+  /// A `PoolStatistics` struct containing hit rate, pool size, and other metrics.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave_graph::ArcPool;
+  ///
+  /// let pool = ArcPool::<String>::new(10);
+  /// let stats = pool.statistics();
+  /// println!("Hit rate: {:.2}%", stats.hit_rate() * 100.0);
+  /// ```
+  pub fn statistics(&self) -> PoolStatistics {
+    let hits = self.hits.load(std::sync::atomic::Ordering::Relaxed);
+    let misses = self.misses.load(std::sync::atomic::Ordering::Relaxed);
+    let returns = self.returns.load(std::sync::atomic::Ordering::Relaxed);
+    let return_failures = self
+      .return_failures
+      .load(std::sync::atomic::Ordering::Relaxed);
+    let pool_size = self.len();
+    let total_requests = hits + misses;
+
+    PoolStatistics {
+      hits,
+      misses,
+      returns,
+      return_failures,
+      pool_size,
+      max_size: self.max_size,
+      total_requests,
+    }
+  }
+
+  /// Get the number of pool hits (values reused from pool).
+  ///
+  /// # Returns
+  ///
+  /// The number of times a value was successfully retrieved from the pool.
+  pub fn hits(&self) -> u64 {
+    self.hits.load(std::sync::atomic::Ordering::Relaxed)
+  }
+
+  /// Get the number of pool misses (new allocations).
+  ///
+  /// # Returns
+  ///
+  /// The number of times the pool was empty and a new value had to be allocated.
+  pub fn misses(&self) -> u64 {
+    self.misses.load(std::sync::atomic::Ordering::Relaxed)
+  }
+
+  /// Get the number of successful returns to the pool.
+  ///
+  /// # Returns
+  ///
+  /// The number of times a value was successfully returned to the pool.
+  pub fn returns(&self) -> u64 {
+    self.returns.load(std::sync::atomic::Ordering::Relaxed)
+  }
+
+  /// Get the number of failed return attempts.
+  ///
+  /// # Returns
+  ///
+  /// The number of times `return_arc` failed (Arc had multiple references or pool was full).
+  pub fn return_failures(&self) -> u64 {
+    self
+      .return_failures
+      .load(std::sync::atomic::Ordering::Relaxed)
+  }
+
+  /// Reset all statistics counters.
+  ///
+  /// This resets hits, misses, returns, and return_failures to zero.
+  /// The pool contents are not affected.
+  pub fn reset_statistics(&self) {
+    self.hits.store(0, std::sync::atomic::Ordering::Relaxed);
+    self.misses.store(0, std::sync::atomic::Ordering::Relaxed);
+    self.returns.store(0, std::sync::atomic::Ordering::Relaxed);
+    self
+      .return_failures
+      .store(0, std::sync::atomic::Ordering::Relaxed);
+  }
+}
+
+/// Statistics for an `ArcPool`.
+///
+/// This struct provides detailed metrics about pool usage and effectiveness.
+#[derive(Debug, Clone)]
+pub struct PoolStatistics {
+  /// Number of pool hits (values reused from pool)
+  pub hits: u64,
+  /// Number of pool misses (new allocations)
+  pub misses: u64,
+  /// Number of successful returns to pool
+  pub returns: u64,
+  /// Number of failed return attempts
+  pub return_failures: u64,
+  /// Current number of values in the pool
+  pub pool_size: usize,
+  /// Maximum pool size
+  pub max_size: usize,
+  /// Total number of get_or_create requests
+  pub total_requests: u64,
+}
+
+impl PoolStatistics {
+  /// Calculate the hit rate (hits / total_requests).
+  ///
+  /// # Returns
+  ///
+  /// Hit rate as a value between 0.0 and 1.0, or 0.0 if no requests have been made.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave_graph::ArcPool;
+  ///
+  /// let pool = ArcPool::<String>::new(10);
+  /// let stats = pool.statistics();
+  /// if stats.hit_rate() > 0.5 {
+  ///     println!("Pool is effective: {:.2}% hit rate", stats.hit_rate() * 100.0);
+  /// }
+  /// ```
+  pub fn hit_rate(&self) -> f64 {
+    if self.total_requests == 0 {
+      return 0.0;
+    }
+    self.hits as f64 / self.total_requests as f64
+  }
+
+  /// Calculate the return success rate (returns / (returns + return_failures)).
+  ///
+  /// # Returns
+  ///
+  /// Return success rate as a value between 0.0 and 1.0, or 0.0 if no returns attempted.
+  pub fn return_success_rate(&self) -> f64 {
+    let total_returns = self.returns + self.return_failures;
+    if total_returns == 0 {
+      return 0.0;
+    }
+    self.returns as f64 / total_returns as f64
+  }
+
+  /// Get a formatted summary of the statistics.
+  ///
+  /// # Returns
+  ///
+  /// A string containing a human-readable summary of pool statistics.
+  pub fn summary(&self) -> String {
+    format!(
+      "Pool Statistics:\n  Hits: {} ({:.2}%)\n  Misses: {}\n  Returns: {} ({:.2}%)\n  Return Failures: {}\n  Pool Size: {}/{}\n  Total Requests: {}",
+      self.hits,
+      self.hit_rate() * 100.0,
+      self.misses,
+      self.returns,
+      self.return_success_rate() * 100.0,
+      self.return_failures,
+      self.pool_size,
+      self.max_size,
+      self.total_requests
+    )
   }
 }
 
@@ -273,6 +499,10 @@ impl<T: Clone + Send + Sync + 'static> Clone for ArcPool<T> {
     Self {
       pool: Arc::clone(&self.pool),
       max_size: self.max_size,
+      hits: Arc::clone(&self.hits),
+      misses: Arc::clone(&self.misses),
+      returns: Arc::clone(&self.returns),
+      return_failures: Arc::clone(&self.return_failures),
     }
   }
 }
@@ -320,7 +550,11 @@ impl<T: Clone + Send + Sync + 'static> Clone for ArcPool<T> {
 ///     }
 /// }
 /// ```
-pub trait ZeroCopyTransformer: Transformer {
+pub trait ZeroCopyTransformer: Transformer
+where
+  Self::Input: std::fmt::Debug + Clone + Send + Sync,
+  Self::Output: std::fmt::Debug + Clone + Send + Sync,
+{
   /// Transforms an item using zero-copy semantics with `Cow`.
   ///
   /// This method allows transformers to avoid unnecessary clones by accepting
@@ -361,10 +595,7 @@ pub trait ZeroCopyTransformer: Transformer {
   ///     input
   /// }
   /// ```
-  fn transform_zero_copy<'a>(&mut self, input: Cow<'a, Self::Input>) -> Cow<'a, Self::Output>
-  where
-    Self::Input: Clone,
-    Self::Output: Clone;
+  fn transform_zero_copy<'a>(&mut self, input: Cow<'a, Self::Input>) -> Cow<'a, Self::Output>;
 }
 
 /// Trait for types that support in-place transformation without allocation.
@@ -508,4 +739,134 @@ pub trait MutateInPlace {
   fn mutate_in_place<F>(&mut self, f: F)
   where
     F: FnOnce(&mut Self);
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use std::sync::Arc;
+
+  #[test]
+  fn test_arc_pool_get_or_create() {
+    let pool = ArcPool::<String>::new(10);
+
+    // First call should create new (pool is empty)
+    let arc1 = pool.get_or_create("hello".to_string());
+    assert_eq!(*arc1, "hello");
+    assert_eq!(pool.misses(), 1);
+    assert_eq!(pool.hits(), 0);
+
+    // Return to pool
+    assert!(pool.return_arc(arc1));
+    assert_eq!(pool.len(), 1);
+    assert_eq!(pool.returns(), 1);
+
+    // Second call should reuse from pool
+    let arc2 = pool.get_or_create("world".to_string());
+    // Should get "hello" from pool, not "world"
+    assert_eq!(*arc2, "hello");
+    assert_eq!(pool.hits(), 1);
+    assert_eq!(pool.misses(), 1);
+  }
+
+  #[test]
+  fn test_arc_pool_return_arc_single_reference() {
+    let pool = ArcPool::<Vec<i32>>::new(10);
+
+    let arc = pool.get_or_create(vec![1, 2, 3]);
+    assert_eq!(pool.len(), 0); // Pool was empty, so nothing to return
+
+    // Return with single reference should succeed
+    assert!(pool.return_arc(arc));
+    assert_eq!(pool.len(), 1);
+    assert_eq!(pool.returns(), 1);
+    assert_eq!(pool.return_failures(), 0);
+  }
+
+  #[test]
+  fn test_arc_pool_return_arc_multiple_references() {
+    let pool = ArcPool::<String>::new(10);
+
+    let arc1 = pool.get_or_create("test".to_string());
+    let arc2 = Arc::clone(&arc1); // Create second reference
+
+    // Try to return arc1 - should fail because arc2 still holds a reference
+    assert!(!pool.return_arc(arc1));
+    assert_eq!(pool.len(), 0);
+    assert_eq!(pool.return_failures(), 1);
+
+    // Drop arc2, then we can return (but arc1 is already dropped)
+    drop(arc2);
+  }
+
+  #[test]
+  fn test_arc_pool_max_size() {
+    let pool = ArcPool::<i32>::new(2);
+
+    // Fill pool to max by creating and returning arcs
+    let arc1 = Arc::new(1);
+    let arc2 = Arc::new(2);
+
+    assert!(pool.return_arc(arc1));
+    assert!(pool.return_arc(arc2));
+    assert_eq!(pool.len(), 2);
+
+    // Try to return another - should fail because pool is full
+    let arc3 = Arc::new(3);
+    assert!(!pool.return_arc(arc3)); // Pool is full (len == max_size), should fail
+    assert_eq!(pool.len(), 2); // Still at max size
+    assert_eq!(pool.return_failures(), 1);
+  }
+
+  #[test]
+  fn test_arc_pool_statistics() {
+    let pool = ArcPool::<String>::new(10);
+
+    // Make some requests
+    let arc1 = pool.get_or_create("a".to_string());
+    let _arc2 = pool.get_or_create("b".to_string());
+    pool.return_arc(arc1);
+    let _arc3 = pool.get_or_create("c".to_string()); // Should get "a" from pool
+
+    let stats = pool.statistics();
+    assert_eq!(stats.hits, 1); // One hit (arc3 reused "a")
+    assert_eq!(stats.misses, 2); // Two misses (arc1 and arc2 were new)
+    assert_eq!(stats.returns, 1);
+    assert_eq!(stats.total_requests, 3);
+    assert!(stats.hit_rate() > 0.0);
+  }
+
+  #[test]
+  fn test_arc_pool_reset_statistics() {
+    let pool = ArcPool::<String>::new(10);
+
+    pool.get_or_create("test".to_string());
+    assert_eq!(pool.misses(), 1);
+
+    pool.reset_statistics();
+    assert_eq!(pool.misses(), 0);
+    assert_eq!(pool.hits(), 0);
+    assert_eq!(pool.returns(), 0);
+  }
+
+  #[test]
+  fn test_pool_statistics_hit_rate() {
+    let pool = ArcPool::<i32>::new(10);
+
+    // Create and return values to build up pool
+    for i in 0..5 {
+      let arc = pool.get_or_create(i);
+      pool.return_arc(arc);
+    }
+
+    // Now get values - should hit pool
+    for _ in 0..5 {
+      pool.get_or_create(100); // Value doesn't matter, will get from pool
+    }
+
+    let stats = pool.statistics();
+    assert_eq!(stats.hits, 5);
+    assert_eq!(stats.misses, 5); // First 5 were misses
+    assert_eq!(stats.hit_rate(), 0.5); // 50% hit rate
+  }
 }

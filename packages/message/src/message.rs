@@ -151,13 +151,17 @@ impl Default for MessageId {
 }
 
 /// Metadata associated with a message.
+///
+/// Uses `Arc<str>` for string fields to enable zero-copy string sharing
+/// in fan-out scenarios and reduce memory usage for repeated strings.
 #[derive(Clone, Debug, Default)]
 pub struct MessageMetadata {
   /// When the message was created (as Duration since UNIX_EPOCH).
   pub timestamp: Option<Duration>,
 
   /// The source of the message (e.g., topic, file, etc.).
-  pub source: Option<String>,
+  /// Uses `Arc<str>` for zero-copy string sharing.
+  pub source: Option<Arc<str>>,
 
   /// Partition or shard information.
   pub partition: Option<u32>,
@@ -166,10 +170,12 @@ pub struct MessageMetadata {
   pub offset: Option<u64>,
 
   /// User-defined key for routing/grouping.
-  pub key: Option<String>,
+  /// Uses `Arc<str>` for zero-copy string sharing.
+  pub key: Option<Arc<str>>,
 
   /// Additional headers/attributes.
-  pub headers: Vec<(String, String)>,
+  /// Uses `Arc<str>` for both keys and values to enable zero-copy sharing.
+  pub headers: Vec<(Arc<str>, Arc<str>)>,
 }
 
 impl MessageMetadata {
@@ -196,8 +202,11 @@ impl MessageMetadata {
   }
 
   /// Set the source.
+  ///
+  /// Accepts any type that can be converted to `Arc<str>`, including
+  /// `String`, `&str`, and `Arc<str>`.
   #[must_use]
-  pub fn source(mut self, source: impl Into<String>) -> Self {
+  pub fn source(mut self, source: impl Into<Arc<str>>) -> Self {
     self.source = Some(source.into());
     self
   }
@@ -217,27 +226,51 @@ impl MessageMetadata {
   }
 
   /// Set the key.
+  ///
+  /// Accepts any type that can be converted to `Arc<str>`, including
+  /// `String`, `&str`, and `Arc<str>`.
   #[must_use]
-  pub fn key(mut self, key: impl Into<String>) -> Self {
+  pub fn key(mut self, key: impl Into<Arc<str>>) -> Self {
     self.key = Some(key.into());
     self
   }
 
   /// Add a header.
+  ///
+  /// Accepts any types that can be converted to `Arc<str>`, including
+  /// `String`, `&str`, and `Arc<str>`.
   #[must_use]
-  pub fn header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+  pub fn header(mut self, name: impl Into<Arc<str>>, value: impl Into<Arc<str>>) -> Self {
     self.headers.push((name.into(), value.into()));
     self
   }
 
   /// Get a header by name.
+  ///
+  /// Returns a `&str` reference to the header value if found.
   #[must_use]
   pub fn get_header(&self, name: &str) -> Option<&str> {
     self
       .headers
       .iter()
-      .find(|(k, _)| k == name)
-      .map(|(_, v)| v.as_str())
+      .find(|(k, _)| k.as_ref() == name)
+      .map(|(_, v)| v.as_ref())
+  }
+
+  /// Get the source as a string reference.
+  ///
+  /// Returns `None` if no source is set, or `Some(&str)` with the source value.
+  #[must_use]
+  pub fn get_source(&self) -> Option<&str> {
+    self.source.as_deref()
+  }
+
+  /// Get the key as a string reference.
+  ///
+  /// Returns `None` if no key is set, or `Some(&str)` with the key value.
+  #[must_use]
+  pub fn get_key(&self) -> Option<&str> {
+    self.key.as_deref()
   }
 
   /// Create metadata with shared source (for zero-copy scenarios).
@@ -245,13 +278,10 @@ impl MessageMetadata {
   /// This method accepts an `Arc<str>` for the source, enabling zero-copy
   /// sharing of source strings across multiple messages.
   ///
-  /// # Note
-  ///
-  /// Currently converts to String for storage. Future optimization (Task 16)
-  /// will use `Arc<str>` directly in MessageMetadata fields.
+  /// This is now equivalent to `source()` since MessageMetadata uses `Arc<str>` directly.
   #[must_use]
   pub fn with_shared_source(mut self, source: Arc<str>) -> Self {
-    self.source = Some((*source).to_string());
+    self.source = Some(source);
     self
   }
 
@@ -260,13 +290,10 @@ impl MessageMetadata {
   /// This method accepts an `Arc<str>` for the key, enabling zero-copy
   /// sharing of key strings across multiple messages.
   ///
-  /// # Note
-  ///
-  /// Currently converts to String for storage. Future optimization (Task 16)
-  /// will use `Arc<str>` directly in MessageMetadata fields.
+  /// This is now equivalent to `key()` since MessageMetadata uses `Arc<str>` directly.
   #[must_use]
   pub fn with_shared_key(mut self, key: Arc<str>) -> Self {
-    self.key = Some((*key).to_string());
+    self.key = Some(key);
     self
   }
 
@@ -275,15 +302,97 @@ impl MessageMetadata {
   /// This method accepts `Arc<str>` for header name and value, enabling
   /// zero-copy sharing of header strings across multiple messages.
   ///
-  /// # Note
-  ///
-  /// Currently converts to String for storage. Future optimization (Task 16)
-  /// will use `Arc<str>` directly in MessageMetadata fields.
+  /// This is now equivalent to `header()` since MessageMetadata uses `Arc<str>` directly.
   #[must_use]
   pub fn with_shared_header(mut self, name: Arc<str>, value: Arc<str>) -> Self {
+    self.headers.push((name, value));
+    self
+  }
+
+  /// Create metadata with source from a borrowed string.
+  ///
+  /// This is a convenience method that accepts `&str` and converts it to `Arc<str>`.
+  #[must_use]
+  pub fn with_source_borrowed(mut self, source: &str) -> Self {
+    self.source = Some(Arc::from(source));
+    self
+  }
+
+  /// Create metadata with interned source string.
+  ///
+  /// This method accepts a `&str` and a string interner, interns the string,
+  /// and stores the interned `Arc<str>` as the source. This enables automatic
+  /// string deduplication for repeated source values.
+  ///
+  /// # Arguments
+  ///
+  /// * `source` - The source string to intern
+  /// * `interner` - The string interner to use (must implement `StringInternerTrait`)
+  ///
+  /// # Returns
+  ///
+  /// `Self` for method chaining
+  ///
+  /// # Note
+  ///
+  /// This method accepts any type that implements `StringInternerTrait`, which
+  /// is provided by `streamweave-graph::StringInterner`. For use with the graph
+  /// package, pass a `&StringInterner` from `streamweave-graph`.
+  #[must_use]
+  pub fn with_source_interned<I: StringInternerTrait>(
+    mut self,
+    source: &str,
+    interner: &I,
+  ) -> Self {
+    self.source = Some(interner.get_or_intern(source));
+    self
+  }
+
+  /// Create metadata with interned key string.
+  ///
+  /// This method accepts a `&str` and a string interner, interns the string,
+  /// and stores the interned `Arc<str>` as the key. This enables automatic
+  /// string deduplication for repeated key values.
+  ///
+  /// # Arguments
+  ///
+  /// * `key` - The key string to intern
+  /// * `interner` - The string interner to use (must implement `StringInternerTrait`)
+  ///
+  /// # Returns
+  ///
+  /// `Self` for method chaining
+  #[must_use]
+  pub fn with_key_interned<I: StringInternerTrait>(mut self, key: &str, interner: &I) -> Self {
+    self.key = Some(interner.get_or_intern(key));
+    self
+  }
+
+  /// Add a header with interned strings.
+  ///
+  /// This method accepts header name and value as `&str`, interns both strings,
+  /// and adds the interned `Arc<str>` pair to headers. This enables automatic
+  /// string deduplication for repeated header keys and values.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The header name to intern
+  /// * `value` - The header value to intern
+  /// * `interner` - The string interner to use (must implement `StringInternerTrait`)
+  ///
+  /// # Returns
+  ///
+  /// `Self` for method chaining
+  #[must_use]
+  pub fn add_header_interned<I: StringInternerTrait>(
+    mut self,
+    name: &str,
+    value: &str,
+    interner: &I,
+  ) -> Self {
     self
       .headers
-      .push(((*name).to_string(), (*value).to_string()));
+      .push((interner.get_or_intern(name), interner.get_or_intern(value)));
     self
   }
 }
@@ -712,3 +821,25 @@ impl<T> From<SharedMessage<T>> for Arc<Message<T>> {
 // Clone + Send + Sync + 'static. Message<T> automatically implements
 // ZeroCopyShare when used with the graph package, enabling zero-copy
 // sharing via Arc<Message<T>> in fan-out scenarios.
+
+// Note: Arc::from() already provides conversion from String and &str to Arc<str>
+// No need to implement From trait due to orphan rule restrictions
+
+/// Trait for string interning functionality.
+///
+/// This trait abstracts over string interner implementations, allowing
+/// `MessageMetadata` to work with any interner type. The `streamweave-graph`
+/// package provides a concrete `StringInterner` implementation that implements
+/// this trait.
+pub trait StringInternerTrait {
+  /// Get an interned string, or intern a new one if it doesn't exist.
+  ///
+  /// # Arguments
+  ///
+  /// * `s` - The string to intern or retrieve
+  ///
+  /// # Returns
+  ///
+  /// An `Arc<str>` containing the interned string
+  fn get_or_intern(&self, s: &str) -> Arc<str>;
+}

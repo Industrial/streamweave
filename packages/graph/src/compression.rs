@@ -1,0 +1,386 @@
+//! # Compression Module
+//!
+//! This module provides compression and decompression functionality for
+//! distributed execution mode. It supports both Gzip and Zstd compression
+//! algorithms with configurable compression levels.
+//!
+//! ## Usage
+//!
+//! ```rust
+//! use streamweave_graph::compression::{Compression, GzipCompression, ZstdCompression};
+//!
+//! // Create a gzip compressor with level 6
+//! let gzip = GzipCompression::new(6);
+//! let data = b"hello world";
+//! let compressed = gzip.compress(data)?;
+//! let decompressed = gzip.decompress(&compressed)?;
+//! assert_eq!(data, decompressed.as_slice());
+//!
+//! // Create a zstd compressor with level 3
+//! let zstd = ZstdCompression::new(3);
+//! let compressed = zstd.compress(data)?;
+//! let decompressed = zstd.decompress(&compressed)?;
+//! assert_eq!(data, decompressed.as_slice());
+//! ```
+
+use crate::execution::CompressionAlgorithm;
+use flate2::Compression as Flate2Compression;
+use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
+use std::io::{Read, Write};
+use thiserror::Error;
+use zstd;
+
+/// Error types for compression operations.
+#[derive(Error, Debug)]
+pub enum CompressionError {
+  #[error("Compression failed: {0}")]
+  CompressionFailed(String),
+  #[error("Decompression failed: {0}")]
+  DecompressionFailed(String),
+  #[error("Invalid compression level: {0}")]
+  InvalidLevel(String),
+  #[error("Corrupted compressed data")]
+  CorruptedData,
+}
+
+/// Trait for compression algorithms.
+///
+/// This trait abstracts over different compression algorithms, allowing
+/// the execution engine to use any compression algorithm interchangeably.
+pub trait Compression: Send + Sync {
+  /// Compress the given data.
+  ///
+  /// # Arguments
+  ///
+  /// * `data` - The data to compress
+  ///
+  /// # Returns
+  ///
+  /// Compressed data as a `Vec<u8>`, or an error if compression fails.
+  fn compress(&self, data: &[u8]) -> Result<Vec<u8>, CompressionError>;
+
+  /// Decompress the given compressed data.
+  ///
+  /// # Arguments
+  ///
+  /// * `data` - The compressed data to decompress
+  ///
+  /// # Returns
+  ///
+  /// Decompressed data as a `Vec<u8>`, or an error if decompression fails.
+  fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, CompressionError>;
+
+  /// Get the compression level.
+  ///
+  /// # Returns
+  ///
+  /// The compression level (1-9 for gzip, 1-22 for zstd).
+  fn compression_level(&self) -> u32;
+
+  /// Get the compression algorithm type.
+  ///
+  /// # Returns
+  ///
+  /// The `CompressionAlgorithm` variant for this compressor.
+  fn algorithm(&self) -> CompressionAlgorithm;
+}
+
+/// Gzip compression implementation using flate2.
+///
+/// Supports compression levels 1-9, where:
+/// - 1: Fastest compression, largest output
+/// - 6: Default, good balance
+/// - 9: Slowest compression, smallest output
+pub struct GzipCompression {
+  level: u32,
+}
+
+impl GzipCompression {
+  /// Create a new Gzip compressor with the specified level.
+  ///
+  /// # Arguments
+  ///
+  /// * `level` - Compression level (1-9). Defaults to 6 if out of range.
+  ///
+  /// # Returns
+  ///
+  /// A new `GzipCompression` instance.
+  pub fn new(level: u32) -> Self {
+    Self {
+      level: level.clamp(1, 9),
+    }
+  }
+
+  /// Create a new Gzip compressor with default level (6).
+  #[allow(clippy::should_implement_trait)]
+  pub fn default() -> Self {
+    Self::new(6)
+  }
+}
+
+impl Compression for GzipCompression {
+  fn compress(&self, data: &[u8]) -> Result<Vec<u8>, CompressionError> {
+    let mut encoder = GzEncoder::new(Vec::new(), Flate2Compression::new(self.level));
+    encoder
+      .write_all(data)
+      .map_err(|e| CompressionError::CompressionFailed(e.to_string()))?;
+    encoder
+      .finish()
+      .map_err(|e| CompressionError::CompressionFailed(e.to_string()))
+  }
+
+  fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, CompressionError> {
+    let mut decoder = GzDecoder::new(data);
+    let mut decompressed = Vec::new();
+    decoder.read_to_end(&mut decompressed).map_err(|e| {
+      // Check for various error kinds that indicate corrupted data
+      match e.kind() {
+        std::io::ErrorKind::InvalidData | std::io::ErrorKind::InvalidInput => {
+          CompressionError::CorruptedData
+        }
+        _ => {
+          // Also check error message for corruption indicators
+          let msg = e.to_string().to_lowercase();
+          if msg.contains("corrupt") || msg.contains("invalid") || msg.contains("stream") {
+            CompressionError::CorruptedData
+          } else {
+            CompressionError::DecompressionFailed(e.to_string())
+          }
+        }
+      }
+    })?;
+    Ok(decompressed)
+  }
+
+  fn compression_level(&self) -> u32 {
+    self.level
+  }
+
+  fn algorithm(&self) -> CompressionAlgorithm {
+    CompressionAlgorithm::Gzip { level: self.level }
+  }
+}
+
+/// Zstd compression implementation using zstd-rs.
+///
+/// Supports compression levels 1-22, where:
+/// - 1: Fastest compression, largest output
+/// - 3: Default, good balance
+/// - 22: Slowest compression, smallest output
+pub struct ZstdCompression {
+  level: i32,
+}
+
+impl ZstdCompression {
+  /// Create a new Zstd compressor with the specified level.
+  ///
+  /// # Arguments
+  ///
+  /// * `level` - Compression level (1-22). Defaults to 3 if out of range.
+  ///
+  /// # Returns
+  ///
+  /// A new `ZstdCompression` instance.
+  pub fn new(level: u32) -> Self {
+    Self {
+      level: level.clamp(1, 22) as i32,
+    }
+  }
+
+  /// Create a new Zstd compressor with default level (3).
+  #[allow(clippy::should_implement_trait)]
+  pub fn default() -> Self {
+    Self::new(3)
+  }
+}
+
+impl Compression for ZstdCompression {
+  fn compress(&self, data: &[u8]) -> Result<Vec<u8>, CompressionError> {
+    zstd::encode_all(data, self.level)
+      .map_err(|e| CompressionError::CompressionFailed(format!("Zstd compression failed: {}", e)))
+  }
+
+  fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, CompressionError> {
+    zstd::decode_all(data).map_err(|e| {
+      if e.to_string().contains("corrupt") || e.to_string().contains("invalid") {
+        CompressionError::CorruptedData
+      } else {
+        CompressionError::DecompressionFailed(format!("Zstd decompression failed: {}", e))
+      }
+    })
+  }
+
+  fn compression_level(&self) -> u32 {
+    self.level as u32
+  }
+
+  fn algorithm(&self) -> CompressionAlgorithm {
+    CompressionAlgorithm::Zstd {
+      level: self.level as u32,
+    }
+  }
+}
+
+/// Create a compression implementation from a `CompressionAlgorithm`.
+///
+/// # Arguments
+///
+/// * `algorithm` - The compression algorithm with level
+///
+/// # Returns
+///
+/// A boxed `Compression` trait object.
+pub fn create_compression(algorithm: CompressionAlgorithm) -> Box<dyn Compression> {
+  match algorithm {
+    CompressionAlgorithm::Gzip { level } => Box::new(GzipCompression::new(level)),
+    CompressionAlgorithm::Zstd { level } => Box::new(ZstdCompression::new(level)),
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_gzip_compression() {
+    let compressor = GzipCompression::new(6);
+    // Use larger, more compressible data (repeated pattern)
+    let data = b"hello world, this is a test string for compression. ".repeat(10);
+
+    let compressed = compressor.compress(&data).unwrap();
+    assert!(compressed.len() < data.len());
+
+    let decompressed = compressor.decompress(&compressed).unwrap();
+    assert_eq!(data, decompressed.as_slice());
+  }
+
+  #[test]
+  fn test_gzip_round_trip() {
+    let compressor = GzipCompression::default();
+    let original = b"test data for round trip compression";
+
+    let compressed = compressor.compress(original).unwrap();
+    let decompressed = compressor.decompress(&compressed).unwrap();
+
+    assert_eq!(original, decompressed.as_slice());
+  }
+
+  #[test]
+  fn test_zstd_compression() {
+    let compressor = ZstdCompression::new(3);
+    // Use larger, more compressible data (repeated pattern)
+    let data = b"hello world, this is a test string for compression. ".repeat(10);
+
+    let compressed = compressor.compress(&data).unwrap();
+    assert!(compressed.len() < data.len());
+
+    let decompressed = compressor.decompress(&compressed).unwrap();
+    assert_eq!(data, decompressed.as_slice());
+  }
+
+  #[test]
+  fn test_zstd_round_trip() {
+    let compressor = ZstdCompression::default();
+    let original = b"test data for round trip compression";
+
+    let compressed = compressor.compress(original).unwrap();
+    let decompressed = compressor.decompress(&compressed).unwrap();
+
+    assert_eq!(original, decompressed.as_slice());
+  }
+
+  #[test]
+  fn test_gzip_different_levels() {
+    let data = b"repeated data repeated data repeated data repeated data";
+
+    let level1 = GzipCompression::new(1);
+    let level9 = GzipCompression::new(9);
+
+    let compressed1 = level1.compress(data).unwrap();
+    let compressed9 = level9.compress(data).unwrap();
+
+    // Level 9 should produce smaller output (better compression)
+    assert!(compressed9.len() <= compressed1.len());
+
+    // Both should decompress correctly
+    assert_eq!(data, level1.decompress(&compressed1).unwrap().as_slice());
+    assert_eq!(data, level9.decompress(&compressed9).unwrap().as_slice());
+  }
+
+  #[test]
+  fn test_zstd_different_levels() {
+    // Use larger, more compressible data to ensure higher levels show benefit
+    let data = b"repeated data repeated data repeated data repeated data ".repeat(20);
+
+    let level1 = ZstdCompression::new(1);
+    let level22 = ZstdCompression::new(22);
+
+    let compressed1 = level1.compress(&data).unwrap();
+    let compressed22 = level22.compress(&data).unwrap();
+
+    // Level 22 should produce smaller output (better compression) for larger data
+    assert!(compressed22.len() <= compressed1.len());
+
+    // Both should decompress correctly
+    assert_eq!(data, level1.decompress(&compressed1).unwrap().as_slice());
+    assert_eq!(data, level22.decompress(&compressed22).unwrap().as_slice());
+  }
+
+  #[test]
+  fn test_gzip_corrupted_data() {
+    let compressor = GzipCompression::default();
+    let corrupted = b"this is not valid gzip data";
+
+    let result = compressor.decompress(corrupted);
+    assert!(result.is_err());
+    assert!(matches!(
+      result.unwrap_err(),
+      CompressionError::CorruptedData
+    ));
+  }
+
+  #[test]
+  fn test_zstd_corrupted_data() {
+    let compressor = ZstdCompression::default();
+    let corrupted = b"this is not valid zstd data";
+
+    let result = compressor.decompress(corrupted);
+    assert!(result.is_err());
+    // Zstd may return different error types for corrupted data
+  }
+
+  #[test]
+  fn test_create_compression() {
+    let gzip = create_compression(CompressionAlgorithm::Gzip { level: 6 });
+    match gzip.algorithm() {
+      CompressionAlgorithm::Gzip { level } => assert_eq!(level, 6),
+      _ => panic!("Expected Gzip"),
+    }
+    assert_eq!(gzip.compression_level(), 6);
+
+    let zstd = create_compression(CompressionAlgorithm::Zstd { level: 3 });
+    match zstd.algorithm() {
+      CompressionAlgorithm::Zstd { level } => assert_eq!(level, 3),
+      _ => panic!("Expected Zstd"),
+    }
+    assert_eq!(zstd.compression_level(), 3);
+  }
+
+  #[test]
+  fn test_compression_level_clamping() {
+    // Test gzip level clamping
+    let gzip0 = GzipCompression::new(0);
+    assert_eq!(gzip0.compression_level(), 1); // Clamped to 1
+
+    let gzip10 = GzipCompression::new(10);
+    assert_eq!(gzip10.compression_level(), 9); // Clamped to 9
+
+    // Test zstd level clamping
+    let zstd0 = ZstdCompression::new(0);
+    assert_eq!(zstd0.compression_level(), 1); // Clamped to 1
+
+    let zstd25 = ZstdCompression::new(25);
+    assert_eq!(zstd25.compression_level(), 22); // Clamped to 22
+  }
+}

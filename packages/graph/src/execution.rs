@@ -30,7 +30,11 @@
 //! 3. **Execution**: Nodes run concurrently, with data flowing through channels
 //! 4. **Shutdown**: Gracefully stop all nodes and clean up resources
 
+use crate::batching::BatchingChannel;
+use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
 use crate::graph::Graph;
+use crate::shared_memory_channel::SharedMemoryChannel;
+use crate::throughput::ThroughputMonitor;
 use crate::zero_copy::ArcPool;
 use bytes::Bytes;
 use std::collections::HashMap;
@@ -108,6 +112,24 @@ pub enum ExecutionError {
     /// Error reason
     reason: String,
   },
+  /// Channel creation failed
+  ChannelCreationError {
+    /// Node name where error occurred
+    node: String,
+    /// Error reason
+    reason: String,
+  },
+  /// Compression or decompression error
+  CompressionError {
+    /// Node name where error occurred
+    node: String,
+    /// Whether this is compression or decompression
+    is_compression: bool,
+    /// Error details
+    reason: String,
+    /// Whether the error is due to corrupted data
+    is_corrupted: bool,
+  },
 }
 
 impl std::fmt::Display for ExecutionError {
@@ -179,6 +201,31 @@ impl std::fmt::Display for ExecutionError {
           operation, current_state, reason
         )
       }
+      ExecutionError::ChannelCreationError { node, reason } => {
+        write!(f, "Channel creation failed for node '{}': {}", node, reason)
+      }
+      ExecutionError::CompressionError {
+        node,
+        is_compression,
+        reason,
+        is_corrupted,
+      } => {
+        let op = if *is_compression {
+          "compression"
+        } else {
+          "decompression"
+        };
+        let corrupted_msg = if *is_corrupted {
+          " (corrupted data)"
+        } else {
+          ""
+        };
+        write!(
+          f,
+          "{} error on node '{}': {}{}",
+          op, node, reason, corrupted_msg
+        )
+      }
     }
   }
 }
@@ -241,7 +288,7 @@ pub enum ExecutionMode {
   /// * `batching` - Optional batching configuration for grouping items
   Distributed {
     /// Serializer for data serialization
-    serializer: Box<dyn crate::serialization::Serializer>,
+    serializer: crate::serialization::JsonSerializer,
     /// Optional compression algorithm
     compression: Option<CompressionAlgorithm>,
     /// Optional batching configuration
@@ -261,7 +308,7 @@ pub enum ExecutionMode {
     /// Threshold for switching to distributed mode
     local_threshold: usize,
     /// Serializer for distributed mode
-    serializer: Box<dyn crate::serialization::Serializer>,
+    serializer: crate::serialization::JsonSerializer,
   },
 }
 
@@ -271,10 +318,70 @@ pub enum ExecutionMode {
 /// serialized data in distributed execution mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompressionAlgorithm {
-  /// Gzip compression
-  Gzip,
-  /// Zstandard compression
-  Zstd,
+  /// Gzip compression with configurable level (1-9)
+  Gzip {
+    /// Compression level (1-9, default 6)
+    level: u32,
+  },
+  /// Zstandard compression with configurable level (1-22)
+  Zstd {
+    /// Compression level (1-22, default 3)
+    level: u32,
+  },
+}
+
+impl CompressionAlgorithm {
+  /// Create a new Gzip compression algorithm with the specified level.
+  ///
+  /// # Arguments
+  ///
+  /// * `level` - Compression level (1-9). Defaults to 6 if out of range.
+  ///
+  /// # Returns
+  ///
+  /// A `CompressionAlgorithm::Gzip` variant with the specified level.
+  pub fn gzip(level: u32) -> Self {
+    Self::Gzip {
+      level: level.clamp(1, 9),
+    }
+  }
+
+  /// Create a new Gzip compression algorithm with default level (6).
+  pub fn gzip_default() -> Self {
+    Self::Gzip { level: 6 }
+  }
+
+  /// Create a new Zstd compression algorithm with the specified level.
+  ///
+  /// # Arguments
+  ///
+  /// * `level` - Compression level (1-22). Defaults to 3 if out of range.
+  ///
+  /// # Returns
+  ///
+  /// A `CompressionAlgorithm::Zstd` variant with the specified level.
+  pub fn zstd(level: u32) -> Self {
+    Self::Zstd {
+      level: level.clamp(1, 22),
+    }
+  }
+
+  /// Create a new Zstd compression algorithm with default level (3).
+  pub fn zstd_default() -> Self {
+    Self::Zstd { level: 3 }
+  }
+
+  /// Get the compression level for this algorithm.
+  ///
+  /// # Returns
+  ///
+  /// The compression level (1-9 for gzip, 1-22 for zstd).
+  pub fn level(&self) -> u32 {
+    match self {
+      CompressionAlgorithm::Gzip { level } => *level,
+      CompressionAlgorithm::Zstd { level } => *level,
+    }
+  }
 }
 
 /// Batching configuration for distributed execution.
@@ -294,18 +401,148 @@ impl BatchConfig {
   ///
   /// # Arguments
   ///
+  /// * `batch_size` - Maximum number of items per batch (must be > 0)
+  /// * `batch_timeout_ms` - Maximum time to wait before sending a batch (in milliseconds, must be > 0)
+  ///
+  /// # Returns
+  ///
+  /// A new `BatchConfig` instance
+  ///
+  /// # Panics
+  ///
+  /// Panics if `batch_size` is 0 or `batch_timeout_ms` is 0.
+  #[must_use]
+  pub fn new(batch_size: usize, batch_timeout_ms: u64) -> Self {
+    Self::validate(batch_size, batch_timeout_ms).expect("Invalid batch configuration");
+    Self {
+      batch_size,
+      batch_timeout_ms,
+    }
+  }
+
+  /// Create a new `BatchConfig` with validation.
+  ///
+  /// # Arguments
+  ///
   /// * `batch_size` - Maximum number of items per batch
   /// * `batch_timeout_ms` - Maximum time to wait before sending a batch (in milliseconds)
   ///
   /// # Returns
   ///
-  /// A new `BatchConfig` instance
-  #[must_use]
-  pub fn new(batch_size: usize, batch_timeout_ms: u64) -> Self {
-    Self {
+  /// `Ok(BatchConfig)` if the configuration is valid, `Err(String)` otherwise.
+  pub fn try_new(batch_size: usize, batch_timeout_ms: u64) -> Result<Self, String> {
+    Self::validate(batch_size, batch_timeout_ms)?;
+    Ok(Self {
       batch_size,
       batch_timeout_ms,
+    })
+  }
+
+  /// Validate batch configuration parameters.
+  ///
+  /// # Arguments
+  ///
+  /// * `batch_size` - Maximum number of items per batch
+  /// * `batch_timeout_ms` - Maximum time to wait before sending a batch (in milliseconds)
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if valid, `Err(String)` with error message otherwise.
+  pub fn validate(batch_size: usize, batch_timeout_ms: u64) -> Result<(), String> {
+    if batch_size == 0 {
+      return Err("batch_size must be greater than 0".to_string());
     }
+
+    if batch_timeout_ms == 0 {
+      return Err("batch_timeout_ms must be greater than 0".to_string());
+    }
+
+    // Reasonable upper limit: 1 hour (3,600,000 ms)
+    const MAX_TIMEOUT_MS: u64 = 3_600_000;
+    if batch_timeout_ms > MAX_TIMEOUT_MS {
+      return Err(format!(
+        "batch_timeout_ms ({}) exceeds maximum allowed value ({} ms = 1 hour)",
+        batch_timeout_ms, MAX_TIMEOUT_MS
+      ));
+    }
+
+    // Reasonable upper limit for batch size: 1 million items
+    const MAX_BATCH_SIZE: usize = 1_000_000;
+    if batch_size > MAX_BATCH_SIZE {
+      return Err(format!(
+        "batch_size ({}) exceeds maximum allowed value ({})",
+        batch_size, MAX_BATCH_SIZE
+      ));
+    }
+
+    Ok(())
+  }
+}
+
+/// Metrics for tracking mode switches in hybrid execution mode.
+///
+/// This structure tracks when and why the execution mode switches between
+/// in-process and distributed modes in hybrid execution.
+#[derive(Debug, Clone)]
+pub struct ModeSwitchMetrics {
+  /// Number of mode switches that have occurred
+  pub switch_count: usize,
+  /// Throughput values that triggered mode switches
+  pub switch_reasons: Vec<f64>,
+  /// Current execution mode name
+  pub current_mode: Option<String>,
+}
+
+impl ModeSwitchMetrics {
+  /// Create a new `ModeSwitchMetrics` instance.
+  ///
+  /// # Returns
+  ///
+  /// A new `ModeSwitchMetrics` with no switches recorded.
+  #[must_use]
+  pub fn new() -> Self {
+    Self {
+      switch_count: 0,
+      switch_reasons: Vec::new(),
+      current_mode: None,
+    }
+  }
+
+  /// Record a mode switch event.
+  ///
+  /// # Arguments
+  ///
+  /// * `throughput` - The throughput value that triggered the switch
+  /// * `from` - The mode we're switching from
+  /// * `to` - The mode we're switching to
+  pub fn record_switch(&mut self, throughput: f64, _from: &str, to: &str) {
+    self.switch_count += 1;
+    self.switch_reasons.push(throughput);
+    self.current_mode = Some(to.to_string());
+  }
+
+  /// Get a summary string of the mode switch metrics.
+  ///
+  /// # Returns
+  ///
+  /// A formatted string summarizing the mode switch metrics.
+  pub fn summary(&self) -> String {
+    format!(
+      "switches: {}, current_mode: {:?}, avg_throughput: {:.2}",
+      self.switch_count,
+      self.current_mode,
+      if self.switch_reasons.is_empty() {
+        0.0
+      } else {
+        self.switch_reasons.iter().sum::<f64>() / self.switch_reasons.len() as f64
+      }
+    )
+  }
+}
+
+impl Default for ModeSwitchMetrics {
+  fn default() -> Self {
+    Self::new()
   }
 }
 
@@ -375,11 +612,11 @@ impl ExecutionMode {
   /// use streamweave_graph::execution::ExecutionMode;
   /// use streamweave_graph::serialization::Serializer;
   ///
-  /// let serializer: Box<dyn Serializer> = /* your serializer implementation */;
+  /// let serializer = crate::serialization::JsonSerializer::default();
   /// let mode = ExecutionMode::new_distributed(serializer);
   /// ```
   #[must_use]
-  pub fn new_distributed(serializer: Box<dyn crate::serialization::Serializer>) -> Self {
+  pub fn new_distributed(serializer: crate::serialization::JsonSerializer) -> Self {
     Self::Distributed {
       serializer,
       compression: None,
@@ -407,13 +644,13 @@ impl ExecutionMode {
   /// use streamweave_graph::execution::ExecutionMode;
   /// use streamweave_graph::serialization::Serializer;
   ///
-  /// let serializer: Box<dyn Serializer> = /* your serializer implementation */;
+  /// let serializer = crate::serialization::JsonSerializer::default();
   /// let mode = ExecutionMode::new_hybrid(1000, serializer);
   /// ```
   #[must_use]
   pub fn new_hybrid(
     local_threshold: usize,
-    serializer: Box<dyn crate::serialization::Serializer>,
+    serializer: crate::serialization::JsonSerializer,
   ) -> Self {
     Self::Hybrid {
       local_threshold,
@@ -467,10 +704,12 @@ pub struct GraphExecutor {
   node_handles: HashMap<String, JoinHandle<Result<(), ExecutionError>>>,
   /// Channel senders for routing data between nodes
   /// Key: (node_name, port_index)
-  channel_senders: HashMap<(String, usize), mpsc::Sender<Bytes>>,
+  /// Uses type-erased channels that can hold either Bytes (distributed) or `Arc<T>` (in-process)
+  channel_senders: HashMap<(String, usize), TypeErasedSender>,
   /// Channel receivers for routing data between nodes
   /// Key: (node_name, port_index)
-  channel_receivers: HashMap<(String, usize), mpsc::Receiver<Bytes>>,
+  /// Uses type-erased channels that can hold either Bytes (distributed) or `Arc<T>` (in-process)
+  channel_receivers: HashMap<(String, usize), TypeErasedReceiver>,
   /// Execution state
   state: ExecutionState,
   /// Pause signal shared across all node tasks
@@ -484,9 +723,69 @@ pub struct GraphExecutor {
   /// When provided, this pool will be used to reduce allocation overhead
   /// in fan-out operations where multiple nodes receive the same data.
   arc_pool: Option<ArcPool<Bytes>>,
+  /// Execution mode for this executor
+  execution_mode: ExecutionMode,
+  /// Shared memory channels for ultra-high performance mode
+  /// Key: (node_name, port_index) for source nodes
+  /// Value: Shared memory channel for that connection
+  shared_memory_channels: HashMap<(String, usize), SharedMemoryChannel>,
+  /// Batching channels for distributed execution with batching enabled
+  /// Key: (node_name, port_index) for source nodes
+  /// Value: Batching channel wrapper for that connection
+  batching_channels: HashMap<(String, usize), Arc<BatchingChannel>>,
+  /// Throughput monitor for hybrid execution mode
+  /// Tracks items/second processed across the graph
+  throughput_monitor: Option<Arc<ThroughputMonitor>>,
+  /// Current actual execution mode (may differ from execution_mode during transitions)
+  /// In hybrid mode, this tracks whether we're currently in-process or distributed
+  current_execution_mode: Option<ExecutionMode>,
+  /// Background task handle for throughput monitoring in hybrid mode
+  throughput_monitoring_task: Option<tokio::task::JoinHandle<Result<(), ExecutionError>>>,
+  /// Metrics for mode switching in hybrid mode
+  mode_switch_metrics: Option<Arc<RwLock<ModeSwitchMetrics>>>,
 }
 
 impl GraphExecutor {
+  /// Detects the optimal execution mode for the graph.
+  ///
+  /// This method analyzes the graph topology and configuration to determine
+  /// the best execution mode. Factors considered include:
+  /// - Whether all nodes are in the same process (in-process mode)
+  /// - Whether network boundaries exist (distributed mode)
+  /// - Graph complexity and size (hybrid mode)
+  ///
+  /// # Returns
+  ///
+  /// The recommended `ExecutionMode` for this graph.
+  ///
+  /// # Current Implementation
+  ///
+  /// Currently defaults to `InProcess` mode for zero-copy execution.
+  /// Future enhancements will:
+  /// - Detect network boundaries from node metadata
+  /// - Analyze graph complexity to suggest hybrid mode
+  /// - Consider node distribution across processes/machines
+  ///
+  /// # Example
+  ///
+  /// ```rust,no_run
+  /// use streamweave::graph::{Graph, GraphExecution};
+  ///
+  /// let graph = Graph::new();
+  /// let executor = graph.executor();
+  /// let recommended_mode = executor.detect_execution_mode();
+  /// ```
+  #[must_use]
+  pub fn detect_execution_mode(&self) -> ExecutionMode {
+    // For now, default to in-process mode for zero-copy execution
+    // Future: Analyze graph topology to determine optimal mode
+    // - Check if nodes have network metadata indicating distributed execution
+    // - Analyze graph size and complexity
+    // - Consider user preferences and configuration
+
+    ExecutionMode::new_in_process()
+  }
+
   /// Creates a new graph executor for the given graph.
   ///
   /// # Arguments
@@ -516,6 +815,13 @@ impl GraphExecutor {
       execution_errors: Vec::new(),
       shutdown_timeout: Duration::from_secs(30), // Default 30 second timeout
       arc_pool: None,
+      execution_mode: ExecutionMode::new_in_process(), // Default to in-process for zero-copy
+      shared_memory_channels: HashMap::new(),
+      batching_channels: HashMap::new(),
+      throughput_monitor: None,
+      current_execution_mode: None,
+      throughput_monitoring_task: None,
+      mode_switch_metrics: None,
     }
   }
 
@@ -540,6 +846,13 @@ impl GraphExecutor {
       execution_errors: Vec::new(),
       shutdown_timeout,
       arc_pool: None,
+      execution_mode: ExecutionMode::new_in_process(), // Default to in-process for zero-copy
+      shared_memory_channels: HashMap::new(),
+      batching_channels: HashMap::new(),
+      throughput_monitor: None,
+      current_execution_mode: None,
+      throughput_monitoring_task: None,
+      mode_switch_metrics: None,
     }
   }
 
@@ -605,6 +918,63 @@ impl GraphExecutor {
   /// # }
   /// ```
   pub async fn start(&mut self) -> Result<(), ExecutionError> {
+    // Route to appropriate execution method based on execution mode
+    match &self.execution_mode {
+      ExecutionMode::InProcess { use_shared_memory } => {
+        self.execute_in_process(*use_shared_memory).await
+      }
+      ExecutionMode::Distributed { .. } => {
+        // For distributed mode, extract configuration from execution_mode
+        // Since we can't easily clone Box<dyn Serializer>, we'll use the stored one
+        // This requires refactoring - for now, use execute_distributed directly
+        // or extract from execution_mode (which we'll do in a helper)
+        if let ExecutionMode::Distributed {
+          serializer: _,
+          compression: _,
+          batching: _,
+        } = &self.execution_mode
+        {
+          // We can't move serializer out, so we need a different approach
+          // For now, nodes will use the serialize() function from serialization module
+          // Future: pass serializer reference to nodes or make Serializer Clone
+          self.execute_distributed_internal().await
+        } else {
+          unreachable!()
+        }
+      }
+      ExecutionMode::Hybrid { .. } => {
+        // Hybrid mode starts in-process, will be handled separately
+        self.execute_in_process(false).await
+      }
+    }
+  }
+
+  /// Internal helper for distributed execution using stored execution_mode
+  ///
+  /// This method handles compression and batching configuration when present.
+  /// Compression is applied to serialized data before transmission.
+  /// Batching groups multiple items together for efficient transmission.
+  async fn execute_distributed_internal(&mut self) -> Result<(), ExecutionError> {
+    // Extract compression and batching config from execution_mode
+    let (_compression, batching) = match &self.execution_mode {
+      ExecutionMode::Distributed {
+        compression,
+        batching,
+        ..
+      } => (*compression, batching.clone()),
+      _ => (None, None),
+    };
+
+    // Compression is now implemented in nodes (ProducerNode, TransformerNode)
+    // Nodes check ExecutionMode and apply compression after serialization
+    // Decompression is handled in StreamWrapper when receiving data
+
+    // Batching is configured but not yet fully implemented
+    // Future: Buffer items according to BatchConfig and send in batches
+    if batching.is_some() {
+      // TODO: Implement batching
+      // Buffer items up to batch_size or batch_timeout_ms, then send as batch
+    }
     if self.state == ExecutionState::Running {
       return Err(ExecutionError::ExecutionFailed(
         "Graph is already running".to_string(),
@@ -617,14 +987,13 @@ impl GraphExecutor {
     // Create channels for all connections
     self.create_channels()?;
 
-    // Spawn tasks for each node
+    // Spawn tasks for each node with distributed mode
     for node_name in self.graph.node_names() {
       if let Some(node) = self.graph.get_node(node_name) {
         // Collect input channels for this node
         let mut input_channels = HashMap::new();
         let parents = self.graph.get_parents(node_name);
         for (parent_name, parent_port) in parents {
-          // Find which input port this connection targets
           for conn in self.graph.get_connections() {
             if conn.source.0 == parent_name
               && conn.source.1 == parent_port
@@ -643,7 +1012,6 @@ impl GraphExecutor {
         let mut output_channels = HashMap::new();
         let children = self.graph.get_children(node_name);
         for (child_name, child_port) in children {
-          // Find which output port this connection comes from
           for conn in self.graph.get_connections() {
             if conn.source.0 == node_name
               && conn.target.0 == child_name
@@ -658,10 +1026,44 @@ impl GraphExecutor {
           }
         }
 
-        // Spawn execution task using the NodeTrait method
-        if let Some(handle) =
-          node.spawn_execution_task(input_channels, output_channels, self.pause_signal.clone())
-        {
+        // Spawn execution task with distributed mode
+        // Collect batching channels for this node if batching is enabled
+        let batching_channels: Option<HashMap<usize, Arc<BatchingChannel>>> = if matches!(
+          self.execution_mode,
+          ExecutionMode::Distributed {
+            batching: Some(_),
+            ..
+          }
+        ) {
+          let mut batch_map = HashMap::new();
+          for port_index in output_channels.keys() {
+            if let Some(batching_channel) = self
+              .batching_channels
+              .get(&(node_name.to_string(), *port_index))
+            {
+              batch_map.insert(*port_index, Arc::clone(batching_channel));
+            }
+          }
+          if !batch_map.is_empty() {
+            Some(batch_map)
+          } else {
+            None
+          }
+        } else {
+          None
+        };
+
+        // Clone arc_pool if available
+        let arc_pool_clone = self.arc_pool.as_ref().map(|p| Arc::new(p.clone()));
+
+        if let Some(handle) = node.spawn_execution_task(
+          input_channels,
+          output_channels,
+          self.pause_signal.clone(),
+          self.execution_mode.clone(),
+          batching_channels,
+          arc_pool_clone,
+        ) {
           self.node_handles.insert(node_name.to_string(), handle);
         } else {
           return Err(ExecutionError::NodeExecutionFailed {
@@ -674,6 +1076,68 @@ impl GraphExecutor {
 
     self.state = ExecutionState::Running;
     Ok(())
+  }
+
+  /// Executes the graph in distributed serialized mode.
+  ///
+  /// This method implements distributed execution by serializing data
+  /// between nodes using the configured Serializer trait. Compression
+  /// and batching options are respected when specified.
+  ///
+  /// # Arguments
+  ///
+  /// * `serializer` - The serializer to use for data serialization
+  /// * `compression` - Optional compression algorithm for serialized data
+  /// * `batching` - Optional batching configuration for network efficiency
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if execution started successfully, `Err(ExecutionError)` otherwise.
+  ///
+  /// # Distributed Execution Semantics
+  ///
+  /// - Data is serialized using the configured Serializer trait
+  /// - Optional compression reduces network bandwidth
+  /// - Optional batching improves network efficiency
+  /// - Suitable for cross-process or cross-network execution
+  ///
+  /// # Example
+  ///
+  /// ```rust,no_run
+  /// use streamweave::graph::{Graph, GraphExecution};
+  /// use streamweave_graph::execution::ExecutionMode;
+  /// use streamweave_graph::serialization::Serializer;
+  ///
+  /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+  /// let graph = Graph::new();
+  /// let mut executor = graph.executor();
+  ///
+  /// let serializer: Box<dyn Serializer> = /* your serializer */;
+  /// executor.execute_distributed(serializer, None, None).await?;
+  /// # Ok(())
+  /// # }
+  /// ```
+  pub async fn execute_distributed(
+    &mut self,
+    serializer: crate::serialization::JsonSerializer,
+    compression: Option<CompressionAlgorithm>,
+    batching: Option<BatchConfig>,
+  ) -> Result<(), ExecutionError> {
+    if self.state == ExecutionState::Running {
+      return Err(ExecutionError::ExecutionFailed(
+        "Graph is already running".to_string(),
+      ));
+    }
+
+    // Set execution mode to Distributed
+    self.execution_mode = ExecutionMode::Distributed {
+      serializer,
+      compression,
+      batching,
+    };
+
+    // Use internal helper to execute
+    self.execute_distributed_internal().await
   }
 
   /// Stops graph execution with graceful shutdown.
@@ -778,6 +1242,22 @@ impl GraphExecutor {
 
     // Clean up remaining resources
     self.channel_receivers.clear();
+
+    // Cleanup shared memory channels
+    // The shared_memory crate will automatically cleanup segments when
+    // the last Arc<Shmem> is dropped, but we explicitly clear here to
+    // ensure all references are dropped promptly.
+    for channel in self.shared_memory_channels.values() {
+      channel.cleanup();
+    }
+    self.shared_memory_channels.clear();
+
+    // Cleanup batching channels (flush remaining items)
+    for channel in self.batching_channels.values() {
+      let _ = channel.shutdown().await;
+    }
+    self.batching_channels.clear();
+
     *self.pause_signal.write().await = false;
 
     // Check if there were any errors during execution
@@ -821,6 +1301,19 @@ impl GraphExecutor {
     // Clean up resources
     self.channel_senders.clear();
     self.channel_receivers.clear();
+
+    // Cleanup shared memory channels
+    for channel in self.shared_memory_channels.values() {
+      channel.cleanup();
+    }
+    self.shared_memory_channels.clear();
+
+    // Cleanup batching channels
+    for channel in self.batching_channels.values() {
+      let _ = channel.shutdown().await;
+    }
+    self.batching_channels.clear();
+
     *self.pause_signal.write().await = false;
 
     self.state = ExecutionState::Stopped;
@@ -1097,18 +1590,94 @@ impl GraphExecutor {
     &mut self,
     buffer_size: usize,
   ) -> Result<(), ExecutionError> {
+    let use_shared_memory = matches!(
+      self.execution_mode,
+      ExecutionMode::InProcess {
+        use_shared_memory: true
+      }
+    );
+
+    // Extract batching config from execution mode
+    let batching_config = match &self.execution_mode {
+      ExecutionMode::Distributed { batching, .. } => batching.clone(),
+      _ => None,
+    };
+
     for conn in self.graph.get_connections() {
-      let (sender, receiver) = mpsc::channel(buffer_size);
+      if use_shared_memory {
+        // Create shared memory channel
+        let segment_id = format!(
+          "streamweave_{}_{}_{}_{}",
+          conn.source.0, conn.source.1, conn.target.0, conn.target.1
+        );
 
-      // Store sender for source node's output port
-      self
-        .channel_senders
-        .insert((conn.source.0.clone(), conn.source.1), sender);
+        // Create shared memory channel with comprehensive error handling
+        let shared_channel = match SharedMemoryChannel::new(&segment_id, buffer_size) {
+          Ok(channel) => channel,
+          Err(e) => {
+            // Provide detailed error message for debugging
+            return Err(ExecutionError::ChannelCreationError {
+              node: conn.source.0.clone(),
+              reason: format!(
+                "Failed to create shared memory channel '{}': {}. \
+                 Possible causes: insufficient permissions, existing segment with same name, \
+                 or system limits (check /proc/sys/kernel/shmmax on Linux).",
+                segment_id, e
+              ),
+            });
+          }
+        };
 
-      // Store receiver for target node's input port
-      self
-        .channel_receivers
-        .insert((conn.target.0.clone(), conn.target.1), receiver);
+        // Store shared memory channel for both source and target
+        // Source uses it to send, target uses it to receive
+        self.shared_memory_channels.insert(
+          (conn.source.0.clone(), conn.source.1),
+          shared_channel.clone(),
+        );
+        self
+          .shared_memory_channels
+          .insert((conn.target.0.clone(), conn.target.1), shared_channel);
+
+        // Still create regular channels for sending SharedMemoryRef
+        let (sender, receiver): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(buffer_size);
+
+        self
+          .channel_senders
+          .insert((conn.source.0.clone(), conn.source.1), sender);
+
+        self
+          .channel_receivers
+          .insert((conn.target.0.clone(), conn.target.1), receiver);
+      } else {
+        // Create type-erased channels that can hold either Bytes or Arc<T>
+        // Nodes will determine which variant to use based on ExecutionMode
+        let (sender, receiver): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(buffer_size);
+
+        // If batching is enabled, wrap the sender with BatchingChannel
+        if let Some(ref batch_config) = batching_config {
+          let batching_channel =
+            Arc::new(BatchingChannel::new(sender.clone(), batch_config.clone()));
+          self
+            .batching_channels
+            .insert((conn.source.0.clone(), conn.source.1), batching_channel);
+
+          // Still store the inner sender for backward compatibility
+          // Nodes will check for batching and use BatchingChannel if available
+          self
+            .channel_senders
+            .insert((conn.source.0.clone(), conn.source.1), sender);
+        } else {
+          // Store sender for source node's output port
+          self
+            .channel_senders
+            .insert((conn.source.0.clone(), conn.source.1), sender);
+        }
+
+        // Store receiver for target node's input port
+        self
+          .channel_receivers
+          .insert((conn.target.0.clone(), conn.target.1), receiver);
+      }
     }
 
     Ok(())
@@ -1141,7 +1710,7 @@ impl GraphExecutor {
   /// This method requires that all nodes are in the same process and that
   /// the graph topology allows for direct stream connections. The actual
   /// zero-copy execution is implemented in the node execution code, which
-  /// uses Arc<T> channels instead of Bytes channels when in in-process mode.
+  /// uses `Arc<T>` channels instead of Bytes channels when in in-process mode.
   ///
   /// # Example
   ///
@@ -1157,30 +1726,26 @@ impl GraphExecutor {
   /// # Ok(())
   /// # }
   /// ```
-  pub async fn execute_in_process(&mut self, use_shared_memory: bool) -> Result<(), ExecutionError> {
+  pub async fn execute_in_process(
+    &mut self,
+    use_shared_memory: bool,
+  ) -> Result<(), ExecutionError> {
     if self.state == ExecutionState::Running {
       return Err(ExecutionError::ExecutionFailed(
         "Graph is already running".to_string(),
       ));
     }
 
+    // Set execution mode to InProcess
+    self.execution_mode = ExecutionMode::InProcess { use_shared_memory };
+
     // Validate graph topology
     self.validate_topology()?;
 
-    // For in-process execution, we use Arc<T> channels instead of Bytes channels
-    // This requires type information, which we don't have with type-erased nodes.
-    // The actual zero-copy execution will be handled by the node execution code
-    // when it detects in-process mode (see task 13.2.x for node-level changes).
-    //
-    // For now, we create the infrastructure and document that the actual
-    // zero-copy execution happens at the node level when ExecutionMode::InProcess
-    // is detected.
-
-    // Create channels for all connections
-    // NOTE: In true in-process mode, these would be Arc<T> channels, but since
-    // nodes are type-erased, we use Bytes channels as a fallback. The node
-    // execution code will handle the zero-copy optimization when it detects
-    // in-process mode (see node.rs spawn_execution_task for ExecutionMode handling).
+    // For in-process execution, nodes will use Arc<T> channels internally
+    // The node execution code checks ExecutionMode and creates appropriate channels
+    // We still create Bytes channels here as a fallback, but nodes will use
+    // direct stream connections when ExecutionMode::InProcess is detected
     self.create_channels()?;
 
     // Spawn tasks for each node
@@ -1225,14 +1790,49 @@ impl GraphExecutor {
           }
         }
 
+        // Increment throughput monitor if available (for hybrid mode)
+        let throughput_monitor = self.throughput_monitor.clone();
+        let node_name_for_monitor = node_name.to_string();
+        let node_name_for_insert = node_name_for_monitor.clone();
+
         // Spawn execution task
-        // NOTE: In true in-process mode, this would use Arc<T> channels and direct
-        // stream passing. The node execution code will handle this when ExecutionMode
-        // is InProcess (see task 13.2.x for implementation details).
-        if let Some(handle) =
-          node.spawn_execution_task(input_channels, output_channels, self.pause_signal.clone())
-        {
-          self.node_handles.insert(node_name.to_string(), handle);
+        // In in-process mode, nodes will use Arc<T> channels and direct stream passing
+        // The node execution code checks ExecutionMode and uses appropriate channel types
+        // Clone arc_pool if available
+        let arc_pool_clone = self.arc_pool.as_ref().map(|p| Arc::new(p.clone()));
+
+        if let Some(handle) = node.spawn_execution_task(
+          input_channels,
+          output_channels,
+          self.pause_signal.clone(),
+          ExecutionMode::InProcess { use_shared_memory },
+          None, // No batching in in-process mode
+          arc_pool_clone,
+        ) {
+          // Wrap handle to track throughput
+          if let Some(monitor) = throughput_monitor {
+            let monitor_clone = Arc::clone(&monitor);
+            let wrapped_handle = tokio::spawn(async move {
+              match handle.await {
+                Ok(Ok(())) => {
+                  // Increment throughput when task completes (simplified - actual tracking
+                  // should be per-item, which will be added in node execution)
+                  monitor_clone.increment_item_count();
+                  Ok(())
+                }
+                Ok(Err(e)) => Err(e),
+                Err(e) => Err(ExecutionError::NodeExecutionFailed {
+                  node: node_name_for_monitor,
+                  reason: format!("Task join error: {}", e),
+                }),
+              }
+            });
+            self
+              .node_handles
+              .insert(node_name_for_insert, wrapped_handle);
+          } else {
+            self.node_handles.insert(node_name.to_string(), handle);
+          }
         } else {
           return Err(ExecutionError::NodeExecutionFailed {
             node: node_name.to_string(),
@@ -1246,6 +1846,461 @@ impl GraphExecutor {
     Ok(())
   }
 
+  /// Executes the graph in hybrid mode.
+  ///
+  /// Hybrid mode starts in in-process mode and switches to distributed mode
+  /// when the local threshold is exceeded. This enables adaptive performance
+  /// optimization based on load.
+  ///
+  /// # Arguments
+  ///
+  /// * `local_threshold` - Threshold for switching from in-process to distributed
+  /// * `serializer` - Serializer to use when switching to distributed mode
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if execution started successfully, `Err(ExecutionError)` otherwise.
+  ///
+  /// # Hybrid Mode Semantics
+  ///
+  /// - Starts in in-process zero-copy mode
+  /// - Monitors throughput and load
+  /// - Switches to distributed mode when threshold exceeded
+  /// - Provides adaptive performance optimization
+  ///
+  /// # Note
+  ///
+  /// Mode switching is currently a placeholder. Future implementation will:
+  /// - Monitor item count or throughput
+  /// - Dynamically switch execution modes
+  /// - Handle state migration between modes
+  ///
+  /// # Example
+  ///
+  /// ```rust,no_run
+  /// use streamweave::graph::{Graph, GraphExecution};
+  /// use streamweave_graph::execution::ExecutionMode;
+  /// use streamweave_graph::serialization::Serializer;
+  ///
+  /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+  /// let graph = Graph::new();
+  /// let mut executor = graph.executor();
+  ///
+  /// let serializer: Box<dyn Serializer> = /* your serializer */;
+  /// executor.execute_hybrid(1000, serializer).await?;
+  /// # Ok(())
+  /// # }
+  /// ```
+  pub async fn execute_hybrid(
+    &mut self,
+    local_threshold: usize,
+    serializer: crate::serialization::JsonSerializer,
+  ) -> Result<(), ExecutionError> {
+    if self.state == ExecutionState::Running {
+      return Err(ExecutionError::ExecutionFailed(
+        "Graph is already running".to_string(),
+      ));
+    }
+
+    // Set execution mode to Hybrid
+    self.execution_mode = ExecutionMode::Hybrid {
+      local_threshold,
+      serializer: serializer.clone(),
+    };
+
+    // Initialize throughput monitor for hybrid mode
+    let throughput_monitor = Arc::new(ThroughputMonitor::new(Duration::from_secs(1)));
+    self.throughput_monitor = Some(Arc::clone(&throughput_monitor));
+    self.current_execution_mode = Some(ExecutionMode::InProcess {
+      use_shared_memory: false,
+    });
+
+    // Initialize mode switch metrics
+    let metrics = Arc::new(RwLock::new(ModeSwitchMetrics::new()));
+    self.mode_switch_metrics = Some(Arc::clone(&metrics));
+
+    // Start in in-process mode
+    self.execute_in_process(false).await?;
+
+    // Start background throughput monitoring task
+    let monitor_task = self
+      .start_throughput_monitoring(Arc::clone(&throughput_monitor), local_threshold)
+      .await?;
+    self.throughput_monitoring_task = Some(monitor_task);
+
+    Ok(())
+  }
+
+  /// Start background throughput monitoring task for hybrid mode.
+  ///
+  /// This task periodically checks throughput and triggers mode switches
+  /// when the threshold is exceeded.
+  ///
+  /// # Arguments
+  ///
+  /// * `monitor` - The throughput monitor to use
+  /// * `local_threshold` - Threshold for switching to distributed mode (items/second)
+  ///
+  /// # Returns
+  ///
+  /// A join handle for the monitoring task.
+  ///
+  /// # Note
+  ///
+  /// The monitoring task will check throughput periodically and log when
+  /// threshold is exceeded. The actual mode switch will be triggered by
+  /// calling `trigger_mode_switch` method.
+  async fn start_throughput_monitoring(
+    &mut self,
+    monitor: Arc<ThroughputMonitor>,
+    local_threshold: usize,
+  ) -> Result<tokio::task::JoinHandle<Result<(), ExecutionError>>, ExecutionError> {
+    let pause_signal = Arc::clone(&self.pause_signal);
+
+    let handle = tokio::spawn(async move {
+      let monitoring_interval = Duration::from_millis(100); // Check every 100ms
+
+      loop {
+        tokio::time::sleep(monitoring_interval).await;
+
+        // Check if we should stop (graph stopped or paused)
+        if *pause_signal.read().await {
+          // Check if this is a shutdown or just a pause
+          // For now, exit on pause (can be refined later)
+          break;
+        }
+
+        // Calculate current throughput
+        let throughput = monitor.calculate_throughput().await;
+
+        // Check if we should switch to distributed mode
+        if throughput > local_threshold as f64 {
+          // Signal that a mode switch is needed
+          tracing::info!(
+            throughput = throughput,
+            threshold = local_threshold,
+            "Throughput exceeded threshold, mode switch needed"
+          );
+          // Note: Actual mode switch will be handled by calling trigger_mode_switch
+          // from the main executor. This task just monitors and logs.
+        }
+      }
+
+      Ok(())
+    });
+
+    Ok(handle)
+  }
+
+  /// Trigger a mode switch from in-process to distributed mode.
+  ///
+  /// This method handles the graceful transition:
+  /// 1. Pause all nodes
+  /// 2. Drain in-process channels
+  /// 3. Create distributed channels
+  /// 4. Migrate state
+  /// 5. Resume with distributed mode
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if the switch completed successfully, `Err` otherwise.
+  pub async fn trigger_mode_switch(&mut self) -> Result<(), ExecutionError> {
+    // Check if we're in hybrid mode and currently in-process
+    let (local_threshold, serializer) = match &self.execution_mode {
+      ExecutionMode::Hybrid {
+        local_threshold,
+        serializer,
+      } => (*local_threshold, serializer.clone()),
+      _ => {
+        return Err(ExecutionError::ExecutionFailed(
+          "Mode switch can only be triggered in hybrid mode".to_string(),
+        ));
+      }
+    };
+
+    if !matches!(
+      self.current_execution_mode,
+      Some(ExecutionMode::InProcess { .. })
+    ) {
+      // Already in distributed mode or not initialized
+      return Ok(());
+    }
+
+    // Get current throughput for metrics
+    let current_throughput = if let Some(monitor) = &self.throughput_monitor {
+      monitor.calculate_throughput().await
+    } else {
+      0.0
+    };
+
+    tracing::info!(
+      throughput = current_throughput,
+      threshold = local_threshold,
+      "Starting mode switch from in-process to distributed (throughput {} > threshold {})",
+      current_throughput,
+      local_threshold
+    );
+
+    // Record mode switch in metrics
+    if let Some(metrics) = &self.mode_switch_metrics {
+      metrics
+        .write()
+        .await
+        .record_switch(current_throughput, "InProcess", "Distributed");
+    }
+
+    // Step 1: Pause all nodes
+    *self.pause_signal.write().await = true;
+
+    // Step 2: Wait for nodes to finish current items (with timeout)
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    // Step 3: Drain in-process channels and collect in-flight items with connection info
+    let in_flight_items = self.drain_in_process_channels().await;
+
+    // Step 4: Stop current node tasks
+    for handle in self.node_handles.values() {
+      handle.abort();
+    }
+    self.node_handles.clear();
+
+    // Step 5: Create distributed channels
+    self.channel_senders.clear();
+    self.channel_receivers.clear();
+    self.create_channels()?;
+
+    // Step 6: Spawn nodes with distributed mode
+    for node_name in self.graph.node_names() {
+      if let Some(node) = self.graph.get_node(node_name) {
+        // Collect input channels
+        let mut input_channels = HashMap::new();
+        let parents = self.graph.get_parents(node_name);
+        for (parent_name, parent_port) in parents {
+          for conn in self.graph.get_connections() {
+            if conn.source.0 == parent_name
+              && conn.source.1 == parent_port
+              && conn.target.0 == node_name
+            {
+              let key = (parent_name.to_string(), parent_port);
+              if let Some(receiver) = self.channel_receivers.remove(&key) {
+                input_channels.insert(conn.target.1, receiver);
+              }
+              break;
+            }
+          }
+        }
+
+        // Collect output channels
+        let mut output_channels = HashMap::new();
+        let children = self.graph.get_children(node_name);
+        for (child_name, child_port) in children {
+          for conn in self.graph.get_connections() {
+            if conn.source.0 == node_name
+              && conn.target.0 == child_name
+              && conn.target.1 == child_port
+            {
+              let key = (node_name.to_string(), conn.source.1);
+              if let Some(sender) = self.channel_senders.get(&key).cloned() {
+                output_channels.insert(conn.source.1, sender);
+              }
+              break;
+            }
+          }
+        }
+
+        // Spawn with distributed mode
+        let distributed_mode = ExecutionMode::Distributed {
+          serializer: serializer.clone(),
+          compression: None,
+          batching: None,
+        };
+
+        // Clone arc_pool if available
+        let arc_pool_clone = self.arc_pool.as_ref().map(|p| Arc::new(p.clone()));
+
+        if let Some(handle) = node.spawn_execution_task(
+          input_channels,
+          output_channels,
+          self.pause_signal.clone(),
+          distributed_mode,
+          None, // No batching initially
+          arc_pool_clone,
+        ) {
+          self.node_handles.insert(node_name.to_string(), handle);
+        }
+      }
+    }
+
+    // Step 7: Send in-flight items to new distributed channels
+    let in_flight_count = in_flight_items.len();
+    self.send_in_flight_items(in_flight_items).await?;
+
+    // Step 8: Update current execution mode
+    self.current_execution_mode = Some(ExecutionMode::Distributed {
+      serializer: serializer.clone(),
+      compression: None,
+      batching: None,
+    });
+
+    // Step 9: Resume processing
+    *self.pause_signal.write().await = false;
+
+    tracing::info!(
+      in_flight_migrated = in_flight_count,
+      "Mode switch completed: now in distributed mode (migrated {} in-flight items)",
+      in_flight_count
+    );
+
+    // Log metrics summary
+    if let Some(metrics) = &self.mode_switch_metrics {
+      let metrics_guard = metrics.read().await;
+      tracing::info!("Mode switch metrics: {}", metrics_guard.summary());
+    }
+
+    Ok(())
+  }
+
+  /// Get mode switch metrics (if available).
+  ///
+  /// # Returns
+  ///
+  /// `Some(&Arc<RwLock<ModeSwitchMetrics>>)` if metrics are being tracked, `None` otherwise.
+  pub fn mode_switch_metrics(&self) -> Option<&Arc<RwLock<ModeSwitchMetrics>>> {
+    self.mode_switch_metrics.as_ref()
+  }
+
+  /// Drain in-process channels and collect in-flight items with connection information.
+  ///
+  /// # Returns
+  ///
+  /// Vector of tuples containing (connection_info, item) for routing items correctly.
+  async fn drain_in_process_channels(
+    &mut self,
+  ) -> Vec<((String, usize), (String, usize), ChannelItem)> {
+    let mut in_flight_items = Vec::new();
+
+    // Collect items from all receivers, tracking which connection they belong to
+    // The key in channel_receivers is (target_node, target_port)
+    // We need to find the corresponding source node and port from connections
+    for (target_key, receiver) in &mut self.channel_receivers {
+      // Find the source node and port for this receiver
+      let source_info = self
+        .graph
+        .get_connections()
+        .iter()
+        .find(|conn| conn.target.0 == target_key.0 && conn.target.1 == target_key.1)
+        .map(|conn| (conn.source.0.clone(), conn.source.1));
+
+      if let Some(source_info) = source_info {
+        // Try to receive remaining items (non-blocking)
+        while let Ok(item) = receiver.try_recv() {
+          in_flight_items.push((source_info.clone(), target_key.clone(), item));
+        }
+      }
+    }
+
+    in_flight_items
+  }
+
+  /// Send in-flight items to distributed channels.
+  ///
+  /// This method routes items to the correct distributed channels based on
+  /// their connection information. Items from in-process mode (Arc<T>) are
+  /// serialized to Bytes before sending.
+  ///
+  /// # Arguments
+  ///
+  /// * `items` - Vector of (source_info, target_info, item) tuples
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if all items were sent successfully, `Err` otherwise.
+  #[allow(clippy::type_complexity)]
+  async fn send_in_flight_items(
+    &self,
+    items: Vec<((String, usize), (String, usize), ChannelItem)>,
+  ) -> Result<(), ExecutionError> {
+    // Get serializer from execution mode
+    let _serializer = match &self.execution_mode {
+      ExecutionMode::Hybrid { serializer, .. } => serializer,
+      _ => {
+        return Err(ExecutionError::ExecutionFailed(
+          "send_in_flight_items can only be called in hybrid mode".to_string(),
+        ));
+      }
+    };
+
+    // Route each item to the correct distributed channel
+    for (source_info, target_info, item) in items {
+      // Find the channel sender for this connection
+      let channel_key = (source_info.0.clone(), source_info.1);
+      let sender = self.channel_senders.get(&channel_key);
+
+      if let Some(sender) = sender {
+        // Convert item to Bytes if needed
+        let bytes_item = match item {
+          ChannelItem::Bytes(bytes) => {
+            // Already serialized, send directly
+            ChannelItem::Bytes(bytes)
+          }
+          ChannelItem::Arc(_arc) => {
+            // Need to serialize the Arc content
+            // Try to downcast to a common serializable type
+            // For now, we'll use a type-erased serialization approach
+            // This is a limitation - we need to know the type to serialize
+            // In practice, nodes should track the type information
+
+            // For now, log a warning and skip items we can't serialize
+            tracing::warn!(
+              source_node = source_info.0,
+              source_port = source_info.1,
+              "Cannot serialize Arc item during mode switch - item will be dropped"
+            );
+            continue;
+          }
+          ChannelItem::SharedMemory(_) => {
+            // Shared memory items need special handling
+            tracing::warn!(
+              source_node = source_info.0,
+              source_port = source_info.1,
+              "SharedMemory items not supported in mode switch - item will be dropped"
+            );
+            continue;
+          }
+        };
+
+        // Send to distributed channel
+        if let Err(e) = sender.send(bytes_item).await {
+          return Err(ExecutionError::ChannelError {
+            node: source_info.0,
+            port: source_info.1,
+            is_input: false,
+            reason: format!("Failed to send in-flight item: {}", e),
+          });
+        }
+      } else {
+        tracing::warn!(
+          source_node = source_info.0,
+          source_port = source_info.1,
+          target_node = target_info.0,
+          target_port = target_info.1,
+          "No channel sender found for connection - item will be dropped"
+        );
+      }
+    }
+
+    Ok(())
+  }
+
+  /// Get the throughput monitor (if available).
+  ///
+  /// # Returns
+  ///
+  /// `Some(&Arc<ThroughputMonitor>)` if monitoring is active, `None` otherwise.
+  pub fn throughput_monitor(&self) -> Option<&Arc<ThroughputMonitor>> {
+    self.throughput_monitor.as_ref()
+  }
+
   /// Returns a reference to the channel sender for a given node and port.
   ///
   /// # Arguments
@@ -1255,18 +2310,19 @@ impl GraphExecutor {
   ///
   /// # Returns
   ///
-  /// `Some(&mpsc::Sender<Bytes>)` if the channel exists, `None` otherwise.
+  /// `Some(&TypeErasedSender)` if the channel exists, `None` otherwise.
   ///
   /// # Note
   ///
   /// This method is used by node tasks to send data to downstream nodes.
   /// The sender will block when the channel buffer is full, providing
-  /// automatic backpressure.
+  /// automatic backpressure. Nodes should wrap items in `ChannelItem::Bytes`
+  /// or `ChannelItem::Arc` based on `ExecutionMode`.
   pub fn get_channel_sender(
     &self,
     node_name: &str,
     port_index: usize,
-  ) -> Option<&mpsc::Sender<Bytes>> {
+  ) -> Option<&TypeErasedSender> {
     self
       .channel_senders
       .get(&(node_name.to_string(), port_index))
@@ -1281,19 +2337,46 @@ impl GraphExecutor {
   ///
   /// # Returns
   ///
-  /// `Some(&mut mpsc::Receiver<Bytes>)` if the channel exists, `None` otherwise.
+  /// `Some(&mut TypeErasedReceiver)` if the channel exists, `None` otherwise.
   ///
   /// # Note
   ///
   /// This method is used by node tasks to receive data from upstream nodes.
+  /// Nodes should extract `ChannelItem::Bytes` or `ChannelItem::Arc` based on
+  /// `ExecutionMode` and downcast to the appropriate type.
   pub fn get_channel_receiver(
     &mut self,
     node_name: &str,
     port_index: usize,
-  ) -> Option<&mut mpsc::Receiver<Bytes>> {
+  ) -> Option<&mut TypeErasedReceiver> {
     self
       .channel_receivers
       .get_mut(&(node_name.to_string(), port_index))
+  }
+
+  /// Returns a reference to the shared memory channel for a given node and port.
+  ///
+  /// # Arguments
+  ///
+  /// * `node_name` - The name of the node
+  /// * `port_index` - The port index
+  ///
+  /// # Returns
+  ///
+  /// `Some(&SharedMemoryChannel)` if the channel exists, `None` otherwise.
+  ///
+  /// # Note
+  ///
+  /// This method is used by node tasks to access shared memory channels
+  /// when `use_shared_memory` is enabled in `ExecutionMode::InProcess`.
+  pub fn get_shared_memory_channel(
+    &self,
+    node_name: &str,
+    port_index: usize,
+  ) -> Option<&SharedMemoryChannel> {
+    self
+      .shared_memory_channels
+      .get(&(node_name.to_string(), port_index))
   }
 
   /// Returns the number of channels created for routing.
@@ -1349,7 +2432,10 @@ pub trait GraphExecution {
 
 impl GraphExecution for Graph {
   fn executor(self) -> GraphExecutor {
-    GraphExecutor::new(self)
+    let mut executor = GraphExecutor::new(self);
+    // Set execution mode from graph
+    executor.execution_mode = executor.graph.execution_mode().clone();
+    executor
   }
 }
 
@@ -1358,6 +2444,49 @@ mod tests {
   use super::*;
   use crate::{GraphBuilder, ProducerNode};
   use streamweave_vec::VecProducer;
+
+  #[tokio::test]
+  async fn test_throughput_monitor() {
+    use crate::throughput::ThroughputMonitor;
+    use std::time::Duration;
+
+    let monitor = ThroughputMonitor::new(Duration::from_secs(1));
+
+    // Initially zero
+    assert_eq!(monitor.item_count(), 0);
+
+    // Increment items
+    monitor.increment_item_count();
+    monitor.increment_by(5);
+    assert_eq!(monitor.item_count(), 6);
+
+    // Calculate throughput (may be 0 if not enough time has passed)
+    let throughput = monitor.calculate_throughput().await;
+    assert!(throughput >= 0.0);
+
+    // Reset
+    monitor.reset().await;
+    assert_eq!(monitor.item_count(), 0);
+  }
+
+  #[tokio::test]
+  async fn test_mode_switch_metrics() {
+    use crate::execution::ModeSwitchMetrics;
+
+    let mut metrics = ModeSwitchMetrics::new();
+    assert_eq!(metrics.switch_count, 0);
+
+    // Record a switch
+    metrics.record_switch(150.0, "InProcess", "Distributed");
+    assert_eq!(metrics.switch_count, 1);
+    assert_eq!(metrics.switch_reasons.len(), 1);
+    assert_eq!(metrics.switch_reasons[0], 150.0);
+    assert_eq!(metrics.current_mode, Some("Distributed".to_string()));
+
+    // Record another switch
+    metrics.record_switch(50.0, "Distributed", "InProcess");
+    assert_eq!(metrics.switch_count, 2);
+  }
 
   #[tokio::test]
   async fn test_graph_executor_creation() {

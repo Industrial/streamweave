@@ -2,663 +2,77 @@
 	"master": {
 		"tasks": [
 			{
-				"id": "13",
-				"title": "Task 13: Zero-Copy Architecture Implementation - Phase 2: Shared Ownership for Fan-Out",
-				"description": "Implement Phase 2 of zero-copy architecture: add ZeroCopyShare trait, implement smart fan-out routing with Arc, and update message types to support shared ownership for zero-copy fan-out scenarios.",
-				"status": "in-progress",
-				"priority": "critical",
-				"dependencies": ["12"],
-				"details": "Phase 2 implements shared ownership patterns using Arc for fan-out scenarios where one item is sent to multiple consumers. This eliminates memory copies in fan-out operations, achieving 60-90% memory reduction. Implementation focuses on trait design, routing logic, and message type updates.",
+				"id": "23",
+				"title": "Task 23: Implement Real ArcPool Pooling Logic",
+				"description": "Implement actual pooling logic in ArcPool. Currently ArcPool::get_or_create always creates new Arc instances and doesn't actually pool. Use Serena MCP to analyze current ArcPool implementation. Use Context7 MCP to research Arc pooling patterns.",
+				"status": "done",
+				"priority": "medium",
+				"dependencies": ["18"],
+				"details": "ArcPool exists but is a placeholder - it doesn't actually reuse Arc instances. This implements real pooling that reuses Arc wrappers to reduce allocation overhead in fan-out scenarios.",
 				"subtasks": [
 					{
+						"id": 1,
+						"title": "Research Arc Pooling Strategies",
+						"description": "Use Context7 MCP to research Arc pooling strategies. Consider storing unwrapped values and re-wrapping, or using a different approach. Research limitations of Arc pooling (can't easily reuse Arc instances). Document findings.",
+						"status": "done",
+						"dependencies": ["18"],
+						"parentId": "23",
+						"updatedAt": "2025-12-30T21:04:24.784Z"
+					},
+					{
 						"id": 2,
-						"title": "Implement Smart Fan-Out Routing with Arc",
-						"description": "Update graph execution code to detect fan-out scenarios and use Arc for zero-copy sharing. Implement logic to check output_channels length and use Arc::new + Arc::clone for multiple outputs, or direct move for single output.",
-						"status": "in-progress",
-						"dependencies": ["13.1"],
-						"parentId": "13",
-						"subtasks": [
-							{
-								"id": 2,
-								"title": "Update ProducerNode Channel Types for Arc",
-								"description": "Change output_channels type in ProducerNode::spawn_execution_task to accept Arc<P::Output> where P::Output: Send + Sync + 'static. Update channel type from mpsc::Sender<Bytes> to mpsc::Sender<Arc<P::Output>> for in-process zero-copy mode. NOTE: This task depends on ExecutionMode (task 15) being implemented. Documentation has been added to node.rs explaining the intended changes.",
-								"status": "pending",
-								"dependencies": ["13.2.1", "15.1"],
-								"parentId": "13.2"
-							},
-							{
-								"id": 4,
-								"title": "Update TransformerNode Channel Types for Arc",
-								"description": "Change output_channels type in TransformerNode::spawn_execution_task to accept Arc<T::Output> where T::Output: Send + Sync + 'static. Update channel type appropriately for zero-copy fan-out scenarios. NOTE: This task depends on ExecutionMode (task 15) being implemented. Documentation has been added to node.rs explaining the intended changes.",
-								"status": "pending",
-								"dependencies": ["13.2.3", "15.1"],
-								"parentId": "13.2"
-							},
-							{
-								"id": 5,
-								"title": "Handle Arc Unwrapping in ConsumerNode",
-								"description": "Update ConsumerNode::spawn_execution_task to handle Arc-wrapped input items. Use Arc::try_unwrap to extract items when possible (zero-cost if only one reference), or clone if multiple references exist. Update StreamWrapper to handle Arc types. NOTE: This task depends on ExecutionMode (task 15) being implemented. Documentation has been added to node.rs explaining the intended changes.",
-								"status": "pending",
-								"dependencies": ["13.2.4", "15.1"],
-								"parentId": "13.2"
-							}
-						],
-						"updatedAt": "2025-12-30T18:45:45.222Z"
+						"title": "Redesign ArcPool Implementation",
+						"description": "Redesign ArcPool to actually pool values. Since Arc instances can't be easily reused, consider pooling the underlying values instead. Store Vec<T> in pool, wrap in Arc when needed. Use Serena MCP to analyze current implementation in zero_copy.rs.",
+						"status": "done",
+						"dependencies": ["23.1"],
+						"parentId": "23",
+						"updatedAt": "2025-12-30T21:04:38.769Z"
+					},
+					{
+						"id": 3,
+						"title": "Implement Value-Based Pooling",
+						"description": "Implement pooling that stores T values (not Arc<T>). When get_or_create is called, try to get a value from pool, wrap in Arc, and return. When return_arc is called, unwrap Arc and return value to pool if possible.",
+						"status": "done",
+						"dependencies": ["23.2"],
+						"parentId": "23",
+						"updatedAt": "2025-12-30T21:04:57.145Z"
+					},
+					{
+						"id": 4,
+						"title": "Add Pool Statistics and Monitoring",
+						"description": "Add methods to track pool hit rate, pool size, and allocation statistics. This helps users understand pool effectiveness. Add metrics for pool efficiency.",
+						"status": "done",
+						"dependencies": ["23.3"],
+						"parentId": "23",
+						"updatedAt": "2025-12-30T21:05:30.192Z"
+					},
+					{
+						"id": 5,
+						"title": "Integrate ArcPool into Fan-Out Operations",
+						"description": "Update fan-out operations in node.rs to use ArcPool when available. Get Arc from pool instead of always creating new. Return Arc to pool after use. Use Serena MCP to find all fan-out locations.",
+						"status": "done",
+						"dependencies": ["23.4"],
+						"parentId": "23",
+						"updatedAt": "2025-12-30T21:07:42.143Z"
+					},
+					{
+						"id": 6,
+						"title": "Add ArcPool Tests and Benchmarks",
+						"description": "Add tests verifying ArcPool actually reuses values and reduces allocations. Create benchmarks comparing pooled vs non-pooled Arc creation in fan-out scenarios. Measure allocation reduction.",
+						"status": "done",
+						"dependencies": ["23.5"],
+						"parentId": "23",
+						"updatedAt": "2025-12-30T21:08:51.488Z"
 					}
 				],
-				"updatedAt": "2025-12-30T18:52:56.122Z"
-			},
-			{
-				"id": "15",
-				"title": "Task 15: Zero-Copy Architecture Implementation - Phase 4: Dual-Mode Graph Execution",
-				"description": "Implement Phase 4 of zero-copy architecture: add ExecutionMode enum, implement in-process zero-copy execution path, add mode detection logic, and update graph builder API to support dual-mode execution.",
-				"status": "in-progress",
-				"priority": "high",
-				"dependencies": ["14"],
-				"details": "Phase 4 implements dual-mode execution where graphs can run in-process (zero-copy) or distributed (serialized) modes. In-process mode eliminates all serialization overhead, achieving 50-80% memory reduction and 30-50% CPU reduction.",
-				"subtasks": [
-					{
-						"id": 2,
-						"title": "Implement In-Process Execution Path",
-						"description": "Implement zero-copy in-process execution path in GraphExecutor that passes data directly without serialization. Use direct stream connections and Arc for fan-out scenarios.",
-						"status": "in-progress",
-						"dependencies": ["15.1"],
-						"parentId": "15",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Create execute_in_process Method",
-								"description": "Create execute_in_process method in GraphExecutor (or Graph struct) that implements zero-copy execution. This method should pass streams directly between nodes without serialization, using Arc for fan-out.",
-								"status": "in-progress",
-								"dependencies": ["15.1"],
-								"parentId": "15.2"
-							},
-							{
-								"id": 2,
-								"title": "Implement Direct Stream Passing",
-								"description": "Implement logic to pass streams directly from producer to transformer to consumer without serialization. Use type-safe stream connections, ensuring Input/Output types match between connected nodes.",
-								"status": "pending",
-								"dependencies": ["15.2.1"],
-								"parentId": "15.2"
-							},
-							{
-								"id": 3,
-								"title": "Add Arc-Based Fan-Out for In-Process Mode",
-								"description": "Update in-process execution to use Arc for fan-out scenarios. When a node has multiple outputs, wrap items in Arc::new and use Arc::clone for each output channel. This eliminates memory copies in fan-out.",
-								"status": "pending",
-								"dependencies": ["15.2.2"],
-								"parentId": "15.2"
-							},
-							{
-								"id": 4,
-								"title": "Handle Fan-In with Stream Merging",
-								"description": "Implement fan-in handling in in-process mode using stream merging. Use futures::stream::select_all or similar to merge multiple input streams into one. Ensure proper ordering and error handling.",
-								"status": "pending",
-								"dependencies": ["15.2.3"],
-								"parentId": "15.2"
-							},
-							{
-								"id": 5,
-								"title": "Add Shared Memory Option Support",
-								"description": "Implement optional shared memory support for in-process mode when use_shared_memory is true. This requires additional implementation using shared memory primitives for ultra-high performance scenarios.",
-								"status": "pending",
-								"dependencies": ["15.2.4"],
-								"parentId": "15.2"
-							}
-						]
-					},
-					{
-						"id": 3,
-						"title": "Implement Distributed Execution Path",
-						"description": "Update existing distributed execution path to use ExecutionMode::Distributed configuration. Ensure serialization, compression, and batching options are respected.",
-						"status": "pending",
-						"dependencies": ["15.2"],
-						"parentId": "15",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Create execute_distributed Method",
-								"description": "Create execute_distributed method in GraphExecutor that implements serialized execution using the configured Serializer trait. This method should use existing serialization infrastructure with Bytes.",
-								"status": "pending",
-								"dependencies": ["15.2"],
-								"parentId": "15.3"
-							},
-							{
-								"id": 2,
-								"title": "Integrate Serializer Trait into Execution",
-								"description": "Update distributed execution to use the Serializer trait instead of hardcoded JSON serialization. Call serializer.serialize() and serializer.deserialize() methods appropriately throughout execution.",
-								"status": "pending",
-								"dependencies": ["15.3.1"],
-								"parentId": "15.3"
-							},
-							{
-								"id": 3,
-								"title": "Add Compression Support",
-								"description": "Implement compression support for distributed execution when CompressionAlgorithm is specified. Compress serialized data before sending over network, decompress after receiving. Use async-compression crate or similar.",
-								"status": "pending",
-								"dependencies": ["15.3.2"],
-								"parentId": "15.3"
-							},
-							{
-								"id": 4,
-								"title": "Add Batching Support",
-								"description": "Implement batching support for distributed execution when BatchConfig is specified. Batch multiple items together before serialization and sending. Handle batch size limits and timeout-based batching.",
-								"status": "pending",
-								"dependencies": ["15.3.3"],
-								"parentId": "15.3"
-							}
-						]
-					},
-					{
-						"id": 4,
-						"title": "Implement Mode Detection and Selection",
-						"description": "Add logic to automatically detect and select execution mode based on graph topology and configuration. Implement hybrid mode that switches between in-process and distributed based on load.",
-						"status": "pending",
-						"dependencies": ["15.3"],
-						"parentId": "15",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Implement Automatic Mode Detection",
-								"description": "Add detect_execution_mode method that analyzes graph topology to determine optimal execution mode. Check if all nodes are in same process, if network boundaries exist, and other factors that determine mode selection.",
-								"status": "pending",
-								"dependencies": ["15.3"],
-								"parentId": "15.4"
-							},
-							{
-								"id": 2,
-								"title": "Implement Hybrid Mode Logic",
-								"description": "Implement hybrid mode execution that starts in in-process mode and switches to distributed mode when local_threshold is exceeded. Monitor throughput and switch modes dynamically based on load.",
-								"status": "pending",
-								"dependencies": ["15.4.1"],
-								"parentId": "15.4"
-							},
-							{
-								"id": 3,
-								"title": "Add Mode Selection to Graph Builder",
-								"description": "Update GraphBuilder or Graph::new to accept ExecutionMode parameter. Add with_execution_mode method to builder API. Default to InProcess mode for zero-copy by default.",
-								"status": "pending",
-								"dependencies": ["15.4.2"],
-								"parentId": "15.4"
-							}
-						]
-					},
-					{
-						"id": 5,
-						"title": "Update Graph Builder API",
-						"description": "Update Graph and GraphBuilder APIs to support execution mode configuration. Add methods to set execution mode, serializer, compression, and batching options.",
-						"status": "pending",
-						"dependencies": ["15.4"],
-						"parentId": "15",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Add ExecutionMode Field to Graph Struct",
-								"description": "Add mode: ExecutionMode field to Graph struct in packages/graph/src/lib.rs or graph.rs. Initialize with ExecutionMode::InProcess as default in Graph::new().",
-								"status": "pending",
-								"dependencies": ["15.4"],
-								"parentId": "15.5"
-							},
-							{
-								"id": 2,
-								"title": "Add with_execution_mode Method",
-								"description": "Add with_execution_mode method to Graph builder that sets the execution mode. Return Self for method chaining. Update Graph::run to use the configured execution mode.",
-								"status": "pending",
-								"dependencies": ["15.5.1"],
-								"parentId": "15.5"
-							},
-							{
-								"id": 3,
-								"title": "Add with_distributed_execution Helper Method",
-								"description": "Add with_distributed_execution helper method that creates Distributed execution mode with specified serializer. This provides convenient API for users who want distributed execution.",
-								"status": "pending",
-								"dependencies": ["15.5.2"],
-								"parentId": "15.5"
-							},
-							{
-								"id": 4,
-								"title": "Update Graph::run to Use ExecutionMode",
-								"description": "Update Graph::run method to match on execution mode and call appropriate execution method (execute_in_process, execute_distributed, or execute_hybrid). Ensure proper error handling and mode-specific logic.",
-								"status": "pending",
-								"dependencies": ["15.5.3"],
-								"parentId": "15.5"
-							}
-						]
-					},
-				]
-			},
-			{
-				"id": "16",
-				"title": "Task 16: Zero-Copy Architecture Implementation - Phase 5: String Zero-Copy",
-				"description": "Implement Phase 5 of zero-copy architecture: replace String with Arc<str> in message metadata, update string operations, add conversion helpers, and implement string interning for repeated strings.",
-				"status": "pending",
-				"priority": "medium",
-				"dependencies": ["15"],
-				"details": "Phase 5 optimizes string handling by using Arc<str> for shared string data, eliminating string clones in metadata and headers. String interning further reduces memory for repeated strings like topic names and header keys.",
-				"subtasks": [
-					{
-						"id": 1,
-						"title": "Replace String with Arc<str> in MessageMetadata",
-						"description": "Update MessageMetadata structure in packages/message to use Arc<str> instead of String for source, key, and header fields. This enables zero-copy string sharing.",
-						"status": "pending",
-						"dependencies": ["15"],
-						"parentId": "16",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Update MessageMetadata Field Types",
-								"description": "Change MessageMetadata fields in packages/message/src/lib.rs: source from Option<String> to Option<Arc<str>>, key from Option<String> to Option<Arc<str>>, and headers from Vec<(String, String)> to Vec<(Arc<str>, Arc<str>)>.",
-								"status": "pending",
-								"dependencies": ["15"],
-								"parentId": "16.1"
-							},
-							{
-								"id": 2,
-								"title": "Add Arc Import to Message Module",
-								"description": "Add use std::sync::Arc; import to packages/message/src/lib.rs. Ensure Arc is available for use in MessageMetadata and related types.",
-								"status": "pending",
-								"dependencies": ["16.1.1"],
-								"parentId": "16.1"
-							},
-							{
-								"id": 3,
-								"title": "Update MessageMetadata Constructor Methods",
-								"description": "Update MessageMetadata::new and related constructor methods to work with Arc<str>. Add conversion from String and &str to Arc<str> in constructors. Update with_source, with_key, and header manipulation methods.",
-								"status": "pending",
-								"dependencies": ["16.1.2"],
-								"parentId": "16.1"
-							},
-							{
-								"id": 4,
-								"title": "Update MessageMetadata Accessor Methods",
-								"description": "Update MessageMetadata accessor methods (source(), key(), get_header(), etc.) to return &str references using Arc::as_ref(). Ensure all existing API consumers can access string data without changes.",
-								"status": "pending",
-								"dependencies": ["16.1.3"],
-								"parentId": "16.1"
-							}
-						]
-					},
-					{
-						"id": 2,
-						"title": "Add String Conversion Helpers",
-						"description": "Add helper methods and trait implementations for convenient conversion between String, &str, and Arc<str>. Implement Into<Arc<str>> for common string types.",
-						"status": "pending",
-						"dependencies": ["16.1"],
-						"parentId": "16",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Implement Into<Arc<str>> for String and &str",
-								"description": "Implement Into<Arc<str>> trait for String and &str types in packages/message/src/lib.rs (or appropriate location). This enables convenient conversion: Arc::from(string) or string.into().",
-								"status": "pending",
-								"dependencies": ["16.1"],
-								"parentId": "16.2"
-							},
-							{
-								"id": 2,
-								"title": "Add with_source_borrowed Helper Method",
-								"description": "Add MessageMetadata::with_source_borrowed method that accepts &str and converts to Arc<str> using Arc::from. This provides convenient API for borrowed string inputs.",
-								"status": "pending",
-								"dependencies": ["16.2.1"],
-								"parentId": "16.2"
-							},
-							{
-								"id": 3,
-								"title": "Add String Conversion Documentation",
-								"description": "Add comprehensive documentation to MessageMetadata methods explaining zero-copy string sharing, when to use Arc<str> vs String, and performance implications. Include examples of string conversion patterns.",
-								"status": "pending",
-								"dependencies": ["16.2.2"],
-								"parentId": "16.2"
-							}
-						]
-					},
-					{
-						"id": 3,
-						"title": "Implement String Interner",
-						"description": "Implement StringInterner structure for zero-copy deduplication of common strings. This reduces memory usage when the same strings appear repeatedly (e.g., topic names, header keys).",
-						"status": "pending",
-						"dependencies": ["16.2"],
-						"parentId": "16",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Create StringInterner Structure",
-								"description": "Create StringInterner struct in packages/graph/src/zero_copy.rs (or new file) with internal storage using Arc<RwLock<HashSet<Arc<str>>>>. This stores interned strings for reuse.",
-								"status": "pending",
-								"dependencies": ["16.2"],
-								"parentId": "16.3"
-							},
-							{
-								"id": 2,
-								"title": "Implement get_or_intern Method",
-								"description": "Implement StringInterner::get_or_intern method that takes &str, checks if string exists in intern set, returns existing Arc<str> if found, or creates new Arc<str> and adds to set if not found. Return cloned Arc<str>.",
-								"status": "pending",
-								"dependencies": ["16.3.1"],
-								"parentId": "16.3"
-							},
-							{
-								"id": 3,
-								"title": "Add StringInterner::new Constructor",
-								"description": "Add StringInterner::new() constructor that creates empty intern set. Add capacity hint parameter for pre-allocating space if needed.",
-								"status": "pending",
-								"dependencies": ["16.3.2"],
-								"parentId": "16.3"
-							},
-							{
-								"id": 4,
-								"title": "Export StringInterner from graph Module",
-								"description": "Add pub use zero_copy::StringInterner; to packages/graph/src/lib.rs to export StringInterner for use in graph execution and message handling.",
-								"status": "pending",
-								"dependencies": ["16.3.3"],
-								"parentId": "16.3"
-							}
-						]
-					},
-					{
-						"id": 4,
-						"title": "Add Interned String Support to MessageMetadata",
-						"description": "Add with_source_interned and similar methods to MessageMetadata that accept a StringInterner and intern strings before storing. This enables automatic string deduplication.",
-						"status": "pending",
-						"dependencies": ["16.3"],
-						"parentId": "16",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Add with_source_interned Method",
-								"description": "Add MessageMetadata::with_source_interned method that accepts &str and &mut StringInterner, interns the string, and stores the interned Arc<str> as source. Return Self for method chaining.",
-								"status": "pending",
-								"dependencies": ["16.3"],
-								"parentId": "16.4"
-							},
-							{
-								"id": 2,
-								"title": "Add with_key_interned Method",
-								"description": "Add MessageMetadata::with_key_interned method similar to with_source_interned but for key field. Intern key string before storing.",
-								"status": "pending",
-								"dependencies": ["16.4.1"],
-								"parentId": "16.4"
-							},
-							{
-								"id": 3,
-								"title": "Add add_header_interned Method",
-								"description": "Add MessageMetadata::add_header_interned method that accepts header key and value &str, interns both strings, and adds interned Arc<str> pair to headers. Return Self for method chaining.",
-								"status": "pending",
-								"dependencies": ["16.4.2"],
-								"parentId": "16.4"
-							},
-							{
-								"id": 4,
-								"title": "Add Documentation for Interned Methods",
-								"description": "Add comprehensive documentation explaining when to use interned methods vs regular methods, performance trade-offs, and memory benefits of string interning.",
-								"status": "pending",
-								"dependencies": ["16.4.3"],
-								"parentId": "16.4"
-							}
-						]
-					},
-					{
-						"id": 5,
-						"title": "Update Graph Execution to Use String Interning",
-						"description": "Add optional StringInterner to graph execution context and use it for interning common strings like node names, port names, and message metadata strings.",
-						"status": "pending",
-						"dependencies": ["16.4"],
-						"parentId": "16",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Add StringInterner to Graph Execution Context",
-								"description": "Add optional string_interner: Option<StringInterner> field to Graph struct or execution context. Allow users to provide StringInterner for automatic string deduplication.",
-								"status": "pending",
-								"dependencies": ["16.4"],
-								"parentId": "16.5"
-							},
-							{
-								"id": 2,
-								"title": "Update Node Name Handling to Use Interning",
-								"description": "Update graph execution to intern node names using StringInterner when available. Store interned node names and reuse them throughout execution lifecycle.",
-								"status": "pending",
-								"dependencies": ["16.5.1"],
-								"parentId": "16.5"
-							},
-							{
-								"id": 3,
-								"title": "Update Message Metadata Creation to Use Interning",
-								"description": "Update message metadata creation in graph execution to use StringInterner when creating messages. Use interned methods for source, key, and headers when interner is available.",
-								"status": "pending",
-								"dependencies": ["16.5.2"],
-								"parentId": "16.5"
-							}
-						]
-					}
-				]
-			},
-			{
-				"id": "17",
-				"title": "Task 17: Zero-Copy Architecture Implementation - Phase 6: Advanced Zero-Copy",
-				"description": "Implement Phase 6 of zero-copy architecture: zero-copy deserialization with lifetime management, optimize error handling with Arc, implement memory pooling for BytesMut, and add CPU cache optimizations.",
-				"status": "pending",
-				"priority": "medium",
-				"dependencies": ["16"],
-				"details": "Phase 6 implements advanced zero-copy optimizations including lifetime-aware deserialization, memory pooling, and CPU cache optimizations. These optimizations further improve performance and memory efficiency.",
-				"subtasks": [
-					{
-						"id": 1,
-						"title": "Implement Zero-Copy Deserialization with Lifetime Management",
-						"description": "Implement zero-copy deserialization using Bytes with lifetime management. Use serde_json::from_slice with lifetime-aware deserialization for string-heavy data.",
-						"status": "pending",
-						"dependencies": ["16"],
-						"parentId": "17",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Create ZeroCopyDeserializer Structure",
-								"description": "Create ZeroCopyDeserializer struct in packages/graph/src/serialization.rs that holds Bytes buffer and provides lifetime-aware deserialization. Store buffer as Bytes for shared ownership.",
-								"status": "pending",
-								"dependencies": ["16"],
-								"parentId": "17.1"
-							},
-							{
-								"id": 2,
-								"title": "Implement deserialize Method with Lifetime",
-								"description": "Implement ZeroCopyDeserializer::deserialize method that uses serde_json::from_slice with buffer's lifetime. Use buffer.as_ref() to get &[u8] slice for deserialization. Return deserialized value with appropriate lifetime.",
-								"status": "pending",
-								"dependencies": ["17.1.1"],
-								"parentId": "17.1"
-							},
-							{
-								"id": 3,
-								"title": "Add deserialize_zero_copy_strings Function",
-								"description": "Add deserialize_zero_copy_strings function in packages/graph/src/serialization.rs that accepts &[u8] with lifetime and deserializes strings as &str (zero-copy) when data outlives deserialized value. Document lifetime requirements.",
-								"status": "pending",
-								"dependencies": ["17.1.2"],
-								"parentId": "17.1"
-							},
-							{
-								"id": 4,
-								"title": "Integrate ZeroCopyDeserializer into Graph Execution",
-								"description": "Update graph execution code to use ZeroCopyDeserializer when deserializing data. Create ZeroCopyDeserializer from received Bytes and use it for deserialization to enable zero-copy string deserialization where possible.",
-								"status": "pending",
-								"dependencies": ["17.1.3"],
-								"parentId": "17.1"
-							}
-						]
-					},
-					{
-						"id": 2,
-						"title": "Optimize Error Handling with Arc",
-						"description": "Update error handling code to use Arc for error context when error rate is significant. This enables zero-copy error context sharing and reduces memory usage in error-heavy scenarios.",
-						"status": "pending",
-						"dependencies": ["17.1"],
-						"parentId": "17",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Review Error Types for Arc Opportunities",
-								"description": "Review error types in packages/error/src/error.rs to identify fields that can use Arc for sharing. Focus on StreamError, ErrorContext, and other error types that may be cloned frequently.",
-								"status": "pending",
-								"dependencies": ["17.1"],
-								"parentId": "17.2"
-							},
-							{
-								"id": 2,
-								"title": "Add Arc-Based Error Context Variants",
-								"description": "Add new error context types or variants that use Arc for shared ownership. Create SharedErrorContext type that wraps Arc<ErrorContext> for zero-copy error context sharing.",
-								"status": "pending",
-								"dependencies": ["17.2.1"],
-								"parentId": "17.2"
-							},
-							{
-								"id": 3,
-								"title": "Update Error Creation to Use Arc When Appropriate",
-								"description": "Update error creation code to use Arc when error context is likely to be shared (e.g., in retry scenarios, error propagation). Add logic to detect when Arc should be used based on error handling strategy.",
-								"status": "pending",
-								"dependencies": ["17.2.2"],
-								"parentId": "17.2"
-							},
-							{
-								"id": 4,
-								"title": "Add Error Context Conversion Helpers",
-								"description": "Add helper methods to convert between owned and shared error contexts. Implement Into<Arc<ErrorContext>> for ErrorContext and similar conversions for error types.",
-								"status": "pending",
-								"dependencies": ["17.2.3"],
-								"parentId": "17.2"
-							}
-						]
-					},
-					{
-						"id": 3,
-						"title": "Implement Memory Pooling for BytesMut",
-						"description": "Implement memory pooling for BytesMut buffers to reduce allocation overhead. Create BytesPool structure that maintains a pool of reusable BytesMut buffers.",
-						"status": "pending",
-						"dependencies": ["17.2"],
-						"parentId": "17",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Create BytesPool Structure",
-								"description": "Create BytesPool struct in packages/graph/src/zero_copy.rs that maintains a pool of BytesMut buffers. Use Vec<BytesMut> or similar structure for pool storage. Add Mutex for thread safety.",
-								"status": "pending",
-								"dependencies": ["17.2"],
-								"parentId": "17.3"
-							},
-							{
-								"id": 2,
-								"title": "Implement get and return Methods",
-								"description": "Implement BytesPool::get method that returns BytesMut from pool or allocates new one if pool is empty. Implement BytesPool::return method that returns BytesMut to pool after clearing. Handle pool size limits.",
-								"status": "pending",
-								"dependencies": ["17.3.1"],
-								"parentId": "17.3"
-							},
-							{
-								"id": 3,
-								"title": "Add Configurable Pool Size",
-								"description": "Add max_pool_size parameter to BytesPool::new to limit pool size and prevent unbounded memory growth. Implement logic to discard excess buffers when pool exceeds max size.",
-								"status": "pending",
-								"dependencies": ["17.3.2"],
-								"parentId": "17.3"
-							},
-							{
-								"id": 4,
-								"title": "Integrate BytesPool into Serialization",
-								"description": "Update serialization code to use BytesPool when available. Get BytesMut from pool, use it for serialization, convert to Bytes, and return buffer to pool. Make pool usage optional for backward compatibility.",
-								"status": "pending",
-								"dependencies": ["17.3.3"],
-								"parentId": "17.3"
-							},
-							{
-								"id": 5,
-								"title": "Export BytesPool from graph Module",
-								"description": "Add pub use zero_copy::BytesPool; to packages/graph/src/lib.rs to export BytesPool for use in graph execution and serialization.",
-								"status": "pending",
-								"dependencies": ["17.3.4"],
-								"parentId": "17.3"
-							}
-						]
-					},
-					{
-						"id": 4,
-						"title": "Add CPU Cache Optimizations",
-						"description": "Add CPU cache-aware optimizations including structure layout optimization, prefetching hints, and cache-line aware data structures to improve CPU cache efficiency.",
-						"status": "pending",
-						"dependencies": ["17.3"],
-						"parentId": "17",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Add Structure Layout Optimizations",
-								"description": "Review hot path data structures and add #[repr(C)] or #[repr(align(N))] attributes where appropriate to optimize memory layout for CPU cache. Focus on frequently accessed structures in graph execution.",
-								"status": "pending",
-								"dependencies": ["17.3"],
-								"parentId": "17.4"
-							},
-							{
-								"id": 2,
-								"title": "Add Prefetching Hints for Sequential Access",
-								"description": "Add std::intrinsics::prefetch_read_data or similar prefetching hints in hot loops that process data sequentially. Prefetch next items in stream processing loops to improve cache hit rates.",
-								"status": "pending",
-								"dependencies": ["17.4.1"],
-								"parentId": "17.4"
-							},
-							{
-								"id": 3,
-								"title": "Optimize Data Structure Alignment",
-								"description": "Review channel buffer sizes and data structure sizes to ensure they align with cache line boundaries (64 bytes). Avoid false sharing by padding structures appropriately. Use #[repr(align(64))] where needed.",
-								"status": "pending",
-								"dependencies": ["17.4.2"],
-								"parentId": "17.4"
-							},
-							{
-								"id": 4,
-								"title": "Add Cache-Aware Data Structures",
-								"description": "Review HashMap and Vec usage in hot paths and consider cache-friendly alternatives if available. Ensure data locality is maintained in frequently accessed data structures.",
-								"status": "pending",
-								"dependencies": ["17.4.3"],
-								"parentId": "17.4"
-							}
-						]
-					},
-					{
-						"id": 5,
-						"title": "Add Integration with Custom Allocators",
-						"description": "Add support for custom allocators like jemalloc or mimalloc for predictable performance. Make allocator selection configurable through feature flags.",
-						"status": "pending",
-						"dependencies": ["17.4"],
-						"parentId": "17",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Add jemalloc Feature Flag",
-								"description": "Add jemalloc feature flag to packages/graph/Cargo.toml. Add jemallocator dependency as optional dependency with jemalloc feature. Document allocator selection in README.",
-								"status": "pending",
-								"dependencies": ["17.4"],
-								"parentId": "17.5"
-							},
-							{
-								"id": 2,
-								"title": "Add mimalloc Feature Flag",
-								"description": "Add mimalloc feature flag to packages/graph/Cargo.toml. Add mimalloc dependency as optional dependency with mimalloc feature. Provide alternative to jemalloc.",
-								"status": "pending",
-								"dependencies": ["17.5.1"],
-								"parentId": "17.5"
-							},
-							{
-								"id": 3,
-								"title": "Add Allocator Selection Documentation",
-								"description": "Add documentation explaining how to enable custom allocators, performance implications, and when to use jemalloc vs mimalloc vs default allocator. Include feature flag usage examples.",
-								"status": "pending",
-								"dependencies": ["17.5.2"],
-								"parentId": "17.5"
-							}
-						]
-					}
-				]
+				"updatedAt": "2025-12-30T21:08:51.488Z"
 			}
 		],
 		"metadata": {
 			"version": "1.0.0",
-			"lastModified": "2025-12-30T18:52:56.123Z",
-			"taskCount": 17,
-			"completedCount": 12,
+			"lastModified": "2025-12-30T21:08:51.488Z",
+			"taskCount": 1,
+			"completedCount": 1,
 			"tags": ["master"]
 		}
 	}
