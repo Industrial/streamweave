@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-visualization"
-version = "0.4.0"
+version = "0.5.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -14,14 +14,14 @@ description = "Visualization tools for StreamWeave"
 [dependencies]
 streamweave = { path = "../streamweave", version = "0.5.0" }
 streamweave-graph = { path = "../graph", version = "0.5.0" }
-streamweave-error = { path = "../error", version = "0.4.0" }
+streamweave-error = { path = "../error", version = "0.5.0" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
 proptest = { workspace = true }
-streamweave-vec = { path = "../vec", version = "0.4.0" }
+streamweave-vec = { path = "../vec", version = "0.5.0" }
 streamweave-transformers = { path = "../transformers", version = "0.5.0" }
 
 [features]

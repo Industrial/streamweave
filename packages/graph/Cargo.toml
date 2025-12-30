@@ -15,9 +15,9 @@ description = "Graph API for StreamWeave"
 async-stream = { workspace = true }
 async-trait = { workspace = true }
 streamweave = { path = "../streamweave", version = "0.5.0" }
-streamweave-error = { path = "../error", version = "0.4.0" }
+streamweave-error = { path = "../error", version = "0.5.0" }
 streamweave-pipeline = { path = "../pipeline", version = "0.5.0" }
-streamweave-stateful = { path = "../stateful", version = "0.4.0" }
+streamweave-stateful = { path = "../stateful", version = "0.5.0" }
 streamweave-window = { path = "../window", version = "0.5.0" }
 streamweave-transformers = { path = "../transformers", version = "0.5.0" }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
@@ -28,7 +28,7 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
-streamweave-vec = { path = "../vec", version = "0.4.0" }
+streamweave-vec = { path = "../vec", version = "0.5.0" }
 streamweave-transformers = { path = "../transformers", version = "0.5.0" }
 
 [features]

@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-transaction"
-version = "0.4.0"
+version = "0.5.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -13,8 +13,8 @@ description = "Transaction management for StreamWeave"
 
 [dependencies]
 streamweave = { path = "../streamweave", version = "0.5.0" }
-streamweave-message = { path = "../message", version = "0.4.0", optional = true }
-streamweave-offset = { path = "../offset", version = "0.4.0" }
+streamweave-message = { path = "../message", version = "0.5.0", optional = true }
+streamweave-offset = { path = "../offset", version = "0.5.0" }
 tokio = { workspace = true, features = ["macros", "rt", "time", "sync"] }
 chrono = { workspace = true }
 futures = { workspace = true }
