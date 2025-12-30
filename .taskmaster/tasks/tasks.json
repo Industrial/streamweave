@@ -656,7 +656,7 @@
 						"id": 3,
 						"title": "Update Channel Types to Use Bytes",
 						"description": "Update all channel type definitions in packages/graph/src/node.rs to use Bytes instead of Vec<u8>. This includes input_channels and output_channels HashMap types, and all channel send/receive operations.",
-						"status": "pending",
+						"status": "in-progress",
 						"dependencies": ["12.2"],
 						"parentId": "12",
 						"subtasks": [
@@ -692,7 +692,8 @@
 								"dependencies": ["12.3.3"],
 								"parentId": "12.3"
 							}
-						]
+						],
+						"updatedAt": "2025-12-30T17:41:25.034Z"
 					},
 					{
 						"id": 4,
@@ -779,7 +780,7 @@
 						]
 					}
 				],
-				"updatedAt": "2025-12-30T17:28:00.076Z"
+				"updatedAt": "2025-12-30T17:41:25.034Z"
 			},
 			{
 				"id": "13",
@@ -1849,7 +1850,7 @@
 		],
 		"metadata": {
 			"version": "1.0.0",
-			"lastModified": "2025-12-30T17:28:00.080Z",
+			"lastModified": "2025-12-30T17:41:25.035Z",
 			"taskCount": 17,
 			"completedCount": 11,
 			"tags": ["master"]
