@@ -6,6 +6,7 @@
 
 use serde::{Serialize, de::DeserializeOwned};
 use std::fmt;
+use bytes::Bytes;
 
 /// Error type for serialization operations.
 ///
@@ -73,7 +74,7 @@ impl From<serde_json::Error> for SerializationError {
 ///
 /// # Returns
 ///
-/// Returns `Ok(Vec<u8>)` containing the serialized JSON bytes, or
+/// Returns `Ok(Bytes)` containing the serialized JSON bytes, or
 /// `Err(SerializationError)` if serialization fails.
 ///
 /// # Example
@@ -92,8 +93,10 @@ impl From<serde_json::Error> for SerializationError {
 /// let bytes = serialize(&point)?;
 /// # Ok::<(), streamweave_graph::SerializationError>(())
 /// ```
-pub fn serialize<T: Serialize>(item: &T) -> Result<Vec<u8>, SerializationError> {
-  serde_json::to_vec(item).map_err(SerializationError::from)
+pub fn serialize<T: Serialize>(item: &T) -> Result<Bytes, SerializationError> {
+  serde_json::to_vec(item)
+    .map_err(SerializationError::from)
+    .map(Bytes::from)
 }
 
 /// Deserializes an item from a byte slice.
@@ -134,6 +137,7 @@ pub fn deserialize<T: DeserializeOwned>(data: &[u8]) -> Result<T, SerializationE
 #[cfg(test)]
 mod tests {
   use super::*;
+  use bytes::Bytes;
   use serde::{Deserialize, Serialize};
   use std::error::Error;
 
@@ -172,8 +176,8 @@ mod tests {
   #[test]
   fn test_from_serde_json_error() {
     // Test deserialization error (has line number)
-    let invalid_json = b"{ invalid json";
-    let serde_err = serde_json::from_slice::<TestStruct>(invalid_json).unwrap_err();
+    let invalid_json = Bytes::from(b"{ invalid json".as_slice());
+    let serde_err = serde_json::from_slice::<TestStruct>(invalid_json.as_ref()).unwrap_err();
     let our_err: SerializationError = serde_err.into();
     match our_err {
       SerializationError::DeserializationFailed(_) => {}
@@ -257,28 +261,28 @@ mod tests {
   // deserialize() tests
   #[test]
   fn test_deserialize_primitive_i32() {
-    let bytes = b"42";
+    let bytes = Bytes::from(b"42".as_slice());
     let value: i32 = deserialize(bytes).unwrap();
     assert_eq!(value, 42);
   }
 
   #[test]
   fn test_deserialize_primitive_string() {
-    let bytes = b"\"hello\"";
+    let bytes = Bytes::from(b"\"hello\"".as_slice());
     let value: String = deserialize(bytes).unwrap();
     assert_eq!(value, "hello");
   }
 
   #[test]
   fn test_deserialize_primitive_bool() {
-    let bytes = b"true";
+    let bytes = Bytes::from(b"true".as_slice());
     let value: bool = deserialize(bytes).unwrap();
     assert!(value);
   }
 
   #[test]
   fn test_deserialize_struct() {
-    let bytes = br#"{"value":42,"text":"test"}"#;
+    let bytes = Bytes::from(br#"{"value":42,"text":"test"}"#.as_slice());
     let value: TestStruct = deserialize(bytes).unwrap();
     assert_eq!(
       value,
@@ -291,47 +295,47 @@ mod tests {
 
   #[test]
   fn test_deserialize_enum() {
-    let bytes = b"\"Variant1\"";
+    let bytes = Bytes::from(b"\"Variant1\"".as_slice());
     let value: TestEnum = deserialize(bytes).unwrap();
     assert_eq!(value, TestEnum::Variant1);
 
-    let bytes = br#"{"Variant2":"test"}"#;
+    let bytes = Bytes::from(br#"{"Variant2":"test"}"#.as_slice());
     let value: TestEnum = deserialize(bytes).unwrap();
     assert_eq!(value, TestEnum::Variant2("test".to_string()));
 
-    let bytes = br#"{"Variant3":{"field":42}}"#;
+    let bytes = Bytes::from(br#"{"Variant3":{"field":42}}"#.as_slice());
     let value: TestEnum = deserialize(bytes).unwrap();
     assert_eq!(value, TestEnum::Variant3 { field: 42 });
   }
 
   #[test]
   fn test_deserialize_vec() {
-    let bytes = b"[1,2,3]";
+    let bytes = Bytes::from(b"[1,2,3]".as_slice());
     let value: Vec<i32> = deserialize(bytes).unwrap();
     assert_eq!(value, vec![1, 2, 3]);
   }
 
   #[test]
   fn test_deserialize_option() {
-    let bytes = b"42";
+    let bytes = Bytes::from(b"42".as_slice());
     let value: Option<i32> = deserialize(bytes).unwrap();
     assert_eq!(value, Some(42));
 
-    let bytes = b"null";
+    let bytes = Bytes::from(b"null".as_slice());
     let value: Option<i32> = deserialize(bytes).unwrap();
     assert_eq!(value, None);
   }
 
   #[test]
   fn test_deserialize_empty_data() {
-    let bytes = b"[]";
+    let bytes = Bytes::from(b"[]".as_slice());
     let value: Vec<i32> = deserialize(bytes).unwrap();
     assert_eq!(value, Vec::<i32>::new());
   }
 
   #[test]
   fn test_deserialize_invalid_json() {
-    let bytes = b"{ invalid json";
+    let bytes = Bytes::from(b"{ invalid json".as_slice());
     let result: Result<TestStruct, _> = deserialize(bytes);
     assert!(result.is_err());
     match result.unwrap_err() {
@@ -342,21 +346,21 @@ mod tests {
 
   #[test]
   fn test_deserialize_type_mismatch() {
-    let bytes = b"\"not a number\"";
+    let bytes = Bytes::from(b"\"not a number\"".as_slice());
     let result: Result<i32, _> = deserialize(bytes);
     assert!(result.is_err());
   }
 
   #[test]
   fn test_deserialize_missing_field() {
-    let bytes = b"{\"value\":42}";
+    let bytes = Bytes::from(b"{\"value\":42}".as_slice());
     let result: Result<TestStruct, _> = deserialize(bytes);
     assert!(result.is_err());
   }
 
   #[test]
   fn test_deserialize_empty_bytes() {
-    let bytes = b"";
+    let bytes = Bytes::from(b"".as_slice());
     let result: Result<TestStruct, _> = deserialize(bytes);
     assert!(result.is_err());
   }
@@ -366,7 +370,7 @@ mod tests {
   fn test_round_trip_i32() {
     let original: i32 = 42;
     let bytes = serialize(&original).unwrap();
-    let deserialized: i32 = deserialize(&bytes).unwrap();
+    let deserialized: i32 = deserialize(bytes).unwrap();
     assert_eq!(original, deserialized);
   }
 
@@ -374,7 +378,7 @@ mod tests {
   fn test_round_trip_string() {
     let original = "hello world".to_string();
     let bytes = serialize(&original).unwrap();
-    let deserialized: String = deserialize(&bytes).unwrap();
+    let deserialized: String = deserialize(bytes).unwrap();
     assert_eq!(original, deserialized);
   }
 
@@ -385,7 +389,7 @@ mod tests {
       text: "test".to_string(),
     };
     let bytes = serialize(&original).unwrap();
-    let deserialized: TestStruct = deserialize(&bytes).unwrap();
+    let deserialized: TestStruct = deserialize(bytes).unwrap();
     assert_eq!(original, deserialized);
   }
 
@@ -393,7 +397,7 @@ mod tests {
   fn test_round_trip_enum() {
     let original = TestEnum::Variant3 { field: 42 };
     let bytes = serialize(&original).unwrap();
-    let deserialized: TestEnum = deserialize(&bytes).unwrap();
+    let deserialized: TestEnum = deserialize(bytes).unwrap();
     assert_eq!(original, deserialized);
   }
 
@@ -401,7 +405,7 @@ mod tests {
   fn test_round_trip_vec() {
     let original = vec![1, 2, 3, 4, 5];
     let bytes = serialize(&original).unwrap();
-    let deserialized: Vec<i32> = deserialize(&bytes).unwrap();
+    let deserialized: Vec<i32> = deserialize(bytes).unwrap();
     assert_eq!(original, deserialized);
   }
 
@@ -421,7 +425,7 @@ mod tests {
       count: 10,
     };
     let bytes = serialize(&original).unwrap();
-    let deserialized: Outer = deserialize(&bytes).unwrap();
+    let deserialized: Outer = deserialize(bytes).unwrap();
     assert_eq!(original, deserialized);
   }
 
@@ -432,12 +436,12 @@ mod tests {
       text: "test".to_string(),
     });
     let bytes = serialize(&original).unwrap();
-    let deserialized: Option<TestStruct> = deserialize(&bytes).unwrap();
+    let deserialized: Option<TestStruct> = deserialize(bytes).unwrap();
     assert_eq!(original, deserialized);
 
     let original: Option<TestStruct> = None;
     let bytes = serialize(&original).unwrap();
-    let deserialized: Option<TestStruct> = deserialize(&bytes).unwrap();
+    let deserialized: Option<TestStruct> = deserialize(bytes).unwrap();
     assert_eq!(original, deserialized);
   }
 
@@ -445,7 +449,7 @@ mod tests {
   fn test_round_trip_large_data() {
     let original: Vec<i32> = (0..10000).collect();
     let bytes = serialize(&original).unwrap();
-    let deserialized: Vec<i32> = deserialize(&bytes).unwrap();
+    let deserialized: Vec<i32> = deserialize(bytes).unwrap();
     assert_eq!(original, deserialized);
   }
 
@@ -453,7 +457,7 @@ mod tests {
   fn test_round_trip_special_characters() {
     let original = "Hello \"world\" with\nnewlines\tand\ttabs".to_string();
     let bytes = serialize(&original).unwrap();
-    let deserialized: String = deserialize(&bytes).unwrap();
+    let deserialized: String = deserialize(bytes).unwrap();
     assert_eq!(original, deserialized);
   }
 
@@ -461,7 +465,7 @@ mod tests {
   fn test_round_trip_unicode() {
     let original = "Hello 🌍 世界 مرحبا".to_string();
     let bytes = serialize(&original).unwrap();
-    let deserialized: String = deserialize(&bytes).unwrap();
+    let deserialized: String = deserialize(bytes).unwrap();
     assert_eq!(original, deserialized);
   }
 }
