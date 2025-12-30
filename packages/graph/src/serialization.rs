@@ -100,6 +100,47 @@ pub fn serialize<T: Serialize>(item: &T) -> Result<Bytes, SerializationError> {
     .map(Bytes::from)
 }
 
+/// Serializes an item to a vector of bytes.
+///
+/// # Deprecated
+///
+/// This function is deprecated. Use [`serialize()`] instead, which returns
+/// `Bytes` for zero-copy operations. If you need a `Vec<u8>`, you can
+/// convert the `Bytes` result using `.to_vec()` or `.into()`.
+///
+/// # Arguments
+///
+/// * `item` - The item to serialize.
+///
+/// # Returns
+///
+/// Returns `Ok(Vec<u8>)` containing the serialized JSON bytes, or
+/// `Err(SerializationError)` if serialization fails.
+///
+/// # Example
+///
+/// ```rust
+/// use serde::Serialize;
+/// use streamweave_graph::serialize_to_vec;
+///
+/// #[derive(Serialize)]
+/// struct Point {
+///     x: i32,
+///     y: i32,
+/// }
+///
+/// let point = Point { x: 1, y: 2 };
+/// let vec = serialize_to_vec(&point)?;
+/// # Ok::<(), streamweave_graph::SerializationError>(())
+/// ```
+#[deprecated(
+  since = "0.5.0",
+  note = "Use serialize() instead, which returns Bytes for zero-copy operations. If you need Vec<u8>, convert the Bytes result using .to_vec() or .into()"
+)]
+pub fn serialize_to_vec<T: Serialize>(item: &T) -> Result<Vec<u8>, SerializationError> {
+  serialize(item).map(|bytes| bytes.to_vec())
+}
+
 /// Deserializes an item from bytes.
 ///
 /// This function deserializes JSON bytes to a value that implements
@@ -137,84 +178,9 @@ pub fn deserialize<T: DeserializeOwned>(data: Bytes) -> Result<T, SerializationE
   serde_json::from_slice(data.as_ref()).map_err(SerializationError::from)
 }
 
-/// Serializes an item to a byte vector (deprecated).
-///
-/// # Deprecated
-///
-/// This function is deprecated. Use [`serialize`] instead, which returns `Bytes`
-/// for zero-copy operations. This function is provided for backward compatibility
-/// only and will be removed in a future version.
-///
-/// # Arguments
-///
-/// * `item` - The item to serialize.
-///
-/// # Returns
-///
-/// Returns `Ok(Vec<u8>)` containing the serialized JSON bytes, or
-/// `Err(SerializationError)` if serialization fails.
-///
-/// # Example
-///
-/// ```rust
-/// use serde::Serialize;
-/// use streamweave_graph::serialize_to_vec;
-///
-/// #[derive(Serialize)]
-/// struct Point {
-///     x: i32,
-///     y: i32,
-/// }
-///
-/// let point = Point { x: 1, y: 2 };
-/// let bytes = serialize_to_vec(&point)?;
-/// # Ok::<(), streamweave_graph::SerializationError>(())
-/// ```
 #[deprecated(
   since = "0.5.0",
-  note = "Use serialize() instead, which returns Bytes for zero-copy operations"
-)]
-pub fn serialize_to_vec<T: Serialize>(item: &T) -> Result<Vec<u8>, SerializationError> {
-  serialize(item).map(|bytes| bytes.to_vec())
-}
-
-/// Deserializes an item from a byte slice (deprecated).
-///
-/// # Deprecated
-///
-/// This function is deprecated. Use [`deserialize`] instead, which accepts `Bytes`
-/// for zero-copy operations. This function is provided for backward compatibility
-/// only and will be removed in a future version.
-///
-/// # Arguments
-///
-/// * `data` - The byte slice containing JSON data to deserialize.
-///
-/// # Returns
-///
-/// Returns `Ok(T)` containing the deserialized value, or
-/// `Err(SerializationError)` if deserialization fails.
-///
-/// # Example
-///
-/// ```rust
-/// use serde::Deserialize;
-/// use streamweave_graph::deserialize_from_slice;
-///
-/// #[derive(Deserialize, Debug, PartialEq)]
-/// struct Point {
-///     x: i32,
-///     y: i32,
-/// }
-///
-/// let bytes = br#"{"x":1,"y":2}"#;
-/// let point: Point = deserialize_from_slice(bytes)?;
-/// assert_eq!(point, Point { x: 1, y: 2 });
-/// # Ok::<(), streamweave_graph::SerializationError>(())
-/// ```
-#[deprecated(
-  since = "0.5.0",
-  note = "Use deserialize() instead, which accepts Bytes for zero-copy operations. Convert your &[u8] to Bytes using Bytes::from(slice) or Bytes::copy_from_slice(slice)"
+  note = "Use deserialize() instead, which accepts Bytes for zero-copy operations. Convert your &[u8] to Bytes using Bytes::copy_from_slice(slice)"
 )]
 pub fn deserialize_from_slice<T: DeserializeOwned>(data: &[u8]) -> Result<T, SerializationError> {
   deserialize(Bytes::copy_from_slice(data))

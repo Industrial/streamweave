@@ -17,6 +17,7 @@ streamweave = { path = "../streamweave", version = "0.5.0" }
 streamweave-error = { path = "../error", version = "0.5.0" }
 streamweave-message = { path = "../message", version = "0.5.0" }
 streamweave-stateful = { path = "../stateful", version = "0.5.0" }
+streamweave-graph = { path = "../graph", version = "0.5.0" }
 
 # Async runtime and utilities
 tokio = { workspace = true, features = ["macros", "rt", "time", "sync"] }

@@ -16,6 +16,7 @@ pub mod stateful;
 pub mod subgraph;
 pub mod traits;
 pub mod windowing;
+pub mod zero_copy;
 
 pub use broadcast_router::*;
 pub use connection::*;
@@ -32,3 +33,6 @@ pub use stateful::*;
 pub use subgraph::*;
 pub use traits::*;
 pub use windowing::*;
+pub use zero_copy::{
+  ArcPool, InPlaceTransform, MutateInPlace, ZeroCopyShare, ZeroCopyShareWeak, ZeroCopyTransformer,
+};

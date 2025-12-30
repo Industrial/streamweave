@@ -871,6 +871,10 @@ where
     // 3. Serializes each item to Bytes
     // 4. Sends to output channels (broadcasts to all ports)
     // 5. Handles pause signal and errors
+    //
+    // NOTE: Task 13.2.2 - In-process zero-copy mode will change output_channels type
+    // from mpsc::Sender<Bytes> to mpsc::Sender<Arc<P::Output>> when ExecutionMode::InProcess
+    // is implemented (task 15). This will eliminate serialization overhead for in-process execution.
 
     let node_name = self.name.clone();
     let mut producer_clone = self.producer.clone();
@@ -936,13 +940,51 @@ where
           }
         };
 
+        // Fan-out detection: use Arc for zero-copy sharing when multiple outputs
+        let is_fan_out = output_channels.len() > 1;
+
         // Send to all output channels (broadcast pattern for multiple outputs)
+        // In fan-out scenarios, use Arc to avoid cloning the serialized data
         // In fan-out scenarios, some receivers may be dropped when downstream nodes finish
         // Only return error if ALL channels fail (not just one)
         let mut send_succeeded = 0;
         let mut send_failed_count = 0;
-        for (port_index, sender) in &output_channels {
-          match sender.send(serialized.clone()).await {
+
+        if is_fan_out {
+          // Fan-out: wrap in Arc for zero-copy sharing
+          // Note: Currently using Arc<Bytes> as intermediate step.
+          // Future optimization (task 13.2.2): use Arc<P::Output> directly to skip serialization
+          // Future optimization (task 13.4.4): use ArcPool when available from GraphExecutor
+          let shared_bytes = std::sync::Arc::new(serialized);
+          for (port_index, sender) in &output_channels {
+            // Use as_ref() to get &Bytes from &Arc<Bytes>, then clone
+            // Bytes itself is reference-counted, so this is zero-copy
+            let bytes_to_send = shared_bytes.as_ref().clone();
+            match sender.send(bytes_to_send).await {
+              Ok(()) => {
+                send_succeeded += 1;
+              }
+              Err(_e) => {
+                // Channel closed - check if this is shutdown (pause signal set)
+                let paused = *pause_signal.read().await;
+                if paused {
+                  // Shutdown requested - exit gracefully
+                  return Ok(());
+                }
+                // Not shutdown - receiver dropped (might be normal in fan-out)
+                send_failed_count += 1;
+                warn!(
+                  node = %node_name,
+                  port = port_index,
+                  "Output channel receiver dropped (may be normal in fan-out scenarios)"
+                );
+              }
+            }
+          }
+        } else {
+          // Single output: direct move (no Arc overhead)
+          let (port_index, sender) = output_channels.iter().next().unwrap();
+          match sender.send(serialized).await {
             Ok(()) => {
               send_succeeded += 1;
             }
@@ -953,12 +995,12 @@ where
                 // Shutdown requested - exit gracefully
                 return Ok(());
               }
-              // Not shutdown - receiver dropped (might be normal in fan-out)
+              // Not shutdown - receiver dropped
               send_failed_count += 1;
               warn!(
                 node = %node_name,
                 port = port_index,
-                "Output channel receiver dropped (may be normal in fan-out scenarios)"
+                "Output channel receiver dropped"
               );
             }
           }
@@ -1075,6 +1117,10 @@ where
     output_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Sender<Bytes>>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
+    // NOTE: Task 13.2.4 - In-process zero-copy mode will change channel types
+    // from mpsc::Receiver/Sender<Bytes> to mpsc::Receiver/Sender<Arc<T::Output>>
+    // when ExecutionMode::InProcess is implemented (task 15). This will eliminate
+    // serialization overhead for in-process execution.
     let node_name = self.name.clone();
     let mut transformer_clone = self.transformer.clone();
 
@@ -1161,13 +1207,51 @@ where
           }
         };
 
+        // Fan-out detection: use Arc for zero-copy sharing when multiple outputs
+        let is_fan_out = output_channels.len() > 1;
+
         // Send to all output channels (broadcast pattern for fan-out)
+        // In fan-out scenarios, use Arc to avoid cloning the serialized data
         // In fan-out scenarios, some receivers may be dropped when downstream nodes finish
         // Only return error if ALL channels fail (not just one)
         let mut send_succeeded = 0;
         let mut send_failed_count = 0;
-        for (port_index, sender) in &output_channels {
-          match sender.send(serialized.clone()).await {
+
+        if is_fan_out {
+          // Fan-out: wrap in Arc for zero-copy sharing
+          // Note: Currently using Arc<Bytes> as intermediate step.
+          // Future optimization (task 13.2.4): use Arc<T::Output> directly to skip serialization
+          // Future optimization (task 13.4.4): use ArcPool when available from GraphExecutor
+          let shared_bytes = std::sync::Arc::new(serialized);
+          for (port_index, sender) in &output_channels {
+            // Use as_ref() to get &Bytes from &Arc<Bytes>, then clone
+            // Bytes itself is reference-counted, so this is zero-copy
+            let bytes_to_send = shared_bytes.as_ref().clone();
+            match sender.send(bytes_to_send).await {
+              Ok(()) => {
+                send_succeeded += 1;
+              }
+              Err(_e) => {
+                // Channel closed - check if this is shutdown (pause signal set)
+                let paused = *pause_signal.read().await;
+                if paused {
+                  // Shutdown requested - exit gracefully
+                  return Ok(());
+                }
+                // Not shutdown - receiver dropped (might be normal in fan-out)
+                send_failed_count += 1;
+                warn!(
+                  node = %node_name,
+                  port = port_index,
+                  "Output channel receiver dropped (may be normal in fan-out scenarios)"
+                );
+              }
+            }
+          }
+        } else {
+          // Single output: direct move (no Arc overhead)
+          let (port_index, sender) = output_channels.iter().next().unwrap();
+          match sender.send(serialized).await {
             Ok(()) => {
               send_succeeded += 1;
             }
@@ -1276,6 +1360,10 @@ where
     _output_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Sender<Bytes>>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
+    // NOTE: Task 13.2.5 - In-process zero-copy mode will change input_channels type
+    // from mpsc::Receiver<Bytes> to mpsc::Receiver<Arc<C::Input>> when ExecutionMode::InProcess
+    // is implemented (task 15). StreamWrapper will be updated to handle Arc unwrapping
+    // using Arc::try_unwrap for zero-cost extraction when only one reference exists.
     let mut consumer_clone = self.consumer.clone();
 
     let handle = tokio::spawn(async move {

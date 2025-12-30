@@ -239,6 +239,53 @@ impl MessageMetadata {
       .find(|(k, _)| k == name)
       .map(|(_, v)| v.as_str())
   }
+
+  /// Create metadata with shared source (for zero-copy scenarios).
+  ///
+  /// This method accepts an `Arc<str>` for the source, enabling zero-copy
+  /// sharing of source strings across multiple messages.
+  ///
+  /// # Note
+  ///
+  /// Currently converts to String for storage. Future optimization (Task 16)
+  /// will use `Arc<str>` directly in MessageMetadata fields.
+  #[must_use]
+  pub fn with_shared_source(mut self, source: Arc<str>) -> Self {
+    self.source = Some((*source).to_string());
+    self
+  }
+
+  /// Create metadata with shared key (for zero-copy scenarios).
+  ///
+  /// This method accepts an `Arc<str>` for the key, enabling zero-copy
+  /// sharing of key strings across multiple messages.
+  ///
+  /// # Note
+  ///
+  /// Currently converts to String for storage. Future optimization (Task 16)
+  /// will use `Arc<str>` directly in MessageMetadata fields.
+  #[must_use]
+  pub fn with_shared_key(mut self, key: Arc<str>) -> Self {
+    self.key = Some((*key).to_string());
+    self
+  }
+
+  /// Add a header with shared strings (for zero-copy scenarios).
+  ///
+  /// This method accepts `Arc<str>` for header name and value, enabling
+  /// zero-copy sharing of header strings across multiple messages.
+  ///
+  /// # Note
+  ///
+  /// Currently converts to String for storage. Future optimization (Task 16)
+  /// will use `Arc<str>` directly in MessageMetadata fields.
+  #[must_use]
+  pub fn with_shared_header(mut self, name: Arc<str>, value: Arc<str>) -> Self {
+    self
+      .headers
+      .push(((*name).to_string(), (*value).to_string()));
+    self
+  }
 }
 
 /// A message envelope that wraps a payload with an ID and metadata.
@@ -547,3 +594,121 @@ fn rand_u64() -> u64 {
     x
   })
 }
+
+/// A shared message wrapper for zero-copy message sharing.
+///
+/// This type wraps `Arc<Message<T>>` to enable zero-copy sharing of messages
+/// in fan-out scenarios where one message needs to be sent to multiple consumers.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave_message::{Message, MessageId, SharedMessage};
+///
+/// let msg = Message::new(42, MessageId::new_uuid());
+/// let shared = SharedMessage::from(msg);
+/// let cloned = shared.clone(); // Zero-cost clone of Arc
+/// ```
+#[derive(Clone, Debug)]
+pub struct SharedMessage<T> {
+  inner: Arc<Message<T>>,
+}
+
+impl<T> SharedMessage<T> {
+  /// Create a SharedMessage from an owned Message.
+  #[must_use]
+  pub fn from(message: Message<T>) -> Self {
+    Self {
+      inner: Arc::new(message),
+    }
+  }
+
+  /// Create a SharedMessage from an `Arc<Message<T>>`.
+  #[must_use]
+  pub fn from_arc(arc: Arc<Message<T>>) -> Self {
+    Self { inner: arc }
+  }
+
+  /// Get the inner Arc.
+  #[must_use]
+  pub fn into_arc(self) -> Arc<Message<T>> {
+    self.inner
+  }
+
+  /// Try to unwrap the Arc, returning the owned Message if this is the only reference.
+  ///
+  /// Returns `Ok(Message<T>)` if this is the only reference, `Err(SharedMessage<T>)` otherwise.
+  pub fn try_unwrap(self) -> Result<Message<T>, Self> {
+    Arc::try_unwrap(self.inner).map_err(|arc| Self { inner: arc })
+  }
+
+  /// Get the message ID.
+  #[must_use]
+  pub fn id(&self) -> &MessageId {
+    self.inner.id()
+  }
+
+  /// Get the payload.
+  #[must_use]
+  pub fn payload(&self) -> &T {
+    self.inner.payload()
+  }
+
+  /// Get the metadata.
+  #[must_use]
+  pub fn metadata(&self) -> &MessageMetadata {
+    self.inner.metadata()
+  }
+}
+
+impl<T> std::ops::Deref for SharedMessage<T> {
+  type Target = Message<T>;
+
+  fn deref(&self) -> &Self::Target {
+    &self.inner
+  }
+}
+
+impl<T> std::convert::AsRef<Message<T>> for SharedMessage<T> {
+  fn as_ref(&self) -> &Message<T> {
+    &self.inner
+  }
+}
+
+impl<T: PartialEq> PartialEq for SharedMessage<T> {
+  fn eq(&self, other: &Self) -> bool {
+    self.inner.as_ref() == other.inner.as_ref()
+  }
+}
+
+impl<T: Eq> Eq for SharedMessage<T> {}
+
+impl<T: Hash> Hash for SharedMessage<T> {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    self.inner.hash(state);
+  }
+}
+
+impl<T> From<Message<T>> for SharedMessage<T> {
+  fn from(message: Message<T>) -> Self {
+    Self::from(message)
+  }
+}
+
+impl<T> From<Arc<Message<T>>> for SharedMessage<T> {
+  fn from(arc: Arc<Message<T>>) -> Self {
+    Self::from_arc(arc)
+  }
+}
+
+impl<T> From<SharedMessage<T>> for Arc<Message<T>> {
+  fn from(shared: SharedMessage<T>) -> Self {
+    shared.into_arc()
+  }
+}
+
+// Note: ZeroCopyShare trait implementation for Message<T> is provided by the
+// blanket implementation in streamweave-graph for all types that are
+// Clone + Send + Sync + 'static. Message<T> automatically implements
+// ZeroCopyShare when used with the graph package, enabling zero-copy
+// sharing via Arc<Message<T>> in fan-out scenarios.

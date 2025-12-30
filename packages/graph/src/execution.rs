@@ -31,6 +31,7 @@
 //! 4. **Shutdown**: Gracefully stop all nodes and clean up resources
 
 use crate::graph::Graph;
+use crate::zero_copy::ArcPool;
 use bytes::Bytes;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -242,6 +243,10 @@ pub struct GraphExecutor {
   execution_errors: Vec<ExecutionError>,
   /// Shutdown timeout duration
   shutdown_timeout: Duration,
+  /// Optional Arc pool for high-performance fan-out scenarios
+  /// When provided, this pool will be used to reduce allocation overhead
+  /// in fan-out operations where multiple nodes receive the same data.
+  arc_pool: Option<ArcPool<Bytes>>,
 }
 
 impl GraphExecutor {
@@ -273,6 +278,7 @@ impl GraphExecutor {
       pause_signal: Arc::new(RwLock::new(false)),
       execution_errors: Vec::new(),
       shutdown_timeout: Duration::from_secs(30), // Default 30 second timeout
+      arc_pool: None,
     }
   }
 
@@ -296,7 +302,38 @@ impl GraphExecutor {
       pause_signal: Arc::new(RwLock::new(false)),
       execution_errors: Vec::new(),
       shutdown_timeout,
+      arc_pool: None,
     }
+  }
+
+  /// Sets an Arc pool for high-performance fan-out scenarios.
+  ///
+  /// When provided, this pool will be used to reduce allocation overhead
+  /// in fan-out operations where multiple nodes receive the same data.
+  /// The pool maintains reusable `Arc` instances to avoid frequent allocations.
+  ///
+  /// # Arguments
+  ///
+  /// * `pool` - An `ArcPool<Bytes>` to use for fan-out operations
+  ///
+  /// # Returns
+  ///
+  /// `Self` for method chaining
+  ///
+  /// # Example
+  ///
+  /// ```rust,no_run
+  /// use streamweave::graph::{Graph, GraphExecution};
+  /// use streamweave_graph::ArcPool;
+  ///
+  /// let graph = Graph::new();
+  /// let pool = ArcPool::<bytes::Bytes>::new(100);
+  /// let executor = graph.executor().with_arc_pool(pool);
+  /// ```
+  #[must_use]
+  pub fn with_arc_pool(mut self, pool: ArcPool<Bytes>) -> Self {
+    self.arc_pool = Some(pool);
+    self
   }
 
   /// Starts graph execution.
