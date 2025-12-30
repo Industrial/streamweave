@@ -129,7 +129,7 @@
 						"id": 5,
 						"title": "Integrate ZeroCopyTransformer into Graph Execution",
 						"description": "Update graph execution code to use ZeroCopyTransformer when available. Add logic to detect if a transformer implements ZeroCopyTransformer and use transform_zero_copy method instead of regular transform when possible.",
-						"status": "pending",
+						"status": "in-progress",
 						"dependencies": ["14.4"],
 						"parentId": "14",
 						"subtasks": [
@@ -137,7 +137,7 @@
 								"id": 1,
 								"title": "Add ZeroCopyTransformer Detection Logic",
 								"description": "Add helper function or method to detect if a transformer implements ZeroCopyTransformer trait. This may require trait object casting or similar mechanism to check trait implementation.",
-								"status": "pending",
+								"status": "done",
 								"dependencies": ["14.4"],
 								"parentId": "14.5"
 							},
@@ -145,7 +145,7 @@
 								"id": 2,
 								"title": "Update TransformerNode Execution to Use ZeroCopyTransformer",
 								"description": "Update TransformerNode::spawn_execution_task to check if transformer implements ZeroCopyTransformer. If yes, use transform_zero_copy with Cow::Owned input. If no, fall back to regular transform method.",
-								"status": "pending",
+								"status": "in-progress",
 								"dependencies": ["14.5.1"],
 								"parentId": "14.5"
 							},

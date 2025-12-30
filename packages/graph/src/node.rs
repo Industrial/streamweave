@@ -34,10 +34,12 @@
 use crate::port::{GetPort, PortList};
 use crate::serialization::{deserialize, serialize};
 use crate::traits::{NodeKind, NodeTrait};
+use crate::zero_copy::ZeroCopyTransformer;
 use async_stream::stream;
 use bytes::Bytes;
 use futures::StreamExt;
 use serde::{Serialize, de::DeserializeOwned};
+use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::pin::{Pin, pin};
 use streamweave::Consumer;
@@ -283,6 +285,27 @@ impl<T: Input> StreamConverter<T> for StreamWrapper<T> {
       )
     }
   }
+}
+
+/// Helper function to check if a transformer type implements ZeroCopyTransformer.
+///
+/// This function uses compile-time trait bounds to determine if a transformer
+/// implements ZeroCopyTransformer. Since Rust doesn't support runtime trait
+/// detection easily, we use a trait-bound based approach.
+///
+/// # Note
+///
+/// This is a placeholder for ZeroCopyTransformer detection. The actual detection
+/// and usage will be implemented in the next subtask (14.5.2) when we update
+/// TransformerNode execution to use ZeroCopyTransformer.
+fn _check_zero_copy_available<T>() -> bool
+where
+  T: Transformer,
+{
+  // This is a compile-time check - if T implements ZeroCopyTransformer,
+  // this function can be called. Otherwise, it won't compile.
+  // For runtime detection, we'll need a different approach in the next subtask.
+  false
 }
 
 /// A node that wraps a Producer component.
