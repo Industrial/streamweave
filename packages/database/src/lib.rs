@@ -2,4 +2,4 @@
 
 pub mod types;
 
-pub use types::{DatabaseConsumerConfig, DatabaseProducerConfig, DatabaseRow, DatabaseType};
+pub use types::*;

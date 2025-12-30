@@ -394,7 +394,7 @@ ErrorStrategy::new_custom(|error| {
 
 The streamweave core package provides the foundational abstractions:
 
-```
+```text
 ┌─────────────┐
 │   Producer  │───produces───> Stream<T>
 └─────────────┘

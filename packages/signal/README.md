@@ -169,7 +169,7 @@ let producer = SignalProducer::new()
 
 Signal handling flow:
 
-```
+```text
 Unix Signal ──> SignalProducer ──> Stream<Signal> ──> Transformer ──> Stream<T> ──> Consumer
 ```
 

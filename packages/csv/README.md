@@ -207,7 +207,7 @@ let pipeline = PipelineBuilder::new()
 
 CSV processing flow:
 
-```
+```text
 ┌──────────┐
 │ CSV File │───> CsvProducer ───> Stream<Record> ───> Transformer ───> Stream<Record> ───> CsvConsumer ───> CSV File
 └──────────┘                                                                                                    └──────────┘

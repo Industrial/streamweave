@@ -179,7 +179,7 @@ let producer = MysqlProducer::new(config)?;
 
 MySQL integration:
 
-```
+```text
 ┌──────────┐
 │  MySQL   │───> MysqlProducer ───> Stream<DatabaseRow> ───> Transformer ───> Stream<DatabaseRow> ───> MysqlConsumer ───> MySQL
 └──────────┘                                                                                                                  └──────────┘

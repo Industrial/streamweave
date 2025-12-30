@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-transformers"
-version = "0.4.0"
+version = "0.5.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -13,7 +13,7 @@ description = "Transformers for StreamWeave"
 
 [dependencies]
 # Core dependencies
-streamweave = { path = "../streamweave", version = "0.4.0" }
+streamweave = { path = "../streamweave", version = "0.5.0" }
 streamweave-error = { path = "../error", version = "0.4.0" }
 streamweave-message = { path = "../message", version = "0.4.0" }
 streamweave-stateful = { path = "../stateful", version = "0.4.0" }
@@ -31,14 +31,8 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 rand = "0.8"
 
-# ML dependencies (optional)
-ort = { workspace = true, optional = true }
-ndarray = { workspace = true, optional = true }
-
 [dev-dependencies]
 proptest = { workspace = true }
 
 [features]
 default = []
-# Optional features
-ml = ["dep:ort", "dep:ndarray"]

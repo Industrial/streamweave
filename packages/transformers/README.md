@@ -26,8 +26,8 @@ Add this to your `Cargo.toml`:
 [dependencies]
 streamweave-transformers = "0.3.0"
 
-# Optional: Enable ML transformers
-streamweave-transformers = { version = "0.3.0", features = ["ml"] }
+# ML transformers are in a separate package
+streamweave-ml = { path = "../packages/ml", features = ["onnx"] }
 ```
 
 ## 🚀 Quick Start
@@ -35,7 +35,7 @@ streamweave-transformers = { version = "0.3.0", features = ["ml"] }
 ### Basic Transformation
 
 ```rust
-use streamweave_transformers::map::MapTransformer;
+use streamweave_transformers::MapTransformer;
 use streamweave_pipeline::PipelineBuilder;
 
 let transformer = MapTransformer::new(|x: i32| x * 2);
@@ -51,7 +51,7 @@ pipeline.run().await?;
 ### Filtering
 
 ```rust
-use streamweave_transformers::filter::FilterTransformer;
+use streamweave_transformers::FilterTransformer;
 use streamweave_pipeline::PipelineBuilder;
 
 let transformer = FilterTransformer::new(|x: i32| x > 10);
@@ -138,7 +138,7 @@ Common utility operations:
 Transform each item:
 
 ```rust
-use streamweave_transformers::map::MapTransformer;
+use streamweave_transformers::MapTransformer;
 
 let transformer = MapTransformer::new(|x: i32| x * 2);
 ```
@@ -148,7 +148,7 @@ let transformer = MapTransformer::new(|x: i32| x * 2);
 Filter items:
 
 ```rust
-use streamweave_transformers::filter::FilterTransformer;
+use streamweave_transformers::FilterTransformer;
 
 let transformer = FilterTransformer::new(|x: i32| x > 0);
 ```
@@ -158,7 +158,7 @@ let transformer = FilterTransformer::new(|x: i32| x > 0);
 Reduce stream:
 
 ```rust
-use streamweave_transformers::reduce::ReduceTransformer;
+use streamweave_transformers::ReduceTransformer;
 
 let transformer = ReduceTransformer::new(0, |acc: i32, x: i32| acc + x);
 ```
@@ -170,7 +170,7 @@ let transformer = ReduceTransformer::new(0, |acc: i32, x: i32| acc + x);
 Batch items:
 
 ```rust
-use streamweave_transformers::batch::BatchTransformer;
+use streamweave_transformers::BatchTransformer;
 use std::time::Duration;
 
 let transformer = BatchTransformer::new(100, Duration::from_secs(1));
@@ -181,7 +181,7 @@ let transformer = BatchTransformer::new(100, Duration::from_secs(1));
 Retry failed operations:
 
 ```rust
-use streamweave_transformers::retry::RetryTransformer;
+use streamweave_transformers::RetryTransformer;
 
 let transformer = RetryTransformer::new(3, Duration::from_secs(1));
 ```
@@ -191,7 +191,7 @@ let transformer = RetryTransformer::new(3, Duration::from_secs(1));
 Circuit breaker pattern:
 
 ```rust
-use streamweave_transformers::circuit_breaker::CircuitBreakerTransformer;
+use streamweave_transformers::CircuitBreakerTransformer;
 
 let transformer = CircuitBreakerTransformer::new(5, Duration::from_secs(10));
 ```
@@ -201,7 +201,7 @@ let transformer = CircuitBreakerTransformer::new(5, Duration::from_secs(10));
 Rate limiting:
 
 ```rust
-use streamweave_transformers::rate_limit::RateLimitTransformer;
+use streamweave_transformers::RateLimitTransformer;
 use std::time::Duration;
 
 let transformer = RateLimitTransformer::new(100, Duration::from_secs(1));
@@ -214,7 +214,7 @@ let transformer = RateLimitTransformer::new(100, Duration::from_secs(1));
 Calculate running sum:
 
 ```rust
-use streamweave_transformers::running_sum::RunningSumTransformer;
+use streamweave_transformers::RunningSumTransformer;
 
 let transformer = RunningSumTransformer::new(0);
 ```
@@ -224,7 +224,7 @@ let transformer = RunningSumTransformer::new(0);
 Calculate moving average:
 
 ```rust
-use streamweave_transformers::moving_average::MovingAverageTransformer;
+use streamweave_transformers::MovingAverageTransformer;
 
 let transformer = MovingAverageTransformer::new(10);  // Window size 10
 ```
@@ -236,7 +236,7 @@ let transformer = MovingAverageTransformer::new(10);  // Window size 10
 Route based on conditions:
 
 ```rust
-use streamweave_transformers::router::RouterTransformer;
+use streamweave_transformers::RouterTransformer;
 
 let transformer = RouterTransformer::new(|x: i32| {
     if x > 0 { "positive" } else { "negative" }
@@ -248,7 +248,7 @@ let transformer = RouterTransformer::new(|x: i32| {
 Partition by key:
 
 ```rust
-use streamweave_transformers::partition::PartitionTransformer;
+use streamweave_transformers::PartitionTransformer;
 
 let transformer = PartitionTransformer::new(|x: i32| x % 2);
 ```
@@ -258,7 +258,7 @@ let transformer = PartitionTransformer::new(|x: i32| x % 2);
 Round-robin distribution:
 
 ```rust
-use streamweave_transformers::round_robin::RoundRobinTransformer;
+use streamweave_transformers::RoundRobinTransformer;
 
 let transformer = RoundRobinTransformer::new(3);  // 3 outputs
 ```
@@ -270,7 +270,7 @@ let transformer = RoundRobinTransformer::new(3);  // 3 outputs
 Merge streams:
 
 ```rust
-use streamweave_transformers::merge::MergeTransformer;
+use streamweave_transformers::MergeTransformer;
 
 let transformer = MergeTransformer::new();
 ```
@@ -280,7 +280,7 @@ let transformer = MergeTransformer::new();
 Merge maintaining order:
 
 ```rust
-use streamweave_transformers::ordered_merge::OrderedMergeTransformer;
+use streamweave_transformers::OrderedMergeTransformer;
 
 let transformer = OrderedMergeTransformer::new(|x: &i32, y: &i32| x.cmp(y));
 ```
@@ -290,36 +290,18 @@ let transformer = OrderedMergeTransformer::new(|x: &i32, y: &i32| x.cmp(y));
 Interleave streams:
 
 ```rust
-use streamweave_transformers::interleave::InterleaveTransformer;
+use streamweave_transformers::InterleaveTransformer;
 
 let transformer = InterleaveTransformer::new();
 ```
 
 ### Machine Learning Transformers
 
-#### Inference Transformer
+#### ML Transformers
 
-Single-item inference:
+ML transformers have been moved to a separate package: `streamweave-ml`.
 
-```rust
-#[cfg(feature = "ml")]
-use streamweave_transformers::ml::InferenceTransformer;
-
-#[cfg(feature = "ml")]
-let transformer = InferenceTransformer::new(/* model path */);
-```
-
-#### Batched Inference Transformer
-
-Batch inference:
-
-```rust
-#[cfg(feature = "ml")]
-use streamweave_transformers::ml::BatchedInferenceTransformer;
-
-#[cfg(feature = "ml")]
-let transformer = BatchedInferenceTransformer::new(/* model path */, 32);
-```
+See the [ML Transformers package](../ml/README.md) for documentation.
 
 ### Utility Transformers
 
@@ -328,7 +310,7 @@ let transformer = BatchedInferenceTransformer::new(/* model path */, 32);
 Random sampling:
 
 ```rust
-use streamweave_transformers::sample::SampleTransformer;
+use streamweave_transformers::SampleTransformer;
 
 let transformer = SampleTransformer::new(0.1);  // 10% sample rate
 ```
@@ -338,7 +320,7 @@ let transformer = SampleTransformer::new(0.1);  // 10% sample rate
 Skip items:
 
 ```rust
-use streamweave_transformers::skip::SkipTransformer;
+use streamweave_transformers::SkipTransformer;
 
 let transformer = SkipTransformer::new(10);  // Skip first 10 items
 ```
@@ -348,7 +330,7 @@ let transformer = SkipTransformer::new(10);  // Skip first 10 items
 Take items:
 
 ```rust
-use streamweave_transformers::take::TakeTransformer;
+use streamweave_transformers::TakeTransformer;
 
 let transformer = TakeTransformer::new(100);  // Take first 100 items
 ```
@@ -358,7 +340,7 @@ let transformer = TakeTransformer::new(100);  // Take first 100 items
 Limit stream:
 
 ```rust
-use streamweave_transformers::limit::LimitTransformer;
+use streamweave_transformers::LimitTransformer;
 
 let transformer = LimitTransformer::new(1000);  // Limit to 1000 items
 ```
@@ -368,7 +350,7 @@ let transformer = LimitTransformer::new(1000);  // Limit to 1000 items
 Sort items:
 
 ```rust
-use streamweave_transformers::sort::SortTransformer;
+use streamweave_transformers::SortTransformer;
 
 let transformer = SortTransformer::new(|x: &i32, y: &i32| x.cmp(y));
 ```
@@ -378,7 +360,7 @@ let transformer = SortTransformer::new(|x: &i32, y: &i32| x.cmp(y));
 Split items:
 
 ```rust
-use streamweave_transformers::split::SplitTransformer;
+use streamweave_transformers::SplitTransformer;
 
 let transformer = SplitTransformer::new(|x: &String| x.split_whitespace());
 ```
@@ -388,7 +370,7 @@ let transformer = SplitTransformer::new(|x: &String| x.split_whitespace());
 Split at index:
 
 ```rust
-use streamweave_transformers::split_at::SplitAtTransformer;
+use streamweave_transformers::SplitAtTransformer;
 
 let transformer = SplitAtTransformer::new(100);  // Split at index 100
 ```
@@ -398,7 +380,7 @@ let transformer = SplitAtTransformer::new(100);  // Split at index 100
 Zip streams:
 
 ```rust
-use streamweave_transformers::zip::ZipTransformer;
+use streamweave_transformers::ZipTransformer;
 
 let transformer = ZipTransformer::new();
 ```
@@ -408,7 +390,7 @@ let transformer = ZipTransformer::new();
 Timeout operations:
 
 ```rust
-use streamweave_transformers::timeout::TimeoutTransformer;
+use streamweave_transformers::TimeoutTransformer;
 use std::time::Duration;
 
 let transformer = TimeoutTransformer::new(Duration::from_secs(5));
@@ -419,7 +401,7 @@ let transformer = TimeoutTransformer::new(Duration::from_secs(5));
 Deduplicate messages:
 
 ```rust
-use streamweave_transformers::message_dedupe::MessageDedupeTransformer;
+use streamweave_transformers::MessageDedupeTransformer;
 
 let transformer = MessageDedupeTransformer::new();
 ```
@@ -429,7 +411,7 @@ let transformer = MessageDedupeTransformer::new();
 Group by key:
 
 ```rust
-use streamweave_transformers::group_by::GroupByTransformer;
+use streamweave_transformers::GroupByTransformer;
 
 let transformer = GroupByTransformer::new(|x: &i32| x % 10);
 ```
@@ -438,7 +420,7 @@ let transformer = GroupByTransformer::new(|x: &i32| x % 10);
 
 Transformer flow:
 
-```
+```text
 Stream<T> ──> Transformer ──> Stream<U>
 ```
 

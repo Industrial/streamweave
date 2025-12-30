@@ -33,7 +33,7 @@ streamweave-kafka = { version = "0.3.0", features = ["kafka"] }
 ### Consume from Kafka
 
 ```rust
-use streamweave_kafka::producers::{KafkaProducer, KafkaConsumerConfig};
+use streamweave_kafka::{KafkaProducer, KafkaConsumerConfig};
 use streamweave_pipeline::PipelineBuilder;
 
 let config = KafkaConsumerConfig::default()
@@ -52,7 +52,7 @@ pipeline.run().await?;
 ### Produce to Kafka
 
 ```rust
-use streamweave_kafka::consumers::{KafkaConsumer, KafkaProducerConfig};
+use streamweave_kafka::{KafkaConsumer, KafkaProducerConfig};
 use streamweave_pipeline::PipelineBuilder;
 use serde::Serialize;
 
@@ -133,7 +133,7 @@ pub struct KafkaMessage {
 Configure consumer groups for distributed processing:
 
 ```rust
-use streamweave_kafka::producers::{KafkaProducer, KafkaConsumerConfig};
+use streamweave_kafka::{KafkaProducer, KafkaConsumerConfig};
 
 let config = KafkaConsumerConfig::default()
     .with_bootstrap_servers("kafka1:9092,kafka2:9092")
@@ -153,7 +153,7 @@ let producer = KafkaProducer::new(config);
 Consume from multiple topics:
 
 ```rust
-use streamweave_kafka::producers::{KafkaProducer, KafkaConsumerConfig};
+use streamweave_kafka::{KafkaProducer, KafkaConsumerConfig};
 
 let config = KafkaConsumerConfig::default()
     .with_bootstrap_servers("localhost:9092")
@@ -169,7 +169,7 @@ let producer = KafkaProducer::new(config);
 Configure offset management:
 
 ```rust
-use streamweave_kafka::producers::{KafkaProducer, KafkaConsumerConfig};
+use streamweave_kafka::{KafkaProducer, KafkaConsumerConfig};
 
 let config = KafkaConsumerConfig::default()
     .with_bootstrap_servers("localhost:9092")
@@ -187,7 +187,7 @@ let producer = KafkaProducer::new(config);
 Configure Kafka producer settings:
 
 ```rust
-use streamweave_kafka::consumers::{KafkaConsumer, KafkaProducerConfig};
+use streamweave_kafka::{KafkaConsumer, KafkaProducerConfig};
 
 let config = KafkaProducerConfig::default()
     .with_bootstrap_servers("localhost:9092")
@@ -208,7 +208,7 @@ let consumer = KafkaConsumer::<Event>::new(config);
 Configure error handling strategies:
 
 ```rust
-use streamweave_kafka::producers::{KafkaProducer, KafkaConsumerConfig};
+use streamweave_kafka::{KafkaProducer, KafkaConsumerConfig};
 use streamweave_error::ErrorStrategy;
 
 let config = KafkaConsumerConfig::default()
@@ -224,7 +224,7 @@ let producer = KafkaProducer::new(config)
 Set custom Kafka properties:
 
 ```rust
-use streamweave_kafka::producers::{KafkaProducer, KafkaConsumerConfig};
+use streamweave_kafka::{KafkaProducer, KafkaConsumerConfig};
 
 let config = KafkaConsumerConfig::default()
     .with_bootstrap_servers("localhost:9092")
@@ -239,7 +239,7 @@ let producer = KafkaProducer::new(config);
 
 Kafka integration flow:
 
-```
+```text
 ┌──────────┐
 │  Kafka   │───> KafkaProducer ───> Stream<KafkaMessage> ───> Transformer ───> Stream<T> ───> KafkaConsumer ───> Kafka
 └──────────┘                                                                                                                      └──────────┘

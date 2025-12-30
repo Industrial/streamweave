@@ -693,4 +693,229 @@ mod tests {
       PipelineError::new(source, ErrorContext::default(), ComponentInfo::default());
     assert_eq!(error.source().unwrap().to_string(), "test error");
   }
+
+  #[test]
+  fn test_pipeline_stage_producer() {
+    let stage = PipelineStage::Producer;
+    assert_eq!(stage, PipelineStage::Producer);
+    assert_ne!(stage, PipelineStage::Consumer);
+  }
+
+  #[test]
+  fn test_pipeline_stage_transformer() {
+    let stage1 = PipelineStage::Transformer("test".to_string());
+    let stage2 = PipelineStage::Transformer("test".to_string());
+    let stage3 = PipelineStage::Transformer("other".to_string());
+    assert_eq!(stage1, stage2);
+    assert_ne!(stage1, stage3);
+    assert_ne!(stage1, PipelineStage::Producer);
+    assert_ne!(stage1, PipelineStage::Consumer);
+  }
+
+  #[test]
+  fn test_pipeline_stage_consumer() {
+    let stage = PipelineStage::Consumer;
+    assert_eq!(stage, PipelineStage::Consumer);
+    assert_ne!(stage, PipelineStage::Producer);
+  }
+
+  #[test]
+  fn test_pipeline_stage_clone() {
+    let stage1 = PipelineStage::Transformer("test".to_string());
+    let stage2 = stage1.clone();
+    assert_eq!(stage1, stage2);
+  }
+
+  #[test]
+  fn test_pipeline_stage_debug() {
+    let stage = PipelineStage::Transformer("test".to_string());
+    let debug_str = format!("{:?}", stage);
+    assert!(debug_str.contains("Transformer"));
+    assert!(debug_str.contains("test"));
+  }
+
+  #[test]
+  fn test_pipeline_error_context_new() {
+    let context = ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item: Some(42),
+      component_name: "test".to_string(),
+      component_type: "TestComponent".to_string(),
+    };
+    let stage = PipelineStage::Producer;
+    let pipeline_context = PipelineErrorContext {
+      context: context.clone(),
+      stage: stage.clone(),
+    };
+    assert_eq!(pipeline_context.context, context);
+    assert_eq!(pipeline_context.stage, stage);
+  }
+
+  #[test]
+  fn test_pipeline_error_context_clone() {
+    let context = ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item: Some(42),
+      component_name: "test".to_string(),
+      component_type: "TestComponent".to_string(),
+    };
+    let stage = PipelineStage::Transformer("test".to_string());
+    let pipeline_context = PipelineErrorContext {
+      context: context.clone(),
+      stage: stage.clone(),
+    };
+    let cloned = pipeline_context.clone();
+    assert_eq!(pipeline_context, cloned);
+  }
+
+  #[test]
+  fn test_pipeline_error_context_partial_eq() {
+    let context1 = ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item: Some(42),
+      component_name: "test".to_string(),
+      component_type: "TestComponent".to_string(),
+    };
+    let context2 = ErrorContext {
+      timestamp: context1.timestamp,
+      item: Some(42),
+      component_name: "test".to_string(),
+      component_type: "TestComponent".to_string(),
+    };
+    let stage1 = PipelineStage::Consumer;
+    let stage2 = PipelineStage::Consumer;
+    let pipeline_context1 = PipelineErrorContext {
+      context: context1,
+      stage: stage1,
+    };
+    let pipeline_context2 = PipelineErrorContext {
+      context: context2,
+      stage: stage2,
+    };
+    assert_eq!(pipeline_context1, pipeline_context2);
+  }
+
+  #[test]
+  fn test_pipeline_error_context_debug() {
+    let context = ErrorContext::<()>::default();
+    let stage = PipelineStage::Producer;
+    let pipeline_context = PipelineErrorContext { context, stage };
+    let debug_str = format!("{:?}", pipeline_context);
+    assert!(debug_str.contains("PipelineErrorContext"));
+  }
+
+  #[test]
+  fn test_error_strategy_custom_handler_with_retries() {
+    let strategy = ErrorStrategy::<i32>::new_custom(|error: &StreamError<i32>| {
+      if error.retries < 2 {
+        ErrorAction::Retry
+      } else if error.retries < 5 {
+        ErrorAction::Skip
+      } else {
+        ErrorAction::Stop
+      }
+    });
+
+    let mut error = StreamError {
+      source: Box::new(StringError("test".to_string())),
+      context: ErrorContext::default(),
+      component: ComponentInfo::default(),
+      retries: 0,
+    };
+
+    if let ErrorStrategy::Custom(handler) = strategy {
+      assert_eq!(handler(&error), ErrorAction::Retry);
+      error.retries = 2;
+      assert_eq!(handler(&error), ErrorAction::Skip);
+      error.retries = 5;
+      assert_eq!(handler(&error), ErrorAction::Stop);
+    } else {
+      panic!("Expected Custom variant");
+    }
+  }
+
+  #[test]
+  fn test_error_strategy_partial_eq_custom() {
+    let strategy1 = ErrorStrategy::<i32>::new_custom(|_| ErrorAction::Skip);
+    let strategy2 = ErrorStrategy::<i32>::new_custom(|_| ErrorAction::Stop);
+    // Custom handlers are considered equal regardless of implementation
+    assert_eq!(strategy1, strategy2);
+  }
+
+  #[test]
+  fn test_stream_error_with_retries() {
+    let mut error = StreamError::<()>::new(
+      Box::new(StringError("test".to_string())),
+      ErrorContext::<()>::default(),
+      ComponentInfo::default(),
+    );
+    assert_eq!(error.retries, 0);
+    error.retries = 5;
+    assert_eq!(error.retries, 5);
+  }
+
+  #[test]
+  fn test_string_error_display() {
+    let error = StringError("test error message".to_string());
+    assert_eq!(error.to_string(), "test error message");
+  }
+
+  #[test]
+  fn test_string_error_error_trait() {
+    let error = StringError("test".to_string());
+    // Test that it implements Error trait
+    let _: &dyn std::error::Error = &error;
+  }
+
+  #[test]
+  fn test_error_context_with_item() {
+    let context = ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item: Some("test item".to_string()),
+      component_name: "test".to_string(),
+      component_type: "Test".to_string(),
+    };
+    assert_eq!(context.item, Some("test item".to_string()));
+  }
+
+  #[test]
+  fn test_error_context_without_item() {
+    let context = ErrorContext::<()> {
+      timestamp: chrono::Utc::now(),
+      item: None,
+      component_name: "test".to_string(),
+      component_type: "Test".to_string(),
+    };
+    assert_eq!(context.item, None);
+  }
+
+  #[test]
+  fn test_error_context_partial_eq_different_timestamps() {
+    let timestamp1 = chrono::Utc::now();
+    std::thread::sleep(std::time::Duration::from_millis(10));
+    let timestamp2 = chrono::Utc::now();
+
+    let context1 = ErrorContext {
+      timestamp: timestamp1,
+      item: Some(42),
+      component_name: "test".to_string(),
+      component_type: "Test".to_string(),
+    };
+    let context2 = ErrorContext {
+      timestamp: timestamp2,
+      item: Some(42),
+      component_name: "test".to_string(),
+      component_type: "Test".to_string(),
+    };
+    // Timestamps differ, so contexts are not equal
+    assert_ne!(context1, context2);
+    // But if we set same timestamp, they should be equal
+    let context3 = ErrorContext {
+      timestamp: timestamp1,
+      item: Some(42),
+      component_name: "test".to_string(),
+      component_type: "Test".to_string(),
+    };
+    assert_eq!(context1, context3);
+  }
 }

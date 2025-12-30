@@ -216,32 +216,3 @@ impl MetricsHandle {
     self.metrics.backpressure()
   }
 }
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn test_metrics_collector() {
-    let collector = MetricsCollector::new("test-pipeline");
-    let handle1 = collector.metrics();
-    let handle2 = collector.metrics();
-
-    assert_eq!(handle1.pipeline_name(), "test-pipeline");
-    assert_eq!(handle1.pipeline_name(), handle2.pipeline_name());
-
-    // Both handles should access the same metrics
-    handle1.metrics().throughput().increment_items_processed(10);
-    assert_eq!(handle2.metrics().throughput().items_processed(), 10);
-  }
-
-  #[test]
-  fn test_metrics_handle() {
-    let collector = MetricsCollector::new("handle-test");
-    let handle = collector.metrics();
-
-    assert_eq!(handle.pipeline_name(), "handle-test");
-    assert_eq!(handle.throughput().items_processed(), 0);
-    assert_eq!(handle.errors().total_errors(), 0);
-  }
-}

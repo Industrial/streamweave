@@ -157,7 +157,7 @@ let producer = ProcessProducer::new("command")
 
 Process management flow:
 
-```
+```text
 Process ──> ProcessProducer ──> Stream<String> ──> Transformer ──> Stream<String> ──> ProcessConsumer ──> Process
 ```
 

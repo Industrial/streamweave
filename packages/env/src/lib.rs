@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
-pub mod consumers;
-pub mod producers;
+pub mod env_var_consumer;
+pub mod env_var_producer;
 
-pub use consumers::EnvVarConsumer;
-pub use producers::EnvVarProducer;
+pub use env_var_consumer::*;
+pub use env_var_producer::*;

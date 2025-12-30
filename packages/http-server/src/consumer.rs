@@ -14,7 +14,13 @@ use axum::body::Bytes;
 #[cfg(feature = "http-server")]
 use axum::{body::Body, response::Response};
 #[cfg(feature = "http-server")]
+use futures::Stream;
+#[cfg(feature = "http-server")]
 use futures::StreamExt;
+#[cfg(feature = "http-server")]
+use std::pin::Pin;
+#[cfg(feature = "http-server")]
+use streamweave::Input;
 #[cfg(feature = "http-server")]
 use streamweave::{Consumer, ConsumerConfig};
 #[cfg(feature = "http-server")]
@@ -436,6 +442,12 @@ impl Clone for HttpResponseConsumer {
   }
 }
 
+#[cfg(feature = "http-server")]
+impl Input for HttpResponseConsumer {
+  type Input = HttpResponse;
+  type InputStream = Pin<Box<dyn Stream<Item = Self::Input> + Send>>;
+}
+
 #[async_trait]
 #[cfg(feature = "http-server")]
 impl Consumer for HttpResponseConsumer {
@@ -777,4 +789,13 @@ impl streamweave::Consumer for HttpResponseCorrelationConsumer {
       type_name: std::any::type_name::<Self>().to_string(),
     }
   }
+}
+
+#[cfg(feature = "http-server")]
+use streamweave_message::Message;
+
+#[cfg(feature = "http-server")]
+impl Input for HttpResponseCorrelationConsumer {
+  type Input = Message<HttpResponse>;
+  type InputStream = Pin<Box<dyn Stream<Item = Self::Input> + Send>>;
 }

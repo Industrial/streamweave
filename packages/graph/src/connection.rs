@@ -9,8 +9,8 @@
 //! ```rust
 //! use streamweave::graph::connection::Connection;
 //! use streamweave::graph::node::{ProducerNode, TransformerNode};
-//! use streamweave::producers::vec::VecProducer;
-//! use streamweave::transformers::map::MapTransformer;
+//! use streamweave_VecProducer;
+//! use streamweave_transformers::MapTransformer;
 //!
 //! // Type-safe connection validated at compile time
 //! let connection: Connection<
@@ -161,8 +161,8 @@ where
 /// ```rust
 /// use streamweave::graph::connection::Connection;
 /// use streamweave::graph::node::{ProducerNode, TransformerNode};
-/// use streamweave::producers::vec::VecProducer;
-/// use streamweave::transformers::map::MapTransformer;
+/// use streamweave_VecProducer;
+/// use streamweave_transformers::MapTransformer;
 ///
 /// // Create a type-safe connection
 /// let connection: Connection<
@@ -281,8 +281,8 @@ impl std::error::Error for ConnectionError {}
 #[cfg(test)]
 mod tests {
   use super::*;
-  use streamweave_vec::consumers::VecConsumer;
-  use streamweave_vec::producers::VecProducer;
+  use streamweave_vec::VecConsumer;
+  use streamweave_vec::VecProducer;
 
   // Note: Tests for transformer connections are covered in integration tests
   // Type alias tests with MapTransformer are removed due to closure type constraints

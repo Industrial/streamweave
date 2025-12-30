@@ -152,23 +152,3 @@ pub trait Worker: Send + Sync {
   /// Sends a heartbeat to the coordinator.
   async fn send_heartbeat(&mut self) -> Result<(), WorkerError>;
 }
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn test_worker_id() {
-    let id = WorkerId::new("worker-1".to_string());
-    assert_eq!(id.as_str(), "worker-1");
-    assert_eq!(id.to_string(), "worker-1");
-  }
-
-  #[test]
-  fn test_worker_config_default() {
-    let config = WorkerConfig::default();
-    assert_eq!(config.heartbeat_interval, Duration::from_secs(5));
-    assert_eq!(config.max_concurrent_tasks, 10);
-    assert!(config.assigned_partitions.is_empty());
-  }
-}

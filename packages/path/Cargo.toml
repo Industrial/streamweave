@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-path"
-version = "0.4.0"
+version = "0.5.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -13,7 +13,7 @@ description = "Path manipulation transformers for StreamWeave (no filesystem ope
 
 [dependencies]
 chrono = { workspace = true }
-streamweave = { path = "../streamweave", version = "0.4.0" }
+streamweave = { path = "../streamweave", version = "0.5.0" }
 streamweave-error = { path = "../error", version = "0.4.0" }
 streamweave-message = { path = "../message", version = "0.4.0", optional = true }
 futures = { workspace = true }

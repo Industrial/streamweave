@@ -149,7 +149,7 @@ let producer = CommandProducer::new("command", vec!["arg"])
 
 Command execution flow:
 
-```
+```text
 Command ──> CommandProducer ──> Stream<String> ──> Transformer ──> Stream<T> ──> CommandConsumer ──> Command
 ```
 

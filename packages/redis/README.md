@@ -33,7 +33,7 @@ streamweave-redis = { version = "0.3.0", features = ["redis"] }
 ### Consume from Redis Streams
 
 ```rust
-use streamweave_redis::producers::{RedisProducer, RedisConsumerConfig};
+use streamweave_redis::{RedisProducer, RedisConsumerConfig};
 use streamweave_pipeline::PipelineBuilder;
 
 let config = RedisConsumerConfig::default()
@@ -53,7 +53,7 @@ pipeline.run().await?;
 ### Produce to Redis Streams
 
 ```rust
-use streamweave_redis::consumers::{RedisConsumer, RedisProducerConfig};
+use streamweave_redis::{RedisConsumer, RedisProducerConfig};
 use streamweave_pipeline::PipelineBuilder;
 use serde::Serialize;
 
@@ -82,6 +82,9 @@ pipeline.run().await?;
 Consumes messages from Redis Streams and streams them:
 
 ```rust
+use streamweave_redis::{RedisProducer, RedisConsumerConfig, RedisMessage};
+use streamweave::ProducerConfig;
+
 pub struct RedisProducer {
     pub config: ProducerConfig<RedisMessage>,
     pub redis_config: RedisConsumerConfig,
@@ -99,6 +102,9 @@ pub struct RedisProducer {
 Produces messages to Redis Streams from streams:
 
 ```rust
+use streamweave_redis::{RedisConsumer, RedisProducerConfig};
+use streamweave::ConsumerConfig;
+
 pub struct RedisConsumer<T> {
     pub config: ConsumerConfig<T>,
     pub redis_config: RedisProducerConfig,
@@ -116,6 +122,9 @@ pub struct RedisConsumer<T> {
 Represents a message received from Redis Streams:
 
 ```rust
+use std::collections::HashMap;
+use streamweave_redis::RedisMessage;
+
 pub struct RedisMessage {
     pub stream: String,
     pub id: String,
@@ -130,7 +139,7 @@ pub struct RedisMessage {
 Configure consumer groups for distributed processing:
 
 ```rust
-use streamweave_redis::producers::{RedisProducer, RedisConsumerConfig};
+use streamweave_redis::{RedisProducer, RedisConsumerConfig};
 
 let config = RedisConsumerConfig::default()
     .with_connection_url("redis://localhost:6379")
@@ -150,7 +159,7 @@ let producer = RedisProducer::new(config);
 Read all messages from the beginning of a stream:
 
 ```rust
-use streamweave_redis::producers::{RedisProducer, RedisConsumerConfig};
+use streamweave_redis::{RedisProducer, RedisConsumerConfig};
 
 let config = RedisConsumerConfig::default()
     .with_connection_url("redis://localhost:6379")
@@ -166,7 +175,7 @@ let producer = RedisProducer::new(config);
 Read only new messages (after current position):
 
 ```rust
-use streamweave_redis::producers::{RedisProducer, RedisConsumerConfig};
+use streamweave_redis::{RedisProducer, RedisConsumerConfig};
 
 let config = RedisConsumerConfig::default()
     .with_connection_url("redis://localhost:6379")
@@ -182,7 +191,14 @@ let producer = RedisProducer::new(config);
 Limit stream length to prevent unbounded growth:
 
 ```rust
-use streamweave_redis::consumers::{RedisConsumer, RedisProducerConfig};
+use streamweave_redis::{RedisConsumer, RedisProducerConfig};
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct Event {
+    id: u32,
+    message: String,
+}
 
 let config = RedisProducerConfig::default()
     .with_connection_url("redis://localhost:6379")
@@ -198,7 +214,7 @@ let consumer = RedisConsumer::<Event>::new(config);
 Configure automatic message acknowledgment:
 
 ```rust
-use streamweave_redis::producers::{RedisProducer, RedisConsumerConfig};
+use streamweave_redis::{RedisProducer, RedisConsumerConfig};
 
 let config = RedisConsumerConfig::default()
     .with_connection_url("redis://localhost:6379")
@@ -215,7 +231,7 @@ let producer = RedisProducer::new(config);
 Configure error handling strategies:
 
 ```rust
-use streamweave_redis::producers::{RedisProducer, RedisConsumerConfig};
+use streamweave_redis::{RedisProducer, RedisConsumerConfig};
 use streamweave_error::ErrorStrategy;
 
 let config = RedisConsumerConfig::default()
@@ -230,7 +246,7 @@ let producer = RedisProducer::new(config)
 
 Redis Streams integration flow:
 
-```
+```text
 ┌──────────┐
 │  Redis   │───> RedisProducer ───> Stream<RedisMessage> ───> Transformer ───> Stream<T> ───> RedisConsumer ───> Redis
 │ Streams  │                                                                                                                      │ Streams  │
@@ -269,10 +285,26 @@ Redis Streams integration flow:
 Redis errors are handled through the error system:
 
 ```rust
+use streamweave_redis::{RedisProducer, RedisConsumer, RedisConsumerConfig, RedisProducerConfig};
 use streamweave_error::ErrorStrategy;
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct Event {
+    id: u32,
+    message: String,
+}
+
+let config = RedisConsumerConfig::default()
+    .with_connection_url("redis://localhost:6379")
+    .with_stream("events");
 
 let producer = RedisProducer::new(config)
     .with_error_strategy(ErrorStrategy::Skip);  // Skip errors and continue
+
+let consumer_config = RedisProducerConfig::default()
+    .with_connection_url("redis://localhost:6379")
+    .with_stream("events");
 
 let consumer = RedisConsumer::<Event>::new(consumer_config)
     .with_error_strategy(ErrorStrategy::Retry(3));  // Retry up to 3 times

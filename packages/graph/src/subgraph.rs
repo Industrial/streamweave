@@ -348,7 +348,7 @@ mod tests {
   #[test]
   fn test_subgraph_node_port_mapping() {
     use crate::{GraphBuilder, ProducerNode};
-    use streamweave_vec::producers::VecProducer;
+    use streamweave_vec::VecProducer;
 
     // Create a simple graph with one node
     let inner_graph = GraphBuilder::new()

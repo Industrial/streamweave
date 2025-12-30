@@ -221,7 +221,7 @@ pub fn reset_node_state(node: &dyn NodeTrait) -> StateResult<()> {
 mod tests {
   use super::*;
   use crate::node::TransformerNode;
-  use streamweave_transformers::running_sum::RunningSumTransformer;
+  use streamweave_transformers::RunningSumTransformer;
 
   #[test]
   fn test_stateful_node_trait() {
@@ -297,7 +297,7 @@ mod tests {
   #[test]
   fn test_is_stateful_node_helper() {
     use crate::node::TransformerNode;
-    use streamweave_transformers::map::MapTransformer;
+    use streamweave_transformers::MapTransformer;
 
     // Stateful node should return true
     let transformer = RunningSumTransformer::<i32>::new();

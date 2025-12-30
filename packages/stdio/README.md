@@ -187,7 +187,7 @@ pipeline.run().await?;
 
 Standard I/O integration:
 
-```
+```text
 ┌──────────┐
 │  stdin   │───> StdinProducer ───> Stream ───> Transformer ───> Stream ───> StdoutConsumer ───> stdout
 └──────────┘                                                                                      └──────────┘

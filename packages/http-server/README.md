@@ -233,7 +233,7 @@ let handler = create_simple_handler(|req: HttpRequest| {
 
 HTTP server integration flow:
 
-```
+```text
 HTTP Request ──> HttpRequestProducer ──> Stream<HttpRequest> ──> Transformer ──> Stream<HttpResponse> ──> HttpResponseConsumer ──> HTTP Response
 ```
 

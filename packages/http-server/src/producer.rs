@@ -14,14 +14,22 @@ use axum::extract::Request;
 #[cfg(feature = "http-server")]
 use chrono;
 #[cfg(feature = "http-server")]
+use futures::Stream;
+#[cfg(feature = "http-server")]
 use futures::StreamExt;
 #[cfg(feature = "http-server")]
 #[allow(unused_imports)] // BodyExt is used via trait method into_data_stream()
 use http_body_util::BodyExt;
 #[cfg(feature = "http-server")]
+use std::pin::Pin;
+#[cfg(feature = "http-server")]
+use streamweave::Output;
+#[cfg(feature = "http-server")]
 use streamweave::{Producer, ProducerConfig};
 #[cfg(feature = "http-server")]
 use streamweave_error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
+#[cfg(feature = "http-server")]
+use streamweave_message::Message;
 #[cfg(feature = "http-server")]
 use tracing::{error, warn};
 
@@ -319,6 +327,12 @@ impl Clone for HttpRequestProducer {
       body_stream: None,
     }
   }
+}
+
+#[cfg(feature = "http-server")]
+impl Output for HttpRequestProducer {
+  type Output = HttpRequest;
+  type OutputStream = Pin<Box<dyn Stream<Item = Self::Output> + Send>>;
 }
 
 #[async_trait]
@@ -664,4 +678,10 @@ impl Producer for LongLivedHttpRequestProducer {
   ) -> &mut ProducerConfig<streamweave_message::Message<HttpRequest>> {
     &mut self.config
   }
+}
+
+#[cfg(feature = "http-server")]
+impl Output for LongLivedHttpRequestProducer {
+  type Output = Message<HttpRequest>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Self::Output> + Send>>;
 }

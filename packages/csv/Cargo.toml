@@ -24,7 +24,7 @@ workspace = true
 
 [dependencies.streamweave]
 path = "../streamweave"
-version = "0.4.0"
+version = "0.5.0"
 
 [dependencies.streamweave-error]
 path = "../error"
@@ -63,3 +63,11 @@ workspace = true
 
 [dev-dependencies.proptest]
 workspace = true
+
+[[test]]
+name = "csv_producer"
+path = "test/csv_producer.rs"
+
+[[test]]
+name = "csv_consumer"
+path = "test/csv_consumer.rs"

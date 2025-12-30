@@ -12,7 +12,7 @@ categories.workspace = true
 description = "Stateful transformer support for StreamWeave"
 
 [dependencies]
-streamweave = { path = "../streamweave", version = "0.4.0" }
+streamweave = { path = "../streamweave", version = "0.5.0" }
 streamweave-error = { path = "../error", version = "0.4.0" }
 tokio = { workspace = true, features = ["macros", "rt"] }
 futures = { workspace = true }
@@ -23,3 +23,6 @@ chrono = { workspace = true }
 
 [features]
 default = []
+
+[dev-dependencies]
+tempfile = { workspace = true }

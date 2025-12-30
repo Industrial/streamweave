@@ -162,7 +162,7 @@ let consumer = TempfileConsumer::new()?
 
 Temporary file handling:
 
-```
+```text
 ┌──────────────┐
 │  Temp File   │───> TempfileProducer ───> Stream ───> Transformer ───> Stream ───> TempfileConsumer ───> Temp File
 └──────────────┘                                                                                              └──────────────┘

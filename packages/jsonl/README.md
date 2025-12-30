@@ -198,7 +198,7 @@ let pipeline = PipelineBuilder::new()
 
 JSONL processing flow:
 
-```
+```text
 ┌────────────┐
 │ JSONL File │───> JsonlProducer ───> Stream<JSON> ───> Transformer ───> Stream<JSON> ───> JsonlConsumer ───> JSONL File
 └────────────┘                                                                                                    └────────────┘

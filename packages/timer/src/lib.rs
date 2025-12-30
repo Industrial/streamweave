@@ -1,5 +1,5 @@
 #![doc = include_str!("../README.md")]
 
-pub mod producers;
+pub mod interval_producer;
 
-pub use producers::*;
+pub use interval_producer::*;

@@ -168,7 +168,7 @@ let producer = ChannelProducer::new(receiver)
 
 Channel integration flow:
 
-```
+```text
 Tokio Channel ──> ChannelProducer ──> Stream<T> ──> Transformer ──> Stream<T> ──> ChannelConsumer ──> Tokio Channel
 ```
 

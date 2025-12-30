@@ -33,30 +33,43 @@ streamweave-array = "0.3.0"
 ```rust
 use streamweave_array::ArrayProducer;
 use streamweave_pipeline::PipelineBuilder;
+use streamweave_transformers::MapTransformer;
+use streamweave_vec::VecConsumer;
 
 let array = [1, 2, 3, 4, 5];
 let producer = ArrayProducer::new(array);
+let transformer = MapTransformer::new(|x: i32| x); // Identity transformation
+let consumer = VecConsumer::<i32>::new();
 
 let pipeline = PipelineBuilder::new()
     .producer(producer)
-    .consumer(/* process items */);
+    .transformer(transformer)
+    .await
+    .consumer(consumer);
 
-pipeline.run().await?;
+let ((), consumer) = pipeline.run().await?;
+let collected = consumer.into_vec();
 ```
 
 ### Consume to Array
 
 ```rust
-use streamweave_array::ArrayConsumer;
+use streamweave_array::{ArrayConsumer, ArrayProducer};
 use streamweave_pipeline::PipelineBuilder;
+use streamweave_transformers::MapTransformer;
 
 let consumer = ArrayConsumer::<i32, 5>::new();
+let array = [1, 2, 3, 4, 5];
+let producer = ArrayProducer::new(array);
+let transformer = MapTransformer::new(|x: i32| x); // Identity transformation
 
 let pipeline = PipelineBuilder::new()
-    .producer(/* produce items */)
+    .producer(producer)
+    .transformer(transformer)
+    .await
     .consumer(consumer);
 
-pipeline.run().await?;
+let ((), consumer) = pipeline.run().await?;
 
 let array = consumer.into_array();
 ```
@@ -108,17 +121,21 @@ Transform array elements:
 ```rust
 use streamweave_array::{ArrayProducer, ArrayConsumer};
 use streamweave_pipeline::PipelineBuilder;
+use streamweave_transformers::MapTransformer;
 
 let input = [1, 2, 3, 4, 5];
 let producer = ArrayProducer::new(input);
 let consumer = ArrayConsumer::<i32, 5>::new();
+let transformer = MapTransformer::new(|x: i32| x * 2); // Double each element
 
 let pipeline = PipelineBuilder::new()
     .producer(producer)
-    .transformer(|x: i32| x * 2)  // Double each element
+    .transformer(transformer)
+    .await
     .consumer(consumer);
 
-pipeline.run().await?;
+let ((), consumer) = pipeline.run().await?;
+let array = consumer.into_array();
 ```
 
 ### Error Handling
@@ -139,7 +156,7 @@ let producer = ArrayProducer::new(array)
 
 Array processing flow:
 
-```
+```text
 Array[T; N] ──> ArrayProducer ──> Stream<T> ──> Transformer ──> Stream<T> ──> ArrayConsumer ──> [Option<T>; N]
 ```
 

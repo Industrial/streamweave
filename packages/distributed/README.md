@@ -190,7 +190,7 @@ coordinator.rebalance().await?;
 Configure failure detection and recovery:
 
 ```rust
-use streamweave_distributed::fault_tolerance::{FailureDetector, RecoveryManager};
+use streamweave_distributed::{FailureDetector, RecoveryManager};
 
 // Failure detection
 let detector = FailureDetector::new(Duration::from_secs(30));
@@ -207,7 +207,7 @@ recovery.checkpoint().await?;
 Configure network settings:
 
 ```rust
-use streamweave_distributed::network::{ConnectionPool, Transport};
+use streamweave_distributed::{ConnectionPool, Transport};
 
 // Connection pool
 let pool = ConnectionPool::new()
@@ -237,7 +237,7 @@ if worker_info.is_healthy(Duration::from_secs(30)) {
 
 Distributed processing architecture:
 
-```
+```text
 ┌──────────────┐
 │ Coordinator  │───manages───> Workers
 └──────────────┘     │

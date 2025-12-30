@@ -376,7 +376,7 @@ tracker.commit_all()?;
 
 Offset tracking integrates with consumers for exactly-once processing:
 
-```
+```text
 ┌─────────────┐
 │  Consumer   │───processes item───> Offset
 └─────────────┘                           │

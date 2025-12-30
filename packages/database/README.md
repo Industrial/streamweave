@@ -221,7 +221,7 @@ let config = DatabaseConsumerConfig::default()
 
 Database integration uses base types:
 
-```
+```text
 ┌──────────────────┐
 │ Database Types    │───> Used by database-specific packages
 │ - DatabaseType    │

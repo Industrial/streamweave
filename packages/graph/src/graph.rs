@@ -26,7 +26,7 @@
 //! ```rust
 //! use streamweave::graph::{Graph, GraphBuilder};
 //! use streamweave::graph::node::ProducerNode;
-//! use streamweave::producers::vec::VecProducer;
+//! use streamweave_vec::VecProducer;
 //!
 //! let mut builder = GraphBuilder::new();
 //! builder.add_node("source".to_string(), ProducerNode::new(
@@ -1333,9 +1333,9 @@ impl Default for RuntimeGraphBuilder {
 mod tests {
   use super::*;
   use crate::node::{ConsumerNode, ProducerNode, TransformerNode};
-  use streamweave_transformers::map::MapTransformer;
-  use streamweave_vec::consumers::VecConsumer;
-  use streamweave_vec::producers::VecProducer;
+  use streamweave_transformers::MapTransformer;
+  use streamweave_vec::VecConsumer;
+  use streamweave_vec::VecProducer;
 
   #[test]
   fn test_graph_new() {

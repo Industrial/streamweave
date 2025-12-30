@@ -6,71 +6,13 @@ exec > >(tee log/publish.log) 2>&1
 
 echo "> publish"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-
-cd "$PROJECT_DIR"
-
-# Calculate publish order based on dependencies
-echo "> publish > Calculating publish order..."
-# Get all package directories and convert to package name format
-ORDER=$(find packages -name Cargo.toml -type f | while read -r toml; do
-    dir=$(dirname "$toml")
-    rel_path=${dir#packages/}
-    
-    # Convert path to package name format
-    # streamweave -> streamweave
-    # consumers/array -> consumer-array (singularize category)
-    # producers/kafka -> producer-kafka (singularize category)
-    # transformers/map -> transformer-map (singularize category)
-    # integrations/http-server -> integration-http-server (singularize category)
-    if [[ "$rel_path" == *"/"* ]]; then
-        # Has subdirectory (consumers/array, producers/kafka, etc.)
-        category=$(echo "$rel_path" | cut -d'/' -f1)
-        name=$(echo "$rel_path" | cut -d'/' -f2)
-        # Singularize category: consumers -> consumer, producers -> producer, etc.
-        category_singular="${category%s}"
-        echo "${category_singular}-${name}"
-    else
-        # Top-level package (streamweave, pipeline, etc.)
-        echo "$rel_path"
+for pkg in $(ls packages); do
+    echo "> publish > publishing $pkg"
+    if ! cargo publish -p "streamweave-$pkg"; then
+        echo "> publish > failed to publish $pkg, skipping"
+        continue
     fi
-done | sort)
-
-if [ -z "$ORDER" ]; then
-    echo "❌ Error: Could not determine publish order"
-    exit 1
-fi
-
-echo "> publish > Publishing packages in dependency order:"
-for pkg in $ORDER; do
-    if [[ "$pkg" == "streamweave" ]]; then
-        echo "  - $pkg"
-    else
-        echo "  - streamweave-$pkg"
-    fi
+    echo "> publish > published $pkg"
 done
 
-# Ask for confirmation
-read -p "🤔 Ready to publish all packages? (y/N): " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "❌ Publish cancelled."
-    exit 1
-fi
-
-# Publish each package
-for pkg in $ORDER; do
-    echo ""
-    if [[ "$pkg" == "streamweave" ]]; then
-        echo "📦 Publishing $pkg..."
-        cargo publish -p "$pkg"
-    else
-        echo "📦 Publishing streamweave-$pkg..."
-        cargo publish -p "streamweave-$pkg"
-    fi
-    sleep 5  # Rate limiting
-done
-
-echo ""
-echo "✅ All packages published successfully!"
+echo "> publish > done"

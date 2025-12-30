@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
-pub mod consumers;
-pub mod producers;
+pub mod redis_consumer;
+pub mod redis_producer;
 
-pub use consumers::RedisProducerConfig;
-pub use producers::RedisConsumerConfig;
+pub use redis_consumer::*;
+pub use redis_producer::*;

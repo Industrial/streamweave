@@ -236,7 +236,7 @@ let pipeline = PipelineBuilder::new()
 
 Pipelines follow a linear flow:
 
-```
+```text
 ┌──────────┐
 │ Producer │───produces───> Stream<T>
 └──────────┘

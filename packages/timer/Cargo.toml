@@ -13,7 +13,7 @@ description = "Timer and interval producer for StreamWeave"
 
 [dependencies]
 chrono = { workspace = true }
-streamweave = { path = "../streamweave", version = "0.4.0" }
+streamweave = { path = "../streamweave", version = "0.5.0" }
 streamweave-error = { path = "../error", version = "0.4.0" }
 streamweave-message = { path = "../message", version = "0.4.0", optional = true }
 tokio = { workspace = true, features = ["macros", "rt", "time"] }
@@ -25,6 +25,10 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
+streamweave-pipeline = { path = "../pipeline", version = "0.5.0" }
+streamweave-transformers = { path = "../transformers", version = "0.5.0" }
+streamweave-vec = { path = "../vec", version = "0.4.0" }
+tokio = { workspace = true, features = ["macros", "rt", "time", "test-util"] }
 
 [features]
 default = []

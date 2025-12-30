@@ -346,7 +346,7 @@ manager.rollback_to_savepoint(&tx_id, "checkpoint1").await?;
 
 Transactions buffer offset commits and flush them atomically:
 
-```
+```text
 ┌──────────────────┐
 │ Transaction Begin│
 └──────────────────┘

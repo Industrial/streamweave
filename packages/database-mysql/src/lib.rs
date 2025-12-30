@@ -1,10 +1,8 @@
 #![doc = include_str!("../README.md")]
 
-pub mod consumers;
-pub mod producers;
+pub mod mysql_consumer;
+pub mod mysql_producer;
 
-pub use consumers::MysqlConsumer;
-pub use producers::MysqlProducer;
-pub use streamweave_database::{
-  DatabaseConsumerConfig, DatabaseProducerConfig, DatabaseRow, DatabaseType,
-};
+pub use mysql_consumer::*;
+pub use mysql_producer::*;
+pub use streamweave_database::*;

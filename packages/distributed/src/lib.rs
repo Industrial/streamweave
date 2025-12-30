@@ -1,15 +1,25 @@
 #![doc = include_str!("../README.md")]
 
+pub mod checkpoint;
+pub mod connection;
 pub mod coordinator;
-pub mod fault_tolerance;
-pub mod network;
+pub mod discovery;
+pub mod failure_detector;
 pub mod partitioner;
+pub mod pool;
 pub mod protocol;
+pub mod recovery;
+pub mod transport;
 pub mod worker;
 
+pub use checkpoint::*;
+pub use connection::*;
 pub use coordinator::*;
-pub use fault_tolerance::*;
-pub use network::*;
+pub use discovery::*;
+pub use failure_detector::*;
 pub use partitioner::*;
+pub use pool::*;
 pub use protocol::*;
+pub use recovery::*;
+pub use transport::*;
 pub use worker::*;

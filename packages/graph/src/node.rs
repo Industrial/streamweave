@@ -8,9 +8,9 @@
 //!
 //! ```rust
 //! use streamweave::graph::node::{ProducerNode, TransformerNode, ConsumerNode};
-//! use streamweave::producers::array::ArrayProducer;
-//! use streamweave::transformers::map::MapTransformer;
-//! use streamweave::consumers::vec::VecConsumer;
+//! use streamweave_array::ArrayProducer;
+//! use streamweave_transformers::MapTransformer;
+//! use streamweave_vec::VecConsumer;
 //!
 //! // Producer with single output
 //! let producer = ProducerNode::new(
@@ -298,7 +298,7 @@ impl<T: Input> StreamConverter<T> for StreamWrapper<T> {
 ///
 /// ```rust
 /// use streamweave::graph::node::ProducerNode;
-/// use streamweave::producers::array::ArrayProducer;
+/// use streamweave_array::ArrayProducer;
 ///
 /// let node = ProducerNode::new(
 ///     "source".to_string(),
@@ -403,7 +403,7 @@ where
   ///
   /// ```rust
   /// use streamweave::graph::node::ProducerNode;
-  /// use streamweave::producers::vec::VecProducer;
+  /// use streamweave_vec::VecProducer;
   ///
   /// // Type inference: OutputPorts is automatically (i32,)
   /// let node = ProducerNode::from_producer(
@@ -464,7 +464,7 @@ where
 ///
 /// ```rust
 /// use streamweave::graph::node::TransformerNode;
-/// use streamweave::transformers::map::MapTransformer;
+/// use streamweave_transformers::MapTransformer;
 ///
 /// let node = TransformerNode::new(
 ///     "mapper".to_string(),
@@ -584,7 +584,7 @@ where
   ///
   /// ```rust
   /// use streamweave::graph::node::TransformerNode;
-  /// use streamweave::transformers::map::MapTransformer;
+  /// use streamweave_transformers::MapTransformer;
   ///
   /// // Type inference: InputPorts is (i32,), OutputPorts is (i32,)
   /// let node = TransformerNode::from_transformer(
@@ -644,7 +644,7 @@ where
 ///
 /// ```rust
 /// use streamweave::graph::node::ConsumerNode;
-/// use streamweave::consumers::vec::VecConsumer;
+/// use streamweave_vec::VecConsumer;
 ///
 /// let node = ConsumerNode::new(
 ///     "sink".to_string(),
@@ -749,7 +749,7 @@ where
   ///
   /// ```rust
   /// use streamweave::graph::node::ConsumerNode;
-  /// use streamweave::consumers::vec::VecConsumer;
+  /// use streamweave_vec::VecConsumer;
   ///
   /// // Type inference: InputPorts is automatically (i32,)
   /// let node = ConsumerNode::from_consumer(
@@ -1097,7 +1097,7 @@ where
       let input_stream = stream_wrapper.into_input_stream();
 
       // Apply transformer
-      let transformed_stream = transformer_clone.transform(input_stream);
+      let transformed_stream = transformer_clone.transform(input_stream).await;
       let mut transformed_stream = pin!(transformed_stream);
 
       // Iterate over transformed output stream
@@ -1333,9 +1333,9 @@ mod tests {
   use std::pin::Pin;
   use std::sync::Arc;
   use streamweave::{Producer, ProducerConfig};
-  use streamweave_transformers::map::MapTransformer;
-  use streamweave_vec::consumers::VecConsumer;
-  use streamweave_vec::producers::VecProducer;
+  use streamweave_transformers::MapTransformer;
+  use streamweave_vec::VecConsumer;
+  use streamweave_vec::VecProducer;
   use tokio::sync::{RwLock, mpsc};
 
   #[test]

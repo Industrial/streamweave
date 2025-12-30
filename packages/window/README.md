@@ -166,7 +166,7 @@ let assigner = CountWindowAssigner::new(100);
 Use ready-to-use window transformers:
 
 ```rust
-use streamweave_window::transformers::WindowTransformer;
+use streamweave_transformers::WindowTransformer;
 
 let assigner = TumblingWindowAssigner::new(Duration::from_secs(5));
 let transformer = WindowTransformer::new(assigner, WindowConfig::default());
@@ -226,7 +226,7 @@ if window.contains(timestamp) {
 
 Windows group elements for bounded processing:
 
-```
+```text
 ┌─────────────┐
 │   Stream    │───elements───>┌──────────────┐
 └─────────────┘               │ WindowAssigner│

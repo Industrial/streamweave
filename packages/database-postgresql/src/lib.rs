@@ -1,10 +1,8 @@
 #![doc = include_str!("../README.md")]
 
-pub mod consumers;
-pub mod producers;
+pub mod postgres_consumer;
+pub mod postgres_producer;
 
-pub use consumers::PostgresConsumer;
-pub use producers::PostgresProducer;
-pub use streamweave_database::{
-  DatabaseConsumerConfig, DatabaseProducerConfig, DatabaseRow, DatabaseType,
-};
+pub use postgres_consumer::*;
+pub use postgres_producer::*;
+pub use streamweave_database::*;

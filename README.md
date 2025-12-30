@@ -61,12 +61,10 @@ streamweave = "0.3.0"
 ### Basic Example
 
 ```rust
-use streamweave::{
-    consumers::vec::vec_consumer::VecConsumer,
-    pipeline::PipelineBuilder,
-    producers::array::array_producer::ArrayProducer,
-    transformers::map::map_transformer::MapTransformer,
-};
+use streamweave::PipelineBuilder;
+use streamweave_array::ArrayProducer;
+use streamweave_transformers::MapTransformer;
+use streamweave_vec::VecConsumer;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

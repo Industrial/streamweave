@@ -178,7 +178,7 @@ let pipeline = PipelineBuilder::new()
 
 Parquet processing flow:
 
-```
+```text
 ┌──────────────┐
 │ Parquet File │───> ParquetProducer ───> Stream<Record> ───> Transformer ───> Stream<Record> ───> ParquetConsumer ───> Parquet File
 └──────────────┘                                                                                                        └──────────────┘

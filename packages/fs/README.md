@@ -152,7 +152,7 @@ pipeline.run().await?;
 
 File system operations:
 
-```
+```text
 ┌──────────────┐
 │  Directory   │───> DirectoryProducer ───> Stream ───> Transformer ───> Stream ───> DirectoryConsumer ───> Directory
 └──────────────┘                                                                                                └──────────────┘

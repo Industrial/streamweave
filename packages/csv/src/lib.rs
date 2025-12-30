@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
-pub mod consumers;
-pub mod producers;
+pub mod csv_consumer;
+pub mod csv_producer;
 
-pub use consumers::CsvWriteConfig;
-pub use producers::CsvReadConfig;
+pub use csv_consumer::*;
+pub use csv_producer::*;

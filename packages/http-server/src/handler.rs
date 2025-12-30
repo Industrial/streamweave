@@ -128,7 +128,7 @@ where
 ///
 /// ```rust,no_run
 /// use streamweave::http_server::create_pipeline_handler;
-/// use streamweave::transformers::map::MapTransformer;
+/// use streamweave_transformers::MapTransformer;
 /// use streamweave::http_server::{HttpRequest, HttpResponse};
 /// use axum::http::StatusCode;
 /// use axum::{Router, routing::get};
@@ -152,7 +152,7 @@ pub fn create_pipeline_handler<T>(
   transformer_fn: impl Fn() -> T + Send + Sync + Clone + 'static,
 ) -> impl Fn(Request) -> std::pin::Pin<Box<dyn std::future::Future<Output = Response<Body>> + Send>>
 where
-  T: streamweave::Transformer + 'static,
+  T: streamweave::Transformer + Send + 'static,
   T::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
   T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
   HttpRequestProducer: streamweave::Producer,
@@ -213,6 +213,7 @@ where
   let pipeline = PipelineBuilder::new()
     .producer(producer)
     .transformer(transformer)
+    .await
     .consumer(consumer);
 
   // Run the pipeline

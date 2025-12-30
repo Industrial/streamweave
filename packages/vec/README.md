@@ -135,7 +135,7 @@ let consumer = VecConsumer::<i32>::with_capacity(1000);  // Pre-allocate for 100
 
 Vector processing flow:
 
-```
+```text
 Vec<T> ──> VecProducer ──> Stream<T> ──> Transformer ──> Stream<T> ──> VecConsumer ──> Vec<T>
 ```
 

@@ -347,7 +347,7 @@ for msg in messages {
 
 Messages flow through pipelines and graphs with their envelope intact:
 
-```
+```text
 ┌─────────────┐
 │  Producer   │───produces───> Message<T>
 └─────────────┘
@@ -366,7 +366,7 @@ Messages flow through pipelines and graphs with their envelope intact:
 ```
 
 **Message Envelope Structure:**
-```
+```text
 Message<T>
 ├── MessageId (unique identifier)
 ├── Payload<T> (actual data)

@@ -206,7 +206,7 @@ std::fs::write("visualization.html", html)?;
 Visualize real-time metrics:
 
 ```rust
-use streamweave_visualization::realtime::{PipelineMetrics, NodeMetrics};
+use streamweave_visualization::{PipelineMetrics, NodeMetrics};
 
 let metrics = PipelineMetrics::new();
 metrics.update_node_metrics("producer_1", NodeMetrics {
@@ -219,7 +219,7 @@ metrics.update_node_metrics("producer_1", NodeMetrics {
 
 Visualization flow:
 
-```
+```text
 Pipeline/Graph ──> PipelineDag ──> DagExporter ──> DOT/HTML/JSON ──> Visualization
 ```
 

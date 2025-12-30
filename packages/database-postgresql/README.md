@@ -179,7 +179,7 @@ let producer = PostgresProducer::new(config)?;
 
 PostgreSQL integration:
 
-```
+```text
 ┌──────────────┐
 │ PostgreSQL   │───> PostgresProducer ───> Stream<DatabaseRow> ───> Transformer ───> Stream<DatabaseRow> ───> PostgresConsumer ───> PostgreSQL
 └──────────────┘                                                                                                                      └──────────────┘

@@ -150,7 +150,7 @@ let producer = IntervalProducer::new(Duration::from_secs(1))
 
 Timer processing flow:
 
-```
+```text
 Timer ──> IntervalProducer ──> Stream<SystemTime> ──> Transformer ──> Stream<T> ──> Consumer
 ```
 

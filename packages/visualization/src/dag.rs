@@ -401,7 +401,11 @@ impl Default for PipelineDag {
 /// # Returns
 ///
 /// A simplified type name for display.
-fn format_type_name(type_name: &str) -> String {
+///
+/// # Note
+///
+/// This function is public for testing purposes.
+pub fn format_type_name(type_name: &str) -> String {
   type_name
     .split("::")
     .last()
@@ -418,7 +422,11 @@ fn format_type_name(type_name: &str) -> String {
 /// # Returns
 ///
 /// A string representation of the error strategy.
-fn format_error_strategy<T>(strategy: &streamweave_error::ErrorStrategy<T>) -> String
+///
+/// # Note
+///
+/// This function is public for testing purposes.
+pub fn format_error_strategy<T>(strategy: &streamweave_error::ErrorStrategy<T>) -> String
 where
   T: std::fmt::Debug + Clone + Send + Sync,
 {
@@ -648,9 +656,9 @@ mod tests {
 
   #[test]
   fn test_pipeline_dag_from_components() {
-    use streamweave_transformers::map::MapTransformer;
-    use streamweave_vec::consumers::VecConsumer;
-    use streamweave_vec::producers::VecProducer;
+    use streamweave_transformers::MapTransformer;
+    use streamweave_vec::VecConsumer;
+    use streamweave_vec::VecProducer;
 
     let producer = VecProducer::new(vec![1, 2, 3]);
     let transformer = MapTransformer::new(|x: i32| x * 2);
@@ -697,9 +705,9 @@ mod tests {
 
   #[test]
   fn test_pipeline_dag_from_components_with_names() {
-    use streamweave_transformers::map::MapTransformer;
-    use streamweave_vec::consumers::VecConsumer;
-    use streamweave_vec::producers::VecProducer;
+    use streamweave_transformers::MapTransformer;
+    use streamweave_vec::VecConsumer;
+    use streamweave_vec::VecProducer;
 
     let producer = VecProducer::new(vec![1, 2, 3]).with_name("my_producer".to_string());
     let transformer = MapTransformer::new(|x: i32| x * 2).with_name("my_transformer".to_string());
@@ -723,9 +731,9 @@ mod tests {
   #[test]
   fn test_pipeline_dag_from_components_with_error_strategies() {
     use streamweave_error::ErrorStrategy;
-    use streamweave_transformers::map::MapTransformer;
-    use streamweave_vec::consumers::VecConsumer;
-    use streamweave_vec::producers::VecProducer;
+    use streamweave_transformers::MapTransformer;
+    use streamweave_vec::VecConsumer;
+    use streamweave_vec::VecProducer;
 
     let producer = VecProducer::new(vec![1, 2, 3]).with_error_strategy(ErrorStrategy::<i32>::Skip);
     let transformer =

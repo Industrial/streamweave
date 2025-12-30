@@ -319,7 +319,7 @@ let pipeline = PipelineBuilder::new()
 
 The error handling system integrates at multiple levels:
 
-```
+```text
 ┌─────────────────┐
 │   Component     │───encounters error───> StreamError
 └─────────────────┘                           │

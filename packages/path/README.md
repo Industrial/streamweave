@@ -31,7 +31,7 @@ streamweave-path = "0.3.0"
 ### Extract Filenames
 
 ```rust
-use streamweave_path::transformers::FileNameTransformer;
+use streamweave_transformers::FileNameTransformer;
 use streamweave_pipeline::PipelineBuilder;
 
 let pipeline = PipelineBuilder::new()
@@ -45,7 +45,7 @@ pipeline.run().await?;
 ### Get Parent Directories
 
 ```rust
-use streamweave_path::transformers::ParentTransformer;
+use streamweave_transformers::ParentTransformer;
 
 let transformer = ParentTransformer::new();
 // Transforms paths to their parent directories
@@ -54,7 +54,7 @@ let transformer = ParentTransformer::new();
 ### Normalize Paths
 
 ```rust
-use streamweave_path::transformers::NormalizeTransformer;
+use streamweave_transformers::NormalizeTransformer;
 
 let transformer = NormalizeTransformer::new();
 // Normalizes paths (removes . and .. components)
@@ -81,7 +81,7 @@ let transformer = NormalizeTransformer::new();
 ### Extract Filenames from Paths
 
 ```rust
-use streamweave_path::transformers::FileNameTransformer;
+use streamweave_transformers::FileNameTransformer;
 use streamweave_pipeline::PipelineBuilder;
 use streamweave_fs::DirectoryProducer;
 
@@ -94,7 +94,7 @@ let pipeline = PipelineBuilder::new()
 ### Get Parent Directories
 
 ```rust
-use streamweave_path::transformers::ParentTransformer;
+use streamweave_transformers::ParentTransformer;
 
 let transformer = ParentTransformer::new();
 // /path/to/file.txt -> /path/to
@@ -103,7 +103,7 @@ let transformer = ParentTransformer::new();
 ### Normalize Paths
 
 ```rust
-use streamweave_path::transformers::NormalizeTransformer;
+use streamweave_transformers::NormalizeTransformer;
 
 let transformer = NormalizeTransformer::new();
 // /path/./to/../file.txt -> /path/file.txt
@@ -112,7 +112,7 @@ let transformer = NormalizeTransformer::new();
 ### Chain Path Transformations
 
 ```rust
-use streamweave_path::transformers::{ParentTransformer, FileNameTransformer};
+use streamweave_path::{ParentTransformer, FileNameTransformer};
 
 let pipeline = PipelineBuilder::new()
     .producer(/* produce paths */)
@@ -125,7 +125,7 @@ let pipeline = PipelineBuilder::new()
 
 Path transformation:
 
-```
+```text
 ┌──────────┐
 │  Paths   │───> PathTransformer ───> Stream ───> Transformed Paths
 └──────────┘

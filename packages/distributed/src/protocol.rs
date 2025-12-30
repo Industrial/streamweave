@@ -131,35 +131,3 @@ impl fmt::Display for ProtocolError {
 }
 
 impl std::error::Error for ProtocolError {}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn test_message_creation() {
-    let msg = Message::new(
-      MessageType::Heartbeat,
-      vec![1, 2, 3],
-      "worker-1".to_string(),
-      "coordinator".to_string(),
-    );
-    assert_eq!(msg.message_type, MessageType::Heartbeat);
-    assert_eq!(msg.source, "worker-1");
-    assert_eq!(msg.destination, "coordinator");
-    assert_eq!(msg.version, ProtocolVersion::V1);
-  }
-
-  #[test]
-  fn test_message_correlation() {
-    let msg = Message::new(
-      MessageType::TaskAssignment,
-      vec![],
-      "coordinator".to_string(),
-      "worker-1".to_string(),
-    );
-    let corr_id = "corr-123".to_string();
-    let msg_with_corr = msg.with_correlation_id(corr_id.clone());
-    assert_eq!(msg_with_corr.correlation_id, Some(corr_id));
-  }
-}

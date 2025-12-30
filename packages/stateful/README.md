@@ -222,7 +222,7 @@ task::spawn(async move {
 
 Stateful transformers maintain state across items:
 
-```
+```text
 ┌─────────────┐
 │   Input     │───item───>┌──────────────────┐
 └─────────────┘           │ StatefulTransformer│

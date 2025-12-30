@@ -1,0 +1,169 @@
+//! Zip transformer for StreamWeave
+
+use async_stream;
+use async_trait::async_trait;
+use futures::{Stream, StreamExt};
+use std::marker::PhantomData;
+use std::pin::Pin;
+use streamweave::{Input, Output, Transformer, TransformerConfig};
+use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+
+/// A transformer that zips items from multiple streams into vectors.
+///
+/// This transformer collects items from multiple input streams and combines
+/// them into vectors, emitting one vector per combination of items from each stream.
+#[derive(Clone)]
+pub struct ZipTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
+  /// Configuration for the transformer, including error handling strategy.
+  pub config: TransformerConfig<Vec<T>>,
+  /// Phantom data to track the type parameter.
+  pub _phantom: PhantomData<T>,
+}
+
+impl<T> Default for ZipTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl<T> ZipTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
+  /// Creates a new `ZipTransformer`.
+  pub fn new() -> Self {
+    Self {
+      config: TransformerConfig::default(),
+      _phantom: PhantomData,
+    }
+  }
+
+  /// Sets the error handling strategy for this transformer.
+  ///
+  /// # Arguments
+  ///
+  /// * `strategy` - The error handling strategy to use.
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<Vec<T>>) -> Self {
+    self.config = self.config.with_error_strategy(strategy);
+    self
+  }
+
+  /// Sets the name for this transformer.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name to assign to this transformer.
+  pub fn with_name(mut self, name: String) -> Self {
+    self.config = self.config.with_name(name);
+    self
+  }
+}
+
+impl<T> Input for ZipTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
+  type Input = Vec<T>;
+  type InputStream = Pin<Box<dyn Stream<Item = Vec<T>> + Send>>;
+}
+
+impl<T> Output for ZipTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
+  type Output = Vec<T>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Vec<T>> + Send>>;
+}
+
+#[async_trait]
+impl<T> Transformer for ZipTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
+  type InputPorts = (Vec<T>,);
+  type OutputPorts = (Vec<T>,);
+
+  async fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
+    Box::pin(async_stream::stream! {
+      let mut input = input;
+      let mut buffers: Vec<Vec<T>> = Vec::new();
+
+      while let Some(items) = input.next().await {
+        buffers.push(items);
+      }
+
+      // Early return if no input
+      if buffers.is_empty() {
+        return;
+      }
+
+      // Get the length of the longest vector
+      let max_len = buffers.iter().map(|v| v.len()).max().unwrap_or(0);
+
+      // Yield transposed vectors
+      for i in 0..max_len {
+        let mut result = Vec::new();
+        for buffer in &buffers {
+          if let Some(item) = buffer.get(i) {
+            result.push(item.clone());
+          }
+        }
+        if !result.is_empty() {
+          yield result;
+        }
+      }
+    })
+  }
+
+  fn set_config_impl(&mut self, config: TransformerConfig<Vec<T>>) {
+    self.config = config;
+  }
+
+  fn get_config_impl(&self) -> &TransformerConfig<Vec<T>> {
+    &self.config
+  }
+
+  fn get_config_mut_impl(&mut self) -> &mut TransformerConfig<Vec<T>> {
+    &mut self.config
+  }
+
+  fn handle_error(&self, error: &StreamError<Vec<T>>) -> ErrorAction {
+    match &self.config.error_strategy {
+      ErrorStrategy::Stop => ErrorAction::Stop,
+      ErrorStrategy::Skip => ErrorAction::Skip,
+      ErrorStrategy::Retry(n) if error.retries < *n => ErrorAction::Retry,
+      ErrorStrategy::Custom(handler) => handler(error),
+      _ => ErrorAction::Stop,
+    }
+  }
+
+  fn create_error_context(&self, item: Option<Vec<T>>) -> ErrorContext<Vec<T>> {
+    ErrorContext {
+      timestamp: chrono::Utc::now(),
+      item,
+      component_name: self
+        .config
+        .name
+        .clone()
+        .unwrap_or_else(|| "zip_transformer".to_string()),
+      component_type: std::any::type_name::<Self>().to_string(),
+    }
+  }
+
+  fn component_info(&self) -> ComponentInfo {
+    ComponentInfo {
+      name: self
+        .config
+        .name
+        .clone()
+        .unwrap_or_else(|| "zip_transformer".to_string()),
+      type_name: std::any::type_name::<Self>().to_string(),
+    }
+  }
+}

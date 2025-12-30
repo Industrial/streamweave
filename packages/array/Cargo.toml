@@ -20,7 +20,7 @@ workspace = true
 
 [dependencies.streamweave]
 path = "../streamweave"
-version = "0.4.0"
+version = "0.5.0"
 
 [dependencies.streamweave-error]
 path = "../error"
@@ -47,5 +47,9 @@ workspace = true
 [dependencies.tracing]
 workspace = true
 
-[dev-dependencies.proptest]
-workspace = true
+[dev-dependencies]
+proptest.workspace = true
+streamweave-pipeline = { path = "../pipeline", version = "0.5.0" }
+streamweave-transformers = { path = "../transformers", version = "0.5.0" }
+streamweave-vec = { path = "../vec", version = "0.4.0" }
+tokio = { workspace = true, features = ["macros", "rt", "test-util"] }

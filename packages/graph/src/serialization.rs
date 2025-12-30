@@ -80,7 +80,7 @@ impl From<serde_json::Error> for SerializationError {
 ///
 /// ```rust
 /// use serde::Serialize;
-/// use streamweave_graph::serialization::serialize;
+/// use streamweave_graph::serialize;
 ///
 /// #[derive(Serialize)]
 /// struct Point {
@@ -90,7 +90,7 @@ impl From<serde_json::Error> for SerializationError {
 ///
 /// let point = Point { x: 1, y: 2 };
 /// let bytes = serialize(&point)?;
-/// # Ok::<(), streamweave_graph::serialization::SerializationError>(())
+/// # Ok::<(), streamweave_graph::SerializationError>(())
 /// ```
 pub fn serialize<T: Serialize>(item: &T) -> Result<Vec<u8>, SerializationError> {
   serde_json::to_vec(item).map_err(SerializationError::from)
@@ -114,7 +114,7 @@ pub fn serialize<T: Serialize>(item: &T) -> Result<Vec<u8>, SerializationError> 
 ///
 /// ```rust
 /// use serde::Deserialize;
-/// use streamweave_graph::serialization::deserialize;
+/// use streamweave_graph::deserialize;
 ///
 /// #[derive(Deserialize, Debug, PartialEq)]
 /// struct Point {
@@ -125,7 +125,7 @@ pub fn serialize<T: Serialize>(item: &T) -> Result<Vec<u8>, SerializationError> 
 /// let bytes = br#"{"x":1,"y":2}"#;
 /// let point: Point = deserialize(bytes)?;
 /// assert_eq!(point, Point { x: 1, y: 2 });
-/// # Ok::<(), streamweave_graph::serialization::SerializationError>(())
+/// # Ok::<(), streamweave_graph::SerializationError>(())
 /// ```
 pub fn deserialize<T: DeserializeOwned>(data: &[u8]) -> Result<T, SerializationError> {
   serde_json::from_slice(data).map_err(SerializationError::from)

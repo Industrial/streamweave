@@ -1,5 +1,5 @@
 #![doc = include_str!("../README.md")]
 
-pub mod producers;
+pub mod signal_producer;
 
-pub use producers::*;
+pub use signal_producer::*;

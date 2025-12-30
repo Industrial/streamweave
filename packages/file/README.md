@@ -163,7 +163,7 @@ pipeline.run().await?;
 
 File I/O integration:
 
-```
+```text
 ┌──────────┐
 │  File    │───> FileProducer ───> Stream ───> Transformer ───> Stream ───> FileConsumer ───> File
 └──────────┘                                                                                   └──────────┘

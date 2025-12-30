@@ -202,7 +202,7 @@ builder.connect("merger", 0, "sink", 0)?;
 Use different routing strategies for data distribution:
 
 ```rust
-use streamweave_graph::routers::{BroadcastRouter, RoundRobinRouter, KeyBasedRouter};
+use streamweave_graph::{BroadcastRouter, RoundRobinRouter, KeyBasedRouter};
 
 // Broadcast: Send to all outputs
 let router = BroadcastRouter::new();
@@ -245,7 +245,7 @@ builder.connect("transformer", 0, "sink", 0)?;
 Create nested graphs:
 
 ```rust
-use streamweave_graph::subgraph::Subgraph;
+use streamweave_subgraph::Subgraph;
 
 let mut subgraph_builder = GraphBuilder::new();
 // Build subgraph...
@@ -301,7 +301,7 @@ let graph: Graph = deserialize(&json)?;
 
 Graphs support complex topologies:
 
-```
+```text
 ┌──────────┐
 │ Producer │───port 0───>┌─────────────┐───port 0───>┌──────────┐
 └──────────┘              │ Transformer │             │ Consumer │

@@ -22,7 +22,7 @@
 //!
 //! ```rust,no_run
 //! use streamweave::graph::{GraphBuilder, TransformerNode};
-//! use streamweave::transformers::window::WindowTransformer;
+//! use streamweave_transformers::WindowTransformer;
 //!
 //! // Create a graph with a windowing node
 //! let graph = GraphBuilder::new()
@@ -422,7 +422,7 @@ mod tests {
   #[test]
   fn test_is_windowed_node_helper() {
     use crate::node::TransformerNode;
-    use streamweave_transformers::map::MapTransformer;
+    use streamweave_transformers::MapTransformer;
 
     // Windowed node
     let window_transformer = WindowTransformer::<i32>::new(10);

@@ -158,7 +158,7 @@ let consumer = EnvVarConsumer::new()
 
 Environment variable processing flow:
 
-```
+```text
 Environment ──> EnvVarProducer ──> Stream<(String, String)> ──> Transformer ──> Stream<(String, String)> ──> EnvVarConsumer ──> Environment
 ```
 

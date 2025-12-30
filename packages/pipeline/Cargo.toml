@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-pipeline"
-version = "0.4.0"
+version = "0.5.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -12,7 +12,7 @@ categories.workspace = true
 description = "Pipeline API for StreamWeave"
 
 [dependencies]
-streamweave = { path = "../streamweave", version = "0.4.0" }
+streamweave = { path = "../streamweave", version = "0.5.0" }
 streamweave-error = { path = "../error", version = "0.4.0" }
 tokio = { workspace = true, features = ["macros", "rt"] }
 futures = { workspace = true }
@@ -20,5 +20,9 @@ futures = { workspace = true }
 [dev-dependencies]
 proptest = { workspace = true }
 async-trait = { workspace = true }
+streamweave-array = { path = "../array", version = "0.4.0" }
+streamweave-transformers = { path = "../transformers", version = "0.5.0" }
+streamweave-vec = { path = "../vec", version = "0.4.0" }
+tokio = { workspace = true, features = ["macros", "rt", "test-util"] }
 
 [features]

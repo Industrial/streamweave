@@ -47,7 +47,7 @@ let latency = metrics_handle.metrics().latency();
 ### Health Checks
 
 ```rust
-use streamweave_metrics::health::{HealthCheck, ComponentHealth};
+use streamweave_metrics::{HealthCheck, ComponentHealth};
 
 let mut health_check = HealthCheck::new("my-pipeline");
 
@@ -199,7 +199,7 @@ let total_errors = errors.total_errors();
 Track health status:
 
 ```rust
-use streamweave_metrics::health::{HealthCheck, ComponentHealth, HealthStatus};
+use streamweave_metrics::{HealthCheck, ComponentHealth, HealthStatus};
 
 let mut health_check = HealthCheck::new("my-pipeline");
 
@@ -261,7 +261,7 @@ let exporter = config.init_meter().await?;
 
 Metrics collection flow:
 
-```
+```text
 Pipeline ──> MetricsCollector ──> PipelineMetrics ──> PrometheusExporter ──> Prometheus
 Pipeline ──> MetricsCollector ──> PipelineMetrics ──> OpenTelemetryExporter ──> OTLP
 Pipeline ──> HealthCheck ──> HealthStatus

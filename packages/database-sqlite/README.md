@@ -176,7 +176,7 @@ let consumer = SqliteConsumer::new(config)?;
 
 SQLite integration:
 
-```
+```text
 ┌──────────┐
 │ SQLite  │───> SqliteProducer ───> Stream<DatabaseRow> ───> Transformer ───> Stream<DatabaseRow> ───> SqliteConsumer ───> SQLite
 └──────────┘                                                                                                                  └──────────┘

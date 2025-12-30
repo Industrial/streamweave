@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
-pub mod consumers;
-pub mod producers;
+pub mod vec_consumer;
+pub mod vec_producer;
 
-pub use consumers::VecConsumer;
-pub use producers::VecProducer;
+pub use vec_consumer::*;
+pub use vec_producer::*;

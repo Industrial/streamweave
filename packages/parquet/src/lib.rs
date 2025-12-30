@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
-pub mod consumers;
-pub mod producers;
+pub mod parquet_consumer;
+pub mod parquet_producer;
 
-pub use consumers::ParquetWriteConfig;
-pub use producers::ParquetReadConfig;
+pub use parquet_consumer::*;
+pub use parquet_producer::*;

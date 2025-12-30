@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
-pub mod consumers;
-pub mod producers;
+pub mod jsonl_consumer;
+pub mod jsonl_producer;
 
-pub use consumers::JsonlWriteConfig;
-pub use producers::JsonlProducer;
+pub use jsonl_consumer::*;
+pub use jsonl_producer::*;
