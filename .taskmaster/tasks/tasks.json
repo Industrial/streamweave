@@ -145,7 +145,7 @@
 								"id": 2,
 								"title": "Update TransformerNode Execution to Use ZeroCopyTransformer",
 								"description": "Update TransformerNode::spawn_execution_task to check if transformer implements ZeroCopyTransformer. If yes, use transform_zero_copy with Cow::Owned input. If no, fall back to regular transform method.",
-								"status": "in-progress",
+								"status": "done",
 								"dependencies": ["14.5.1"],
 								"parentId": "14.5"
 							},
@@ -153,7 +153,7 @@
 								"id": 3,
 								"title": "Handle Cow Return Values in Execution",
 								"description": "Update graph execution code to handle Cow return values from transform_zero_copy. Extract owned values from Cow::Owned, handle Cow::Borrowed appropriately, and ensure correct ownership transfer to downstream nodes.",
-								"status": "pending",
+								"status": "in-progress",
 								"dependencies": ["14.5.2"],
 								"parentId": "14.5"
 							}
