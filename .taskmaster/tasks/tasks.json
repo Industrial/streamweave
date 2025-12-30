@@ -174,7 +174,7 @@
 						"id": 1,
 						"title": "Implement ExecutionMode Enum",
 						"description": "Create ExecutionMode enum in packages/graph/src/execution.rs (or create file if needed) with variants: InProcess, Distributed, and Hybrid. Define all necessary fields and configuration options for each mode.",
-						"status": "in-progress",
+						"status": "done",
 						"dependencies": ["14"],
 						"parentId": "15",
 						"subtasks": [
@@ -190,7 +190,7 @@
 								"id": 2,
 								"title": "Define Serializer Trait",
 								"description": "Define Serializer trait in packages/graph/src/serialization.rs with serialize and deserialize methods. This trait abstracts over different serialization formats (JSON, bincode, MessagePack, etc.).",
-								"status": "pending",
+								"status": "done",
 								"dependencies": ["15.1.1"],
 								"parentId": "15.1"
 							},
@@ -198,7 +198,7 @@
 								"id": 3,
 								"title": "Define CompressionAlgorithm and BatchConfig Types",
 								"description": "Define CompressionAlgorithm enum (Gzip, Zstd, etc.) and BatchConfig structure (batch_size, batch_timeout, etc.) for distributed execution configuration. Add these types to execution.rs.",
-								"status": "pending",
+								"status": "done",
 								"dependencies": ["15.1.2"],
 								"parentId": "15.1"
 							},
@@ -206,7 +206,7 @@
 								"id": 4,
 								"title": "Add ExecutionMode Helper Methods",
 								"description": "Implement ExecutionMode::new_in_process, ExecutionMode::new_in_process_shared_memory, ExecutionMode::new_distributed, and ExecutionMode::new_hybrid constructor methods. Add documentation for each variant.",
-								"status": "pending",
+								"status": "in-progress",
 								"dependencies": ["15.1.3"],
 								"parentId": "15.1"
 							},
