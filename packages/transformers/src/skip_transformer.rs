@@ -2,10 +2,12 @@
 
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
+use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use streamweave::{Input, Output, Transformer, TransformerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+use streamweave_graph::ZeroCopyTransformer;
 
 /// A transformer that skips a specified number of items from the beginning of a stream.
 ///
@@ -135,5 +137,36 @@ where
         .unwrap_or_else(|| "skip_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }
+  }
+}
+
+impl<T> ZeroCopyTransformer for SkipTransformer<T>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
+  /// Transforms an item using zero-copy semantics with `Cow`.
+  ///
+  /// For `SkipTransformer`, this method handles both `Cow::Borrowed` and `Cow::Owned`
+  /// inputs. Since skipping doesn't modify items, we can return the same Cow variant
+  /// when an item should pass through (after the skip count), achieving true zero-copy.
+  ///
+  /// # Zero-Copy Behavior
+  ///
+  /// - `Cow::Borrowed`: Returns `Cow::Borrowed` when item should pass (zero-copy)
+  /// - `Cow::Owned`: Returns `Cow::Owned` when item should pass (no additional clone)
+  ///
+  /// Both cases preserve the original Cow variant when the item should pass through,
+  /// enabling zero-copy skip operations.
+  ///
+  /// # Note
+  ///
+  /// This method always returns the input Cow variant. The actual skipping logic
+  /// (discarding the first N items) is handled at the stream level in the `transform`
+  /// method. This zero-copy method is used for per-item transformations when the item
+  /// is known to pass through (after skip count).
+  fn transform_zero_copy<'a>(&mut self, input: Cow<'a, T>) -> Cow<'a, T> {
+    // Return the same Cow variant (zero-copy pass-through)
+    // The actual skipping happens at stream level in transform method
+    input
   }
 }
