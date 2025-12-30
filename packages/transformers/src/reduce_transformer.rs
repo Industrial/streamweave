@@ -3,10 +3,12 @@
 use async_stream::stream;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
+use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use streamweave::{Input, Output, Transformer, TransformerConfig};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+use streamweave_graph::ZeroCopyTransformer;
 
 /// A transformer that reduces a stream of items into a single accumulated value.
 ///
@@ -158,5 +160,50 @@ where
         .unwrap_or_else(|| "reduce_transformer".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }
+  }
+}
+
+impl<T, Acc, F> ZeroCopyTransformer for ReduceTransformer<T, Acc, F>
+where
+  T: std::fmt::Debug + Clone + Send + Sync + 'static,
+  Acc: std::fmt::Debug + Clone + Send + Sync + 'static,
+  F: FnMut(Acc, T) -> Acc + Send + Clone + 'static,
+{
+  /// Transforms an item using zero-copy semantics with `Cow`.
+  ///
+  /// For `ReduceTransformer`, this method handles both `Cow::Borrowed` and `Cow::Owned`
+  /// inputs. The input value is extracted from the Cow (cloned if Borrowed, moved if Owned),
+  /// then combined with the current accumulator using the reducer function. The updated
+  /// accumulator is returned as `Cow::Owned`.
+  ///
+  /// # Zero-Copy Behavior
+  ///
+  /// - `Cow::Borrowed`: Clones the input value before applying reducer (necessary for reduction)
+  /// - `Cow::Owned`: Uses the owned value directly (no additional clone of input)
+  ///
+  /// Both cases return `Cow::Owned` since the accumulator is always owned by the transformer.
+  /// The accumulator state is updated in-place, maintaining correct reduction semantics.
+  ///
+  /// # State Management
+  ///
+  /// This method mutates the internal accumulator state. Each call updates the accumulator
+  /// with the new item, enabling incremental reduction while preserving zero-copy semantics
+  /// for the input value extraction.
+  fn transform_zero_copy<'a>(&mut self, input: Cow<'a, T>) -> Cow<'a, Acc> {
+    // Extract the value from Cow (clone if Borrowed, move if Owned)
+    let value = match input {
+      Cow::Borrowed(borrowed) => borrowed.clone(), // Clone borrowed value
+      Cow::Owned(owned) => owned,                 // Use owned value directly
+    };
+
+    // Apply the reducer function: new_acc = reducer(current_acc, value)
+    let mut reducer = self.reducer.clone();
+    let new_accumulator = reducer(self.accumulator.clone(), value);
+
+    // Update the accumulator state
+    self.accumulator = new_accumulator.clone();
+
+    // Always return Owned since accumulator is owned by transformer
+    Cow::Owned(new_accumulator)
   }
 }
