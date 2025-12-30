@@ -308,6 +308,119 @@ impl BatchConfig {
   }
 }
 
+impl ExecutionMode {
+  /// Create a new `InProcess` execution mode without shared memory.
+  ///
+  /// This is the default in-process mode that uses zero-copy execution
+  /// with `Arc` for fan-out scenarios, but doesn't use shared memory.
+  ///
+  /// # Returns
+  ///
+  /// An `ExecutionMode::InProcess` variant with `use_shared_memory = false`
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave_graph::execution::ExecutionMode;
+  ///
+  /// let mode = ExecutionMode::new_in_process();
+  /// ```
+  #[must_use]
+  pub fn new_in_process() -> Self {
+    Self::InProcess {
+      use_shared_memory: false,
+    }
+  }
+
+  /// Create a new `InProcess` execution mode with shared memory enabled.
+  ///
+  /// This mode uses shared memory for ultra-high performance scenarios.
+  /// Shared memory allows for even more efficient data sharing between nodes.
+  ///
+  /// # Returns
+  ///
+  /// An `ExecutionMode::InProcess` variant with `use_shared_memory = true`
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave_graph::execution::ExecutionMode;
+  ///
+  /// let mode = ExecutionMode::new_in_process_shared_memory();
+  /// ```
+  #[must_use]
+  pub fn new_in_process_shared_memory() -> Self {
+    Self::InProcess {
+      use_shared_memory: true,
+    }
+  }
+
+  /// Create a new `Distributed` execution mode with the given serializer.
+  ///
+  /// This mode serializes data for transmission between nodes, enabling
+  /// distributed execution. Compression and batching are optional.
+  ///
+  /// # Arguments
+  ///
+  /// * `serializer` - The serializer to use for data serialization
+  ///
+  /// # Returns
+  ///
+  /// An `ExecutionMode::Distributed` variant with no compression or batching
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave_graph::execution::ExecutionMode;
+  /// use streamweave_graph::serialization::JsonSerializer;
+  ///
+  /// let serializer = Box::new(JsonSerializer::new());
+  /// let mode = ExecutionMode::new_distributed(serializer);
+  /// ```
+  #[must_use]
+  pub fn new_distributed(serializer: Box<dyn crate::serialization::Serializer>) -> Self {
+    Self::Distributed {
+      serializer,
+      compression: None,
+      batching: None,
+    }
+  }
+
+  /// Create a new `Hybrid` execution mode with the given threshold and serializer.
+  ///
+  /// This mode starts in in-process mode and switches to distributed mode
+  /// when the local threshold is exceeded.
+  ///
+  /// # Arguments
+  ///
+  /// * `local_threshold` - Threshold for switching from in-process to distributed mode
+  /// * `serializer` - Serializer to use when in distributed mode
+  ///
+  /// # Returns
+  ///
+  /// An `ExecutionMode::Hybrid` variant with the specified threshold and serializer
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave_graph::execution::ExecutionMode;
+  /// use streamweave_graph::serialization::JsonSerializer;
+  ///
+  /// let serializer = Box::new(JsonSerializer::new());
+  /// let mode = ExecutionMode::new_hybrid(1000, serializer);
+  /// ```
+  #[must_use]
+  pub fn new_hybrid(
+    local_threshold: usize,
+    serializer: Box<dyn crate::serialization::Serializer>,
+  ) -> Self {
+    Self::Hybrid {
+      local_threshold,
+      serializer,
+    }
+  }
+}
+
 /// Execution state for the graph executor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExecutionState {
