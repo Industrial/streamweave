@@ -322,10 +322,12 @@ where
   T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   // Default implementation: use regular transform
-  // For transformers that implement ZeroCopyTransformer, we would use
-  // process_with_zero_copy_impl, but Rust doesn't support specialization
-  // in stable. The zero-copy optimization will be applied at the item
-  // processing level in the next subtask (14.5.3).
+  // For transformers that implement ZeroCopyTransformer, the specialized
+  // version process_with_zero_copy_impl will be used via trait bounds.
+  // However, since Rust doesn't support specialization in stable, we use
+  // the regular transform method for now. The zero-copy optimization
+  // is available via process_with_zero_copy_impl for transformers that
+  // implement ZeroCopyTransformer, but requires explicit type bounds.
   transformer.transform(input_stream).await
 }
 
@@ -1230,25 +1232,20 @@ where
 
       // Convert to T::InputStream using the StreamConverter trait
       // The unsafe conversion is encapsulated in the trait implementation
-      let input_stream = stream_wrapper.into_input_stream();
+      let mut input_stream = stream_wrapper.into_input_stream();
+      let mut input_stream = pin!(input_stream);
 
-      // Apply transformer - use ZeroCopyTransformer if available
-      // NOTE: Full ZeroCopyTransformer integration with per-item processing will be
-      // completed in subtask 14.5.3 when we handle Cow return values properly.
-      // For now, we use the regular transform method, but the infrastructure is in place.
-      let transformed_stream = process_stream_with_zero_copy(transformer_clone, input_stream).await;
-      let mut transformed_stream = pin!(transformed_stream);
-
-      // Iterate over transformed output stream
+      // Process items one by one, using ZeroCopyTransformer if available
+      // This enables zero-copy transformations when the transformer implements ZeroCopyTransformer
       loop {
         // Use timeout to periodically check for shutdown
         let item_result = tokio::time::timeout(
           tokio::time::Duration::from_millis(100),
-          transformed_stream.next(),
+          input_stream.next(),
         )
         .await;
 
-        let item = match item_result {
+        let input_item = match item_result {
           Ok(Some(item)) => item,
           Ok(None) => break, // Stream exhausted
           Err(_) => {
@@ -1262,6 +1259,24 @@ where
             continue;
           }
         };
+
+        // Check pause signal before processing each item
+        let pause_check_result =
+          tokio::time::timeout(tokio::time::Duration::from_millis(100), async {
+            while *pause_signal.read().await {
+              tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+            }
+          })
+          .await;
+
+        if pause_check_result.is_err() && *pause_signal.read().await {
+          return Ok(());
+        }
+
+        // Transform item using ZeroCopyTransformer if available
+        // For transformers that implement ZeroCopyTransformer, we use transform_zero_copy
+        // with Cow::Owned. The Cow return value is handled below.
+        let item = transform_item_with_zero_copy(&mut transformer_clone, input_item);
 
         // Check pause signal before processing each item
         // If paused, wait briefly with timeout to avoid blocking during shutdown

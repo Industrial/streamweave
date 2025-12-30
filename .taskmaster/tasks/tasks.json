@@ -52,7 +52,7 @@
 				"id": "14",
 				"title": "Task 14: Zero-Copy Architecture Implementation - Phase 3: Conditional Cloning with Cow",
 				"description": "Implement Phase 3 of zero-copy architecture: add ZeroCopyTransformer trait, update transformers to support zero-copy with Cow (Clone on Write), and implement conditional cloning patterns.",
-				"status": "in-progress",
+				"status": "done",
 				"priority": "high",
 				"dependencies": ["13"],
 				"details": "Phase 3 implements conditional cloning patterns using Cow to avoid unnecessary clones in transformer operations. Transformers that may or may not need to own data can use Cow for zero-copy when possible, cloning only when necessary.",
@@ -129,7 +129,7 @@
 						"id": 5,
 						"title": "Integrate ZeroCopyTransformer into Graph Execution",
 						"description": "Update graph execution code to use ZeroCopyTransformer when available. Add logic to detect if a transformer implements ZeroCopyTransformer and use transform_zero_copy method instead of regular transform when possible.",
-						"status": "in-progress",
+						"status": "done",
 						"dependencies": ["14.4"],
 						"parentId": "14",
 						"subtasks": [
@@ -153,7 +153,7 @@
 								"id": 3,
 								"title": "Handle Cow Return Values in Execution",
 								"description": "Update graph execution code to handle Cow return values from transform_zero_copy. Extract owned values from Cow::Owned, handle Cow::Borrowed appropriately, and ensure correct ownership transfer to downstream nodes.",
-								"status": "in-progress",
+								"status": "done",
 								"dependencies": ["14.5.2"],
 								"parentId": "14.5"
 							}
