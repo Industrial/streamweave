@@ -86,8 +86,8 @@ pub trait NodeTrait: Send + Sync + std::any::Any {
   /// override this method to provide execution capability.
   fn spawn_execution_task(
     &self,
-    _input_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Receiver<Vec<u8>>>,
-    _output_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Sender<Vec<u8>>>,
+    _input_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Receiver<bytes::Bytes>>,
+    _output_channels: std::collections::HashMap<usize, tokio::sync::mpsc::Sender<bytes::Bytes>>,
     _pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
     None

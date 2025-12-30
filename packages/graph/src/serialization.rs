@@ -4,9 +4,9 @@
 //! graph node execution, allowing data to be serialized for transmission
 //! between nodes via channels.
 
+use bytes::Bytes;
 use serde::{Serialize, de::DeserializeOwned};
 use std::fmt;
-use bytes::Bytes;
 
 /// Error type for serialization operations.
 ///
@@ -63,10 +63,11 @@ impl From<serde_json::Error> for SerializationError {
   }
 }
 
-/// Serializes an item to a byte vector.
+/// Serializes an item to Bytes.
 ///
-/// This function serializes a value that implements `Serialize` to a JSON
-/// byte vector using `serde_json::to_vec`.
+/// This function serializes a value that implements `Serialize` to JSON
+/// bytes using `serde_json::to_vec` and converts the result to `Bytes`
+/// for zero-copy sharing.
 ///
 /// # Arguments
 ///
@@ -99,14 +100,15 @@ pub fn serialize<T: Serialize>(item: &T) -> Result<Bytes, SerializationError> {
     .map(Bytes::from)
 }
 
-/// Deserializes an item from a byte slice.
+/// Deserializes an item from Bytes.
 ///
 /// This function deserializes JSON bytes to a value that implements
-/// `DeserializeOwned` using `serde_json::from_slice`.
+/// `DeserializeOwned` using `serde_json::from_slice` with zero-copy access
+/// to the underlying slice via `Bytes::as_ref()`.
 ///
 /// # Arguments
 ///
-/// * `data` - The byte slice containing JSON data to deserialize.
+/// * `data` - The Bytes containing JSON data to deserialize.
 ///
 /// # Returns
 ///
@@ -118,6 +120,7 @@ pub fn serialize<T: Serialize>(item: &T) -> Result<Bytes, SerializationError> {
 /// ```rust
 /// use serde::Deserialize;
 /// use streamweave_graph::deserialize;
+/// use bytes::Bytes;
 ///
 /// #[derive(Deserialize, Debug, PartialEq)]
 /// struct Point {
@@ -125,13 +128,13 @@ pub fn serialize<T: Serialize>(item: &T) -> Result<Bytes, SerializationError> {
 ///     y: i32,
 /// }
 ///
-/// let bytes = br#"{"x":1,"y":2}"#;
+/// let bytes = Bytes::from(br#"{"x":1,"y":2}"#);
 /// let point: Point = deserialize(bytes)?;
 /// assert_eq!(point, Point { x: 1, y: 2 });
 /// # Ok::<(), streamweave_graph::SerializationError>(())
 /// ```
-pub fn deserialize<T: DeserializeOwned>(data: &[u8]) -> Result<T, SerializationError> {
-  serde_json::from_slice(data).map_err(SerializationError::from)
+pub fn deserialize<T: DeserializeOwned>(data: Bytes) -> Result<T, SerializationError> {
+  serde_json::from_slice(data.as_ref()).map_err(SerializationError::from)
 }
 
 #[cfg(test)]

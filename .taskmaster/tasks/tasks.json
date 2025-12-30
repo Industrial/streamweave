@@ -767,7 +767,7 @@
             "id": 1,
             "title": "Add bytes Dependency to Workspace",
             "description": "Add bytes crate dependency to workspace Cargo.toml with serde feature enabled for compatibility. Update workspace.dependencies section to include bytes = { version = \"1.x\", features = [\"serde\"] }.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "parentId": "12",
             "subtasks": [
@@ -790,7 +790,7 @@
                 "parentId": "12.1"
               }
             ],
-            "updatedAt": "2025-12-30T17:17:09.209Z"
+            "updatedAt": "2025-12-30T17:23:44.868Z"
           },
           {
             "id": 2,
@@ -1001,7 +1001,7 @@
             ]
           }
         ],
-        "updatedAt": "2025-12-30T17:17:09.209Z"
+        "updatedAt": "2025-12-30T17:23:44.868Z"
       },
       {
         "id": "13",
@@ -2321,7 +2321,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-30T17:17:09.215Z",
+      "lastModified": "2025-12-30T17:23:44.875Z",
       "taskCount": 17,
       "completedCount": 11,
       "tags": [

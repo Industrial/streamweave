@@ -31,6 +31,7 @@
 //! 4. **Shutdown**: Gracefully stop all nodes and clean up resources
 
 use crate::graph::Graph;
+use bytes::Bytes;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -228,10 +229,10 @@ pub struct GraphExecutor {
   node_handles: HashMap<String, JoinHandle<Result<(), ExecutionError>>>,
   /// Channel senders for routing data between nodes
   /// Key: (node_name, port_index)
-  channel_senders: HashMap<(String, usize), mpsc::Sender<Vec<u8>>>,
+  channel_senders: HashMap<(String, usize), mpsc::Sender<Bytes>>,
   /// Channel receivers for routing data between nodes
   /// Key: (node_name, port_index)
-  channel_receivers: HashMap<(String, usize), mpsc::Receiver<Vec<u8>>>,
+  channel_receivers: HashMap<(String, usize), mpsc::Receiver<Bytes>>,
   /// Execution state
   state: ExecutionState,
   /// Pause signal shared across all node tasks
@@ -848,7 +849,7 @@ impl GraphExecutor {
   ///
   /// # Returns
   ///
-  /// `Some(&mpsc::Sender<Vec<u8>>)` if the channel exists, `None` otherwise.
+  /// `Some(&mpsc::Sender<Bytes>)` if the channel exists, `None` otherwise.
   ///
   /// # Note
   ///
@@ -859,7 +860,7 @@ impl GraphExecutor {
     &self,
     node_name: &str,
     port_index: usize,
-  ) -> Option<&mpsc::Sender<Vec<u8>>> {
+  ) -> Option<&mpsc::Sender<Bytes>> {
     self
       .channel_senders
       .get(&(node_name.to_string(), port_index))
@@ -874,7 +875,7 @@ impl GraphExecutor {
   ///
   /// # Returns
   ///
-  /// `Some(&mut mpsc::Receiver<Vec<u8>>)` if the channel exists, `None` otherwise.
+  /// `Some(&mut mpsc::Receiver<Bytes>)` if the channel exists, `None` otherwise.
   ///
   /// # Note
   ///
@@ -883,7 +884,7 @@ impl GraphExecutor {
     &mut self,
     node_name: &str,
     port_index: usize,
-  ) -> Option<&mut mpsc::Receiver<Vec<u8>>> {
+  ) -> Option<&mut mpsc::Receiver<Bytes>> {
     self
       .channel_receivers
       .get_mut(&(node_name.to_string(), port_index))

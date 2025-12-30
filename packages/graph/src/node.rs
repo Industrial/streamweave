@@ -1485,7 +1485,7 @@ mod tests {
     // Collect all items
     let mut received = Vec::new();
     while let Some(bytes) = rx.recv().await {
-      let item: i32 = deserialize(&bytes).unwrap();
+      let item: i32 = deserialize(bytes).unwrap();
       received.push(item);
     }
 
