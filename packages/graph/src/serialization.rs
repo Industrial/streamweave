@@ -134,47 +134,6 @@ pub fn serialize<T: Serialize>(item: &T) -> Result<Bytes, SerializationError> {
     .map(Bytes::from)
 }
 
-/// Serializes an item to a vector of bytes.
-///
-/// # Deprecated
-///
-/// This function is deprecated. Use [`serialize()`] instead, which returns
-/// `Bytes` for zero-copy operations. If you need a `Vec<u8>`, you can
-/// convert the `Bytes` result using `.to_vec()` or `.into()`.
-///
-/// # Arguments
-///
-/// * `item` - The item to serialize.
-///
-/// # Returns
-///
-/// Returns `Ok(Vec<u8>)` containing the serialized JSON bytes, or
-/// `Err(SerializationError)` if serialization fails.
-///
-/// # Example
-///
-/// ```rust
-/// use serde::Serialize;
-/// use streamweave_graph::serialize_to_vec;
-///
-/// #[derive(Serialize)]
-/// struct Point {
-///     x: i32,
-///     y: i32,
-/// }
-///
-/// let point = Point { x: 1, y: 2 };
-/// let vec = serialize_to_vec(&point)?;
-/// # Ok::<(), streamweave_graph::SerializationError>(())
-/// ```
-#[deprecated(
-  since = "0.5.0",
-  note = "Use serialize() instead, which returns Bytes for zero-copy operations. If you need Vec<u8>, convert the Bytes result using .to_vec() or .into()"
-)]
-pub fn serialize_to_vec<T: Serialize>(item: &T) -> Result<Vec<u8>, SerializationError> {
-  serialize(item).map(|bytes| bytes.to_vec())
-}
-
 /// Deserializes an item from bytes.
 ///
 /// This function deserializes JSON bytes to a value that implements
@@ -210,14 +169,6 @@ pub fn serialize_to_vec<T: Serialize>(item: &T) -> Result<Vec<u8>, Serialization
 /// ```
 pub fn deserialize<T: DeserializeOwned>(data: Bytes) -> Result<T, SerializationError> {
   serde_json::from_slice(data.as_ref()).map_err(SerializationError::from)
-}
-
-#[deprecated(
-  since = "0.5.0",
-  note = "Use deserialize() instead, which accepts Bytes for zero-copy operations. Convert your &[u8] to Bytes using Bytes::copy_from_slice(slice)"
-)]
-pub fn deserialize_from_slice<T: DeserializeOwned>(data: &[u8]) -> Result<T, SerializationError> {
-  deserialize(Bytes::copy_from_slice(data))
 }
 
 #[cfg(test)]

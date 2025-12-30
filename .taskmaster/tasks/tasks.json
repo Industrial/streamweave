@@ -388,40 +388,6 @@
 							}
 						]
 					},
-					{
-						"id": 6,
-						"title": "Implement JSON Serializer for Backward Compatibility",
-						"description": "Implement Serializer trait for JSON serialization to maintain backward compatibility with existing distributed execution. This serves as default serializer.",
-						"status": "pending",
-						"dependencies": ["15.5"],
-						"parentId": "15",
-						"subtasks": [
-							{
-								"id": 1,
-								"title": "Create JsonSerializer Struct",
-								"description": "Create JsonSerializer struct in packages/graph/src/serialization.rs that implements Serializer trait. Use serde_json for serialization/deserialization, returning Bytes.",
-								"status": "pending",
-								"dependencies": ["15.5"],
-								"parentId": "15.6"
-							},
-							{
-								"id": 2,
-								"title": "Implement Serializer Trait for JsonSerializer",
-								"description": "Implement Serializer::serialize and Serializer::deserialize methods for JsonSerializer. Use existing serde_json serialization logic, converting results to/from Bytes.",
-								"status": "pending",
-								"dependencies": ["15.6.1"],
-								"parentId": "15.6"
-							},
-							{
-								"id": 3,
-								"title": "Add JsonSerializer::new Constructor",
-								"description": "Add JsonSerializer::new() constructor method. Export JsonSerializer from graph module for use as default serializer in distributed mode.",
-								"status": "pending",
-								"dependencies": ["15.6.2"],
-								"parentId": "15.6"
-							}
-						]
-					}
 				]
 			},
 			{

@@ -204,9 +204,10 @@ impl std::error::Error for ExecutionError {}
 /// // In-process zero-copy execution
 /// let mode = ExecutionMode::InProcess { use_shared_memory: false };
 ///
-/// // Distributed execution with JSON serializer
+/// // Distributed execution with a serializer
+/// let serializer: Box<dyn Serializer> = /* your serializer implementation */;
 /// let mode = ExecutionMode::Distributed {
-///     serializer: Box::new(JsonSerializer::new()),
+///     serializer,
 ///     compression: None,
 ///     batching: None,
 /// };
@@ -372,9 +373,9 @@ impl ExecutionMode {
   ///
   /// ```rust
   /// use streamweave_graph::execution::ExecutionMode;
-  /// use streamweave_graph::serialization::JsonSerializer;
+  /// use streamweave_graph::serialization::Serializer;
   ///
-  /// let serializer = Box::new(JsonSerializer::new());
+  /// let serializer: Box<dyn Serializer> = /* your serializer implementation */;
   /// let mode = ExecutionMode::new_distributed(serializer);
   /// ```
   #[must_use]
@@ -404,9 +405,9 @@ impl ExecutionMode {
   ///
   /// ```rust
   /// use streamweave_graph::execution::ExecutionMode;
-  /// use streamweave_graph::serialization::JsonSerializer;
+  /// use streamweave_graph::serialization::Serializer;
   ///
-  /// let serializer = Box::new(JsonSerializer::new());
+  /// let serializer: Box<dyn Serializer> = /* your serializer implementation */;
   /// let mode = ExecutionMode::new_hybrid(1000, serializer);
   /// ```
   #[must_use]
