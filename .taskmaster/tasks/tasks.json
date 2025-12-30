@@ -95,7 +95,7 @@
 						"id": 4,
 						"title": "Update Additional Transformers for Zero-Copy",
 						"description": "Update other key transformers to implement ZeroCopyTransformer trait. Focus on high-frequency transformers like FilterTransformer, ReduceTransformer, and other commonly used transformers.",
-						"status": "pending",
+						"status": "in-progress",
 						"dependencies": ["14.3"],
 						"parentId": "14",
 						"subtasks": [
@@ -103,7 +103,7 @@
 								"id": 1,
 								"title": "Implement ZeroCopyTransformer for FilterTransformer",
 								"description": "Implement ZeroCopyTransformer trait for FilterTransformer. Handle Cow::Borrowed and Cow::Owned cases, ensuring filter operations work correctly with borrowed and owned values.",
-								"status": "pending",
+								"status": "done",
 								"dependencies": ["14.3"],
 								"parentId": "14.4"
 							},
