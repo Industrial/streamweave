@@ -23,7 +23,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave-process = "0.3.0"
+streamweave-process = "0.6.0"
 ```
 
 ## 🚀 Quick Start

@@ -26,7 +26,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave-metrics = { version = "0.3.0", features = ["prometheus", "opentelemetry"] }
+streamweave-metrics = { version = "0.6.0", features = ["prometheus", "opentelemetry"] }
 ```
 
 ## 🚀 Quick Start

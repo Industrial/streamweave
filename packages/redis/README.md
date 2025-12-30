@@ -25,7 +25,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave-redis = { version = "0.3.0", features = ["redis"] }
+streamweave-redis = { version = "0.6.0", features = ["redis"] }
 ```
 
 ## 🚀 Quick Start

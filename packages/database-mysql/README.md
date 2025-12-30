@@ -24,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave-database-mysql = "0.3.0"
+streamweave-database-mysql = "0.6.0"
 ```
 
 ## 🚀 Quick Start

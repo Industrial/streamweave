@@ -23,7 +23,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave-tempfile = "0.3.0"
+streamweave-tempfile = "0.6.0"
 ```
 
 ## 🚀 Quick Start

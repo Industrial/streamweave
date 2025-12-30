@@ -24,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave-csv = "0.3.0"
+streamweave-csv = "0.6.0"
 ```
 
 ## 🚀 Quick Start

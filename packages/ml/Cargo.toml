@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-ml"
-version = "0.6.0"
+version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -13,8 +13,8 @@ description = "Machine learning transformers for StreamWeave"
 
 [dependencies]
 # Core dependencies
-streamweave = { path = "../streamweave", version = "0.6.0" }
-streamweave-error = { path = "../error", version = "0.6.0" }
+streamweave = { path = "../streamweave" }
+streamweave-error = { path = "../error" }
 
 # Async runtime and utilities
 tokio = { workspace = true, features = ["macros", "rt", "time", "sync"] }

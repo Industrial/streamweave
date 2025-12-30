@@ -25,7 +25,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave-distributed = "0.3.0"
+streamweave-distributed = "0.6.0"
 ```
 
 ## 🚀 Quick Start

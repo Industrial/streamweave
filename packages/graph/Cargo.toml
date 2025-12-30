@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-graph"
-version = "0.6.0"
+version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -14,11 +14,11 @@ description = "Graph API for StreamWeave"
 [dependencies]
 async-stream = { workspace = true }
 async-trait = { workspace = true }
-streamweave = { path = "../streamweave", version = "0.6.0" }
-streamweave-error = { path = "../error", version = "0.6.0" }
-streamweave-pipeline = { path = "../pipeline", version = "0.6.0" }
-streamweave-stateful = { path = "../stateful", version = "0.6.0" }
-streamweave-window = { path = "../window", version = "0.6.0" }
+streamweave = { path = "../streamweave" }
+streamweave-error = { path = "../error" }
+streamweave-pipeline = { path = "../pipeline" }
+streamweave-stateful = { path = "../stateful" }
+streamweave-window = { path = "../window" }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
 futures = { workspace = true }
 chrono = { workspace = true }
@@ -32,8 +32,8 @@ zstd = "0.13"
 thiserror = { workspace = true }
 
 [dev-dependencies]
-streamweave-vec = { path = "../vec", version = "0.6.0" }
-streamweave-transformers = { path = "../transformers", version = "0.6.0" }
+streamweave-vec = { path = "../vec" }
+streamweave-transformers = { path = "../transformers" }
 criterion = { version = "0.5", features = [
   "html_reports",
   "async_tokio",

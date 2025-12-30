@@ -23,7 +23,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave-parquet = "0.3.0"
+streamweave-parquet = "0.6.0"
 ```
 
 ## 🚀 Quick Start

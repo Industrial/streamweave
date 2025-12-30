@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-stateful"
-version = "0.6.0"
+version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -12,8 +12,8 @@ categories.workspace = true
 description = "Stateful transformer support for StreamWeave"
 
 [dependencies]
-streamweave = { path = "../streamweave", version = "0.6.0" }
-streamweave-error = { path = "../error", version = "0.6.0" }
+streamweave = { path = "../streamweave" }
+streamweave-error = { path = "../error" }
 tokio = { workspace = true, features = ["macros", "rt"] }
 futures = { workspace = true }
 async-trait = { workspace = true }

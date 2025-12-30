@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-database"
-version = "0.6.0"
+version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -14,12 +14,8 @@ description = "Base types for StreamWeave database packages"
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
+streamweave-message = { path = "../message", optional = true }
 
 [features]
 default = []
 message-envelope = ["dep:streamweave-message"]
-
-[dependencies.streamweave-message]
-path = "../message"
-version = "0.6.0"
-optional = true

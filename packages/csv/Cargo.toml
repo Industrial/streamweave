@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-csv"
-version = "0.6.0"
+version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -16,47 +16,19 @@ default = ["csv"]
 csv = ["dep:csv"]
 message-envelope = ["dep:streamweave-message"]
 
-[dependencies.chrono]
-workspace = true
-
-[dependencies.async-stream]
-workspace = true
-
-[dependencies.streamweave]
-path = "../streamweave"
-version = "0.6.0"
-
-[dependencies.streamweave-error]
-path = "../error"
-version = "0.6.0"
-
-[dependencies.streamweave-message]
-path = "../message"
-version = "0.6.0"
-optional = true
-
-[dependencies.serde]
-workspace = true
-
-[dependencies.csv]
-workspace = true
-optional = true
-
-[dependencies.tokio]
-workspace = true
-features = ["macros", "rt", "fs", "sync"]
-
-[dependencies.futures]
-workspace = true
-
-[dependencies.async-trait]
-workspace = true
-
-[dependencies.thiserror]
-workspace = true
-
-[dependencies.tracing]
-workspace = true
+[dependencies]
+chrono = { workspace = true }
+async-stream = { workspace = true }
+streamweave = { path = "../streamweave" }
+streamweave-error = { path = "../error" }
+streamweave-message = { path = "../message", optional = true }
+serde = { workspace = true }
+csv = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["macros", "rt", "fs", "sync"] }
+futures = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies.tempfile]
 workspace = true

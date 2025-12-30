@@ -24,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave-transformers = "0.3.0"
+streamweave-transformers = "0.6.0"
 
 # ML transformers are in a separate package
 streamweave-ml = { path = "../packages/ml", features = ["onnx"] }

@@ -27,7 +27,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave-graph = "0.3.0"
+streamweave-graph = "0.6.0"
 ```
 
 ## 🚀 Quick Start

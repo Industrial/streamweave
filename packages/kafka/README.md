@@ -25,7 +25,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave-kafka = { version = "0.3.0", features = ["kafka"] }
+streamweave-kafka = { version = "0.6.0", features = ["kafka"] }
 ```
 
 ## 🚀 Quick Start

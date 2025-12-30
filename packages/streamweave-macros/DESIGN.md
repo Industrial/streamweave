@@ -765,7 +765,7 @@ let pipeline = pipeline! {
 
 ```toml
 [dependencies]
-streamweave-macros = { version = "0.3.0", optional = true }
+streamweave-macros = { version = "0.6.0", optional = true }
 
 [features]
 default = []

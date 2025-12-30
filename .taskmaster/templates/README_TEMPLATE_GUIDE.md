@@ -108,7 +108,7 @@ Replace these placeholders in the template:
 - `{package-description}` - One-line description
 - `{package-tagline}` - Short tagline
 - `{package-detailed-description}` - Detailed description (2-3 paragraphs)
-- `{version}` - Current version (e.g., `0.3.0`)
+- `{version}` - Current version (e.g., `0.6.0`)
 - `{key-features-list}` - Bulleted list of features
 - `{quick-start-example}` - Minimal working code example
 - `{api-overview-description}` - Description of main API

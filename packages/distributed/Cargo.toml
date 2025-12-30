@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-distributed"
-version = "0.6.0"
+version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -12,8 +12,8 @@ categories.workspace = true
 description = "Distributed processing integration for StreamWeave"
 
 [dependencies]
-streamweave = { path = "../streamweave", version = "0.6.0" }
-streamweave-graph = { path = "../graph", version = "0.6.0" }
+streamweave = { path = "../streamweave" }
+streamweave-graph = { path = "../graph" }
 chrono = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "full"] }
 futures = { workspace = true }
