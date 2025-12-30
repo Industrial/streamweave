@@ -8,6 +8,40 @@ use bytes::Bytes;
 use serde::{Serialize, de::DeserializeOwned};
 use std::fmt;
 
+/// Trait for serializing and deserializing data.
+///
+/// This trait abstracts over different serialization formats (JSON, bincode,
+/// MessagePack, etc.), allowing the execution engine to use different
+/// serializers based on the execution mode.
+///
+/// # Note
+///
+/// This is a basic trait definition. Full implementation details will be
+/// added in task 15.1.2.
+pub trait Serializer: Send + Sync {
+  /// Serializes an item to bytes.
+  ///
+  /// # Arguments
+  ///
+  /// * `item` - The item to serialize
+  ///
+  /// # Returns
+  ///
+  /// Serialized bytes, or an error if serialization fails
+  fn serialize<T: Serialize>(&self, item: &T) -> Result<Bytes, SerializationError>;
+
+  /// Deserializes an item from bytes.
+  ///
+  /// # Arguments
+  ///
+  /// * `bytes` - The bytes to deserialize
+  ///
+  /// # Returns
+  ///
+  /// Deserialized item, or an error if deserialization fails
+  fn deserialize<T: DeserializeOwned>(&self, bytes: Bytes) -> Result<T, SerializationError>;
+}
+
 /// Error type for serialization operations.
 ///
 /// This enum represents errors that can occur during serialization or

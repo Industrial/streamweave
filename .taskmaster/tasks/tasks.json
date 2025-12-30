@@ -165,7 +165,7 @@
 				"id": "15",
 				"title": "Task 15: Zero-Copy Architecture Implementation - Phase 4: Dual-Mode Graph Execution",
 				"description": "Implement Phase 4 of zero-copy architecture: add ExecutionMode enum, implement in-process zero-copy execution path, add mode detection logic, and update graph builder API to support dual-mode execution.",
-				"status": "pending",
+				"status": "in-progress",
 				"priority": "high",
 				"dependencies": ["14"],
 				"details": "Phase 4 implements dual-mode execution where graphs can run in-process (zero-copy) or distributed (serialized) modes. In-process mode eliminates all serialization overhead, achieving 50-80% memory reduction and 30-50% CPU reduction.",
@@ -174,7 +174,7 @@
 						"id": 1,
 						"title": "Implement ExecutionMode Enum",
 						"description": "Create ExecutionMode enum in packages/graph/src/execution.rs (or create file if needed) with variants: InProcess, Distributed, and Hybrid. Define all necessary fields and configuration options for each mode.",
-						"status": "pending",
+						"status": "in-progress",
 						"dependencies": ["14"],
 						"parentId": "15",
 						"subtasks": [
@@ -182,7 +182,7 @@
 								"id": 1,
 								"title": "Define ExecutionMode Enum Structure",
 								"description": "Define ExecutionMode enum with InProcess { use_shared_memory: bool }, Distributed { serializer: Box<dyn Serializer>, compression: Option<CompressionAlgorithm>, batching: Option<BatchConfig> }, and Hybrid { local_threshold: usize, serializer: Box<dyn Serializer> } variants.",
-								"status": "pending",
+								"status": "done",
 								"dependencies": ["14"],
 								"parentId": "15.1"
 							},

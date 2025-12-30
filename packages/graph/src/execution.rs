@@ -185,6 +185,129 @@ impl std::fmt::Display for ExecutionError {
 
 impl std::error::Error for ExecutionError {}
 
+/// Execution mode for graph execution.
+///
+/// This enum defines how a graph should be executed, supporting both
+/// in-process zero-copy execution and distributed serialized execution.
+///
+/// # Variants
+///
+/// - `InProcess`: Zero-copy in-process execution with optional shared memory
+/// - `Distributed`: Serialized execution for distributed scenarios
+/// - `Hybrid`: Adaptive execution that switches between modes based on load
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave_graph::execution::ExecutionMode;
+///
+/// // In-process zero-copy execution
+/// let mode = ExecutionMode::InProcess { use_shared_memory: false };
+///
+/// // Distributed execution with JSON serializer
+/// let mode = ExecutionMode::Distributed {
+///     serializer: Box::new(JsonSerializer::new()),
+///     compression: None,
+///     batching: None,
+/// };
+/// ```
+#[derive(Debug, Clone)]
+pub enum ExecutionMode {
+  /// In-process zero-copy execution mode.
+  ///
+  /// This mode eliminates serialization overhead by passing data directly
+  /// between nodes in the same process. For fan-out scenarios, data is
+  /// shared using `Arc` to avoid copying.
+  ///
+  /// # Fields
+  ///
+  /// * `use_shared_memory` - Whether to use shared memory for ultra-high
+  ///   performance scenarios (future optimization)
+  InProcess {
+    /// Whether to use shared memory for data sharing
+    use_shared_memory: bool,
+  },
+  /// Distributed serialized execution mode.
+  ///
+  /// This mode serializes data for transmission between nodes, enabling
+  /// distributed execution across processes or machines. Supports optional
+  /// compression and batching for efficiency.
+  ///
+  /// # Fields
+  ///
+  /// * `serializer` - The serializer to use for data serialization
+  /// * `compression` - Optional compression algorithm for serialized data
+  /// * `batching` - Optional batching configuration for grouping items
+  Distributed {
+    /// Serializer for data serialization
+    serializer: Box<dyn crate::serialization::Serializer>,
+    /// Optional compression algorithm
+    compression: Option<CompressionAlgorithm>,
+    /// Optional batching configuration
+    batching: Option<BatchConfig>,
+  },
+  /// Hybrid execution mode that adapts between in-process and distributed.
+  ///
+  /// This mode starts in in-process mode and switches to distributed mode
+  /// when the local threshold is exceeded, enabling adaptive performance
+  /// optimization based on load.
+  ///
+  /// # Fields
+  ///
+  /// * `local_threshold` - Threshold for switching from in-process to distributed
+  /// * `serializer` - Serializer to use when in distributed mode
+  Hybrid {
+    /// Threshold for switching to distributed mode
+    local_threshold: usize,
+    /// Serializer for distributed mode
+    serializer: Box<dyn crate::serialization::Serializer>,
+  },
+}
+
+/// Compression algorithm for distributed execution.
+///
+/// This enum defines compression algorithms that can be used to compress
+/// serialized data in distributed execution mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompressionAlgorithm {
+  /// Gzip compression
+  Gzip,
+  /// Zstandard compression
+  Zstd,
+}
+
+/// Batching configuration for distributed execution.
+///
+/// This structure defines how items should be batched together before
+/// serialization and transmission in distributed execution mode.
+#[derive(Debug, Clone)]
+pub struct BatchConfig {
+  /// Maximum number of items per batch
+  pub batch_size: usize,
+  /// Maximum time to wait before sending a batch (in milliseconds)
+  pub batch_timeout_ms: u64,
+}
+
+impl BatchConfig {
+  /// Create a new `BatchConfig` with the given batch size and timeout.
+  ///
+  /// # Arguments
+  ///
+  /// * `batch_size` - Maximum number of items per batch
+  /// * `batch_timeout_ms` - Maximum time to wait before sending a batch (in milliseconds)
+  ///
+  /// # Returns
+  ///
+  /// A new `BatchConfig` instance
+  #[must_use]
+  pub fn new(batch_size: usize, batch_timeout_ms: u64) -> Self {
+    Self {
+      batch_size,
+      batch_timeout_ms,
+    }
+  }
+}
+
 /// Execution state for the graph executor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExecutionState {
