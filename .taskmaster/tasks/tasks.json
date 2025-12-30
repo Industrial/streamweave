@@ -613,7 +613,7 @@
 						"id": 2,
 						"title": "Replace Vec<u8> with Bytes in Serialization Module",
 						"description": "Update packages/graph/src/serialization.rs to use bytes::Bytes instead of Vec<u8> for all serialization functions. Replace serialize function return type from Vec<u8> to Bytes, update deserialize function to accept Bytes, and ensure all internal serialization code uses Bytes.",
-						"status": "in-progress",
+						"status": "done",
 						"dependencies": ["12.1"],
 						"parentId": "12",
 						"subtasks": [
@@ -650,7 +650,7 @@
 								"parentId": "12.2"
 							}
 						],
-						"updatedAt": "2025-12-30T17:26:04.201Z"
+						"updatedAt": "2025-12-30T17:28:00.076Z"
 					},
 					{
 						"id": 3,
@@ -779,7 +779,7 @@
 						]
 					}
 				],
-				"updatedAt": "2025-12-30T17:26:04.201Z"
+				"updatedAt": "2025-12-30T17:28:00.076Z"
 			},
 			{
 				"id": "13",
@@ -1849,7 +1849,7 @@
 		],
 		"metadata": {
 			"version": "1.0.0",
-			"lastModified": "2025-12-30T17:26:04.202Z",
+			"lastModified": "2025-12-30T17:28:00.080Z",
 			"taskCount": 17,
 			"completedCount": 11,
 			"tags": ["master"]
