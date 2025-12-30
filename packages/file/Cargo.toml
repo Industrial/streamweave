@@ -1,6 +1,6 @@
 [package]
 name = "streamweave-file"
-version = "0.5.0"
+version = "0.6.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -23,15 +23,15 @@ workspace = true
 
 [dependencies.streamweave]
 path = "../streamweave"
-version = "0.5.0"
+version = "0.6.0"
 
 [dependencies.streamweave-error]
 path = "../error"
-version = "0.5.0"
+version = "0.6.0"
 
 [dependencies.streamweave-message]
 path = "../message"
-version = "0.5.0"
+version = "0.6.0"
 optional = true
 
 [dependencies.tokio]

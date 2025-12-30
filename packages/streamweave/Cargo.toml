@@ -1,6 +1,6 @@
 [package]
 name = "streamweave"
-version = "0.5.0"
+version = "0.6.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -16,7 +16,7 @@ tokio = { workspace = true, features = ["macros", "rt", "time"] }
 futures = { workspace = true }
 async-trait = { workspace = true }
 chrono = { workspace = true }
-streamweave-error = { path = "../error", version = "0.5.0" }
+streamweave-error = { path = "../error", version = "0.6.0" }
 
 [dev-dependencies]
 proptest = { workspace = true }
