@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use criterion::async_executor::FuturesExecutor;
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::collections::HashMap;
@@ -17,10 +18,7 @@ fn compression_benchmark(c: &mut Criterion) {
 
   // Test data: JSON-serialized integers
   let data: Vec<i32> = (0..1000).collect();
-  let serialized: Vec<Vec<u8>> = data
-    .iter()
-    .map(|&x| serialize(&x).unwrap().into())
-    .collect();
+  let serialized: Vec<Bytes> = data.iter().map(|&x| serialize(&x).unwrap()).collect();
 
   let total_size: usize = serialized.iter().map(|s| s.len()).sum();
   group.throughput(criterion::Throughput::Bytes(total_size as u64));

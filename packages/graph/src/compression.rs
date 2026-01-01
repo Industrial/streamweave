@@ -4,26 +4,31 @@
 //! distributed execution mode. It supports both Gzip and Zstd compression
 //! algorithms with configurable compression levels.
 //!
+//! This module uses `bytes::Bytes` for zero-copy operations, allowing
+//! compressed data to be shared efficiently without copying.
+//!
 //! ## Usage
 //!
 //! ```rust
 //! use streamweave_graph::compression::{Compression, GzipCompression, ZstdCompression};
+//! use bytes::Bytes;
 //!
 //! // Create a gzip compressor with level 6
 //! let gzip = GzipCompression::new(6);
 //! let data = b"hello world";
 //! let compressed = gzip.compress(data)?;
 //! let decompressed = gzip.decompress(&compressed)?;
-//! assert_eq!(data, decompressed.as_slice());
+//! assert_eq!(data, decompressed.as_ref());
 //!
 //! // Create a zstd compressor with level 3
 //! let zstd = ZstdCompression::new(3);
 //! let compressed = zstd.compress(data)?;
 //! let decompressed = zstd.decompress(&compressed)?;
-//! assert_eq!(data, decompressed.as_slice());
+//! assert_eq!(data, decompressed.as_ref());
 //! ```
 
 use crate::execution::CompressionAlgorithm;
+use bytes::Bytes;
 use flate2::Compression as Flate2Compression;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
@@ -48,6 +53,9 @@ pub enum CompressionError {
 ///
 /// This trait abstracts over different compression algorithms, allowing
 /// the execution engine to use any compression algorithm interchangeably.
+///
+/// Uses `Bytes` for zero-copy operations, enabling efficient sharing of
+/// compressed data without memory copies.
 pub trait Compression: Send + Sync {
   /// Compress the given data.
   ///
@@ -57,8 +65,8 @@ pub trait Compression: Send + Sync {
   ///
   /// # Returns
   ///
-  /// Compressed data as a `Vec<u8>`, or an error if compression fails.
-  fn compress(&self, data: &[u8]) -> Result<Vec<u8>, CompressionError>;
+  /// Compressed data as `Bytes` for zero-copy sharing, or an error if compression fails.
+  fn compress(&self, data: &[u8]) -> Result<Bytes, CompressionError>;
 
   /// Decompress the given compressed data.
   ///
@@ -68,8 +76,8 @@ pub trait Compression: Send + Sync {
   ///
   /// # Returns
   ///
-  /// Decompressed data as a `Vec<u8>`, or an error if decompression fails.
-  fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, CompressionError>;
+  /// Decompressed data as `Bytes` for zero-copy sharing, or an error if decompression fails.
+  fn decompress(&self, data: &[u8]) -> Result<Bytes, CompressionError>;
 
   /// Get the compression level.
   ///
@@ -120,17 +128,18 @@ impl GzipCompression {
 }
 
 impl Compression for GzipCompression {
-  fn compress(&self, data: &[u8]) -> Result<Vec<u8>, CompressionError> {
+  fn compress(&self, data: &[u8]) -> Result<Bytes, CompressionError> {
     let mut encoder = GzEncoder::new(Vec::new(), Flate2Compression::new(self.level));
     encoder
       .write_all(data)
       .map_err(|e| CompressionError::CompressionFailed(e.to_string()))?;
-    encoder
+    let compressed = encoder
       .finish()
-      .map_err(|e| CompressionError::CompressionFailed(e.to_string()))
+      .map_err(|e| CompressionError::CompressionFailed(e.to_string()))?;
+    Ok(Bytes::from(compressed))
   }
 
-  fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, CompressionError> {
+  fn decompress(&self, data: &[u8]) -> Result<Bytes, CompressionError> {
     let mut decoder = GzDecoder::new(data);
     let mut decompressed = Vec::new();
     decoder.read_to_end(&mut decompressed).map_err(|e| {
@@ -150,7 +159,7 @@ impl Compression for GzipCompression {
         }
       }
     })?;
-    Ok(decompressed)
+    Ok(Bytes::from(decompressed))
   }
 
   fn compression_level(&self) -> u32 {
@@ -196,19 +205,22 @@ impl ZstdCompression {
 }
 
 impl Compression for ZstdCompression {
-  fn compress(&self, data: &[u8]) -> Result<Vec<u8>, CompressionError> {
+  fn compress(&self, data: &[u8]) -> Result<Bytes, CompressionError> {
     zstd::encode_all(data, self.level)
       .map_err(|e| CompressionError::CompressionFailed(format!("Zstd compression failed: {}", e)))
+      .map(Bytes::from)
   }
 
-  fn decompress(&self, data: &[u8]) -> Result<Vec<u8>, CompressionError> {
-    zstd::decode_all(data).map_err(|e| {
-      if e.to_string().contains("corrupt") || e.to_string().contains("invalid") {
-        CompressionError::CorruptedData
-      } else {
-        CompressionError::DecompressionFailed(format!("Zstd decompression failed: {}", e))
-      }
-    })
+  fn decompress(&self, data: &[u8]) -> Result<Bytes, CompressionError> {
+    zstd::decode_all(data)
+      .map_err(|e| {
+        if e.to_string().contains("corrupt") || e.to_string().contains("invalid") {
+          CompressionError::CorruptedData
+        } else {
+          CompressionError::DecompressionFailed(format!("Zstd decompression failed: {}", e))
+        }
+      })
+      .map(Bytes::from)
   }
 
   fn compression_level(&self) -> u32 {
@@ -252,7 +264,7 @@ mod tests {
     assert!(compressed.len() < data.len());
 
     let decompressed = compressor.decompress(&compressed).unwrap();
-    assert_eq!(data, decompressed.as_slice());
+    assert_eq!(data, decompressed.as_ref());
   }
 
   #[test]
@@ -263,7 +275,7 @@ mod tests {
     let compressed = compressor.compress(original).unwrap();
     let decompressed = compressor.decompress(&compressed).unwrap();
 
-    assert_eq!(original, decompressed.as_slice());
+    assert_eq!(original, decompressed.as_ref());
   }
 
   #[test]
@@ -276,7 +288,7 @@ mod tests {
     assert!(compressed.len() < data.len());
 
     let decompressed = compressor.decompress(&compressed).unwrap();
-    assert_eq!(data, decompressed.as_slice());
+    assert_eq!(data, decompressed.as_ref());
   }
 
   #[test]
@@ -287,7 +299,7 @@ mod tests {
     let compressed = compressor.compress(original).unwrap();
     let decompressed = compressor.decompress(&compressed).unwrap();
 
-    assert_eq!(original, decompressed.as_slice());
+    assert_eq!(original, decompressed.as_ref());
   }
 
   #[test]
@@ -304,8 +316,8 @@ mod tests {
     assert!(compressed9.len() <= compressed1.len());
 
     // Both should decompress correctly
-    assert_eq!(data, level1.decompress(&compressed1).unwrap().as_slice());
-    assert_eq!(data, level9.decompress(&compressed9).unwrap().as_slice());
+    assert_eq!(data, level1.decompress(&compressed1).unwrap().as_ref());
+    assert_eq!(data, level9.decompress(&compressed9).unwrap().as_ref());
   }
 
   #[test]
@@ -323,8 +335,8 @@ mod tests {
     assert!(compressed22.len() <= compressed1.len());
 
     // Both should decompress correctly
-    assert_eq!(data, level1.decompress(&compressed1).unwrap().as_slice());
-    assert_eq!(data, level22.decompress(&compressed22).unwrap().as_slice());
+    assert_eq!(data, level1.decompress(&compressed1).unwrap().as_ref());
+    assert_eq!(data, level22.decompress(&compressed22).unwrap().as_ref());
   }
 
   #[test]

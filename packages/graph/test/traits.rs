@@ -130,14 +130,24 @@ fn test_node_trait_spawn_execution_task() {
   // This is tested in node.rs tests, but we verify the trait method exists
   use std::collections::HashMap;
   use std::sync::Arc;
-  use tokio::sync::{RwLock, mpsc};
+  use streamweave_graph::channels::{TypeErasedReceiver, TypeErasedSender};
+  use streamweave_graph::execution::ExecutionMode;
+  use tokio::sync::RwLock;
 
-  let input_channels: HashMap<usize, mpsc::Receiver<Vec<u8>>> = HashMap::new();
-  let output_channels: HashMap<usize, mpsc::Sender<Vec<u8>>> = HashMap::new();
+  let input_channels: HashMap<usize, TypeErasedReceiver> = HashMap::new();
+  let output_channels: HashMap<usize, TypeErasedSender> = HashMap::new();
   let pause_signal = Arc::new(RwLock::new(false));
+  let execution_mode = ExecutionMode::new_in_process();
 
   // ProducerNode should return Some(JoinHandle) since it implements spawn_execution_task
-  let handle = node.spawn_execution_task(input_channels, output_channels, pause_signal);
+  let handle = node.spawn_execution_task(
+    input_channels,
+    output_channels,
+    pause_signal,
+    execution_mode,
+    None,
+    None,
+  );
   assert!(handle.is_some());
 }
 
