@@ -358,14 +358,14 @@ fn producer_benchmark(c: &mut Criterion) {
     let throughput = Throughput::Elements(*size as u64);
 
     group.throughput(throughput);
-    
+
     // For large datasets in distributed mode, use fewer samples to avoid long runtimes
     if *size >= 10000 {
       group.sample_size(10);
       group.warm_up_time(std::time::Duration::from_secs(1));
       group.measurement_time(std::time::Duration::from_secs(10));
     }
-    
+
     group.bench_with_input(BenchmarkId::new("distributed", size), &items, |b, items| {
       b.to_async(TokioExecutor)
         .iter(|| producer_distributed(items.clone()));
@@ -388,7 +388,7 @@ fn transformer_benchmark(c: &mut Criterion) {
     let throughput = Throughput::Elements(*size as u64);
 
     group.throughput(throughput);
-    
+
     // For large datasets in distributed mode, use fewer samples to avoid long runtimes
     // Distributed mode with JSON serialization is much slower
     if *size >= 10000 {
@@ -396,7 +396,7 @@ fn transformer_benchmark(c: &mut Criterion) {
       group.warm_up_time(std::time::Duration::from_secs(1));
       group.measurement_time(std::time::Duration::from_secs(10));
     }
-    
+
     group.bench_with_input(BenchmarkId::new("distributed", size), &items, |b, items| {
       b.to_async(TokioExecutor)
         .iter(|| transformer_distributed(items.clone()));
@@ -419,14 +419,14 @@ fn fan_out_benchmark(c: &mut Criterion) {
     let throughput = Throughput::Elements(*size as u64 * 2); // 2 outputs
 
     group.throughput(throughput);
-    
+
     // For large datasets in distributed mode, use fewer samples to avoid long runtimes
     if *size >= 10000 {
       group.sample_size(10);
       group.warm_up_time(std::time::Duration::from_secs(1));
       group.measurement_time(std::time::Duration::from_secs(10));
     }
-    
+
     group.bench_with_input(BenchmarkId::new("distributed", size), &items, |b, items| {
       b.to_async(TokioExecutor)
         .iter(|| fan_out_distributed(items.clone()));

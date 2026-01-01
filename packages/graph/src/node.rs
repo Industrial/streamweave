@@ -183,7 +183,7 @@ where
 
               // Decompress in blocking task
               match tokio::task::spawn_blocking(move || decompressor.decompress(&bytes)).await {
-                Ok(Ok(decompressed)) => decompressed.into(),
+                Ok(Ok(decompressed)) => decompressed,
                 Ok(Err(e)) => {
                   // Handle corrupted data gracefully - log and skip
                   let is_corrupted = matches!(e, crate::compression::CompressionError::CorruptedData);
@@ -338,7 +338,7 @@ where
                   };
 
                   match tokio::task::spawn_blocking(move || decompressor.decompress(&bytes)).await {
-                    Ok(Ok(decompressed)) => decompressed.into(),
+                    Ok(Ok(decompressed)) => decompressed,
                     Ok(Err(e)) => {
                       error!(
                         error = %e,
@@ -1344,7 +1344,7 @@ where
 
             // Compress in blocking task (compression is CPU-intensive)
             match tokio::task::spawn_blocking(move || compressor.compress(&serialized)).await {
-              Ok(Ok(compressed)) => compressed.into(),
+              Ok(Ok(compressed)) => compressed,
               Ok(Err(e)) => {
                 error!(
                   node = %node_name,
@@ -1785,7 +1785,7 @@ where
 
             // Compress in blocking task (compression is CPU-intensive)
             match tokio::task::spawn_blocking(move || compressor.compress(&serialized)).await {
-              Ok(Ok(compressed)) => compressed.into(),
+              Ok(Ok(compressed)) => compressed,
               Ok(Err(e)) => {
                 error!(
                   node = %node_name,

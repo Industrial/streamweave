@@ -14,6 +14,7 @@ members = [
   "packages/fs",
   "packages/graph",
   "packages/http-server",
+  "packages/json",
   "packages/jsonl",
   "packages/kafka",
   "packages/message",
