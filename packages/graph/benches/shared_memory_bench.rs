@@ -1,4 +1,17 @@
-use criterion::async_executor::FuturesExecutor;
+use criterion::async_executor::AsyncExecutor;
+
+/// Tokio executor for criterion benchmarks
+struct TokioExecutor;
+
+impl AsyncExecutor for TokioExecutor {
+  fn block_on<T>(&self, future: impl std::future::Future<Output = T>) -> T {
+    let rt = tokio::runtime::Builder::new_current_thread()
+      .enable_all()
+      .build()
+      .unwrap();
+    rt.block_on(future)
+  }
+}
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -126,13 +139,13 @@ fn shared_memory_benchmark(c: &mut Criterion) {
       BenchmarkId::new("shared_memory", size),
       &items,
       |b, items| {
-        b.to_async(FuturesExecutor)
+        b.to_async(TokioExecutor)
           .iter(|| shared_memory_direct(items.clone()));
       },
     );
 
     group.bench_with_input(BenchmarkId::new("arc_channel", size), &items, |b, items| {
-      b.to_async(FuturesExecutor)
+      b.to_async(TokioExecutor)
         .iter(|| arc_channel_direct(items.clone()));
     });
   }
@@ -153,7 +166,7 @@ fn producer_comparison_benchmark(c: &mut Criterion) {
       BenchmarkId::new("shared_memory", size),
       &items,
       |b, items| {
-        b.to_async(FuturesExecutor)
+        b.to_async(TokioExecutor)
           .iter(|| producer_shared_memory(items.clone()));
       },
     );
@@ -162,7 +175,7 @@ fn producer_comparison_benchmark(c: &mut Criterion) {
       BenchmarkId::new("arc_zero_copy", size),
       &items,
       |b, items| {
-        b.to_async(FuturesExecutor)
+        b.to_async(TokioExecutor)
           .iter(|| producer_arc(items.clone()));
       },
     );

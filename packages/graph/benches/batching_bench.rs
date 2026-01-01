@@ -1,5 +1,18 @@
 use bytes::Bytes;
-use criterion::async_executor::FuturesExecutor;
+use criterion::async_executor::AsyncExecutor;
+
+/// Tokio executor for criterion benchmarks
+struct TokioExecutor;
+
+impl AsyncExecutor for TokioExecutor {
+  fn block_on<T>(&self, future: impl std::future::Future<Output = T>) -> T {
+    let rt = tokio::runtime::Builder::new_current_thread()
+      .enable_all()
+      .build()
+      .unwrap();
+    rt.block_on(future)
+  }
+}
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -51,23 +64,30 @@ fn batch_buffer_benchmark(c: &mut Criterion) {
   let mut group = c.benchmark_group("batch_buffer");
 
   let config = BatchConfig::new(100, 1000);
-  let mut buffer = BatchBuffer::new(config);
 
   // Benchmark adding items
+  // Create a new buffer for each iteration to avoid buffer overflow
   group.bench_function("add_item", |b| {
     b.iter(|| {
+      let mut buffer = BatchBuffer::new(config.clone());
       buffer.add(Bytes::from("test item")).unwrap();
     });
   });
 
   // Benchmark should_flush check
+  // Create a new buffer for each iteration
   group.bench_function("should_flush", |b| {
-    b.iter(|| buffer.should_flush());
+    b.iter(|| {
+      let buffer = BatchBuffer::new(config.clone());
+      buffer.should_flush()
+    });
   });
 
   // Benchmark flush
+  // Create a new buffer for each iteration
   group.bench_function("flush", |b| {
     b.iter(|| {
+      let mut buffer = BatchBuffer::new(config.clone());
       for i in 0..100 {
         buffer.add(Bytes::from(format!("item{}", i))).unwrap();
       }
@@ -145,7 +165,7 @@ fn producer_batching_benchmark(c: &mut Criterion) {
     group.throughput(throughput);
 
     group.bench_with_input(BenchmarkId::new("no_batching", size), &items, |b, items| {
-      b.to_async(FuturesExecutor)
+      b.to_async(TokioExecutor)
         .iter(|| producer_without_batching(items.clone()));
     });
 
@@ -153,7 +173,7 @@ fn producer_batching_benchmark(c: &mut Criterion) {
       BenchmarkId::new("batching_small", size),
       &items,
       |b, items| {
-        b.to_async(FuturesExecutor)
+        b.to_async(TokioExecutor)
           .iter(|| producer_with_batching_small(items.clone()));
       },
     );
@@ -162,7 +182,7 @@ fn producer_batching_benchmark(c: &mut Criterion) {
       BenchmarkId::new("batching_large", size),
       &items,
       |b, items| {
-        b.to_async(FuturesExecutor)
+        b.to_async(TokioExecutor)
           .iter(|| producer_with_batching_large(items.clone()));
       },
     );

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+exec > >(tee log/bench.log) 2>&1 
+
+echo "> bench"
+
+cd packages/graph
+
+echo "> bench > building benchmarks"
+cargo build --release --benches
+
+echo "> bench > running zero_copy_bench"
+cargo bench --bench zero_copy_bench
+
+echo "> bench > running batching_bench"
+cargo bench --bench batching_bench
+
+echo "> bench > running compression_bench"
+cargo bench --bench compression_bench
+
+echo "> bench > running shared_memory_bench"
+cargo bench --bench shared_memory_bench
+
+echo "> bench > done"
+

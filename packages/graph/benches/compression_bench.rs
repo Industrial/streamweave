@@ -1,4 +1,18 @@
-use criterion::async_executor::FuturesExecutor;
+use bytes::Bytes;
+use criterion::async_executor::AsyncExecutor;
+
+/// Tokio executor for criterion benchmarks
+struct TokioExecutor;
+
+impl AsyncExecutor for TokioExecutor {
+  fn block_on<T>(&self, future: impl std::future::Future<Output = T>) -> T {
+    let rt = tokio::runtime::Builder::new_current_thread()
+      .enable_all()
+      .build()
+      .unwrap();
+    rt.block_on(future)
+  }
+}
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -17,10 +31,7 @@ fn compression_benchmark(c: &mut Criterion) {
 
   // Test data: JSON-serialized integers
   let data: Vec<i32> = (0..1000).collect();
-  let serialized: Vec<Vec<u8>> = data
-    .iter()
-    .map(|&x| serialize(&x).unwrap().into())
-    .collect();
+  let serialized: Vec<Bytes> = data.iter().map(|&x| serialize(&x).unwrap()).collect();
 
   let total_size: usize = serialized.iter().map(|s| s.len()).sum();
   group.throughput(criterion::Throughput::Bytes(total_size as u64));
@@ -147,7 +158,7 @@ fn producer_compression_benchmark(c: &mut Criterion) {
       BenchmarkId::new("no_compression", size),
       &items,
       |b, items| {
-        b.to_async(FuturesExecutor)
+        b.to_async(TokioExecutor)
           .iter(|| producer_without_compression(items.clone()));
       },
     );
@@ -156,7 +167,7 @@ fn producer_compression_benchmark(c: &mut Criterion) {
       BenchmarkId::new("gzip_level_6", size),
       &items,
       |b, items| {
-        b.to_async(FuturesExecutor)
+        b.to_async(TokioExecutor)
           .iter(|| producer_with_gzip(items.clone()));
       },
     );
@@ -165,7 +176,7 @@ fn producer_compression_benchmark(c: &mut Criterion) {
       BenchmarkId::new("zstd_level_3", size),
       &items,
       |b, items| {
-        b.to_async(FuturesExecutor)
+        b.to_async(TokioExecutor)
           .iter(|| producer_with_zstd(items.clone()));
       },
     );
