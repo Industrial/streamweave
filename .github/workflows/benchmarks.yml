@@ -37,60 +37,66 @@ jobs:
       - name: Install devenv
         run: nix profile install nixpkgs#devenv
       - name: Build benchmarks
-        run: |
-          cd packages/graph
-          devenv shell -- cargo build --release --benches
+        run: devenv shell -- bash -c "cd packages/graph && cargo build --release --benches"
       - name: Run zero_copy benchmarks
         id: zero_copy
         run: |
-          cd packages/graph
-          echo "Running zero_copy_bench..."
-          devenv shell -- cargo bench --bench zero_copy_bench -- --output-format json > zero_copy_results.json 2>&1 || exit 1
-          echo "✅ zero_copy_bench completed successfully"
-          # Verify the benchmark ran by checking for expected output
-          if ! grep -q "producer" zero_copy_results.json; then
-            echo "❌ zero_copy_bench output validation failed"
-            exit 1
-          fi
+          devenv shell -- bash -c "
+            cd packages/graph
+            echo 'Running zero_copy_bench...'
+            cargo bench --bench zero_copy_bench -- --output-format json > zero_copy_results.json 2>&1 || exit 1
+            echo '✅ zero_copy_bench completed successfully'
+            # Verify the benchmark ran by checking for expected output
+            if ! grep -q 'producer' zero_copy_results.json; then
+              echo '❌ zero_copy_bench output validation failed'
+              exit 1
+            fi
+          "
         continue-on-error: false
       - name: Run batching benchmarks
         id: batching
         run: |
-          cd packages/graph
-          echo "Running batching_bench..."
-          devenv shell -- cargo bench --bench batching_bench -- --output-format json > batching_results.json 2>&1 || exit 1
-          echo "✅ batching_bench completed successfully"
-          # Verify the benchmark ran by checking for expected output
-          if ! grep -q "batch" batching_results.json; then
-            echo "❌ batching_bench output validation failed"
-            exit 1
-          fi
+          devenv shell -- bash -c "
+            cd packages/graph
+            echo 'Running batching_bench...'
+            cargo bench --bench batching_bench -- --output-format json > batching_results.json 2>&1 || exit 1
+            echo '✅ batching_bench completed successfully'
+            # Verify the benchmark ran by checking for expected output
+            if ! grep -q 'batch' batching_results.json; then
+              echo '❌ batching_bench output validation failed'
+              exit 1
+            fi
+          "
         continue-on-error: false
       - name: Run compression benchmarks
         id: compression
         run: |
-          cd packages/graph
-          echo "Running compression_bench..."
-          devenv shell -- cargo bench --bench compression_bench -- --output-format json > compression_results.json 2>&1 || exit 1
-          echo "✅ compression_bench completed successfully"
-          # Verify the benchmark ran by checking for expected output
-          if ! grep -q "compression" compression_results.json; then
-            echo "❌ compression_bench output validation failed"
-            exit 1
-          fi
+          devenv shell -- bash -c "
+            cd packages/graph
+            echo 'Running compression_bench...'
+            cargo bench --bench compression_bench -- --output-format json > compression_results.json 2>&1 || exit 1
+            echo '✅ compression_bench completed successfully'
+            # Verify the benchmark ran by checking for expected output
+            if ! grep -q 'compression' compression_results.json; then
+              echo '❌ compression_bench output validation failed'
+              exit 1
+            fi
+          "
         continue-on-error: false
       - name: Run shared_memory benchmarks
         id: shared_memory
         run: |
-          cd packages/graph
-          echo "Running shared_memory_bench..."
-          devenv shell -- cargo bench --bench shared_memory_bench -- --output-format json > shared_memory_results.json 2>&1 || exit 1
-          echo "✅ shared_memory_bench completed successfully"
-          # Verify the benchmark ran by checking for expected output
-          if ! grep -q "shared_memory" shared_memory_results.json; then
-            echo "❌ shared_memory_bench output validation failed"
-            exit 1
-          fi
+          devenv shell -- bash -c "
+            cd packages/graph
+            echo 'Running shared_memory_bench...'
+            cargo bench --bench shared_memory_bench -- --output-format json > shared_memory_results.json 2>&1 || exit 1
+            echo '✅ shared_memory_bench completed successfully'
+            # Verify the benchmark ran by checking for expected output
+            if ! grep -q 'shared_memory' shared_memory_results.json; then
+              echo '❌ shared_memory_bench output validation failed'
+              exit 1
+            fi
+          "
         continue-on-error: false
       - name: Extract benchmark summary
         if: always()
@@ -121,10 +127,12 @@ jobs:
         run: nix profile install nixpkgs#devenv
       - name: Verify benchmark compilation
         run: |
-          cd packages/graph
-          echo "Verifying benchmark code compiles..."
-          devenv shell -- cargo check --benches --release
-          echo "✅ All benchmarks compile successfully"
+          devenv shell -- bash -c "
+            cd packages/graph
+            echo 'Verifying benchmark code compiles...'
+            cargo check --benches --release
+            echo '✅ All benchmarks compile successfully'
+          "
       - name: Verify benchmark structure
         run: |
           cd packages/graph
@@ -156,13 +164,15 @@ jobs:
           echo "✅ All benchmark files are present and valid"
       - name: Quick smoke test
         run: |
-          cd packages/graph
-          echo "Running quick smoke test to verify benchmarks execute..."
-          # Test that at least one benchmark runs without panicking
-          # We use a timeout to prevent hanging, and capture output
-          timeout 60 devenv shell -- cargo bench --bench zero_copy_bench -- --test 2>&1 | head -n 100 || {
-            echo "⚠️  --test flag not supported, verifying compilation instead"
-            # If --test isn't supported, just verify it compiles and can start
-            timeout 30 devenv shell -- cargo bench --bench zero_copy_bench --help > /dev/null 2>&1 || true
-          }
-          echo "✅ Benchmark infrastructure is working"
+          devenv shell -- bash -c "
+            cd packages/graph
+            echo 'Running quick smoke test to verify benchmarks execute...'
+            # Test that at least one benchmark runs without panicking
+            # We use a timeout to prevent hanging, and capture output
+            timeout 60 cargo bench --bench zero_copy_bench -- --test 2>&1 | head -n 100 || {
+              echo '⚠️  --test flag not supported, verifying compilation instead'
+              # If --test isn't supported, just verify it compiles and can start
+              timeout 30 cargo bench --bench zero_copy_bench --help > /dev/null 2>&1 || true
+            }
+            echo '✅ Benchmark infrastructure is working'
+          "
