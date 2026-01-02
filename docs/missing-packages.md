@@ -121,11 +121,11 @@ This document lists packages that are commonly created for streaming/data proces
 
 ### ✅ Already Exists
 - `csv` - CSV format ✅
+- `json` - JSON producer/consumer (not just JSONL) ✅
 - `jsonl` - JSON Lines ✅
 - `parquet` - Parquet format ✅
 
 ### ❌ Missing
-- **`streamweave-json`** - JSON producer/consumer (not just JSONL)
 - **`streamweave-xml`** - XML producer/consumer
 - **`streamweave-yaml`** - YAML producer/consumer
 - **`streamweave-toml`** - TOML producer/consumer
@@ -344,11 +344,11 @@ This document lists packages that are commonly created for streaming/data proces
 
 ## Summary Statistics
 
-- **Total Missing Packages**: ~195+
-- **High Priority** (commonly needed): ~45
+- **Total Missing Packages**: ~194+
+- **High Priority** (commonly needed): ~44
 - **Medium Priority** (domain-specific): ~100
 - **Low Priority** (niche use cases): ~50
-- **Recently Added**: timer, signal, process, tempfile, path, fs, array, vec, graph, pipeline, stateful, message, offset, transaction, distributed, error, tokio, transformers, visualization, window
+- **Recently Added**: timer, signal, process, tempfile, path, fs, array, vec, graph, pipeline, stateful, message, offset, transaction, distributed, error, tokio, transformers, visualization, window, json
 
 ---
 
@@ -357,10 +357,9 @@ This document lists packages that are commonly created for streaming/data proces
 ### Tier 1: Essential (Should implement soon)
 1. `streamweave-http-client` - HTTP client support
 2. `streamweave-websocket` - WebSocket support
-3. `streamweave-json` - JSON (non-JSONL) support
-4. `streamweave-compression` - Compression support
-5. `streamweave-logging` - Structured logging
-6. `streamweave-test` - Testing utilities
+3. `streamweave-compression` - Compression support
+4. `streamweave-logging` - Structured logging
+5. `streamweave-test` - Testing utilities
 
 **Note:** `streamweave-timer` already exists ✅
 
