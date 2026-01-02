@@ -15,11 +15,13 @@ The `streamweave-graph` package provides a powerful graph-based API for building
 - **Node Types**: ProducerNode, TransformerNode, ConsumerNode
 - **Multi-Port Connections**: Connect nodes via multiple input/output ports
 - **Routing Strategies**: Broadcast, Round-Robin, Key-Based, Merge
+- **Control Flow**: If/Else routing, Pattern matching, Loops, Variables, Aggregations
 - **Fan-In/Fan-Out**: Support for complex topologies
 - **Subgraphs**: Nest graphs within graphs
 - **Serialization**: Serialize and deserialize graphs
 - **Stateful Processing**: Stateful transformers in graphs
 - **Windowing**: Window operations in graphs
+- **Zero-Copy Node Architecture**: Nodes use `Arc<Mutex<T>>` internally, eliminating `Clone` requirements
 
 ## 📦 Installation
 
@@ -120,6 +122,32 @@ pub struct GraphBuilder {
 **Merge:**
 - Combines multiple inputs into one output
 - Fan-in pattern
+
+### Control Flow Constructs
+
+StreamWeave Graph provides comprehensive control flow constructs for Flow-Based Programming patterns:
+
+**Routers:**
+- **If Router**: Conditional routing based on predicates (if/else)
+- **Match Router**: Pattern-based routing (match/switch)
+- **Error Branch Router**: Route `Result<T, E>` items to success/error ports
+
+**Transformers:**
+- **ForEach**: Iterate over collections and expand to individual items
+- **While**: Conditional iteration (continue while condition is true)
+- **Delay**: Add delays between items
+- **Timeout**: Add timeout handling to stream processing
+- **Aggregate**: Compute aggregations (Sum, Count, Min, Max)
+- **GroupBy**: Group items by a key function
+- **Join**: Join multiple streams with different strategies (Inner, Outer, Left, Right)
+- **Synchronize**: Wait for multiple inputs before proceeding
+
+**Variables:**
+- **GraphVariables**: Shared state between nodes
+- **ReadVariable**: Read variable values
+- **WriteVariable**: Write variable values
+
+For detailed examples, see the [Control Flow Examples](#-control-flow-examples) section below.
 
 ## 📚 Usage Examples
 
@@ -368,11 +396,132 @@ pub enum GraphError {
 - **Runtime Flexibility**: Runtime graph construction for dynamic topologies
 - **Efficient Routing**: Optimized routing strategies for high throughput
 - **Parallel Execution**: Nodes can execute in parallel when possible
+- **Zero-Copy Node Sharing**: Nodes use `Arc<tokio::sync::Mutex<T>>` internally for zero-copy node sharing
+- **No Clone Requirement**: Producers, transformers, and consumers do not need to implement `Clone`
+
+## 🏗️ Architecture
+
+### Zero-Copy Node Design
+
+StreamWeave Graph uses a zero-copy node architecture where nodes store their components
+(producers, transformers, consumers) as `Arc<tokio::sync::Mutex<T>>`. This design:
+
+- **Eliminates Clone Requirements**: Components no longer need to implement `Clone`
+- **Enables Control Flow**: Control flow transformers (Aggregate, Delay, While, etc.) can be used without Clone
+- **Zero-Copy Sharing**: Nodes are shared via `Arc` cloning (atomic reference counting)
+- **Thread-Safe Access**: Mutex ensures safe concurrent access when needed
+
+### Accessing Node Components
+
+To access a node's component, use the accessor methods which return `Arc<Mutex<T>>`:
+
+```rust
+let node = TransformerNode::new("mapper".to_string(), MapTransformer::new(|x| x * 2));
+let transformer_arc = node.transformer();
+
+// Lock and use the transformer
+let mut transformer = transformer_arc.lock().await;
+// Use transformer...
+```
+
+**Note**: The `*_mut()` methods have been removed. Use `lock().await` on the `Arc<Mutex<T>>` instead.
+
+## 🔀 Control Flow Examples
+
+### Conditional Routing (If Router)
+
+Route items conditionally based on a predicate:
+
+```rust
+use streamweave_graph::control_flow::If;
+use streamweave_graph::node::TransformerNode;
+use streamweave_transformers::IdentityTransformer;
+
+let if_router = If::new(|x: &i32| *x % 2 == 0);
+let node = TransformerNode::new(
+    "split".to_string(),
+    IdentityTransformer::new(),
+    if_router, // Routes even numbers to port 0, odd to port 1
+);
+```
+
+### Error Branching
+
+Route `Result<T, E>` items to separate success and error ports:
+
+```rust
+use streamweave_graph::control_flow::ErrorBranch;
+
+let error_router = ErrorBranch::<i32, String>::new();
+let node = TransformerNode::new(
+    "split_errors".to_string(),
+    IdentityTransformer::new(),
+    error_router, // Routes Ok(items) to port 0, Err(errors) to port 1
+);
+```
+
+### Pattern Matching (Match Router)
+
+Route items based on pattern matching:
+
+```rust
+use streamweave_graph::control_flow::{Match, Pattern, RangePattern};
+
+let patterns: Vec<Box<dyn Pattern<i32>>> = vec![
+    Box::new(RangePattern::new(0..50, 0)),   // Low: port 0
+    Box::new(RangePattern::new(50..100, 1)), // High: port 1
+];
+let router = Match::new(patterns, Some(2)); // Default: port 2
+```
+
+### Variables
+
+Share state between nodes:
+
+```rust
+use streamweave_graph::control_flow::{GraphVariables, ReadVariable, WriteVariable};
+
+let vars = GraphVariables::new();
+vars.set("counter", 42i32);
+
+// Read variable
+let read_var = ReadVariable::new("counter".to_string(), vars.clone());
+let read_node = TransformerNode::from_transformer("read".to_string(), read_var);
+
+// Write variable
+let write_var = WriteVariable::new("counter".to_string(), vars.clone());
+let write_node = TransformerNode::from_transformer("write".to_string(), write_var);
+```
+
+### Aggregation
+
+Compute aggregations over streams:
+
+```rust
+use streamweave_graph::control_flow::{Aggregate, SumAggregator};
+
+let aggregate = Aggregate::new(SumAggregator, None); // Sum all items
+let node = TransformerNode::from_transformer("sum".to_string(), aggregate);
+```
+
+### GroupBy
+
+Group items by a key:
+
+```rust
+use streamweave_graph::control_flow::GroupBy;
+
+let group_by = GroupBy::new(|item: &(String, i32)| item.0.clone());
+let node = TransformerNode::from_transformer("group".to_string(), group_by);
+```
+
+For complete runnable examples of all control flow features, see the [examples directory](https://github.com/Industrial/streamweave/tree/main/packages/graph/examples).
 
 ## 📝 Examples
 
 For more examples, see:
 - [Graph Examples](https://github.com/Industrial/streamweave/tree/main/examples)
+- [Control Flow Examples](https://github.com/Industrial/streamweave/tree/main/packages/graph/examples)
 - [Complex Topologies](https://github.com/Industrial/streamweave/tree/main/examples)
 
 ## 🔗 Dependencies

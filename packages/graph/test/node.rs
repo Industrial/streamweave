@@ -71,32 +71,29 @@ fn test_node_with_name() {
 #[test]
 fn test_node_accessors() {
   let producer = VecProducer::new(vec![1, 2, 3]);
-  let mut node: ProducerNode<_, (i32,)> = ProducerNode::new("source".to_string(), producer);
+  let node: ProducerNode<_, (i32,)> = ProducerNode::new("source".to_string(), producer);
 
-  // Test that we can access the producer
-  let _producer_ref = node.producer();
-  let _producer_mut = node.producer_mut();
+  // Test that we can access the producer (returns Arc<Mutex<P>>)
+  let _producer_arc = node.producer();
 }
 
 #[test]
 fn test_transformer_node_accessors() {
   let transformer = MapTransformer::new(|x: i32| x * 2);
-  let mut node: TransformerNode<_, (i32,), (i32,)> =
+  let node: TransformerNode<_, (i32,), (i32,)> =
     TransformerNode::new("mapper".to_string(), transformer);
 
-  // Test that we can access the transformer
-  let _transformer_ref = node.transformer();
-  let _transformer_mut = node.transformer_mut();
+  // Test that we can access the transformer (returns Arc<Mutex<T>>)
+  let _transformer_arc = node.transformer();
 }
 
 #[test]
 fn test_consumer_node_accessors() {
   let consumer = VecConsumer::<i32>::new();
-  let mut node: ConsumerNode<_, (i32,)> = ConsumerNode::new("sink".to_string(), consumer);
+  let node: ConsumerNode<_, (i32,)> = ConsumerNode::new("sink".to_string(), consumer);
 
-  // Test that we can access the consumer
-  let _consumer_ref = node.consumer();
-  let _consumer_mut = node.consumer_mut();
+  // Test that we can access the consumer (returns Arc<Mutex<C>>)
+  let _consumer_arc = node.consumer();
 }
 
 #[test]

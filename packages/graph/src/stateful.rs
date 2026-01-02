@@ -10,6 +10,13 @@
 //!
 //! Stateful nodes wrap stateful transformers and provide access to their state
 //! through the graph API.
+//!
+//! ## Architecture
+//!
+//! Stateful nodes access transformers through `Arc<tokio::sync::Mutex<T>>`, which
+//! requires runtime detection to handle both sync and async contexts. The state
+//! access methods use runtime detection to safely lock the mutex and access
+//! transformer state.
 
 use crate::node::TransformerNode;
 use crate::traits::NodeTrait;
@@ -78,7 +85,7 @@ pub trait StatefulNode: NodeTrait {
 /// a `StatefulTransformer`, providing state access through the graph API.
 impl<T, Inputs, Outputs> StatefulNode for TransformerNode<T, Inputs, Outputs>
 where
-  T: Transformer + StatefulTransformer + Send + Sync + Clone + 'static,
+  T: Transformer + StatefulTransformer + Send + Sync + 'static,
   T::Input: std::fmt::Debug + Clone + Send + Sync + serde::de::DeserializeOwned,
   T::Output: std::fmt::Debug + Clone + Send + Sync + serde::Serialize,
   Inputs: streamweave::port::PortList + Send + Sync + 'static,
@@ -86,7 +93,34 @@ where
   (): crate::node::ValidateTransformerPorts<T, Inputs, Outputs>,
 {
   fn get_state(&self) -> StateResult<Option<Box<dyn std::any::Any + Send + Sync>>> {
-    match self.transformer().state() {
+    let transformer = self.transformer();
+    let result = if tokio::runtime::Handle::try_current().is_ok() {
+      // We're in a runtime, spawn a new thread with a new runtime to avoid "runtime within runtime" error
+      let transformer_clone = transformer.clone();
+      std::thread::spawn(move || {
+        tokio::runtime::Builder::new_current_thread()
+          .enable_all()
+          .build()
+          .unwrap()
+          .block_on(async {
+            let guard = transformer_clone.lock().await;
+            guard.state()
+          })
+      })
+      .join()
+      .unwrap()
+    } else {
+      // Not in a runtime, create one and use block_on
+      tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+          let guard = transformer.lock().await;
+          guard.state()
+        })
+    };
+    match result {
       Ok(Some(state)) => {
         // Box the state as Any for type erasure
         Ok(Some(Box::new(state)))
@@ -100,7 +134,33 @@ where
     // Try to downcast to the transformer's state type
     // We need to extract the value from the box
     if let Ok(typed_state) = state.downcast::<T::State>() {
-      self.transformer().set_state(*typed_state)
+      let transformer = self.transformer();
+      if tokio::runtime::Handle::try_current().is_ok() {
+        // We're in a runtime, spawn a new thread with a new runtime to avoid "runtime within runtime" error
+        let transformer_clone = transformer.clone();
+        std::thread::spawn(move || {
+          tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+              let guard = transformer_clone.lock().await;
+              guard.set_state(*typed_state)
+            })
+        })
+        .join()
+        .unwrap()
+      } else {
+        // Not in a runtime, create one and use block_on
+        tokio::runtime::Builder::new_current_thread()
+          .enable_all()
+          .build()
+          .unwrap()
+          .block_on(async {
+            let guard = transformer.lock().await;
+            guard.set_state(*typed_state)
+          })
+      }
     } else {
       Err(StateError::UpdateFailed(format!(
         "State type mismatch: expected {}, got different type",
@@ -110,7 +170,33 @@ where
   }
 
   fn reset_state(&self) -> StateResult<()> {
-    self.transformer().reset_state()
+    let transformer = self.transformer();
+    if tokio::runtime::Handle::try_current().is_ok() {
+      // We're in a runtime, spawn a new thread with a new runtime to avoid "runtime within runtime" error
+      let transformer_clone = transformer.clone();
+      std::thread::spawn(move || {
+        tokio::runtime::Builder::new_current_thread()
+          .enable_all()
+          .build()
+          .unwrap()
+          .block_on(async {
+            let guard = transformer_clone.lock().await;
+            guard.reset_state()
+          })
+      })
+      .join()
+      .unwrap()
+    } else {
+      // Not in a runtime, create one and use block_on
+      tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+          let guard = transformer.lock().await;
+          guard.reset_state()
+        })
+    }
   }
 
   fn is_stateful(&self) -> bool {
@@ -118,7 +204,33 @@ where
   }
 
   fn has_state(&self) -> bool {
-    self.transformer().has_state()
+    let transformer = self.transformer();
+    if tokio::runtime::Handle::try_current().is_ok() {
+      // We're in a runtime, spawn a new thread with a new runtime to avoid "runtime within runtime" error
+      let transformer_clone = transformer.clone();
+      std::thread::spawn(move || {
+        tokio::runtime::Builder::new_current_thread()
+          .enable_all()
+          .build()
+          .unwrap()
+          .block_on(async {
+            let guard = transformer_clone.lock().await;
+            guard.has_state()
+          })
+      })
+      .join()
+      .unwrap()
+    } else {
+      // Not in a runtime, create one and use block_on
+      tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+          let guard = transformer.lock().await;
+          guard.has_state()
+        })
+    }
   }
 }
 

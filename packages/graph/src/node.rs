@@ -4,6 +4,17 @@
 //! Consumer traits with explicit port tuple information. Nodes use generic type
 //! parameters for compile-time specialization.
 //!
+//! ## Zero-Copy Node Architecture
+//!
+//! Nodes store their components internally as `Arc<tokio::sync::Mutex<T>>` to enable
+//! zero-copy node sharing. This eliminates the `Clone` requirement for producers,
+//! transformers, and consumers, allowing control flow transformers and other
+//! non-cloneable components to be used in graphs.
+//!
+//! When nodes are executed, the `Arc` is cloned (zero-copy) and the mutex is locked
+//! only when needed. This provides both zero-copy semantics and thread-safe access
+//! to node components.
+//!
 //! ## Example
 //!
 //! ```rust
@@ -12,19 +23,19 @@
 //! use streamweave_transformers::MapTransformer;
 //! use streamweave_vec::VecConsumer;
 //!
-//! // Producer with single output
+//! // Producer with single output (does not need to implement Clone)
 //! let producer = ProducerNode::new(
 //!     "source".to_string(),
 //!     ArrayProducer::new(vec![1, 2, 3]),
 //! );
 //!
-//! // Transformer with single input and output
+//! // Transformer with single input and output (does not need to implement Clone)
 //! let transformer = TransformerNode::new(
 //!     "mapper".to_string(),
 //!     MapTransformer::new(|x: i32| x * 2),
 //! );
 //!
-//! // Consumer with single input
+//! // Consumer with single input (does not need to implement Clone)
 //! let consumer = ConsumerNode::new(
 //!     "sink".to_string(),
 //!     VecConsumer::new(),
@@ -50,6 +61,7 @@ use streamweave::Consumer;
 use streamweave::Input;
 use streamweave::Producer;
 use streamweave::Transformer;
+use tokio::sync::Mutex;
 use tracing::{error, warn};
 
 // Import helper traits for default port types
@@ -604,9 +616,15 @@ where
 /// It has no input ports (Inputs = ()) and one or more output ports specified by
 /// the `Outputs` type parameter.
 ///
+/// # Architecture
+///
+/// The producer is stored internally as `Arc<tokio::sync::Mutex<P>>` to enable zero-copy
+/// node sharing. This eliminates the `Clone` requirement for producers, allowing
+/// control flow transformers and other non-cloneable components to be used in graphs.
+///
 /// # Type Parameters
 ///
-/// * `P` - The producer type that implements `Producer`
+/// * `P` - The producer type that implements `Producer` (does not need to implement `Clone`)
 /// * `Outputs` - A port tuple representing the output ports (e.g., `(i32,)` for single port)
 ///
 /// # Example
@@ -628,7 +646,7 @@ where
   (): ValidateProducerPorts<P, Outputs>,
 {
   name: String,
-  producer: P,
+  producer: Arc<Mutex<P>>,
   _phantom: std::marker::PhantomData<Outputs>,
   // Router deferred to Phase 2
 }
@@ -653,7 +671,7 @@ where
   pub fn new(name: String, producer: P) -> Self {
     Self {
       name,
-      producer,
+      producer: Arc::new(Mutex::new(producer)),
       _phantom: std::marker::PhantomData,
     }
   }
@@ -678,14 +696,28 @@ where
     &self.name
   }
 
-  /// Returns a reference to the wrapped producer.
-  pub fn producer(&self) -> &P {
-    &self.producer
-  }
-
-  /// Returns a mutable reference to the wrapped producer.
-  pub fn producer_mut(&mut self) -> &mut P {
-    &mut self.producer
+  /// Returns a clone of the Arc containing the wrapped producer.
+  ///
+  /// This method returns `Arc<tokio::sync::Mutex<P>>` which can be cloned
+  /// zero-copy and locked when needed. The producer does not need to implement `Clone`.
+  ///
+  /// # Returns
+  ///
+  /// A clone of the `Arc` containing the producer wrapped in a `Mutex`.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave_graph::ProducerNode;
+  /// use streamweave_array::ArrayProducer;
+  ///
+  /// let node = ProducerNode::new("source".to_string(), ArrayProducer::new(vec![1, 2, 3]));
+  /// let producer_arc = node.producer();
+  /// // Lock and use the producer
+  /// // let mut producer = producer_arc.lock().await;
+  /// ```
+  pub fn producer(&self) -> Arc<Mutex<P>> {
+    Arc::clone(&self.producer)
   }
 }
 
@@ -729,7 +761,7 @@ where
   pub fn from_producer(name: String, producer: P) -> Self {
     Self {
       name,
-      producer,
+      producer: Arc::new(Mutex::new(producer)),
       _phantom: std::marker::PhantomData,
     }
   }
@@ -757,7 +789,7 @@ where
       .unwrap_or_else(|| "producer".to_string());
     Self {
       name,
-      producer,
+      producer: Arc::new(Mutex::new(producer)),
       _phantom: std::marker::PhantomData,
     }
   }
@@ -796,7 +828,7 @@ where
   (): ValidateTransformerPorts<T, Inputs, Outputs>,
 {
   name: String,
-  transformer: T,
+  transformer: Arc<Mutex<T>>,
   _phantom: std::marker::PhantomData<(Inputs, Outputs)>,
   // Routers deferred to Phase 2
 }
@@ -823,7 +855,7 @@ where
   pub fn new(name: String, transformer: T) -> Self {
     Self {
       name,
-      transformer,
+      transformer: Arc::new(Mutex::new(transformer)),
       _phantom: std::marker::PhantomData,
     }
   }
@@ -848,14 +880,28 @@ where
     &self.name
   }
 
-  /// Returns a reference to the wrapped transformer.
-  pub fn transformer(&self) -> &T {
-    &self.transformer
-  }
-
-  /// Returns a mutable reference to the wrapped transformer.
-  pub fn transformer_mut(&mut self) -> &mut T {
-    &mut self.transformer
+  /// Returns a clone of the Arc containing the wrapped transformer.
+  ///
+  /// This method returns `Arc<tokio::sync::Mutex<T>>` which can be cloned
+  /// zero-copy and locked when needed. The transformer does not need to implement `Clone`.
+  ///
+  /// # Returns
+  ///
+  /// A clone of the `Arc` containing the transformer wrapped in a `Mutex`.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave_graph::TransformerNode;
+  /// use streamweave_transformers::MapTransformer;
+  ///
+  /// let node = TransformerNode::new("mapper".to_string(), MapTransformer::new(|x: i32| x * 2));
+  /// let transformer_arc = node.transformer();
+  /// // Lock and use the transformer
+  /// // let mut transformer = transformer_arc.lock().await;
+  /// ```
+  pub fn transformer(&self) -> Arc<Mutex<T>> {
+    Arc::clone(&self.transformer)
   }
 }
 
@@ -910,7 +956,7 @@ where
   pub fn from_transformer(name: String, transformer: T) -> Self {
     Self {
       name,
-      transformer,
+      transformer: Arc::new(Mutex::new(transformer)),
       _phantom: std::marker::PhantomData,
     }
   }
@@ -938,7 +984,7 @@ where
       .unwrap_or_else(|| "transformer".to_string());
     Self {
       name,
-      transformer,
+      transformer: Arc::new(Mutex::new(transformer)),
       _phantom: std::marker::PhantomData,
     }
   }
@@ -950,9 +996,15 @@ where
 /// It has one or more input ports specified by the `Inputs` type parameter and
 /// no output ports (Outputs = ()).
 ///
+/// # Architecture
+///
+/// The consumer is stored internally as `Arc<tokio::sync::Mutex<C>>` to enable zero-copy
+/// node sharing. This eliminates the `Clone` requirement for consumers, allowing
+/// control flow transformers and other non-cloneable components to be used in graphs.
+///
 /// # Type Parameters
 ///
-/// * `C` - The consumer type that implements `Consumer`
+/// * `C` - The consumer type that implements `Consumer` (does not need to implement `Clone`)
 /// * `Inputs` - A port tuple representing the input ports (e.g., `(String,)` for single port)
 ///
 /// # Example
@@ -974,7 +1026,7 @@ where
   (): ValidateConsumerPorts<C, Inputs>,
 {
   name: String,
-  consumer: C,
+  consumer: Arc<Mutex<C>>,
   _phantom: std::marker::PhantomData<Inputs>,
   // Router deferred to Phase 2
 }
@@ -999,7 +1051,7 @@ where
   pub fn new(name: String, consumer: C) -> Self {
     Self {
       name,
-      consumer,
+      consumer: Arc::new(Mutex::new(consumer)),
       _phantom: std::marker::PhantomData,
     }
   }
@@ -1024,14 +1076,28 @@ where
     &self.name
   }
 
-  /// Returns a reference to the wrapped consumer.
-  pub fn consumer(&self) -> &C {
-    &self.consumer
-  }
-
-  /// Returns a mutable reference to the wrapped consumer.
-  pub fn consumer_mut(&mut self) -> &mut C {
-    &mut self.consumer
+  /// Returns a clone of the Arc containing the wrapped consumer.
+  ///
+  /// This method returns `Arc<tokio::sync::Mutex<C>>` which can be cloned
+  /// zero-copy and locked when needed. The consumer does not need to implement `Clone`.
+  ///
+  /// # Returns
+  ///
+  /// A clone of the `Arc` containing the consumer wrapped in a `Mutex`.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use streamweave_graph::ConsumerNode;
+  /// use streamweave_vec::VecConsumer;
+  ///
+  /// let node = ConsumerNode::new("sink".to_string(), VecConsumer::<i32>::new());
+  /// let consumer_arc = node.consumer();
+  /// // Lock and use the consumer
+  /// // let mut consumer = consumer_arc.lock().await;
+  /// ```
+  pub fn consumer(&self) -> Arc<Mutex<C>> {
+    Arc::clone(&self.consumer)
   }
 }
 
@@ -1075,7 +1141,7 @@ where
   pub fn from_consumer(name: String, consumer: C) -> Self {
     Self {
       name,
-      consumer,
+      consumer: Arc::new(Mutex::new(consumer)),
       _phantom: std::marker::PhantomData,
     }
   }
@@ -1099,7 +1165,7 @@ where
     let name = consumer.config().name.clone();
     Self {
       name,
-      consumer,
+      consumer: Arc::new(Mutex::new(consumer)),
       _phantom: std::marker::PhantomData,
     }
   }
@@ -1108,7 +1174,7 @@ where
 // Implement NodeTrait for ProducerNode
 impl<P, Outputs> NodeTrait for ProducerNode<P, Outputs>
 where
-  P: Producer + Send + Sync + Clone + 'static,
+  P: Producer + Send + Sync + 'static,
   P::Output: std::fmt::Debug + Clone + Send + Sync + Serialize,
   Outputs: PortList + Send + Sync + 'static,
   (): ValidateProducerPorts<P, Outputs>,
@@ -1182,10 +1248,10 @@ where
     >,
     arc_pool: Option<std::sync::Arc<crate::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
-    // Implementation requires P: Clone and P::Output: Serialize (added to trait bounds above)
+    // Implementation requires P::Output: Serialize (added to trait bounds above)
     // This implementation:
-    // 1. Clones the producer
-    // 2. Calls producer.produce() to get the stream
+    // 1. Clones the Arc containing the producer (zero-copy)
+    // 2. Locks the mutex and calls producer.produce() to get the stream
     // 3. Serializes each item to Bytes
     // 4. Sends to output channels (broadcasts to all ports)
     // 5. Handles pause signal and errors
@@ -1195,13 +1261,18 @@ where
     // is implemented (task 15). This will eliminate serialization overhead for in-process execution.
 
     let node_name = self.name.clone();
-    let mut producer_clone = self.producer.clone();
+    let producer = Arc::clone(&self.producer);
     let _batching_channels_clone = batching_channels.clone();
     let arc_pool_clone = arc_pool.clone();
 
     let handle = tokio::spawn(async move {
       // Get the stream from the producer and pin it
-      let stream = producer_clone.produce();
+      // Note: produce() takes &self, so we call it with a lock then drop the guard
+      // The stream should own what it needs, so we release the lock
+      let stream = {
+        let mut producer_guard = producer.lock().await;
+        producer_guard.produce()
+      };
       let mut stream = pin!(stream);
 
       // Iterate over stream items
@@ -1466,7 +1537,7 @@ where
 // Implement NodeTrait for TransformerNode
 impl<T, Inputs, Outputs> NodeTrait for TransformerNode<T, Inputs, Outputs>
 where
-  T: Transformer + Send + Sync + Clone + 'static,
+  T: Transformer + Send + Sync + 'static,
   T::Input: std::fmt::Debug + Clone + Send + Sync + DeserializeOwned,
   T::Output: std::fmt::Debug + Clone + Send + Sync + Serialize,
   Inputs: PortList + Send + Sync + 'static,
@@ -1569,7 +1640,7 @@ where
     // serialize data using this function. Future optimization: pass Serializer
     // trait directly to nodes for pluggable serialization formats.
     let node_name = self.name.clone();
-    let mut transformer_clone = self.transformer.clone();
+    let transformer = Arc::clone(&self.transformer);
     let execution_mode_clone = execution_mode.clone();
     let _batching_channels_clone = batching_channels.clone();
     let arc_pool_clone = arc_pool.clone();
@@ -1655,7 +1726,10 @@ where
               as *const T::InputStream,
           )
         };
-        let output_stream = transformer_clone.transform(input_stream).await;
+        let output_stream = {
+          let mut transformer_guard = transformer.lock().await;
+          transformer_guard.transform(input_stream).await
+        };
         let mut output_stream = pin!(output_stream);
         let item = match output_stream.next().await {
           Some(item) => item,
@@ -1903,7 +1977,7 @@ where
 // Implement NodeTrait for ConsumerNode
 impl<C, Inputs> NodeTrait for ConsumerNode<C, Inputs>
 where
-  C: Consumer + Send + Sync + Clone + 'static,
+  C: Consumer + Send + Sync + 'static,
   C::Input: std::fmt::Debug + Clone + Send + Sync + DeserializeOwned + 'static,
   Inputs: PortList + Send + Sync + 'static,
   (): ValidateConsumerPorts<C, Inputs>,
@@ -1977,7 +2051,7 @@ where
     >,
     _arc_pool: Option<std::sync::Arc<crate::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
-    let mut consumer_clone = self.consumer.clone();
+    let consumer = Arc::clone(&self.consumer);
 
     let handle = tokio::spawn(async move {
       // Create input stream from channels by deserializing
@@ -2026,7 +2100,11 @@ where
       }
 
       // Call consumer.consume() with the merged input stream
-      consumer_clone.consume(input_stream).await;
+      // Note: consume() is async and takes &mut self, so we must hold the lock across the await
+      {
+        let mut consumer_guard = consumer.lock().await;
+        consumer_guard.consume(input_stream).await;
+      }
 
       Ok(())
     });
@@ -2101,32 +2179,29 @@ mod tests {
   #[test]
   fn test_producer_node_accessors() {
     let producer = VecProducer::new(vec![1, 2, 3]);
-    let mut node: ProducerNode<_, (i32,)> = ProducerNode::new("source".to_string(), producer);
+    let node: ProducerNode<_, (i32,)> = ProducerNode::new("source".to_string(), producer);
 
     assert_eq!(node.name(), "source");
-    let _producer_ref = node.producer();
-    let _producer_mut = node.producer_mut();
+    let _producer_arc = node.producer();
   }
 
   #[test]
   fn test_transformer_node_accessors() {
     let transformer = MapTransformer::new(|x: i32| x * 2);
-    let mut node: TransformerNode<_, (i32,), (i32,)> =
+    let node: TransformerNode<_, (i32,), (i32,)> =
       TransformerNode::new("mapper".to_string(), transformer);
 
     assert_eq!(node.name(), "mapper");
-    let _transformer_ref = node.transformer();
-    let _transformer_mut = node.transformer_mut();
+    let _transformer_arc = node.transformer();
   }
 
   #[test]
   fn test_consumer_node_accessors() {
     let consumer = VecConsumer::new();
-    let mut node: ConsumerNode<_, (i32,)> = ConsumerNode::new("sink".to_string(), consumer);
+    let node: ConsumerNode<_, (i32,)> = ConsumerNode::new("sink".to_string(), consumer);
 
     assert_eq!(node.name(), "sink");
-    let _consumer_ref = node.consumer();
-    let _consumer_mut = node.consumer_mut();
+    let _consumer_arc = node.consumer();
   }
 
   // Mock Producer for testing

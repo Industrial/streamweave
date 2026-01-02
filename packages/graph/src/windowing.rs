@@ -18,6 +18,12 @@
 //! - **Count-based windows**: Group items by count thresholds
 //! - **Session windows**: Group by activity gaps
 //!
+//! ## Architecture
+//!
+//! Windowed nodes access transformers through `Arc<tokio::sync::Mutex<T>>` to
+//! read window configuration. The `window_config()` method uses runtime detection
+//! to safely lock the mutex and access transformer fields.
+//!
 //! # Example
 //!
 //! ```rust,no_run
@@ -279,7 +285,33 @@ where
 {
   fn window_config(&self) -> Option<GraphWindowConfig> {
     // Extract window size from the transformer
-    let size = self.transformer().size;
+    let transformer = self.transformer();
+    let size = if tokio::runtime::Handle::try_current().is_ok() {
+      // We're in a runtime, spawn a new thread with a new runtime to avoid "runtime within runtime" error
+      let transformer_clone = transformer.clone();
+      std::thread::spawn(move || {
+        tokio::runtime::Builder::new_current_thread()
+          .enable_all()
+          .build()
+          .unwrap()
+          .block_on(async {
+            let guard = transformer_clone.lock().await;
+            guard.size
+          })
+      })
+      .join()
+      .unwrap()
+    } else {
+      // Not in a runtime, create one and use block_on
+      tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+          let guard = transformer.lock().await;
+          guard.size
+        })
+    };
     Some(GraphWindowConfig {
       size: WindowSize::Count(size),
       window_type: WindowType::Tumbling, // WindowTransformer is tumbling by default
@@ -309,7 +341,33 @@ where
 {
   fn window_config(&self) -> Option<GraphWindowConfig> {
     // Extract window duration from the transformer
-    let duration = self.transformer().duration;
+    let transformer = self.transformer();
+    let duration = if tokio::runtime::Handle::try_current().is_ok() {
+      // We're in a runtime, spawn a new thread with a new runtime to avoid "runtime within runtime" error
+      let transformer_clone = transformer.clone();
+      std::thread::spawn(move || {
+        tokio::runtime::Builder::new_current_thread()
+          .enable_all()
+          .build()
+          .unwrap()
+          .block_on(async {
+            let guard = transformer_clone.lock().await;
+            guard.duration
+          })
+      })
+      .join()
+      .unwrap()
+    } else {
+      // Not in a runtime, create one and use block_on
+      tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+          let guard = transformer.lock().await;
+          guard.duration
+        })
+    };
     Some(GraphWindowConfig {
       size: WindowSize::Time(duration),
       window_type: WindowType::Tumbling, // TimeWindowTransformer is tumbling by default

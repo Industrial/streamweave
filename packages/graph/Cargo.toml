@@ -33,6 +33,7 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 streamweave-vec = { path = "../vec" }
+streamweave-array = { path = "../array" }
 streamweave-transformers = { path = "../transformers" }
 proptest = { workspace = true }
 criterion = { version = "0.5", features = [
@@ -64,5 +65,8 @@ path = "test/control_flow/mod.rs"
 [[test]]
 name = "batching"
 path = "test/batching.rs"
+
+# Control flow examples can now be added since Clone requirement has been removed
+# from nodes. Nodes use Arc<Mutex<T>> internally for zero-copy node sharing.
 
 [features]
