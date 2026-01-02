@@ -387,10 +387,22 @@ impl BatchingChannel {
 
     // Store the task handle - we can't await in a non-async function,
     // so we use block_on to set it synchronously
-    if let Ok(handle) = tokio::runtime::Handle::try_current() {
-      handle.block_on(async {
-        *flush_task.lock().await = Some(task_handle);
-      });
+    if let Ok(_handle) = tokio::runtime::Handle::try_current() {
+      // If we're in a runtime, we can't use block_on from within an async context.
+      // Spawn a blocking task in a separate thread to avoid the "runtime within runtime" error
+      let task_handle_clone = task_handle;
+      let flush_task_clone = flush_task.clone();
+      std::thread::spawn(move || {
+        let rt = tokio::runtime::Builder::new_current_thread()
+          .enable_all()
+          .build()
+          .unwrap();
+        rt.block_on(async {
+          *flush_task_clone.lock().await = Some(task_handle_clone);
+        });
+      })
+      .join()
+      .unwrap();
     } else {
       // If we're not in a tokio runtime, create a temporary runtime
       let rt = tokio::runtime::Builder::new_current_thread()

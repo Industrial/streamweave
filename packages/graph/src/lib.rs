@@ -5,6 +5,7 @@ pub mod broadcast_router;
 pub mod channels;
 pub mod compression;
 pub mod connection;
+pub mod control_flow;
 pub mod execution;
 #[allow(clippy::module_inception)]
 pub mod graph;
@@ -28,6 +29,7 @@ pub use broadcast_router::*;
 pub use channels::*;
 pub use compression::*;
 pub use connection::*;
+pub use control_flow::*;
 pub use execution::*;
 pub use graph::*;
 pub use key_based_router::*;

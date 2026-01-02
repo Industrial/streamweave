@@ -34,6 +34,14 @@ ndarray = { workspace = true, optional = true }
 [dev-dependencies]
 proptest = { workspace = true }
 
+[[test]]
+name = "inference_backend"
+path = "test/inference_backend.rs"
+
+[[test]]
+name = "onnx"
+path = "test/onnx.rs"
+
 [features]
 default = []
 # Optional features

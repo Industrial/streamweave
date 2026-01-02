@@ -34,6 +34,7 @@ thiserror = { workspace = true }
 [dev-dependencies]
 streamweave-vec = { path = "../vec" }
 streamweave-transformers = { path = "../transformers" }
+proptest = { workspace = true }
 criterion = { version = "0.5", features = [
   "html_reports",
   "async_tokio",
@@ -55,5 +56,13 @@ harness = false
 [[bench]]
 name = "batching_bench"
 harness = false
+
+[[test]]
+name = "control_flow"
+path = "test/control_flow/mod.rs"
+
+[[test]]
+name = "batching"
+path = "test/batching.rs"
 
 [features]

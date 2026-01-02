@@ -54,7 +54,7 @@
 
     # Publishing tools
     cargo-watch
-    # cargo-audit
+    cargo-audit
     cargo-llvm-cov
     cargo-nextest
 
