@@ -54,7 +54,7 @@ where
 {
   async fn route_streams(
     &mut self,
-    streams: Vec<(usize, Pin<Box<dyn Stream<Item = T> + Send>>)>,
+    streams: Vec<(String, Pin<Box<dyn Stream<Item = T> + Send>>)>,
   ) -> Pin<Box<dyn Stream<Item = T> + Send>> {
     use tokio::sync::mpsc;
 
@@ -118,7 +118,15 @@ where
     })
   }
 
-  fn expected_ports(&self) -> Vec<usize> {
-    (0..self.expected_inputs).collect()
+  fn expected_port_names(&self) -> Vec<String> {
+    (0..self.expected_inputs)
+      .map(|i| {
+        if i == 0 {
+          "in".to_string()
+        } else {
+          format!("in_{}", i)
+        }
+      })
+      .collect()
   }
 }

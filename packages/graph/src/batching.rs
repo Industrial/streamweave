@@ -440,7 +440,7 @@ impl BatchingChannel {
         return self.inner.send(item).await.map_err(|e| {
           crate::execution::ExecutionError::ChannelError {
             node: "unknown".to_string(),
-            port: 0,
+            port: "unknown".to_string(),
             is_input: false,
             reason: format!("Failed to send item: {}", e),
           }
@@ -498,7 +498,7 @@ impl BatchingChannel {
       .await
       .map_err(|e| crate::execution::ExecutionError::ChannelError {
         node: "unknown".to_string(),
-        port: 0,
+        port: "unknown".to_string(),
         is_input: false,
         reason: format!("Failed to send batch: {}", e),
       })?;
@@ -540,115 +540,5 @@ impl Drop for BatchingChannel {
   fn drop(&mut self) {
     // Signal shutdown
     self.shutdown.notify_one();
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn test_batch_buffer_add() {
-    let config = BatchConfig::new(10, 1000);
-    let mut buffer = BatchBuffer::new(config);
-
-    assert!(buffer.is_empty());
-    assert_eq!(buffer.len(), 0);
-
-    buffer.add(Bytes::from("item1")).unwrap();
-    assert_eq!(buffer.len(), 1);
-    assert!(!buffer.is_empty());
-  }
-
-  #[test]
-  fn test_batch_buffer_should_flush_size() {
-    let config = BatchConfig::new(3, 1000);
-    let mut buffer = BatchBuffer::new(config);
-
-    assert!(!buffer.should_flush());
-
-    buffer.add(Bytes::from("item1")).unwrap();
-    assert!(!buffer.should_flush());
-
-    buffer.add(Bytes::from("item2")).unwrap();
-    assert!(!buffer.should_flush());
-
-    buffer.add(Bytes::from("item3")).unwrap();
-    assert!(buffer.should_flush()); // Reached batch_size
-  }
-
-  #[test]
-  fn test_batch_buffer_should_flush_timeout() {
-    let config = BatchConfig::new(100, 10); // 10ms timeout
-    let mut buffer = BatchBuffer::new(config);
-
-    buffer.add(Bytes::from("item1")).unwrap();
-    assert!(!buffer.should_flush());
-
-    // Wait for timeout
-    std::thread::sleep(Duration::from_millis(20));
-    assert!(buffer.should_flush());
-  }
-
-  #[test]
-  fn test_batch_buffer_flush() {
-    let config = BatchConfig::new(10, 1000);
-    let mut buffer = BatchBuffer::new(config);
-
-    buffer.add(Bytes::from("item1")).unwrap();
-    buffer.add(Bytes::from("item2")).unwrap();
-    buffer.add(Bytes::from("item3")).unwrap();
-
-    let items = buffer.flush();
-    assert_eq!(items.len(), 3);
-    assert!(buffer.is_empty());
-  }
-
-  #[test]
-  fn test_serialize_deserialize_batch() {
-    let items = vec![
-      Bytes::from("item1"),
-      Bytes::from("item2"),
-      Bytes::from("item3"),
-    ];
-
-    let serialized = serialize_batch(items.clone()).unwrap();
-    let deserialized = deserialize_batch(serialized).unwrap();
-
-    assert_eq!(deserialized.len(), 3);
-    assert_eq!(deserialized[0], items[0]);
-    assert_eq!(deserialized[1], items[1]);
-    assert_eq!(deserialized[2], items[2]);
-  }
-
-  #[test]
-  fn test_serialize_empty_batch() {
-    let items = Vec::new();
-    let serialized = serialize_batch(items).unwrap();
-    assert!(serialized.is_empty());
-
-    let deserialized = deserialize_batch(serialized).unwrap();
-    assert!(deserialized.is_empty());
-  }
-
-  #[test]
-  fn test_deserialize_invalid_batch() {
-    // Invalid: too short for item count
-    let invalid = Bytes::from("short");
-    assert!(deserialize_batch(invalid).is_err());
-  }
-
-  #[test]
-  fn test_batch_buffer_max_size() {
-    let config = BatchConfig::new(10, 1000);
-    let mut buffer = BatchBuffer::new(config);
-
-    // Add items up to max_buffer_size (10 * 10 = 100)
-    for i in 0..100 {
-      buffer.add(Bytes::from(format!("item{}", i))).unwrap();
-    }
-
-    // Next add should fail
-    assert!(buffer.add(Bytes::from("overflow")).is_err());
   }
 }

@@ -112,7 +112,7 @@ where
   async fn route_stream(
     &mut self,
     stream: Pin<Box<dyn Stream<Item = O> + Send>>,
-  ) -> Vec<(usize, Pin<Box<dyn Stream<Item = O> + Send>>)> {
+  ) -> Vec<(String, Pin<Box<dyn Stream<Item = O> + Send>>)> {
     if self.output_ports.is_empty() {
       return Vec::new();
     }
@@ -158,62 +158,35 @@ where
     });
 
     // Create streams from receivers
-    let mut output_streams: Vec<(usize, Pin<Box<dyn Stream<Item = O> + Send>>)> = Vec::new();
-    for &port in self.output_ports.iter() {
+    let mut output_streams: Vec<(String, Pin<Box<dyn Stream<Item = O> + Send>>)> = Vec::new();
+    for (idx, &_port) in self.output_ports.iter().enumerate() {
+      let port_name = if idx == 0 {
+        "out".to_string()
+      } else {
+        format!("out_{}", idx)
+      };
       let mut rx = receivers.remove(0);
       let stream = Box::pin(async_stream::stream! {
         while let Some(item) = rx.recv().await {
           yield item;
         }
       });
-      output_streams.push((port, stream));
+      output_streams.push((port_name, stream));
     }
 
     output_streams
   }
 
-  fn output_ports(&self) -> Vec<usize> {
-    self.output_ports.clone()
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use futures::stream;
-
-  #[tokio::test]
-  async fn test_key_based_router() {
-    let mut router = KeyBasedRouter::new(
-      |x: &i32| *x % 3, // Key function: modulo 3
-      vec![0, 1, 2],
-    );
-    let input_stream: Pin<Box<dyn Stream<Item = i32> + Send>> =
-      Box::pin(stream::iter(vec![1, 2, 3, 4, 5, 6]));
-
-    let output_streams = router.route_stream(input_stream).await;
-
-    assert_eq!(output_streams.len(), 3);
-
-    // Collect from each stream
-    use futures::StreamExt;
-    let mut results = Vec::new();
-    for (_, mut stream) in output_streams {
-      let mut stream_results = Vec::new();
-      while let Some(item) = stream.next().await {
-        stream_results.push(item);
-      }
-      results.push(stream_results);
-    }
-
-    // Items should be distributed by key (mod 3)
-    // All streams should receive some items
-    assert!(results.iter().any(|r| !r.is_empty()));
-  }
-
-  #[test]
-  fn test_key_based_output_ports() {
-    let router = KeyBasedRouter::<i32, i32>::new(|x| *x, vec![0, 1, 2]);
-    assert_eq!(router.output_ports(), vec![0, 1, 2]);
+  fn output_port_names(&self) -> Vec<String> {
+    // Generate port names based on number of ports
+    (0..self.output_ports.len())
+      .map(|i| {
+        if i == 0 {
+          "out".to_string()
+        } else {
+          format!("out_{}", i)
+        }
+      })
+      .collect()
   }
 }

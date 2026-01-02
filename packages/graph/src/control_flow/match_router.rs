@@ -82,7 +82,7 @@ where
   async fn route_stream(
     &mut self,
     stream: Pin<Box<dyn Stream<Item = O> + Send>>,
-  ) -> Vec<(usize, Pin<Box<dyn Stream<Item = O> + Send>>)> {
+  ) -> Vec<(String, Pin<Box<dyn Stream<Item = O> + Send>>)> {
     use tokio::sync::mpsc;
 
     // Calculate number of output ports
@@ -129,26 +129,39 @@ where
     });
 
     // Create streams from receivers
-    let mut output_streams: Vec<(usize, Pin<Box<dyn Stream<Item = O> + Send>>)> = Vec::new();
+    let mut output_streams: Vec<(String, Pin<Box<dyn Stream<Item = O> + Send>>)> = Vec::new();
     for (port_idx, mut rx) in receivers.into_iter().enumerate() {
+      let port_name = if port_idx == 0 {
+        "out".to_string()
+      } else {
+        format!("out_{}", port_idx)
+      };
       let stream: Pin<Box<dyn Stream<Item = O> + Send>> = Box::pin(async_stream::stream! {
         while let Some(item) = rx.recv().await {
           yield item;
         }
       });
-      output_streams.push((port_idx, stream));
+      output_streams.push((port_name, stream));
     }
 
     output_streams
   }
 
-  fn output_ports(&self) -> Vec<usize> {
+  fn output_port_names(&self) -> Vec<String> {
     // Calculate ports based on current state
     // Note: After route_stream is called, patterns are moved, so this may return incorrect results
-    // In practice, output_ports should be called before route_stream
+    // In practice, output_port_names should be called before route_stream
     let num_patterns = self.patterns.len();
     let num_ports = num_patterns + self.default_port.is_some() as usize;
-    (0..num_ports).collect()
+    (0..num_ports)
+      .map(|i| {
+        if i == 0 {
+          "out".to_string()
+        } else {
+          format!("out_{}", i)
+        }
+      })
+      .collect()
   }
 }
 

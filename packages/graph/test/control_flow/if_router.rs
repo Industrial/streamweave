@@ -86,7 +86,10 @@ async fn test_if_router_empty_stream() {
 #[test]
 fn test_if_router_output_ports() {
   let router = If::<i32>::new(|_| true);
-  assert_eq!(router.output_ports(), vec![0, 1]);
+  assert_eq!(
+    router.output_port_names(),
+    vec!["true".to_string(), "false".to_string()]
+  );
 }
 
 proptest! {

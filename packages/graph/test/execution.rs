@@ -921,3 +921,287 @@ mod additional_execution_coverage {
     assert!(display_str.contains("invalid format"));
   }
 }
+
+// Tests moved from src/
+use streamweave_graph::{GraphBuilder, ProducerNode};
+use streamweave_vec::VecProducer;
+
+#[tokio::test]
+async fn test_throughput_monitor() {
+  use std::time::Duration;
+  use streamweave_graph::throughput::ThroughputMonitor;
+
+  let monitor = ThroughputMonitor::new(Duration::from_secs(1));
+
+  // Initially zero
+  assert_eq!(monitor.item_count(), 0);
+
+  // Increment items
+  monitor.increment_item_count();
+  monitor.increment_by(5);
+  assert_eq!(monitor.item_count(), 6);
+
+  // Calculate throughput (may be 0 if not enough time has passed)
+  let throughput = monitor.calculate_throughput().await;
+  assert!(throughput >= 0.0);
+
+  // Reset
+  monitor.reset().await;
+  assert_eq!(monitor.item_count(), 0);
+}
+
+#[tokio::test]
+async fn test_mode_switch_metrics() {
+  use streamweave_graph::execution::ModeSwitchMetrics;
+
+  let mut metrics = ModeSwitchMetrics::new();
+  assert_eq!(metrics.switch_count, 0);
+
+  // Record a switch
+  metrics.record_switch(150.0, "InProcess", "Distributed");
+  assert_eq!(metrics.switch_count, 1);
+  assert_eq!(metrics.switch_reasons.len(), 1);
+  assert_eq!(metrics.switch_reasons[0], 150.0);
+  assert_eq!(metrics.current_mode, Some("Distributed".to_string()));
+
+  // Record another switch
+  metrics.record_switch(50.0, "Distributed", "InProcess");
+  assert_eq!(metrics.switch_count, 2);
+}
+
+#[tokio::test]
+async fn test_graph_executor_creation() {
+  let graph = Graph::new();
+  let executor = graph.executor();
+
+  assert_eq!(executor.state(), ExecutionState::Stopped);
+  assert!(!executor.is_running());
+}
+
+#[tokio::test]
+async fn test_graph_executor_start_stop() {
+  // Create a graph with at least one node
+  let graph = GraphBuilder::new()
+    .node(ProducerNode::from_producer(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    ))
+    .unwrap()
+    .build();
+  let mut executor = graph.executor();
+
+  // Start execution
+  assert!(executor.start().await.is_ok());
+  assert_eq!(executor.state(), ExecutionState::Running);
+  assert!(executor.is_running());
+
+  // Stop execution
+  assert!(executor.stop().await.is_ok());
+  assert_eq!(executor.state(), ExecutionState::Stopped);
+  assert!(!executor.is_running());
+}
+
+#[tokio::test]
+async fn test_graph_executor_double_start() {
+  // Create a graph with at least one node
+  let graph = GraphBuilder::new()
+    .node(ProducerNode::from_producer(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    ))
+    .unwrap()
+    .build();
+  let mut executor = graph.executor();
+
+  assert!(executor.start().await.is_ok());
+  // Starting again should fail
+  assert!(executor.start().await.is_err());
+}
+
+#[tokio::test]
+async fn test_graph_executor_empty_graph() {
+  let graph = Graph::new();
+  let mut executor = graph.executor();
+
+  // Starting an empty graph should fail
+  assert!(executor.start().await.is_err());
+}
+
+#[tokio::test]
+async fn test_graph_executor_stop_when_stopped() {
+  let graph = Graph::new();
+  let mut executor = graph.executor();
+
+  // Stopping when already stopped should succeed
+  assert!(executor.stop().await.is_ok());
+}
+
+#[tokio::test]
+async fn test_graph_executor_pause_resume() {
+  // Create a graph with at least one node
+  let graph = GraphBuilder::new()
+    .node(ProducerNode::from_producer(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    ))
+    .unwrap()
+    .build();
+  let mut executor = graph.executor();
+
+  // Cannot pause when not running
+  assert!(executor.pause().await.is_err());
+
+  // Start execution
+  assert!(executor.start().await.is_ok());
+
+  // Pause execution
+  assert!(executor.pause().await.is_ok());
+  assert!(executor.is_paused());
+  assert_eq!(executor.state(), ExecutionState::Paused);
+
+  // Resume execution
+  assert!(executor.resume().await.is_ok());
+  assert!(!executor.is_paused());
+  assert_eq!(executor.state(), ExecutionState::Running);
+
+  // Stop execution
+  assert!(executor.stop().await.is_ok());
+}
+
+#[tokio::test]
+async fn test_graph_executor_resume_when_not_paused() {
+  // Create a graph with at least one node
+  let graph = GraphBuilder::new()
+    .node(ProducerNode::from_producer(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    ))
+    .unwrap()
+    .build();
+  let mut executor = graph.executor();
+
+  // Cannot resume when not paused
+  assert!(executor.resume().await.is_err());
+
+  // Start execution
+  assert!(executor.start().await.is_ok());
+
+  // Cannot resume when running (not paused)
+  assert!(executor.resume().await.is_err());
+}
+
+#[tokio::test]
+async fn test_graph_executor_pause_signal() {
+  let graph = Graph::new();
+  let executor = graph.executor();
+
+  // Get pause signal
+  let pause_signal = executor.pause_signal();
+
+  // Initially not paused
+  assert!(!*pause_signal.read().await);
+
+  // Set pause signal
+  *pause_signal.write().await = true;
+  assert!(*pause_signal.read().await);
+
+  // Clear pause signal
+  *pause_signal.write().await = false;
+  assert!(!*pause_signal.read().await);
+}
+
+#[tokio::test]
+async fn test_graph_executor_channel_creation() {
+  use streamweave_graph::{GraphBuilder, ProducerNode};
+  use streamweave_vec::VecProducer;
+
+  // Create a simple graph with one node (no connections yet)
+  let graph = GraphBuilder::new()
+    .node(ProducerNode::from_producer(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    ))
+    .unwrap()
+    .build();
+
+  let mut executor = graph.executor();
+
+  // Create channels (even though there are no connections, this should succeed)
+  assert!(executor.create_channels_with_buffer_size(64).is_ok());
+  assert_eq!(executor.channel_count(), 0);
+}
+
+#[tokio::test]
+async fn test_graph_executor_channel_helpers() {
+  use streamweave_graph::{GraphBuilder, ProducerNode};
+  use streamweave_vec::VecProducer;
+
+  // Create a simple graph
+  let graph = GraphBuilder::new()
+    .node(ProducerNode::from_producer(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    ))
+    .unwrap()
+    .build();
+
+  let mut executor = graph.executor();
+
+  // No channels exist yet
+  assert!(!executor.has_channel("source", "out", true));
+  assert_eq!(executor.channel_count(), 0);
+  assert!(executor.get_channel_sender("source", "out").is_none());
+  assert!(executor.get_channel_receiver("source", "in").is_none());
+}
+
+#[tokio::test]
+async fn test_graph_executor_lifecycle_errors() {
+  let graph = Graph::new();
+  let mut executor = graph.executor();
+
+  // Initially no errors
+  assert!(executor.errors().is_empty());
+
+  // Clear errors (should be no-op)
+  executor.clear_errors();
+  assert!(executor.errors().is_empty());
+}
+
+#[tokio::test]
+async fn test_graph_executor_shutdown_timeout() {
+  let graph = Graph::new();
+  let executor = graph.executor();
+
+  // Default timeout is 30 seconds
+  assert_eq!(executor.shutdown_timeout(), Duration::from_secs(30));
+
+  // Create executor with custom timeout (need new graph since previous one was moved)
+  let graph2 = Graph::new();
+  let custom_timeout = Duration::from_secs(60);
+  let mut executor = GraphExecutor::with_shutdown_timeout(graph2, custom_timeout);
+  assert_eq!(executor.shutdown_timeout(), custom_timeout);
+
+  // Set new timeout
+  executor.set_shutdown_timeout(Duration::from_secs(10));
+  assert_eq!(executor.shutdown_timeout(), Duration::from_secs(10));
+}
+
+#[tokio::test]
+async fn test_graph_executor_stop_immediate() {
+  // Create a graph with at least one node
+  let graph = GraphBuilder::new()
+    .node(ProducerNode::from_producer(
+      "source".to_string(),
+      VecProducer::new(vec![1, 2, 3]),
+    ))
+    .unwrap()
+    .build();
+  let mut executor = graph.executor();
+
+  // Start execution
+  assert!(executor.start().await.is_ok());
+
+  // Stop immediately
+  assert!(executor.stop_immediate().await.is_ok());
+  assert_eq!(executor.state(), ExecutionState::Stopped);
+}

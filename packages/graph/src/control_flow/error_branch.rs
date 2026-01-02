@@ -62,7 +62,7 @@ where
   async fn route_stream(
     &mut self,
     stream: Pin<Box<dyn Stream<Item = Result<T, E>> + Send>>,
-  ) -> Vec<(usize, Pin<Box<dyn Stream<Item = Result<T, E>> + Send>>)> {
+  ) -> Vec<(String, Pin<Box<dyn Stream<Item = Result<T, E>> + Send>>)> {
     use tokio::sync::mpsc;
 
     // Create channels for success/error ports
@@ -90,7 +90,7 @@ where
     let mut rx_error_mut = rx_error;
     vec![
       (
-        0,
+        "success".to_string(),
         Box::pin(async_stream::stream! {
           while let Some(item) = rx_success_mut.recv().await {
             yield item;
@@ -98,7 +98,7 @@ where
         }),
       ),
       (
-        1,
+        "error".to_string(),
         Box::pin(async_stream::stream! {
           while let Some(item) = rx_error_mut.recv().await {
             yield item;
@@ -108,7 +108,7 @@ where
     ]
   }
 
-  fn output_ports(&self) -> Vec<usize> {
-    vec![0, 1] // success port, error port
+  fn output_port_names(&self) -> Vec<String> {
+    vec!["success".to_string(), "error".to_string()]
   }
 }

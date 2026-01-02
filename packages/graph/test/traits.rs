@@ -51,13 +51,13 @@ fn test_producer_node_trait() {
   assert_eq!(node.output_port_count(), 1);
 
   assert_eq!(node.input_port_name(0), None);
-  assert_eq!(node.output_port_name(0), Some("out0".to_string()));
+  assert_eq!(node.output_port_name(0), Some("out".to_string())); // Single-port uses "out"
   assert_eq!(node.output_port_name(1), None);
 
-  assert_eq!(node.resolve_input_port("in0"), None);
-  assert_eq!(node.resolve_output_port("out0"), Some(0));
-  assert_eq!(node.resolve_output_port("out"), Some(0)); // Single port default
-  assert_eq!(node.resolve_output_port("0"), Some(0));
+  assert_eq!(node.resolve_input_port("in"), None);
+  assert_eq!(node.resolve_output_port("out"), Some(0)); // Single-port uses "out"
+  assert_eq!(node.resolve_output_port("out0"), None); // No longer supported
+  assert_eq!(node.resolve_output_port("0"), None); // Numeric indices no longer supported
 }
 
 #[test]
@@ -71,16 +71,16 @@ fn test_transformer_node_trait() {
   assert_eq!(node.input_port_count(), 1);
   assert_eq!(node.output_port_count(), 1);
 
-  assert_eq!(node.input_port_name(0), Some("in0".to_string()));
+  assert_eq!(node.input_port_name(0), Some("in".to_string())); // Single-port uses "in"
   assert_eq!(node.input_port_name(1), None);
-  assert_eq!(node.output_port_name(0), Some("out0".to_string()));
+  assert_eq!(node.output_port_name(0), Some("out".to_string())); // Single-port uses "out"
   assert_eq!(node.output_port_name(1), None);
 
-  assert_eq!(node.resolve_input_port("in0"), Some(0));
-  assert_eq!(node.resolve_input_port("in"), Some(0)); // Single port default
-  assert_eq!(node.resolve_input_port("0"), Some(0));
-  assert_eq!(node.resolve_output_port("out0"), Some(0));
-  assert_eq!(node.resolve_output_port("out"), Some(0)); // Single port default
+  assert_eq!(node.resolve_input_port("in"), Some(0)); // Single-port uses "in"
+  assert_eq!(node.resolve_input_port("in0"), None); // No longer supported
+  assert_eq!(node.resolve_input_port("0"), None); // Numeric indices no longer supported
+  assert_eq!(node.resolve_output_port("out"), Some(0)); // Single-port uses "out"
+  assert_eq!(node.resolve_output_port("out0"), None); // No longer supported
 }
 
 #[test]
@@ -93,14 +93,14 @@ fn test_consumer_node_trait() {
   assert_eq!(node.input_port_count(), 1);
   assert_eq!(node.output_port_count(), 0);
 
-  assert_eq!(node.input_port_name(0), Some("in0".to_string()));
+  assert_eq!(node.input_port_name(0), Some("in".to_string())); // Single-port uses "in"
   assert_eq!(node.input_port_name(1), None);
   assert_eq!(node.output_port_name(0), None);
 
-  assert_eq!(node.resolve_input_port("in0"), Some(0));
-  assert_eq!(node.resolve_input_port("in"), Some(0)); // Single port default
-  assert_eq!(node.resolve_input_port("0"), Some(0));
-  assert_eq!(node.resolve_output_port("out0"), None);
+  assert_eq!(node.resolve_input_port("in"), Some(0)); // Single-port uses "in"
+  assert_eq!(node.resolve_input_port("in0"), None); // No longer supported
+  assert_eq!(node.resolve_input_port("0"), None); // Numeric indices no longer supported
+  assert_eq!(node.resolve_output_port("out"), None); // Consumers have no output ports
 }
 
 #[test]
@@ -213,16 +213,16 @@ fn test_multiple_port_resolution() {
   let node: TransformerNode<_, (i32,), (i32,)> =
     TransformerNode::new("mapper".to_string(), transformer);
 
-  // Test numeric port resolution
-  assert_eq!(node.resolve_input_port("0"), Some(0));
-  assert_eq!(node.resolve_input_port("1"), None); // Only one input port
+  // Test single port resolution (numeric indices no longer supported)
+  assert_eq!(node.resolve_input_port("0"), None); // Numeric indices no longer supported
+  assert_eq!(node.resolve_input_port("1"), None); // Numeric indices no longer supported
 
-  // Test named port resolution
-  assert_eq!(node.resolve_input_port("in0"), Some(0));
-  assert_eq!(node.resolve_input_port("in1"), None);
+  // Test named port resolution (numbered names no longer supported)
+  assert_eq!(node.resolve_input_port("in0"), None); // No longer supported
+  assert_eq!(node.resolve_input_port("in1"), None); // No longer supported
 
-  // Test default single port resolution
-  assert_eq!(node.resolve_input_port("in"), Some(0));
+  // Test single port resolution
+  assert_eq!(node.resolve_input_port("in"), Some(0)); // Single-port uses "in"
 }
 
 #[test]
@@ -231,7 +231,7 @@ fn test_port_name_generation() {
   let node: ProducerNode<_, (i32,)> = ProducerNode::new("source".to_string(), producer);
 
   // Test output port naming
-  assert_eq!(node.output_port_name(0), Some("out0".to_string()));
+  assert_eq!(node.output_port_name(0), Some("out".to_string())); // Single-port uses "out"
 
   // Test that invalid port indices return None
   assert_eq!(node.output_port_name(1), None);

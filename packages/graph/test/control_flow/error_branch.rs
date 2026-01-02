@@ -87,13 +87,16 @@ async fn test_error_branch_router_all_errors() {
 fn test_error_branch_router_default() {
   let router1 = ErrorBranch::<i32, String>::new();
   let router2 = ErrorBranch::<i32, String>::default();
-  assert_eq!(router1.output_ports(), router2.output_ports());
+  assert_eq!(router1.output_port_names(), router2.output_port_names());
 }
 
 #[test]
 fn test_error_branch_router_output_ports() {
   let router = ErrorBranch::<i32, String>::new();
-  assert_eq!(router.output_ports(), vec![0, 1]);
+  assert_eq!(
+    router.output_port_names(),
+    vec!["success".to_string(), "error".to_string()]
+  );
 }
 
 #[tokio::test]
@@ -137,7 +140,7 @@ async fn test_error_branch_router() {
 async fn test_error_branch_default() {
   let router1 = ErrorBranch::<i32, String>::new();
   let router2 = ErrorBranch::<i32, String>::default();
-  assert_eq!(router1.output_ports(), router2.output_ports());
+  assert_eq!(router1.output_port_names(), router2.output_port_names());
 }
 
 proptest! {

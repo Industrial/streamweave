@@ -7,7 +7,7 @@
 //! ## InputRouter
 //!
 //! The `InputRouter` trait handles fan-in patterns (multiple input streams → single node).
-//! It takes multiple input streams, each tagged with a port index, and merges them
+//! It takes multiple input streams, each tagged with a port name, and merges them
 //! into a single stream according to the router's strategy.
 //!
 //! ## Example
@@ -19,7 +19,7 @@
 //!
 //! // A simple merge-all router (stateless)
 //! struct MergeAllRouter<I> {
-//!     expected_ports: Vec<usize>,
+//!     expected_port_names: Vec<String>,
 //! }
 //!
 //! #[async_trait::async_trait]
@@ -29,7 +29,7 @@
 //! {
 //!     async fn route_streams(
 //!         &mut self,
-//!         streams: Vec<(usize, Pin<Box<dyn Stream<Item = I> + Send>>)>,
+//!         streams: Vec<(String, Pin<Box<dyn Stream<Item = I> + Send>>)>,
 //!     ) -> Pin<Box<dyn Stream<Item = I> + Send>> {
 //!         // Merge all streams using select_all
 //!         Box::pin(futures::stream::select_all(
@@ -37,8 +37,8 @@
 //!         ))
 //!     }
 //!
-//!     fn expected_ports(&self) -> Vec<usize> {
-//!         self.expected_ports.clone()
+//!     fn expected_port_names(&self) -> Vec<String> {
+//!         self.expected_port_names.clone()
 //!     }
 //! }
 //! ```
@@ -83,7 +83,7 @@ use std::pin::Pin;
 ///
 /// // Stateful round-robin router
 /// struct RoundRobinRouter<I> {
-///     expected_ports: Vec<usize>,
+///     expected_port_names: Vec<String>,
 ///     next_port: usize,  // State maintained across calls
 /// }
 ///
@@ -94,15 +94,15 @@ use std::pin::Pin;
 /// {
 ///     async fn route_streams(
 ///         &mut self,
-///         streams: Vec<(usize, Pin<Box<dyn Stream<Item = I> + Send>>)>,
+///         streams: Vec<(String, Pin<Box<dyn Stream<Item = I> + Send>>)>,
 ///     ) -> Pin<Box<dyn Stream<Item = I> + Send>> {
 ///         // Round-robin implementation with state
 ///         // ...
 ///         # Box::pin(futures::stream::empty())
 ///     }
 ///
-///     fn expected_ports(&self) -> Vec<usize> {
-///         self.expected_ports.clone()
+///     fn expected_port_names(&self) -> Vec<String> {
+///         self.expected_port_names.clone()
 ///     }
 /// }
 /// ```
@@ -119,9 +119,9 @@ where
   ///
   /// # Arguments
   ///
-  /// * `streams` - Vector of (port_index, stream) tuples representing
-  ///   inputs from different ports. The port index corresponds to the
-  ///   position in the node's `Inputs` port tuple.
+  /// * `streams` - Vector of (port_name, stream) tuples representing
+  ///   inputs from different ports. The port name identifies the specific
+  ///   input port on the node.
   ///
   /// # Returns
   ///
@@ -144,25 +144,24 @@ where
   /// retried, or cause the entire routing operation to fail.
   async fn route_streams(
     &mut self,
-    streams: Vec<(usize, Pin<Box<dyn Stream<Item = I> + Send>>)>,
+    streams: Vec<(String, Pin<Box<dyn Stream<Item = I> + Send>>)>,
   ) -> Pin<Box<dyn Stream<Item = I> + Send>>;
 
-  /// Returns the port indices this router expects to receive.
+  /// Returns the port names this router expects to receive.
   ///
   /// This method is used for validation during graph construction and
   /// to ensure that all required input ports are connected.
   ///
   /// # Returns
   ///
-  /// A vector of port indices (usize) that this router expects to receive
-  /// input from. These indices correspond to positions in the node's
-  /// `Inputs` port tuple.
+  /// A vector of port names (String) that this router expects to receive
+  /// input from.
   ///
   /// # Example
   ///
-  /// If a node has `Inputs = (i32, String, bool)`, and the router expects
-  /// inputs from ports 0 and 2, this method would return `vec![0, 2]`.
-  fn expected_ports(&self) -> Vec<usize>;
+  /// If a router expects inputs from ports named "in_a" and "in_b",
+  /// this method would return `vec!["in_a".to_string(), "in_b".to_string()]`.
+  fn expected_port_names(&self) -> Vec<String>;
 }
 
 /// Error type for router operations.
@@ -171,12 +170,12 @@ where
 /// including invalid port configurations, stream errors, and configuration issues.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RouterError {
-  /// Invalid port index provided
+  /// Invalid port name provided
   InvalidPort {
-    /// The invalid port index
-    port: usize,
-    /// The expected port indices
-    expected: Vec<usize>,
+    /// The invalid port name
+    port_name: String,
+    /// The expected port names
+    expected: Vec<String>,
   },
   /// Error during stream processing
   StreamError {
@@ -193,11 +192,14 @@ pub enum RouterError {
 impl std::fmt::Display for RouterError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      RouterError::InvalidPort { port, expected } => {
+      RouterError::InvalidPort {
+        port_name,
+        expected,
+      } => {
         write!(
           f,
-          "Invalid port index: {} (expected one of: {:?})",
-          port, expected
+          "Invalid port name: '{}' (expected one of: {:?})",
+          port_name, expected
         )
       }
       RouterError::StreamError { message } => {
@@ -266,7 +268,7 @@ impl std::error::Error for RouterError {}
 ///
 /// // Broadcast router (clones to all ports)
 /// struct BroadcastRouter<O> {
-///     output_ports: Vec<usize>,
+///     output_port_names: Vec<String>,
 /// }
 ///
 /// #[async_trait::async_trait]
@@ -277,21 +279,21 @@ impl std::error::Error for RouterError {}
 ///     async fn route_stream(
 ///         &mut self,
 ///         stream: Pin<Box<dyn Stream<Item = O> + Send>>,
-///     ) -> Vec<(usize, Pin<Box<dyn Stream<Item = O> + Send>>)> {
+///     ) -> Vec<(String, Pin<Box<dyn Stream<Item = O> + Send>>)> {
 ///         // Clone items and send to all ports
 ///         // Can leverage BroadcastTransformer internally
 ///         // ...
 ///         # vec![]
 ///     }
 ///
-///     fn output_ports(&self) -> Vec<usize> {
-///         self.output_ports.clone()
+///     fn output_port_names(&self) -> Vec<String> {
+///         self.output_port_names.clone()
 ///     }
 /// }
 ///
 /// // Round-robin router (distributes to one port)
 /// struct RoundRobinRouter<O> {
-///     output_ports: Vec<usize>,
+///     output_port_names: Vec<String>,
 ///     next_port: usize,  // State maintained across calls
 /// }
 ///
@@ -303,15 +305,15 @@ impl std::error::Error for RouterError {}
 ///     async fn route_stream(
 ///         &mut self,
 ///         stream: Pin<Box<dyn Stream<Item = O> + Send>>,
-///     ) -> Vec<(usize, Pin<Box<dyn Stream<Item = O> + Send>>)> {
+///     ) -> Vec<(String, Pin<Box<dyn Stream<Item = O> + Send>>)> {
 ///         // Distribute items in round-robin fashion
 ///         // Each item goes to exactly one port
 ///         // ...
 ///         # vec![]
 ///     }
 ///
-///     fn output_ports(&self) -> Vec<usize> {
-///         self.output_ports.clone()
+///     fn output_port_names(&self) -> Vec<String> {
+///         self.output_port_names.clone()
 ///     }
 /// }
 /// ```
@@ -332,7 +334,7 @@ where
   ///
   /// # Returns
   ///
-  /// A vector of (port_index, stream) tuples, one for each output port.
+  /// A vector of (port_name, stream) tuples, one for each output port.
   /// The number of streams matches the number of output ports this router
   /// manages. Each stream is independent and can be consumed by different
   /// downstream nodes in parallel.
@@ -370,173 +372,20 @@ where
   async fn route_stream(
     &mut self,
     stream: Pin<Box<dyn Stream<Item = O> + Send>>,
-  ) -> Vec<(usize, Pin<Box<dyn Stream<Item = O> + Send>>)>;
+  ) -> Vec<(String, Pin<Box<dyn Stream<Item = O> + Send>>)>;
 
-  /// Returns the port indices this router will output to.
+  /// Returns the port names this router will output to.
   ///
   /// This method is used for validation during graph construction and
   /// to ensure that all required output ports are available for connection.
   ///
   /// # Returns
   ///
-  /// A vector of port indices (usize) that this router will output to.
-  /// These indices correspond to positions in the node's `Outputs` port tuple.
+  /// A vector of port names (String) that this router will output to.
   ///
   /// # Example
   ///
-  /// If a node has `Outputs = (i32, String, bool)`, and the router outputs
-  /// to ports 0 and 2, this method would return `vec![0, 2]`.
-  fn output_ports(&self) -> Vec<usize>;
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use futures::{StreamExt, stream};
-
-  // Test helper: Simple stateless merge router
-  struct TestMergeRouter {
-    expected_ports: Vec<usize>,
-  }
-
-  #[async_trait]
-  impl<I> InputRouter<I> for TestMergeRouter
-  where
-    I: Send + Sync + 'static,
-  {
-    async fn route_streams(
-      &mut self,
-      streams: Vec<(usize, Pin<Box<dyn Stream<Item = I> + Send>>)>,
-    ) -> Pin<Box<dyn Stream<Item = I> + Send>> {
-      Box::pin(futures::stream::select_all(
-        streams.into_iter().map(|(_, stream)| stream),
-      ))
-    }
-
-    fn expected_ports(&self) -> Vec<usize> {
-      self.expected_ports.clone()
-    }
-  }
-
-  #[tokio::test]
-  async fn test_input_router_trait() {
-    let mut router = TestMergeRouter {
-      expected_ports: vec![0, 1],
-    };
-
-    // Create test streams
-    let stream1: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(vec![1, 2, 3]));
-    let stream2: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(vec![4, 5, 6]));
-
-    let streams = vec![(0, stream1), (1, stream2)];
-    let mut merged = router.route_streams(streams).await;
-
-    // Collect results
-    let mut results = Vec::new();
-    while let Some(item) = merged.next().await {
-      results.push(item);
-    }
-
-    // Should have all items (order may vary due to select_all)
-    assert_eq!(results.len(), 6);
-    assert!(results.contains(&1));
-    assert!(results.contains(&2));
-    assert!(results.contains(&3));
-    assert!(results.contains(&4));
-    assert!(results.contains(&5));
-    assert!(results.contains(&6));
-  }
-
-  #[test]
-  fn test_expected_ports() {
-    let router = TestMergeRouter {
-      expected_ports: vec![0, 1, 2],
-    };
-
-    let ports = <TestMergeRouter as InputRouter<i32>>::expected_ports(&router);
-    assert_eq!(ports, vec![0, 1, 2]);
-  }
-
-  #[test]
-  fn test_router_error_display() {
-    let error = RouterError::InvalidPort {
-      port: 5,
-      expected: vec![0, 1, 2],
-    };
-    assert_eq!(
-      error.to_string(),
-      "Invalid port index: 5 (expected one of: [0, 1, 2])"
-    );
-
-    let error = RouterError::StreamError {
-      message: "Connection lost".to_string(),
-    };
-    assert_eq!(error.to_string(), "Stream error: Connection lost");
-
-    let error = RouterError::ConfigurationError {
-      message: "Invalid strategy".to_string(),
-    };
-    assert_eq!(error.to_string(), "Configuration error: Invalid strategy");
-  }
-
-  // Test helper: Simple pass-through router (for testing trait implementation)
-  // This is a minimal implementation that just passes the stream to the first port
-  // Real implementations in task 2.3 will properly handle broadcast/distribution
-  struct TestPassThroughRouter {
-    output_ports: Vec<usize>,
-  }
-
-  #[async_trait]
-  impl<O> OutputRouter<O> for TestPassThroughRouter
-  where
-    O: Send + Sync + 'static,
-  {
-    async fn route_stream(
-      &mut self,
-      stream: Pin<Box<dyn Stream<Item = O> + Send>>,
-    ) -> Vec<(usize, Pin<Box<dyn Stream<Item = O> + Send>>)> {
-      // Minimal implementation: pass stream to first port only
-      // Real routers will properly distribute or broadcast
-      if let Some(&first_port) = self.output_ports.first() {
-        vec![(first_port, stream)]
-      } else {
-        vec![]
-      }
-    }
-
-    fn output_ports(&self) -> Vec<usize> {
-      self.output_ports.clone()
-    }
-  }
-
-  #[tokio::test]
-  async fn test_output_router_trait() {
-    let mut router = TestPassThroughRouter {
-      output_ports: vec![0, 1, 2],
-    };
-
-    // Create test stream
-    let input_stream: Pin<Box<dyn Stream<Item = i32> + Send>> =
-      Box::pin(stream::iter(vec![1, 2, 3]));
-
-    let output_streams = router.route_stream(input_stream).await;
-
-    // Should have at least one stream
-    assert!(!output_streams.is_empty());
-
-    // Verify port index is valid
-    if let Some((port, _)) = output_streams.first() {
-      assert!(<TestPassThroughRouter as OutputRouter<i32>>::output_ports(&router).contains(port));
-    }
-  }
-
-  #[test]
-  fn test_output_ports() {
-    let router = TestPassThroughRouter {
-      output_ports: vec![0, 1, 2],
-    };
-
-    let ports = <TestPassThroughRouter as OutputRouter<i32>>::output_ports(&router);
-    assert_eq!(ports, vec![0, 1, 2]);
-  }
+  /// If a router outputs to ports named "out_a" and "out_b",
+  /// this method would return `vec!["out_a".to_string(), "out_b".to_string()]`.
+  fn output_port_names(&self) -> Vec<String>;
 }

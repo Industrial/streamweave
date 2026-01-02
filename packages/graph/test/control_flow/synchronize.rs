@@ -12,7 +12,11 @@ async fn test_synchronize_router() {
   let stream2: Pin<Box<dyn futures::Stream<Item = i32> + Send>> =
     Box::pin(futures::stream::iter(vec![4, 5, 6]));
 
-  let streams = vec![(0, stream1), (1, stream2)];
+  let expected_ports = sync.expected_port_names();
+  let streams = vec![
+    (expected_ports[0].clone(), stream1),
+    (expected_ports[1].clone(), stream2),
+  ];
   let mut output = sync.route_streams(streams).await;
 
   let mut results = Vec::new();
@@ -27,7 +31,10 @@ async fn test_synchronize_router() {
 #[test]
 fn test_synchronize_expected_ports() {
   let sync = Synchronize::<i32>::new(3);
-  assert_eq!(sync.expected_ports(), vec![0, 1, 2]);
+  assert_eq!(
+    sync.expected_port_names(),
+    vec!["in".to_string(), "in_1".to_string(), "in_2".to_string()]
+  );
 }
 
 proptest! {
@@ -46,7 +53,8 @@ proptest! {
       let stream2: Pin<Box<dyn futures::Stream<Item = i32> + Send>> =
         Box::pin(stream::iter(stream2_items.clone()));
 
-      let streams = vec![(0, stream1), (1, stream2)];
+      let expected_ports = sync.expected_port_names();
+      let streams = vec![(expected_ports[0].clone(), stream1), (expected_ports[1].clone(), stream2)];
       let mut output = sync.route_streams(streams).await;
 
       let mut results = Vec::new();
@@ -64,7 +72,14 @@ proptest! {
   #[test]
   fn test_synchronize_expected_ports_proptest(num_inputs in 1usize..=10) {
     let sync = Synchronize::<i32>::new(num_inputs);
-    let expected: Vec<usize> = (0..num_inputs).collect();
-    prop_assert_eq!(sync.expected_ports(), expected);
+    let port_names = sync.expected_port_names();
+    prop_assert_eq!(port_names.len(), num_inputs);
+    // Verify port names follow the pattern "in", "in_1", "in_2", etc.
+    if num_inputs > 0 {
+      prop_assert_eq!(&port_names[0], "in");
+    }
+    for (i, port_name) in port_names.iter().enumerate().skip(1).take(num_inputs - 1) {
+      prop_assert_eq!(port_name, &format!("in_{}", i));
+    }
   }
 }

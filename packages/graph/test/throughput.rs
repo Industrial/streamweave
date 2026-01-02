@@ -253,3 +253,54 @@ async fn test_throughput_monitor_async() {
   let throughput = monitor.calculate_throughput();
   assert!(throughput >= 0.0);
 }
+
+// Tests moved from src/
+#[tokio::test]
+async fn test_throughput_monitor_increment() {
+  let monitor = ThroughputMonitor::default();
+  assert_eq!(monitor.item_count(), 0);
+
+  monitor.increment_item_count();
+  assert_eq!(monitor.item_count(), 1);
+
+  monitor.increment_by(5);
+  assert_eq!(monitor.item_count(), 6);
+}
+
+#[tokio::test]
+async fn test_throughput_monitor_calculation() {
+  let monitor = ThroughputMonitor::new(Duration::from_millis(100));
+
+  // Increment items
+  for _ in 0..10 {
+    monitor.increment_item_count();
+  }
+
+  // Wait a bit for time to pass
+  tokio::time::sleep(Duration::from_millis(50)).await;
+
+  let throughput = monitor.calculate_throughput().await;
+  // Throughput should be positive (exact value depends on timing)
+  assert!(throughput >= 0.0);
+}
+
+#[tokio::test]
+async fn test_throughput_monitor_reset() {
+  let monitor = ThroughputMonitor::default();
+
+  monitor.increment_by(100);
+  assert_eq!(monitor.item_count(), 100);
+
+  monitor.reset().await;
+  assert_eq!(monitor.item_count(), 0);
+}
+
+#[tokio::test]
+async fn test_throughput_monitor_statistics() {
+  let monitor = ThroughputMonitor::default();
+
+  monitor.increment_by(50);
+  let (total, _samples, _elapsed) = monitor.statistics().await;
+
+  assert_eq!(total, 50);
+}

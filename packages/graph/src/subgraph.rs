@@ -2,16 +2,50 @@
 //!
 //! This module provides support for using graphs as nodes in other graphs.
 //! This enables hierarchical graph composition and modular graph design.
+//!
+//! ## Parameterized Subgraphs
+//!
+//! Subgraphs can be parameterized, allowing them to be called like functions:
+//! - **Parameter ports**: Input ports that receive a single value (not a stream) when the subgraph is invoked
+//! - **Return ports**: Output ports that produce a single value (not a stream) when the subgraph completes
+//!
+//! This enables reusable subgraph components with configurable behavior.
+//!
+//! # Example
+//!
+//! ```rust,no_run
+//! use streamweave::graph::{Graph, SubgraphNode};
+//!
+//! // Create a parameterized subgraph
+//! let mut subgraph = SubgraphNode::new(
+//!     "my_subgraph".to_string(),
+//!     graph,
+//!     2, // 2 input ports (1 parameter, 1 stream)
+//!     1, // 1 output port (return value)
+//! );
+//!
+//! // Mark port 0 as a parameter port
+//! subgraph.mark_parameter_port(0)?;
+//!
+//! // Mark port 0 as a return port
+//! subgraph.mark_return_port(0)?;
+//! ```
 
 use crate::graph::Graph;
 use crate::traits::{NodeKind, NodeTrait};
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 /// A node that wraps a Graph, allowing it to be used as a node in another graph.
 ///
 /// SubgraphNode enables hierarchical graph composition by treating a complete
 /// graph as a single node with input and output ports. The subgraph's ports
 /// are mapped to internal nodes within the subgraph.
+///
+/// ## Parameterized Subgraphs
+///
+/// Subgraphs can be parameterized with parameter ports (single-value inputs)
+/// and return ports (single-value outputs), enabling function-like behavior.
 ///
 /// # Port Mapping
 ///
@@ -40,29 +74,33 @@ pub struct SubgraphNode {
   name: String,
   /// The graph contained within this subgraph
   graph: Graph,
-  /// Number of input ports
-  input_port_count: usize,
-  /// Number of output ports
-  output_port_count: usize,
-  /// Mapping from subgraph input port index to internal node name and port
-  /// Key: subgraph input port index
-  /// Value: (internal_node_name, internal_port_index)
-  input_port_map: HashMap<usize, (String, usize)>,
-  /// Mapping from subgraph output port index to internal node name and port
-  /// Key: subgraph output port index
-  /// Value: (internal_node_name, internal_port_index)
-  output_port_map: HashMap<usize, (String, usize)>,
+  /// Names of input ports
+  input_port_names: Vec<String>,
+  /// Names of output ports
+  output_port_names: Vec<String>,
+  /// Mapping from subgraph input port name to internal node name and port name
+  /// Key: subgraph input port name
+  /// Value: (internal_node_name, internal_port_name)
+  input_port_map: HashMap<String, (String, String)>,
+  /// Mapping from subgraph output port name to internal node name and port name
+  /// Key: subgraph output port name
+  /// Value: (internal_node_name, internal_port_name)
+  output_port_map: HashMap<String, (String, String)>,
+  /// Set of input port names that are parameter ports (single-value inputs)
+  parameter_ports: HashSet<String>,
+  /// Set of output port names that are return ports (single-value outputs)
+  return_ports: HashSet<String>,
 }
 
 impl SubgraphNode {
-  /// Creates a new SubgraphNode with the given name, graph, and port counts.
+  /// Creates a new SubgraphNode with the given name, graph, and port names.
   ///
   /// # Arguments
   ///
   /// * `name` - The name of this subgraph node
   /// * `graph` - The graph to wrap as a subgraph
-  /// * `input_port_count` - The number of input ports this subgraph exposes
-  /// * `output_port_count` - The number of output ports this subgraph exposes
+  /// * `input_port_names` - The names of input ports this subgraph exposes
+  /// * `output_port_names` - The names of output ports this subgraph exposes
   ///
   /// # Returns
   ///
@@ -75,16 +113,18 @@ impl SubgraphNode {
   pub fn new(
     name: String,
     graph: Graph,
-    input_port_count: usize,
-    output_port_count: usize,
+    input_port_names: Vec<String>,
+    output_port_names: Vec<String>,
   ) -> Self {
     Self {
       name,
       graph,
-      input_port_count,
-      output_port_count,
+      input_port_names,
+      output_port_names,
       input_port_map: HashMap::new(),
       output_port_map: HashMap::new(),
+      parameter_ports: HashSet::new(),
+      return_ports: HashSet::new(),
     }
   }
 
@@ -92,9 +132,9 @@ impl SubgraphNode {
   ///
   /// # Arguments
   ///
-  /// * `subgraph_port` - The subgraph input port index
+  /// * `subgraph_port_name` - The subgraph input port name
   /// * `internal_node` - The name of the internal node to connect to
-  /// * `internal_port` - The port index on the internal node
+  /// * `internal_port_name` - The port name on the internal node
   ///
   /// # Returns
   ///
@@ -102,32 +142,37 @@ impl SubgraphNode {
   /// node doesn't exist or the port is invalid.
   pub fn map_input_port(
     &mut self,
-    subgraph_port: usize,
+    subgraph_port_name: &str,
     internal_node: String,
-    internal_port: usize,
+    internal_port_name: &str,
   ) -> Result<(), String> {
-    if subgraph_port >= self.input_port_count {
+    if !self
+      .input_port_names
+      .iter()
+      .any(|name| name == subgraph_port_name)
+    {
       return Err(format!(
-        "Subgraph input port {} is out of range (0..{})",
-        subgraph_port, self.input_port_count
+        "Subgraph input port '{}' does not exist (available ports: {:?})",
+        subgraph_port_name, self.input_port_names
       ));
     }
 
     // Validate internal node exists
     if let Some(node) = self.graph.get_node(&internal_node) {
-      if internal_port >= node.input_port_count() {
+      if !node.has_input_port(internal_port_name) {
         return Err(format!(
-          "Internal node '{}' does not have input port {}",
-          internal_node, internal_port
+          "Internal node '{}' does not have input port '{}'",
+          internal_node, internal_port_name
         ));
       }
     } else {
       return Err(format!("Internal node '{}' does not exist", internal_node));
     }
 
-    self
-      .input_port_map
-      .insert(subgraph_port, (internal_node, internal_port));
+    self.input_port_map.insert(
+      subgraph_port_name.to_string(),
+      (internal_node, internal_port_name.to_string()),
+    );
     Ok(())
   }
 
@@ -135,9 +180,9 @@ impl SubgraphNode {
   ///
   /// # Arguments
   ///
-  /// * `subgraph_port` - The subgraph output port index
+  /// * `subgraph_port_name` - The subgraph output port name
   /// * `internal_node` - The name of the internal node to connect from
-  /// * `internal_port` - The port index on the internal node
+  /// * `internal_port_name` - The port name on the internal node
   ///
   /// # Returns
   ///
@@ -145,32 +190,37 @@ impl SubgraphNode {
   /// node doesn't exist or the port is invalid.
   pub fn map_output_port(
     &mut self,
-    subgraph_port: usize,
+    subgraph_port_name: &str,
     internal_node: String,
-    internal_port: usize,
+    internal_port_name: &str,
   ) -> Result<(), String> {
-    if subgraph_port >= self.output_port_count {
+    if !self
+      .output_port_names
+      .iter()
+      .any(|name| name == subgraph_port_name)
+    {
       return Err(format!(
-        "Subgraph output port {} is out of range (0..{})",
-        subgraph_port, self.output_port_count
+        "Subgraph output port '{}' does not exist (available ports: {:?})",
+        subgraph_port_name, self.output_port_names
       ));
     }
 
     // Validate internal node exists
     if let Some(node) = self.graph.get_node(&internal_node) {
-      if internal_port >= node.output_port_count() {
+      if !node.has_output_port(internal_port_name) {
         return Err(format!(
-          "Internal node '{}' does not have output port {}",
-          internal_node, internal_port
+          "Internal node '{}' does not have output port '{}'",
+          internal_node, internal_port_name
         ));
       }
     } else {
       return Err(format!("Internal node '{}' does not exist", internal_node));
     }
 
-    self
-      .output_port_map
-      .insert(subgraph_port, (internal_node, internal_port));
+    self.output_port_map.insert(
+      subgraph_port_name.to_string(),
+      (internal_node, internal_port_name.to_string()),
+    );
     Ok(())
   }
 
@@ -192,30 +242,148 @@ impl SubgraphNode {
     &mut self.graph
   }
 
-  /// Returns the input port mapping for a given port index.
+  /// Returns the input port mapping for a given port name.
   ///
   /// # Arguments
   ///
-  /// * `port_index` - The subgraph input port index
+  /// * `port_name` - The subgraph input port name
   ///
   /// # Returns
   ///
-  /// `Some((node_name, port_index))` if the port is mapped, `None` otherwise.
-  pub fn get_input_port_mapping(&self, port_index: usize) -> Option<&(String, usize)> {
-    self.input_port_map.get(&port_index)
+  /// `Some((node_name, port_name))` if the port is mapped, `None` otherwise.
+  pub fn get_input_port_mapping(&self, port_name: &str) -> Option<&(String, String)> {
+    self.input_port_map.get(port_name)
   }
 
-  /// Returns the output port mapping for a given port index.
+  /// Returns the output port mapping for a given port name.
   ///
   /// # Arguments
   ///
-  /// * `port_index` - The subgraph output port index
+  /// * `port_name` - The subgraph output port name
   ///
   /// # Returns
   ///
-  /// `Some((node_name, port_index))` if the port is mapped, `None` otherwise.
-  pub fn get_output_port_mapping(&self, port_index: usize) -> Option<&(String, usize)> {
-    self.output_port_map.get(&port_index)
+  /// `Some((node_name, port_name))` if the port is mapped, `None` otherwise.
+  pub fn get_output_port_mapping(&self, port_name: &str) -> Option<&(String, String)> {
+    self.output_port_map.get(port_name)
+  }
+
+  /// Marks an input port as a parameter port (single-value input).
+  ///
+  /// Parameter ports receive a single value when the subgraph is invoked,
+  /// rather than a stream of values. This enables function-like behavior
+  /// where parameters are passed once at invocation time.
+  ///
+  /// # Arguments
+  ///
+  /// * `port_name` - The input port name to mark as a parameter port
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if the port was successfully marked, `Err(String)` if the port
+  /// name is invalid or the port is already mapped as a streaming port.
+  ///
+  /// # Example
+  ///
+  /// ```rust,no_run
+  /// use streamweave::graph::SubgraphNode;
+  ///
+  /// let mut subgraph = SubgraphNode::new("subgraph".to_string(), graph, vec!["in_a".to_string(), "in_b".to_string()], vec!["out".to_string()]);
+  ///
+  /// // Mark port "in_a" as a parameter port
+  /// subgraph.mark_parameter_port("in_a")?;
+  /// ```
+  pub fn mark_parameter_port(&mut self, port_name: &str) -> Result<(), String> {
+    if !self.input_port_names.iter().any(|name| name == port_name) {
+      return Err(format!(
+        "Input port '{}' does not exist (available ports: {:?})",
+        port_name, self.input_port_names
+      ));
+    }
+
+    self.parameter_ports.insert(port_name.to_string());
+    Ok(())
+  }
+
+  /// Marks an output port as a return port (single-value output).
+  ///
+  /// Return ports produce a single value when the subgraph completes,
+  /// rather than a stream of values. This enables function-like behavior
+  /// where return values are produced once at completion time.
+  ///
+  /// # Arguments
+  ///
+  /// * `port_name` - The output port name to mark as a return port
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if the port was successfully marked, `Err(String)` if the port
+  /// name is invalid.
+  ///
+  /// # Example
+  ///
+  /// ```rust,no_run
+  /// use streamweave::graph::SubgraphNode;
+  ///
+  /// let mut subgraph = SubgraphNode::new("subgraph".to_string(), graph, vec!["in".to_string()], vec!["out_a".to_string(), "out_b".to_string()]);
+  ///
+  /// // Mark port "out_a" as a return port
+  /// subgraph.mark_return_port("out_a")?;
+  /// ```
+  pub fn mark_return_port(&mut self, port_name: &str) -> Result<(), String> {
+    if !self.output_port_names.iter().any(|name| name == port_name) {
+      return Err(format!(
+        "Output port '{}' does not exist (available ports: {:?})",
+        port_name, self.output_port_names
+      ));
+    }
+
+    self.return_ports.insert(port_name.to_string());
+    Ok(())
+  }
+
+  /// Checks if an input port is a parameter port.
+  ///
+  /// # Arguments
+  ///
+  /// * `port_name` - The input port name to check
+  ///
+  /// # Returns
+  ///
+  /// `true` if the port is a parameter port, `false` otherwise.
+  pub fn is_parameter_port(&self, port_name: &str) -> bool {
+    self.parameter_ports.contains(port_name)
+  }
+
+  /// Checks if an output port is a return port.
+  ///
+  /// # Arguments
+  ///
+  /// * `port_name` - The output port name to check
+  ///
+  /// # Returns
+  ///
+  /// `true` if the port is a return port, `false` otherwise.
+  pub fn is_return_port(&self, port_name: &str) -> bool {
+    self.return_ports.contains(port_name)
+  }
+
+  /// Returns the set of parameter port names.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the set of parameter port names.
+  pub fn parameter_ports(&self) -> &HashSet<String> {
+    &self.parameter_ports
+  }
+
+  /// Returns the set of return port names.
+  ///
+  /// # Returns
+  ///
+  /// A reference to the set of return port names.
+  pub fn return_ports(&self) -> &HashSet<String> {
+    &self.return_ports
   }
 }
 
@@ -228,180 +396,21 @@ impl NodeTrait for SubgraphNode {
     NodeKind::Subgraph
   }
 
-  fn input_port_count(&self) -> usize {
-    self.input_port_count
+  fn input_port_names(&self) -> Vec<String> {
+    self.input_port_names.clone()
   }
 
-  fn output_port_count(&self) -> usize {
-    self.output_port_count
+  fn output_port_names(&self) -> Vec<String> {
+    self.output_port_names.clone()
   }
 
-  fn input_port_name(&self, index: usize) -> Option<String> {
-    if index < self.input_port_count {
-      Some(format!("in{}", index))
-    } else {
-      None
-    }
+  fn has_input_port(&self, port_name: &str) -> bool {
+    let port_names = self.input_port_names();
+    port_names.iter().any(|name| name == port_name)
   }
 
-  fn output_port_name(&self, index: usize) -> Option<String> {
-    if index < self.output_port_count {
-      Some(format!("out{}", index))
-    } else {
-      None
-    }
-  }
-
-  fn resolve_input_port(&self, port_name: &str) -> Option<usize> {
-    // Try numeric index first
-    if let Ok(index) = port_name.parse::<usize>()
-      && index < self.input_port_count
-    {
-      return Some(index);
-    }
-
-    // Try "in0", "in1", etc.
-    if let Some(stripped) = port_name.strip_prefix("in")
-      && let Ok(index) = stripped.parse::<usize>()
-      && index < self.input_port_count
-    {
-      return Some(index);
-    }
-
-    // Default to "in" for single-port subgraphs
-    if port_name == "in" && self.input_port_count == 1 {
-      return Some(0);
-    }
-
-    None
-  }
-
-  fn resolve_output_port(&self, port_name: &str) -> Option<usize> {
-    // Try numeric index first
-    if let Ok(index) = port_name.parse::<usize>()
-      && index < self.output_port_count
-    {
-      return Some(index);
-    }
-
-    // Try "out0", "out1", etc.
-    if let Some(stripped) = port_name.strip_prefix("out")
-      && let Ok(index) = stripped.parse::<usize>()
-      && index < self.output_port_count
-    {
-      return Some(index);
-    }
-
-    // Default to "out" for single-port subgraphs
-    if port_name == "out" && self.output_port_count == 1 {
-      return Some(0);
-    }
-
-    None
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn test_subgraph_node_creation() {
-    let graph = Graph::new();
-    let subgraph = SubgraphNode::new("subgraph".to_string(), graph, 2, 1);
-
-    assert_eq!(subgraph.name(), "subgraph");
-    assert_eq!(subgraph.node_kind(), NodeKind::Subgraph);
-    assert_eq!(subgraph.input_port_count(), 2);
-    assert_eq!(subgraph.output_port_count(), 1);
-  }
-
-  #[test]
-  fn test_subgraph_node_port_names() {
-    let graph = Graph::new();
-    let subgraph = SubgraphNode::new("subgraph".to_string(), graph, 2, 1);
-
-    assert_eq!(subgraph.input_port_name(0), Some("in0".to_string()));
-    assert_eq!(subgraph.input_port_name(1), Some("in1".to_string()));
-    assert_eq!(subgraph.input_port_name(2), None);
-
-    assert_eq!(subgraph.output_port_name(0), Some("out0".to_string()));
-    assert_eq!(subgraph.output_port_name(1), None);
-  }
-
-  #[test]
-  fn test_subgraph_node_port_resolution() {
-    let graph = Graph::new();
-    let subgraph = SubgraphNode::new("subgraph".to_string(), graph, 1, 1);
-
-    assert_eq!(subgraph.resolve_input_port("0"), Some(0));
-    assert_eq!(subgraph.resolve_input_port("in0"), Some(0));
-    assert_eq!(subgraph.resolve_input_port("in"), Some(0)); // Single port default
-    assert_eq!(subgraph.resolve_input_port("invalid"), None);
-
-    assert_eq!(subgraph.resolve_output_port("0"), Some(0));
-    assert_eq!(subgraph.resolve_output_port("out0"), Some(0));
-    assert_eq!(subgraph.resolve_output_port("out"), Some(0)); // Single port default
-    assert_eq!(subgraph.resolve_output_port("invalid"), None);
-  }
-
-  #[test]
-  fn test_subgraph_node_port_mapping() {
-    use crate::{GraphBuilder, ProducerNode};
-    use streamweave_vec::VecProducer;
-
-    // Create a simple graph with one node
-    let inner_graph = GraphBuilder::new()
-      .node(ProducerNode::from_producer(
-        "source".to_string(),
-        VecProducer::new(vec![1, 2, 3]),
-      ))
-      .unwrap()
-      .build();
-
-    let mut subgraph = SubgraphNode::new("subgraph".to_string(), inner_graph, 0, 1);
-
-    // Map output port 0 to the internal "source" node's output port 0
-    assert!(subgraph.map_output_port(0, "source".to_string(), 0).is_ok());
-
-    // Verify the mapping
-    assert_eq!(
-      subgraph.get_output_port_mapping(0),
-      Some(&("source".to_string(), 0))
-    );
-
-    // Invalid port mapping should fail
-    assert!(
-      subgraph
-        .map_output_port(1, "source".to_string(), 0)
-        .is_err()
-    ); // Port 1 doesn't exist
-    assert!(
-      subgraph
-        .map_output_port(0, "nonexistent".to_string(), 0)
-        .is_err()
-    ); // Node doesn't exist
-  }
-
-  #[test]
-  fn test_subgraph_in_graph() {
-    use crate::GraphBuilder;
-
-    // Create a subgraph
-    let inner_graph = Graph::new();
-    let subgraph = SubgraphNode::new("subgraph".to_string(), inner_graph, 1, 1);
-
-    // Add subgraph to a graph
-    let graph = GraphBuilder::new()
-      .add_node("subgraph".to_string(), subgraph)
-      .unwrap()
-      .build();
-
-    // Verify the subgraph is in the graph
-    let node = graph.get_node("subgraph");
-    assert!(node.is_some());
-    assert_eq!(node.unwrap().node_kind(), NodeKind::Subgraph);
-    assert_eq!(node.unwrap().input_port_count(), 1);
-    assert_eq!(node.unwrap().output_port_count(), 1);
+  fn has_output_port(&self, port_name: &str) -> bool {
+    let port_names = self.output_port_names();
+    port_names.iter().any(|name| name == port_name)
   }
 }

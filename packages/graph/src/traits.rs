@@ -7,6 +7,12 @@
 ///
 /// This trait allows nodes to be stored in a type-erased HashMap while still
 /// providing access to basic node information.
+///
+/// ## Port System
+///
+/// All ports are identified by string names, not numeric indices. Nodes must
+/// explicitly specify their port names when created. This enables clearer,
+/// more maintainable graph definitions.
 pub trait NodeTrait: Send + Sync + std::any::Any {
   /// Returns the name of this node.
   fn name(&self) -> &str;
@@ -14,55 +20,41 @@ pub trait NodeTrait: Send + Sync + std::any::Any {
   /// Returns the kind of this node (Producer, Transformer, or Consumer).
   fn node_kind(&self) -> NodeKind;
 
-  /// Returns the number of input ports.
-  fn input_port_count(&self) -> usize;
-
-  /// Returns the number of output ports.
-  fn output_port_count(&self) -> usize;
-
-  /// Returns the name of an input port by index.
-  ///
-  /// # Arguments
-  ///
-  /// * `index` - The port index (0-based)
+  /// Returns the list of input port names for this node.
   ///
   /// # Returns
   ///
-  /// `Some(port_name)` if the port exists, `None` otherwise.
-  fn input_port_name(&self, index: usize) -> Option<String>;
+  /// A vector of input port names, in the order they are defined.
+  fn input_port_names(&self) -> Vec<String>;
 
-  /// Returns the name of an output port by index.
-  ///
-  /// # Arguments
-  ///
-  /// * `index` - The port index (0-based)
+  /// Returns the list of output port names for this node.
   ///
   /// # Returns
   ///
-  /// `Some(port_name)` if the port exists, `None` otherwise.
-  fn output_port_name(&self, index: usize) -> Option<String>;
+  /// A vector of output port names, in the order they are defined.
+  fn output_port_names(&self) -> Vec<String>;
 
-  /// Resolves an input port name to an index.
+  /// Checks if this node has an input port with the given name.
   ///
   /// # Arguments
   ///
-  /// * `port_name` - The port name to resolve
+  /// * `port_name` - The port name to check
   ///
   /// # Returns
   ///
-  /// `Some(index)` if the port name exists, `None` otherwise.
-  fn resolve_input_port(&self, port_name: &str) -> Option<usize>;
+  /// `true` if the port exists, `false` otherwise.
+  fn has_input_port(&self, port_name: &str) -> bool;
 
-  /// Resolves an output port name to an index.
+  /// Checks if this node has an output port with the given name.
   ///
   /// # Arguments
   ///
-  /// * `port_name` - The port name to resolve
+  /// * `port_name` - The port name to check
   ///
   /// # Returns
   ///
-  /// `Some(index)` if the port name exists, `None` otherwise.
-  fn resolve_output_port(&self, port_name: &str) -> Option<usize>;
+  /// `true` if the port exists, `false` otherwise.
+  fn has_output_port(&self, port_name: &str) -> bool;
 
   /// Spawns an execution task for this node if it supports execution.
   ///
@@ -71,11 +63,11 @@ pub trait NodeTrait: Send + Sync + std::any::Any {
   ///
   /// # Arguments
   ///
-  /// * `input_channels` - Map of (port_index, receiver) for input ports
-  /// * `output_channels` - Map of (port_index, sender) for output ports
+  /// * `input_channels` - Map of (port_name, receiver) for input ports
+  /// * `output_channels` - Map of (port_name, sender) for output ports
   /// * `pause_signal` - Shared signal for pausing execution
   /// * `execution_mode` - The execution mode (InProcess, Distributed, or Hybrid)
-  /// * `batching_channels` - Optional map of (port_index, batching_channel) for batching
+  /// * `batching_channels` - Optional map of (port_name, batching_channel) for batching
   ///
   /// # Returns
   ///
@@ -93,12 +85,12 @@ pub trait NodeTrait: Send + Sync + std::any::Any {
   /// When batching is enabled, nodes should use `batching_channels` instead of `output_channels`.
   fn spawn_execution_task(
     &self,
-    _input_channels: std::collections::HashMap<usize, crate::channels::TypeErasedReceiver>,
-    _output_channels: std::collections::HashMap<usize, crate::channels::TypeErasedSender>,
+    _input_channels: std::collections::HashMap<String, crate::channels::TypeErasedReceiver>,
+    _output_channels: std::collections::HashMap<String, crate::channels::TypeErasedSender>,
     _pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
     _execution_mode: crate::execution::ExecutionMode,
     _batching_channels: Option<
-      std::collections::HashMap<usize, std::sync::Arc<crate::batching::BatchingChannel>>,
+      std::collections::HashMap<String, std::sync::Arc<crate::batching::BatchingChannel>>,
     >,
     _arc_pool: Option<std::sync::Arc<crate::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {

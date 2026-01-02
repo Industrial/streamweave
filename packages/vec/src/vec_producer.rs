@@ -62,8 +62,6 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Producer for VecProduce
   type OutputPorts = (T,);
 
   fn produce(&mut self) -> Self::OutputStream {
-    let producer_name = self.config.name().unwrap_or("vec_producer".to_string());
-    println!("📤 [{}] Producing {} items", producer_name, self.data.len());
     let stream = stream::iter(self.data.clone());
     Box::pin(stream)
   }

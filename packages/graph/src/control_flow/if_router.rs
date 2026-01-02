@@ -70,7 +70,7 @@ where
   async fn route_stream(
     &mut self,
     stream: Pin<Box<dyn Stream<Item = O> + Send>>,
-  ) -> Vec<(usize, Pin<Box<dyn Stream<Item = O> + Send>>)> {
+  ) -> Vec<(String, Pin<Box<dyn Stream<Item = O> + Send>>)> {
     use tokio::sync::mpsc;
 
     // Create channels for true/false ports
@@ -96,7 +96,7 @@ where
     let mut rx_false_mut = rx_false;
     vec![
       (
-        0,
+        "true".to_string(),
         Box::pin(async_stream::stream! {
           while let Some(item) = rx_true_mut.recv().await {
             yield item;
@@ -104,7 +104,7 @@ where
         }),
       ),
       (
-        1,
+        "false".to_string(),
         Box::pin(async_stream::stream! {
           while let Some(item) = rx_false_mut.recv().await {
             yield item;
@@ -114,7 +114,7 @@ where
     ]
   }
 
-  fn output_ports(&self) -> Vec<usize> {
-    vec![0, 1] // true port, false port
+  fn output_port_names(&self) -> Vec<String> {
+    vec!["true".to_string(), "false".to_string()]
   }
 }

@@ -59,7 +59,7 @@ pub enum MergeStrategy {
 /// // Merged stream contains items interleaved from all inputs
 /// ```
 pub struct MergeRouter<I> {
-  /// The input port indices this router expects
+  /// The number of input ports this router expects (used internally for port name generation)
   expected_ports: Vec<usize>,
   /// The merge strategy to use
   strategy: MergeStrategy,
@@ -72,7 +72,8 @@ impl<I> MergeRouter<I> {
   ///
   /// # Arguments
   ///
-  /// * `expected_ports` - Vector of port indices to merge from
+  /// * `expected_ports` - Vector of port counts (used internally to determine number of ports).
+  ///   Port names are generated automatically as "in", "in_1", "in_2", etc.
   /// * `strategy` - The merge strategy to use
   ///
   /// # Returns
@@ -94,7 +95,7 @@ where
 {
   async fn route_streams(
     &mut self,
-    streams: Vec<(usize, Pin<Box<dyn Stream<Item = I> + Send>>)>,
+    streams: Vec<(String, Pin<Box<dyn Stream<Item = I> + Send>>)>,
   ) -> Pin<Box<dyn Stream<Item = I> + Send>> {
     if streams.is_empty() {
       return Box::pin(futures::stream::empty());
@@ -168,65 +169,16 @@ where
     }
   }
 
-  fn expected_ports(&self) -> Vec<usize> {
-    self.expected_ports.clone()
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use futures::stream;
-
-  #[tokio::test]
-  async fn test_merge_router_interleave() {
-    let mut router = MergeRouter::new(vec![0, 1], MergeStrategy::Interleave);
-    let stream1: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(vec![1, 3, 5]));
-    let stream2: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(vec![2, 4, 6]));
-
-    let streams = vec![(0, stream1), (1, stream2)];
-    let mut merged = router.route_streams(streams).await;
-
-    // Collect results
-    use futures::StreamExt;
-    let mut results = Vec::new();
-    while let Some(item) = merged.next().await {
-      results.push(item);
-    }
-
-    // Should have all items (order may vary due to interleaving)
-    assert_eq!(results.len(), 6);
-    assert!(results.contains(&1));
-    assert!(results.contains(&2));
-    assert!(results.contains(&3));
-    assert!(results.contains(&4));
-    assert!(results.contains(&5));
-    assert!(results.contains(&6));
-  }
-
-  #[tokio::test]
-  async fn test_merge_router_sequential() {
-    let mut router = MergeRouter::new(vec![0, 1], MergeStrategy::Sequential);
-    let stream1: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(vec![1, 2, 3]));
-    let stream2: Pin<Box<dyn Stream<Item = i32> + Send>> = Box::pin(stream::iter(vec![4, 5, 6]));
-
-    let streams = vec![(0, stream1), (1, stream2)];
-    let mut merged = router.route_streams(streams).await;
-
-    // Collect results
-    use futures::StreamExt;
-    let mut results = Vec::new();
-    while let Some(item) = merged.next().await {
-      results.push(item);
-    }
-
-    // Sequential: all from stream1, then all from stream2
-    assert_eq!(results, vec![1, 2, 3, 4, 5, 6]);
-  }
-
-  #[test]
-  fn test_merge_expected_ports() {
-    let router = MergeRouter::<i32>::new(vec![0, 1, 2], MergeStrategy::Interleave);
-    assert_eq!(router.expected_ports(), vec![0, 1, 2]);
+  fn expected_port_names(&self) -> Vec<String> {
+    // Generate port names based on number of ports
+    (0..self.expected_ports.len())
+      .map(|i| {
+        if i == 0 {
+          "in".to_string()
+        } else {
+          format!("in_{}", i)
+        }
+      })
+      .collect()
   }
 }

@@ -27,11 +27,12 @@ use tokio::sync::{RwLock, mpsc};
 /// Benchmark producer execution in distributed mode (serialized)
 async fn producer_distributed(items: Vec<i32>) {
   let producer = VecProducer::new(items);
-  let node: ProducerNode<_, (i32,)> = ProducerNode::new("producer".to_string(), producer);
+  let node: ProducerNode<_, (i32,)> =
+    ProducerNode::new("producer".to_string(), producer, vec!["out".to_string()]);
 
   let (tx, mut rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(1000);
   let mut output_channels = HashMap::new();
-  output_channels.insert(0, tx);
+  output_channels.insert("out".to_string(), tx);
   let pause_signal = Arc::new(RwLock::new(false));
   let execution_mode = ExecutionMode::Distributed {
     serializer: JsonSerializer,
@@ -71,11 +72,12 @@ async fn producer_distributed(items: Vec<i32>) {
 /// Benchmark producer execution in in-process mode (zero-copy)
 async fn producer_in_process(items: Vec<i32>) {
   let producer = VecProducer::new(items);
-  let node: ProducerNode<_, (i32,)> = ProducerNode::new("producer".to_string(), producer);
+  let node: ProducerNode<_, (i32,)> =
+    ProducerNode::new("producer".to_string(), producer, vec!["out".to_string()]);
 
   let (tx, mut rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(1000);
   let mut output_channels = HashMap::new();
-  output_channels.insert(0, tx);
+  output_channels.insert("out".to_string(), tx);
   let pause_signal = Arc::new(RwLock::new(false));
   let execution_mode = ExecutionMode::InProcess {
     use_shared_memory: false,
@@ -114,16 +116,20 @@ async fn producer_in_process(items: Vec<i32>) {
 /// Benchmark transformer execution in distributed mode (serialized)
 async fn transformer_distributed(items: Vec<i32>) {
   let transformer = MapTransformer::new(|x: i32| x * 2);
-  let node: TransformerNode<_, (i32,), (i32,)> =
-    TransformerNode::new("transformer".to_string(), transformer);
+  let node: TransformerNode<_, (i32,), (i32,)> = TransformerNode::new(
+    "transformer".to_string(),
+    transformer,
+    vec!["in".to_string()],
+    vec!["out".to_string()],
+  );
 
   let (input_tx, input_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(1000);
   let (output_tx, mut output_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(1000);
 
   let mut input_channels = HashMap::new();
-  input_channels.insert(0, input_rx);
+  input_channels.insert("in".to_string(), input_rx);
   let mut output_channels = HashMap::new();
-  output_channels.insert(0, output_tx);
+  output_channels.insert("out".to_string(), output_tx);
 
   let pause_signal = Arc::new(RwLock::new(false));
   let execution_mode = ExecutionMode::Distributed {
@@ -171,16 +177,20 @@ async fn transformer_distributed(items: Vec<i32>) {
 /// Benchmark transformer execution in in-process mode (zero-copy)
 async fn transformer_in_process(items: Vec<i32>) {
   let transformer = MapTransformer::new(|x: i32| x * 2);
-  let node: TransformerNode<_, (i32,), (i32,)> =
-    TransformerNode::new("transformer".to_string(), transformer);
+  let node: TransformerNode<_, (i32,), (i32,)> = TransformerNode::new(
+    "transformer".to_string(),
+    transformer,
+    vec!["in".to_string()],
+    vec!["out".to_string()],
+  );
 
   let (input_tx, input_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(1000);
   let (output_tx, mut output_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(1000);
 
   let mut input_channels = HashMap::new();
-  input_channels.insert(0, input_rx);
+  input_channels.insert("in".to_string(), input_rx);
   let mut output_channels = HashMap::new();
-  output_channels.insert(0, output_tx);
+  output_channels.insert("out".to_string(), output_tx);
 
   let pause_signal = Arc::new(RwLock::new(false));
   let execution_mode = ExecutionMode::InProcess {
@@ -229,13 +239,14 @@ async fn transformer_in_process(items: Vec<i32>) {
 /// Benchmark fan-out in distributed mode
 async fn fan_out_distributed(items: Vec<i32>) {
   let producer = VecProducer::new(items);
-  let node: ProducerNode<_, (i32,)> = ProducerNode::new("producer".to_string(), producer);
+  let node: ProducerNode<_, (i32,)> =
+    ProducerNode::new("producer".to_string(), producer, vec!["out".to_string()]);
 
   let (tx1, mut rx1): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(1000);
   let (tx2, mut rx2): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(1000);
   let mut output_channels = HashMap::new();
-  output_channels.insert(0, tx1);
-  output_channels.insert(1, tx2);
+  output_channels.insert("out".to_string(), tx1);
+  output_channels.insert("out_1".to_string(), tx2);
   let pause_signal = Arc::new(RwLock::new(false));
   let execution_mode = ExecutionMode::Distributed {
     serializer: JsonSerializer,
@@ -291,13 +302,14 @@ async fn fan_out_distributed(items: Vec<i32>) {
 /// Benchmark fan-out in in-process mode (zero-copy)
 async fn fan_out_in_process(items: Vec<i32>) {
   let producer = VecProducer::new(items);
-  let node: ProducerNode<_, (i32,)> = ProducerNode::new("producer".to_string(), producer);
+  let node: ProducerNode<_, (i32,)> =
+    ProducerNode::new("producer".to_string(), producer, vec!["out".to_string()]);
 
   let (tx1, mut rx1): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(1000);
   let (tx2, mut rx2): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(1000);
   let mut output_channels = HashMap::new();
-  output_channels.insert(0, tx1);
-  output_channels.insert(1, tx2);
+  output_channels.insert("out".to_string(), tx1);
+  output_channels.insert("out_1".to_string(), tx2);
   let pause_signal = Arc::new(RwLock::new(false));
   let execution_mode = ExecutionMode::InProcess {
     use_shared_memory: false,

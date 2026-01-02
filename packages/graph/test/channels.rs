@@ -395,3 +395,64 @@ async fn test_type_erased_channels_backpressure() {
   // Now the send should complete
   send_future.await.unwrap();
 }
+
+// Tests moved from src/
+#[test]
+fn test_channel_item_bytes() {
+  let item = ChannelItem::Bytes(Bytes::from("hello"));
+  assert!(item.is_bytes());
+  assert!(!item.is_arc());
+  assert_eq!(item.as_bytes(), Some(&Bytes::from("hello")));
+  assert_eq!(item.into_bytes().unwrap(), Bytes::from("hello"));
+}
+
+#[test]
+fn test_channel_item_arc() {
+  let item = ChannelItem::Arc(Arc::new(42i32));
+  assert!(!item.is_bytes());
+  assert!(item.is_arc());
+  assert!(item.as_bytes().is_none());
+  assert!(item.clone().into_bytes().is_err());
+  let arc = item.downcast_arc::<i32>().unwrap();
+  assert_eq!(*arc, 42);
+}
+
+#[test]
+fn test_channel_item_arc_wrong_type() {
+  let item = ChannelItem::Arc(Arc::new(42i32));
+  // Try to downcast to wrong type
+  assert!(item.downcast_arc::<String>().is_err());
+}
+
+#[tokio::test]
+async fn test_type_erased_channels() {
+  let (sender, mut receiver): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
+
+  // Send Bytes
+  sender
+    .send(ChannelItem::Bytes(Bytes::from("hello")))
+    .await
+    .unwrap();
+
+  // Send Arc
+  sender
+    .send(ChannelItem::Arc(Arc::new(42i32)))
+    .await
+    .unwrap();
+
+  // Receive Bytes
+  if let Some(item) = receiver.recv().await {
+    match item.into_bytes() {
+      Ok(bytes) => assert_eq!(bytes, Bytes::from("hello")),
+      Err(_) => panic!("Expected Bytes"),
+    }
+  }
+
+  // Receive Arc
+  if let Some(item) = receiver.recv().await {
+    match item.downcast_arc::<i32>() {
+      Ok(arc) => assert_eq!(*arc, 42),
+      Err(_) => panic!("Expected Arc<i32>"),
+    }
+  }
+}

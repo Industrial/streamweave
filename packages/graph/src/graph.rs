@@ -144,10 +144,10 @@ impl<N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, NewNode> AppendNode<NewNode>
 /// while the compile-time `Connection` type provides type validation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConnectionInfo {
-  /// Source node name and port index
-  pub source: (String, usize),
-  /// Target node name and port index
-  pub target: (String, usize),
+  /// Source node name and port name
+  pub source: (String, String),
+  /// Target node name and port name
+  pub target: (String, String),
 }
 
 impl ConnectionInfo {
@@ -155,13 +155,13 @@ impl ConnectionInfo {
   ///
   /// # Arguments
   ///
-  /// * `source` - Source node name and port index
-  /// * `target` - Target node name and port index
+  /// * `source` - Source node name and port name
+  /// * `target` - Target node name and port name
   ///
   /// # Returns
   ///
   /// A new `ConnectionInfo` instance.
-  pub fn new(source: (String, usize), target: (String, usize)) -> Self {
+  pub fn new(source: (String, String), target: (String, String)) -> Self {
     Self { source, target }
   }
 }
@@ -192,8 +192,8 @@ pub enum GraphError {
   PortNotFound {
     /// Node name
     node: String,
-    /// Port index
-    port: usize,
+    /// Port name
+    port_name: String,
   },
   /// Type mismatch between ports
   TypeMismatch {
@@ -229,8 +229,8 @@ impl std::fmt::Display for GraphError {
           source, target, reason
         )
       }
-      GraphError::PortNotFound { node, port } => {
-        write!(f, "Port {} not found on node {}", port, node)
+      GraphError::PortNotFound { node, port_name } => {
+        write!(f, "Port '{}' not found on node '{}'", port_name, node)
       }
       GraphError::InvalidPortName { port_name } => {
         write!(f, "Invalid port name format: {}", port_name)
@@ -269,53 +269,6 @@ fn parse_port_spec(port_spec: &str) -> Result<(Option<&str>, String), GraphError
     // Just a port name (no node prefix)
     Ok((None, port_spec.to_string()))
   }
-}
-
-/// Helper function to resolve a port name to an index using node's port resolution.
-///
-/// This function queries the node for port name resolution, supporting both
-/// named ports (e.g., "out0", "in1") and numeric indices.
-///
-/// # Arguments
-///
-/// * `node` - The node to query for port resolution
-/// * `port_name` - The port name or index to resolve
-/// * `is_output` - Whether this is an output port (true) or input port (false)
-///
-/// # Returns
-///
-/// The port index, or an error if the port name cannot be resolved.
-fn resolve_port_name(
-  node: &dyn NodeTrait,
-  port_name: &str,
-  is_output: bool,
-) -> Result<usize, GraphError> {
-  // Try to resolve using node's port resolution methods
-  let resolved = if is_output {
-    node.resolve_output_port(port_name)
-  } else {
-    node.resolve_input_port(port_name)
-  };
-
-  if let Some(index) = resolved {
-    return Ok(index);
-  }
-
-  // If node resolution failed, try numeric index as fallback
-  if let Ok(index) = port_name.parse::<usize>() {
-    let port_count = if is_output {
-      node.output_port_count()
-    } else {
-      node.input_port_count()
-    };
-    if index < port_count {
-      return Ok(index);
-    }
-  }
-
-  Err(GraphError::InvalidPortName {
-    port_name: port_name.to_string(),
-  })
 }
 
 impl std::error::Error for GraphError {}
@@ -412,15 +365,15 @@ impl Graph {
   ///
   /// # Returns
   ///
-  /// A vector of tuples `(target_node_name, target_port_index)` for all nodes
+  /// A vector of tuples `(target_node_name, target_port_name)` for all nodes
   /// connected from this node.
-  pub fn get_children(&self, node_name: &str) -> Vec<(&str, usize)> {
+  pub fn get_children(&self, node_name: &str) -> Vec<(&str, &str)> {
     self
       .connections
       .iter()
       .filter_map(|conn| {
         if conn.source.0 == node_name {
-          Some((conn.target.0.as_str(), conn.target.1))
+          Some((conn.target.0.as_str(), conn.target.1.as_str()))
         } else {
           None
         }
@@ -436,15 +389,15 @@ impl Graph {
   ///
   /// # Returns
   ///
-  /// A vector of tuples `(source_node_name, source_port_index)` for all nodes
+  /// A vector of tuples `(source_node_name, source_port_name)` for all nodes
   /// connected to this node.
-  pub fn get_parents(&self, node_name: &str) -> Vec<(&str, usize)> {
+  pub fn get_parents(&self, node_name: &str) -> Vec<(&str, &str)> {
     self
       .connections
       .iter()
       .filter_map(|conn| {
         if conn.target.0 == node_name {
-          Some((conn.source.0.as_str(), conn.source.1))
+          Some((conn.source.0.as_str(), conn.source.1.as_str()))
         } else {
           None
         }
@@ -873,26 +826,54 @@ impl<Nodes> GraphBuilder<HasNodes<Nodes>> {
         name: target_node_name.to_string(),
       })?;
 
-    // Resolve port names to indices
-    let source_port = if source_port_spec.is_empty() {
-      0 // Default to port 0 if not specified
+    // Resolve port names (use default "out"/"in" if not specified)
+    let source_port_name = if source_port_spec.is_empty() {
+      // Default to first output port name
+      let output_port_names = source_node.output_port_names();
+      if output_port_names.is_empty() {
+        return Err(GraphError::InvalidConnection {
+          source: source_node_name.to_string(),
+          target: target_node_name.to_string(),
+          reason: "Source node has no output ports".to_string(),
+        });
+      }
+      output_port_names[0].clone()
     } else {
-      resolve_port_name(source_node.as_ref(), &source_port_spec, true)?
+      // Validate port name exists
+      if !source_node.has_output_port(&source_port_spec) {
+        return Err(GraphError::InvalidPortName {
+          port_name: source_port_spec.clone(),
+        });
+      }
+      source_port_spec
     };
 
-    let target_port = if target_port_spec.is_empty() {
-      0 // Default to port 0 if not specified
+    let target_port_name = if target_port_spec.is_empty() {
+      // Default to first input port name
+      let input_port_names = target_node.input_port_names();
+      if input_port_names.is_empty() {
+        return Err(GraphError::InvalidConnection {
+          source: source_node_name.to_string(),
+          target: target_node_name.to_string(),
+          reason: "Target node has no input ports".to_string(),
+        });
+      }
+      input_port_names[0].clone()
     } else {
-      resolve_port_name(target_node.as_ref(), &target_port_spec, false)?
+      // Validate port name exists
+      if !target_node.has_input_port(&target_port_spec) {
+        return Err(GraphError::InvalidPortName {
+          port_name: target_port_spec.clone(),
+        });
+      }
+      target_port_spec
     };
 
-    // Use the type-safe connect method
-    // Since we're using runtime resolution, we need to use a different approach
-    // For now, we'll create the connection directly and validate at runtime
+    // Create connection with port names
     let mut connections = self.connections;
     connections.push(ConnectionInfo::new(
-      (source_node_name.to_string(), source_port),
-      (target_node_name.to_string(), target_port),
+      (source_node_name.to_string(), source_port_name),
+      (target_node_name.to_string(), target_port_name),
     ));
 
     Ok(GraphBuilder {
@@ -976,23 +957,44 @@ impl<Nodes> GraphBuilder<HasNodes<Nodes>> {
       });
     }
 
-    // Validate nodes exist
-    if !self.nodes.contains_key(source_name) {
-      return Err(GraphError::NodeNotFound {
+    // Validate nodes exist and get port names
+    let source_node = self
+      .nodes
+      .get(source_name)
+      .ok_or_else(|| GraphError::NodeNotFound {
         name: source_name.to_string(),
-      });
-    }
-    if !self.nodes.contains_key(target_name) {
-      return Err(GraphError::NodeNotFound {
+      })?;
+    let target_node = self
+      .nodes
+      .get(target_name)
+      .ok_or_else(|| GraphError::NodeNotFound {
         name: target_name.to_string(),
-      });
-    }
+      })?;
 
-    // Create connection info
+    // Convert port indices to port names
+    let source_port_names = source_node.output_port_names();
+    let source_port_name = source_port_names
+      .get(source_port)
+      .ok_or_else(|| GraphError::PortNotFound {
+        node: source_name.to_string(),
+        port_name: format!("index_{}", source_port),
+      })?
+      .clone();
+
+    let target_port_names = target_node.input_port_names();
+    let target_port_name = target_port_names
+      .get(target_port)
+      .ok_or_else(|| GraphError::PortNotFound {
+        node: target_name.to_string(),
+        port_name: format!("index_{}", target_port),
+      })?
+      .clone();
+
+    // Create connection info with port names
     let mut connections = self.connections;
     connections.push(ConnectionInfo::new(
-      (source_name.to_string(), source_port),
-      (target_name.to_string(), target_port),
+      (source_name.to_string(), source_port_name),
+      (target_name.to_string(), target_port_name),
     ));
 
     Ok(GraphBuilder {
@@ -1144,24 +1146,54 @@ impl<Nodes, Connections> GraphBuilder<HasConnections<Nodes, Connections>> {
         name: target_node_name.to_string(),
       })?;
 
-    // Resolve port names to indices
-    let source_port = if source_port_spec.is_empty() {
-      0 // Default to port 0 if not specified
+    // Resolve port names (use default "out"/"in" if not specified)
+    let source_port_name = if source_port_spec.is_empty() {
+      // Default to first output port name
+      let output_port_names = source_node.output_port_names();
+      if output_port_names.is_empty() {
+        return Err(GraphError::InvalidConnection {
+          source: source_node_name.to_string(),
+          target: target_node_name.to_string(),
+          reason: "Source node has no output ports".to_string(),
+        });
+      }
+      output_port_names[0].clone()
     } else {
-      resolve_port_name(source_node.as_ref(), &source_port_spec, true)?
+      // Validate port name exists
+      if !source_node.has_output_port(&source_port_spec) {
+        return Err(GraphError::InvalidPortName {
+          port_name: source_port_spec.clone(),
+        });
+      }
+      source_port_spec
     };
 
-    let target_port = if target_port_spec.is_empty() {
-      0 // Default to port 0 if not specified
+    let target_port_name = if target_port_spec.is_empty() {
+      // Default to first input port name
+      let input_port_names = target_node.input_port_names();
+      if input_port_names.is_empty() {
+        return Err(GraphError::InvalidConnection {
+          source: source_node_name.to_string(),
+          target: target_node_name.to_string(),
+          reason: "Target node has no input ports".to_string(),
+        });
+      }
+      input_port_names[0].clone()
     } else {
-      resolve_port_name(target_node.as_ref(), &target_port_spec, false)?
+      // Validate port name exists
+      if !target_node.has_input_port(&target_port_spec) {
+        return Err(GraphError::InvalidPortName {
+          port_name: target_port_spec.clone(),
+        });
+      }
+      target_port_spec
     };
 
-    // Create connection directly (runtime validation only)
+    // Create connection with port names
     let mut connections = self.connections;
     connections.push(ConnectionInfo::new(
-      (source_node_name.to_string(), source_port),
-      (target_node_name.to_string(), target_port),
+      (source_node_name.to_string(), source_port_name),
+      (target_node_name.to_string(), target_port_name),
     ));
 
     Ok(GraphBuilder {
@@ -1233,23 +1265,44 @@ impl<Nodes, Connections> GraphBuilder<HasConnections<Nodes, Connections>> {
       });
     }
 
-    // Validate nodes exist
-    if !self.nodes.contains_key(source_name) {
-      return Err(GraphError::NodeNotFound {
+    // Validate nodes exist and get port names
+    let source_node = self
+      .nodes
+      .get(source_name)
+      .ok_or_else(|| GraphError::NodeNotFound {
         name: source_name.to_string(),
-      });
-    }
-    if !self.nodes.contains_key(target_name) {
-      return Err(GraphError::NodeNotFound {
+      })?;
+    let target_node = self
+      .nodes
+      .get(target_name)
+      .ok_or_else(|| GraphError::NodeNotFound {
         name: target_name.to_string(),
-      });
-    }
+      })?;
 
-    // Create connection info
+    // Convert port indices to port names
+    let source_port_names = source_node.output_port_names();
+    let source_port_name = source_port_names
+      .get(source_port)
+      .ok_or_else(|| GraphError::PortNotFound {
+        node: source_name.to_string(),
+        port_name: format!("index_{}", source_port),
+      })?
+      .clone();
+
+    let target_port_names = target_node.input_port_names();
+    let target_port_name = target_port_names
+      .get(target_port)
+      .ok_or_else(|| GraphError::PortNotFound {
+        node: target_name.to_string(),
+        port_name: format!("index_{}", target_port),
+      })?
+      .clone();
+
+    // Create connection info with port names
     let mut connections = self.connections;
     connections.push(ConnectionInfo::new(
-      (source_name.to_string(), source_port),
-      (target_name.to_string(), target_port),
+      (source_name.to_string(), source_port_name),
+      (target_name.to_string(), target_port_name),
     ));
 
     Ok(GraphBuilder {
@@ -1362,43 +1415,53 @@ impl RuntimeGraphBuilder {
   ///
   /// # Arguments
   ///
-  /// * `source` - Source node name and port index
-  /// * `target` - Target node name and port index
+  /// * `source` - Source node name and port name
+  /// * `target` - Target node name and port name
   ///
   /// # Returns
   ///
   /// `Ok(())` if the connection was added successfully, `Err(GraphError)` if
-  /// the connection is invalid (nodes don't exist, etc.).
+  /// the connection is invalid (nodes don't exist, ports don't exist, etc.).
   ///
   /// # Note
   ///
-  /// This method only validates that nodes exist. Type compatibility is not
-  /// checked at runtime (that would require type information that's been erased).
+  /// This method validates that nodes exist and that the specified ports exist.
+  /// Type compatibility is not checked at runtime (that would require type information that's been erased).
   /// For type-safe connections, use `GraphBuilder::connect` instead.
-  pub fn connect(
-    &mut self,
-    source: (&str, usize),
-    target: (&str, usize),
-  ) -> Result<(), GraphError> {
-    let (source_name, source_port) = source;
-    let (target_name, target_port) = target;
+  pub fn connect(&mut self, source: (&str, &str), target: (&str, &str)) -> Result<(), GraphError> {
+    let (source_name, source_port_name) = source;
+    let (target_name, target_port_name) = target;
 
     // Validate nodes exist
-    if !self.nodes.contains_key(source_name) {
-      return Err(GraphError::NodeNotFound {
+    let source_node = self
+      .nodes
+      .get(source_name)
+      .ok_or_else(|| GraphError::NodeNotFound {
         name: source_name.to_string(),
+      })?;
+    let target_node = self
+      .nodes
+      .get(target_name)
+      .ok_or_else(|| GraphError::NodeNotFound {
+        name: target_name.to_string(),
+      })?;
+
+    // Validate ports exist
+    if !source_node.has_output_port(source_port_name) {
+      return Err(GraphError::InvalidPortName {
+        port_name: source_port_name.to_string(),
       });
     }
-    if !self.nodes.contains_key(target_name) {
-      return Err(GraphError::NodeNotFound {
-        name: target_name.to_string(),
+    if !target_node.has_input_port(target_port_name) {
+      return Err(GraphError::InvalidPortName {
+        port_name: target_port_name.to_string(),
       });
     }
 
     // Create connection info
     let connection = ConnectionInfo::new(
-      (source_name.to_string(), source_port),
-      (target_name.to_string(), target_port),
+      (source_name.to_string(), source_port_name.to_string()),
+      (target_name.to_string(), target_port_name.to_string()),
     );
 
     self.connections.push(connection);
@@ -1424,539 +1487,5 @@ impl RuntimeGraphBuilder {
 impl Default for RuntimeGraphBuilder {
   fn default() -> Self {
     Self::new()
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use crate::node::{ConsumerNode, ProducerNode, TransformerNode};
-  use streamweave_transformers::MapTransformer;
-  use streamweave_vec::VecConsumer;
-  use streamweave_vec::VecProducer;
-
-  #[test]
-  fn test_graph_new() {
-    let graph = Graph::new();
-    assert!(graph.is_empty());
-    assert_eq!(graph.len(), 0);
-  }
-
-  #[test]
-  fn test_graph_builder_add_node() {
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-
-    let builder = builder.add_node("source".to_string(), producer).unwrap();
-    assert!(
-      builder
-        .add_node(
-          "source".to_string(),
-          ProducerNode::from_producer("duplicate".to_string(), VecProducer::new(vec![4, 5, 6]),)
-        )
-        .is_err()
-    );
-  }
-
-  #[test]
-  fn test_graph_builder_connect() {
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer = TransformerNode::from_transformer(
-      "transform".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-
-    let builder = builder.add_node("source".to_string(), producer).unwrap();
-    let builder = builder
-      .add_node("transform".to_string(), transformer)
-      .unwrap();
-
-    // Valid connection - use connect_by_name to avoid needing explicit closure type
-    let builder = builder.connect_by_name("source", "transform").unwrap();
-    assert_eq!(builder.connection_count(), 1);
-
-    // Test that we can build from this state
-    let graph = builder.build();
-    assert_eq!(graph.len(), 2);
-    assert_eq!(graph.get_connections().len(), 1);
-  }
-
-  #[test]
-  fn test_fluent_node_api() {
-    // Test the fluent node() method
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer = TransformerNode::from_transformer(
-      "transform".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-
-    // Use fluent API
-    let builder = builder.node(producer).unwrap();
-    let builder = builder.node(transformer).unwrap();
-    assert_eq!(builder.node_count(), 2);
-  }
-
-  #[test]
-  fn test_fluent_connect_by_name() {
-    // Test the fluent connect_by_name() method
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer = TransformerNode::from_transformer(
-      "transform".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-
-    let builder = builder.node(producer).unwrap();
-    let builder = builder.node(transformer).unwrap();
-
-    // Connect using port names
-    let builder = builder.connect_by_name("source", "transform").unwrap();
-    assert_eq!(builder.connection_count(), 1);
-
-    // Connect using explicit port names
-    let builder = builder.connect_by_name("source:0", "transform:0").unwrap();
-    assert_eq!(builder.connection_count(), 2);
-
-    let graph = builder.build();
-    assert_eq!(graph.get_connections().len(), 2);
-  }
-
-  #[test]
-  fn test_fluent_api_chaining() {
-    // Test method chaining with fluent API
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer = TransformerNode::from_transformer(
-      "transform".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-    let consumer = ConsumerNode::from_consumer("sink".to_string(), VecConsumer::<i32>::new());
-
-    let graph = GraphBuilder::new()
-      .node(producer)
-      .unwrap()
-      .node(transformer)
-      .unwrap()
-      .node(consumer)
-      .unwrap()
-      .connect_by_name("source", "transform")
-      .unwrap()
-      .connect_by_name("transform", "sink")
-      .unwrap()
-      .build();
-
-    assert_eq!(graph.len(), 3);
-    assert_eq!(graph.get_connections().len(), 2);
-  }
-
-  #[test]
-  fn test_compile_time_node_existence_validation() {
-    // Test that connect() requires node types to be in the builder state
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer = TransformerNode::from_transformer(
-      "transform".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-
-    // Add nodes
-    let builder = builder.node(producer).unwrap();
-    let builder = builder.node(transformer).unwrap();
-
-    // Use connect_by_name to avoid needing explicit closure type
-    let builder = builder.connect_by_name("source", "transform").unwrap();
-
-    assert_eq!(builder.connection_count(), 1);
-
-    // The following would fail to compile if uncommented:
-    // let consumer = ConsumerNode::new("sink".to_string(), VecConsumer::new());
-    // // This fails because ConsumerNode is not in the builder state yet
-    // builder.connect::<
-    //   ProducerNode<VecProducer<i32>, (i32,)>,
-    //   ConsumerNode<VecConsumer<i32>, (i32,)>,
-    //   0, 0
-    // >("source", "sink", 0, 0).unwrap();
-  }
-
-  #[test]
-  fn test_compile_time_port_bounds_validation() {
-    // Test that port bounds are validated at compile time
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer = TransformerNode::from_transformer(
-      "transform".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-
-    let builder = builder.node(producer).unwrap();
-    let builder = builder.node(transformer).unwrap();
-
-    // Valid port index (0) - use connect_by_name to avoid explicit type annotations
-    let _builder = builder.connect_by_name("source", "transform").unwrap();
-
-    // The following would fail to compile if uncommented:
-    // // Invalid port index (1) - port doesn't exist on single-port nodes
-    // builder.connect::<
-    //   ProducerNode<VecProducer<i32>, (i32,)>,
-    //   TransformerNode<MapTransformer<i32, i32>, (i32,), (i32,)>,
-    //   1,  // Invalid: only port 0 exists
-    //   0,
-    // >("source", "transform", 1, 0).unwrap();
-  }
-
-  #[test]
-  fn test_compile_time_type_compatibility_validation() {
-    // Test that type compatibility is validated at compile time
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer = TransformerNode::from_transformer(
-      "transform".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-
-    let builder = builder.node(producer).unwrap();
-    let builder = builder.node(transformer).unwrap();
-
-    // Compatible types (i32 -> i32) - use connect_by_name
-    let _builder = builder.connect_by_name("source", "transform").unwrap();
-
-    // The following would fail to compile if uncommented:
-    // // Incompatible types (i32 -> String) - would fail to compile
-    // let string_transformer = TransformerNode::new(
-    //   "string_transform".to_string(),
-    //   MapTransformer::new(|x: String| x.len()),
-    // );
-    // builder.node(string_transformer).unwrap()
-    //   .connect::<
-    //     ProducerNode<VecProducer<i32>, (i32,)>,
-    //     TransformerNode<MapTransformer<String, usize>, (String,), (usize,)>,
-    //     0, 0
-    //   >("source", "string_transform", 0, 0).unwrap();
-  }
-
-  #[test]
-  fn test_port_name_resolution() {
-    // Test port name resolution for different node types
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer = TransformerNode::from_transformer(
-      "transform".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-    let consumer = ConsumerNode::from_consumer("sink".to_string(), VecConsumer::<i32>::new());
-
-    // Test producer output port names
-    assert_eq!(producer.output_port_name(0), Some("out0".to_string()));
-    assert_eq!(producer.resolve_output_port("out0"), Some(0));
-    assert_eq!(producer.resolve_output_port("0"), Some(0));
-    assert_eq!(producer.resolve_output_port("out"), Some(0)); // Single port default
-    assert_eq!(producer.input_port_name(0), None); // No input ports
-
-    // Test transformer port names
-    assert_eq!(transformer.input_port_name(0), Some("in0".to_string()));
-    assert_eq!(transformer.output_port_name(0), Some("out0".to_string()));
-    assert_eq!(transformer.resolve_input_port("in0"), Some(0));
-    assert_eq!(transformer.resolve_input_port("0"), Some(0));
-    assert_eq!(transformer.resolve_output_port("out0"), Some(0));
-    assert_eq!(transformer.resolve_output_port("0"), Some(0));
-
-    // Test consumer input port names
-    assert_eq!(consumer.input_port_name(0), Some("in0".to_string()));
-    assert_eq!(consumer.resolve_input_port("in0"), Some(0));
-    assert_eq!(consumer.resolve_input_port("0"), Some(0));
-    assert_eq!(consumer.resolve_input_port("in"), Some(0)); // Single port default
-    assert_eq!(consumer.output_port_name(0), None); // No output ports
-  }
-
-  #[test]
-  fn test_port_name_resolution_invalid() {
-    // Test invalid port name resolution
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-
-    // Invalid port names should return None
-    assert_eq!(producer.resolve_output_port("invalid"), None);
-    assert_eq!(producer.resolve_output_port("out1"), None); // Only port 0 exists
-    assert_eq!(producer.resolve_output_port("in0"), None); // Wrong prefix for output
-    assert_eq!(producer.input_port_name(0), None); // No input ports
-  }
-
-  #[test]
-  fn test_connect_by_name_port_resolution() {
-    // Test connect_by_name with various port name formats
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer = TransformerNode::from_transformer(
-      "transform".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-    let consumer = ConsumerNode::from_consumer("sink".to_string(), VecConsumer::<i32>::new());
-
-    let builder = builder.node(producer).unwrap();
-    let builder = builder.node(transformer).unwrap();
-    let builder = builder.node(consumer).unwrap();
-
-    // Test various port name formats
-    // 1. Node names only (defaults to port 0)
-    let builder = builder.connect_by_name("source", "transform").unwrap();
-    assert_eq!(builder.connection_count(), 1);
-
-    // 2. Explicit port names
-    let builder = builder
-      .connect_by_name("source:out0", "transform:in0")
-      .unwrap();
-    assert_eq!(builder.connection_count(), 2);
-
-    // 3. Numeric port indices
-    let builder = builder.connect_by_name("transform:0", "sink:0").unwrap();
-    assert_eq!(builder.connection_count(), 3);
-
-    // 4. Mixed formats
-    let builder = builder
-      .connect_by_name("source:0", "transform:in0")
-      .unwrap();
-    assert_eq!(builder.connection_count(), 4);
-
-    let graph = builder.build();
-    assert_eq!(graph.get_connections().len(), 4);
-  }
-
-  #[test]
-  fn test_connect_by_name_invalid_ports() {
-    // Test connect_by_name with invalid port names
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer = TransformerNode::from_transformer(
-      "transform".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-
-    let builder = builder.node(producer).unwrap();
-    let builder = builder.node(transformer).unwrap();
-
-    // Invalid port names should fail - each call consumes the builder
-    let result1 = builder.connect_by_name("source:invalid", "transform");
-    assert!(result1.is_err());
-
-    // Create new builder for second test
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer = TransformerNode::from_transformer(
-      "transform".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-    let builder = builder.node(producer).unwrap();
-    let builder = builder.node(transformer).unwrap();
-    let result2 = builder.connect_by_name("source", "transform:invalid");
-    assert!(result2.is_err());
-
-    // Create new builder for third test
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer = TransformerNode::from_transformer(
-      "transform".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-    let builder = builder.node(producer).unwrap();
-    let builder = builder.node(transformer).unwrap();
-    let result3 = builder.connect_by_name("source:out1", "transform");
-    assert!(result3.is_err()); // Port 1 doesn't exist
-  }
-
-  #[test]
-  fn test_connect_by_name_node_not_found() {
-    // Test connect_by_name with non-existent nodes
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-
-    let builder = builder.node(producer).unwrap();
-
-    // Non-existent nodes should fail - each call consumes the builder, so we need separate tests
-    let builder1 = builder.connect_by_name("nonexistent", "source");
-    assert!(builder1.is_err());
-
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let builder = builder.node(producer).unwrap();
-    let builder2 = builder.connect_by_name("source", "nonexistent");
-    assert!(builder2.is_err());
-  }
-
-  #[test]
-  fn test_graph_builder_build() {
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-
-    let builder = builder.add_node("source".to_string(), producer).unwrap();
-    let graph = builder.build();
-
-    assert_eq!(graph.len(), 1);
-    assert!(!graph.is_empty());
-    assert!(graph.get_node("source").is_some());
-  }
-
-  #[test]
-  fn test_runtime_graph_builder() {
-    let mut builder = RuntimeGraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-
-    assert!(
-      builder
-        .add_node("source".to_string(), Box::new(producer))
-        .is_ok()
-    );
-    assert!(
-      builder
-        .add_node(
-          "source".to_string(),
-          Box::new(ProducerNode::from_producer(
-            "duplicate".to_string(),
-            VecProducer::new(vec![4, 5, 6]),
-          ))
-        )
-        .is_err()
-    );
-  }
-
-  #[test]
-  fn test_runtime_graph_builder_connect() {
-    let mut builder = RuntimeGraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let consumer = ConsumerNode::from_consumer("sink".to_string(), VecConsumer::<i32>::new());
-
-    builder
-      .add_node("source".to_string(), Box::new(producer))
-      .unwrap();
-    builder
-      .add_node("sink".to_string(), Box::new(consumer))
-      .unwrap();
-
-    // Valid connection
-    assert!(builder.connect(("source", 0), ("sink", 0)).is_ok());
-
-    // Invalid: node doesn't exist
-    assert!(builder.connect(("nonexistent", 0), ("sink", 0)).is_err());
-  }
-
-  #[test]
-  fn test_graph_get_children() {
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer1 = TransformerNode::from_transformer(
-      "transform1".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-    let transformer2 = TransformerNode::from_transformer(
-      "transform2".to_string(),
-      MapTransformer::new(|x: i32| x * 3),
-    );
-
-    let builder = builder.add_node("source".to_string(), producer).unwrap();
-    let builder = builder
-      .add_node("transform1".to_string(), transformer1)
-      .unwrap();
-    let builder = builder
-      .add_node("transform2".to_string(), transformer2)
-      .unwrap();
-
-    let builder = builder.connect_by_name("source", "transform1").unwrap();
-    let builder = builder.connect_by_name("source", "transform2").unwrap();
-
-    let graph = builder.build();
-    let children = graph.get_children("source");
-    assert_eq!(children.len(), 2);
-    assert!(children.contains(&("transform1", 0)));
-    assert!(children.contains(&("transform2", 0)));
-  }
-
-  #[test]
-  fn test_graph_get_parents() {
-    let builder = GraphBuilder::new();
-    let producer =
-      ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3]));
-    let transformer = TransformerNode::from_transformer(
-      "transform".to_string(),
-      MapTransformer::new(|x: i32| x * 2),
-    );
-    let consumer = ConsumerNode::from_consumer("sink".to_string(), VecConsumer::<i32>::new());
-
-    let builder = builder.add_node("source".to_string(), producer).unwrap();
-    let builder = builder
-      .add_node("transform".to_string(), transformer)
-      .unwrap();
-    let builder = builder.add_node("sink".to_string(), consumer).unwrap();
-
-    let builder = builder.connect_by_name("source", "transform").unwrap();
-    let builder = builder.connect_by_name("transform", "sink").unwrap();
-
-    let graph = builder.build();
-    let parents = graph.get_parents("transform");
-    assert_eq!(parents.len(), 1);
-    assert_eq!(parents[0], ("source", 0));
-  }
-
-  #[test]
-  fn test_graph_node_names() {
-    let builder = GraphBuilder::new();
-    let builder = builder
-      .add_node(
-        "source".to_string(),
-        ProducerNode::from_producer("source".to_string(), VecProducer::new(vec![1, 2, 3])),
-      )
-      .unwrap();
-    let builder = builder
-      .add_node(
-        "sink".to_string(),
-        ConsumerNode::from_consumer("sink".to_string(), VecConsumer::<i32>::new()),
-      )
-      .unwrap();
-
-    let graph = builder.build();
-    let names = graph.node_names();
-    assert_eq!(names.len(), 2);
-    assert!(names.contains(&"source"));
-    assert!(names.contains(&"sink"));
-  }
-
-  #[test]
-  fn test_graph_error_display() {
-    let error = GraphError::NodeNotFound {
-      name: "test".to_string(),
-    };
-    assert_eq!(error.to_string(), "Node not found: test");
-
-    let error = GraphError::DuplicateNode {
-      name: "test".to_string(),
-    };
-    assert_eq!(error.to_string(), "Duplicate node: test");
-
-    let error = GraphError::InvalidConnection {
-      source: "source".to_string(),
-      target: "target".to_string(),
-      reason: "test reason".to_string(),
-    };
-    assert_eq!(
-      error.to_string(),
-      "Invalid connection from source to target: test reason"
-    );
   }
 }

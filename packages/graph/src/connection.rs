@@ -2,7 +2,13 @@
 //!
 //! This module provides connection types that validate port compatibility at compile time
 //! using trait bounds and const generics. Connections reference nodes by type and ports
-//! by compile-time indices, ensuring type safety and port existence validation.
+//! by compile-time indices for type checking, while runtime uses port names.
+//!
+//! ## Note on Port Indices vs Port Names
+//!
+//! The const generic parameters (`const N: usize`) are used for compile-time type checking
+//! only. At runtime, all ports are identified by string names. The `GraphBuilder::connect`
+//! method converts port indices to port names when creating connections.
 //!
 //! ## Example
 //!
@@ -13,11 +19,13 @@
 //! use streamweave_transformers::MapTransformer;
 //!
 //! // Type-safe connection validated at compile time
+//! // Note: Port indices (0, 0) are for compile-time validation only.
+//! // At runtime, ports are identified by names (e.g., "out", "in").
 //! let connection: Connection<
 //!     ProducerNode<VecProducer<i32>, (i32,)>,
 //!     TransformerNode<MapTransformer<i32, String>, (i32,), (String,)>,
-//!     0,  // Source port index
-//!     0,  // Target port index
+//!     0,  // Source port index (compile-time only)
+//!     0,  // Target port index (compile-time only)
 //! > = Connection::new();
 //!
 //! // This would fail to compile if:
@@ -30,15 +38,21 @@ use crate::node::{
   ConsumerNode, ProducerNode, TransformerNode, ValidateConsumerPorts, ValidateProducerPorts,
   ValidateTransformerPorts,
 };
-use crate::port::{GetPort, PortList};
 use streamweave::Consumer;
 use streamweave::Producer;
 use streamweave::Transformer;
+use streamweave::port::{GetPort, PortList};
 
 /// Trait for extracting an output port type from a node at a specific index.
 ///
 /// This trait enables compile-time extraction of output port types from nodes,
 /// which is used for connection type validation.
+///
+/// # Note
+///
+/// The port index `N` is used for compile-time type checking only. At runtime,
+/// ports are identified by string names. The index corresponds to the position
+/// in the `output_port_names()` vector.
 ///
 /// # Example
 ///
@@ -47,6 +61,7 @@ use streamweave::Transformer;
 ///
 /// type OutputType = <ProducerNode<VecProducer<i32>, (i32,)> as HasOutputPort<0>>::OutputType;
 /// // OutputType = i32
+/// // Index 0 corresponds to the first port name in output_port_names()
 /// ```
 pub trait HasOutputPort<const N: usize> {
   /// The type of the output port at index `N`.
@@ -58,6 +73,12 @@ pub trait HasOutputPort<const N: usize> {
 /// This trait enables compile-time extraction of input port types from nodes,
 /// which is used for connection type validation.
 ///
+/// # Note
+///
+/// The port index `N` is used for compile-time type checking only. At runtime,
+/// ports are identified by string names. The index corresponds to the position
+/// in the `input_port_names()` vector.
+///
 /// # Example
 ///
 /// ```rust
@@ -65,6 +86,7 @@ pub trait HasOutputPort<const N: usize> {
 ///
 /// type InputType = <ConsumerNode<VecConsumer<i32>, (i32,)> as HasInputPort<0>>::InputType;
 /// // InputType = i32
+/// // Index 0 corresponds to the first port name in input_port_names()
 /// ```
 pub trait HasInputPort<const N: usize> {
   /// The type of the input port at index `N`.
@@ -153,8 +175,14 @@ where
 ///
 /// * `SourceNode` - The source node type (must implement `HasOutputPort<SOURCE_PORT>`)
 /// * `TargetNode` - The target node type (must implement `HasInputPort<TARGET_PORT>`)
-/// * `SOURCE_PORT` - The compile-time constant index of the source output port
-/// * `TARGET_PORT` - The compile-time constant index of the target input port
+/// * `SOURCE_PORT` - The compile-time constant index of the source output port (for type checking only)
+/// * `TARGET_PORT` - The compile-time constant index of the target input port (for type checking only)
+///
+/// # Note
+///
+/// The port indices (`SOURCE_PORT`, `TARGET_PORT`) are used for compile-time type validation only.
+/// At runtime, ports are identified by string names. When using `GraphBuilder::connect()`, the
+/// port indices are converted to port names when creating the runtime `ConnectionInfo`.
 ///
 /// # Example
 ///
@@ -165,11 +193,13 @@ where
 /// use streamweave_transformers::MapTransformer;
 ///
 /// // Create a type-safe connection
+/// // Port indices (0, 0) are for compile-time validation only.
+/// // At runtime, these correspond to port names from output_port_names() and input_port_names().
 /// let connection: Connection<
 ///     ProducerNode<VecProducer<i32>, (i32,)>,
 ///     TransformerNode<MapTransformer<i32, i32>, (i32,), (i32,)>,
-///     0,
-///     0,
+///     0,  // Compile-time port index (runtime uses port name from output_port_names()[0])
+///     0,  // Compile-time port index (runtime uses port name from input_port_names()[0])
 /// > = Connection::new();
 /// ```
 pub struct Connection<SourceNode, TargetNode, const SOURCE_PORT: usize, const TARGET_PORT: usize>
@@ -245,12 +275,12 @@ where
 /// for potential runtime errors or future use cases.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConnectionError {
-  /// Invalid port index (shouldn't happen with const generics, but for safety)
-  InvalidPortIndex {
-    /// The invalid port index
-    index: usize,
-    /// The maximum valid port index
-    max_index: usize,
+  /// Invalid port name (shouldn't happen with const generics, but for safety)
+  InvalidPortName {
+    /// The invalid port name
+    port_name: String,
+    /// The available port names
+    available_ports: Vec<String>,
   },
   /// Type mismatch (shouldn't happen with trait bounds, but for safety)
   TypeMismatch {
@@ -262,11 +292,14 @@ pub enum ConnectionError {
 impl std::fmt::Display for ConnectionError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      ConnectionError::InvalidPortIndex { index, max_index } => {
+      ConnectionError::InvalidPortName {
+        port_name,
+        available_ports,
+      } => {
         write!(
           f,
-          "Invalid port index: {} (max valid index: {})",
-          index, max_index
+          "Invalid port name: '{}' (available ports: {:?})",
+          port_name, available_ports
         )
       }
       ConnectionError::TypeMismatch { message } => {
@@ -277,75 +310,3 @@ impl std::fmt::Display for ConnectionError {
 }
 
 impl std::error::Error for ConnectionError {}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use streamweave_vec::VecConsumer;
-  use streamweave_vec::VecProducer;
-
-  // Note: Tests for transformer connections are covered in integration tests
-  // Type alias tests with MapTransformer are removed due to closure type constraints
-
-  #[test]
-  fn test_producer_to_consumer_connection() {
-    // Valid connection: Producer<i32> -> Consumer<i32>
-    type Source = ProducerNode<VecProducer<i32>, (i32,)>;
-    type Target = ConsumerNode<VecConsumer<i32>, (i32,)>;
-
-    let _connection: Connection<Source, Target, 0, 0> = Connection::new();
-  }
-
-  // Note: Transformer-to-transformer connection tests are covered in integration tests
-
-  #[test]
-  fn test_connection_port_accessors() {
-    type Source = ProducerNode<VecProducer<i32>, (i32,)>;
-    type Target = ConsumerNode<VecConsumer<i32>, (i32,)>;
-
-    let _connection: Connection<Source, Target, 0, 0> = Connection::new();
-    assert_eq!(Connection::<Source, Target, 0, 0>::source_port(), 0);
-    assert_eq!(Connection::<Source, Target, 0, 0>::target_port(), 0);
-  }
-
-  #[test]
-  fn test_connection_error_display() {
-    let error = ConnectionError::InvalidPortIndex {
-      index: 5,
-      max_index: 3,
-    };
-    assert_eq!(
-      error.to_string(),
-      "Invalid port index: 5 (max valid index: 3)"
-    );
-
-    let error = ConnectionError::TypeMismatch {
-      message: "Expected i32, got String".to_string(),
-    };
-    assert_eq!(error.to_string(), "Type mismatch: Expected i32, got String");
-  }
-
-  #[test]
-  fn test_has_output_port_producer() {
-    type Node = ProducerNode<VecProducer<i32>, (i32,)>;
-    type OutputType = <Node as HasOutputPort<0>>::OutputType;
-    let _: OutputType = 42i32;
-  }
-
-  // Note: Transformer port accessor tests removed due to MapTransformer type constraints
-  // These are covered in integration tests with actual transformer instances
-
-  #[test]
-  fn test_has_input_port_consumer() {
-    type Node = ConsumerNode<VecConsumer<String>, (String,)>;
-    type InputType = <Node as HasInputPort<0>>::InputType;
-    let _: InputType = "hello".to_string();
-  }
-
-  #[test]
-  fn test_compatible_with() {
-    // i32 is compatible with i32
-    fn check_compatibility<T: CompatibleWith<i32>>(_: T) {}
-    check_compatibility::<i32>(42);
-  }
-}

@@ -20,7 +20,7 @@ chrono = { workspace = true }
 streamweave = { path = "../streamweave" }
 streamweave-error = { path = "../error" }
 streamweave-message = { path = "../message", optional = true }
-tokio = { workspace = true, features = ["macros", "rt"] }
+tokio = { workspace = true, features = ["macros", "rt", "sync"] }
 futures = { workspace = true }
 async-trait = { workspace = true }
 thiserror = { workspace = true }

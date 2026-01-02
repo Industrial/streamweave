@@ -98,11 +98,12 @@ fn compression_benchmark(c: &mut Criterion) {
 /// Benchmark producer with and without compression
 async fn producer_with_compression(items: Vec<i32>, compression: Option<CompressionAlgorithm>) {
   let producer = VecProducer::new(items);
-  let node: ProducerNode<_, (i32,)> = ProducerNode::new("producer".to_string(), producer);
+  let node: ProducerNode<_, (i32,)> =
+    ProducerNode::new("producer".to_string(), producer, vec!["out".to_string()]);
 
   let (tx, mut rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(1000);
   let mut output_channels = HashMap::new();
-  output_channels.insert(0, tx);
+  output_channels.insert("out".to_string(), tx);
   let pause_signal = Arc::new(RwLock::new(false));
   let execution_mode = ExecutionMode::Distributed {
     serializer: JsonSerializer,

@@ -27,11 +27,12 @@ use tokio::sync::{RwLock, mpsc};
 /// Benchmark producer execution with shared memory
 async fn producer_shared_memory(items: Vec<i32>) {
   let producer = VecProducer::new(items);
-  let node: ProducerNode<_, (i32,)> = ProducerNode::new("producer".to_string(), producer);
+  let node: ProducerNode<_, (i32,)> =
+    ProducerNode::new("producer".to_string(), producer, vec!["out".to_string()]);
 
   let (tx, mut rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(1000);
   let mut output_channels = HashMap::new();
-  output_channels.insert(0, tx);
+  output_channels.insert("out".to_string(), tx);
   let pause_signal = Arc::new(RwLock::new(false));
   let execution_mode = ExecutionMode::InProcess {
     use_shared_memory: true,
@@ -62,11 +63,12 @@ async fn producer_shared_memory(items: Vec<i32>) {
 /// Benchmark producer execution with Arc<T> (zero-copy)
 async fn producer_arc(items: Vec<i32>) {
   let producer = VecProducer::new(items);
-  let node: ProducerNode<_, (i32,)> = ProducerNode::new("producer".to_string(), producer);
+  let node: ProducerNode<_, (i32,)> =
+    ProducerNode::new("producer".to_string(), producer, vec!["out".to_string()]);
 
   let (tx, mut rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(1000);
   let mut output_channels = HashMap::new();
-  output_channels.insert(0, tx);
+  output_channels.insert("out".to_string(), tx);
   let pause_signal = Arc::new(RwLock::new(false));
   let execution_mode = ExecutionMode::InProcess {
     use_shared_memory: false,

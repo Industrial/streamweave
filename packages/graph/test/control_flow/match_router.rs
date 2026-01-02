@@ -92,11 +92,17 @@ async fn test_match_router_with_default() {
 fn test_match_router_output_ports() {
   let patterns: Vec<Box<dyn Pattern<i32>>> = vec![Box::new(EvenPattern), Box::new(OddPattern)];
   let router = Match::new(patterns, None);
-  assert_eq!(router.output_ports(), vec![0, 1]);
+  let port_names = router.output_port_names();
+  assert_eq!(port_names.len(), 2);
+  assert!(port_names.contains(&"out".to_string()));
+  assert!(port_names.contains(&"out_1".to_string()));
 
   let patterns: Vec<Box<dyn Pattern<i32>>> = vec![Box::new(EvenPattern)];
   let router = Match::new(patterns, Some(1));
-  assert_eq!(router.output_ports(), vec![0, 1]);
+  let port_names = router.output_port_names();
+  assert_eq!(port_names.len(), 2);
+  assert!(port_names.contains(&"out".to_string()));
+  assert!(port_names.contains(&"out_1".to_string()));
 }
 
 #[test]
@@ -260,6 +266,10 @@ proptest! {
       ];
       let mut router = Match::new(patterns, Some(3)); // default port 3
 
+      // Get port names before route_stream (which moves patterns)
+      let port_names: Vec<String> = router.output_port_names();
+      assert_eq!(port_names.len(), 4); // 3 patterns + 1 default
+
       let input_stream: Pin<Box<dyn futures::Stream<Item = i32> + Send>> =
         Box::pin(stream::iter(numbers.clone()));
 
@@ -267,27 +277,28 @@ proptest! {
       assert_eq!(output_streams.len(), 4); // 3 patterns + 1 default
 
       // Collect from all ports
-      let mut all_results: Vec<(usize, i32)> = Vec::new();
-      for (port, stream) in &mut output_streams {
+      let mut all_results: Vec<(String, i32)> = Vec::new();
+      for (port_name, stream) in &mut output_streams {
         let s = stream;
         while let Some(item) = s.next().await {
-          all_results.push((*port, item));
+          all_results.push((port_name.clone(), item));
         }
       }
 
       // Verify all items were routed
       assert_eq!(all_results.len(), numbers.len());
 
-      // Verify routing correctness
-      for (port, value) in all_results {
+      // Verify routing correctness - check port names match expected pattern
+      // Port names are: "out" (index 0), "out_1" (index 1), "out_2" (index 2), "out_3" (index 3)
+      for (port_name, value) in all_results {
         if value < 0 {
-          assert_eq!(port, 0);
+          assert_eq!(port_name, "out"); // First pattern port
         } else if value < 500 {
-          assert_eq!(port, 1);
+          assert_eq!(port_name, "out_1"); // Second pattern port
         } else if value < 1000 {
-          assert_eq!(port, 2);
+          assert_eq!(port_name, "out_2"); // Third pattern port
         } else {
-          assert_eq!(port, 3); // default
+          assert_eq!(port_name, "out_3"); // Default port
         }
       }
     });

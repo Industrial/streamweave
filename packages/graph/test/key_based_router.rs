@@ -111,3 +111,44 @@ async fn test_key_based_router_empty_stream() {
   assert!(stream1.next().await.is_none());
   assert!(stream2.next().await.is_none());
 }
+
+// Tests moved from src/
+use futures::stream;
+
+#[tokio::test]
+async fn test_key_based_router() {
+  let mut router = KeyBasedRouter::new(
+    |x: &i32| *x % 3, // Key function: modulo 3
+    vec![0, 1, 2],
+  );
+  let input_stream: Pin<Box<dyn Stream<Item = i32> + Send>> =
+    Box::pin(stream::iter(vec![1, 2, 3, 4, 5, 6]));
+
+  let output_streams = router.route_stream(input_stream).await;
+
+  assert_eq!(output_streams.len(), 3);
+
+  // Collect from each stream
+  use futures::StreamExt;
+  let mut results = Vec::new();
+  for (_, mut stream) in output_streams {
+    let mut stream_results = Vec::new();
+    while let Some(item) = stream.next().await {
+      stream_results.push(item);
+    }
+    results.push(stream_results);
+  }
+
+  // Items should be distributed by key (mod 3)
+  // All streams should receive some items
+  assert!(results.iter().any(|r| !r.is_empty()));
+}
+
+#[test]
+fn test_key_based_output_ports() {
+  let router = KeyBasedRouter::<i32, i32>::new(|x| *x, vec![0, 1, 2]);
+  assert_eq!(
+    router.output_port_names(),
+    vec!["out".to_string(), "out_1".to_string(), "out_2".to_string()]
+  );
+}

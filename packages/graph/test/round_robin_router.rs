@@ -101,3 +101,45 @@ async fn test_round_robin_router_uneven_distribution() {
   assert_eq!(results[0], vec![1, 3, 5]);
   assert_eq!(results[1], vec![2, 4]);
 }
+
+// Tests moved from src/
+use futures::stream;
+
+#[tokio::test]
+async fn test_round_robin_router() {
+  let mut router = RoundRobinRouter::new(vec![0, 1, 2]);
+  let input_stream: Pin<Box<dyn Stream<Item = i32> + Send>> =
+    Box::pin(stream::iter(vec![1, 2, 3, 4, 5, 6]));
+
+  let output_streams = router.route_stream(input_stream).await;
+
+  assert_eq!(output_streams.len(), 3);
+
+  // Collect from each stream
+  use futures::StreamExt;
+  let mut results = Vec::new();
+  for (_, mut stream) in output_streams {
+    let mut stream_results = Vec::new();
+    while let Some(item) = stream.next().await {
+      stream_results.push(item);
+    }
+    results.push(stream_results);
+  }
+
+  // Items should be distributed round-robin
+  // Stream 0: [1, 4]
+  // Stream 1: [2, 5]
+  // Stream 2: [3, 6]
+  assert_eq!(results[0], vec![1, 4]);
+  assert_eq!(results[1], vec![2, 5]);
+  assert_eq!(results[2], vec![3, 6]);
+}
+
+#[test]
+fn test_round_robin_output_ports() {
+  let router = RoundRobinRouter::<i32>::new(vec![0, 1, 2]);
+  assert_eq!(
+    router.output_port_names(),
+    vec!["out".to_string(), "out_1".to_string(), "out_2".to_string()]
+  );
+}

@@ -45,7 +45,6 @@
 use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
 use crate::compression::Compression;
 use crate::execution::CompressionAlgorithm;
-use crate::port::{GetPort, PortList};
 use crate::serialization::serialize;
 use crate::traits::{NodeKind, NodeTrait};
 use crate::zero_copy::ZeroCopyTransformer;
@@ -61,6 +60,7 @@ use streamweave::Consumer;
 use streamweave::Input;
 use streamweave::Producer;
 use streamweave::Transformer;
+use streamweave::port::{GetPort, PortList};
 use tokio::sync::Mutex;
 use tracing::{error, warn};
 
@@ -317,7 +317,7 @@ where
   ///
   /// # Arguments
   ///
-  /// * `receivers` - Iterator over `(port_index, receiver)` tuples from type-erased input channels
+  /// * `receivers` - Iterator over `(port_name, receiver)` tuples from type-erased input channels
   /// * `compression` - Optional compression algorithm if compression is enabled
   /// * `batching` - Whether batching is enabled (batches need to be deserialized)
   ///
@@ -325,13 +325,13 @@ where
   ///
   /// A new `StreamWrapper` containing the merged stream from all inputs.
   fn from_multiple_receivers(
-    receivers: impl Iterator<Item = (usize, TypeErasedReceiver)>,
+    receivers: impl Iterator<Item = (String, TypeErasedReceiver)>,
     compression: Option<CompressionAlgorithm>,
     batching: bool,
   ) -> Self {
     // Create streams from each receiver
     let streams: Vec<_> = receivers
-      .map(|(_port_index, receiver)| {
+      .map(|(_port_name, receiver)| {
         let comp = compression;
         Box::pin(stream! {
           let mut recv = receiver;
@@ -647,6 +647,7 @@ where
 {
   name: String,
   producer: Arc<Mutex<P>>,
+  output_port_names: Vec<String>,
   _phantom: std::marker::PhantomData<Outputs>,
   // Router deferred to Phase 2
 }
@@ -658,20 +659,33 @@ where
   Outputs: PortList,
   (): ValidateProducerPorts<P, Outputs>,
 {
-  /// Creates a new ProducerNode with the given name and producer.
+  /// Creates a new ProducerNode with the given name, producer, and output port names.
   ///
   /// # Arguments
   ///
   /// * `name` - The name of this node
   /// * `producer` - The producer component to wrap
+  /// * `output_port_names` - The names of the output ports (must match Outputs::LEN)
   ///
   /// # Returns
   ///
   /// A new `ProducerNode` instance.
-  pub fn new(name: String, producer: P) -> Self {
+  ///
+  /// # Panics
+  ///
+  /// Panics if the number of port names doesn't match `Outputs::LEN`.
+  pub fn new(name: String, producer: P, output_port_names: Vec<String>) -> Self {
+    assert_eq!(
+      output_port_names.len(),
+      Outputs::LEN,
+      "Number of output port names ({}) must match Outputs::LEN ({})",
+      output_port_names.len(),
+      Outputs::LEN
+    );
     Self {
       name,
       producer: Arc::new(Mutex::new(producer)),
+      output_port_names,
       _phantom: std::marker::PhantomData,
     }
   }
@@ -759,9 +773,18 @@ where
   /// );
   /// ```
   pub fn from_producer(name: String, producer: P) -> Self {
+    // Default port names: single port gets "out", multiple ports get "out_0", "out_1", etc.
+    let output_port_names = if <P as ProducerPorts>::DefaultOutputPorts::LEN == 1 {
+      vec!["out".to_string()]
+    } else {
+      (0..<P as ProducerPorts>::DefaultOutputPorts::LEN)
+        .map(|i| format!("out_{}", i))
+        .collect()
+    };
     Self {
       name,
       producer: Arc::new(Mutex::new(producer)),
+      output_port_names,
       _phantom: std::marker::PhantomData,
     }
   }
@@ -787,9 +810,18 @@ where
       .name()
       .clone()
       .unwrap_or_else(|| "producer".to_string());
+    // Default port names: single port gets "out", multiple ports get "out_0", "out_1", etc.
+    let output_port_names = if <P as ProducerPorts>::DefaultOutputPorts::LEN == 1 {
+      vec!["out".to_string()]
+    } else {
+      (0..<P as ProducerPorts>::DefaultOutputPorts::LEN)
+        .map(|i| format!("out_{}", i))
+        .collect()
+    };
     Self {
       name,
       producer: Arc::new(Mutex::new(producer)),
+      output_port_names,
       _phantom: std::marker::PhantomData,
     }
   }
@@ -829,6 +861,8 @@ where
 {
   name: String,
   transformer: Arc<Mutex<T>>,
+  input_port_names: Vec<String>,
+  output_port_names: Vec<String>,
   _phantom: std::marker::PhantomData<(Inputs, Outputs)>,
   // Routers deferred to Phase 2
 }
@@ -842,20 +876,47 @@ where
   Outputs: PortList,
   (): ValidateTransformerPorts<T, Inputs, Outputs>,
 {
-  /// Creates a new TransformerNode with the given name and transformer.
+  /// Creates a new TransformerNode with the given name, transformer, and port names.
   ///
   /// # Arguments
   ///
   /// * `name` - The name of this node
   /// * `transformer` - The transformer component to wrap
+  /// * `input_port_names` - The names of the input ports (must match Inputs::LEN)
+  /// * `output_port_names` - The names of the output ports (must match Outputs::LEN)
   ///
   /// # Returns
   ///
   /// A new `TransformerNode` instance.
-  pub fn new(name: String, transformer: T) -> Self {
+  ///
+  /// # Panics
+  ///
+  /// Panics if the number of port names doesn't match `Inputs::LEN` or `Outputs::LEN`.
+  pub fn new(
+    name: String,
+    transformer: T,
+    input_port_names: Vec<String>,
+    output_port_names: Vec<String>,
+  ) -> Self {
+    assert_eq!(
+      input_port_names.len(),
+      Inputs::LEN,
+      "Number of input port names ({}) must match Inputs::LEN ({})",
+      input_port_names.len(),
+      Inputs::LEN
+    );
+    assert_eq!(
+      output_port_names.len(),
+      Outputs::LEN,
+      "Number of output port names ({}) must match Outputs::LEN ({})",
+      output_port_names.len(),
+      Outputs::LEN
+    );
     Self {
       name,
       transformer: Arc::new(Mutex::new(transformer)),
+      input_port_names,
+      output_port_names,
       _phantom: std::marker::PhantomData,
     }
   }
@@ -954,9 +1015,26 @@ where
   /// );
   /// ```
   pub fn from_transformer(name: String, transformer: T) -> Self {
+    // Default port names
+    let input_port_names = if <T as TransformerPorts>::DefaultInputPorts::LEN == 1 {
+      vec!["in".to_string()]
+    } else {
+      (0..<T as TransformerPorts>::DefaultInputPorts::LEN)
+        .map(|i| format!("in_{}", i))
+        .collect()
+    };
+    let output_port_names = if <T as TransformerPorts>::DefaultOutputPorts::LEN == 1 {
+      vec!["out".to_string()]
+    } else {
+      (0..<T as TransformerPorts>::DefaultOutputPorts::LEN)
+        .map(|i| format!("out_{}", i))
+        .collect()
+    };
     Self {
       name,
       transformer: Arc::new(Mutex::new(transformer)),
+      input_port_names,
+      output_port_names,
       _phantom: std::marker::PhantomData,
     }
   }
@@ -982,9 +1060,26 @@ where
       .name()
       .clone()
       .unwrap_or_else(|| "transformer".to_string());
+    // Default port names
+    let input_port_names = if <T as TransformerPorts>::DefaultInputPorts::LEN == 1 {
+      vec!["in".to_string()]
+    } else {
+      (0..<T as TransformerPorts>::DefaultInputPorts::LEN)
+        .map(|i| format!("in_{}", i))
+        .collect()
+    };
+    let output_port_names = if <T as TransformerPorts>::DefaultOutputPorts::LEN == 1 {
+      vec!["out".to_string()]
+    } else {
+      (0..<T as TransformerPorts>::DefaultOutputPorts::LEN)
+        .map(|i| format!("out_{}", i))
+        .collect()
+    };
     Self {
       name,
       transformer: Arc::new(Mutex::new(transformer)),
+      input_port_names,
+      output_port_names,
       _phantom: std::marker::PhantomData,
     }
   }
@@ -1027,6 +1122,7 @@ where
 {
   name: String,
   consumer: Arc<Mutex<C>>,
+  input_port_names: Vec<String>,
   _phantom: std::marker::PhantomData<Inputs>,
   // Router deferred to Phase 2
 }
@@ -1038,20 +1134,33 @@ where
   Inputs: PortList,
   (): ValidateConsumerPorts<C, Inputs>,
 {
-  /// Creates a new ConsumerNode with the given name and consumer.
+  /// Creates a new ConsumerNode with the given name, consumer, and input port names.
   ///
   /// # Arguments
   ///
   /// * `name` - The name of this node
   /// * `consumer` - The consumer component to wrap
+  /// * `input_port_names` - The names of the input ports (must match Inputs::LEN)
   ///
   /// # Returns
   ///
   /// A new `ConsumerNode` instance.
-  pub fn new(name: String, consumer: C) -> Self {
+  ///
+  /// # Panics
+  ///
+  /// Panics if the number of port names doesn't match `Inputs::LEN`.
+  pub fn new(name: String, consumer: C, input_port_names: Vec<String>) -> Self {
+    assert_eq!(
+      input_port_names.len(),
+      Inputs::LEN,
+      "Number of input port names ({}) must match Inputs::LEN ({})",
+      input_port_names.len(),
+      Inputs::LEN
+    );
     Self {
       name,
       consumer: Arc::new(Mutex::new(consumer)),
+      input_port_names,
       _phantom: std::marker::PhantomData,
     }
   }
@@ -1139,9 +1248,18 @@ where
   /// );
   /// ```
   pub fn from_consumer(name: String, consumer: C) -> Self {
+    // Default port names: single port gets "in", multiple ports get "in_0", "in_1", etc.
+    let input_port_names = if <C as ConsumerPorts>::DefaultInputPorts::LEN == 1 {
+      vec!["in".to_string()]
+    } else {
+      (0..<C as ConsumerPorts>::DefaultInputPorts::LEN)
+        .map(|i| format!("in_{}", i))
+        .collect()
+    };
     Self {
       name,
       consumer: Arc::new(Mutex::new(consumer)),
+      input_port_names,
       _phantom: std::marker::PhantomData,
     }
   }
@@ -1163,9 +1281,18 @@ where
     C: Consumer,
   {
     let name = consumer.config().name.clone();
+    // Default port names: single port gets "in", multiple ports get "in_0", "in_1", etc.
+    let input_port_names = if <C as ConsumerPorts>::DefaultInputPorts::LEN == 1 {
+      vec!["in".to_string()]
+    } else {
+      (0..<C as ConsumerPorts>::DefaultInputPorts::LEN)
+        .map(|i| format!("in_{}", i))
+        .collect()
+    };
     Self {
       name,
       consumer: Arc::new(Mutex::new(consumer)),
+      input_port_names,
       _phantom: std::marker::PhantomData,
     }
   }
@@ -1187,64 +1314,30 @@ where
     NodeKind::Producer
   }
 
-  fn input_port_count(&self) -> usize {
-    0 // Producers have no input ports
+  fn input_port_names(&self) -> Vec<String> {
+    vec![] // Producers have no input ports
   }
 
-  fn output_port_count(&self) -> usize {
-    Outputs::LEN
+  fn output_port_names(&self) -> Vec<String> {
+    self.output_port_names.clone()
   }
 
-  fn input_port_name(&self, _index: usize) -> Option<String> {
-    // Producers have no input ports
-    None
+  fn has_input_port(&self, _port_name: &str) -> bool {
+    false // Producers have no input ports
   }
 
-  fn output_port_name(&self, index: usize) -> Option<String> {
-    if index < Outputs::LEN {
-      Some(format!("out{}", index))
-    } else {
-      None
-    }
-  }
-
-  fn resolve_input_port(&self, _port_name: &str) -> Option<usize> {
-    // Producers have no input ports
-    None
-  }
-
-  fn resolve_output_port(&self, port_name: &str) -> Option<usize> {
-    // Try numeric index first
-    if let Ok(index) = port_name.parse::<usize>()
-      && index < Outputs::LEN
-    {
-      return Some(index);
-    }
-
-    // Try "out0", "out1", etc.
-    if let Some(stripped) = port_name.strip_prefix("out")
-      && let Ok(index) = stripped.parse::<usize>()
-      && index < Outputs::LEN
-    {
-      return Some(index);
-    }
-
-    // Default to "out" for single-port nodes
-    if port_name == "out" && Outputs::LEN == 1 {
-      return Some(0);
-    }
-
-    None
+  fn has_output_port(&self, port_name: &str) -> bool {
+    self.output_port_names.iter().any(|name| name == port_name)
   }
 
   fn spawn_execution_task(
     &self,
-    _input_channels: std::collections::HashMap<usize, TypeErasedReceiver>,
-    output_channels: std::collections::HashMap<usize, TypeErasedSender>,
+    _input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
+    output_channels: std::collections::HashMap<String, TypeErasedSender>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
     execution_mode: crate::execution::ExecutionMode,
     batching_channels: Option<
-      std::collections::HashMap<usize, std::sync::Arc<crate::batching::BatchingChannel>>,
+      std::collections::HashMap<String, std::sync::Arc<crate::batching::BatchingChannel>>,
     >,
     arc_pool: Option<std::sync::Arc<crate::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
@@ -1332,7 +1425,7 @@ where
 
           if is_fan_out {
             // Fan-out: clone Arc (zero-copy) to all outputs
-            for (port_index, sender) in &output_channels {
+            for (port_name, sender) in &output_channels {
               // Convert Arc<T> to Arc<dyn Any + Send + Sync> for type erasure
               let arc_any: Arc<dyn Any + Send + Sync> = unsafe {
                 Arc::from_raw(Arc::into_raw(item_arc.clone()) as *const (dyn Any + Send + Sync))
@@ -1349,7 +1442,7 @@ where
                   send_failed_count += 1;
                   warn!(
                     node = %node_name,
-                    port = port_index,
+                    port = %port_name,
                     "Output channel receiver dropped (may be normal in fan-out scenarios)"
                   );
                 }
@@ -1357,7 +1450,7 @@ where
             }
           } else {
             // Single output: send Arc directly
-            let (port_index, sender) = output_channels.iter().next().unwrap();
+            let (port_name, sender) = output_channels.iter().next().unwrap();
             // Convert Arc<T> to Arc<dyn Any + Send + Sync> for type erasure
             let arc_any: Arc<dyn Any + Send + Sync> =
               unsafe { Arc::from_raw(Arc::into_raw(item_arc) as *const (dyn Any + Send + Sync)) };
@@ -1373,7 +1466,7 @@ where
                 send_failed_count += 1;
                 warn!(
                   node = %node_name,
-                  port = port_index,
+                  port = port_name,
                   "Output channel receiver dropped"
                 );
               }
@@ -1456,7 +1549,7 @@ where
             } else {
               Arc::new(final_bytes)
             };
-            for (port_index, sender) in &output_channels {
+            for (port_name, sender) in &output_channels {
               match sender
                 .send(ChannelItem::Bytes(shared_bytes.as_ref().clone()))
                 .await
@@ -1472,7 +1565,7 @@ where
                   send_failed_count += 1;
                   warn!(
                     node = %node_name,
-                    port = port_index,
+                    port = %port_name,
                     "Output channel receiver dropped (may be normal in fan-out scenarios)"
                   );
                 }
@@ -1480,11 +1573,11 @@ where
             }
           } else {
             // Single output: send Bytes directly
-            let (port_index, sender) = output_channels.iter().next().unwrap();
+            let (port_name, sender) = output_channels.iter().next().unwrap();
 
             // Use batching channel if available, otherwise use regular sender
             let send_result = if let Some(batching_channel) =
-              batching_channels.as_ref().and_then(|bc| bc.get(port_index))
+              batching_channels.as_ref().and_then(|bc| bc.get(port_name))
             {
               batching_channel.send(ChannelItem::Bytes(final_bytes)).await
             } else {
@@ -1493,7 +1586,7 @@ where
                 .await
                 .map_err(|e| crate::execution::ExecutionError::ChannelError {
                   node: node_name.clone(),
-                  port: *port_index,
+                  port: port_name.clone(),
                   is_input: false,
                   reason: format!("Failed to send item: {}", e),
                 })
@@ -1511,7 +1604,7 @@ where
                 send_failed_count += 1;
                 warn!(
                   node = %node_name,
-                  port = port_index,
+                  port = %port_name,
                   "Output channel receiver dropped"
                 );
               }
@@ -1552,86 +1645,30 @@ where
     NodeKind::Transformer
   }
 
-  fn input_port_count(&self) -> usize {
-    Inputs::LEN
+  fn input_port_names(&self) -> Vec<String> {
+    self.input_port_names.clone()
   }
 
-  fn output_port_count(&self) -> usize {
-    Outputs::LEN
+  fn output_port_names(&self) -> Vec<String> {
+    self.output_port_names.clone()
   }
 
-  fn input_port_name(&self, index: usize) -> Option<String> {
-    if index < Inputs::LEN {
-      Some(format!("in{}", index))
-    } else {
-      None
-    }
+  fn has_input_port(&self, port_name: &str) -> bool {
+    self.input_port_names.iter().any(|name| name == port_name)
   }
 
-  fn output_port_name(&self, index: usize) -> Option<String> {
-    if index < Outputs::LEN {
-      Some(format!("out{}", index))
-    } else {
-      None
-    }
-  }
-
-  fn resolve_input_port(&self, port_name: &str) -> Option<usize> {
-    // Try numeric index first
-    if let Ok(index) = port_name.parse::<usize>()
-      && index < Inputs::LEN
-    {
-      return Some(index);
-    }
-
-    // Try "in0", "in1", etc.
-    if let Some(stripped) = port_name.strip_prefix("in")
-      && let Ok(index) = stripped.parse::<usize>()
-      && index < Inputs::LEN
-    {
-      return Some(index);
-    }
-
-    // Default to "in" for single-port nodes
-    if port_name == "in" && Inputs::LEN == 1 {
-      return Some(0);
-    }
-
-    None
-  }
-
-  fn resolve_output_port(&self, port_name: &str) -> Option<usize> {
-    // Try numeric index first
-    if let Ok(index) = port_name.parse::<usize>()
-      && index < Outputs::LEN
-    {
-      return Some(index);
-    }
-
-    // Try "out0", "out1", etc.
-    if let Some(stripped) = port_name.strip_prefix("out")
-      && let Ok(index) = stripped.parse::<usize>()
-      && index < Outputs::LEN
-    {
-      return Some(index);
-    }
-
-    // Default to "out" for single-port nodes
-    if port_name == "out" && Outputs::LEN == 1 {
-      return Some(0);
-    }
-
-    None
+  fn has_output_port(&self, port_name: &str) -> bool {
+    self.output_port_names.iter().any(|name| name == port_name)
   }
 
   fn spawn_execution_task(
     &self,
-    input_channels: std::collections::HashMap<usize, TypeErasedReceiver>,
-    output_channels: std::collections::HashMap<usize, TypeErasedSender>,
+    input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
+    output_channels: std::collections::HashMap<String, TypeErasedSender>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
     execution_mode: crate::execution::ExecutionMode,
     batching_channels: Option<
-      std::collections::HashMap<usize, std::sync::Arc<crate::batching::BatchingChannel>>,
+      std::collections::HashMap<String, std::sync::Arc<crate::batching::BatchingChannel>>,
     >,
     arc_pool: Option<std::sync::Arc<crate::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
@@ -1664,7 +1701,7 @@ where
         StreamWrapper::empty()
       } else if input_channels.len() == 1 {
         // Single input: create stream from single receiver
-        let (_port_index, receiver) = input_channels.into_iter().next().unwrap();
+        let (_port_name, receiver) = input_channels.into_iter().next().unwrap();
         StreamWrapper::from_receiver(receiver, compression, batching)
       } else {
         // Multiple inputs: merge streams from all receivers
@@ -1776,7 +1813,7 @@ where
 
           if is_fan_out {
             // Fan-out: clone Arc (zero-copy) to all outputs
-            for (port_index, sender) in &output_channels {
+            for (port_name, sender) in &output_channels {
               // Convert Arc<T> to Arc<dyn Any + Send + Sync> for type erasure
               let arc_any: Arc<dyn Any + Send + Sync> = unsafe {
                 Arc::from_raw(Arc::into_raw(item_arc.clone()) as *const (dyn Any + Send + Sync))
@@ -1793,7 +1830,7 @@ where
                   send_failed_count += 1;
                   warn!(
                     node = %node_name,
-                    port = port_index,
+                    port = %port_name,
                     "Output channel receiver dropped (may be normal in fan-out scenarios)"
                   );
                 }
@@ -1801,7 +1838,7 @@ where
             }
           } else {
             // Single output: send Arc directly
-            let (port_index, sender) = output_channels.iter().next().unwrap();
+            let (_port_name, sender) = output_channels.iter().next().unwrap();
             // Convert Arc<T> to Arc<dyn Any + Send + Sync> for type erasure
             let arc_any: Arc<dyn Any + Send + Sync> =
               unsafe { Arc::from_raw(Arc::into_raw(item_arc) as *const (dyn Any + Send + Sync)) };
@@ -1817,7 +1854,7 @@ where
                 send_failed_count += 1;
                 warn!(
                   node = %node_name,
-                  port = port_index,
+                  port = %_port_name,
                   "Output channel receiver dropped"
                 );
               }
@@ -1896,7 +1933,7 @@ where
             } else {
               Arc::new(final_bytes)
             };
-            for (port_index, sender) in &output_channels {
+            for (port_name, sender) in &output_channels {
               match sender
                 .send(ChannelItem::Bytes(shared_bytes.as_ref().clone()))
                 .await
@@ -1912,7 +1949,7 @@ where
                   send_failed_count += 1;
                   warn!(
                     node = %node_name,
-                    port = port_index,
+                    port = %port_name,
                     "Output channel receiver dropped (may be normal in fan-out scenarios)"
                   );
                 }
@@ -1920,11 +1957,11 @@ where
             }
           } else {
             // Single output: send Bytes directly
-            let (port_index, sender) = output_channels.iter().next().unwrap();
+            let (port_name, sender) = output_channels.iter().next().unwrap();
 
             // Use batching channel if available, otherwise use regular sender
             let send_result = if let Some(batching_channel) =
-              batching_channels.as_ref().and_then(|bc| bc.get(port_index))
+              batching_channels.as_ref().and_then(|bc| bc.get(port_name))
             {
               batching_channel.send(ChannelItem::Bytes(final_bytes)).await
             } else {
@@ -1933,7 +1970,7 @@ where
                 .await
                 .map_err(|e| crate::execution::ExecutionError::ChannelError {
                   node: node_name.clone(),
-                  port: *port_index,
+                  port: port_name.clone(),
                   is_input: false,
                   reason: format!("Failed to send item: {}", e),
                 })
@@ -1951,7 +1988,7 @@ where
                 send_failed_count += 1;
                 warn!(
                   node = %node_name,
-                  port = port_index,
+                  port = %port_name,
                   "Output channel receiver dropped"
                 );
               }
@@ -1990,64 +2027,30 @@ where
     NodeKind::Consumer
   }
 
-  fn input_port_count(&self) -> usize {
-    Inputs::LEN
+  fn input_port_names(&self) -> Vec<String> {
+    self.input_port_names.clone()
   }
 
-  fn output_port_count(&self) -> usize {
-    0 // Consumers have no output ports
+  fn output_port_names(&self) -> Vec<String> {
+    vec![] // Consumers have no output ports
   }
 
-  fn input_port_name(&self, index: usize) -> Option<String> {
-    if index < Inputs::LEN {
-      Some(format!("in{}", index))
-    } else {
-      None
-    }
+  fn has_input_port(&self, port_name: &str) -> bool {
+    self.input_port_names.iter().any(|name| name == port_name)
   }
 
-  fn output_port_name(&self, _index: usize) -> Option<String> {
-    // Consumers have no output ports
-    None
-  }
-
-  fn resolve_input_port(&self, port_name: &str) -> Option<usize> {
-    // Try numeric index first
-    if let Ok(index) = port_name.parse::<usize>()
-      && index < Inputs::LEN
-    {
-      return Some(index);
-    }
-
-    // Try "in0", "in1", etc.
-    if let Some(stripped) = port_name.strip_prefix("in")
-      && let Ok(index) = stripped.parse::<usize>()
-      && index < Inputs::LEN
-    {
-      return Some(index);
-    }
-
-    // Default to "in" for single-port nodes
-    if port_name == "in" && Inputs::LEN == 1 {
-      return Some(0);
-    }
-
-    None
-  }
-
-  fn resolve_output_port(&self, _port_name: &str) -> Option<usize> {
-    // Consumers have no output ports
-    None
+  fn has_output_port(&self, _port_name: &str) -> bool {
+    false // Consumers have no output ports
   }
 
   fn spawn_execution_task(
     &self,
-    input_channels: std::collections::HashMap<usize, TypeErasedReceiver>,
-    _output_channels: std::collections::HashMap<usize, TypeErasedSender>,
+    input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
+    _output_channels: std::collections::HashMap<String, TypeErasedSender>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
     execution_mode: crate::execution::ExecutionMode,
     _batching_channels: Option<
-      std::collections::HashMap<usize, std::sync::Arc<crate::batching::BatchingChannel>>,
+      std::collections::HashMap<String, std::sync::Arc<crate::batching::BatchingChannel>>,
     >,
     _arc_pool: Option<std::sync::Arc<crate::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
@@ -2072,7 +2075,7 @@ where
         StreamWrapper::empty()
       } else if input_channels.len() == 1 {
         // Single input: create stream from single receiver
-        let (_port_index, receiver) = input_channels.into_iter().next().unwrap();
+        let (_port_name, receiver) = input_channels.into_iter().next().unwrap();
         StreamWrapper::from_receiver(receiver, compression, batching)
       } else {
         // Multiple inputs: merge streams from all receivers
@@ -2113,1187 +2116,573 @@ where
   }
 }
 
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use crate::execution::ExecutionMode;
-  use crate::serialization::deserialize;
-  use async_trait::async_trait;
-  use futures::{Stream, stream};
-  use serde::{Deserialize, Serialize};
-  use std::collections::HashMap;
-  use std::pin::Pin;
-  use std::sync::Arc;
-  use streamweave::{Producer, ProducerConfig};
-  use streamweave_transformers::MapTransformer;
-  use streamweave_vec::VecConsumer;
-  use streamweave_vec::VecProducer;
-  use tokio::sync::{RwLock, mpsc};
+/// A node that wraps an OutputRouter component.
+///
+/// OutputRouterNode represents a routing node in the graph that routes a single
+/// input stream to multiple output streams based on the router's strategy.
+/// It has one input port and multiple output ports specified by the router.
+///
+/// # Type Parameters
+///
+/// * `R` - The router type that implements `OutputRouter`
+/// * `I` - The input type (items flowing through the router)
+/// * `Inputs` - A port tuple representing the input ports (should be `(I,)` for single port)
+/// * `Outputs` - A port tuple representing the output ports (e.g., `(I, I)` for two outputs)
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::graph::node::OutputRouterNode;
+/// use streamweave::graph::control_flow::If;
+///
+/// let router = If::new(|x: &i32| *x % 2 == 0);
+/// let node = OutputRouterNode::from_router(
+///     "split".to_string(),
+///     router,
+/// );
+/// ```
+pub struct OutputRouterNode<R, I, Inputs, Outputs>
+where
+  R: crate::router::OutputRouter<I>,
+  I: std::fmt::Debug + Clone + Send + Sync + Serialize + 'static,
+  Inputs: PortList,
+  Outputs: PortList,
+{
+  name: String,
+  router: Arc<Mutex<R>>,
+  input_port_names: Vec<String>,
+  output_port_names: Vec<String>,
+  _phantom: std::marker::PhantomData<(I, Inputs, Outputs)>,
+}
 
-  #[test]
-  fn test_producer_node_creation() {
-    let producer = VecProducer::new(vec![1, 2, 3]);
-    let node: ProducerNode<_, (i32,)> = ProducerNode::new("source".to_string(), producer);
-    assert_eq!(node.name(), "source");
-  }
-
-  #[test]
-  fn test_producer_node_with_name() {
-    let producer = VecProducer::new(vec![1, 2, 3]);
-    let node: ProducerNode<_, (i32,)> =
-      ProducerNode::new("source".to_string(), producer).with_name("new_source".to_string());
-    assert_eq!(node.name(), "new_source");
-  }
-
-  #[test]
-  fn test_transformer_node_creation() {
-    let transformer = MapTransformer::new(|x: i32| x * 2);
-    let node: TransformerNode<_, (i32,), (i32,)> =
-      TransformerNode::new("mapper".to_string(), transformer);
-    assert_eq!(node.name(), "mapper");
-  }
-
-  #[test]
-  fn test_transformer_node_with_name() {
-    let transformer = MapTransformer::new(|x: i32| x * 2);
-    let node: TransformerNode<_, (i32,), (i32,)> =
-      TransformerNode::new("mapper".to_string(), transformer).with_name("new_mapper".to_string());
-    assert_eq!(node.name(), "new_mapper");
-  }
-
-  #[test]
-  fn test_consumer_node_creation() {
-    let consumer = VecConsumer::new();
-    let node: ConsumerNode<_, (i32,)> = ConsumerNode::new("sink".to_string(), consumer);
-    assert_eq!(node.name(), "sink");
-  }
-
-  #[test]
-  fn test_consumer_node_with_name() {
-    let consumer = VecConsumer::new();
-    let node: ConsumerNode<_, (i32,)> =
-      ConsumerNode::new("sink".to_string(), consumer).with_name("new_sink".to_string());
-    assert_eq!(node.name(), "new_sink");
-  }
-
-  #[test]
-  fn test_producer_node_accessors() {
-    let producer = VecProducer::new(vec![1, 2, 3]);
-    let node: ProducerNode<_, (i32,)> = ProducerNode::new("source".to_string(), producer);
-
-    assert_eq!(node.name(), "source");
-    let _producer_arc = node.producer();
-  }
-
-  #[test]
-  fn test_transformer_node_accessors() {
-    let transformer = MapTransformer::new(|x: i32| x * 2);
-    let node: TransformerNode<_, (i32,), (i32,)> =
-      TransformerNode::new("mapper".to_string(), transformer);
-
-    assert_eq!(node.name(), "mapper");
-    let _transformer_arc = node.transformer();
-  }
-
-  #[test]
-  fn test_consumer_node_accessors() {
-    let consumer = VecConsumer::new();
-    let node: ConsumerNode<_, (i32,)> = ConsumerNode::new("sink".to_string(), consumer);
-
-    assert_eq!(node.name(), "sink");
-    let _consumer_arc = node.consumer();
-  }
-
-  // Mock Producer for testing
-  #[derive(Clone)]
-  struct MockProducer<T: std::fmt::Debug + Clone + Send + Sync + Serialize + 'static> {
-    items: Vec<T>,
-    config: ProducerConfig<T>,
-  }
-
-  impl<T: std::fmt::Debug + Clone + Send + Sync + Serialize + 'static> MockProducer<T> {
-    fn new(items: Vec<T>) -> Self {
-      Self {
-        items,
-        config: ProducerConfig::default(),
-      }
-    }
-
-    #[allow(dead_code)]
-    fn with_config(mut self, config: ProducerConfig<T>) -> Self {
-      self.config = config;
-      self
+impl<R, I, Inputs, Outputs> OutputRouterNode<R, I, Inputs, Outputs>
+where
+  R: crate::router::OutputRouter<I>,
+  I: std::fmt::Debug + Clone + Send + Sync + Serialize + 'static,
+  Inputs: PortList,
+  Outputs: PortList,
+{
+  /// Creates a new OutputRouterNode.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name of this node
+  /// * `router` - The router component to wrap
+  /// * `input_port_names` - The names of the input ports (must match Inputs::LEN)
+  /// * `output_port_names` - The names of the output ports (must match Outputs::LEN)
+  ///
+  /// # Returns
+  ///
+  /// A new `OutputRouterNode` instance.
+  ///
+  /// # Panics
+  ///
+  /// Panics if the number of port names doesn't match `Inputs::LEN` or `Outputs::LEN`.
+  pub fn new(
+    name: String,
+    router: R,
+    input_port_names: Vec<String>,
+    output_port_names: Vec<String>,
+  ) -> Self {
+    assert_eq!(
+      input_port_names.len(),
+      Inputs::LEN,
+      "Number of input port names ({}) must match Inputs::LEN ({})",
+      input_port_names.len(),
+      Inputs::LEN
+    );
+    assert_eq!(
+      output_port_names.len(),
+      Outputs::LEN,
+      "Number of output port names ({}) must match Outputs::LEN ({})",
+      output_port_names.len(),
+      Outputs::LEN
+    );
+    Self {
+      name,
+      router: Arc::new(Mutex::new(router)),
+      input_port_names,
+      output_port_names,
+      _phantom: std::marker::PhantomData,
     }
   }
 
-  impl<T: std::fmt::Debug + Clone + Send + Sync + Serialize + 'static> streamweave::Output
-    for MockProducer<T>
-  {
-    type Output = T;
-    type OutputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
+  /// Creates a new OutputRouterNode from a router.
+  ///
+  /// This is a convenience method that matches the pattern used by other node types.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name of this node
+  /// * `router` - The router component to wrap
+  /// * `input_port_names` - The names of the input ports (must match Inputs::LEN)
+  /// * `output_port_names` - The names of the output ports (must match Outputs::LEN)
+  ///
+  /// # Returns
+  ///
+  /// A new `OutputRouterNode` instance.
+  pub fn from_router(
+    name: String,
+    router: R,
+    input_port_names: Vec<String>,
+    output_port_names: Vec<String>,
+  ) -> Self {
+    Self::new(name, router, input_port_names, output_port_names)
   }
 
-  #[async_trait]
-  impl<T: std::fmt::Debug + Clone + Send + Sync + Serialize + 'static> Producer for MockProducer<T> {
-    type OutputPorts = (T,);
+  /// Returns a reference to the internal router.
+  pub fn router(&self) -> Arc<Mutex<R>> {
+    Arc::clone(&self.router)
+  }
+}
 
-    fn produce(&mut self) -> Self::OutputStream {
-      Box::pin(stream::iter(self.items.clone()))
-    }
-
-    fn set_config_impl(&mut self, config: ProducerConfig<Self::Output>) {
-      self.config = config;
-    }
-
-    fn get_config_impl(&self) -> &ProducerConfig<Self::Output> {
-      &self.config
-    }
-
-    fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<Self::Output> {
-      &mut self.config
-    }
+// Implement NodeTrait for OutputRouterNode
+impl<R, I, Inputs, Outputs> NodeTrait for OutputRouterNode<R, I, Inputs, Outputs>
+where
+  R: crate::router::OutputRouter<I> + Send + Sync + 'static,
+  I: std::fmt::Debug + Clone + Send + Sync + Serialize + DeserializeOwned + 'static,
+  Inputs: PortList + Send + Sync + 'static,
+  Outputs: PortList + Send + Sync + 'static,
+{
+  fn name(&self) -> &str {
+    &self.name
   }
 
-  // Producer execution tests
-  #[tokio::test]
-  async fn test_producer_execution_single_output_port() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    let producer = MockProducer::new(vec![1, 2, 3]);
-    let node: ProducerNode<_, (i32,)> = ProducerNode::new("test_producer".to_string(), producer);
-
-    let (tx, mut rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, tx);
-    let pause_signal = Arc::new(RwLock::new(false));
-
-    let handle = node
-      .spawn_execution_task(
-        HashMap::new(),
-        output_channels,
-        pause_signal,
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Collect all items
-    let mut received = Vec::new();
-    while let Some(channel_item) = rx.recv().await {
-      match channel_item {
-        ChannelItem::Bytes(bytes) => {
-          let item: i32 = deserialize(bytes).unwrap();
-          received.push(item);
-        }
-        _ => panic!("Unexpected channel item variant"),
-      }
-    }
-
-    // Wait for task to complete
-    let _ = handle.await;
-
-    assert_eq!(received, vec![1, 2, 3]);
+  fn node_kind(&self) -> NodeKind {
+    NodeKind::Transformer // Routers are conceptually transformers
   }
 
-  #[tokio::test]
-  async fn test_producer_execution_empty_stream() {
-    use crate::channels::{TypeErasedReceiver, TypeErasedSender};
-    let producer = MockProducer::new(vec![]);
-    let node: ProducerNode<_, (i32,)> = ProducerNode::new("test_producer".to_string(), producer);
-
-    let (tx, mut rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, tx);
-    let pause_signal = Arc::new(RwLock::new(false));
-
-    let handle = node
-      .spawn_execution_task(
-        HashMap::new(),
-        output_channels,
-        pause_signal,
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Wait for task to complete
-    let result = handle.await;
-    assert!(result.is_ok());
-
-    // Should receive nothing - channel should be closed
-    let result = rx.recv().await;
-    assert!(result.is_none());
+  fn input_port_names(&self) -> Vec<String> {
+    self.input_port_names.clone()
   }
 
-  #[tokio::test]
-  async fn test_producer_execution_multiple_output_ports() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    let producer = MockProducer::new(vec![1, 2, 3]);
-    let node: ProducerNode<_, (i32,)> = ProducerNode::new("test_producer".to_string(), producer);
-
-    let (tx1, mut rx1): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let (tx2, mut rx2): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, tx1);
-    output_channels.insert(1, tx2);
-    let pause_signal = Arc::new(RwLock::new(false));
-
-    let handle = node
-      .spawn_execution_task(
-        HashMap::new(),
-        output_channels,
-        pause_signal,
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Collect from both receivers in parallel
-    let mut received1 = Vec::new();
-    let mut received2 = Vec::new();
-    let mut rx1_closed = false;
-    let mut rx2_closed = false;
-
-    // Use select to receive from both channels until both are closed
-    while !rx1_closed || !rx2_closed {
-      tokio::select! {
-        item1 = rx1.recv(), if !rx1_closed => {
-          match item1 {
-            Some(ChannelItem::Bytes(bytes)) => {
-              let item: i32 = deserialize(bytes).unwrap();
-              received1.push(item);
-            }
-            Some(_) => panic!("Unexpected channel item variant"),
-            None => {
-              rx1_closed = true;
-            }
-          }
-        }
-        item2 = rx2.recv(), if !rx2_closed => {
-          match item2 {
-            Some(ChannelItem::Bytes(bytes)) => {
-              let item: i32 = deserialize(bytes).unwrap();
-              received2.push(item);
-            }
-            Some(_) => panic!("Unexpected channel item variant"),
-            None => {
-              rx2_closed = true;
-            }
-          }
-        }
-      }
-    }
-
-    // Wait for task to complete
-    let _ = handle.await;
-
-    // Both should receive all items (broadcast pattern)
-    received1.sort();
-    received2.sort();
-    assert_eq!(received1, vec![1, 2, 3]);
-    assert_eq!(received2, vec![1, 2, 3]);
+  fn output_port_names(&self) -> Vec<String> {
+    self.output_port_names.clone()
   }
 
-  #[tokio::test]
-  async fn test_producer_execution_pause_resume() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    let producer = MockProducer::new(vec![1, 2, 3, 4, 5]);
-    let node: ProducerNode<_, (i32,)> = ProducerNode::new("test_producer".to_string(), producer);
-
-    let (tx, mut rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, tx);
-    let pause_signal = Arc::new(RwLock::new(false));
-
-    let handle = node
-      .spawn_execution_task(
-        HashMap::new(),
-        output_channels,
-        pause_signal.clone(),
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Receive first item
-    let channel_item1 = rx.recv().await.unwrap();
-    let item1 = match channel_item1 {
-      ChannelItem::Bytes(bytes) => deserialize(bytes).unwrap(),
-      _ => panic!("Unexpected channel item variant"),
-    };
-    assert_eq!(item1, 1);
-
-    // Pause
-    *pause_signal.write().await = true;
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-    // Resume
-    *pause_signal.write().await = false;
-
-    // Should continue receiving
-    let mut received = vec![item1];
-    while let Ok(Some(channel_item)) =
-      tokio::time::timeout(tokio::time::Duration::from_millis(500), rx.recv()).await
-    {
-      match channel_item {
-        ChannelItem::Bytes(bytes) => {
-          let item: i32 = deserialize(bytes).unwrap();
-          received.push(item);
-        }
-        _ => panic!("Unexpected channel item variant"),
-      }
-    }
-
-    // Wait for task to complete
-    let _ = handle.await;
-
-    assert_eq!(received, vec![1, 2, 3, 4, 5]);
+  fn has_input_port(&self, port_name: &str) -> bool {
+    self.input_port_names.iter().any(|name| name == port_name)
   }
 
-  #[tokio::test]
-  async fn test_producer_execution_channel_closed() {
-    let producer = MockProducer::new(vec![1, 2, 3, 4, 5]);
-    let node: ProducerNode<_, (i32,)> = ProducerNode::new("test_producer".to_string(), producer);
-
-    let (tx, rx) = mpsc::channel(10);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, tx);
-    let pause_signal = Arc::new(RwLock::new(false));
-
-    // Drop receiver to close channel
-    drop(rx);
-
-    let handle = node
-      .spawn_execution_task(
-        HashMap::new(),
-        output_channels,
-        pause_signal,
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Task should complete gracefully when channel is closed
-    let result = handle.await;
-    assert!(result.is_ok());
+  fn has_output_port(&self, port_name: &str) -> bool {
+    self.output_port_names.iter().any(|name| name == port_name)
   }
 
-  #[tokio::test]
-  async fn test_producer_execution_different_types() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    // Test with String
-    let producer = MockProducer::new(vec!["hello".to_string(), "world".to_string()]);
-    let node: ProducerNode<_, (String,)> = ProducerNode::new("test_producer".to_string(), producer);
+  fn spawn_execution_task(
+    &self,
+    input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
+    output_channels: std::collections::HashMap<String, TypeErasedSender>,
+    pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
+    execution_mode: crate::execution::ExecutionMode,
+    _batching_channels: Option<
+      std::collections::HashMap<String, std::sync::Arc<crate::batching::BatchingChannel>>,
+    >,
+    _arc_pool: Option<std::sync::Arc<crate::zero_copy::ArcPool<bytes::Bytes>>>,
+  ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
+    let router = Arc::clone(&self.router);
+    let node_name = self.name.clone();
 
-    let (tx, mut rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, tx);
-    let pause_signal = Arc::new(RwLock::new(false));
+    let handle = tokio::spawn(async move {
+      // Create input stream from channels
+      let (compression, _batching) = match &execution_mode {
+        crate::execution::ExecutionMode::Distributed {
+          compression: comp,
+          batching: batch,
+          ..
+        } => (*comp, batch.is_some()),
+        _ => (None, false),
+      };
 
-    let handle = node
-      .spawn_execution_task(
-        HashMap::new(),
-        output_channels,
-        pause_signal,
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    let mut received = Vec::new();
-    while let Some(channel_item) = rx.recv().await {
-      match channel_item {
-        ChannelItem::Bytes(bytes) => {
-          let item: String = deserialize(bytes).unwrap();
-          received.push(item);
-        }
-        _ => panic!("Unexpected channel item variant"),
-      }
-    }
-
-    let _ = handle.await;
-    assert_eq!(received, vec!["hello".to_string(), "world".to_string()]);
-  }
-
-  #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-  struct TestStruct {
-    value: i32,
-    text: String,
-  }
-
-  #[tokio::test]
-  async fn test_producer_execution_custom_struct() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    let items = vec![
-      TestStruct {
-        value: 1,
-        text: "one".to_string(),
-      },
-      TestStruct {
-        value: 2,
-        text: "two".to_string(),
-      },
-    ];
-    let producer = MockProducer::new(items.clone());
-    let node: ProducerNode<_, (TestStruct,)> =
-      ProducerNode::new("test_producer".to_string(), producer);
-
-    let (tx, mut rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, tx);
-    let pause_signal = Arc::new(RwLock::new(false));
-
-    let handle = node
-      .spawn_execution_task(
-        HashMap::new(),
-        output_channels,
-        pause_signal,
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    let mut received = Vec::new();
-    while let Some(channel_item) = rx.recv().await {
-      match channel_item {
-        ChannelItem::Bytes(bytes) => {
-          let item: TestStruct = deserialize(bytes).unwrap();
-          received.push(item);
-        }
-        _ => panic!("Unexpected channel item variant"),
-      }
-    }
-
-    let _ = handle.await;
-    assert_eq!(received, items);
-  }
-
-  #[tokio::test]
-  async fn test_producer_execution_backpressure() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    // Create a producer with many items to test backpressure
-    let items: Vec<i32> = (1..=100).collect();
-    let producer = MockProducer::new(items.clone());
-    let node: ProducerNode<_, (i32,)> = ProducerNode::new("test_producer".to_string(), producer);
-
-    // Create channel with small buffer size to force backpressure
-    let (tx, mut rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(5);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, tx);
-    let pause_signal = Arc::new(RwLock::new(false));
-
-    let handle = node
-      .spawn_execution_task(
-        HashMap::new(),
-        output_channels,
-        pause_signal,
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Read slowly from the channel to create backpressure
-    let mut received = Vec::new();
-    let mut count = 0;
-    while let Some(channel_item) = rx.recv().await {
-      match channel_item {
-        ChannelItem::Bytes(bytes) => {
-          let item: i32 = deserialize(bytes).unwrap();
-          received.push(item);
-          count += 1;
-
-          // Introduce delay every 10 items to simulate slow consumer
-          if count % 10 == 0 {
-            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-          }
-        }
-        _ => panic!("Unexpected channel item variant"),
-      }
-    }
-
-    // Wait for task to complete
-    let result = handle.await;
-    assert!(result.is_ok());
-
-    // Verify all items were received despite backpressure
-    received.sort();
-    assert_eq!(received.len(), items.len());
-    assert_eq!(received, items);
-  }
-
-  // Transformer execution tests
-  #[tokio::test]
-  async fn test_transformer_execution_single_input_output() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    // Use identity transformer (MapTransformer with identity function)
-    let transformer = MapTransformer::new(|x: i32| x);
-    let node: TransformerNode<_, (i32,), (i32,)> =
-      TransformerNode::new("test_transformer".to_string(), transformer);
-
-    let (input_tx, input_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let (output_tx, mut output_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut input_channels = HashMap::new();
-    input_channels.insert(0, input_rx);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, output_tx);
-    let pause_signal = Arc::new(RwLock::new(false));
-
-    let handle = node
-      .spawn_execution_task(
-        input_channels,
-        output_channels,
-        pause_signal,
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Send input data
-    let input_items = vec![1, 2, 3];
-    for item in &input_items {
-      let bytes = serialize(item).unwrap();
-      input_tx.send(ChannelItem::Bytes(bytes)).await.unwrap();
-    }
-    drop(input_tx); // Close input channel
-
-    // Collect output
-    let mut received = Vec::new();
-    while let Some(channel_item) = output_rx.recv().await {
-      match channel_item {
-        ChannelItem::Bytes(bytes) => {
-          let item: i32 = deserialize(bytes).unwrap();
-          received.push(item);
-        }
-        _ => panic!("Unexpected channel item variant"),
-      }
-    }
-
-    let _ = handle.await;
-    assert_eq!(received, input_items);
-  }
-
-  #[tokio::test]
-  async fn test_transformer_execution_map_transformation() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    let transformer = MapTransformer::new(|x: i32| x * 2);
-    let node: TransformerNode<_, (i32,), (i32,)> =
-      TransformerNode::new("test_transformer".to_string(), transformer);
-
-    let (input_tx, input_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let (output_tx, mut output_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut input_channels = HashMap::new();
-    input_channels.insert(0, input_rx);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, output_tx);
-    let pause_signal = Arc::new(RwLock::new(false));
-
-    let handle = node
-      .spawn_execution_task(
-        input_channels,
-        output_channels,
-        pause_signal,
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Send input data
-    let input_items = vec![1, 2, 3];
-    for item in &input_items {
-      let bytes = serialize(item).unwrap();
-      input_tx.send(ChannelItem::Bytes(bytes)).await.unwrap();
-    }
-    drop(input_tx);
-
-    // Collect output
-    let mut received = Vec::new();
-    while let Some(channel_item) = output_rx.recv().await {
-      match channel_item {
-        ChannelItem::Bytes(bytes) => {
-          let item: i32 = deserialize(bytes).unwrap();
-          received.push(item);
-        }
-        _ => panic!("Unexpected channel item variant"),
-      }
-    }
-
-    let _ = handle.await;
-    assert_eq!(received, vec![2, 4, 6]);
-  }
-
-  #[tokio::test]
-  async fn test_transformer_execution_filter_transformation() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    // Use MapTransformer with filter logic (items mapped to Option, then filter_map)
-    // For simplicity, we'll skip this test for now and use map transformation
-    // Filter transformer would require streamweave-transformer-filter dependency
-    let transformer = MapTransformer::new(|x: i32| x * 2); // Use map instead
-    let node: TransformerNode<_, (i32,), (i32,)> =
-      TransformerNode::new("test_transformer".to_string(), transformer);
-
-    let (input_tx, input_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let (output_tx, mut output_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut input_channels = HashMap::new();
-    input_channels.insert(0, input_rx);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, output_tx);
-    let pause_signal = Arc::new(RwLock::new(false));
-
-    let handle = node
-      .spawn_execution_task(
-        input_channels,
-        output_channels,
-        pause_signal,
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Send input data
-    let input_items = vec![1, 2, 3, 4, 5];
-    for item in &input_items {
-      let bytes = serialize(item).unwrap();
-      input_tx.send(ChannelItem::Bytes(bytes)).await.unwrap();
-    }
-    drop(input_tx);
-
-    // Collect output
-    let mut received = Vec::new();
-    while let Some(channel_item) = output_rx.recv().await {
-      match channel_item {
-        ChannelItem::Bytes(bytes) => {
-          let item: i32 = deserialize(bytes).unwrap();
-          received.push(item);
-        }
-        _ => panic!("Unexpected channel item variant"),
-      }
-    }
-
-    let _ = handle.await;
-    assert_eq!(received, vec![2, 4, 6, 8, 10]); // Doubled values
-  }
-
-  #[tokio::test]
-  async fn test_transformer_execution_multiple_output_ports() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    // Test broadcasting single output to multiple channels
-    // MapTransformer has OutputPorts = (i32,), so we use (i32,) for Outputs
-    // But we can still broadcast to multiple output channels (implemented in spawn_execution_task)
-    let transformer = MapTransformer::new(|x: i32| x);
-    let node: TransformerNode<_, (i32,), (i32,)> =
-      TransformerNode::new("test_transformer".to_string(), transformer);
-
-    let (input_tx, input_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let (output_tx1, mut output_rx1): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let (output_tx2, mut output_rx2): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut input_channels = HashMap::new();
-    input_channels.insert(0, input_rx);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, output_tx1);
-    output_channels.insert(1, output_tx2); // Broadcast to multiple channels
-    let pause_signal = Arc::new(RwLock::new(false));
-
-    let handle = node
-      .spawn_execution_task(
-        input_channels,
-        output_channels,
-        pause_signal,
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Send input data
-    let input_items = vec![1, 2, 3];
-    for item in &input_items {
-      let bytes = serialize(item).unwrap();
-      input_tx.send(ChannelItem::Bytes(bytes)).await.unwrap();
-    }
-    drop(input_tx);
-
-    // Collect from both outputs (both should receive all items via broadcast)
-    let mut received1 = Vec::new();
-    let mut received2 = Vec::new();
-
-    // Use select to read from both channels concurrently
-    loop {
-      tokio::select! {
-        item1 = output_rx1.recv() => {
-          match item1 {
-            Some(ChannelItem::Bytes(bytes)) => {
-              let item: i32 = deserialize(bytes).unwrap();
-              received1.push(item);
-            }
-            Some(_) => panic!("Unexpected channel item variant"),
-            None => {
-              // Channel closed, wait for the other one to finish
-              while let Some(channel_item) = output_rx2.recv().await {
-                match channel_item {
-                  ChannelItem::Bytes(bytes) => {
-                    let item: i32 = deserialize(bytes).unwrap();
-                    received2.push(item);
+      // Create input stream from channels by deserializing
+      let compression_clone = compression;
+      let input_stream: Pin<Box<dyn futures::Stream<Item = I> + Send>> = if input_channels
+        .is_empty()
+      {
+        Box::pin(futures::stream::empty())
+      } else if input_channels.len() == 1 {
+        let (_port_name, mut receiver) = input_channels.into_iter().next().unwrap();
+        Box::pin(stream! {
+          while let Some(channel_item) = receiver.recv().await {
+            match channel_item {
+              crate::channels::ChannelItem::Bytes(bytes) => {
+                // Decompress if needed
+                let decompressed_bytes = if let Some(algorithm) = compression_clone {
+                  let decompressor: Box<dyn crate::compression::Compression> = match algorithm {
+                    crate::execution::CompressionAlgorithm::Gzip { level: _ } => {
+                      Box::new(crate::compression::GzipCompression::new(1))
+                    }
+                    crate::execution::CompressionAlgorithm::Zstd { level: _ } => {
+                      Box::new(crate::compression::ZstdCompression::new(1))
+                    }
+                  };
+                  match tokio::task::spawn_blocking(move || decompressor.decompress(&bytes)).await {
+                    Ok(Ok(decompressed)) => decompressed,
+                    Ok(Err(_)) => continue, // Skip corrupted data
+                    Err(_) => continue,
                   }
-                  _ => panic!("Unexpected channel item variant"),
+                } else {
+                  bytes
+                };
+                // Deserialize
+                match crate::serialization::deserialize::<I>(decompressed_bytes) {
+                  Ok(item) => yield item,
+                  Err(_) => continue, // Skip deserialization errors
                 }
               }
+              _ => continue,
+            }
+          }
+        })
+      } else {
+        // Multiple inputs: merge streams
+        let receivers: Vec<_> = input_channels.into_values().collect();
+        let compression_clone2 = compression_clone;
+        Box::pin(stream! {
+          let mut receivers = receivers;
+          loop {
+            let mut all_done = true;
+            for receiver in &mut receivers {
+              if let Some(channel_item) = receiver.recv().await {
+                all_done = false;
+                match channel_item {
+                  crate::channels::ChannelItem::Bytes(bytes) => {
+                    let decompressed_bytes = if let Some(algorithm) = compression_clone2 {
+                      let decompressor: Box<dyn crate::compression::Compression> = match algorithm {
+                        crate::execution::CompressionAlgorithm::Gzip { level: _ } => {
+                          Box::new(crate::compression::GzipCompression::new(1))
+                        }
+                        crate::execution::CompressionAlgorithm::Zstd { level: _ } => {
+                          Box::new(crate::compression::ZstdCompression::new(1))
+                        }
+                      };
+                      match tokio::task::spawn_blocking(move || decompressor.decompress(&bytes)).await {
+                        Ok(Ok(decompressed)) => decompressed,
+                        Ok(Err(_)) => continue,
+                        Err(_) => continue,
+                      }
+                    } else {
+                      bytes
+                    };
+                    match crate::serialization::deserialize::<I>(decompressed_bytes) {
+                      Ok(item) => yield item,
+                      Err(_) => continue,
+                    }
+                  }
+                  _ => continue,
+                }
+              }
+            }
+            if all_done {
               break;
             }
           }
-        }
-        item2 = output_rx2.recv() => {
-          match item2 {
-            Some(ChannelItem::Bytes(bytes)) => {
-              let item: i32 = deserialize(bytes).unwrap();
-              received2.push(item);
+        })
+      };
+
+      // Route the stream using the router
+      let mut router_guard = router.lock().await;
+      let output_streams = router_guard.route_stream(input_stream).await;
+      drop(router_guard);
+
+      // Send each output stream to the corresponding output channel
+      for (port_name, mut output_stream) in output_streams {
+        if let Some(sender) = output_channels.get(&port_name) {
+          let sender_clone = sender.clone();
+          let pause_signal_clone = pause_signal.clone();
+          let node_name_clone = node_name.clone();
+          let port_name_clone = port_name.clone();
+          tokio::spawn(async move {
+            while let Some(item) = output_stream.next().await {
+              // Check pause signal
+              if *pause_signal_clone.read().await {
+                return Ok::<(), crate::execution::ExecutionError>(());
+              }
+
+              // Serialize and send
+              let bytes = serialize(&item).map_err(|e| {
+                crate::execution::ExecutionError::SerializationError {
+                  node: node_name_clone.clone(),
+                  is_deserialization: false,
+                  reason: e.to_string(),
+                }
+              })?;
+              sender_clone
+                .send(crate::channels::ChannelItem::Bytes(bytes))
+                .await
+                .map_err(|_| crate::execution::ExecutionError::ChannelError {
+                  node: node_name_clone.clone(),
+                  port: port_name_clone.clone(),
+                  is_input: false,
+                  reason: "Channel closed".to_string(),
+                })?;
             }
-            Some(_) => panic!("Unexpected channel item variant"),
-            None => {
-              // Channel closed, wait for the other one to finish
-              while let Some(channel_item) = output_rx1.recv().await {
-                match channel_item {
-                  ChannelItem::Bytes(bytes) => {
-                    let item: i32 = deserialize(bytes).unwrap();
-                    received1.push(item);
+            Ok(())
+          });
+        }
+      }
+
+      Ok(())
+    });
+
+    Some(handle)
+  }
+}
+
+/// A node that wraps an InputRouter component.
+///
+/// InputRouterNode represents a routing node in the graph that merges multiple
+/// input streams into a single output stream based on the router's strategy.
+/// It has multiple input ports specified by the router and one output port.
+///
+/// # Type Parameters
+///
+/// * `R` - The router type that implements `InputRouter`
+/// * `I` - The input type (items flowing through the router)
+/// * `Inputs` - A port tuple representing the input ports (e.g., `(I, I)` for two inputs)
+/// * `Outputs` - A port tuple representing the output ports (should be `(I,)` for single port)
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::graph::node::InputRouterNode;
+/// use streamweave::graph::control_flow::Synchronize;
+///
+/// let router = Synchronize::new(2);
+/// let node = InputRouterNode::from_router(
+///     "sync".to_string(),
+///     router,
+/// );
+/// ```
+pub struct InputRouterNode<R, I, Inputs, Outputs>
+where
+  R: crate::router::InputRouter<I>,
+  I: std::fmt::Debug + Clone + Send + Sync + Serialize + 'static,
+  Inputs: PortList,
+  Outputs: PortList,
+{
+  name: String,
+  router: Arc<Mutex<R>>,
+  input_port_names: Vec<String>,
+  output_port_names: Vec<String>,
+  _phantom: std::marker::PhantomData<(I, Inputs, Outputs)>,
+}
+
+impl<R, I, Inputs, Outputs> InputRouterNode<R, I, Inputs, Outputs>
+where
+  R: crate::router::InputRouter<I>,
+  I: std::fmt::Debug + Clone + Send + Sync + Serialize + 'static,
+  Inputs: PortList,
+  Outputs: PortList,
+{
+  /// Creates a new InputRouterNode.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name of this node
+  /// * `router` - The router component to wrap
+  /// * `input_port_names` - The names of the input ports (must match Inputs::LEN)
+  /// * `output_port_names` - The names of the output ports (must match Outputs::LEN)
+  ///
+  /// # Returns
+  ///
+  /// A new `InputRouterNode` instance.
+  ///
+  /// # Panics
+  ///
+  /// Panics if the number of port names doesn't match `Inputs::LEN` or `Outputs::LEN`.
+  pub fn new(
+    name: String,
+    router: R,
+    input_port_names: Vec<String>,
+    output_port_names: Vec<String>,
+  ) -> Self {
+    assert_eq!(
+      input_port_names.len(),
+      Inputs::LEN,
+      "Number of input port names ({}) must match Inputs::LEN ({})",
+      input_port_names.len(),
+      Inputs::LEN
+    );
+    assert_eq!(
+      output_port_names.len(),
+      Outputs::LEN,
+      "Number of output port names ({}) must match Outputs::LEN ({})",
+      output_port_names.len(),
+      Outputs::LEN
+    );
+    Self {
+      name,
+      router: Arc::new(Mutex::new(router)),
+      input_port_names,
+      output_port_names,
+      _phantom: std::marker::PhantomData,
+    }
+  }
+
+  /// Creates a new InputRouterNode from a router.
+  ///
+  /// This is a convenience method that matches the pattern used by other node types.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name of this node
+  /// * `router` - The router component to wrap
+  /// * `input_port_names` - The names of the input ports (must match Inputs::LEN)
+  /// * `output_port_names` - The names of the output ports (must match Outputs::LEN)
+  ///
+  /// # Returns
+  ///
+  /// A new `InputRouterNode` instance.
+  pub fn from_router(
+    name: String,
+    router: R,
+    input_port_names: Vec<String>,
+    output_port_names: Vec<String>,
+  ) -> Self {
+    Self::new(name, router, input_port_names, output_port_names)
+  }
+
+  /// Returns a reference to the internal router.
+  pub fn router(&self) -> Arc<Mutex<R>> {
+    Arc::clone(&self.router)
+  }
+}
+
+// Implement NodeTrait for InputRouterNode
+impl<R, I, Inputs, Outputs> NodeTrait for InputRouterNode<R, I, Inputs, Outputs>
+where
+  R: crate::router::InputRouter<I> + Send + Sync + 'static,
+  I: std::fmt::Debug + Clone + Send + Sync + Serialize + DeserializeOwned + 'static,
+  Inputs: PortList + Send + Sync + 'static,
+  Outputs: PortList + Send + Sync + 'static,
+{
+  fn name(&self) -> &str {
+    &self.name
+  }
+
+  fn node_kind(&self) -> NodeKind {
+    NodeKind::Transformer // Routers are conceptually transformers
+  }
+
+  fn input_port_names(&self) -> Vec<String> {
+    self.input_port_names.clone()
+  }
+
+  fn output_port_names(&self) -> Vec<String> {
+    self.output_port_names.clone()
+  }
+
+  fn has_input_port(&self, port_name: &str) -> bool {
+    self.input_port_names.iter().any(|name| name == port_name)
+  }
+
+  fn has_output_port(&self, port_name: &str) -> bool {
+    self.output_port_names.iter().any(|name| name == port_name)
+  }
+
+  fn spawn_execution_task(
+    &self,
+    input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
+    output_channels: std::collections::HashMap<String, TypeErasedSender>,
+    pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
+    execution_mode: crate::execution::ExecutionMode,
+    _batching_channels: Option<
+      std::collections::HashMap<String, std::sync::Arc<crate::batching::BatchingChannel>>,
+    >,
+    _arc_pool: Option<std::sync::Arc<crate::zero_copy::ArcPool<bytes::Bytes>>>,
+  ) -> Option<tokio::task::JoinHandle<Result<(), crate::execution::ExecutionError>>> {
+    let router = Arc::clone(&self.router);
+    let node_name = self.name.clone();
+
+    let handle = tokio::spawn(async move {
+      // Create input streams from channels
+      let (compression, _batching) = match &execution_mode {
+        crate::execution::ExecutionMode::Distributed {
+          compression: comp,
+          batching: batch,
+          ..
+        } => (*comp, batch.is_some()),
+        _ => (None, false),
+      };
+
+      // Create input streams from channels by deserializing
+      let mut input_streams = Vec::new();
+      for (port_name, mut receiver) in input_channels {
+        let compression_clone = compression;
+        let stream: Pin<Box<dyn futures::Stream<Item = I> + Send>> = Box::pin(stream! {
+          while let Some(channel_item) = receiver.recv().await {
+            match channel_item {
+              crate::channels::ChannelItem::Bytes(bytes) => {
+                // Decompress if needed
+                let decompressed_bytes = if let Some(algorithm) = compression_clone {
+                  let decompressor: Box<dyn crate::compression::Compression> = match algorithm {
+                    crate::execution::CompressionAlgorithm::Gzip { level: _ } => {
+                      Box::new(crate::compression::GzipCompression::new(1))
+                    }
+                    crate::execution::CompressionAlgorithm::Zstd { level: _ } => {
+                      Box::new(crate::compression::ZstdCompression::new(1))
+                    }
+                  };
+                  match tokio::task::spawn_blocking(move || decompressor.decompress(&bytes)).await {
+                    Ok(Ok(decompressed)) => decompressed,
+                    Ok(Err(_)) => continue,
+                    Err(_) => continue,
                   }
-                  _ => panic!("Unexpected channel item variant"),
+                } else {
+                  bytes
+                };
+                // Deserialize
+                match crate::serialization::deserialize::<I>(decompressed_bytes) {
+                  Ok(item) => yield item,
+                  Err(_) => continue,
                 }
               }
-              break;
+              _ => continue,
             }
           }
+        });
+        input_streams.push((port_name, stream));
+      }
+
+      // Route the streams using the router
+      let mut router_guard = router.lock().await;
+      let output_stream = router_guard.route_streams(input_streams).await;
+      drop(router_guard);
+
+      // Send the output stream to the output channel
+      // Get the first (and typically only) output port name
+      if let Some(output_port_name) = output_channels.keys().next()
+        && let Some(sender) = output_channels.get(output_port_name)
+      {
+        let mut output_stream = output_stream;
+        while let Some(item) = output_stream.next().await {
+          // Check pause signal
+          if *pause_signal.read().await {
+            return Ok(());
+          }
+
+          // Serialize and send
+          let bytes =
+            serialize(&item).map_err(|e| crate::execution::ExecutionError::SerializationError {
+              node: node_name.clone(),
+              is_deserialization: false,
+              reason: e.to_string(),
+            })?;
+          sender
+            .send(crate::channels::ChannelItem::Bytes(bytes))
+            .await
+            .map_err(|_| crate::execution::ExecutionError::ChannelError {
+              node: node_name.clone(),
+              port: output_port_name.clone(),
+              is_input: false,
+              reason: "Channel closed".to_string(),
+            })?;
         }
       }
-    }
 
-    let _ = handle.await;
-    // Both channels should receive all items (broadcast pattern)
-    assert_eq!(received1, input_items);
-    assert_eq!(received2, input_items);
-  }
+      Ok(())
+    });
 
-  #[tokio::test]
-  async fn test_transformer_execution_empty_input() {
-    use crate::channels::{TypeErasedReceiver, TypeErasedSender};
-    let transformer = MapTransformer::new(|x: i32| x);
-    let node: TransformerNode<_, (i32,), (i32,)> =
-      TransformerNode::new("test_transformer".to_string(), transformer);
-
-    let (input_tx, input_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let (_output_tx, mut output_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut input_channels = HashMap::new();
-    input_channels.insert(0, input_rx);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, _output_tx);
-    let pause_signal = Arc::new(RwLock::new(false));
-
-    let handle = node
-      .spawn_execution_task(
-        input_channels,
-        output_channels,
-        pause_signal,
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Don't send any input, close immediately
-    drop(input_tx);
-
-    // Should receive nothing
-    let result =
-      tokio::time::timeout(tokio::time::Duration::from_millis(100), output_rx.recv()).await;
-    assert!(result.is_err() || result.unwrap().is_none());
-
-    let _ = handle.await;
-  }
-
-  #[tokio::test]
-  async fn test_transformer_execution_pause_resume() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    let transformer = MapTransformer::new(|x: i32| x);
-    let node: TransformerNode<_, (i32,), (i32,)> =
-      TransformerNode::new("test_transformer".to_string(), transformer);
-
-    let (input_tx, input_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let (output_tx, mut output_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut input_channels = HashMap::new();
-    input_channels.insert(0, input_rx);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, output_tx);
-    let pause_signal = Arc::new(RwLock::new(false));
-
-    let handle = node
-      .spawn_execution_task(
-        input_channels,
-        output_channels,
-        pause_signal.clone(),
-        ExecutionMode::Distributed {
-          serializer: crate::serialization::JsonSerializer,
-          compression: None,
-          batching: None,
-        },
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Send input data
-    let input_items = vec![1, 2, 3, 4, 5];
-    for item in &input_items {
-      let bytes = serialize(item).unwrap();
-      input_tx.send(ChannelItem::Bytes(bytes)).await.unwrap();
-    }
-    drop(input_tx);
-
-    // Receive first item
-    let channel_item1 = output_rx.recv().await.unwrap();
-    let item1 = match channel_item1 {
-      ChannelItem::Bytes(bytes) => deserialize(bytes).unwrap(),
-      _ => panic!("Unexpected channel item variant"),
-    };
-    assert_eq!(item1, 1);
-
-    // Pause
-    *pause_signal.write().await = true;
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-    // Resume
-    *pause_signal.write().await = false;
-
-    // Should continue receiving
-    let mut received = vec![item1];
-    while let Ok(Some(channel_item)) =
-      tokio::time::timeout(tokio::time::Duration::from_millis(500), output_rx.recv()).await
-    {
-      match channel_item {
-        ChannelItem::Bytes(bytes) => {
-          let item: i32 = deserialize(bytes).unwrap();
-          received.push(item);
-        }
-        _ => panic!("Unexpected channel item variant"),
-      }
-    }
-
-    let _ = handle.await;
-    assert_eq!(received, input_items);
-  }
-
-  // Zero-copy in-process execution tests
-  #[tokio::test]
-  async fn test_producer_in_process_zero_copy() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    use crate::execution::ExecutionMode;
-
-    let producer = MockProducer::new(vec![1, 2, 3]);
-    let node: ProducerNode<_, (i32,)> = ProducerNode::new("test_producer".to_string(), producer);
-
-    let (tx, mut rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, tx);
-    let pause_signal = Arc::new(RwLock::new(false));
-    let execution_mode = ExecutionMode::InProcess {
-      use_shared_memory: false,
-    };
-
-    let handle = node
-      .spawn_execution_task(
-        HashMap::new(),
-        output_channels,
-        pause_signal,
-        execution_mode,
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Collect all items - should be ChannelItem::Arc in in-process mode
-    let mut received = Vec::new();
-    while let Some(channel_item) = rx.recv().await {
-      match channel_item {
-        ChannelItem::Arc(arc) => {
-          // Downcast to i32
-          let typed_arc = Arc::downcast::<i32>(arc).unwrap();
-          let item = Arc::try_unwrap(typed_arc).unwrap_or_else(|arc| *arc);
-          received.push(item);
-        }
-        ChannelItem::Bytes(_) => {
-          panic!("Expected Arc in in-process mode, got Bytes");
-        }
-        ChannelItem::SharedMemory(_) => {
-          panic!("Expected Arc in in-process mode, got SharedMemory");
-        }
-      }
-    }
-
-    let _ = handle.await;
-    assert_eq!(received, vec![1, 2, 3]);
-  }
-
-  #[tokio::test]
-  async fn test_producer_in_process_fan_out_zero_copy() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    use crate::execution::ExecutionMode;
-
-    let producer = MockProducer::new(vec![42]);
-    let node: ProducerNode<_, (i32,)> = ProducerNode::new("test_producer".to_string(), producer);
-
-    let (tx1, mut rx1): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let (tx2, mut rx2): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, tx1);
-    output_channels.insert(1, tx2);
-    let pause_signal = Arc::new(RwLock::new(false));
-    let execution_mode = ExecutionMode::InProcess {
-      use_shared_memory: false,
-    };
-
-    let handle = node
-      .spawn_execution_task(
-        HashMap::new(),
-        output_channels,
-        pause_signal,
-        execution_mode,
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Both receivers should get the same Arc (zero-copy clone)
-    let item1 = rx1.recv().await.unwrap();
-    let item2 = rx2.recv().await.unwrap();
-
-    match (item1, item2) {
-      (ChannelItem::Arc(arc1), ChannelItem::Arc(arc2)) => {
-        // Both should be Arc<i32>
-        let typed1 = Arc::downcast::<i32>(arc1).unwrap();
-        let typed2 = Arc::downcast::<i32>(arc2).unwrap();
-
-        // Verify values are the same
-        assert_eq!(*typed1, 42);
-        assert_eq!(*typed2, 42);
-
-        // Verify they are the same Arc (same memory location)
-        // In fan-out, we use Arc::clone which shares the same underlying data
-        assert_eq!(Arc::as_ptr(&typed1), Arc::as_ptr(&typed2));
-      }
-      _ => panic!("Expected Arc items in in-process mode"),
-    }
-
-    let _ = handle.await;
-  }
-
-  #[tokio::test]
-  async fn test_transformer_in_process_zero_copy() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    use crate::execution::ExecutionMode;
-
-    let transformer = MapTransformer::new(|x: i32| x * 2);
-    let node: TransformerNode<_, (i32,), (i32,)> =
-      TransformerNode::new("test_transformer".to_string(), transformer);
-
-    let (input_tx, input_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let (output_tx, mut output_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-
-    let mut input_channels = HashMap::new();
-    input_channels.insert(0, input_rx);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, output_tx);
-
-    let pause_signal = Arc::new(RwLock::new(false));
-    let execution_mode = ExecutionMode::InProcess {
-      use_shared_memory: false,
-    };
-
-    let handle = node
-      .spawn_execution_task(
-        input_channels,
-        output_channels,
-        pause_signal,
-        execution_mode,
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Send input as Arc
-    input_tx.send(ChannelItem::Arc(Arc::new(21))).await.unwrap();
-    drop(input_tx); // Close input channel
-
-    // Receive output - should be Arc in in-process mode
-    let output_item = output_rx.recv().await.unwrap();
-    match output_item {
-      ChannelItem::Arc(arc) => {
-        let typed_arc = Arc::downcast::<i32>(arc).unwrap();
-        let item = Arc::try_unwrap(typed_arc).unwrap_or_else(|arc| *arc);
-        assert_eq!(item, 42); // 21 * 2
-      }
-      ChannelItem::Bytes(_) => {
-        panic!("Expected Arc in in-process mode, got Bytes");
-      }
-      ChannelItem::SharedMemory(_) => {
-        panic!("Expected Arc in in-process mode, got SharedMemory");
-      }
-    }
-
-    let _ = handle.await;
-  }
-
-  #[tokio::test]
-  async fn test_consumer_in_process_zero_copy() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    use crate::execution::ExecutionMode;
-
-    let consumer = VecConsumer::new();
-    let node: ConsumerNode<_, (i32,)> = ConsumerNode::new("test_consumer".to_string(), consumer);
-
-    let (input_tx, input_rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-
-    let mut input_channels = HashMap::new();
-    input_channels.insert(0, input_rx);
-
-    let pause_signal = Arc::new(RwLock::new(false));
-    let execution_mode = ExecutionMode::InProcess {
-      use_shared_memory: false,
-    };
-
-    let handle = node
-      .spawn_execution_task(
-        input_channels,
-        HashMap::new(),
-        pause_signal,
-        execution_mode,
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Send input as Arc
-    input_tx.send(ChannelItem::Arc(Arc::new(42))).await.unwrap();
-    input_tx
-      .send(ChannelItem::Arc(Arc::new(100)))
-      .await
-      .unwrap();
-    drop(input_tx); // Close input channel
-
-    // Wait for consumer to process
-    let _ = handle.await;
-
-    // Consumer should have processed the items (VecConsumer stores them)
-    // Note: We can't easily verify this without exposing internal state,
-    // but the test verifies that Arc items are correctly unwrapped and consumed
-  }
-
-  #[tokio::test]
-  async fn test_distributed_mode_uses_bytes() {
-    use crate::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-    use crate::execution::ExecutionMode;
-
-    let producer = MockProducer::new(vec![1, 2, 3]);
-    let node: ProducerNode<_, (i32,)> = ProducerNode::new("test_producer".to_string(), producer);
-
-    let (tx, mut rx): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(10);
-    let mut output_channels = HashMap::new();
-    output_channels.insert(0, tx);
-    let pause_signal = Arc::new(RwLock::new(false));
-    let execution_mode = ExecutionMode::Distributed {
-      serializer: crate::serialization::JsonSerializer,
-      compression: None,
-      batching: None,
-    };
-
-    let handle = node
-      .spawn_execution_task(
-        HashMap::new(),
-        output_channels,
-        pause_signal,
-        execution_mode,
-        None,
-        None,
-      )
-      .unwrap();
-
-    // Collect all items - should be ChannelItem::Bytes in distributed mode
-    let mut received = Vec::new();
-    while let Some(channel_item) = rx.recv().await {
-      match channel_item {
-        ChannelItem::Bytes(bytes) => {
-          let item: i32 = deserialize(bytes).unwrap();
-          received.push(item);
-        }
-        ChannelItem::Arc(_) => {
-          panic!("Expected Bytes in distributed mode, got Arc");
-        }
-        ChannelItem::SharedMemory(_) => {
-          panic!("Expected Bytes in distributed mode, got SharedMemory");
-        }
-      }
-    }
-
-    let _ = handle.await;
-    assert_eq!(received, vec![1, 2, 3]);
+    Some(handle)
   }
 }

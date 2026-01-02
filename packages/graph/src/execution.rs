@@ -57,9 +57,9 @@ pub enum ExecutionError {
   /// Connection error during execution
   ConnectionError {
     /// Source node and port
-    source: (String, usize),
+    source: (String, String),
     /// Target node and port
-    target: (String, usize),
+    target: (String, String),
     /// Error reason
     reason: String,
   },
@@ -67,8 +67,8 @@ pub enum ExecutionError {
   ChannelError {
     /// Node name where error occurred
     node: String,
-    /// Port index where error occurred
-    port: usize,
+    /// Port name where error occurred
+    port: String,
     /// Whether this is an input or output port
     is_input: bool,
     /// Error reason
@@ -703,13 +703,13 @@ pub struct GraphExecutor {
   /// Node execution handles
   node_handles: HashMap<String, JoinHandle<Result<(), ExecutionError>>>,
   /// Channel senders for routing data between nodes
-  /// Key: (node_name, port_index)
+  /// Key: (node_name, port_name)
   /// Uses type-erased channels that can hold either Bytes (distributed) or `Arc<T>` (in-process)
-  channel_senders: HashMap<(String, usize), TypeErasedSender>,
+  channel_senders: HashMap<(String, String), TypeErasedSender>,
   /// Channel receivers for routing data between nodes
-  /// Key: (node_name, port_index)
+  /// Key: (node_name, port_name)
   /// Uses type-erased channels that can hold either Bytes (distributed) or `Arc<T>` (in-process)
-  channel_receivers: HashMap<(String, usize), TypeErasedReceiver>,
+  channel_receivers: HashMap<(String, String), TypeErasedReceiver>,
   /// Execution state
   state: ExecutionState,
   /// Pause signal shared across all node tasks
@@ -726,13 +726,13 @@ pub struct GraphExecutor {
   /// Execution mode for this executor
   execution_mode: ExecutionMode,
   /// Shared memory channels for ultra-high performance mode
-  /// Key: (node_name, port_index) for source nodes
+  /// Key: (node_name, port_name) for source nodes
   /// Value: Shared memory channel for that connection
-  shared_memory_channels: HashMap<(String, usize), SharedMemoryChannel>,
+  shared_memory_channels: HashMap<(String, String), SharedMemoryChannel>,
   /// Batching channels for distributed execution with batching enabled
-  /// Key: (node_name, port_index) for source nodes
+  /// Key: (node_name, port_name) for source nodes
   /// Value: Batching channel wrapper for that connection
-  batching_channels: HashMap<(String, usize), Arc<BatchingChannel>>,
+  batching_channels: HashMap<(String, String), Arc<BatchingChannel>>,
   /// Throughput monitor for hybrid execution mode
   /// Tracks items/second processed across the graph
   throughput_monitor: Option<Arc<ThroughputMonitor>>,
@@ -993,15 +993,19 @@ impl GraphExecutor {
         // Collect input channels for this node
         let mut input_channels = HashMap::new();
         let parents = self.graph.get_parents(node_name);
-        for (parent_name, parent_port) in parents {
+        for (parent_name, parent_port_name) in parents {
           for conn in self.graph.get_connections() {
             if conn.source.0 == parent_name
-              && conn.source.1 == parent_port
+              && conn.source.1 == parent_port_name
               && conn.target.0 == node_name
             {
-              let key = (parent_name.to_string(), parent_port);
+              // ConnectionInfo now stores port names directly
+              let target_port_name = conn.target.1.clone();
+              let source_port_name = conn.source.1.clone();
+
+              let key = (parent_name.to_string(), source_port_name);
               if let Some(receiver) = self.channel_receivers.remove(&key) {
-                input_channels.insert(conn.target.1, receiver);
+                input_channels.insert(target_port_name, receiver);
               }
               break;
             }
@@ -1011,15 +1015,18 @@ impl GraphExecutor {
         // Collect output channels for this node
         let mut output_channels = HashMap::new();
         let children = self.graph.get_children(node_name);
-        for (child_name, child_port) in children {
+        for (child_name, child_port_name) in children {
           for conn in self.graph.get_connections() {
             if conn.source.0 == node_name
               && conn.target.0 == child_name
-              && conn.target.1 == child_port
+              && conn.target.1 == child_port_name
             {
-              let key = (node_name.to_string(), conn.source.1);
+              // ConnectionInfo now stores port names directly
+              let source_port_name = conn.source.1.clone();
+
+              let key = (node_name.to_string(), source_port_name.clone());
               if let Some(sender) = self.channel_senders.get(&key).cloned() {
-                output_channels.insert(conn.source.1, sender);
+                output_channels.insert(source_port_name, sender);
               }
               break;
             }
@@ -1028,7 +1035,7 @@ impl GraphExecutor {
 
         // Spawn execution task with distributed mode
         // Collect batching channels for this node if batching is enabled
-        let batching_channels: Option<HashMap<usize, Arc<BatchingChannel>>> = if matches!(
+        let batching_channels: Option<HashMap<String, Arc<BatchingChannel>>> = if matches!(
           self.execution_mode,
           ExecutionMode::Distributed {
             batching: Some(_),
@@ -1036,12 +1043,12 @@ impl GraphExecutor {
           }
         ) {
           let mut batch_map = HashMap::new();
-          for port_index in output_channels.keys() {
+          for port_name in output_channels.keys() {
             if let Some(batching_channel) = self
               .batching_channels
-              .get(&(node_name.to_string(), *port_index))
+              .get(&(node_name.to_string(), port_name.clone()))
             {
-              batch_map.insert(*port_index, Arc::clone(batching_channel));
+              batch_map.insert(port_name.clone(), Arc::clone(batching_channel));
             }
           }
           if !batch_map.is_empty() {
@@ -1527,21 +1534,21 @@ impl GraphExecutor {
         )));
       }
 
-      // Validate port indices
+      // Validate port names exist
       if let Some(source_node) = self.graph.get_node(&conn.source.0)
-        && conn.source.1 >= source_node.output_port_count()
+        && !source_node.has_output_port(&conn.source.1)
       {
         return Err(ExecutionError::InvalidTopology(format!(
-          "Source node '{}' does not have output port {}",
+          "Source node '{}' does not have output port '{}'",
           conn.source.0, conn.source.1
         )));
       }
 
       if let Some(target_node) = self.graph.get_node(&conn.target.0)
-        && conn.target.1 >= target_node.input_port_count()
+        && !target_node.has_input_port(&conn.target.1)
       {
         return Err(ExecutionError::InvalidTopology(format!(
-          "Target node '{}' does not have input port {}",
+          "Target node '{}' does not have input port '{}'",
           conn.target.0, conn.target.1
         )));
       }
@@ -1604,11 +1611,15 @@ impl GraphExecutor {
     };
 
     for conn in self.graph.get_connections() {
+      // ConnectionInfo now stores port names directly
+      let source_port_name = &conn.source.1;
+      let target_port_name = &conn.target.1;
+
       if use_shared_memory {
         // Create shared memory channel
         let segment_id = format!(
           "streamweave_{}_{}_{}_{}",
-          conn.source.0, conn.source.1, conn.target.0, conn.target.1
+          conn.source.0, source_port_name, conn.target.0, target_port_name
         );
 
         // Create shared memory channel with comprehensive error handling
@@ -1631,23 +1642,24 @@ impl GraphExecutor {
         // Store shared memory channel for both source and target
         // Source uses it to send, target uses it to receive
         self.shared_memory_channels.insert(
-          (conn.source.0.clone(), conn.source.1),
+          (conn.source.0.clone(), source_port_name.clone()),
           shared_channel.clone(),
         );
-        self
-          .shared_memory_channels
-          .insert((conn.target.0.clone(), conn.target.1), shared_channel);
+        self.shared_memory_channels.insert(
+          (conn.target.0.clone(), target_port_name.clone()),
+          shared_channel,
+        );
 
         // Still create regular channels for sending SharedMemoryRef
         let (sender, receiver): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(buffer_size);
 
         self
           .channel_senders
-          .insert((conn.source.0.clone(), conn.source.1), sender);
+          .insert((conn.source.0.clone(), source_port_name.clone()), sender);
 
         self
           .channel_receivers
-          .insert((conn.target.0.clone(), conn.target.1), receiver);
+          .insert((conn.target.0.clone(), target_port_name.clone()), receiver);
       } else {
         // Create type-erased channels that can hold either Bytes or Arc<T>
         // Nodes will determine which variant to use based on ExecutionMode
@@ -1657,26 +1669,27 @@ impl GraphExecutor {
         if let Some(ref batch_config) = batching_config {
           let batching_channel =
             Arc::new(BatchingChannel::new(sender.clone(), batch_config.clone()));
-          self
-            .batching_channels
-            .insert((conn.source.0.clone(), conn.source.1), batching_channel);
+          self.batching_channels.insert(
+            (conn.source.0.clone(), source_port_name.clone()),
+            batching_channel,
+          );
 
           // Still store the inner sender for backward compatibility
           // Nodes will check for batching and use BatchingChannel if available
           self
             .channel_senders
-            .insert((conn.source.0.clone(), conn.source.1), sender);
+            .insert((conn.source.0.clone(), source_port_name.clone()), sender);
         } else {
           // Store sender for source node's output port
           self
             .channel_senders
-            .insert((conn.source.0.clone(), conn.source.1), sender);
+            .insert((conn.source.0.clone(), source_port_name.clone()), sender);
         }
 
         // Store receiver for target node's input port
         self
           .channel_receivers
-          .insert((conn.target.0.clone(), conn.target.1), receiver);
+          .insert((conn.target.0.clone(), target_port_name.clone()), receiver);
       }
     }
 
@@ -1755,16 +1768,20 @@ impl GraphExecutor {
         // Collect input channels for this node
         let mut input_channels = HashMap::new();
         let parents = self.graph.get_parents(node_name);
-        for (parent_name, parent_port) in parents {
+        for (parent_name, parent_port_name) in parents {
           // Find which input port this connection targets
           for conn in self.graph.get_connections() {
             if conn.source.0 == parent_name
-              && conn.source.1 == parent_port
+              && conn.source.1 == parent_port_name
               && conn.target.0 == node_name
             {
-              let key = (parent_name.to_string(), parent_port);
+              // ConnectionInfo now stores port names directly
+              let target_port_name = conn.target.1.clone();
+              let source_port_name = conn.source.1.clone();
+
+              let key = (parent_name.to_string(), source_port_name);
               if let Some(receiver) = self.channel_receivers.remove(&key) {
-                input_channels.insert(conn.target.1, receiver);
+                input_channels.insert(target_port_name, receiver);
               }
               break;
             }
@@ -1774,16 +1791,19 @@ impl GraphExecutor {
         // Collect output channels for this node
         let mut output_channels = HashMap::new();
         let children = self.graph.get_children(node_name);
-        for (child_name, child_port) in children {
+        for (child_name, child_port_name) in children {
           // Find which output port this connection comes from
           for conn in self.graph.get_connections() {
             if conn.source.0 == node_name
               && conn.target.0 == child_name
-              && conn.target.1 == child_port
+              && conn.target.1 == child_port_name
             {
-              let key = (node_name.to_string(), conn.source.1);
+              // ConnectionInfo now stores port names directly
+              let source_port_name = conn.source.1.clone();
+
+              let key = (node_name.to_string(), source_port_name.clone());
               if let Some(sender) = self.channel_senders.get(&key).cloned() {
-                output_channels.insert(conn.source.1, sender);
+                output_channels.insert(source_port_name, sender);
               }
               break;
             }
@@ -2075,15 +2095,19 @@ impl GraphExecutor {
         // Collect input channels
         let mut input_channels = HashMap::new();
         let parents = self.graph.get_parents(node_name);
-        for (parent_name, parent_port) in parents {
+        for (parent_name, parent_port_name) in parents {
           for conn in self.graph.get_connections() {
             if conn.source.0 == parent_name
-              && conn.source.1 == parent_port
+              && conn.source.1 == parent_port_name
               && conn.target.0 == node_name
             {
-              let key = (parent_name.to_string(), parent_port);
+              // ConnectionInfo now stores port names directly
+              let target_port_name = conn.target.1.clone();
+              let source_port_name = conn.source.1.clone();
+
+              let key = (parent_name.to_string(), source_port_name);
               if let Some(receiver) = self.channel_receivers.remove(&key) {
-                input_channels.insert(conn.target.1, receiver);
+                input_channels.insert(target_port_name, receiver);
               }
               break;
             }
@@ -2093,15 +2117,18 @@ impl GraphExecutor {
         // Collect output channels
         let mut output_channels = HashMap::new();
         let children = self.graph.get_children(node_name);
-        for (child_name, child_port) in children {
+        for (child_name, child_port_name) in children {
           for conn in self.graph.get_connections() {
             if conn.source.0 == node_name
               && conn.target.0 == child_name
-              && conn.target.1 == child_port
+              && conn.target.1 == child_port_name
             {
-              let key = (node_name.to_string(), conn.source.1);
+              // ConnectionInfo now stores port names directly
+              let source_port_name = conn.source.1.clone();
+
+              let key = (node_name.to_string(), source_port_name.clone());
               if let Some(sender) = self.channel_senders.get(&key).cloned() {
-                output_channels.insert(conn.source.1, sender);
+                output_channels.insert(source_port_name, sender);
               }
               break;
             }
@@ -2176,20 +2203,24 @@ impl GraphExecutor {
   /// Vector of tuples containing (connection_info, item) for routing items correctly.
   async fn drain_in_process_channels(
     &mut self,
-  ) -> Vec<((String, usize), (String, usize), ChannelItem)> {
+  ) -> Vec<((String, String), (String, String), ChannelItem)> {
     let mut in_flight_items = Vec::new();
 
     // Collect items from all receivers, tracking which connection they belong to
-    // The key in channel_receivers is (target_node, target_port)
+    // The key in channel_receivers is (target_node, target_port_name)
     // We need to find the corresponding source node and port from connections
     for (target_key, receiver) in &mut self.channel_receivers {
       // Find the source node and port for this receiver
-      let source_info = self
-        .graph
-        .get_connections()
-        .iter()
-        .find(|conn| conn.target.0 == target_key.0 && conn.target.1 == target_key.1)
-        .map(|conn| (conn.source.0.clone(), conn.source.1));
+      // ConnectionInfo now stores port names directly
+      let source_info = self.graph.get_connections().iter().find_map(|conn| {
+        // Match by target node name and port name
+        if conn.target.0 == target_key.0 && conn.target.1 == target_key.1 {
+          // ConnectionInfo stores port names directly
+          Some((conn.source.0.clone(), conn.source.1.clone()))
+        } else {
+          None
+        }
+      });
 
       if let Some(source_info) = source_info {
         // Try to receive remaining items (non-blocking)
@@ -2218,7 +2249,7 @@ impl GraphExecutor {
   #[allow(clippy::type_complexity)]
   async fn send_in_flight_items(
     &self,
-    items: Vec<((String, usize), (String, usize), ChannelItem)>,
+    items: Vec<((String, String), (String, String), ChannelItem)>,
   ) -> Result<(), ExecutionError> {
     // Get serializer from execution mode
     let _serializer = match &self.execution_mode {
@@ -2231,9 +2262,9 @@ impl GraphExecutor {
     };
 
     // Route each item to the correct distributed channel
-    for (source_info, target_info, item) in items {
+    for (source_info, _target_info, item) in items {
       // Find the channel sender for this connection
-      let channel_key = (source_info.0.clone(), source_info.1);
+      let channel_key = (source_info.0.clone(), source_info.1.clone());
       let sender = self.channel_senders.get(&channel_key);
 
       if let Some(sender) = sender {
@@ -2252,8 +2283,8 @@ impl GraphExecutor {
 
             // For now, log a warning and skip items we can't serialize
             tracing::warn!(
-              source_node = source_info.0,
-              source_port = source_info.1,
+              source_node = %source_info.0,
+              source_port = %source_info.1,
               "Cannot serialize Arc item during mode switch - item will be dropped"
             );
             continue;
@@ -2261,8 +2292,8 @@ impl GraphExecutor {
           ChannelItem::SharedMemory(_) => {
             // Shared memory items need special handling
             tracing::warn!(
-              source_node = source_info.0,
-              source_port = source_info.1,
+              source_node = %source_info.0,
+              source_port = %source_info.1,
               "SharedMemory items not supported in mode switch - item will be dropped"
             );
             continue;
@@ -2280,10 +2311,10 @@ impl GraphExecutor {
         }
       } else {
         tracing::warn!(
-          source_node = source_info.0,
-          source_port = source_info.1,
-          target_node = target_info.0,
-          target_port = target_info.1,
+          source_node = %source_info.0,
+          source_port = %source_info.1,
+          target_node = %_target_info.0,
+          target_port = %_target_info.1,
           "No channel sender found for connection - item will be dropped"
         );
       }
@@ -2306,7 +2337,7 @@ impl GraphExecutor {
   /// # Arguments
   ///
   /// * `node_name` - The name of the node
-  /// * `port_index` - The output port index
+  /// * `port_name` - The output port name
   ///
   /// # Returns
   ///
@@ -2318,14 +2349,10 @@ impl GraphExecutor {
   /// The sender will block when the channel buffer is full, providing
   /// automatic backpressure. Nodes should wrap items in `ChannelItem::Bytes`
   /// or `ChannelItem::Arc` based on `ExecutionMode`.
-  pub fn get_channel_sender(
-    &self,
-    node_name: &str,
-    port_index: usize,
-  ) -> Option<&TypeErasedSender> {
+  pub fn get_channel_sender(&self, node_name: &str, port_name: &str) -> Option<&TypeErasedSender> {
     self
       .channel_senders
-      .get(&(node_name.to_string(), port_index))
+      .get(&(node_name.to_string(), port_name.to_string()))
   }
 
   /// Returns a mutable reference to the channel receiver for a given node and port.
@@ -2333,7 +2360,7 @@ impl GraphExecutor {
   /// # Arguments
   ///
   /// * `node_name` - The name of the node
-  /// * `port_index` - The input port index
+  /// * `port_name` - The input port name
   ///
   /// # Returns
   ///
@@ -2347,11 +2374,11 @@ impl GraphExecutor {
   pub fn get_channel_receiver(
     &mut self,
     node_name: &str,
-    port_index: usize,
+    port_name: &str,
   ) -> Option<&mut TypeErasedReceiver> {
     self
       .channel_receivers
-      .get_mut(&(node_name.to_string(), port_index))
+      .get_mut(&(node_name.to_string(), port_name.to_string()))
   }
 
   /// Returns a reference to the shared memory channel for a given node and port.
@@ -2359,7 +2386,7 @@ impl GraphExecutor {
   /// # Arguments
   ///
   /// * `node_name` - The name of the node
-  /// * `port_index` - The port index
+  /// * `port_name` - The port name
   ///
   /// # Returns
   ///
@@ -2372,11 +2399,11 @@ impl GraphExecutor {
   pub fn get_shared_memory_channel(
     &self,
     node_name: &str,
-    port_index: usize,
+    port_name: &str,
   ) -> Option<&SharedMemoryChannel> {
     self
       .shared_memory_channels
-      .get(&(node_name.to_string(), port_index))
+      .get(&(node_name.to_string(), port_name.to_string()))
   }
 
   /// Returns the number of channels created for routing.
@@ -2393,14 +2420,14 @@ impl GraphExecutor {
   /// # Arguments
   ///
   /// * `node_name` - The name of the node
-  /// * `port_index` - The port index
+  /// * `port_name` - The port name
   /// * `is_output` - `true` for output port (sender), `false` for input port (receiver)
   ///
   /// # Returns
   ///
   /// `true` if the channel exists, `false` otherwise.
-  pub fn has_channel(&self, node_name: &str, port_index: usize, is_output: bool) -> bool {
-    let key = (node_name.to_string(), port_index);
+  pub fn has_channel(&self, node_name: &str, port_name: &str, is_output: bool) -> bool {
+    let key = (node_name.to_string(), port_name.to_string());
     if is_output {
       self.channel_senders.contains_key(&key)
     } else {
@@ -2436,292 +2463,5 @@ impl GraphExecution for Graph {
     // Set execution mode from graph
     executor.execution_mode = executor.graph.execution_mode().clone();
     executor
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use crate::{GraphBuilder, ProducerNode};
-  use streamweave_vec::VecProducer;
-
-  #[tokio::test]
-  async fn test_throughput_monitor() {
-    use crate::throughput::ThroughputMonitor;
-    use std::time::Duration;
-
-    let monitor = ThroughputMonitor::new(Duration::from_secs(1));
-
-    // Initially zero
-    assert_eq!(monitor.item_count(), 0);
-
-    // Increment items
-    monitor.increment_item_count();
-    monitor.increment_by(5);
-    assert_eq!(monitor.item_count(), 6);
-
-    // Calculate throughput (may be 0 if not enough time has passed)
-    let throughput = monitor.calculate_throughput().await;
-    assert!(throughput >= 0.0);
-
-    // Reset
-    monitor.reset().await;
-    assert_eq!(monitor.item_count(), 0);
-  }
-
-  #[tokio::test]
-  async fn test_mode_switch_metrics() {
-    use crate::execution::ModeSwitchMetrics;
-
-    let mut metrics = ModeSwitchMetrics::new();
-    assert_eq!(metrics.switch_count, 0);
-
-    // Record a switch
-    metrics.record_switch(150.0, "InProcess", "Distributed");
-    assert_eq!(metrics.switch_count, 1);
-    assert_eq!(metrics.switch_reasons.len(), 1);
-    assert_eq!(metrics.switch_reasons[0], 150.0);
-    assert_eq!(metrics.current_mode, Some("Distributed".to_string()));
-
-    // Record another switch
-    metrics.record_switch(50.0, "Distributed", "InProcess");
-    assert_eq!(metrics.switch_count, 2);
-  }
-
-  #[tokio::test]
-  async fn test_graph_executor_creation() {
-    let graph = Graph::new();
-    let executor = graph.executor();
-
-    assert_eq!(executor.state(), ExecutionState::Stopped);
-    assert!(!executor.is_running());
-  }
-
-  #[tokio::test]
-  async fn test_graph_executor_start_stop() {
-    // Create a graph with at least one node
-    let graph = GraphBuilder::new()
-      .node(ProducerNode::from_producer(
-        "source".to_string(),
-        VecProducer::new(vec![1, 2, 3]),
-      ))
-      .unwrap()
-      .build();
-    let mut executor = graph.executor();
-
-    // Start execution
-    assert!(executor.start().await.is_ok());
-    assert_eq!(executor.state(), ExecutionState::Running);
-    assert!(executor.is_running());
-
-    // Stop execution
-    assert!(executor.stop().await.is_ok());
-    assert_eq!(executor.state(), ExecutionState::Stopped);
-    assert!(!executor.is_running());
-  }
-
-  #[tokio::test]
-  async fn test_graph_executor_double_start() {
-    // Create a graph with at least one node
-    let graph = GraphBuilder::new()
-      .node(ProducerNode::from_producer(
-        "source".to_string(),
-        VecProducer::new(vec![1, 2, 3]),
-      ))
-      .unwrap()
-      .build();
-    let mut executor = graph.executor();
-
-    assert!(executor.start().await.is_ok());
-    // Starting again should fail
-    assert!(executor.start().await.is_err());
-  }
-
-  #[tokio::test]
-  async fn test_graph_executor_empty_graph() {
-    let graph = Graph::new();
-    let mut executor = graph.executor();
-
-    // Starting an empty graph should fail
-    assert!(executor.start().await.is_err());
-  }
-
-  #[tokio::test]
-  async fn test_graph_executor_stop_when_stopped() {
-    let graph = Graph::new();
-    let mut executor = graph.executor();
-
-    // Stopping when already stopped should succeed
-    assert!(executor.stop().await.is_ok());
-  }
-
-  #[tokio::test]
-  async fn test_graph_executor_pause_resume() {
-    // Create a graph with at least one node
-    let graph = GraphBuilder::new()
-      .node(ProducerNode::from_producer(
-        "source".to_string(),
-        VecProducer::new(vec![1, 2, 3]),
-      ))
-      .unwrap()
-      .build();
-    let mut executor = graph.executor();
-
-    // Cannot pause when not running
-    assert!(executor.pause().await.is_err());
-
-    // Start execution
-    assert!(executor.start().await.is_ok());
-
-    // Pause execution
-    assert!(executor.pause().await.is_ok());
-    assert!(executor.is_paused());
-    assert_eq!(executor.state(), ExecutionState::Paused);
-
-    // Resume execution
-    assert!(executor.resume().await.is_ok());
-    assert!(!executor.is_paused());
-    assert_eq!(executor.state(), ExecutionState::Running);
-
-    // Stop execution
-    assert!(executor.stop().await.is_ok());
-  }
-
-  #[tokio::test]
-  async fn test_graph_executor_resume_when_not_paused() {
-    // Create a graph with at least one node
-    let graph = GraphBuilder::new()
-      .node(ProducerNode::from_producer(
-        "source".to_string(),
-        VecProducer::new(vec![1, 2, 3]),
-      ))
-      .unwrap()
-      .build();
-    let mut executor = graph.executor();
-
-    // Cannot resume when not paused
-    assert!(executor.resume().await.is_err());
-
-    // Start execution
-    assert!(executor.start().await.is_ok());
-
-    // Cannot resume when running (not paused)
-    assert!(executor.resume().await.is_err());
-  }
-
-  #[tokio::test]
-  async fn test_graph_executor_pause_signal() {
-    let graph = Graph::new();
-    let executor = graph.executor();
-
-    // Get pause signal
-    let pause_signal = executor.pause_signal();
-
-    // Initially not paused
-    assert!(!*pause_signal.read().await);
-
-    // Set pause signal
-    *pause_signal.write().await = true;
-    assert!(*pause_signal.read().await);
-
-    // Clear pause signal
-    *pause_signal.write().await = false;
-    assert!(!*pause_signal.read().await);
-  }
-
-  #[tokio::test]
-  async fn test_graph_executor_channel_creation() {
-    use crate::{GraphBuilder, ProducerNode};
-    use streamweave_vec::VecProducer;
-
-    // Create a simple graph with one node (no connections yet)
-    let graph = GraphBuilder::new()
-      .node(ProducerNode::from_producer(
-        "source".to_string(),
-        VecProducer::new(vec![1, 2, 3]),
-      ))
-      .unwrap()
-      .build();
-
-    let mut executor = graph.executor();
-
-    // Create channels (even though there are no connections, this should succeed)
-    assert!(executor.create_channels_with_buffer_size(64).is_ok());
-    assert_eq!(executor.channel_count(), 0);
-  }
-
-  #[tokio::test]
-  async fn test_graph_executor_channel_helpers() {
-    use crate::{GraphBuilder, ProducerNode};
-    use streamweave_vec::VecProducer;
-
-    // Create a simple graph
-    let graph = GraphBuilder::new()
-      .node(ProducerNode::from_producer(
-        "source".to_string(),
-        VecProducer::new(vec![1, 2, 3]),
-      ))
-      .unwrap()
-      .build();
-
-    let mut executor = graph.executor();
-
-    // No channels exist yet
-    assert!(!executor.has_channel("source", 0, true));
-    assert_eq!(executor.channel_count(), 0);
-    assert!(executor.get_channel_sender("source", 0).is_none());
-    assert!(executor.get_channel_receiver("source", 0).is_none());
-  }
-
-  #[tokio::test]
-  async fn test_graph_executor_lifecycle_errors() {
-    let graph = Graph::new();
-    let mut executor = graph.executor();
-
-    // Initially no errors
-    assert!(executor.errors().is_empty());
-
-    // Clear errors (should be no-op)
-    executor.clear_errors();
-    assert!(executor.errors().is_empty());
-  }
-
-  #[tokio::test]
-  async fn test_graph_executor_shutdown_timeout() {
-    let graph = Graph::new();
-    let executor = graph.executor();
-
-    // Default timeout is 30 seconds
-    assert_eq!(executor.shutdown_timeout(), Duration::from_secs(30));
-
-    // Create executor with custom timeout (need new graph since previous one was moved)
-    let graph2 = Graph::new();
-    let custom_timeout = Duration::from_secs(60);
-    let mut executor = GraphExecutor::with_shutdown_timeout(graph2, custom_timeout);
-    assert_eq!(executor.shutdown_timeout(), custom_timeout);
-
-    // Set new timeout
-    executor.set_shutdown_timeout(Duration::from_secs(10));
-    assert_eq!(executor.shutdown_timeout(), Duration::from_secs(10));
-  }
-
-  #[tokio::test]
-  async fn test_graph_executor_stop_immediate() {
-    // Create a graph with at least one node
-    let graph = GraphBuilder::new()
-      .node(ProducerNode::from_producer(
-        "source".to_string(),
-        VecProducer::new(vec![1, 2, 3]),
-      ))
-      .unwrap()
-      .build();
-    let mut executor = graph.executor();
-
-    // Start execution
-    assert!(executor.start().await.is_ok());
-
-    // Stop immediately
-    assert!(executor.stop_immediate().await.is_ok());
-    assert_eq!(executor.state(), ExecutionState::Stopped);
   }
 }

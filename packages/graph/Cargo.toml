@@ -19,7 +19,13 @@ streamweave-error = { path = "../error" }
 streamweave-pipeline = { path = "../pipeline" }
 streamweave-stateful = { path = "../stateful" }
 streamweave-window = { path = "../window" }
-tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
+tokio = { workspace = true, features = [
+  "macros",
+  "rt",
+  "rt-multi-thread",
+  "sync",
+  "time",
+] }
 futures = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
@@ -66,7 +72,120 @@ path = "test/control_flow/mod.rs"
 name = "batching"
 path = "test/batching.rs"
 
-# Control flow examples can now be added since Clone requirement has been removed
-# from nodes. Nodes use Arc<Mutex<T>> internally for zero-copy node sharing.
+[[example]]
+name = "basic_graph"
+path = "examples/basic_graph.rs"
+
+[[example]]
+name = "broadcast_router"
+path = "examples/broadcast_router.rs"
+
+[[example]]
+name = "round_robin_router"
+path = "examples/round_robin_router.rs"
+
+[[example]]
+name = "key_based_router"
+path = "examples/key_based_router.rs"
+
+[[example]]
+name = "merge_router"
+path = "examples/merge_router.rs"
+
+[[example]]
+name = "subgraph"
+path = "examples/subgraph.rs"
+
+[[example]]
+name = "stateful"
+path = "examples/stateful.rs"
+
+[[example]]
+name = "windowing"
+path = "examples/windowing.rs"
+
+[[example]]
+name = "batching"
+path = "examples/batching.rs"
+
+[[example]]
+name = "compression"
+path = "examples/compression.rs"
+
+[[example]]
+name = "serialization"
+path = "examples/serialization.rs"
+
+[[example]]
+name = "zero_copy"
+path = "examples/zero_copy.rs"
+
+[[example]]
+name = "shared_memory_channel"
+path = "examples/shared_memory_channel.rs"
+
+[[example]]
+name = "throughput"
+path = "examples/throughput.rs"
+
+[[example]]
+name = "complex_topology"
+path = "examples/complex_topology.rs"
+
+[[example]]
+name = "execution_lifecycle"
+path = "examples/execution_lifecycle.rs"
+
+[[example]]
+name = "control_flow_if_router"
+path = "examples/control_flow/if_router.rs"
+
+[[example]]
+name = "control_flow_match_router"
+path = "examples/control_flow/match_router.rs"
+
+[[example]]
+name = "control_flow_error_branch"
+path = "examples/control_flow/error_branch.rs"
+
+[[example]]
+name = "dead_letter_queue"
+path = "examples/dead_letter_queue.rs"
+
+[[example]]
+name = "control_flow_for_each"
+path = "examples/control_flow/for_each.rs"
+
+[[example]]
+name = "control_flow_while_loop"
+path = "examples/control_flow/while_loop.rs"
+
+[[example]]
+name = "control_flow_delay"
+path = "examples/control_flow/delay.rs"
+
+[[example]]
+name = "control_flow_timeout"
+path = "examples/control_flow/timeout.rs"
+
+[[example]]
+name = "control_flow_variables"
+path = "examples/control_flow/variables.rs"
+
+[[example]]
+name = "control_flow_aggregate"
+path = "examples/control_flow/aggregate.rs"
+
+[[example]]
+name = "control_flow_group_by"
+path = "examples/control_flow/group_by.rs"
+
+[[example]]
+name = "control_flow_join"
+path = "examples/control_flow/join.rs"
+
+[[example]]
+name = "control_flow_synchronize"
+path = "examples/control_flow/synchronize.rs"
 
 [features]
