@@ -70,6 +70,7 @@ See the [Adapters](#-adapters) section for more details.
 - **Producer Trait**: Define components that generate data streams
 - **Transformer Trait**: Define components that transform data streams
 - **Consumer Trait**: Define components that consume data streams
+- **Graph API**: Build complex data flow topologies with multiple nodes and connections
 - **Adapter Patterns**: Work with raw types while system uses messages internally
 - **Input/Output Traits**: Type-safe stream interfaces
 - **Port System**: Type-safe multi-port connections for graph-based processing
@@ -118,7 +119,10 @@ use streamweave::message::Message;
 // Consumers receive Message<T>
 ```
 
-For complete working examples, see the [pipeline package](../pipeline/README.md) or check out the [examples directory](https://github.com/Industrial/streamweave/tree/main/examples).
+For complete working examples, see:
+- [Pipeline Examples](../pipeline/README.md) - Linear pipeline execution
+- [Graph API](#graph-api) - Complex graph topologies with Message<T>
+- [Examples Directory](https://github.com/Industrial/streamweave/tree/main/examples) - Additional examples
 
 ## 📖 API Overview
 
@@ -432,6 +436,286 @@ type ThirdPort = <MultiPort as GetPort<2>>::Type;  // bool
 
 The port system supports up to 12 ports per component, with compile-time type checking.
 
+### Graph API
+
+The Graph API enables you to create complex data flow topologies with multiple producers, transformers, and consumers. All data flowing through graphs is automatically wrapped in `Message<T>`, providing consistent metadata and ID tracking throughout the graph.
+
+**Key Features:**
+- **Type-Safe Graph Construction**: Compile-time type checking ensures nodes can be safely connected
+- **Message-Based Data Flow**: All data flows as `Message<T>` with automatic ID and metadata preservation
+- **Flexible Topologies**: Support for fan-out, fan-in, and complex routing patterns
+- **Execution Modes**: In-process (zero-copy) and distributed (serialized) execution modes
+- **Control Flow Nodes**: Built-in support for conditionals, loops, aggregation, and more
+- **Router Nodes**: Broadcast, round-robin, key-based, and merge routing strategies
+
+#### Creating a Graph
+
+Use `GraphBuilder` to create graphs with a fluent API:
+
+```rust
+use streamweave::graph::{GraphBuilder, GraphExecution};
+use streamweave::graph::nodes::{ProducerNode, TransformerNode, ConsumerNode};
+use streamweave_array::ArrayProducer;
+use streamweave_transformers::MapTransformer;
+use streamweave_vec::VecConsumer;
+
+// Create a simple linear graph: producer -> transformer -> consumer
+let graph = GraphBuilder::new()
+    .node(ProducerNode::from_producer(
+        "source".to_string(),
+        ArrayProducer::new([1, 2, 3, 4, 5]),
+    ))?
+    .node(TransformerNode::from_transformer(
+        "double".to_string(),
+        MapTransformer::new(|x: i32| x * 2),
+    ))?
+    .node(ConsumerNode::from_consumer(
+        "sink".to_string(),
+        VecConsumer::<i32>::new(),
+    ))?
+    .connect_by_name("source", "double")?
+    .connect_by_name("double", "sink")?
+    .build();
+```
+
+#### Adding Nodes
+
+Nodes wrap your producers, transformers, and consumers to enable graph execution:
+
+**ProducerNode:**
+```rust
+use streamweave::graph::nodes::ProducerNode;
+use streamweave_array::ArrayProducer;
+
+let producer_node = ProducerNode::from_producer(
+    "source".to_string(),
+    ArrayProducer::new([1, 2, 3]),
+);
+```
+
+**TransformerNode:**
+```rust
+use streamweave::graph::nodes::TransformerNode;
+use streamweave_transformers::MapTransformer;
+
+let transformer_node = TransformerNode::from_transformer(
+    "transform".to_string(),
+    MapTransformer::new(|x: i32| x * 2),
+);
+```
+
+**ConsumerNode:**
+```rust
+use streamweave::graph::nodes::ConsumerNode;
+use streamweave_vec::VecConsumer;
+
+let consumer_node = ConsumerNode::from_consumer(
+    "sink".to_string(),
+    VecConsumer::<i32>::new(),
+);
+```
+
+#### Connecting Nodes
+
+Connect nodes using `connect_by_name()`:
+
+```rust
+// Connect source to transformer
+builder.connect_by_name("source", "transform")?;
+
+// Connect transformer to sink
+builder.connect_by_name("transform", "sink")?;
+```
+
+For multi-port nodes, specify port names:
+
+```rust
+// Connect specific ports
+builder.connect_by_name("source:out", "transform:in")?;
+```
+
+#### Executing Graphs
+
+Execute graphs using the `GraphExecutor`:
+
+```rust
+use streamweave::graph::GraphExecution;
+
+// Create executor from graph
+let mut executor = graph.executor();
+
+// Start execution
+executor.start().await?;
+
+// Wait for processing
+tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+// Stop execution
+executor.stop().await?;
+
+// Check for errors
+let errors = executor.errors();
+if !errors.is_empty() {
+    eprintln!("Graph execution had {} errors", errors.len());
+}
+```
+
+#### Message<T> in Graphs
+
+All data flowing through graphs is automatically wrapped in `Message<T>`. Nodes handle message wrapping and unwrapping internally:
+
+- **ProducerNode**: Wraps producer output in `Message<T>` before sending
+- **TransformerNode**: Unwraps `Message<T>` for transformation, wraps output back in `Message<T>`
+- **ConsumerNode**: Unwraps `Message<T>` before passing to consumer
+
+Message IDs and metadata are automatically preserved through the graph, enabling:
+- End-to-end message tracking
+- Error correlation with specific messages
+- Metadata propagation through transformations
+
+#### Execution Modes
+
+Graphs support different execution modes:
+
+**In-Process Mode (Default):**
+- Zero-copy message sharing using `Arc<Message<T>>`
+- Highest performance for single-process execution
+- Automatic fallback to serialization when needed
+
+**Distributed Mode:**
+- Serialized message transmission using JSON or other formats
+- Enables multi-process execution
+- Supports compression and batching
+
+```rust
+use streamweave::graph::execution::ExecutionMode;
+
+let graph = GraphBuilder::new()
+    .with_execution_mode(ExecutionMode::Distributed {
+        serialization: streamweave::graph::serialization::SerializationFormat::Json,
+        compression: None,
+    })
+    // ... add nodes and connections
+    .build();
+```
+
+#### Complex Topologies
+
+Graphs support complex topologies with fan-out, fan-in, and routing:
+
+```rust
+// Fan-out: One producer to multiple transformers
+builder
+    .node(producer_node)?
+    .node(transformer1)?
+    .node(transformer2)?
+    .connect_by_name("source", "transform1")?
+    .connect_by_name("source", "transform2")?;
+
+// Fan-in: Multiple producers to one consumer
+builder
+    .node(producer1)?
+    .node(producer2)?
+    .node(consumer)?
+    .connect_by_name("source1", "sink")?
+    .connect_by_name("source2", "sink")?;
+```
+
+#### Router Nodes
+
+Router nodes enable advanced routing patterns:
+
+- **BroadcastRouter**: Broadcasts messages to all output ports
+- **RoundRobinRouter**: Distributes messages in round-robin fashion
+- **KeyBasedRouter**: Routes messages based on a key function
+- **MergeRouter**: Merges multiple input streams
+
+Router nodes automatically handle `Message<T>` wrapping and unwrapping, preserving message IDs and metadata.
+
+#### Control Flow Nodes
+
+Control flow nodes provide advanced data processing patterns:
+
+- **If**: Conditional routing based on predicates
+- **Match**: Pattern matching and routing
+- **Aggregate**: Aggregate items using various aggregators
+- **GroupBy**: Group items by a key
+- **Join**: Join multiple input streams
+- **Delay**: Delay items by a specified duration
+- **Timeout**: Apply timeouts to operations
+- **While**: Loop constructs
+- **ForEach**: Process each item in a collection
+
+All control flow nodes preserve `Message<T>` IDs and metadata.
+
+#### Subgraphs
+
+Subgraphs allow you to use graphs as nodes within other graphs, enabling hierarchical composition:
+
+```rust
+use streamweave::graph::nodes::SubgraphNode;
+
+// Create an inner graph
+let inner_graph = GraphBuilder::new()
+    .node(inner_producer)?
+    .node(inner_transformer)?
+    .node(inner_consumer)?
+    .connect_by_name("inner_source", "inner_transform")?
+    .connect_by_name("inner_transform", "inner_sink")?
+    .build();
+
+// Use as a subgraph node
+let subgraph_node = SubgraphNode::new(
+    "subgraph".to_string(),
+    inner_graph,
+    vec!["in".to_string()],      // Input port names
+    vec!["out".to_string()],     // Output port names
+);
+
+// Use in outer graph
+let outer_graph = GraphBuilder::new()
+    .node(outer_producer)?
+    .node(subgraph_node)?
+    .node(outer_consumer)?
+    .connect_by_name("outer_source", "subgraph")?
+    .connect_by_name("subgraph", "outer_sink")?
+    .build();
+```
+
+Messages flow correctly through subgraph boundaries, preserving IDs and metadata.
+
+#### Error Handling in Graphs
+
+Graph execution errors include message context:
+
+```rust
+use streamweave::graph::execution::ExecutionError;
+
+let errors = executor.errors();
+for error in errors {
+    match error {
+        ExecutionError::NodeExecutionFailed { node, reason, message_id, .. } => {
+            eprintln!("Node {} failed: {} (message_id: {:?})", node, reason, message_id);
+        }
+        ExecutionError::SerializationError { node, reason, message_id, .. } => {
+            eprintln!("Serialization error in {}: {} (message_id: {:?})", node, reason, message_id);
+        }
+        // ... other error types
+        _ => {}
+    }
+}
+```
+
+All error types include optional `message_id` fields for correlating errors with specific messages.
+
+#### Graph Examples
+
+For more examples, see:
+- [Basic Graph Example](../../packages/graph/examples/basic_graph.rs)
+- [Complex Topology Example](../../packages/graph/examples/complex_topology.rs)
+- [Router Examples](../../packages/graph/examples/)
+- [Control Flow Examples](../../packages/graph/examples/control_flow/)
+
 ### Configuration System
 
 All components support configuration through `ProducerConfig`, `TransformerConfig`, and `ConsumerConfig`:
@@ -649,8 +933,9 @@ For detailed performance analysis and optimization strategies, see the [zero-cop
 ## 📝 Examples
 
 For more examples, see:
-- [Pipeline Examples](https://github.com/Industrial/streamweave/tree/main/examples/basic_pipeline)
-- [Graph Examples](https://github.com/Industrial/streamweave/tree/main/examples)
+- [Pipeline Examples](https://github.com/Industrial/streamweave/tree/main/examples/basic_pipeline) - Linear pipeline execution
+- [Graph API](#graph-api) - Graph API usage with Message<T>
+- [Graph Example Files](../../packages/graph/examples/) - Complete graph examples
 - [Package Implementations](../) - See specific packages for concrete implementations
 
 ## 📖 Documentation
@@ -663,7 +948,7 @@ For more examples, see:
 
 - [streamweave-error](../error/README.md) - Error handling system
 - [streamweave-pipeline](../pipeline/README.md) - Pipeline builder and execution
-- [streamweave-graph](../graph/README.md) - Graph API for complex topologies
+- [Graph API Documentation](#graph-api) - Graph API for complex topologies (included in streamweave)
 
 **Note**: The message module is now part of the core `streamweave` package. See the [message module documentation](https://docs.rs/streamweave/latest/streamweave/message/index.html) for details.
 

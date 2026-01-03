@@ -3,370 +3,346 @@
 		"tasks": [
 			{
 				"id": "1",
-				"title": "Move Message Package into Core streamweave",
-				"description": "Move the streamweave-message package into the core streamweave package as a module. This consolidates message types into the core package where they will be used universally.",
+				"title": "Move Graph Package into streamweave Package",
+				"description": "Move the streamweave-graph package into the core streamweave package as a module. This consolidates graph functionality into the core package where it will be used universally.",
 				"status": "done",
 				"priority": "high",
 				"dependencies": [],
-				"details": "The message package currently exists as a separate package. We need to move it into streamweave/src/message/ and update all imports. This is the foundation for making messages universal in the core package.",
+				"details": "The graph package currently exists as a separate package. We need to move it into streamweave/src/graph/ and update all imports. This is the foundation for integrating graph functionality into the core package.",
 				"subtasks": [
 					{
 						"id": 1,
-						"title": "Copy message module into streamweave package",
-						"description": "Copy packages/message/src/message.rs to packages/streamweave/src/message.rs. Keep the same structure and functionality. Update module path references.",
+						"title": "Create graph module directory structure",
+						"description": "Create packages/streamweave/src/graph/ directory and packages/streamweave/src/graph/nodes/ subdirectory. Set up the basic module structure.",
 						"status": "done",
 						"dependencies": [],
 						"parentId": "1",
-						"updatedAt": "2026-01-03T15:22:11.680Z"
+						"updatedAt": "2026-01-03T16:27:56.997Z"
 					},
 					{
 						"id": 2,
-						"title": "Update streamweave lib.rs to export message module",
-						"description": "Add 'pub mod message;' and 'pub use message::*;' to packages/streamweave/src/lib.rs. Ensure Message, MessageId, MessageMetadata, and all related types are exported.",
+						"title": "Copy core graph modules into streamweave",
+						"description": "Copy core graph modules (graph.rs, execution.rs, connection.rs, channels.rs, traits.rs, etc.) from packages/graph/src/ to packages/streamweave/src/graph/. Update module path references and imports.",
 						"status": "done",
 						"dependencies": ["1.1"],
 						"parentId": "1",
-						"updatedAt": "2026-01-03T15:22:17.856Z"
+						"updatedAt": "2026-01-03T16:29:57.694Z"
 					},
 					{
 						"id": 3,
-						"title": "Update streamweave Cargo.toml dependencies",
-						"description": "Add any missing dependencies from message package to streamweave Cargo.toml. Check for serde, serde_json, uuid (if needed), and ensure all message dependencies are present.",
+						"title": "Move all node types to graph/nodes/",
+						"description": "Move node.rs and all control flow nodes (from control_flow/) to packages/streamweave/src/graph/nodes/. Create nodes/mod.rs to export all node types. Move router nodes (broadcast_router, key_based_router, merge_router, round_robin_router) to nodes/ as well.",
 						"status": "done",
-						"dependencies": ["1.1"],
+						"dependencies": ["1.2"],
 						"parentId": "1",
-						"updatedAt": "2026-01-03T15:22:30.113Z"
+						"updatedAt": "2026-01-03T16:31:29.518Z"
 					},
 					{
 						"id": 4,
-						"title": "Verify message module compiles in streamweave",
-						"description": "Run 'cargo check' on streamweave package to ensure message module compiles correctly. Fix any import or dependency issues.",
+						"title": "Move supporting modules to graph/",
+						"description": "Move supporting modules (batching.rs, compression.rs, serialization.rs, shared_memory_channel.rs, stateful.rs, subgraph.rs, throughput.rs, windowing.rs, zero_copy.rs) to packages/streamweave/src/graph/. Update all internal imports.",
 						"status": "done",
-						"dependencies": ["1.2", "1.3"],
+						"dependencies": ["1.3"],
 						"parentId": "1",
-						"updatedAt": "2026-01-03T15:22:38.171Z"
-					}
-				],
-				"updatedAt": "2026-01-03T15:22:38.171Z"
-			},
-			{
-				"id": "2",
-				"title": "Update Core Traits to Work with Message<T>",
-				"description": "Refactor Producer, Transformer, and Consumer traits to work with Message<T> as the universal type. This is the core architectural change that makes messages universal.",
-				"status": "done",
-				"priority": "high",
-				"dependencies": ["1"],
-				"details": "The core traits currently work with raw types (T). We need to update them to work with Message<T> internally, while maintaining type safety and ergonomics. This affects Producer::Output, Transformer::Input/Output, and Consumer::Input.",
-				"subtasks": [
-					{
-						"id": 1,
-						"title": "Update Producer trait to yield Message<T>",
-						"description": "Modify Producer trait so that Producer::Output is Message<T> instead of T. Update produce() method signature. Ensure OutputStream yields Message<T>. Update ProducerConfig to work with Message<T>.",
-						"status": "done",
-						"dependencies": ["1"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T15:23:42.343Z"
-					},
-					{
-						"id": 2,
-						"title": "Update Transformer trait to work with Message<T>",
-						"description": "Modify Transformer trait so that Transformer::Input is Message<T> and Transformer::Output is Message<U>. Update transform() method to work with Message streams. Update TransformerConfig accordingly.",
-						"status": "done",
-						"dependencies": ["2.1"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T15:24:20.719Z"
-					},
-					{
-						"id": 3,
-						"title": "Update Consumer trait to consume Message<T>",
-						"description": "Modify Consumer trait so that Consumer::Input is Message<T>. Update consume() method to accept streams of Message<T>. Update ConsumerConfig to work with Message<T>.",
-						"status": "done",
-						"dependencies": ["2.2"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T15:24:40.238Z"
-					},
-					{
-						"id": 4,
-						"title": "Update Input and Output traits for Message<T>",
-						"description": "Update the Input and Output marker traits to reflect Message<T> types. Ensure type consistency across all trait bounds.",
-						"status": "done",
-						"dependencies": ["2.1", "2.2", "2.3"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T15:24:51.396Z"
+						"updatedAt": "2026-01-03T16:32:35.959Z"
 					},
 					{
 						"id": 5,
-						"title": "Update PortList implementations for Message types",
-						"description": "Ensure PortList trait and GetPort implementations work correctly with Message<T> types. Verify port type extraction works for Message-wrapped types.",
+						"title": "Update streamweave lib.rs to export graph module",
+						"description": "Add 'pub mod graph;' to packages/streamweave/src/lib.rs. Create graph/mod.rs that exports all graph functionality. Ensure Graph, GraphBuilder, and all node types are accessible.",
 						"status": "done",
-						"dependencies": ["2.4"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T15:25:11.716Z"
-					}
-				],
-				"updatedAt": "2026-01-03T15:25:11.716Z"
-			},
-			{
-				"id": "3",
-				"title": "Add Adapter Patterns for Ergonomic Usage",
-				"description": "Create adapter patterns that allow users to work with raw types (T) while internally using Message<T>. This provides backward compatibility and ergonomic APIs for simple use cases.",
-				"status": "done",
-				"priority": "high",
-				"dependencies": ["2"],
-				"details": "To maintain ergonomics, we need adapters that automatically wrap raw types into Message<T> and unwrap Message<T> back to raw types. This allows users to work with simple types while the system uses messages internally.",
-				"subtasks": [
-					{
-						"id": 1,
-						"title": "Create MessageWrapper adapter for Producers",
-						"description": "Create a MessageWrapper<P> adapter that wraps any Producer<P::Output> and automatically wraps its output into Message<P::Output>. This allows existing producers to work with the new Message-based system.",
-						"status": "done",
-						"dependencies": ["2"],
-						"parentId": "3",
-						"updatedAt": "2026-01-03T15:26:02.654Z"
-					},
-					{
-						"id": 2,
-						"title": "Create PayloadExtractor adapter for Transformers",
-						"description": "Create adapters that allow transformers to work with payloads directly (T) while the system uses Message<T>. Provide both payload-only and full-message transformer adapters.",
-						"status": "done",
-						"dependencies": ["3.1"],
-						"parentId": "3",
-						"updatedAt": "2026-01-03T15:27:45.695Z"
-					},
-					{
-						"id": 3,
-						"title": "Create PayloadExtractor adapter for Consumers",
-						"description": "Create adapters that allow consumers to work with payloads directly (T) while receiving Message<T> internally. Automatically extract payload before passing to consumer.",
-						"status": "done",
-						"dependencies": ["3.2"],
-						"parentId": "3",
-						"updatedAt": "2026-01-03T15:28:20.408Z"
-					},
-					{
-						"id": 4,
-						"title": "Add convenience methods for message access",
-						"description": "Add convenience methods to Producer, Transformer, and Consumer traits that allow direct access to message payloads when needed. Methods like payload(), message_id(), metadata() for ergonomic access.",
-						"status": "done",
-						"dependencies": ["3.1", "3.2", "3.3"],
-						"parentId": "3",
-						"updatedAt": "2026-01-03T15:29:39.953Z"
-					},
-					{
-						"id": 5,
-						"title": "Create helper functions for message creation",
-						"description": "Add helper functions like wrap_message(), unwrap_message(), with_id_generator() that make it easy to create and work with messages. These should be in the message module.",
-						"status": "done",
-						"dependencies": ["3.4"],
-						"parentId": "3",
-						"updatedAt": "2026-01-03T15:30:18.974Z"
-					}
-				],
-				"updatedAt": "2026-01-03T15:30:18.974Z"
-			},
-			{
-				"id": "4",
-				"title": "Update streamweave Package Internals",
-				"description": "Update all internal implementations in the streamweave package to work with Message<T>. This includes updating config types, error handling, and any internal utilities.",
-				"status": "done",
-				"priority": "high",
-				"dependencies": ["2", "3"],
-				"details": "The streamweave package has internal code that needs to be updated to work with Message<T>. This includes ProducerConfig, TransformerConfig, ConsumerConfig, error handling, and any helper functions.",
-				"subtasks": [
-					{
-						"id": 1,
-						"title": "Update ProducerConfig for Message<T>",
-						"description": "Update ProducerConfig<T> to ProducerConfig<Message<T>>. Update all methods and error handling to work with Message types. Ensure error strategies work with Message payloads.",
-						"status": "done",
-						"dependencies": ["2", "3"],
-						"parentId": "4",
-						"updatedAt": "2026-01-03T15:30:49.868Z"
-					},
-					{
-						"id": 2,
-						"title": "Update TransformerConfig for Message<T>",
-						"description": "Update TransformerConfig<T> to TransformerConfig<Message<T>>. Update error handling and configuration methods. Ensure compatibility with message-based error strategies.",
-						"status": "done",
-						"dependencies": ["4.1"],
-						"parentId": "4",
-						"updatedAt": "2026-01-03T15:30:55.208Z"
-					},
-					{
-						"id": 3,
-						"title": "Update ConsumerConfig for Message<T>",
-						"description": "Update ConsumerConfig<T> to ConsumerConfig<Message<T>>. Update all configuration methods and error handling to work with Message types.",
-						"status": "done",
-						"dependencies": ["4.2"],
-						"parentId": "4",
-						"updatedAt": "2026-01-03T15:30:59.269Z"
-					},
-					{
-						"id": 4,
-						"title": "Update error handling for Message types",
-						"description": "Update error handling methods (handle_error, create_error_context) to work with Message<T>. Ensure error contexts include message IDs and metadata when available.",
-						"status": "done",
-						"dependencies": ["4.1", "4.2", "4.3"],
-						"parentId": "4",
-						"updatedAt": "2026-01-03T15:31:18.953Z"
-					},
-					{
-						"id": 5,
-						"title": "Update component_info methods",
-						"description": "Update component_info() methods in Producer, Transformer, and Consumer to work with Message types. Ensure component information includes message-related metadata.",
-						"status": "done",
-						"dependencies": ["4.4"],
-						"parentId": "4",
-						"updatedAt": "2026-01-03T15:31:33.675Z"
-					}
-				],
-				"updatedAt": "2026-01-03T15:31:33.675Z"
-			},
-			{
-				"id": "5",
-				"title": "Update Documentation and Examples",
-				"description": "Update all documentation, README files, and examples in the streamweave package to reflect the new Message-based architecture. Ensure users understand how to work with messages.",
-				"status": "done",
-				"priority": "medium",
-				"dependencies": ["2", "3", "4"],
-				"details": "Documentation needs to be updated to explain the universal message model, how to use adapters for simple cases, and how to work with messages directly for advanced cases. Examples should demonstrate both patterns.",
-				"subtasks": [
-					{
-						"id": 1,
-						"title": "Update streamweave README.md",
-						"description": "Update packages/streamweave/README.md to explain the universal message model. Document how messages work, when to use adapters, and how to access message metadata. Include examples of both simple and advanced usage.",
-						"status": "done",
-						"dependencies": ["2", "3", "4"],
-						"parentId": "5",
-						"updatedAt": "2026-01-03T15:51:48.212Z"
-					},
-					{
-						"id": 2,
-						"title": "Update rustdoc comments for core traits",
-						"description": "Update all rustdoc comments for Producer, Transformer, and Consumer traits to explain Message<T> usage. Add examples showing message creation, payload access, and metadata usage.",
-						"status": "done",
-						"dependencies": ["5.1"],
-						"parentId": "5",
-						"updatedAt": "2026-01-03T15:54:41.092Z"
-					},
-					{
-						"id": 3,
-						"title": "Create message module documentation",
-						"description": "Add comprehensive documentation to the message module explaining Message<T>, MessageId, MessageMetadata, and all related types. Include examples and usage patterns.",
-						"status": "done",
-						"dependencies": ["5.2"],
-						"parentId": "5",
-						"updatedAt": "2026-01-03T15:56:38.095Z"
-					},
-					{
-						"id": 4,
-						"title": "Update example code in documentation",
-						"description": "Update all example code in documentation to use Message<T>. Show both adapter-based usage (simple) and direct message usage (advanced). Ensure examples compile and work correctly.",
-						"status": "done",
-						"dependencies": ["5.3"],
-						"parentId": "5",
-						"updatedAt": "2026-01-03T15:57:21.983Z"
-					},
-					{
-						"id": 5,
-						"title": "Create migration guide",
-						"description": "Create a migration guide explaining how to update code from the old raw-type model to the new Message-based model. Include examples of common patterns and adapter usage.",
-						"status": "done",
-						"dependencies": ["5.4"],
-						"parentId": "5",
-						"updatedAt": "2026-01-03T15:58:01.881Z"
-					}
-				],
-				"updatedAt": "2026-01-03T15:58:01.881Z"
-			},
-			{
-				"id": "6",
-				"title": "Testing and Validation",
-				"description": "Create comprehensive tests for the refactored streamweave package. Test message wrapping/unwrapping, adapters, trait implementations, and ensure all existing functionality still works.",
-				"status": "done",
-				"priority": "high",
-				"dependencies": ["2", "3", "4"],
-				"details": "Testing is critical to ensure the refactoring doesn't break functionality. We need tests for message creation, adapter patterns, trait implementations, error handling, and integration tests for the full pipeline.",
-				"subtasks": [
-					{
-						"id": 1,
-						"title": "Test message module functionality",
-						"description": "Create tests for Message<T>, MessageId, MessageMetadata, and all message-related functionality. Test message creation, ID generation, metadata manipulation, and message transformations.",
-						"status": "done",
-						"dependencies": ["1", "2"],
-						"parentId": "6",
-						"updatedAt": "2026-01-03T15:32:53.404Z"
-					},
-					{
-						"id": 2,
-						"title": "Test Producer trait with Message<T>",
-						"description": "Create tests for Producer trait implementations with Message<T>. Test message wrapping, ID generation, metadata propagation, and error handling in producers.",
-						"status": "done",
-						"dependencies": ["6.1", "2.1"],
-						"parentId": "6",
-						"updatedAt": "2026-01-03T15:35:24.500Z"
-					},
-					{
-						"id": 3,
-						"title": "Test Transformer trait with Message<T>",
-						"description": "Create tests for Transformer trait implementations with Message<T>. Test message transformation, payload access, metadata preservation, and error handling in transformers.",
-						"status": "done",
-						"dependencies": ["6.2", "2.2"],
-						"parentId": "6",
-						"updatedAt": "2026-01-03T15:37:17.170Z"
-					},
-					{
-						"id": 4,
-						"title": "Test Consumer trait with Message<T>",
-						"description": "Create tests for Consumer trait implementations with Message<T>. Test message consumption, payload extraction, metadata access, and error handling in consumers.",
-						"status": "done",
-						"dependencies": ["6.3", "2.3"],
-						"parentId": "6",
-						"updatedAt": "2026-01-03T15:39:14.827Z"
-					},
-					{
-						"id": 5,
-						"title": "Test adapter patterns",
-						"description": "Create tests for all adapter patterns (MessageWrapper, PayloadExtractor, etc.). Test that adapters correctly wrap/unwrap messages, preserve functionality, and maintain type safety.",
-						"status": "done",
-						"dependencies": ["6.4", "3"],
-						"parentId": "6",
-						"updatedAt": "2026-01-03T15:42:05.252Z"
+						"dependencies": ["1.4"],
+						"parentId": "1",
+						"updatedAt": "2026-01-03T16:32:50.594Z"
 					},
 					{
 						"id": 6,
-						"title": "Integration tests for full pipeline",
-						"description": "Create integration tests that test a full Producer → Transformer → Consumer pipeline with Message<T>. Verify messages flow correctly, metadata is preserved, and IDs are maintained throughout.",
+						"title": "Update streamweave Cargo.toml dependencies",
+						"description": "Add all dependencies from graph package to streamweave Cargo.toml. Check for tokio, async-stream, serde, tracing, and any other graph-specific dependencies. Remove graph package from workspace if it exists.",
 						"status": "done",
-						"dependencies": ["6.5"],
-						"parentId": "6",
-						"updatedAt": "2026-01-03T15:44:16.520Z"
+						"dependencies": ["1.5"],
+						"parentId": "1",
+						"updatedAt": "2026-01-03T16:33:10.135Z"
 					},
 					{
 						"id": 7,
-						"title": "Test error handling with messages",
-						"description": "Test error handling scenarios with Message<T>. Verify error contexts include message information, error strategies work correctly, and error recovery preserves message integrity.",
+						"title": "Update all graph module imports",
+						"description": "Update all imports throughout the codebase that reference streamweave_graph to use streamweave::graph instead. Update examples, tests, and any other code that uses graph functionality.",
 						"status": "done",
-						"dependencies": ["6.6"],
-						"parentId": "6",
-						"updatedAt": "2026-01-03T15:45:53.215Z"
+						"dependencies": ["1.6"],
+						"parentId": "1",
+						"updatedAt": "2026-01-03T16:33:41.890Z"
 					},
 					{
 						"id": 8,
-						"title": "Run existing tests and fix breakages",
-						"description": "Run all existing tests in the streamweave package. Fix any test breakages caused by the Message<T> refactoring. Ensure all tests pass before considering the refactoring complete.",
+						"title": "Verify graph module compiles in streamweave",
+						"description": "Run 'cargo check' on streamweave package to ensure graph module compiles correctly. Fix any import, dependency, or module path issues.",
 						"status": "done",
-						"dependencies": ["6.7"],
-						"parentId": "6",
-						"updatedAt": "2026-01-03T15:50:40.856Z"
+						"dependencies": ["1.7"],
+						"parentId": "1",
+						"updatedAt": "2026-01-03T16:36:06.772Z"
 					}
 				],
-				"updatedAt": "2026-01-03T15:50:40.856Z"
+				"updatedAt": "2026-01-03T16:36:06.772Z"
+			},
+			{
+				"id": "2",
+				"title": "Refactor Graph to Use Message<T>",
+				"description": "Refactor the entire graph system to work with Message<T> as the universal type. This ensures all data flowing through the graph is wrapped in messages, providing consistent metadata and ID tracking.",
+				"status": "done",
+				"priority": "high",
+				"dependencies": ["1"],
+				"details": "The graph system currently works with raw types (T). We need to update it to work with Message<T> internally, ensuring all channels, nodes, and connections handle messages. This affects channels, node execution, serialization, and all graph operations.",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Update ChannelItem to use Message<T>",
+						"description": "Modify ChannelItem enum and channel types to work with Message<T> instead of raw types. Update TypeErasedSender and TypeErasedReceiver to handle Message<T>. Ensure serialization works with messages.",
+						"status": "done",
+						"dependencies": ["1"],
+						"parentId": "2",
+						"updatedAt": "2026-01-03T16:37:13.464Z"
+					},
+					{
+						"id": 2,
+						"title": "Update Node types to work with Message<T>",
+						"description": "Update ProducerNode, TransformerNode, and ConsumerNode to work with Message<T>. Modify node execution logic to handle Message streams. Update port type extraction to work with Message-wrapped types.",
+						"status": "done",
+						"dependencies": ["2.1"],
+						"parentId": "2",
+						"updatedAt": "2026-01-03T16:44:51.821Z"
+					},
+					{
+						"id": 3,
+						"title": "Update Graph execution to use Message<T>",
+						"description": "Update Graph execution engine to ensure all data flowing through connections is Message<T>. Modify spawn_node_task and execution logic to handle Message streams. Update channel creation to use Message types.",
+						"status": "done",
+						"dependencies": ["2.2"],
+						"parentId": "2",
+						"updatedAt": "2026-01-03T16:46:20.260Z"
+					},
+					{
+						"id": 4,
+						"title": "Update connection validation for Message types",
+						"description": "Update CompatibleWith trait and connection validation to work with Message<T> types. Ensure type compatibility checks work correctly with Message-wrapped types. Update port type extraction.",
+						"status": "done",
+						"dependencies": ["2.3"],
+						"parentId": "2",
+						"updatedAt": "2026-01-03T16:47:24.391Z"
+					},
+					{
+						"id": 5,
+						"title": "Update control flow nodes for Message<T>",
+						"description": "Update all control flow nodes (aggregate, delay, error_branch, for_each, group_by, if_router, join, match_router, synchronize, timeout, while_loop) to work with Message<T>. Ensure they preserve message IDs and metadata.",
+						"status": "done",
+						"dependencies": ["2.4"],
+						"parentId": "2",
+						"updatedAt": "2026-01-03T16:49:33.570Z"
+					},
+					{
+						"id": 6,
+						"title": "Update router nodes for Message<T>",
+						"description": "Update all router nodes (broadcast_router, key_based_router, merge_router, round_robin_router) to work with Message<T>. Ensure routing logic preserves message metadata and IDs when distributing messages.",
+						"status": "done",
+						"dependencies": ["2.5"],
+						"parentId": "2",
+						"updatedAt": "2026-01-03T16:50:47.885Z"
+					},
+					{
+						"id": 7,
+						"title": "Update serialization for Message<T>",
+						"description": "Update serialization module to handle Message<T> serialization. Ensure message IDs and metadata are preserved during serialization/deserialization. Update compression to work with messages.",
+						"status": "done",
+						"dependencies": ["2.6"],
+						"parentId": "2",
+						"updatedAt": "2026-01-03T16:51:46.865Z"
+					},
+					{
+						"id": 8,
+						"title": "Update zero-copy and shared memory for Message<T>",
+						"description": "Update zero-copy channel and shared memory channel implementations to work with Message<T>. Ensure zero-copy optimizations work correctly with message types. Update ArcPool and related types.",
+						"status": "done",
+						"dependencies": ["2.7"],
+						"parentId": "2",
+						"updatedAt": "2026-01-03T16:53:05.038Z"
+					},
+					{
+						"id": 9,
+						"title": "Update stateful and windowing for Message<T>",
+						"description": "Update stateful node support and windowing functionality to work with Message<T>. Ensure state management and windowing operations preserve message metadata. Update checkpointing for messages.",
+						"status": "done",
+						"dependencies": ["2.8"],
+						"parentId": "2",
+						"updatedAt": "2026-01-03T16:54:26.887Z"
+					},
+					{
+						"id": 10,
+						"title": "Update subgraph support for Message<T>",
+						"description": "Update subgraph functionality to work with Message<T>. Ensure messages flow correctly through subgraph boundaries. Update subgraph node execution to handle Message streams.",
+						"status": "done",
+						"dependencies": ["2.9"],
+						"parentId": "2",
+						"updatedAt": "2026-01-03T16:54:53.487Z"
+					},
+					{
+						"id": 11,
+						"title": "Update error handling in graph for Message<T>",
+						"description": "Update graph error handling to work with Message<T>. Ensure error contexts include message information. Update error propagation through graph connections to preserve message metadata.",
+						"status": "done",
+						"dependencies": ["2.10"],
+						"parentId": "2",
+						"updatedAt": "2026-01-03T16:56:31.207Z"
+					},
+					{
+						"id": 12,
+						"title": "Verify graph compiles with Message<T>",
+						"description": "Run 'cargo check' on streamweave package to ensure all graph functionality compiles correctly with Message<T>. Fix any type errors, import issues, or compilation problems.",
+						"status": "done",
+						"dependencies": ["2.11"],
+						"parentId": "2",
+						"updatedAt": "2026-01-03T16:57:34.539Z"
+					}
+				],
+				"updatedAt": "2026-01-03T16:57:34.539Z"
+			},
+			{
+				"id": "3",
+				"title": "Update Tests and Examples for Graph Integration",
+				"description": "Update all tests and examples to work with the integrated graph module and Message<T> types. Ensure all graph functionality is properly tested.",
+				"status": "done",
+				"priority": "high",
+				"dependencies": ["2"],
+				"details": "All existing graph tests need to be moved and updated to work with the new module structure and Message<T> types. Examples need to be updated to demonstrate the integrated graph API.",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Move graph tests to streamweave package",
+						"description": "Move all tests from packages/graph/ to packages/streamweave/tests/graph/. Update test imports to use streamweave::graph. Organize tests by module (nodes, execution, channels, etc.).",
+						"status": "done",
+						"dependencies": ["2"],
+						"parentId": "3",
+						"updatedAt": "2026-01-03T17:01:04.460Z"
+					},
+					{
+						"id": 2,
+						"title": "Update graph tests for Message<T>",
+						"description": "Update all graph tests to work with Message<T> types. Update test data creation to use wrap_message(). Verify message IDs and metadata are preserved in tests. Update assertions to check message properties.",
+						"status": "done",
+						"dependencies": ["3.1"],
+						"parentId": "3",
+						"updatedAt": "2026-01-03T17:15:28.125Z"
+					},
+					{
+						"id": 3,
+						"title": "Test node execution with Message<T>",
+						"description": "Create comprehensive tests for node execution with Message<T>. Test ProducerNode, TransformerNode, and ConsumerNode with messages. Verify message flow, ID preservation, and metadata handling.",
+						"status": "done",
+						"dependencies": ["3.2"],
+						"parentId": "3",
+						"updatedAt": "2026-01-03T17:15:40.540Z"
+					},
+					{
+						"id": 4,
+						"title": "Test graph execution with Message<T>",
+						"description": "Create integration tests for full graph execution with Message<T>. Test multi-node graphs, verify message flow through connections, and ensure metadata is preserved throughout the graph.",
+						"status": "done",
+						"dependencies": ["3.3"],
+						"parentId": "3",
+						"updatedAt": "2026-01-03T17:15:44.827Z"
+					},
+					{
+						"id": 5,
+						"title": "Test control flow nodes with Message<T>",
+						"description": "Test all control flow nodes (aggregate, delay, if_router, join, etc.) with Message<T>. Verify they correctly handle messages, preserve IDs and metadata, and route messages appropriately.",
+						"status": "done",
+						"dependencies": ["3.4"],
+						"parentId": "3",
+						"updatedAt": "2026-01-03T17:15:50.424Z"
+					},
+					{
+						"id": 6,
+						"title": "Update graph examples",
+						"description": "Update all graph examples in examples/ directory to use streamweave::graph and Message<T>. Update example code to demonstrate message-based graph usage. Ensure examples compile and run correctly.",
+						"status": "done",
+						"dependencies": ["3.5"],
+						"parentId": "3",
+						"updatedAt": "2026-01-03T17:17:14.877Z"
+					},
+					{
+						"id": 7,
+						"title": "Run all tests and fix breakages",
+						"description": "Run all tests in the streamweave package. Fix any test breakages caused by the graph integration and Message<T> refactoring. Ensure all tests pass before considering the integration complete.",
+						"status": "done",
+						"dependencies": ["3.6"],
+						"parentId": "3",
+						"updatedAt": "2026-01-03T17:17:56.110Z"
+					}
+				],
+				"updatedAt": "2026-01-03T17:17:56.110Z"
+			},
+			{
+				"id": "4",
+				"title": "Update Documentation for Graph Integration",
+				"description": "Update all documentation to reflect the integrated graph module and Message<T> usage. Ensure users understand how to use the graph API with messages.",
+				"status": "done",
+				"priority": "medium",
+				"dependencies": ["2", "3"],
+				"details": "Documentation needs to be updated to explain the integrated graph API, how to use it with Message<T>, and how graph nodes work with messages. Include examples and migration guidance.",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Update streamweave README with graph documentation",
+						"description": "Add graph section to packages/streamweave/README.md explaining the integrated graph API. Document how to create graphs, add nodes, connect nodes, and execute graphs with Message<T>.",
+						"status": "done",
+						"dependencies": ["2", "3"],
+						"parentId": "4",
+						"updatedAt": "2026-01-03T17:19:57.458Z"
+					},
+					{
+						"id": 2,
+						"title": "Update graph module rustdoc",
+						"description": "Update all rustdoc comments in graph module to explain Message<T> usage. Add examples showing graph creation, node usage, and message handling. Document all public APIs.",
+						"status": "done",
+						"dependencies": ["4.1"],
+						"parentId": "4",
+						"updatedAt": "2026-01-03T17:22:03.615Z"
+					},
+					{
+						"id": 3,
+						"title": "Create graph nodes documentation",
+						"description": "Add comprehensive documentation to graph/nodes/ module explaining all node types, how they work with Message<T>, and usage examples. Document ProducerNode, TransformerNode, ConsumerNode, and all control flow nodes.",
+						"status": "done",
+						"dependencies": ["4.2"],
+						"parentId": "4",
+						"updatedAt": "2026-01-03T17:24:25.099Z"
+					},
+					{
+						"id": 4,
+						"title": "Update graph examples in documentation",
+						"description": "Update all example code in documentation to use streamweave::graph and Message<T>. Show both simple and complex graph examples. Ensure all examples compile and demonstrate best practices.",
+						"status": "done",
+						"dependencies": ["4.3"],
+						"parentId": "4",
+						"updatedAt": "2026-01-03T17:24:59.034Z"
+					},
+					{
+						"id": 5,
+						"title": "Create graph migration guide",
+						"description": "Create a migration guide explaining how to update code from streamweave-graph package to streamweave::graph. Include examples of API changes and Message<T> usage patterns.",
+						"status": "done",
+						"dependencies": ["4.4"],
+						"parentId": "4",
+						"updatedAt": "2026-01-03T17:25:40.021Z"
+					}
+				],
+				"updatedAt": "2026-01-03T17:25:40.021Z"
 			}
 		],
 		"metadata": {
 			"version": "1.0.0",
-			"lastModified": "2026-01-03T15:58:01.881Z",
-			"taskCount": 6,
-			"completedCount": 6,
+			"lastModified": "2026-01-03T17:25:40.021Z",
+			"taskCount": 4,
+			"completedCount": 4,
 			"tags": ["master"]
 		}
 	}

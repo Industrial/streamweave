@@ -147,6 +147,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 // Re-export for convenience methods
 use futures::StreamExt;
 
+// Serde support for serialization
+use serde::{Deserialize, Serialize};
+
 /// A unique identifier for messages.
 ///
 /// `MessageId` provides several strategies for generating unique identifiers,
@@ -188,7 +191,7 @@ use futures::StreamExt;
 /// assert!(id.is_uuid());
 /// assert!(!id.is_sequence());
 /// ```
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum MessageId {
   /// A UUID-based identifier (128-bit).
   Uuid(u128),
@@ -377,13 +380,19 @@ impl Default for MessageId {
 ///     .header("trace-id", "abc-123")
 ///     .header("span-id", "def-456");
 /// ```
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct MessageMetadata {
   /// When the message was created (as Duration since UNIX_EPOCH).
   pub timestamp: Option<Duration>,
 
   /// The source of the message (e.g., topic, file, etc.).
   /// Uses `Arc<str>` for zero-copy string sharing.
+  #[serde(
+    skip_serializing_if = "Option::is_none",
+    serialize_with = "serialize_arc_str_option",
+    deserialize_with = "deserialize_arc_str_option"
+  )]
   pub source: Option<Arc<str>>,
 
   /// Partition or shard information.
@@ -394,11 +403,66 @@ pub struct MessageMetadata {
 
   /// User-defined key for routing/grouping.
   /// Uses `Arc<str>` for zero-copy string sharing.
+  #[serde(
+    skip_serializing_if = "Option::is_none",
+    serialize_with = "serialize_arc_str_option",
+    deserialize_with = "deserialize_arc_str_option"
+  )]
   pub key: Option<Arc<str>>,
 
   /// Additional headers/attributes.
   /// Uses `Arc<str>` for both keys and values to enable zero-copy sharing.
+  #[serde(
+    serialize_with = "serialize_arc_str_vec",
+    deserialize_with = "deserialize_arc_str_vec"
+  )]
   pub headers: Vec<(Arc<str>, Arc<str>)>,
+}
+
+// Custom serialization helpers for Arc<str>
+fn serialize_arc_str_option<S>(opt: &Option<Arc<str>>, serializer: S) -> Result<S::Ok, S::Error>
+where
+  S: serde::Serializer,
+{
+  match opt {
+    Some(arc) => serializer.serialize_some(arc.as_ref()),
+    None => serializer.serialize_none(),
+  }
+}
+
+fn deserialize_arc_str_option<'de, D>(deserializer: D) -> Result<Option<Arc<str>>, D::Error>
+where
+  D: serde::Deserializer<'de>,
+{
+  let opt: Option<String> = serde::Deserialize::deserialize(deserializer)?;
+  Ok(opt.map(Arc::from))
+}
+
+fn serialize_arc_str_vec<S>(vec: &[(Arc<str>, Arc<str>)], serializer: S) -> Result<S::Ok, S::Error>
+where
+  S: serde::Serializer,
+{
+  use serde::ser::SerializeSeq;
+  let mut seq = serializer.serialize_seq(Some(vec.len()))?;
+  for (k, v) in vec {
+    seq.serialize_element(&(k.as_ref(), v.as_ref()))?;
+  }
+  seq.end()
+}
+
+type ArcStrPair = (Arc<str>, Arc<str>);
+
+fn deserialize_arc_str_vec<'de, D>(deserializer: D) -> Result<Vec<ArcStrPair>, D::Error>
+where
+  D: serde::Deserializer<'de>,
+{
+  let vec: Vec<(String, String)> = serde::Deserialize::deserialize(deserializer)?;
+  Ok(
+    vec
+      .into_iter()
+      .map(|(k, v)| (Arc::from(k), Arc::from(v)))
+      .collect(),
+  )
 }
 
 impl MessageMetadata {
@@ -559,8 +623,8 @@ impl MessageMetadata {
   /// # Note
   ///
   /// This method accepts any type that implements `StringInternerTrait`, which
-  /// is provided by `streamweave-graph::StringInterner`. For use with the graph
-  /// package, pass a `&StringInterner` from `streamweave-graph`.
+  /// is provided by `streamweave::graph::StringInterner`. For use with the graph
+  /// module, pass a `&StringInterner` from `streamweave::graph`.
   #[must_use]
   pub fn with_source_interned<I: StringInternerTrait>(
     mut self,
@@ -719,7 +783,11 @@ impl MessageMetadata {
 /// let shared: Arc<Message<i32>> = Arc::new(msg);
 /// // Multiple consumers can share the same message efficiently
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(bound(
+  serialize = "T: serde::Serialize",
+  deserialize = "T: serde::de::DeserializeOwned"
+))]
 pub struct Message<T> {
   id: MessageId,
   payload: T,
@@ -1165,7 +1233,7 @@ impl<T> From<SharedMessage<T>> for Arc<Message<T>> {
 }
 
 // Note: ZeroCopyShare trait implementation for Message<T> is provided by the
-// blanket implementation in streamweave-graph for all types that are
+// blanket implementation in streamweave::graph for all types that are
 // Clone + Send + Sync + 'static. Message<T> automatically implements
 // ZeroCopyShare when used with the graph package, enabling zero-copy
 // sharing via Arc<Message<T>> in fan-out scenarios.
@@ -1176,7 +1244,7 @@ impl<T> From<SharedMessage<T>> for Arc<Message<T>> {
 /// Trait for string interning functionality.
 ///
 /// This trait abstracts over string interner implementations, allowing
-/// `MessageMetadata` to work with any interner type. The `streamweave-graph`
+/// `MessageMetadata` to work with any interner type. The `streamweave::graph`
 /// package provides a concrete `StringInterner` implementation that implements
 /// this trait.
 pub trait StringInternerTrait {

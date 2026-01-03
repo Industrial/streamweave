@@ -2,6 +2,7 @@
 
 pub mod adapters;
 pub mod consumer;
+pub mod graph;
 pub mod input;
 pub mod message;
 pub mod output;
