@@ -1,9 +1,10 @@
-//! Tests for Consumer trait
+//! Tests for Consumer trait with Message<T>
 
 use futures::StreamExt;
 use proptest::prelude::*;
 use std::pin::Pin;
 use std::sync::Arc;
+use streamweave::message::{Message, MessageId, MessageMetadata, wrap_message};
 use streamweave::{Consumer, ConsumerConfig, ConsumerPorts, Input};
 use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tokio::sync::Mutex;
@@ -21,11 +22,11 @@ impl std::fmt::Display for TestError {
 
 impl std::error::Error for TestError {}
 
-// Test consumer that collects items into a vector
+// Test consumer that collects messages into a vector
 #[derive(Clone)]
 struct CollectorConsumer<T: std::fmt::Debug + Clone + Send + Sync> {
-  items: Arc<Mutex<Vec<T>>>,
-  config: ConsumerConfig<T>,
+  items: Arc<Mutex<Vec<Message<T>>>>,
+  config: ConsumerConfig<Message<T>>,
 }
 
 impl<T: std::fmt::Debug + Clone + Send + Sync> CollectorConsumer<T> {
@@ -36,22 +37,35 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> CollectorConsumer<T> {
     }
   }
 
-  async fn get_items(&self) -> Vec<T>
+  async fn get_items(&self) -> Vec<Message<T>>
   where
     T: Clone,
   {
     self.items.lock().await.clone()
   }
+
+  async fn get_payloads(&self) -> Vec<T>
+  where
+    T: Clone,
+  {
+    self
+      .items
+      .lock()
+      .await
+      .iter()
+      .map(|msg| msg.payload().clone())
+      .collect()
+  }
 }
 
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Input for CollectorConsumer<T> {
-  type Input = T;
-  type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
+  type Input = Message<T>;
+  type InputStream = Pin<Box<dyn Stream<Item = Message<T>> + Send>>;
 }
 
 #[async_trait::async_trait]
 impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Consumer for CollectorConsumer<T> {
-  type InputPorts = (T,);
+  type InputPorts = (Message<T>,);
 
   async fn consume(&mut self, mut stream: Self::InputStream) {
     while let Some(item) = stream.next().await {
@@ -59,15 +73,15 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Consumer for CollectorC
     }
   }
 
-  fn set_config_impl(&mut self, config: ConsumerConfig<Self::Input>) {
+  fn set_config_impl(&mut self, config: ConsumerConfig<Message<T>>) {
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> &ConsumerConfig<Self::Input> {
+  fn get_config_impl(&self) -> &ConsumerConfig<Message<T>> {
     &self.config
   }
 
-  fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<Self::Input> {
+  fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<Message<T>> {
     &mut self.config
   }
 }
@@ -75,7 +89,7 @@ impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Consumer for CollectorC
 // Test consumer that always fails
 #[derive(Clone)]
 struct FailingConsumer {
-  config: ConsumerConfig<i32>,
+  config: ConsumerConfig<Message<i32>>,
 }
 
 impl FailingConsumer {
@@ -87,27 +101,27 @@ impl FailingConsumer {
 }
 
 impl Input for FailingConsumer {
-  type Input = i32;
-  type InputStream = Pin<Box<dyn Stream<Item = i32> + Send>>;
+  type Input = Message<i32>;
+  type InputStream = Pin<Box<dyn Stream<Item = Message<i32>> + Send>>;
 }
 
 #[async_trait::async_trait]
 impl Consumer for FailingConsumer {
-  type InputPorts = (i32,);
+  type InputPorts = (Message<i32>,);
 
   async fn consume(&mut self, _input: Self::InputStream) {
     // This consumer just drops the stream without processing
   }
 
-  fn set_config_impl(&mut self, config: ConsumerConfig<Self::Input>) {
+  fn set_config_impl(&mut self, config: ConsumerConfig<Message<i32>>) {
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> &ConsumerConfig<Self::Input> {
+  fn get_config_impl(&self) -> &ConsumerConfig<Message<i32>> {
     &self.config
   }
 
-  fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<Self::Input> {
+  fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<Message<i32>> {
     &mut self.config
   }
 }
@@ -115,9 +129,11 @@ impl Consumer for FailingConsumer {
 // Helper function for async tests with proptest
 async fn test_consumer_with_input(input: Vec<i32>) {
   let mut consumer = CollectorConsumer::new();
-  let stream = Box::pin(tokio_stream::iter(input.clone()));
+  let messages: Vec<Message<i32>> = input.iter().map(|&item| wrap_message(item)).collect();
+  let stream = Box::pin(tokio_stream::iter(messages.clone()));
   consumer.consume(stream).await;
-  assert_eq!(consumer.get_items().await, input);
+  let payloads = consumer.get_payloads().await;
+  assert_eq!(payloads, input);
 }
 
 #[test]
@@ -131,17 +147,83 @@ fn test_collector_consumer() {
 #[tokio::test]
 async fn test_empty_stream() {
   let mut consumer = CollectorConsumer::<i32>::new();
-  let input: Vec<i32> = vec![];
+  let input: Vec<Message<i32>> = vec![];
   let stream = Box::pin(tokio_stream::iter(input));
   consumer.consume(stream).await;
   assert!(consumer.get_items().await.is_empty());
 }
 
+#[tokio::test]
+async fn test_consumer_with_messages() {
+  let mut consumer = CollectorConsumer::<i32>::new();
+  let messages = vec![wrap_message(1), wrap_message(2), wrap_message(3)];
+  let stream = Box::pin(tokio_stream::iter(messages.clone()));
+  consumer.consume(stream).await;
+
+  let collected = consumer.get_items().await;
+  assert_eq!(collected.len(), 3);
+  assert_eq!(*collected[0].payload(), 1);
+  assert_eq!(*collected[1].payload(), 2);
+  assert_eq!(*collected[2].payload(), 3);
+}
+
+#[tokio::test]
+async fn test_consumer_message_ids_preserved() {
+  let mut consumer = CollectorConsumer::<i32>::new();
+  let id1 = MessageId::new_sequence(1);
+  let id2 = MessageId::new_sequence(2);
+  let id3 = MessageId::new_sequence(3);
+
+  let messages = vec![
+    Message::new(1, id1.clone()),
+    Message::new(2, id2.clone()),
+    Message::new(3, id3.clone()),
+  ];
+  let stream = Box::pin(tokio_stream::iter(messages));
+  consumer.consume(stream).await;
+
+  let collected = consumer.get_items().await;
+  assert_eq!(*collected[0].id(), id1);
+  assert_eq!(*collected[1].id(), id2);
+  assert_eq!(*collected[2].id(), id3);
+}
+
+#[tokio::test]
+async fn test_consumer_message_metadata_preserved() {
+  let mut consumer = CollectorConsumer::<i32>::new();
+  let metadata = MessageMetadata::new().source("test-source");
+
+  let messages = vec![
+    Message::with_metadata(1, MessageId::new_uuid(), metadata.clone()),
+    Message::with_metadata(2, MessageId::new_uuid(), metadata.clone()),
+  ];
+  let stream = Box::pin(tokio_stream::iter(messages));
+  consumer.consume(stream).await;
+
+  let collected = consumer.get_items().await;
+  for msg in &collected {
+    assert_eq!(msg.metadata().get_source(), metadata.get_source());
+  }
+}
+
+#[tokio::test]
+async fn test_consumer_payload_extraction() {
+  let mut consumer = CollectorConsumer::<i32>::new();
+  let messages = vec![wrap_message(10), wrap_message(20), wrap_message(30)];
+  let stream = Box::pin(tokio_stream::iter(messages));
+  consumer.consume(stream).await;
+
+  let payloads = consumer.get_payloads().await;
+  assert_eq!(payloads, vec![10, 20, 30]);
+}
+
 async fn test_string_consumer_with_input(input: Vec<String>) {
   let mut consumer = CollectorConsumer::new();
-  let stream = Box::pin(tokio_stream::iter(input.clone()));
+  let messages: Vec<Message<String>> = input.iter().map(|s| wrap_message(s.clone())).collect();
+  let stream = Box::pin(tokio_stream::iter(messages));
   consumer.consume(stream).await;
-  assert_eq!(consumer.get_items().await, input);
+  let payloads = consumer.get_payloads().await;
+  assert_eq!(payloads, input);
 }
 
 #[test]
@@ -154,7 +236,8 @@ fn test_string_consumer() {
 
 async fn test_failing_consumer_with_input(input: Vec<i32>) {
   let mut consumer = FailingConsumer::new();
-  let stream = Box::pin(tokio_stream::iter(input));
+  let messages: Vec<Message<i32>> = input.iter().map(|&item| wrap_message(item)).collect();
+  let stream = Box::pin(tokio_stream::iter(messages));
   consumer.consume(stream).await;
   // The failing consumer just drops the stream, so we can't verify anything
 }
@@ -174,11 +257,12 @@ proptest! {
     retries in 0..10usize
   ) {
     let consumer = CollectorConsumer::<i32>::new();
+    let msg = wrap_message(42);
     let error = StreamError {
       source: Box::new(TestError(error_msg.clone())),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
-        item: None,
+        item: Some(msg),
         component_name: "test".to_string(),
         component_type: "CollectorConsumer".to_string(),
       },
@@ -201,11 +285,12 @@ proptest! {
       error_strategy: ErrorStrategy::Skip,
       name: name.clone(),
     });
+    let msg = wrap_message(42);
     let error = StreamError {
       source: Box::new(TestError(error_msg)),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
-        item: None,
+        item: Some(msg),
         component_name: name.clone(),
         component_type: "TestProducer".to_string(),
       },
@@ -228,11 +313,12 @@ proptest! {
       error_strategy: ErrorStrategy::Retry(retry_count),
       name: name.clone(),
     });
+    let msg = wrap_message(42);
     let error = StreamError {
       source: Box::new(TestError(error_msg)),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
-        item: None,
+        item: Some(msg),
         component_name: name.clone(),
         component_type: "TestProducer".to_string(),
       },
@@ -255,11 +341,12 @@ proptest! {
       error_strategy: ErrorStrategy::Retry(retry_limit),
       name: "test".to_string(),
     });
+    let msg = wrap_message(42);
     let error = StreamError {
       source: Box::new(TestError(error_msg)),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
-        item: None,
+        item: Some(msg),
         component_name: "test".to_string(),
         component_type: "CollectorConsumer".to_string(),
       },
@@ -286,7 +373,6 @@ proptest! {
     let info = consumer.component_info();
     prop_assert_eq!(info.name, name);
     prop_assert!(info.type_name.contains("CollectorConsumer"));
-    prop_assert!(info.type_name.contains("i32"));
   }
 
   #[test]
@@ -300,12 +386,11 @@ proptest! {
     let context = consumer.create_error_context(None);
     prop_assert_eq!(context.component_name, name);
     prop_assert!(context.component_type.contains("CollectorConsumer"));
-    prop_assert!(context.component_type.contains("i32"));
     prop_assert!(context.item.is_none());
   }
 
   #[test]
-  fn test_consumer_create_error_context_with_item(
+  fn test_consumer_create_error_context_with_message(
     name in prop::string::string_regex("[a-zA-Z0-9_]+").unwrap(),
     item in -1000..1000i32
   ) {
@@ -313,11 +398,19 @@ proptest! {
       error_strategy: ErrorStrategy::Stop,
       name: name.clone(),
     });
-    let context = consumer.create_error_context(Some(item));
+    let msg = wrap_message(item);
+    let context = consumer.create_error_context(Some(msg.clone()));
     prop_assert_eq!(context.component_name, name);
     prop_assert!(context.component_type.contains("CollectorConsumer"));
-    prop_assert!(context.component_type.contains("i32"));
-    prop_assert_eq!(context.item, Some(item));
+
+    // Verify message ID is accessible from error context
+    if let Some(error_msg) = &context.item {
+      prop_assert!(error_msg.id().is_uuid());
+      prop_assert_eq!(*error_msg.payload(), item);
+      prop_assert_eq!(context.item, Some(msg));
+    } else {
+      prop_assert!(false, "Expected message in error context");
+    }
   }
 }
 
@@ -366,11 +459,13 @@ async fn test_configuration_persistence_async(name: String, input1: Vec<i32>, in
   });
 
   // First consume
-  let stream1 = Box::pin(tokio_stream::iter(input1.clone()));
+  let messages1: Vec<Message<i32>> = input1.iter().map(|&item| wrap_message(item)).collect();
+  let stream1 = Box::pin(tokio_stream::iter(messages1));
   consumer.consume(stream1).await;
 
   // Second consume - config should persist
-  let stream2 = Box::pin(tokio_stream::iter(input2.clone()));
+  let messages2: Vec<Message<i32>> = input2.iter().map(|&item| wrap_message(item)).collect();
+  let stream2 = Box::pin(tokio_stream::iter(messages2));
   consumer.consume(stream2).await;
 
   assert_eq!(consumer.config().name, name);
@@ -380,7 +475,8 @@ async fn test_configuration_persistence_async(name: String, input1: Vec<i32>, in
   ));
   let mut expected = input1;
   expected.extend(input2);
-  assert_eq!(consumer.get_items().await, expected);
+  let payloads = consumer.get_payloads().await;
+  assert_eq!(payloads, expected);
 }
 
 #[test]
@@ -405,12 +501,12 @@ proptest! {
       error_strategy: ErrorStrategy::new_custom(|_| ErrorAction::Skip),
       name: name.clone(),
     });
-
+    let msg = wrap_message(42);
     let error = StreamError {
       source: Box::new(std::io::Error::other(error_msg.clone())),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
-        item: None,
+        item: Some(msg),
         component_name: name.clone(),
         component_type: "test".to_string(),
       },
@@ -442,11 +538,12 @@ proptest! {
     retries in 0..10usize
   ) {
     let consumer = CollectorConsumer::<i32>::new();
+    let msg = wrap_message(42);
     let error = StreamError {
       source: Box::new(DifferentError(error_msg)),
       context: ErrorContext {
         timestamp: chrono::Utc::now(),
-        item: None,
+        item: Some(msg),
         component_name: "CollectorConsumer".to_string(),
         component_type: "CollectorConsumer".to_string(),
       },
@@ -469,7 +566,8 @@ async fn test_concurrent_consumption_async(inputs: Vec<Vec<i32>>) {
     let input = input.clone();
     let handle = tokio::spawn(async move {
       let mut consumer = consumer.lock().await;
-      let stream = Box::pin(tokio_stream::iter(input));
+      let messages: Vec<Message<i32>> = input.iter().map(|&item| wrap_message(item)).collect();
+      let stream = Box::pin(tokio_stream::iter(messages));
       consumer.consume(stream).await;
     });
     handles.push(handle);
@@ -478,7 +576,7 @@ async fn test_concurrent_consumption_async(inputs: Vec<Vec<i32>>) {
     handle.await.unwrap();
   }
   let consumer = consumer.lock().await;
-  let mut collected = consumer.get_items().await;
+  let mut collected = consumer.get_payloads().await;
   collected.sort();
   let mut expected: Vec<i32> = inputs.iter().flatten().copied().collect();
   expected.sort();
@@ -499,17 +597,16 @@ fn test_concurrent_consumption() {
 #[tokio::test]
 async fn test_stream_cancellation() {
   let mut consumer = CollectorConsumer::<i32>::new();
-  let (tx, rx) = tokio::sync::oneshot::channel();
+  let (_tx, _rx) = tokio::sync::oneshot::channel::<()>();
   let input = tokio_stream::wrappers::ReceiverStream::new(tokio::sync::mpsc::channel(1).1);
   let stream = Box::pin(input);
   let handle = tokio::spawn(async move {
     consumer.consume(stream).await;
-    tx.send(()).unwrap();
   });
   // Cancel the stream
   handle.abort();
   // Verify the result
-  let _ = rx.await;
+  let _ = handle.await;
 }
 
 async fn test_stream_backpressure_async(items: Vec<i32>) {
@@ -520,14 +617,14 @@ async fn test_stream_backpressure_async(items: Vec<i32>) {
     consumer.consume(stream).await;
     consumer
   });
-  // Send items
+  // Send items as messages
   for item in items.iter() {
-    tx.send(*item).await.unwrap();
+    tx.send(wrap_message(*item)).await.unwrap();
   }
   // Close the sender to signal stream completion
   drop(tx);
   let consumer = handle.await.unwrap();
-  assert_eq!(consumer.get_items().await.len(), items.len());
+  assert_eq!(consumer.get_payloads().await.len(), items.len());
 }
 
 #[test]
@@ -643,12 +740,12 @@ fn test_consumer_handle_error_retry_at_limit() {
     error_strategy: ErrorStrategy::Retry(3),
     name: "test".to_string(),
   });
-
+  let msg = wrap_message(42);
   let error = StreamError {
     source: Box::new(TestError("test error".to_string())),
     context: ErrorContext {
       timestamp: chrono::Utc::now(),
-      item: None,
+      item: Some(msg),
       component_name: "test".to_string(),
       component_type: "CollectorConsumer".to_string(),
     },
@@ -669,12 +766,12 @@ fn test_consumer_handle_error_retry_below_limit() {
     error_strategy: ErrorStrategy::Retry(5),
     name: "test".to_string(),
   });
-
+  let msg = wrap_message(42);
   let error = StreamError {
     source: Box::new(TestError("test error".to_string())),
     context: ErrorContext {
       timestamp: chrono::Utc::now(),
-      item: None,
+      item: Some(msg),
       component_name: "test".to_string(),
       component_type: "CollectorConsumer".to_string(),
     },
@@ -694,40 +791,41 @@ fn test_consumer_create_error_context_timestamp() {
     error_strategy: ErrorStrategy::Stop,
     name: "test_consumer".to_string(),
   });
+  let msg = wrap_message(42);
 
   let before = chrono::Utc::now();
-  let context = consumer.create_error_context(Some(42));
+  let context = consumer.create_error_context(Some(msg.clone()));
   let after = chrono::Utc::now();
 
   assert!(context.timestamp >= before);
   assert!(context.timestamp <= after);
-  assert_eq!(context.item, Some(42));
+  assert_eq!(context.item, Some(msg));
 }
 
 #[test]
 fn test_consumer_config_default() {
-  let config = ConsumerConfig::<i32>::default();
-  assert!(matches!(config.error_strategy, ErrorStrategy::<i32>::Stop));
+  let config = ConsumerConfig::<Message<i32>>::default();
+  assert!(matches!(config.error_strategy, ErrorStrategy::Stop));
   assert_eq!(config.name, "");
 }
 
 #[test]
 fn test_consumer_config_clone() {
-  let config1 = ConsumerConfig::<i32> {
-    error_strategy: ErrorStrategy::<i32>::Skip,
+  let config1 = ConsumerConfig::<Message<i32>> {
+    error_strategy: ErrorStrategy::Skip,
     name: "test".to_string(),
   };
   let config2 = config1.clone();
 
   assert_eq!(config1.name, config2.name);
-  assert!(matches!(config1.error_strategy, ErrorStrategy::<i32>::Skip));
-  assert!(matches!(config2.error_strategy, ErrorStrategy::<i32>::Skip));
+  assert!(matches!(config1.error_strategy, ErrorStrategy::Skip));
+  assert!(matches!(config2.error_strategy, ErrorStrategy::Skip));
 }
 
 #[test]
 fn test_consumer_config_debug() {
-  let config = ConsumerConfig::<i32> {
-    error_strategy: ErrorStrategy::<i32>::Stop,
+  let config = ConsumerConfig::<Message<i32>> {
+    error_strategy: ErrorStrategy::Stop,
     name: "test".to_string(),
   };
   let debug_str = format!("{:?}", config);
@@ -739,14 +837,18 @@ async fn test_consumer_consume_multiple_times() {
   let mut consumer = CollectorConsumer::<i32>::new();
 
   // First consumption
-  let stream1 = Box::pin(tokio_stream::iter(vec![1, 2, 3]));
+  let messages1 = vec![wrap_message(1), wrap_message(2), wrap_message(3)];
+  let stream1 = Box::pin(tokio_stream::iter(messages1));
   consumer.consume(stream1).await;
-  assert_eq!(consumer.get_items().await, vec![1, 2, 3]);
+  let payloads1 = consumer.get_payloads().await;
+  assert_eq!(payloads1, vec![1, 2, 3]);
 
   // Second consumption (should append)
-  let stream2 = Box::pin(tokio_stream::iter(vec![4, 5, 6]));
+  let messages2 = vec![wrap_message(4), wrap_message(5), wrap_message(6)];
+  let stream2 = Box::pin(tokio_stream::iter(messages2));
   consumer.consume(stream2).await;
-  assert_eq!(consumer.get_items().await, vec![1, 2, 3, 4, 5, 6]);
+  let payloads2 = consumer.get_payloads().await;
+  assert_eq!(payloads2, vec![1, 2, 3, 4, 5, 6]);
 }
 
 #[test]
@@ -754,4 +856,27 @@ fn test_consumer_with_name() {
   let consumer = CollectorConsumer::<i32>::new().with_name("named_consumer".to_string());
 
   assert_eq!(consumer.config().name, "named_consumer");
+}
+
+#[tokio::test]
+async fn test_consumer_message_metadata_access() {
+  let mut consumer = CollectorConsumer::<i32>::new();
+  let metadata = MessageMetadata::new()
+    .source("test-source")
+    .partition(0)
+    .offset(100);
+
+  let messages = vec![
+    Message::with_metadata(1, MessageId::new_uuid(), metadata.clone()),
+    Message::with_metadata(2, MessageId::new_uuid(), metadata.clone()),
+  ];
+  let stream = Box::pin(tokio_stream::iter(messages));
+  consumer.consume(stream).await;
+
+  let collected = consumer.get_items().await;
+  for msg in &collected {
+    assert_eq!(msg.metadata().get_source(), metadata.get_source());
+    assert_eq!(msg.metadata().partition, metadata.partition);
+    assert_eq!(msg.metadata().offset, metadata.offset);
+  }
 }

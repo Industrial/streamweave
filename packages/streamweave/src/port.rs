@@ -4,19 +4,23 @@
 //! extraction for compile-time type safety. This enables nodes to have multiple
 //! input and output ports while maintaining full type checking at compile time.
 //!
+//! **Note**: In StreamWeave, port types are `Message<T>` where `T` is the payload type.
+//! All items flowing through ports are wrapped in messages.
+//!
 //! ## Example
 //!
 //! ```rust
-//! use streamweave::graph::port::{GetPort, PortList};
+//! use streamweave::port::{GetPort, PortList};
+//! use streamweave::message::Message;
 //!
-//! // Define a port list with two ports
-//! type MyPorts = (i32, String);
+//! // Define a port list with two ports (Message types)
+//! type MyPorts = (Message<i32>, Message<String>);
 //!
 //! // Extract the first port type
-//! type FirstPort = <MyPorts as GetPort<0>>::Type; // i32
+//! type FirstPort = <MyPorts as GetPort<0>>::Type; // Message<i32>
 //!
 //! // Extract the second port type
-//! type SecondPort = <MyPorts as GetPort<1>>::Type; // String
+//! type SecondPort = <MyPorts as GetPort<1>>::Type; // Message<String>
 //!
 //! // Empty ports
 //! type NoPorts = ();
@@ -27,20 +31,24 @@
 /// This trait enables compile-time type extraction from tuples representing
 /// port lists. The index `N` must be a compile-time constant.
 ///
+/// **Note**: In StreamWeave, port types are `Message<T>` where `T` is the payload type.
+///
 /// # Example
 ///
 /// ```rust
-/// use streamweave::graph::port::GetPort;
+/// use streamweave::port::GetPort;
+/// use streamweave::message::Message;
 ///
-/// type Ports = (i32, String, bool);
+/// type Ports = (Message<i32>, Message<String>, Message<bool>);
 ///
 /// // Extract types at compile time
-/// type First = <Ports as GetPort<0>>::Type;  // i32
-/// type Second = <Ports as GetPort<1>>::Type; // String
-/// type Third = <Ports as GetPort<2>>::Type;   // bool
+/// type First = <Ports as GetPort<0>>::Type;  // Message<i32>
+/// type Second = <Ports as GetPort<1>>::Type; // Message<String>
+/// type Third = <Ports as GetPort<2>>::Type;   // Message<bool>
 /// ```
 pub trait GetPort<const N: usize> {
   /// The type of the port at index `N`.
+  /// This is `Message<T>` where `T` is the payload type.
   type Type;
 }
 
@@ -48,12 +56,15 @@ pub trait GetPort<const N: usize> {
 ///
 /// This trait provides metadata about port lists, including the number of ports.
 ///
+/// **Note**: In StreamWeave, port types are `Message<T>` where `T` is the payload type.
+///
 /// # Example
 ///
 /// ```rust
-/// use streamweave::graph::port::PortList;
+/// use streamweave::port::PortList;
+/// use streamweave::message::Message;
 ///
-/// type MyPorts = (i32, String);
+/// type MyPorts = (Message<i32>, Message<String>);
 /// assert_eq!(<MyPorts as PortList>::LEN, 2);
 /// ```
 pub trait PortList {
@@ -521,11 +532,14 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> PortList
 ///
 /// This is a convenience alias for the common case of a node with a single port.
 ///
+/// **Note**: In StreamWeave, port types are `Message<T>` where `T` is the payload type.
+///
 /// # Example
 ///
 /// ```rust
-/// use streamweave::graph::port::SinglePort;
+/// use streamweave::port::SinglePort;
+/// use streamweave::message::Message;
 ///
-/// type MyPort = SinglePort<i32>; // Equivalent to (i32,)
+/// type MyPort = SinglePort<Message<i32>>; // Equivalent to (Message<i32>,)
 /// ```
 pub type SinglePort<T> = (T,);

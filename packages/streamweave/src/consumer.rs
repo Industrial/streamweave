@@ -29,15 +29,18 @@ where
 ///
 /// This struct holds configuration options that control how a consumer
 /// behaves, including error handling strategy and component naming.
+///
+/// The configuration works with `Message<T>` where `M` is the message type.
 #[derive(Debug, Clone)]
-pub struct ConsumerConfig<T: std::fmt::Debug + Clone + Send + Sync> {
+pub struct ConsumerConfig<M: std::fmt::Debug + Clone + Send + Sync> {
   /// The error handling strategy to use when processing items.
-  pub error_strategy: ErrorStrategy<T>,
+  /// This works with `Message<T>` types.
+  pub error_strategy: ErrorStrategy<M>,
   /// The name of this consumer component.
   pub name: String,
 }
 
-impl<T: std::fmt::Debug + Clone + Send + Sync> Default for ConsumerConfig<T> {
+impl<M: std::fmt::Debug + Clone + Send + Sync> Default for ConsumerConfig<M> {
   fn default() -> Self {
     Self {
       error_strategy: ErrorStrategy::Stop,
@@ -52,17 +55,82 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> Default for ConsumerConfig<T> {
 /// and typically write them to a destination (file, database, console, etc.)
 /// or perform some final action.
 ///
-/// # Example
+/// ## Universal Message Model
 ///
-/// ```rust
-/// use streamweave::prelude::*;
+/// **All consumers receive `Message<T>` where `T` is the payload type.**
+/// This enables:
+/// - Access to message IDs for tracking and correlation
+/// - Access to metadata for logging, routing, or processing decisions
+/// - End-to-end message traceability
 ///
-/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-/// let mut consumer = VecConsumer::new();
-/// let stream = futures::stream::iter(vec![Ok(1), Ok(2), Ok(3)]);
-/// consumer.consume(stream).await?;
-/// # Ok(())
-/// # }
+/// ## Working with Messages
+///
+/// When implementing a consumer, you receive `Message<T>`:
+///
+/// ```rust,ignore
+/// use streamweave::{Consumer, Input, ConsumerConfig};
+/// use streamweave::message::Message;
+/// use futures::StreamExt;
+/// use std::pin::Pin;
+/// use std::sync::Arc;
+/// use tokio::sync::Mutex;
+/// use tokio_stream::Stream;
+///
+/// struct MyConsumer {
+///     items: Arc<Mutex<Vec<Message<i32>>>>,
+///     config: ConsumerConfig<Message<i32>>,
+/// }
+///
+/// impl Input for MyConsumer {
+///     type Input = Message<i32>;
+///     type InputStream = Pin<Box<dyn Stream<Item = Message<i32>> + Send>>;
+/// }
+///
+/// #[async_trait::async_trait]
+/// impl Consumer for MyConsumer {
+///     type InputPorts = (Message<i32>,);
+///
+///     async fn consume(&mut self, mut stream: Self::InputStream) {
+///         while let Some(msg) = stream.next().await {
+///             // Access message components
+///             let payload = msg.payload();      // &i32
+///             let id = msg.id();                // &MessageId
+///             let metadata = msg.metadata();    // &MessageMetadata
+///
+///             // Use the data
+///             self.items.lock().await.push(msg);
+///         }
+///     }
+///
+///     fn set_config_impl(&mut self, config: ConsumerConfig<Self::Input>) {
+///         self.config = config;
+///     }
+///
+///     fn get_config_impl(&self) -> &ConsumerConfig<Self::Input> {
+///         &self.config
+///     }
+///
+///     fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<Self::Input> {
+///         &mut self.config
+///     }
+/// }
+/// ```
+///
+/// ## Message Operations
+///
+/// Common operations when consuming messages:
+/// - `message.payload()` - Access the payload data
+/// - `message.id()` - Access the message ID (useful for tracking, logging)
+/// - `message.metadata()` - Access metadata (source, headers, etc.)
+/// - `message.into_payload()` - Extract payload, consuming the message
+///
+/// ## Adapter Pattern
+///
+/// If you have existing code that works with raw types, use `PayloadExtractorConsumer`:
+/// ```rust,no_run
+/// use streamweave::adapters::PayloadExtractorConsumer;
+/// // let raw_consumer = MyRawConsumer::new();
+/// // let consumer = PayloadExtractorConsumer::new(raw_consumer);  // Receives raw types internally
 /// ```
 ///
 /// # Implementations
@@ -95,20 +163,32 @@ where
   ///
   /// # Arguments
   ///
-  /// * `stream` - The stream of items to consume
+  /// * `stream` - The stream of items to consume (yields `Message<T>`)
   ///
   /// # Example
   ///
-  /// ```rust
-  /// use streamweave::prelude::*;
+  /// ```rust,no_run
+  /// use streamweave::{Consumer, Input};
+  /// use streamweave::message::Message;
+  /// use futures::StreamExt;
   ///
-  /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-  /// let mut consumer = VecConsumer::new();
-  /// let stream = futures::stream::iter(vec![Ok(1), Ok(2), Ok(3)]);
-  /// consumer.consume(stream).await?;
-  /// # Ok(())
-  /// # }
+  /// // In your Consumer implementation:
+  /// // async fn consume(&mut self, mut stream: Self::InputStream) {
+  /// //     while let Some(msg) = stream.next().await {
+  /// //         let payload = msg.payload();      // Access payload
+  /// //         let id = msg.id();                // Access ID for tracking
+  /// //         let metadata = msg.metadata();   // Access metadata
+  /// //         // Process the message...
+  /// //     }
+  /// // }
   /// ```
+  ///
+  /// # Message Access
+  ///
+  /// You have full access to the message envelope:
+  /// - Use `message.payload()` to access the data
+  /// - Use `message.id()` for tracking, logging, or correlation
+  /// - Use `message.metadata()` for routing decisions or additional context
   async fn consume(&mut self, stream: Self::InputStream);
 
   /// Creates a new consumer instance with the given configuration.
@@ -179,6 +259,14 @@ where
   }
 
   /// Returns information about this consumer component.
+  ///
+  /// This includes the component's name and type. For message-level information
+  /// (message IDs, metadata), use `create_error_context()` which includes the
+  /// full `Message<T>` in the error context.
+  ///
+  /// # Returns
+  ///
+  /// A `ComponentInfo` struct containing details about the consumer.
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self.config().name.clone(),
@@ -188,13 +276,18 @@ where
 
   /// Creates an error context for the given item.
   ///
+  /// **Note**: The item is `Message<T>`, so message IDs and metadata are available
+  /// through the item. For example: `context.item.as_ref().map(|msg| msg.id())`.
+  ///
   /// # Arguments
   ///
-  /// * `item` - The item that caused the error, if any.
+  /// * `item` - The message that caused the error, if any.
   ///
   /// # Returns
   ///
   /// An error context containing information about when and where the error occurred.
+  /// The context includes the full `Message<T>` which provides access to message ID
+  /// and metadata.
   fn create_error_context(&self, item: Option<Self::Input>) -> ErrorContext<Self::Input> {
     ErrorContext {
       timestamp: chrono::Utc::now(),

@@ -32,15 +32,18 @@ where
 ///
 /// This struct holds configuration options that can be applied to any transformer,
 /// allowing customization of error handling behavior and component identification.
+///
+/// The configuration works with `Message<T>` where `M` is the message type.
 #[derive(Debug, Clone, PartialEq)]
-pub struct TransformerConfig<T: std::fmt::Debug + Clone + Send + Sync> {
+pub struct TransformerConfig<M: std::fmt::Debug + Clone + Send + Sync> {
   /// The error handling strategy to use when errors occur.
-  pub error_strategy: ErrorStrategy<T>,
+  /// This works with `Message<T>` types.
+  pub error_strategy: ErrorStrategy<M>,
   /// Optional name for identifying this transformer in logs and metrics.
   pub name: Option<String>,
 }
 
-impl<T: std::fmt::Debug + Clone + Send + Sync> Default for TransformerConfig<T> {
+impl<M: std::fmt::Debug + Clone + Send + Sync> Default for TransformerConfig<M> {
   fn default() -> Self {
     Self {
       error_strategy: ErrorStrategy::Stop,
@@ -49,13 +52,13 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> Default for TransformerConfig<T> 
   }
 }
 
-impl<T: std::fmt::Debug + Clone + Send + Sync> TransformerConfig<T> {
+impl<M: std::fmt::Debug + Clone + Send + Sync> TransformerConfig<M> {
   /// Sets the error handling strategy for this transformer configuration.
   ///
   /// # Arguments
   ///
-  /// * `strategy` - The error handling strategy to use.
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
+  /// * `strategy` - The error handling strategy to use (works with `Message<T>`).
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<M>) -> Self {
     self.error_strategy = strategy;
     self
   }
@@ -71,7 +74,7 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> TransformerConfig<T> {
   }
 
   /// Returns the current error handling strategy.
-  pub fn error_strategy(&self) -> ErrorStrategy<T> {
+  pub fn error_strategy(&self) -> ErrorStrategy<M> {
     self.error_strategy.clone()
   }
 
@@ -86,15 +89,86 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> TransformerConfig<T> {
 /// Transformers process items as they flow through the pipeline. They can
 /// filter, map, aggregate, or perform any other transformation on stream items.
 ///
-/// # Example
+/// ## Universal Message Model
 ///
-/// ```rust
-/// use streamweave::prelude::*;
+/// **All transformers work with `Message<T>` where `T` is the payload type.**
+/// Both `Transformer::Input` and `Transformer::Output` are `Message<T>` types.
+/// This enables:
+/// - Message ID preservation through transformations
+/// - Metadata preservation and modification
+/// - End-to-end message tracking
 ///
-/// let mut transformer = MapTransformer::new(|x: i32| x * 2);
-/// let input = futures::stream::iter(vec![Ok(1), Ok(2), Ok(3)]);
-/// let output = transformer.transform(input);
-/// // Output stream yields: 2, 4, 6
+/// ## Working with Messages
+///
+/// When implementing a transformer, you receive and produce `Message<T>`:
+///
+/// ```rust,ignore
+/// use streamweave::{Transformer, Input, Output, TransformerConfig};
+/// use streamweave::message::Message;
+/// use futures::StreamExt;
+/// use std::pin::Pin;
+/// use tokio_stream::Stream;
+///
+/// struct DoubleTransformer {
+///     config: TransformerConfig<Message<i32>>,
+/// }
+///
+/// impl Input for DoubleTransformer {
+///     type Input = Message<i32>;
+///     type InputStream = Pin<Box<dyn Stream<Item = Message<i32>> + Send>>;
+/// }
+///
+/// impl Output for DoubleTransformer {
+///     type Output = Message<i32>;
+///     type OutputStream = Pin<Box<dyn Stream<Item = Message<i32>> + Send>>;
+/// }
+///
+/// #[async_trait::async_trait]
+/// impl Transformer for DoubleTransformer {
+///     type InputPorts = (Message<i32>,);
+///     type OutputPorts = (Message<i32>,);
+///
+///     async fn transform(&mut self, stream: Self::InputStream) -> Self::OutputStream {
+///         Box::pin(stream.map(|msg| {
+///             // Access payload
+///             let payload = msg.payload().clone();
+///             // Preserve ID and metadata
+///             let id = msg.id().clone();
+///             let metadata = msg.metadata().clone();
+///             // Create new message with transformed payload
+///             Message::with_metadata(payload * 2, id, metadata)
+///         }))
+///     }
+///
+///     fn set_config_impl(&mut self, config: TransformerConfig<Self::Input>) {
+///         self.config = config;
+///     }
+///
+///     fn get_config_impl(&self) -> &TransformerConfig<Self::Input> {
+///         &self.config
+///     }
+///
+///     fn get_config_mut_impl(&mut self) -> &mut TransformerConfig<Self::Input> {
+///         &mut self.config
+///     }
+/// }
+/// ```
+///
+/// ## Message Operations
+///
+/// Common operations when transforming messages:
+/// - `message.payload()` - Access the payload data
+/// - `message.id()` - Access the message ID (preserve through transformations)
+/// - `message.metadata()` - Access or modify metadata
+/// - `message.map(f)` - Transform payload while preserving ID and metadata
+///
+/// ## Adapter Pattern
+///
+/// If you have existing code that works with raw types, use `PayloadExtractor`:
+/// ```rust,no_run
+/// use streamweave::adapters::PayloadExtractor;
+/// // let raw_transformer = MyRawTransformer::new();
+/// // let transformer = PayloadExtractor::new(raw_transformer);  // Works with raw types internally
 /// ```
 ///
 /// # Implementations
@@ -138,21 +212,37 @@ where
   ///
   /// # Arguments
   ///
-  /// * `input` - The input stream to transform
+  /// * `input` - The input stream to transform (yields `Message<T>`)
   ///
   /// # Returns
   ///
-  /// A stream that yields transformed items of type `Self::Output`.
+  /// A stream that yields transformed items of type `Self::Output`, which is `Message<U>`
+  /// where `U` is the output payload type.
   ///
   /// # Example
   ///
-  /// ```rust
-  /// use streamweave::prelude::*;
+  /// ```rust,no_run
+  /// use streamweave::{Transformer, Input, Output};
+  /// use streamweave::message::Message;
+  /// use futures::StreamExt;
   ///
-  /// let mut transformer = MapTransformer::new(|x: i32| x * 2);
-  /// let input = futures::stream::iter(vec![Ok(1), Ok(2), Ok(3)]);
-  /// let output = transformer.transform(input).await;
+  /// // In your Transformer implementation:
+  /// // async fn transform(&mut self, stream: Self::InputStream) -> Self::OutputStream {
+  /// //     Box::pin(stream.map(|msg| {
+  /// //         let payload = msg.payload().clone();
+  /// //         let id = msg.id().clone();
+  /// //         let metadata = msg.metadata().clone();
+  /// //         // Transform payload while preserving ID and metadata
+  /// //         Message::with_metadata(payload * 2, id, metadata)
+  /// //     }))
+  /// // }
   /// ```
+  ///
+  /// # Message Preservation
+  ///
+  /// It's important to preserve message IDs and metadata through transformations
+  /// to maintain end-to-end traceability. Always clone the ID and metadata from
+  /// the input message when creating the output message.
   async fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream;
 
   /// Creates a new transformer instance with the given configuration.
@@ -252,13 +342,17 @@ where
   /// This method constructs an `ErrorContext` with the current timestamp,
   /// the item that caused the error (if any), and component information.
   ///
+  /// **Note**: The item is `Message<T>`, so message IDs and metadata are available
+  /// through the item. For example: `context.item.as_ref().map(|msg| msg.id())`.
+  ///
   /// # Arguments
   ///
-  /// * `item` - The item that caused the error, if available.
+  /// * `item` - The message that caused the error, if available.
   ///
   /// # Returns
   ///
-  /// An `ErrorContext` containing error details.
+  /// An `ErrorContext` containing error details, including the full `Message<T>`
+  /// which provides access to message ID and metadata.
   fn create_error_context(&self, item: Option<Self::Input>) -> ErrorContext<Self::Input> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
@@ -270,7 +364,9 @@ where
 
   /// Returns information about the component for error reporting.
   ///
-  /// This includes the component's name and type.
+  /// This includes the component's name and type. For message-level information
+  /// (message IDs, metadata), use `create_error_context()` which includes the
+  /// full `Message<T>` in the error context.
   ///
   /// # Returns
   ///

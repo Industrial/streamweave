@@ -7,15 +7,18 @@ use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy,
 ///
 /// This struct holds configuration options that control how a producer
 /// behaves, including error handling strategy and component naming.
+///
+/// The configuration works with `Message<T>` where `M` is the message type.
 #[derive(Debug, Clone)]
-pub struct ProducerConfig<T: std::fmt::Debug + Clone + Send + Sync> {
+pub struct ProducerConfig<M: std::fmt::Debug + Clone + Send + Sync> {
   /// The error handling strategy to use when producing items.
-  pub error_strategy: ErrorStrategy<T>,
+  /// This works with `Message<T>` types.
+  pub error_strategy: ErrorStrategy<M>,
   /// Optional name for identifying this producer in logs and metrics.
   pub name: Option<String>,
 }
 
-impl<T: std::fmt::Debug + Clone + Send + Sync> Default for ProducerConfig<T> {
+impl<M: std::fmt::Debug + Clone + Send + Sync> Default for ProducerConfig<M> {
   fn default() -> Self {
     Self {
       error_strategy: ErrorStrategy::Stop,
@@ -24,13 +27,13 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> Default for ProducerConfig<T> {
   }
 }
 
-impl<T: std::fmt::Debug + Clone + Send + Sync> ProducerConfig<T> {
+impl<M: std::fmt::Debug + Clone + Send + Sync> ProducerConfig<M> {
   /// Sets the error handling strategy for this producer configuration.
   ///
   /// # Arguments
   ///
-  /// * `strategy` - The error handling strategy to use.
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<T>) -> Self {
+  /// * `strategy` - The error handling strategy to use (works with `Message<T>`).
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<M>) -> Self {
     self.error_strategy = strategy;
     self
   }
@@ -46,7 +49,7 @@ impl<T: std::fmt::Debug + Clone + Send + Sync> ProducerConfig<T> {
   }
 
   /// Returns the current error handling strategy.
-  pub fn error_strategy(&self) -> ErrorStrategy<T> {
+  pub fn error_strategy(&self) -> ErrorStrategy<M> {
     self.error_strategy.clone()
   }
 
@@ -83,14 +86,81 @@ where
 /// Producers generate items that flow through the pipeline. They are the
 /// starting point of any StreamWeave pipeline.
 ///
-/// # Example
+/// ## Universal Message Model
 ///
-/// ```rust
-/// use streamweave::prelude::*;
+/// **All producers yield `Message<T>` where `T` is the payload type.**
+/// This universal message model ensures every item has:
+/// - A unique `MessageId` for tracking and correlation
+/// - `MessageMetadata` with timestamps, source, headers, and custom attributes
+/// - The actual payload data (`T`)
 ///
-/// let mut producer = ArrayProducer::new(vec![1, 2, 3, 4, 5]);
-/// let stream = producer.produce();
-/// // Stream yields: 1, 2, 3, 4, 5
+/// ## Working with Messages
+///
+/// When implementing a producer, you need to wrap your data in `Message<T>`:
+///
+/// ```rust,ignore
+/// use streamweave::{Producer, Output, ProducerConfig};
+/// use streamweave::message::{Message, MessageId, wrap_message, MessageMetadata};
+/// use futures::Stream;
+/// use std::pin::Pin;
+///
+/// struct MyProducer {
+///     items: Vec<i32>,
+///     config: ProducerConfig<Message<i32>>,
+/// }
+///
+/// impl Output for MyProducer {
+///     type Output = Message<i32>;
+///     type OutputStream = Pin<Box<dyn Stream<Item = Message<i32>> + Send>>;
+/// }
+///
+/// #[async_trait::async_trait]
+/// impl Producer for MyProducer {
+///     type OutputPorts = (Message<i32>,);
+///
+///     fn produce(&mut self) -> Self::OutputStream {
+///         let items = self.items.clone();
+///         // Wrap each item in a Message<T>
+///         Box::pin(futures::stream::iter(
+///             items.into_iter().map(|item| wrap_message(item))
+///         ))
+///     }
+///
+///     fn set_config_impl(&mut self, config: ProducerConfig<Self::Output>) {
+///         self.config = config;
+///     }
+///
+///     fn get_config_impl(&self) -> &ProducerConfig<Self::Output> {
+///         &self.config
+///     }
+///
+///     fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<Self::Output> {
+///         &mut self.config
+///     }
+/// }
+/// ```
+///
+/// ## Message Creation
+///
+/// Use helper functions to create messages:
+/// - `wrap_message(payload)` - Creates message with auto-generated UUID
+/// - `Message::new(payload, id)` - Creates message with specific ID
+/// - `Message::with_metadata(payload, id, metadata)` - Creates message with custom metadata
+///
+/// ## Accessing Message Components
+///
+/// When working with messages in your producer:
+/// - `message.payload()` - Access the payload data
+/// - `message.id()` - Access the unique message ID
+/// - `message.metadata()` - Access metadata (source, headers, etc.)
+///
+/// ## Adapter Pattern
+///
+/// If you have existing code that produces raw types, use `MessageWrapper`:
+/// ```rust,no_run
+/// use streamweave::adapters::MessageWrapper;
+/// // let raw_producer = MyRawProducer::new();
+/// // let producer = MessageWrapper::new(raw_producer);  // Now produces Message<T>
 /// ```
 ///
 /// # Implementations
@@ -126,7 +196,25 @@ where
   ///
   /// # Returns
   ///
-  /// A stream that yields items of type `Self::Output`.
+  /// A stream that yields items of type `Self::Output`, which is `Message<T>`
+  /// where `T` is the payload type.
+  ///
+  /// # Example
+  ///
+  /// ```rust,no_run
+  /// use streamweave::{Producer, Output};
+  /// use streamweave::message::wrap_message;
+  /// use futures::Stream;
+  /// use std::pin::Pin;
+  ///
+  /// // In your Producer implementation:
+  /// // fn produce(&mut self) -> Self::OutputStream {
+  /// //     let items = vec![1, 2, 3];
+  /// //     Box::pin(futures::stream::iter(
+  /// //         items.into_iter().map(|item| wrap_message(item))
+  /// //     ))
+  /// // }
+  /// ```
   fn produce(&mut self) -> Self::OutputStream;
 
   /// Creates a new producer instance with the given configuration.
@@ -135,11 +223,16 @@ where
   ///
   /// # Arguments
   ///
-  /// * `config` - The `ProducerConfig` to apply.
+  /// * `config` - The `ProducerConfig` to apply. The config works with `Message<T>`.
   ///
   /// # Returns
   ///
   /// A new producer instance with the specified configuration.
+  ///
+  /// # Type Parameters
+  ///
+  /// The config is parameterized by the message type `M` where `M = Message<T>` and
+  /// `Self::Output = M`.
   #[must_use]
   fn with_config(&self, config: ProducerConfig<Self::Output>) -> Self
   where
@@ -154,7 +247,7 @@ where
   ///
   /// # Arguments
   ///
-  /// * `config` - The new `ProducerConfig` to apply.
+  /// * `config` - The new `ProducerConfig` to apply. Works with `Message<T>`.
   fn set_config(&mut self, config: ProducerConfig<Self::Output>) {
     self.set_config_impl(config);
   }
@@ -226,13 +319,17 @@ where
   /// This method constructs an `ErrorContext` with the current timestamp,
   /// the item that caused the error (if any), and component information.
   ///
+  /// **Note**: The item is `Message<T>`, so message IDs and metadata are available
+  /// through the item. For example: `context.item.as_ref().map(|msg| msg.id())`.
+  ///
   /// # Arguments
   ///
-  /// * `item` - The item that caused the error, if available.
+  /// * `item` - The message that caused the error, if available.
   ///
   /// # Returns
   ///
-  /// An `ErrorContext` containing error details.
+  /// An `ErrorContext` containing error details, including the full `Message<T>`
+  /// which provides access to message ID and metadata.
   fn create_error_context(&self, item: Option<Self::Output>) -> ErrorContext<Self::Output> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
@@ -244,7 +341,9 @@ where
 
   /// Returns information about the component for error reporting.
   ///
-  /// This includes the component's name and type.
+  /// This includes the component's name and type. For message-level information
+  /// (message IDs, metadata), use `create_error_context()` which includes the
+  /// full `Message<T>` in the error context.
   ///
   /// # Returns
   ///

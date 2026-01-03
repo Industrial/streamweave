@@ -9,11 +9,68 @@
 
 The `streamweave` package provides the core traits and types that form the foundation of the StreamWeave framework. All other StreamWeave packages depend on these core abstractions to build producers, transformers, and consumers.
 
+## 🎯 Universal Message Model
+
+**All data in StreamWeave flows as `Message<T>`.** This universal message model ensures that every piece of data has:
+- **MessageId**: Unique identifier for tracking and correlation
+- **MessageMetadata**: Timestamps, source information, headers, and custom attributes
+- **Payload**: Your actual data (`T`)
+
+This design enables:
+- **End-to-end traceability**: Track messages through complex pipelines
+- **Metadata preservation**: Pass context through transformations
+- **Error correlation**: Link errors to specific messages
+- **Zero-copy sharing**: Efficient message sharing in fan-out scenarios
+
+### Working with Messages
+
+**Direct Message Usage (Advanced):**
+```rust
+use streamweave::message::{Message, MessageId, MessageMetadata, wrap_message};
+
+// Create a message with automatic ID generation
+let msg = wrap_message(42);
+
+// Access message components
+let payload = msg.payload();        // &i32
+let id = msg.id();                  // &MessageId
+let metadata = msg.metadata();      // &MessageMetadata
+
+// Create message with custom metadata
+let metadata = MessageMetadata::default()
+    .source("my_source")
+    .header("key", "value");
+let msg = Message::with_metadata(42, MessageId::new_uuid(), metadata);
+```
+
+**Adapter-Based Usage (Simple):**
+For simple cases where you just want to work with raw types, use adapters:
+
+```rust,no_run
+use streamweave::adapters::{MessageWrapper, PayloadExtractor, PayloadExtractorConsumer};
+
+// Wrap a raw producer (produces raw types)
+// let raw_producer = MyRawProducer::new();
+// let producer = MessageWrapper::new(raw_producer);  // Now produces Message<T>
+
+// Extract payloads in transformer (works with raw types internally)
+// let raw_transformer = MyRawTransformer::new();
+// let transformer = PayloadExtractor::new(raw_transformer);  // Input/Output: Message<T>
+
+// Extract payloads in consumer (receives raw types)
+// let raw_consumer = MyRawConsumer::new();
+// let consumer = PayloadExtractorConsumer::new(raw_consumer);  // Input: Message<T>
+```
+
+See the [Adapters](#-adapters) section for more details.
+
 ## ✨ Key Features
 
+- **Universal Message Model**: All data flows as `Message<T>` with IDs and metadata
 - **Producer Trait**: Define components that generate data streams
 - **Transformer Trait**: Define components that transform data streams
 - **Consumer Trait**: Define components that consume data streams
+- **Adapter Patterns**: Work with raw types while system uses messages internally
 - **Input/Output Traits**: Type-safe stream interfaces
 - **Port System**: Type-safe multi-port connections for graph-based processing
 - **Configuration System**: Unified configuration for error handling and component naming
@@ -30,19 +87,38 @@ streamweave = "0.6.0"
 
 ## 🚀 Quick Start
 
-### Basic Pipeline Example
+### Basic Message Usage
+
+All data in StreamWeave flows as `Message<T>`. Here's a simple example:
 
 ```rust
-use streamweave::{
-    Producer, Transformer, Consumer,
-    Input, Output,
-};
+use streamweave::message::{Message, MessageId, wrap_message};
 
-// This example shows the core traits in action
-// See specific package implementations for concrete examples
+// Create a message (automatic ID generation)
+let msg = wrap_message(42);
+
+// Access the payload
+let value = msg.payload();  // &i32
+
+// Access message ID and metadata
+let id = msg.id();
+let metadata = msg.metadata();
 ```
 
-For a complete working example, see the [pipeline package](../pipeline/README.md) or check out the [examples directory](https://github.com/Industrial/streamweave/tree/main/examples).
+### Working with Producers, Transformers, and Consumers
+
+All components work with `Message<T>`:
+
+```rust
+use streamweave::{Producer, Transformer, Consumer};
+use streamweave::message::Message;
+
+// Producers yield Message<T>
+// Transformers receive Message<T> and produce Message<U>
+// Consumers receive Message<T>
+```
+
+For complete working examples, see the [pipeline package](../pipeline/README.md) or check out the [examples directory](https://github.com/Industrial/streamweave/tree/main/examples).
 
 ## 📖 API Overview
 
@@ -50,22 +126,16 @@ For a complete working example, see the [pipeline package](../pipeline/README.md
 
 The `Producer` trait defines components that generate data streams. Producers are the starting point of any StreamWeave pipeline.
 
-```rust
-use streamweave::Producer;
-
-#[async_trait::async_trait]
-trait Producer: Output {
-    type OutputPorts: PortList;
-    
-    fn produce(&mut self) -> Self::OutputStream;
-    
-    // Configuration methods
-    fn with_config(&self, config: ProducerConfig<Self::Output>) -> Self;
-    fn with_name(self, name: String) -> Self;
-    
-    // Error handling
-    fn handle_error(&self, error: &StreamError<Self::Output>) -> ErrorAction;
-}
+```text
+// Producer trait signature (simplified for documentation)
+// 
+// trait Producer: Output {
+//     type OutputPorts: PortList;
+//     fn produce(&mut self) -> Self::OutputStream;
+//     fn with_config(&self, config: ProducerConfig<Self::Output>) -> Self;
+//     fn with_name(self, name: String) -> Self;
+//     fn handle_error(&self, error: &StreamError<Self::Output>) -> ErrorAction;
+// }
 ```
 
 **Key Methods:**
@@ -75,28 +145,32 @@ trait Producer: Output {
 
 **Example Producer Implementation:**
 
-```rust
+```rust,no_run
 use streamweave::{Producer, Output, ProducerConfig};
+use streamweave::message::{Message, MessageId, wrap_message};
 use streamweave_error::ErrorStrategy;
 use futures::Stream;
 use std::pin::Pin;
 
 struct NumberProducer {
     numbers: Vec<i32>,
-    config: ProducerConfig<i32>,
+    config: ProducerConfig<Message<i32>>,
 }
 
 impl Output for NumberProducer {
-    type Output = i32;
-    type OutputStream = Pin<Box<dyn Stream<Item = i32> + Send>>;
+    type Output = Message<i32>;
+    type OutputStream = Pin<Box<dyn Stream<Item = Message<i32>> + Send>>;
 }
 
 #[async_trait::async_trait]
 impl Producer for NumberProducer {
-    type OutputPorts = (i32,);
+    type OutputPorts = (Message<i32>,);
     
     fn produce(&mut self) -> Self::OutputStream {
-        Box::pin(futures::stream::iter(self.numbers.clone()))
+        let numbers = self.numbers.clone();
+        Box::pin(futures::stream::iter(
+            numbers.into_iter().map(|n| wrap_message(n))
+        ))
     }
     
     fn set_config_impl(&mut self, config: ProducerConfig<Self::Output>) {
@@ -117,23 +191,17 @@ impl Producer for NumberProducer {
 
 The `Transformer` trait defines components that transform data streams. Transformers process items as they flow through the pipeline.
 
-```rust
-use streamweave::Transformer;
-
-#[async_trait::async_trait]
-trait Transformer: Input + Output {
-    type InputPorts: PortList;
-    type OutputPorts: PortList;
-    
-    fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream;
-    
-    // Configuration methods
-    fn with_config(&self, config: TransformerConfig<Self::Input>) -> Self;
-    fn with_name(self, name: String) -> Self;
-    
-    // Error handling
-    fn handle_error(&self, error: &StreamError<Self::Input>) -> ErrorAction;
-}
+```text
+// Transformer trait signature (simplified for documentation)
+//
+// trait Transformer: Input + Output {
+//     type InputPorts: PortList;
+//     type OutputPorts: PortList;
+//     async fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream;
+//     fn with_config(&self, config: TransformerConfig<Self::Input>) -> Self;
+//     fn with_name(self, name: String) -> Self;
+//     fn handle_error(&self, error: &StreamError<Self::Input>) -> ErrorAction;
+// }
 ```
 
 **Key Methods:**
@@ -143,33 +211,40 @@ trait Transformer: Input + Output {
 
 **Example Transformer Implementation:**
 
-```rust
+```rust,no_run
 use streamweave::{Transformer, Input, Output, TransformerConfig};
+use streamweave::message::{Message, MessageId};
 use streamweave_error::ErrorStrategy;
 use futures::StreamExt;
 use std::pin::Pin;
+use tokio_stream::Stream;
 
 struct DoubleTransformer {
-    config: TransformerConfig<i32>,
+    config: TransformerConfig<Message<i32>>,
 }
 
 impl Input for DoubleTransformer {
-    type Input = i32;
-    type InputStream = Pin<Box<dyn Stream<Item = i32> + Send>>;
+    type Input = Message<i32>;
+    type InputStream = Pin<Box<dyn Stream<Item = Message<i32>> + Send>>;
 }
 
 impl Output for DoubleTransformer {
-    type Output = i32;
-    type OutputStream = Pin<Box<dyn Stream<Item = i32> + Send>>;
+    type Output = Message<i32>;
+    type OutputStream = Pin<Box<dyn Stream<Item = Message<i32>> + Send>>;
 }
 
 #[async_trait::async_trait]
 impl Transformer for DoubleTransformer {
-    type InputPorts = (i32,);
-    type OutputPorts = (i32,);
+    type InputPorts = (Message<i32>,);
+    type OutputPorts = (Message<i32>,);
     
-    fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
-        Box::pin(input.map(|x| x * 2))
+    async fn transform(&mut self, input: Self::InputStream) -> Self::OutputStream {
+        Box::pin(input.map(|msg| {
+            let payload = msg.payload().clone();
+            let id = msg.id().clone();
+            let metadata = msg.metadata().clone();
+            Message::with_metadata(payload * 2, id, metadata)
+        }))
     }
     
     fn set_config_impl(&mut self, config: TransformerConfig<Self::Input>) {
@@ -190,22 +265,16 @@ impl Transformer for DoubleTransformer {
 
 The `Consumer` trait defines components that consume data streams. Consumers are the end point of a pipeline.
 
-```rust
-use streamweave::Consumer;
-
-#[async_trait::async_trait]
-trait Consumer: Input {
-    type InputPorts: PortList;
-    
-    async fn consume(&mut self, stream: Self::InputStream);
-    
-    // Configuration methods
-    fn with_config(&self, config: ConsumerConfig<Self::Input>) -> Self;
-    fn with_name(self, name: String) -> Self;
-    
-    // Error handling
-    fn handle_error(&self, error: &StreamError<Self::Input>) -> ErrorAction;
-}
+```text
+// Consumer trait signature (simplified for documentation)
+//
+// trait Consumer: Input {
+//     type InputPorts: PortList;
+//     async fn consume(&mut self, stream: Self::InputStream);
+//     fn with_config(&self, config: ConsumerConfig<Self::Input>) -> Self;
+//     fn with_name(self, name: String) -> Self;
+//     fn handle_error(&self, error: &StreamError<Self::Input>) -> ErrorAction;
+// }
 ```
 
 **Key Methods:**
@@ -215,27 +284,29 @@ trait Consumer: Input {
 
 **Example Consumer Implementation:**
 
-```rust
+```rust,no_run
 use streamweave::{Consumer, Input, ConsumerConfig};
+use streamweave::message::Message;
 use streamweave_error::ErrorStrategy;
 use futures::StreamExt;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio_stream::Stream;
 
-struct VecConsumer<T> {
-    items: Arc<Mutex<Vec<T>>>,
-    config: ConsumerConfig<T>,
+struct VecConsumer<T: std::fmt::Debug + Clone + Send + Sync + 'static> {
+    items: Arc<Mutex<Vec<Message<T>>>>,
+    config: ConsumerConfig<Message<T>>,
 }
 
-impl<T: Send + Sync + 'static> Input for VecConsumer<T> {
-    type Input = T;
-    type InputStream = Pin<Box<dyn Stream<Item = T> + Send>>;
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Input for VecConsumer<T> {
+    type Input = Message<T>;
+    type InputStream = Pin<Box<dyn Stream<Item = Message<T>> + Send>>;
 }
 
 #[async_trait::async_trait]
-impl<T: Send + Sync + 'static> Consumer for VecConsumer<T> {
-    type InputPorts = (T,);
+impl<T: std::fmt::Debug + Clone + Send + Sync + 'static> Consumer for VecConsumer<T> {
+    type InputPorts = (Message<T>,);
     
     async fn consume(&mut self, mut stream: Self::InputStream) {
         while let Some(item) = stream.next().await {
@@ -262,7 +333,9 @@ impl<T: Send + Sync + 'static> Consumer for VecConsumer<T> {
 The `Input` and `Output` traits define the stream interfaces for components.
 
 **Input Trait:**
-```rust
+```rust,no_run
+use tokio_stream::Stream;
+
 pub trait Input {
     type Input;
     type InputStream: Stream<Item = Self::Input> + Send;
@@ -270,7 +343,9 @@ pub trait Input {
 ```
 
 **Output Trait:**
-```rust
+```rust,no_run
+use tokio_stream::Stream;
+
 pub trait Output {
     type Output;
     type OutputStream: Stream<Item = Self::Output> + Send;
@@ -279,11 +354,68 @@ pub trait Output {
 
 These traits ensure type safety and enable components to be composed together in pipelines and graphs.
 
+### Message Module
+
+The `message` module provides the core message types and utilities:
+
+- **`Message<T>`**: The universal message envelope containing payload, ID, and metadata
+- **`MessageId`**: Unique identifier (UUID or sequence-based)
+- **`MessageMetadata`**: Timestamps, source, headers, and custom attributes
+- **`IdGenerator`**: Trait for generating message IDs
+- **Helper Functions**: `wrap_message()`, `unwrap_message()`, etc.
+
+**Key Message Operations:**
+
+```rust
+use streamweave::message::{Message, MessageId, MessageMetadata, wrap_message};
+
+// Create messages
+let msg1 = wrap_message(42);  // Auto-generates UUID
+let msg2 = Message::new(100, MessageId::new_uuid());
+
+// Access components
+let payload = msg1.payload();      // &T
+let id = msg1.id();                // &MessageId
+let metadata = msg1.metadata();     // &MessageMetadata
+
+// Transform payload while preserving ID and metadata
+let doubled = msg1.map(|x| x * 2);
+
+// Work with metadata
+let metadata = MessageMetadata::default()
+    .source("my_source")
+    .header("key", "value")
+    .timestamp(std::time::Duration::from_secs(1234567890));
+```
+
+See the [message module documentation](https://docs.rs/streamweave/latest/streamweave/message/index.html) for complete API details.
+
+### Adapters
+
+Adapters allow you to work with raw types while the system uses `Message<T>` internally:
+
+- **`MessageWrapper`**: Wraps a `RawProducer` to produce `Message<T>`
+- **`PayloadExtractor`**: Extracts payloads for `RawTransformer`, wraps output back into `Message<U>`
+- **`PayloadExtractorConsumer`**: Extracts payloads for `RawConsumer`
+
+**When to Use Adapters:**
+- Simple transformations that don't need message metadata
+- Migrating existing code that works with raw types
+- Quick prototyping
+
+**When to Use Messages Directly:**
+- Need to track messages through the pipeline
+- Want to preserve or modify metadata
+- Building advanced routing or correlation logic
+- Error handling that needs message context
+
+See the [adapters module documentation](https://docs.rs/streamweave/latest/streamweave/adapters/index.html) for details.
+
 ### Port System
 
 The port system enables type-safe multi-port connections in the Graph API. Ports are represented as tuples, allowing components to have multiple inputs or outputs.
 
-```rust
+```rust,no_run
 use streamweave::port::{PortList, GetPort};
 
 // Single port
@@ -304,15 +436,17 @@ The port system supports up to 12 ports per component, with compile-time type ch
 
 All components support configuration through `ProducerConfig`, `TransformerConfig`, and `ConsumerConfig`:
 
-```rust
+```rust,no_run
+use streamweave::{ProducerConfig, Producer};
 use streamweave_error::ErrorStrategy;
+use streamweave::message::Message;
 
 // Configure error handling
-let config = ProducerConfig::default()
+let config = ProducerConfig::<Message<i32>>::default()
     .with_error_strategy(ErrorStrategy::Skip)
     .with_name("my_producer".to_string());
 
-let producer = producer.with_config(config);
+// let producer = producer.with_config(config);
 ```
 
 **Configuration Options:**
@@ -323,62 +457,64 @@ let producer = producer.with_config(config);
 
 ### Creating a Producer
 
-```rust
+```rust,no_run
 use streamweave::{Producer, Output, ProducerConfig};
+use streamweave::message::Message;
 use streamweave_error::ErrorStrategy;
 
 // Create a producer with error handling
-let producer = MyProducer::new()
-    .with_config(
-        ProducerConfig::default()
-            .with_error_strategy(ErrorStrategy::Retry(3))
-            .with_name("data_source".to_string())
-    );
+// let producer = MyProducer::new()
+//     .with_config(
+//         ProducerConfig::<Message<i32>>::default()
+//             .with_error_strategy(ErrorStrategy::Retry(3))
+//             .with_name("data_source".to_string())
+//     );
 ```
 
 ### Creating a Transformer
 
-```rust
+```rust,no_run
 use streamweave::{Transformer, TransformerConfig};
+use streamweave::message::Message;
 use streamweave_error::ErrorStrategy;
 
 // Create a transformer with error handling
-let transformer = MyTransformer::new()
-    .with_config(
-        TransformerConfig::default()
-            .with_error_strategy(ErrorStrategy::Skip)
-            .with_name("data_processor".to_string())
-    );
+// let transformer = MyTransformer::new()
+//     .with_config(
+//         TransformerConfig::<Message<i32>>::default()
+//             .with_error_strategy(ErrorStrategy::Skip)
+//             .with_name("data_processor".to_string())
+//     );
 ```
 
 ### Creating a Consumer
 
-```rust
+```rust,no_run
 use streamweave::{Consumer, ConsumerConfig};
+use streamweave::message::Message;
 use streamweave_error::ErrorStrategy;
 
 // Create a consumer with error handling
-let consumer = MyConsumer::new()
-    .with_config(
-        ConsumerConfig {
-            error_strategy: ErrorStrategy::Stop,
-            name: "data_sink".to_string(),
-        }
-    );
+// let mut consumer = MyConsumer::new();
+// let mut config = ConsumerConfig::<Message<i32>>::default();
+// config.error_strategy = ErrorStrategy::Stop;
+// config.name = "data_sink".to_string();
+// consumer.set_config(config);
 ```
 
 ### Error Handling Strategies
 
 All components support multiple error handling strategies:
 
-```rust
+```rust,ignore
 use streamweave_error::ErrorStrategy;
+use streamweave::message::Message;
 
 // Stop on first error (default)
-ErrorStrategy::Stop
+let _stop = ErrorStrategy::<Message<i32>>::Stop;
 
 // Skip errors and continue processing
-ErrorStrategy::Skip
+let _skip = ErrorStrategy::<Message<i32>>::Skip;
 
 // Retry up to N times
 ErrorStrategy::Retry(3)
@@ -392,30 +528,42 @@ ErrorStrategy::new_custom(|error| {
 
 ## 🏗️ Architecture
 
-The streamweave core package provides the foundational abstractions:
+The streamweave core package provides the foundational abstractions with a universal message model:
 
 ```text
 ┌─────────────┐
-│   Producer  │───produces───> Stream<T>
+│   Producer  │───produces───> Stream<Message<T>>
 └─────────────┘
-       │
-       │ Stream flows through
-       ▼
+      │
+      │ Each item is Message<T> with:
+      │ - Unique MessageId
+      │ - MessageMetadata (timestamp, source, headers)
+      │ - Payload (your data)
+      ▼
 ┌─────────────┐
-│ Transformer │───transforms───> Stream<U>
+│ Transformer │───transforms───> Stream<Message<U>>
 └─────────────┘
-       │
-       │ Stream flows through
-       ▼
+      │
+      │ Messages preserve ID and metadata
+      │ through transformations
+      ▼
 ┌─────────────┐
-│  Consumer   │───consumes───> (writes, stores, etc.)
+│  Consumer   │───consumes───> Stream<Message<T>>
 └─────────────┘
 ```
 
+**Key Architectural Principles:**
+- **Universal Messages**: All data flows as `Message<T>` - no exceptions
+- **Metadata Preservation**: Message IDs and metadata are preserved through transformations
+- **Adapter Support**: Adapters allow working with raw types while system uses messages
+- **Type Safety**: Compile-time guarantees that components can be connected
+- **Zero-Copy**: Efficient message sharing in fan-out scenarios using `Arc`
+
 All components:
+- Work with `Message<T>` types
 - Implement `Input` and/or `Output` traits for type safety
 - Support configuration for error handling and naming
-- Integrate with the error handling system
+- Integrate with the error handling system (error contexts include full `Message<T>`)
 - Can be used in both Pipeline and Graph APIs
 
 ## 🔗 Dependencies
@@ -444,7 +592,14 @@ All components integrate with the `streamweave-error` package for consistent err
 
 - **Error Strategies**: Stop, Skip, Retry, or Custom handlers
 - **Error Context**: Automatic error context creation with timestamps and component info
+- **Message Context**: Error contexts include the full `Message<T>` that caused the error, providing access to message ID and metadata
 - **Component Info**: Automatic component identification for error reporting
+
+When an error occurs, the `ErrorContext` contains the `Message<T>` that caused it, allowing you to:
+- Track which message failed using its `MessageId`
+- Access message metadata for debugging
+- Correlate errors across the pipeline
+- Implement custom error handling based on message content
 
 ## ⚡ Performance
 
@@ -509,7 +664,8 @@ For more examples, see:
 - [streamweave-error](../error/README.md) - Error handling system
 - [streamweave-pipeline](../pipeline/README.md) - Pipeline builder and execution
 - [streamweave-graph](../graph/README.md) - Graph API for complex topologies
-- [streamweave-message](../message/README.md) - Message envelope and metadata
+
+**Note**: The message module is now part of the core `streamweave` package. See the [message module documentation](https://docs.rs/streamweave/latest/streamweave/message/index.html) for details.
 
 ## 🤝 Contributing
 
