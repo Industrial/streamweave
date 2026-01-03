@@ -18,6 +18,11 @@ tokio = { workspace = true, features = [
   "rt-multi-thread",
   "sync",
   "time",
+  "io-util",
+  "io-std",
+  "signal",
+  "fs",
+  "net",
 ] }
 futures = { workspace = true }
 async-trait = { workspace = true }
@@ -31,16 +36,15 @@ thiserror = { workspace = true }
 shared_memory = "0.12"
 flate2 = { version = "1.0", features = ["zlib"] }
 zstd = "0.13"
-streamweave-error = { path = "../error" }
+tokio-stream = { workspace = true }
+rand = "0.8"
+csv = { workspace = true, optional = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
-tokio-stream = { workspace = true }
-streamweave-transformers = { path = "../transformers" }
-streamweave-vec = { path = "../vec" }
 
 [features]
-default = []
-# Note: stateful and windowing features are temporarily disabled due to circular dependencies
+default = ["csv"]
+csv = ["dep:csv"]
+# Note: stateful transformers are excluded due to circular dependency with streamweave-stateful
 # stateful = ["dep:streamweave-stateful"]
-# windowing = ["dep:streamweave-window"]

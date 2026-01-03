@@ -3,14 +3,15 @@
 //! This module provides a KeyBasedRouter that routes items based on a key
 //! extraction function. Items with the same key go to the same port.
 
-use crate::router::OutputRouter;
+use crate::graph::router::OutputRouter;
 use async_trait::async_trait;
 use futures::Stream;
 use futures::StreamExt;
 use std::collections::HashMap;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::pin::Pin;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 
 /// A router that routes items based on a key extraction function.
 ///
@@ -118,7 +119,6 @@ where
     }
 
     // Create channels for each output port
-    use tokio::sync::mpsc;
     let mut senders = Vec::new();
     let mut receivers = Vec::new();
 
@@ -145,7 +145,6 @@ where
           port
         } else {
           // Hash-based distribution if no explicit mapping
-          use std::hash::Hasher;
           let mut hasher = std::collections::hash_map::DefaultHasher::new();
           key.hash(&mut hasher);
           (hasher.finish() as usize) % num_ports

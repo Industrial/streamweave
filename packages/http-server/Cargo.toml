@@ -14,10 +14,6 @@ description = "HTTP server integration for StreamWeave"
 [dependencies]
 async-stream = { workspace = true }
 streamweave = { path = "../streamweave" }
-streamweave-graph = { path = "../graph" }
-streamweave-pipeline = { path = "../pipeline" }
-streamweave-message = { path = "../message" }
-streamweave-error = { path = "../error" }
 axum = { workspace = true, optional = true }
 tower = { workspace = true, optional = true }
 tower-http = { workspace = true, optional = true, features = ["cors", "trace"] }
@@ -44,8 +40,5 @@ http-server = [
 ]
 
 [dev-dependencies]
-streamweave-transformers = { path = "../transformers" }
-streamweave-graph = { path = "../graph" }
-streamweave-message = { path = "../message" }
 futures = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "test-util"] }

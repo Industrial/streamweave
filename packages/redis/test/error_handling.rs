@@ -1,7 +1,7 @@
 //! Tests for error handling and edge cases
 
 use serde::Serialize;
-use streamweave_error::ErrorStrategy;
+use streamweave::error::ErrorStrategy;
 use streamweave_redis::{RedisConsumer, RedisProducerConfig};
 use streamweave_redis::{RedisConsumerConfig, RedisProducer};
 

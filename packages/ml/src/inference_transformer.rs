@@ -26,7 +26,7 @@ use super::InferenceBackend;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use streamweave::TransformerConfig;
-use streamweave_error::ErrorStrategy;
+use streamweave::error::ErrorStrategy;
 use tokio::sync::RwLock;
 
 /// Transformer that runs ML inference on stream items.
@@ -104,7 +104,7 @@ where
   ///
   /// ```rust,no_run
   /// # use streamweave_ml_transformers::{InferenceTransformer, OnnxBackend};
-  /// # use streamweave_error::ErrorStrategy;
+  /// # use streamweave::error::ErrorStrategy;
   /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
   /// let mut backend = OnnxBackend::new()?;
   /// backend.load_from_path("model.onnx").await?;
@@ -204,8 +204,8 @@ mod transformer_impl {
   use std::sync::Arc;
   use streamweave::Input;
   use streamweave::Output;
+  use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
   use streamweave::{Transformer, TransformerConfig};
-  use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
   // Input trait implementation
   impl<B> Input for InferenceTransformer<B>

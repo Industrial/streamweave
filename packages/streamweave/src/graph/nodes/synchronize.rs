@@ -1,12 +1,13 @@
 //! Input router that synchronizes multiple input streams, waiting for all before proceeding.
 
-use super::crate::router::InputRouter;
+use crate::graph::router::InputRouter;
 use async_trait::async_trait;
 use futures::Stream;
 use futures::StreamExt;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::time::Duration;
+use tokio::sync::mpsc;
 
 /// Input router that synchronizes multiple input streams, waiting for all before proceeding.
 ///
@@ -56,8 +57,6 @@ where
     &mut self,
     streams: Vec<(String, Pin<Box<dyn Stream<Item = T> + Send>>)>,
   ) -> Pin<Box<dyn Stream<Item = T> + Send>> {
-    use tokio::sync::mpsc;
-
     if streams.len() != self.expected_inputs {
       // Return empty stream if input count doesn't match
       return Box::pin(futures::stream::empty());

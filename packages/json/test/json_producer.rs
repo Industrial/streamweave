@@ -1,6 +1,6 @@
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
-use streamweave_error::ErrorStrategy;
+use streamweave::error::ErrorStrategy;
 use streamweave_json::JsonProducer;
 use tempfile::NamedTempFile;
 use tokio::fs::write;

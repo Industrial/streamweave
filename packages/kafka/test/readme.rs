@@ -4,10 +4,10 @@
 
 #[cfg(feature = "kafka")]
 mod tests {
+  use streamweave::consumers::VecConsumer;
+  use streamweave::pipeline::PipelineBuilder;
+  use streamweave::producers::VecProducer;
   use streamweave_kafka::{KafkaConsumer, KafkaConsumerConfig, KafkaProducer, KafkaProducerConfig};
-  use streamweave_pipeline::PipelineBuilder;
-  use streamweave_vec::VecConsumer;
-  use streamweave_vec::VecProducer;
 
   #[tokio::test]
   #[ignore] // Requires Kafka server

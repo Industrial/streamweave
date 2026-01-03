@@ -14,8 +14,6 @@ description = "Path manipulation transformers for StreamWeave (no filesystem ope
 [dependencies]
 chrono = { workspace = true }
 streamweave = { path = "../streamweave" }
-streamweave-error = { path = "../error" }
-streamweave-message = { path = "../message", optional = true }
 futures = { workspace = true }
 async-stream = { workspace = true }
 async-trait = { workspace = true }
@@ -27,4 +25,3 @@ proptest = { workspace = true }
 
 [features]
 default = []
-message-envelope = ["dep:streamweave-message"]

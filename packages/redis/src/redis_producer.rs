@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use streamweave::error::ErrorStrategy;
 use streamweave::{Output, Producer, ProducerConfig};
-use streamweave_error::ErrorStrategy;
 
 /// Configuration for Redis Streams consumer behavior.
 #[derive(Debug, Clone)]
@@ -197,7 +197,7 @@ use redis::{
 #[cfg(feature = "redis")]
 use std::time::Duration;
 #[cfg(feature = "redis")]
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
 #[cfg(feature = "redis")]
 use tokio::time::sleep;
 #[cfg(feature = "redis")]
@@ -394,17 +394,17 @@ impl Producer for RedisProducer {
 
 #[cfg(feature = "redis")]
 fn handle_error_strategy<T>(
-  strategy: &streamweave_error::ErrorStrategy<T>,
+  strategy: &streamweave::error::ErrorStrategy<T>,
   error: &StreamError<T>,
 ) -> ErrorAction
 where
   T: std::fmt::Debug + Clone + Send + Sync,
 {
   match strategy {
-    streamweave_error::ErrorStrategy::Stop => ErrorAction::Stop,
-    streamweave_error::ErrorStrategy::Skip => ErrorAction::Skip,
-    streamweave_error::ErrorStrategy::Retry(n) if error.retries < *n => ErrorAction::Retry,
-    streamweave_error::ErrorStrategy::Custom(handler) => handler(error),
+    streamweave::error::ErrorStrategy::Stop => ErrorAction::Stop,
+    streamweave::error::ErrorStrategy::Skip => ErrorAction::Skip,
+    streamweave::error::ErrorStrategy::Retry(n) if error.retries < *n => ErrorAction::Retry,
+    streamweave::error::ErrorStrategy::Custom(handler) => handler(error),
     _ => ErrorAction::Stop,
   }
 }

@@ -11,7 +11,7 @@
 //! - Data items are stored sequentially in the buffer
 //! - Lock-free synchronization using atomic operations
 //!
-//! ## Message<T> Support
+//! ## `Message<T>` Support
 //!
 //! Shared memory channels work with serialized `Message<T>` data. Before sending,
 //! `Message<T>` instances are serialized to bytes using the serialization module.
@@ -35,7 +35,7 @@
 //! let received = channel.receive()?;
 //! ```
 //!
-//! ## Usage with Message<T>
+//! ## Usage with `Message<T>`
 //!
 //! ```rust
 //! use streamweave::graph::shared_memory_channel::SharedMemoryChannel;

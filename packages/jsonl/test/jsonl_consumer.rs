@@ -5,8 +5,8 @@ use proptest::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::io::BufRead;
 use std::path::PathBuf;
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave::{Consumer, Input};
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave_jsonl::{JsonlConsumer, JsonlWriteConfig};
 use tempfile::NamedTempFile;
 

@@ -194,7 +194,7 @@ async fn test_connection_pooling() {
 #[tokio::test]
 async fn test_error_handling() {
   // Example from README.md lines 223-230
-  use streamweave_error::ErrorStrategy;
+  use streamweave::error::ErrorStrategy;
 
   let producer_config = DatabaseProducerConfig::default()
     .with_connection_url("mysql://user:pass@localhost/mydb")

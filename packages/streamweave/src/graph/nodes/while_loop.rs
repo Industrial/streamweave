@@ -3,6 +3,7 @@
 //! Repeats processing of items until a condition is met. Each iteration processes
 //! the item through the loop body (which should be a downstream transformer).
 
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};
 use async_trait::async_trait;
 use futures::Stream;
@@ -10,7 +11,6 @@ use futures::StreamExt;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::sync::Arc;
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
 
 /// Transformer that implements a while loop with conditional iteration.
 ///
@@ -123,10 +123,10 @@ where
 
   fn handle_error(&self, error: &StreamError<Self::Input>) -> ErrorAction {
     match self.config.error_strategy() {
-      streamweave_error::ErrorStrategy::Stop => ErrorAction::Stop,
-      streamweave_error::ErrorStrategy::Skip => ErrorAction::Skip,
-      streamweave_error::ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
-      streamweave_error::ErrorStrategy::Custom(ref handler) => handler(error),
+      crate::error::ErrorStrategy::Stop => ErrorAction::Stop,
+      crate::error::ErrorStrategy::Skip => ErrorAction::Skip,
+      crate::error::ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
+      crate::error::ErrorStrategy::Custom(ref handler) => handler(error),
       _ => ErrorAction::Stop,
     }
   }

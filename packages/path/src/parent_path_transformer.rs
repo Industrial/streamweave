@@ -2,8 +2,8 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::path::Path;
 use std::pin::Pin;
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave::{Input, Output, Transformer, TransformerConfig};
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 /// A transformer that extracts the parent directory from path strings.
 ///

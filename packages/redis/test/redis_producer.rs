@@ -1,6 +1,6 @@
 use std::collections::HashMap;
+use streamweave::error::ErrorStrategy;
 use streamweave::{Producer, ProducerConfig};
-use streamweave_error::ErrorStrategy;
 use streamweave_redis::{RedisConsumerConfig, RedisMessage, RedisProducer};
 
 #[test]
@@ -180,7 +180,7 @@ fn test_redis_producer_with_error_strategy_skip() {
 fn test_redis_producer_with_error_strategy_custom() {
   let redis_config = RedisConsumerConfig::default().with_stream("test-stream");
   let custom_handler =
-    |_error: &streamweave_error::StreamError<RedisMessage>| streamweave_error::ErrorAction::Skip;
+    |_error: &streamweave::error::StreamError<RedisMessage>| streamweave::error::ErrorAction::Skip;
   let producer =
     RedisProducer::new(redis_config).with_error_strategy(ErrorStrategy::new_custom(custom_handler));
 

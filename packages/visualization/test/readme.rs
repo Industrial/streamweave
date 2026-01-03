@@ -5,9 +5,9 @@
 //! the actual API.
 
 use std::net::SocketAddr;
-use streamweave_transformers::MapTransformer;
-use streamweave_vec::VecConsumer;
-use streamweave_vec::VecProducer;
+use streamweave::consumers::VecConsumer;
+use streamweave::producers::VecProducer;
+use streamweave::transformers::MapTransformer;
 use streamweave_visualization::DagExporter;
 use streamweave_visualization::PipelineDag;
 use streamweave_visualization::VisualizationServer;

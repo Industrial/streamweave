@@ -14,14 +14,11 @@ description = "Redis producer and consumer for StreamWeave"
 [features]
 default = ["redis"]
 redis = ["dep:redis"]
-message-envelope = ["dep:streamweave-message"]
 
 [dependencies]
 chrono = { workspace = true }
 async-stream = { workspace = true }
 streamweave = { path = "../streamweave" }
-streamweave-error = { path = "../error" }
-streamweave-message = { path = "../message", optional = true }
 redis = { workspace = true, optional = true, features = [
   "tokio-comp",
   "connection-manager",

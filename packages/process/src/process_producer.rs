@@ -1,8 +1,8 @@
 use futures::Stream;
 use std::pin::Pin;
 use std::process::Stdio;
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave::{Output, Producer, ProducerConfig};
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 

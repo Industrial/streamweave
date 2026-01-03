@@ -19,9 +19,9 @@ use std::sync::Arc;
 #[cfg(feature = "http-server")]
 use std::time::Duration;
 #[cfg(feature = "http-server")]
-use streamweave_graph::Graph;
+use streamweave::graph::Graph;
 #[cfg(feature = "http-server")]
-use streamweave_graph::{ExecutionError, ExecutionState, GraphExecutor};
+use streamweave::graph::{ExecutionError, ExecutionState, GraphExecutor};
 #[cfg(feature = "http-server")]
 use tokio::sync::mpsc;
 #[cfg(feature = "http-server")]

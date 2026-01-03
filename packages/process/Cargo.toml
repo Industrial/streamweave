@@ -14,8 +14,6 @@ description = "Process management for StreamWeave"
 [dependencies]
 chrono = { workspace = true }
 streamweave = { path = "../streamweave" }
-streamweave-error = { path = "../error" }
-streamweave-message = { path = "../message", optional = true }
 tokio = { workspace = true, features = ["macros", "rt", "process", "io-util"] }
 futures = { workspace = true }
 async-stream = { workspace = true }
@@ -28,4 +26,3 @@ proptest = { workspace = true }
 
 [features]
 default = []
-message-envelope = ["dep:streamweave-message"]

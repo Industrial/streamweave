@@ -3,10 +3,10 @@
 //! These tests recreate the examples from the README.md file to ensure they
 //! work as advertised. Each test corresponds to a code example in the README.
 
-use streamweave_pipeline::PipelineBuilder;
+use streamweave::consumers::VecConsumer;
+use streamweave::pipeline::PipelineBuilder;
+use streamweave::transformers::MapTransformer;
 use streamweave_process::{ProcessConsumer, ProcessProducer};
-use streamweave_transformers::MapTransformer;
-use streamweave_vec::VecConsumer;
 
 /// Test: Stream Process Output
 ///
@@ -14,7 +14,7 @@ use streamweave_vec::VecConsumer;
 #[tokio::test]
 async fn test_stream_process_output_example() {
   // Example from README.md lines 31-45
-  use streamweave_pipeline::PipelineBuilder;
+  use streamweave::pipeline::PipelineBuilder;
   use streamweave_process::ProcessProducer;
 
   let producer = ProcessProducer::new("echo".to_string())
@@ -36,11 +36,11 @@ async fn test_stream_process_output_example() {
 #[tokio::test]
 async fn test_pipe_data_to_process_example() {
   // Example from README.md lines 47-61
-  use streamweave_array::ArrayProducer;
-  use streamweave_pipeline::PipelineBuilder;
+  use streamweave::pipeline::PipelineBuilder;
+  use streamweave::producers::ArrayProducer;
   use streamweave_process::ProcessConsumer;
 
-  let producer = ArrayProducer::new(vec!["line1".to_string(), "line2".to_string()]);
+  let producer = ArrayProducer::new(["line1".to_string(), "line2".to_string()]);
   let consumer = ProcessConsumer::new("cat".to_string());
 
   let pipeline = PipelineBuilder::new().producer(producer).consumer(consumer);
@@ -55,7 +55,7 @@ async fn test_pipe_data_to_process_example() {
 #[tokio::test]
 async fn test_process_output_processing_example() {
   // Example from README.md lines 105-124
-  use streamweave_pipeline::PipelineBuilder;
+  use streamweave::pipeline::PipelineBuilder;
   use streamweave_process::ProcessProducer;
 
   let producer = ProcessProducer::new("echo".to_string()).arg("test".to_string());
@@ -80,7 +80,7 @@ async fn test_process_output_processing_example() {
 #[tokio::test]
 async fn test_error_handling_example() {
   // Example from README.md lines 144-154
-  use streamweave_error::ErrorStrategy;
+  use streamweave::error::ErrorStrategy;
   use streamweave_process::ProcessProducer;
 
   let producer =

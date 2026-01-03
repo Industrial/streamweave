@@ -14,14 +14,11 @@ description = "Parquet producer and consumer for StreamWeave"
 [features]
 default = ["parquet"]
 parquet = ["dep:arrow", "dep:parquet"]
-message-envelope = ["dep:streamweave-message"]
 
 [dependencies]
 chrono = { workspace = true }
 async-stream = { workspace = true }
 streamweave = { path = "../streamweave" }
-streamweave-error = { path = "../error" }
-streamweave-message = { path = "../message", optional = true }
 parquet = { workspace = true, optional = true, features = ["arrow", "snap"] }
 arrow = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["macros", "rt", "fs", "sync"] }

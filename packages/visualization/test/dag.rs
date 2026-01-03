@@ -168,7 +168,7 @@ fn test_format_type_name() {
 
 #[test]
 fn test_format_error_strategy() {
-  use streamweave_error::ErrorStrategy;
+  use streamweave::error::ErrorStrategy;
   use streamweave_visualization::format_error_strategy;
 
   assert_eq!(format_error_strategy(&ErrorStrategy::<i32>::Stop), "Stop");
@@ -179,7 +179,7 @@ fn test_format_error_strategy() {
   );
   assert_eq!(
     format_error_strategy(&ErrorStrategy::<i32>::new_custom(|_| {
-      streamweave_error::ErrorAction::Skip
+      streamweave::error::ErrorAction::Skip
     })),
     "Custom"
   );
@@ -217,9 +217,9 @@ fn test_dag_node_consumer() {
 
 #[test]
 fn test_pipeline_dag_from_components() {
-  use streamweave_transformers::map::MapTransformer;
-  use streamweave_vec::VecConsumer;
-  use streamweave_vec::VecProducer;
+  use streamweave::consumers::VecConsumer;
+  use streamweave::producers::VecProducer;
+  use streamweave::transformers::map::MapTransformer;
 
   let producer = VecProducer::new(vec![1, 2, 3]);
   let transformer = MapTransformer::new(|x: i32| x * 2);
@@ -266,9 +266,9 @@ fn test_pipeline_dag_from_components() {
 
 #[test]
 fn test_pipeline_dag_from_components_with_names() {
-  use streamweave_transformers::map::MapTransformer;
-  use streamweave_vec::VecConsumer;
-  use streamweave_vec::VecProducer;
+  use streamweave::consumers::VecConsumer;
+  use streamweave::producers::VecProducer;
+  use streamweave::transformers::map::MapTransformer;
 
   let producer = VecProducer::new(vec![1, 2, 3]).with_name("my_producer".to_string());
   let transformer = MapTransformer::new(|x: i32| x * 2).with_name("my_transformer".to_string());
@@ -291,10 +291,10 @@ fn test_pipeline_dag_from_components_with_names() {
 
 #[test]
 fn test_pipeline_dag_from_components_with_error_strategies() {
-  use streamweave_error::ErrorStrategy;
-  use streamweave_transformers::map::MapTransformer;
-  use streamweave_vec::VecConsumer;
-  use streamweave_vec::VecProducer;
+  use streamweave::consumers::VecConsumer;
+  use streamweave::error::ErrorStrategy;
+  use streamweave::producers::VecProducer;
+  use streamweave::transformers::map::MapTransformer;
 
   let producer = VecProducer::new(vec![1, 2, 3]).with_error_strategy(ErrorStrategy::<i32>::Skip);
   let transformer =

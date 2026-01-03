@@ -4,14 +4,14 @@
 //! graph node execution, allowing data to be serialized for transmission
 //! between nodes via channels.
 //!
-//! ## Message<T> Support
+//! ## `Message<T>` Support
 //!
 //! All data flowing through the graph is wrapped in `Message<T>`, and this module
 //! fully supports serializing and deserializing `Message<T>` instances. Message IDs
 //! and metadata are preserved during serialization/deserialization, enabling
 //! end-to-end traceability in distributed execution modes.
 //!
-//! ## Usage with Message<T>
+//! ## Usage with `Message<T>`
 //!
 //! ```rust
 //! use streamweave::graph::serialization::{serialize, deserialize};
@@ -130,7 +130,7 @@ impl From<serde_json::Error> for SerializationError {
 /// bytes using `serde_json::to_vec` and converts the result to `Bytes`
 /// for zero-copy sharing.
 ///
-/// # Message<T> Support
+/// # `Message<T>` Support
 ///
 /// This function fully supports `Message<T>` serialization. When serializing
 /// a `Message<T>`, the message ID and metadata are preserved in the serialized
@@ -162,7 +162,7 @@ impl From<serde_json::Error> for SerializationError {
 /// # Ok::<(), streamweave::graph::SerializationError>(())
 /// ```
 ///
-/// # Example with Message<T>
+/// # Example with `Message<T>`
 ///
 /// ```rust
 /// use streamweave::graph::serialize;
@@ -184,7 +184,7 @@ pub fn serialize<T: Serialize>(item: &T) -> Result<Bytes, SerializationError> {
 /// `DeserializeOwned` using `serde_json::from_slice`. Accepts `Bytes`
 /// for zero-copy access to the underlying data.
 ///
-/// # Message<T> Support
+/// # `Message<T>` Support
 ///
 /// This function fully supports `Message<T>` deserialization. When deserializing
 /// a `Message<T>`, the message ID and metadata are restored from the serialized
@@ -218,7 +218,7 @@ pub fn serialize<T: Serialize>(item: &T) -> Result<Bytes, SerializationError> {
 /// # Ok::<(), streamweave::graph::SerializationError>(())
 /// ```
 ///
-/// # Example with Message<T>
+/// # Example with `Message<T>`
 ///
 /// ```rust
 /// use bytes::Bytes;
@@ -248,7 +248,7 @@ pub fn deserialize<T: DeserializeOwned>(data: Bytes) -> Result<T, SerializationE
 /// - Strings can be deserialized as `&str` when data outlives deserialized value
 /// - Reduces allocations for string-heavy data structures
 ///
-/// # Message<T> Support
+/// # `Message<T>` Support
 ///
 /// This deserializer fully supports `Message<T>` deserialization. When deserializing
 /// a `Message<T>`, the message ID and metadata are restored from the serialized data.
@@ -264,7 +264,7 @@ pub fn deserialize<T: DeserializeOwned>(data: Bytes) -> Result<T, SerializationE
 /// let result: serde_json::Value = deserializer.deserialize().unwrap();
 /// ```
 ///
-/// # Example with Message<T>
+/// # Example with `Message<T>`
 ///
 /// ```rust
 /// use streamweave::graph::serialization::{serialize, ZeroCopyDeserializer};

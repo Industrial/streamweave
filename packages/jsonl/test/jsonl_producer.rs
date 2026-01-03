@@ -4,7 +4,7 @@ use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use streamweave::Producer;
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave_jsonl::JsonlProducer;
 use tempfile::NamedTempFile;
 

@@ -8,9 +8,9 @@ use serde_json::Value;
 use sqlx::mysql::MySqlPoolOptions;
 use std::collections::HashMap;
 use std::time::Duration;
+use streamweave::error::ErrorStrategy;
 use streamweave_database::{DatabaseProducerConfig, DatabaseRow, DatabaseType};
 use streamweave_database_mysql::MysqlProducer;
-use streamweave_error::ErrorStrategy;
 
 fn get_mysql_url() -> String {
   std::env::var("MYSQL_URL")

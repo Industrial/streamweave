@@ -14,8 +14,6 @@ description = "Temporary file handling for StreamWeave"
 [dependencies]
 chrono = { workspace = true }
 streamweave = { path = "../streamweave" }
-streamweave-error = { path = "../error" }
-streamweave-message = { path = "../message", optional = true }
 tokio = { workspace = true, features = ["macros", "rt", "fs", "io-util"] }
 tempfile = { workspace = true }
 futures = { workspace = true }
@@ -29,4 +27,3 @@ proptest = { workspace = true }
 
 [features]
 default = []
-message-envelope = ["dep:streamweave-message"]

@@ -3,8 +3,8 @@ use futures::Stream;
 use serde::de::DeserializeOwned;
 use std::marker::PhantomData;
 use std::pin::Pin;
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave::{Output, Producer, ProducerConfig};
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tokio::fs::read_to_string;
 use tracing::{error, warn};
 

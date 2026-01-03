@@ -10,7 +10,7 @@
 //! only. At runtime, all ports are identified by string names. The `GraphBuilder::connect`
 //! method converts port indices to port names when creating connections.
 //!
-//! ## Message<T> and Port Types
+//! ## `Message<T>` and Port Types
 //!
 //! Port types are specified using raw types (e.g., `i32`, `String`), not `Message<T>`.
 //! This keeps the user-facing API clean and intuitive. Internally, all data flowing through
@@ -26,7 +26,7 @@
 //! use streamweave::graph::connection::Connection;
 //! use streamweave::graph::node::{ProducerNode, TransformerNode};
 //! use streamweave_VecProducer;
-//! use streamweave_transformers::MapTransformer;
+//! use streamweave::transformers::MapTransformer;
 //!
 //! // Type-safe connection validated at compile time
 //! // Note: Port indices (0, 0) are for compile-time validation only.
@@ -121,7 +121,7 @@ pub trait HasInputPort<const N: usize> {
 /// For now, this uses type equality, but could be extended to support conversions
 /// or subtyping in the future.
 ///
-/// # Note on Message<T>
+/// # Note on `Message<T>`
 ///
 /// Port types are validated using raw types (e.g., `i32`), not `Message<T>`. This
 /// keeps the user-facing API clean. Internally, all data flows as `Message<T>`
@@ -223,7 +223,7 @@ where
 /// use streamweave::graph::connection::Connection;
 /// use streamweave::graph::node::{ProducerNode, TransformerNode};
 /// use streamweave_VecProducer;
-/// use streamweave_transformers::MapTransformer;
+/// use streamweave::transformers::MapTransformer;
 ///
 /// // Create a type-safe connection
 /// // Port indices (0, 0) are for compile-time validation only.

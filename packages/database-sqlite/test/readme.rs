@@ -6,13 +6,13 @@
 use sqlx::SqlitePool;
 use std::collections::HashMap;
 use std::time::Duration;
+use streamweave::consumers::{VecConsumer, VecProducer};
+use streamweave::error::ErrorStrategy;
+use streamweave::pipeline::PipelineBuilder;
 use streamweave_database::{
   DatabaseConsumerConfig, DatabaseProducerConfig, DatabaseRow, DatabaseType,
 };
 use streamweave_database_sqlite::{SqliteConsumer, SqliteProducer};
-use streamweave_error::ErrorStrategy;
-use streamweave_pipeline::PipelineBuilder;
-use streamweave_vec::{VecConsumer, VecProducer};
 
 /// Helper function to set up a test database with sample data
 async fn setup_test_database() -> Result<SqlitePool, Box<dyn std::error::Error>> {
@@ -56,9 +56,9 @@ async fn setup_test_database() -> Result<SqlitePool, Box<dyn std::error::Error>>
 #[tokio::test]
 async fn test_query_sqlite_database() {
   // Example from README.md lines 34-49
+  use streamweave::pipeline::PipelineBuilder;
   use streamweave_database::{DatabaseProducerConfig, DatabaseType};
   use streamweave_database_sqlite::SqliteProducer;
-  use streamweave_pipeline::PipelineBuilder;
 
   // Set up test database
   let _pool = setup_test_database().await.unwrap();
@@ -101,9 +101,9 @@ async fn test_query_sqlite_database() {
 #[tokio::test]
 async fn test_insert_into_sqlite() {
   // Example from README.md lines 53-69
+  use streamweave::pipeline::PipelineBuilder;
   use streamweave_database::{DatabaseConsumerConfig, DatabaseType};
   use streamweave_database_sqlite::SqliteConsumer;
-  use streamweave_pipeline::PipelineBuilder;
 
   // Set up test database with empty table
   let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
@@ -330,7 +330,7 @@ async fn test_transaction_handling() {
 #[tokio::test]
 async fn test_error_handling() {
   // Example from README.md lines 221-228
-  use streamweave_error::ErrorStrategy;
+  use streamweave::error::ErrorStrategy;
 
   // Set up test database
   let _pool = setup_test_database().await.unwrap();

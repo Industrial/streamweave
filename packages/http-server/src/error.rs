@@ -35,7 +35,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "http-server")]
 use std::fmt;
 #[cfg(feature = "http-server")]
-use streamweave_error::StreamError;
+use streamweave::error::StreamError;
 
 /// Structured error response for HTTP endpoints.
 ///

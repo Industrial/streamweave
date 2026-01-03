@@ -5,7 +5,7 @@ mod tests {
   use axum::http::{Method, Uri};
   use futures::StreamExt;
   use std::collections::HashMap;
-  use streamweave_error::ErrorStrategy;
+  use streamweave::error::ErrorStrategy;
   use streamweave_http_server::producer::{
     HttpRequestProducer, HttpRequestProducerConfig, LongLivedHttpRequestProducer,
   };

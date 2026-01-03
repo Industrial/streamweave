@@ -9,10 +9,7 @@ echo "> publish"
 
 # Level 1: Core packages with no internal streamweave dependencies
 echo "> publish > Level 1: Core packages"
-cargo publish -p streamweave-error
-cargo publish -p streamweave-message
-cargo publish -p streamweave-offset
-cargo publish -p streamweave-transaction
+# Note: transaction is now part of streamweave package
 
 # Level 2: Core streamweave package (depends on error) - must be published early as many packages depend on it
 echo "> publish > Level 2: Core streamweave package"
@@ -20,22 +17,20 @@ cargo publish -p streamweave
 
 # Level 3: Basic packages that depend only on core
 echo "> publish > Level 3: Basic packages"
-cargo publish -p streamweave-array
-cargo publish -p streamweave-vec
 cargo publish -p streamweave-stateful
-cargo publish -p streamweave-window
-cargo publish -p streamweave-tokio
+# Note: window is now part of streamweave package
+# Note: tokio is now part of streamweave package
 cargo publish -p streamweave-stdio
 cargo publish -p streamweave-command
-cargo publish -p streamweave-env
-cargo publish -p streamweave-file
-cargo publish -p streamweave-fs
+# Note: env is now part of streamweave package
+# Note: file is now part of streamweave package
+# Note: fs is now part of streamweave package
 cargo publish -p streamweave-path
 cargo publish -p streamweave-tempfile
-cargo publish -p streamweave-timer
-cargo publish -p streamweave-signal
+# Note: timer is now part of streamweave package
+# Note: signal is now part of streamweave package
+# Note: stdio is now part of streamweave package
 cargo publish -p streamweave-process
-cargo publish -p streamweave-csv
 cargo publish -p streamweave-jsonl
 cargo publish -p streamweave-parquet
 cargo publish -p streamweave-kafka
@@ -50,27 +45,27 @@ cargo publish -p streamweave-database-mysql
 cargo publish -p streamweave-database-postgresql
 cargo publish -p streamweave-database-sqlite
 
-# Level 5: Pipeline package (depends on streamweave, error)
+# Level 5: Pipeline package (depends on streamweave)
 echo "> publish > Level 5: Pipeline package"
-cargo publish -p streamweave-pipeline
+# Note: pipeline is now part of streamweave package
 
-# Level 6: Graph package (depends on streamweave, error, pipeline, stateful, window)
+# Level 6: Graph package (depends on streamweave, pipeline, stateful, window)
 echo "> publish > Level 6: Graph package"
-cargo publish -p streamweave-graph
+# Note: graph is now part of streamweave package
 
-# Level 7: Visualization (depends on streamweave, graph, error)
+# Level 7: Visualization (depends on streamweave, graph)
 echo "> publish > Level 7: Visualization package"
 cargo publish -p streamweave-visualization
 
 # Level 8: Distributed package (depends on streamweave, graph)
 echo "> publish > Level 8: Distributed package"
-cargo publish -p streamweave-distributed
+# Note: distributed is now part of streamweave package
 
-# Level 9: Transformers package (depends on streamweave, error, message, stateful, graph)
+# Level 9: Transformers package (depends on streamweave, stateful, graph)
 echo "> publish > Level 9: Transformers package"
-cargo publish -p streamweave-transformers
+# Note: transformers are now part of streamweave package
 
-# Level 10: HTTP server (depends on streamweave, graph, pipeline, message, error)
+# Level 10: HTTP server (depends on streamweave, graph, pipeline)
 echo "> publish > Level 10: HTTP server package"
 cargo publish -p streamweave-http-server
 

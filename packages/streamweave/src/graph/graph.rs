@@ -5,7 +5,7 @@
 //! The graph stores type-preserved nodes and compile-time validated connections,
 //! with basic topology query methods.
 //!
-//! ## Message<T> Based Data Flow
+//! ## `Message<T>` Based Data Flow
 //!
 //! **All data flowing through graphs is automatically wrapped in `Message<T>`.** Port types
 //! use raw types (e.g., `i32`, `String`), but internally all data is wrapped in `Message<T>`
@@ -35,7 +35,7 @@
 //!
 //! - **Type Compatibility**: Output port types must be compatible with input port
 //!   types, enforced through the `CompatibleWith` trait bound. Type mismatches
-//!   are caught at compile time. Note: Port types use raw types (T), not Message<T>.
+//!   are caught at compile time. Note: Port types use raw types (T), not `Message<T>`.
 //!
 //! ## Example
 //!

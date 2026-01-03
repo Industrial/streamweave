@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::pin::Pin;
 #[cfg(feature = "kafka")]
 use std::time::Duration;
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave::{Output, Producer, ProducerConfig};
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 #[cfg(feature = "kafka")]
 use tokio::time::sleep;
 #[cfg(feature = "kafka")]

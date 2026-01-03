@@ -3,7 +3,7 @@
 //! This module provides support for using graphs as nodes in other graphs.
 //! This enables hierarchical graph composition and modular graph design.
 //!
-//! ## Message<T> Support
+//! ## `Message<T>` Support
 //!
 //! Subgraphs fully support `Message<T>` types. All data flowing through subgraph
 //! boundaries is wrapped in `Message<T>`, preserving message IDs and metadata
@@ -60,7 +60,7 @@ use std::collections::HashSet;
 /// graph as a single node with input and output ports. The subgraph's ports
 /// are mapped to internal nodes within the subgraph.
 ///
-/// ## Message<T> Support
+/// ## `Message<T>` Support
 ///
 /// SubgraphNode works seamlessly with `Message<T>`. All data flowing through
 /// subgraph boundaries is wrapped in `Message<T>`, and the subgraph's internal

@@ -16,11 +16,11 @@ use futures::StreamExt;
 #[cfg(feature = "http-server")]
 use std::pin::Pin;
 #[cfg(feature = "http-server")]
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+#[cfg(feature = "http-server")]
+use streamweave::message::Message;
+#[cfg(feature = "http-server")]
 use streamweave::{Input, Output, Transformer, TransformerConfig};
-#[cfg(feature = "http-server")]
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-#[cfg(feature = "http-server")]
-use streamweave_message::Message;
 
 /// Route pattern configuration for path-based routing.
 #[derive(Debug, Clone)]
@@ -284,7 +284,7 @@ mod tests {
   use super::*;
   use futures::stream;
   use std::collections::HashMap;
-  use streamweave_message::MessageId;
+  use streamweave::message::MessageId;
 
   #[tokio::test]
   async fn test_path_matching() {

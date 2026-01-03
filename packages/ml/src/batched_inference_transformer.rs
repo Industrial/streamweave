@@ -30,7 +30,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
 use streamweave::TransformerConfig;
-use streamweave_error::ErrorStrategy;
+use streamweave::error::ErrorStrategy;
 use tokio::sync::RwLock;
 
 /// Configuration for batched inference.
@@ -266,8 +266,8 @@ mod transformer_impl {
   use std::time::Duration;
   use streamweave::Input;
   use streamweave::Output;
+  use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
   use streamweave::{Transformer, TransformerConfig};
-  use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
   use tokio::time::{Instant, sleep};
 
   // Input trait implementation

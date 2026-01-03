@@ -116,7 +116,7 @@ fn test_kafka_consumer_clone() {
 #[test]
 fn test_kafka_consumer_config_methods() {
   use streamweave::Consumer;
-  use streamweave_error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
 
   let mut consumer =
     KafkaConsumer::<TestEvent>::new(KafkaProducerConfig::default().with_topic("test-topic"));
@@ -135,7 +135,7 @@ fn test_kafka_consumer_config_methods() {
 #[test]
 fn test_kafka_consumer_handle_error() {
   use streamweave::Consumer;
-  use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
   let consumer =
     KafkaConsumer::<TestEvent>::new(KafkaProducerConfig::default().with_topic("test-topic"))

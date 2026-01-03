@@ -2,11 +2,11 @@
 mod tests {
   use futures::stream;
   use std::collections::HashMap;
+  use streamweave::message::{Message, MessageId};
   use streamweave_http_server::path_router_transformer::{
     PathBasedRouterTransformer, PathRouterConfig, RoutePattern,
   };
   use streamweave_http_server::types::HttpRequest;
-  use streamweave_message::{Message, MessageId};
 
   #[tokio::test]
   async fn test_path_matching() {

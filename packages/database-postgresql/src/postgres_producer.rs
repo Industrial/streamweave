@@ -5,9 +5,9 @@ use futures::{Stream, StreamExt};
 use sqlx::Column;
 use std::collections::HashMap;
 use std::pin::Pin;
+use streamweave::error::ErrorStrategy;
 use streamweave::{Output, Producer, ProducerConfig};
 use streamweave_database::{DatabaseProducerConfig, DatabaseRow};
-use streamweave_error::ErrorStrategy;
 // Error types not used in producer implementation
 use tracing::{error, warn};
 

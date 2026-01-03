@@ -8,10 +8,10 @@
 //! These tests adapt the examples to work with the actual API.
 
 use std::io::Write;
-use streamweave_pipeline::PipelineBuilder;
+use streamweave::consumers::{VecConsumer, VecProducer};
+use streamweave::pipeline::PipelineBuilder;
+use streamweave::transformers::MapTransformer;
 use streamweave_tempfile::{TempFileConsumer, TempFileProducer};
-use streamweave_transformers::MapTransformer;
-use streamweave_vec::{VecConsumer, VecProducer};
 use tempfile::NamedTempFile;
 
 /// Test: Create and Process Temp File
@@ -21,7 +21,7 @@ use tempfile::NamedTempFile;
 #[tokio::test]
 async fn test_create_and_process_temp_file() {
   // Example from README.md lines 33-44
-  use streamweave_pipeline::PipelineBuilder;
+  use streamweave::pipeline::PipelineBuilder;
   use streamweave_tempfile::{TempFileConsumer, TempFileProducer};
 
   // Create temp file with data
@@ -102,7 +102,7 @@ async fn test_write_to_temp_file() {
 #[tokio::test]
 async fn test_process_temp_data() {
   // Example from README.md lines 104-115
-  use streamweave_pipeline::PipelineBuilder;
+  use streamweave::pipeline::PipelineBuilder;
   use streamweave_tempfile::{TempFileConsumer, TempFileProducer};
 
   // Create input temp file with data
@@ -139,9 +139,9 @@ async fn test_process_temp_data() {
 async fn test_keep_temp_file() {
   // Example from README.md lines 120-132
   use futures::{StreamExt, stream};
-  use streamweave_pipeline::PipelineBuilder;
+  use streamweave::pipeline::PipelineBuilder;
+  use streamweave::producers::VecProducer;
   use streamweave_tempfile::TempFileConsumer;
-  use streamweave_vec::VecProducer;
 
   // Create temp file that we want to keep
   let file = NamedTempFile::new().unwrap();
@@ -248,7 +248,7 @@ async fn test_producer_configuration() {
 #[tokio::test]
 async fn test_consumer_configuration() {
   // Example from README.md lines 198-205
-  use streamweave_error::ErrorStrategy;
+  use streamweave::error::ErrorStrategy;
   use streamweave_tempfile::TempFileConsumer;
 
   let file = NamedTempFile::new().unwrap();
@@ -271,8 +271,8 @@ async fn test_consumer_configuration() {
 #[tokio::test]
 async fn test_error_handling() {
   // Example from README.md lines 212-218
-  use streamweave_error::ErrorStrategy;
-  use streamweave_pipeline::PipelineBuilder;
+  use streamweave::error::ErrorStrategy;
+  use streamweave::pipeline::PipelineBuilder;
 
   // Create temp files
   let mut input_file = NamedTempFile::new().unwrap();

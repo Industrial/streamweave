@@ -3,12 +3,13 @@
 //! Routes `Ok(item)` to port 0 (success) and `Err(error)` to port 1 (error).
 //! Uses zero-copy semantics by moving items directly to the appropriate port.
 
-use crate::router::OutputRouter;
+use crate::graph::router::OutputRouter;
 use async_trait::async_trait;
 use futures::Stream;
 use futures::StreamExt;
 use std::marker::PhantomData;
 use std::pin::Pin;
+use tokio::sync::mpsc;
 
 /// Router that routes `Result<T, E>` items to success/error ports.
 ///
@@ -20,7 +21,7 @@ use std::pin::Pin;
 /// ```rust
 /// use streamweave::graph::control_flow::ErrorBranch;
 /// use streamweave::graph::node::TransformerNode;
-/// use streamweave_transformers::IdentityTransformer;
+/// use streamweave::transformers::IdentityTransformer;
 ///
 /// let error_router = ErrorBranch::<i32, String>::new();
 /// let node = TransformerNode::new(
@@ -63,8 +64,6 @@ where
     &mut self,
     stream: Pin<Box<dyn Stream<Item = Result<T, E>> + Send>>,
   ) -> Vec<(String, Pin<Box<dyn Stream<Item = Result<T, E>> + Send>>)> {
-    use tokio::sync::mpsc;
-
     // Create channels for success/error ports
     let (tx_success, rx_success) = mpsc::channel(16);
     let (tx_error, rx_error) = mpsc::channel(16);

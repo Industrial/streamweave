@@ -3,7 +3,7 @@
 //! This module provides a MergeRouter that merges multiple input streams
 //! into a single output stream according to a merge strategy.
 
-use crate::router::InputRouter;
+use crate::graph::router::InputRouter;
 use async_trait::async_trait;
 use futures::Stream;
 use futures::StreamExt;

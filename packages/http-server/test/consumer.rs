@@ -4,7 +4,7 @@ mod tests {
   use futures::StreamExt;
   use futures::stream;
   use std::time::Duration;
-  use streamweave_error::ErrorStrategy;
+  use streamweave::error::ErrorStrategy;
   use streamweave_http_server::consumer::{
     HttpResponseConsumer, HttpResponseConsumerConfig, HttpResponseCorrelationConsumer,
   };
@@ -268,9 +268,9 @@ mod tests {
       ContentType::Text,
       "req-123".to_string(),
     );
-    let message = streamweave_message::Message::new(
+    let message = streamweave::message::Message::new(
       response,
-      streamweave_message::MessageId::new_custom("req-123"),
+      streamweave::message::MessageId::new_custom("req-123"),
     );
 
     let input_stream = stream::iter(vec![message]);

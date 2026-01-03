@@ -1,7 +1,7 @@
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::input::Input;
 use crate::port::PortList;
 use async_trait::async_trait;
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 /// Helper trait for providing default port types for Consumers.
 ///
@@ -68,7 +68,7 @@ impl<M: std::fmt::Debug + Clone + Send + Sync> Default for ConsumerConfig<M> {
 /// When implementing a consumer, you receive `Message<T>`:
 ///
 /// ```rust,ignore
-/// use streamweave::{Consumer, Input, ConsumerConfig};
+/// use crate::{Consumer, Input, ConsumerConfig};
 /// use streamweave::message::Message;
 /// use futures::StreamExt;
 /// use std::pin::Pin;
@@ -168,7 +168,7 @@ where
   /// # Example
   ///
   /// ```rust,no_run
-  /// use streamweave::{Consumer, Input};
+  /// use crate::{Consumer, Input};
   /// use streamweave::message::Message;
   /// use futures::StreamExt;
   ///

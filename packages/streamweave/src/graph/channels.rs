@@ -1,4 +1,4 @@
-//! # Type-Erased Zero-Copy Channels for Message<T>
+//! # Type-Erased Zero-Copy Channels for `Message<T>`
 //!
 //! This module provides type-erased channel types that support both serialized
 //! `Bytes` (for distributed execution) and zero-copy `Arc<Message<T>>` (for in-process execution).
@@ -199,7 +199,7 @@ impl ChannelItem {
   /// ```
   pub fn downcast_message_arc<T: 'static + Send + Sync>(
     self,
-  ) -> Result<Arc<crate::Message<T>>, Self> {
+  ) -> Result<Arc<crate::message::Message<T>>, Self> {
     match self {
       ChannelItem::Arc(arc) => Arc::downcast(arc).map_err(ChannelItem::Arc),
       other => Err(other),

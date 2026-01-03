@@ -10,8 +10,8 @@ use proptest::prelude::*;
 use std::fs::File;
 use std::path::PathBuf;
 use std::sync::Arc;
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave::{Consumer, Input};
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave_parquet::{
   ParquetCompression, ParquetConsumer, ParquetWriteConfig, ParquetWriterVersion,
 };
@@ -343,7 +343,7 @@ async fn test_parquet_consumer_with_writer_version() {
 
 #[tokio::test]
 async fn test_parquet_consumer_with_error_strategy() {
-  use streamweave_error::ErrorStrategy;
+  use streamweave::error::ErrorStrategy;
 
   let file = NamedTempFile::new().unwrap();
   let path = file.path().to_str().unwrap().to_string();
@@ -384,7 +384,7 @@ fn test_parquet_consumer_create_error_context() {
 
 #[tokio::test]
 async fn test_parquet_consumer_handle_error() {
-  use streamweave_error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
 
   let consumer = ParquetConsumer::new("test.parquet").with_error_strategy(ErrorStrategy::Retry(3));
 
@@ -404,7 +404,7 @@ async fn test_parquet_consumer_handle_error() {
 
   let action = consumer.handle_error(&error);
   // With retries < 3, should retry
-  assert!(matches!(action, streamweave_error::ErrorAction::Retry));
+  assert!(matches!(action, streamweave::error::ErrorAction::Retry));
 }
 
 #[tokio::test]

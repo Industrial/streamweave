@@ -3,7 +3,7 @@ mod tests {
   use axum::http::StatusCode;
   use chrono::Utc;
   use std::io;
-  use streamweave_error::{ComponentInfo, ErrorContext, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, StreamError};
   use streamweave_http_server::error::{
     ErrorDetails, ErrorResponse, create_custom_error, is_development_mode, map_generic_error,
     map_to_http_error,

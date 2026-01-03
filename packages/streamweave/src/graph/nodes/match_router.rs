@@ -3,12 +3,13 @@
 //! Supports multiple patterns and an optional default port. Includes helper
 //! pattern implementations for common use cases.
 
-use crate::router::OutputRouter;
+use crate::graph::router::OutputRouter;
 use async_trait::async_trait;
 use futures::Stream;
 use futures::StreamExt;
 use std::pin::Pin;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 
 /// Pattern for matching items in a `Match` router.
 ///
@@ -83,8 +84,6 @@ where
     &mut self,
     stream: Pin<Box<dyn Stream<Item = O> + Send>>,
   ) -> Vec<(String, Pin<Box<dyn Stream<Item = O> + Send>>)> {
-    use tokio::sync::mpsc;
-
     // Calculate number of output ports
     let num_patterns = self.patterns.len();
     let num_ports = num_patterns + self.default_port.is_some() as usize;

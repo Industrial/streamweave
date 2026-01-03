@@ -60,7 +60,7 @@ async fn test_normalize_path_transformer_clone() {
 
 #[tokio::test]
 async fn test_normalize_path_transformer_with_error_strategy() {
-  use streamweave_error::ErrorStrategy;
+  use streamweave::error::ErrorStrategy;
   let transformer = NormalizePathTransformer::new().with_error_strategy(ErrorStrategy::Skip);
   assert!(matches!(
     transformer.config().error_strategy(),
@@ -72,7 +72,7 @@ async fn test_normalize_path_transformer_with_error_strategy() {
 async fn test_normalize_path_transformer_handle_error_stop() {
   use std::error::Error;
   use std::fmt;
-  use streamweave_error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
 
   let transformer = NormalizePathTransformer::new().with_error_strategy(ErrorStrategy::Stop);
 
@@ -93,13 +93,13 @@ async fn test_normalize_path_transformer_handle_error_stop() {
 
   assert!(matches!(
     transformer.handle_error(&error),
-    streamweave_error::ErrorAction::Stop
+    streamweave::error::ErrorAction::Stop
   ));
 }
 
 #[tokio::test]
 async fn test_normalize_path_transformer_handle_error_skip() {
-  use streamweave_error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
 
   let transformer = NormalizePathTransformer::new().with_error_strategy(ErrorStrategy::Skip);
 
@@ -120,13 +120,13 @@ async fn test_normalize_path_transformer_handle_error_skip() {
 
   assert!(matches!(
     transformer.handle_error(&error),
-    streamweave_error::ErrorAction::Skip
+    streamweave::error::ErrorAction::Skip
   ));
 }
 
 #[tokio::test]
 async fn test_normalize_path_transformer_handle_error_retry() {
-  use streamweave_error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
 
   let transformer = NormalizePathTransformer::new().with_error_strategy(ErrorStrategy::Retry(3));
 
@@ -147,13 +147,13 @@ async fn test_normalize_path_transformer_handle_error_retry() {
 
   assert!(matches!(
     transformer.handle_error(&error),
-    streamweave_error::ErrorAction::Retry
+    streamweave::error::ErrorAction::Retry
   ));
 }
 
 #[tokio::test]
 async fn test_normalize_path_transformer_handle_error_retry_exceeded() {
-  use streamweave_error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
 
   let transformer = NormalizePathTransformer::new().with_error_strategy(ErrorStrategy::Retry(3));
 
@@ -174,13 +174,13 @@ async fn test_normalize_path_transformer_handle_error_retry_exceeded() {
 
   assert!(matches!(
     transformer.handle_error(&error),
-    streamweave_error::ErrorAction::Stop
+    streamweave::error::ErrorAction::Stop
   ));
 }
 
 #[tokio::test]
 async fn test_normalize_path_transformer_handle_error_custom() {
-  use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
   let transformer = NormalizePathTransformer::new()
     .with_error_strategy(ErrorStrategy::new_custom(|_| ErrorAction::Skip));
@@ -202,7 +202,7 @@ async fn test_normalize_path_transformer_handle_error_custom() {
 
   assert!(matches!(
     transformer.handle_error(&error),
-    streamweave_error::ErrorAction::Skip
+    streamweave::error::ErrorAction::Skip
   ));
 }
 

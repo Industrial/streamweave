@@ -146,5 +146,5 @@ async fn test_backend_empty_input() {
   backend.load_from_path("test.model").await.unwrap();
 
   let result: Vec<f32> = backend.infer(vec![]).await.unwrap();
-  assert_eq!(result, vec![]);
+  assert_eq!(result, vec![] as Vec<f32>);
 }

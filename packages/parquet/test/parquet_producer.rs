@@ -163,7 +163,7 @@ fn test_parquet_producer_with_row_groups() {
 
 #[test]
 fn test_parquet_producer_with_error_strategy() {
-  use streamweave_error::ErrorStrategy;
+  use streamweave::error::ErrorStrategy;
 
   let producer = ParquetProducer::new("test.parquet").with_error_strategy(ErrorStrategy::Skip);
 
@@ -199,7 +199,7 @@ fn test_parquet_producer_create_error_context() {
 
 #[tokio::test]
 async fn test_parquet_producer_handle_error() {
-  use streamweave_error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
 
   let producer = ParquetProducer::new("test.parquet").with_error_strategy(ErrorStrategy::Skip);
 
@@ -218,5 +218,5 @@ async fn test_parquet_producer_handle_error() {
   );
 
   let action = producer.handle_error(&error);
-  assert!(matches!(action, streamweave_error::ErrorAction::Skip));
+  assert!(matches!(action, streamweave::error::ErrorAction::Skip));
 }

@@ -3,8 +3,8 @@
 //! Tests for the InferenceTransformer wrapper.
 
 use streamweave::prelude::*;
+use streamweave::producers::VecProducer;
 use streamweave_ml::*;
-use streamweave_vec::VecProducer;
 
 // Mock backend for testing
 #[derive(Clone)]
@@ -102,7 +102,7 @@ async fn test_inference_transformer_error_strategy() {
   let mut transformer = InferenceTransformer::new(backend);
 
   // Set error strategy
-  transformer.set_error_strategy(streamweave_error::ErrorStrategy::Skip);
+  transformer.set_error_strategy(streamweave::error::ErrorStrategy::Skip);
 
   // Verify it's set (if the method exists and is testable)
   // The actual error handling would be tested in integration tests

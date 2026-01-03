@@ -3,13 +3,14 @@
 //! Routes items to port 0 if the predicate returns `true`, otherwise to port 1.
 //! Uses zero-copy semantics by moving items directly to the appropriate port.
 
-use crate::router::OutputRouter;
+use crate::graph::router::OutputRouter;
 use async_trait::async_trait;
 use futures::Stream;
 use futures::StreamExt;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 
 /// Conditional router that routes items based on a predicate (if/else).
 ///
@@ -21,7 +22,7 @@ use std::sync::Arc;
 /// ```rust
 /// use streamweave::graph::control_flow::If;
 /// use streamweave::graph::node::TransformerNode;
-/// use streamweave_transformers::IdentityTransformer;
+/// use streamweave::transformers::IdentityTransformer;
 ///
 /// let if_router = If::new(|x: &i32| *x % 2 == 0);
 /// let node = TransformerNode::new(
@@ -71,8 +72,6 @@ where
     &mut self,
     stream: Pin<Box<dyn Stream<Item = O> + Send>>,
   ) -> Vec<(String, Pin<Box<dyn Stream<Item = O> + Send>>)> {
-    use tokio::sync::mpsc;
-
     // Create channels for true/false ports
     let (tx_true, rx_true) = mpsc::channel(16);
     let (tx_false, rx_false) = mpsc::channel(16);

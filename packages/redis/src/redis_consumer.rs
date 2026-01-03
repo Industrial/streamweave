@@ -1,6 +1,6 @@
 use serde::Serialize;
+use streamweave::error::ErrorStrategy;
 use streamweave::{Consumer, ConsumerConfig, Input};
-use streamweave_error::ErrorStrategy;
 
 /// Configuration for Redis Streams producer behavior.
 #[derive(Debug, Clone)]
@@ -158,7 +158,7 @@ use redis::{AsyncCommands, Client, RedisResult, aio::ConnectionManager};
 #[cfg(feature = "redis")]
 use std::collections::HashMap;
 #[cfg(feature = "redis")]
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
 #[cfg(feature = "redis")]
 use tracing::{error, warn};
 
@@ -357,17 +357,17 @@ where
 
 #[cfg(feature = "redis")]
 fn handle_error_strategy<T>(
-  strategy: &streamweave_error::ErrorStrategy<T>,
+  strategy: &streamweave::error::ErrorStrategy<T>,
   error: &StreamError<T>,
 ) -> ErrorAction
 where
   T: std::fmt::Debug + Clone + Send + Sync,
 {
   match strategy {
-    streamweave_error::ErrorStrategy::Stop => ErrorAction::Stop,
-    streamweave_error::ErrorStrategy::Skip => ErrorAction::Skip,
-    streamweave_error::ErrorStrategy::Retry(n) if error.retries < *n => ErrorAction::Retry,
-    streamweave_error::ErrorStrategy::Custom(handler) => handler(error),
+    streamweave::error::ErrorStrategy::Stop => ErrorAction::Stop,
+    streamweave::error::ErrorStrategy::Skip => ErrorAction::Skip,
+    streamweave::error::ErrorStrategy::Retry(n) if error.retries < *n => ErrorAction::Retry,
+    streamweave::error::ErrorStrategy::Custom(handler) => handler(error),
     _ => ErrorAction::Stop,
   }
 }

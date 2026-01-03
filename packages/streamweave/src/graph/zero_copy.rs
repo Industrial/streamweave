@@ -5,7 +5,7 @@
 //! is on shared ownership using `Arc` for fan-out scenarios where one
 //! item needs to be sent to multiple consumers without copying.
 //!
-//! ## Message<T> Support
+//! ## `Message<T>` Support
 //!
 //! All zero-copy utilities fully support `Message<T>`. Since `Message<T>`
 //! implements `Clone`, it automatically implements `ZeroCopyShare` via the
@@ -146,7 +146,7 @@ impl<T: Clone + Send + Sync + 'static> ZeroCopyShareWeak for T {
 /// allocation overhead in hot paths, particularly in fan-out scenarios where
 /// many `Arc` wrappers are created and dropped frequently.
 ///
-/// # Message<T> Support
+/// # `Message<T>` Support
 ///
 /// `ArcPool` fully supports `Message<T>`. Since `Message<T>` implements `Clone`,
 /// you can create an `ArcPool<Message<T>>` for pooling `Arc<Message<T>>` instances
@@ -164,7 +164,7 @@ impl<T: Clone + Send + Sync + 'static> ZeroCopyShareWeak for T {
 /// pool.return_arc(arc); // Return to pool for reuse
 /// ```
 ///
-/// # Example with Message<T>
+/// # Example with `Message<T>`
 ///
 /// ```rust
 /// use streamweave::graph::ArcPool;
@@ -561,7 +561,7 @@ impl<T: Clone + Send + Sync + 'static> Clone for ArcPool<T> {
 /// ```rust
 /// use std::borrow::Cow;
 /// use streamweave::graph::ZeroCopyTransformer;
-/// use streamweave::Transformer;
+/// use crate::Transformer;
 ///
 /// struct IdentityTransformer;
 ///

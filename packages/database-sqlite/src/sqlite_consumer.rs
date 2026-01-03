@@ -2,9 +2,9 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
 use std::time::Instant;
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave::{Consumer, ConsumerConfig, Input};
 use streamweave_database::{DatabaseConsumerConfig, DatabaseRow};
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tracing::{error, warn};
 
 /// A consumer that writes database rows to a SQLite table.

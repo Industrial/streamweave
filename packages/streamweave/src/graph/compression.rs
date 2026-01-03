@@ -7,7 +7,7 @@
 //! This module uses `bytes::Bytes` for zero-copy operations, allowing
 //! compressed data to be shared efficiently without copying.
 //!
-//! ## Message<T> Support
+//! ## `Message<T>` Support
 //!
 //! Compression works on serialized `Message<T>` data. In distributed execution mode,
 //! `Message<T>` instances are serialized to `Bytes` and then optionally compressed
@@ -34,7 +34,7 @@
 //! assert_eq!(data, decompressed.as_ref());
 //! ```
 //!
-//! ## Usage with Message<T>
+//! ## Usage with `Message<T>`
 //!
 //! ```rust
 //! use streamweave::graph::compression::GzipCompression;

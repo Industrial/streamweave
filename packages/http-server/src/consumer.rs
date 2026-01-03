@@ -22,9 +22,9 @@ use std::pin::Pin;
 #[cfg(feature = "http-server")]
 use streamweave::Input;
 #[cfg(feature = "http-server")]
-use streamweave::{Consumer, ConsumerConfig};
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 #[cfg(feature = "http-server")]
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+use streamweave::{Consumer, ConsumerConfig};
 #[cfg(feature = "http-server")]
 use tracing::{error, warn};
 
@@ -572,7 +572,7 @@ impl Consumer for HttpResponseConsumer {
 #[cfg(feature = "http-server")]
 pub struct HttpResponseCorrelationConsumer {
   /// Consumer configuration
-  config: streamweave::ConsumerConfig<streamweave_message::Message<HttpResponse>>,
+  config: streamweave::ConsumerConfig<streamweave::message::Message<HttpResponse>>,
   /// Mapping of request IDs to response senders
   response_senders: std::sync::Arc<
     tokio::sync::RwLock<
@@ -667,7 +667,7 @@ impl Default for HttpResponseCorrelationConsumer {
 #[cfg(feature = "http-server")]
 #[async_trait]
 impl streamweave::Consumer for HttpResponseCorrelationConsumer {
-  type InputPorts = (streamweave_message::Message<HttpResponse>,);
+  type InputPorts = (streamweave::message::Message<HttpResponse>,);
 
   /// Consumes a stream of `Message<HttpResponse>` items and correlates them with requests.
   ///
@@ -736,42 +736,42 @@ impl streamweave::Consumer for HttpResponseCorrelationConsumer {
 
   fn set_config_impl(
     &mut self,
-    config: streamweave::ConsumerConfig<streamweave_message::Message<HttpResponse>>,
+    config: streamweave::ConsumerConfig<streamweave::message::Message<HttpResponse>>,
   ) {
     self.config = config;
   }
 
   fn get_config_impl(
     &self,
-  ) -> &streamweave::ConsumerConfig<streamweave_message::Message<HttpResponse>> {
+  ) -> &streamweave::ConsumerConfig<streamweave::message::Message<HttpResponse>> {
     &self.config
   }
 
   fn get_config_mut_impl(
     &mut self,
-  ) -> &mut streamweave::ConsumerConfig<streamweave_message::Message<HttpResponse>> {
+  ) -> &mut streamweave::ConsumerConfig<streamweave::message::Message<HttpResponse>> {
     &mut self.config
   }
 
   fn handle_error(
     &self,
-    error: &streamweave_error::StreamError<streamweave_message::Message<HttpResponse>>,
-  ) -> streamweave_error::ErrorAction {
+    error: &streamweave::error::StreamError<streamweave::message::Message<HttpResponse>>,
+  ) -> streamweave::error::ErrorAction {
     match &self.config.error_strategy {
-      streamweave_error::ErrorStrategy::Stop => streamweave_error::ErrorAction::Stop,
-      streamweave_error::ErrorStrategy::Skip => streamweave_error::ErrorAction::Skip,
-      streamweave_error::ErrorStrategy::Retry(n) if error.retries < *n => {
-        streamweave_error::ErrorAction::Retry
+      streamweave::error::ErrorStrategy::Stop => streamweave::error::ErrorAction::Stop,
+      streamweave::error::ErrorStrategy::Skip => streamweave::error::ErrorAction::Skip,
+      streamweave::error::ErrorStrategy::Retry(n) if error.retries < *n => {
+        streamweave::error::ErrorAction::Retry
       }
-      _ => streamweave_error::ErrorAction::Stop,
+      _ => streamweave::error::ErrorAction::Stop,
     }
   }
 
   fn create_error_context(
     &self,
-    item: Option<streamweave_message::Message<HttpResponse>>,
-  ) -> streamweave_error::ErrorContext<streamweave_message::Message<HttpResponse>> {
-    streamweave_error::ErrorContext {
+    item: Option<streamweave::message::Message<HttpResponse>>,
+  ) -> streamweave::error::ErrorContext<streamweave::message::Message<HttpResponse>> {
+    streamweave::error::ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
       component_name: self.component_info().name,
@@ -779,8 +779,8 @@ impl streamweave::Consumer for HttpResponseCorrelationConsumer {
     }
   }
 
-  fn component_info(&self) -> streamweave_error::ComponentInfo {
-    streamweave_error::ComponentInfo {
+  fn component_info(&self) -> streamweave::error::ComponentInfo {
+    streamweave::error::ComponentInfo {
       name: if self.config.name.is_empty() {
         "http_response_correlation_consumer".to_string()
       } else {
@@ -792,7 +792,7 @@ impl streamweave::Consumer for HttpResponseCorrelationConsumer {
 }
 
 #[cfg(feature = "http-server")]
-use streamweave_message::Message;
+use streamweave::message::Message;
 
 #[cfg(feature = "http-server")]
 impl Input for HttpResponseCorrelationConsumer {

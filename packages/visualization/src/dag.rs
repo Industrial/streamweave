@@ -426,15 +426,15 @@ pub fn format_type_name(type_name: &str) -> String {
 /// # Note
 ///
 /// This function is public for testing purposes.
-pub fn format_error_strategy<T>(strategy: &streamweave_error::ErrorStrategy<T>) -> String
+pub fn format_error_strategy<T>(strategy: &streamweave::error::ErrorStrategy<T>) -> String
 where
   T: std::fmt::Debug + Clone + Send + Sync,
 {
   match strategy {
-    streamweave_error::ErrorStrategy::Stop => "Stop".to_string(),
-    streamweave_error::ErrorStrategy::Skip => "Skip".to_string(),
-    streamweave_error::ErrorStrategy::Retry(n) => format!("Retry({})", n),
-    streamweave_error::ErrorStrategy::Custom(_) => "Custom".to_string(),
+    streamweave::error::ErrorStrategy::Stop => "Stop".to_string(),
+    streamweave::error::ErrorStrategy::Skip => "Skip".to_string(),
+    streamweave::error::ErrorStrategy::Retry(n) => format!("Retry({})", n),
+    streamweave::error::ErrorStrategy::Custom(_) => "Custom".to_string(),
   }
 }
 
@@ -608,7 +608,7 @@ mod tests {
 
   #[test]
   fn test_format_error_strategy() {
-    use streamweave_error::ErrorStrategy;
+    use streamweave::error::ErrorStrategy;
 
     assert_eq!(format_error_strategy(&ErrorStrategy::<i32>::Stop), "Stop");
     assert_eq!(format_error_strategy(&ErrorStrategy::<i32>::Skip), "Skip");
@@ -618,7 +618,7 @@ mod tests {
     );
     assert_eq!(
       format_error_strategy(&ErrorStrategy::<i32>::new_custom(|_| {
-        streamweave_error::ErrorAction::Skip
+        streamweave::error::ErrorAction::Skip
       })),
       "Custom"
     );
@@ -656,9 +656,9 @@ mod tests {
 
   #[test]
   fn test_pipeline_dag_from_components() {
-    use streamweave_transformers::MapTransformer;
-    use streamweave_vec::VecConsumer;
-    use streamweave_vec::VecProducer;
+    use streamweave::consumers::VecConsumer;
+    use streamweave::producers::VecProducer;
+    use streamweave::transformers::MapTransformer;
 
     let producer = VecProducer::new(vec![1, 2, 3]);
     let transformer = MapTransformer::new(|x: i32| x * 2);
@@ -705,9 +705,9 @@ mod tests {
 
   #[test]
   fn test_pipeline_dag_from_components_with_names() {
-    use streamweave_transformers::MapTransformer;
-    use streamweave_vec::VecConsumer;
-    use streamweave_vec::VecProducer;
+    use streamweave::consumers::VecConsumer;
+    use streamweave::producers::VecProducer;
+    use streamweave::transformers::MapTransformer;
 
     let producer = VecProducer::new(vec![1, 2, 3]).with_name("my_producer".to_string());
     let transformer = MapTransformer::new(|x: i32| x * 2).with_name("my_transformer".to_string());
@@ -730,10 +730,10 @@ mod tests {
 
   #[test]
   fn test_pipeline_dag_from_components_with_error_strategies() {
-    use streamweave_error::ErrorStrategy;
-    use streamweave_transformers::MapTransformer;
-    use streamweave_vec::VecConsumer;
-    use streamweave_vec::VecProducer;
+    use streamweave::consumers::VecConsumer;
+    use streamweave::error::ErrorStrategy;
+    use streamweave::producers::VecProducer;
+    use streamweave::transformers::MapTransformer;
 
     let producer = VecProducer::new(vec![1, 2, 3]).with_error_strategy(ErrorStrategy::<i32>::Skip);
     let transformer =

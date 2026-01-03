@@ -3,9 +3,9 @@
 use futures::{StreamExt, stream};
 use proptest::prelude::*;
 use std::pin::Pin;
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave::{Consumer, Input};
 use streamweave_command::CommandConsumer;
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 async fn test_command_consumer_basic_async(input: Vec<String>) {
   let mut consumer = CommandConsumer::new("echo".to_string(), vec![]);

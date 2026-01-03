@@ -6,10 +6,10 @@ use sqlx::sqlite::SqlitePoolOptions;
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::time::Duration;
+use streamweave::error::ErrorStrategy;
 use streamweave::{Consumer, Input};
 use streamweave_database::{DatabaseConsumerConfig, DatabaseRow, DatabaseType};
 use streamweave_database_sqlite::SqliteConsumer;
-use streamweave_error::ErrorStrategy;
 
 async fn setup_test_db() -> String {
   let db_path = format!(
@@ -552,22 +552,22 @@ async fn test_sqlite_consumer_handle_error() {
     .with_table_name("test_table");
 
   let consumer = SqliteConsumer::new(config);
-  let error = streamweave_error::StreamError::new(
+  let error = streamweave::error::StreamError::new(
     "test error".to_string().into(),
-    streamweave_error::ErrorContext {
+    streamweave::error::ErrorContext {
       timestamp: chrono::Utc::now(),
       item: None,
       component_name: "test".to_string(),
       component_type: "SqliteConsumer".to_string(),
     },
-    streamweave_error::ComponentInfo {
+    streamweave::error::ComponentInfo {
       name: "test".to_string(),
       type_name: "SqliteConsumer".to_string(),
     },
   );
 
   let action = consumer.handle_error(&error);
-  assert!(matches!(action, streamweave_error::ErrorAction::Stop));
+  assert!(matches!(action, streamweave::error::ErrorAction::Stop));
 }
 
 #[tokio::test]

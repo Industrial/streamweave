@@ -1,6 +1,6 @@
 //! Tests for ProcessConsumer
 
-use streamweave_error::ErrorStrategy;
+use streamweave::error::ErrorStrategy;
 use streamweave_process::ProcessConsumer;
 
 #[test]
@@ -111,7 +111,7 @@ fn test_process_consumer_config_methods() {
 fn test_process_consumer_handle_error_stop() {
   use std::error::Error;
   use std::fmt;
-  use streamweave_error::{ComponentInfo, ErrorContext, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, StreamError};
 
   let consumer = ProcessConsumer::new("cat".to_string()).with_error_strategy(ErrorStrategy::Stop);
 
@@ -132,13 +132,13 @@ fn test_process_consumer_handle_error_stop() {
 
   assert!(matches!(
     consumer.handle_error(&error),
-    streamweave_error::ErrorAction::Stop
+    streamweave::error::ErrorAction::Stop
   ));
 }
 
 #[test]
 fn test_process_consumer_handle_error_skip() {
-  use streamweave_error::{ComponentInfo, ErrorContext, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, StreamError};
 
   let consumer = ProcessConsumer::new("cat".to_string()).with_error_strategy(ErrorStrategy::Skip);
 
@@ -159,13 +159,13 @@ fn test_process_consumer_handle_error_skip() {
 
   assert!(matches!(
     consumer.handle_error(&error),
-    streamweave_error::ErrorAction::Skip
+    streamweave::error::ErrorAction::Skip
   ));
 }
 
 #[test]
 fn test_process_consumer_handle_error_retry() {
-  use streamweave_error::{ComponentInfo, ErrorContext, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, StreamError};
 
   let consumer =
     ProcessConsumer::new("cat".to_string()).with_error_strategy(ErrorStrategy::Retry(3));
@@ -187,13 +187,13 @@ fn test_process_consumer_handle_error_retry() {
 
   assert!(matches!(
     consumer.handle_error(&error),
-    streamweave_error::ErrorAction::Retry
+    streamweave::error::ErrorAction::Retry
   ));
 }
 
 #[test]
 fn test_process_consumer_handle_error_retry_exceeded() {
-  use streamweave_error::{ComponentInfo, ErrorContext, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, StreamError};
 
   let consumer =
     ProcessConsumer::new("cat".to_string()).with_error_strategy(ErrorStrategy::Retry(3));
@@ -215,13 +215,13 @@ fn test_process_consumer_handle_error_retry_exceeded() {
 
   assert!(matches!(
     consumer.handle_error(&error),
-    streamweave_error::ErrorAction::Stop
+    streamweave::error::ErrorAction::Stop
   ));
 }
 
 #[test]
 fn test_process_consumer_handle_error_custom() {
-  use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
 
   let consumer = ProcessConsumer::new("cat".to_string())
     .with_error_strategy(ErrorStrategy::new_custom(|_| ErrorAction::Skip));
@@ -243,7 +243,7 @@ fn test_process_consumer_handle_error_custom() {
 
   assert!(matches!(
     consumer.handle_error(&error),
-    streamweave_error::ErrorAction::Skip
+    streamweave::error::ErrorAction::Skip
   ));
 }
 

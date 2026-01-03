@@ -1027,7 +1027,7 @@ async fn test_stateful_transformer_has_state() {
 
 #[test]
 fn test_stateful_transformer_config_with_error_strategy() {
-  use streamweave_error::ErrorStrategy;
+  use streamweave::error::ErrorStrategy;
   let config: StatefulTransformerConfig<i32, i64> =
     StatefulTransformerConfig::default().with_error_strategy(ErrorStrategy::Skip);
   // Just verify it compiles and doesn't panic

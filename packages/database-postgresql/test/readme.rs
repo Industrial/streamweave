@@ -7,10 +7,10 @@
 //! `POSTGRES_TEST_URL=postgresql://user:pass@localhost/testdb cargo test --test readme`
 
 use std::time::Duration;
+use streamweave::error::ErrorStrategy;
+use streamweave::pipeline::PipelineBuilder;
 use streamweave_database::{DatabaseConsumerConfig, DatabaseProducerConfig, DatabaseType};
 use streamweave_database_postgresql::{PostgresConsumer, PostgresProducer};
-use streamweave_error::ErrorStrategy;
-use streamweave_pipeline::PipelineBuilder;
 
 /// Helper to get test database URL from environment or return None
 fn get_test_db_url() -> Option<String> {

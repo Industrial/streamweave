@@ -27,7 +27,7 @@ use std::sync::Arc;
 #[cfg(feature = "http-server")]
 use streamweave::Producer;
 #[cfg(feature = "http-server")]
-use streamweave_pipeline::PipelineBuilder;
+use streamweave::pipeline::PipelineBuilder;
 #[cfg(feature = "http-server")]
 use tracing::{error, warn};
 
@@ -97,15 +97,15 @@ where
     // No request available
     warn!("No request available from producer");
     let error_response = map_to_http_error(
-      &streamweave_error::StreamError::<HttpRequest>::new(
+      &streamweave::error::StreamError::<HttpRequest>::new(
         Box::new(std::io::Error::other("Failed to extract request")),
-        streamweave_error::ErrorContext {
+        streamweave::error::ErrorContext {
           timestamp: Utc::now(),
           item: None,
           component_name: "http_request_producer".to_string(),
           component_type: "HttpRequestProducer".to_string(),
         },
-        streamweave_error::ComponentInfo {
+        streamweave::error::ComponentInfo {
           name: "http_request_producer".to_string(),
           type_name: "HttpRequestProducer".to_string(),
         },
@@ -128,7 +128,7 @@ where
 ///
 /// ```rust,no_run
 /// use streamweave::http_server::create_pipeline_handler;
-/// use streamweave_transformers::MapTransformer;
+/// use streamweave::transformers::MapTransformer;
 /// use streamweave::http_server::{HttpRequest, HttpResponse};
 /// use axum::http::StatusCode;
 /// use axum::{Router, routing::get};
@@ -233,18 +233,18 @@ where
     Err(e) => {
       error!(error = ?e, "Pipeline execution failed");
       let error_response = map_to_http_error(
-        &streamweave_error::StreamError::<HttpResponse>::new(
+        &streamweave::error::StreamError::<HttpResponse>::new(
           Box::new(std::io::Error::other(format!(
             "Pipeline execution failed: {:?}",
             e
           ))),
-          streamweave_error::ErrorContext {
+          streamweave::error::ErrorContext {
             timestamp: Utc::now(),
             item: None,
             component_name: "pipeline".to_string(),
             component_type: "Pipeline".to_string(),
           },
-          streamweave_error::ComponentInfo {
+          streamweave::error::ComponentInfo {
             name: "pipeline".to_string(),
             type_name: "Pipeline".to_string(),
           },

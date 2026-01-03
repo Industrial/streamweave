@@ -13,16 +13,12 @@ description = "Visualization tools for StreamWeave"
 
 [dependencies]
 streamweave = { path = "../streamweave" }
-streamweave-graph = { path = "../graph" }
-streamweave-error = { path = "../error" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
 proptest = { workspace = true }
-streamweave-vec = { path = "../vec" }
-streamweave-transformers = { path = "../transformers" }
 
 [features]
 default = []

@@ -3,12 +3,13 @@
 //! This module provides a RoundRobinRouter that distributes items in round-robin
 //! fashion to output ports. Each item goes to exactly one port.
 
-use crate::router::OutputRouter;
+use crate::graph::router::OutputRouter;
 use async_trait::async_trait;
 use futures::Stream;
 use futures::StreamExt;
 use std::marker::PhantomData;
 use std::pin::Pin;
+use tokio::sync::mpsc;
 
 /// A router that distributes items in round-robin fashion.
 ///
@@ -73,7 +74,6 @@ where
     }
 
     // Create channels for each output port
-    use tokio::sync::mpsc;
     let mut senders = Vec::new();
     let mut receivers = Vec::new();
 

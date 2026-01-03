@@ -121,7 +121,7 @@ use streamweave::message::Message;
 
 For complete working examples, see:
 - [Pipeline Examples](../pipeline/README.md) - Linear pipeline execution
-- [Graph API](#graph-api) - Complex graph topologies with Message<T>
+- [Graph API](#graph-api) - Complex graph topologies with `Message<T>`
 - [Examples Directory](https://github.com/Industrial/streamweave/tree/main/examples) - Additional examples
 
 ## 📖 API Overview
@@ -560,7 +560,7 @@ if !errors.is_empty() {
 }
 ```
 
-#### Message<T> in Graphs
+#### `Message<T>` in Graphs
 
 All data flowing through graphs is automatically wrapped in `Message<T>`. Nodes handle message wrapping and unwrapping internally:
 
@@ -934,7 +934,7 @@ For detailed performance analysis and optimization strategies, see the [zero-cop
 
 For more examples, see:
 - [Pipeline Examples](https://github.com/Industrial/streamweave/tree/main/examples/basic_pipeline) - Linear pipeline execution
-- [Graph API](#graph-api) - Graph API usage with Message<T>
+- [Graph API](#graph-api) - Graph API usage with `Message<T>`
 - [Graph Example Files](../../packages/graph/examples/) - Complete graph examples
 - [Package Implementations](../) - See specific packages for concrete implementations
 

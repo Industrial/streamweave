@@ -4,7 +4,7 @@
 //! Graphs allow you to create complex data flow topologies with multiple
 //! producers, transformers, and consumers connected together.
 //!
-//! ## Message<T> Based Data Flow
+//! ## `Message<T>` Based Data Flow
 //!
 //! **All data flowing through graphs is automatically wrapped in `Message<T>`.** This ensures:
 //! - **Message IDs**: Every item has a unique identifier for tracking
@@ -32,8 +32,8 @@
 //! use streamweave::graph::{GraphBuilder, GraphExecution};
 //! use streamweave::graph::nodes::{ProducerNode, TransformerNode, ConsumerNode};
 //! use streamweave_array::ArrayProducer;
-//! use streamweave_transformers::MapTransformer;
-//! use streamweave_vec::VecConsumer;
+//! use streamweave::transformers::MapTransformer;
+//! use crate::consumers::VecConsumer;
 //!
 //! // Create a graph - all data flows as Message<T>
 //! let graph = GraphBuilder::new()

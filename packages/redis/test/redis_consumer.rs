@@ -1,8 +1,8 @@
 use proptest::prelude::*;
 use proptest::proptest;
 use serde::Serialize;
+use streamweave::error::ErrorStrategy;
 use streamweave::{Consumer, ConsumerConfig};
-use streamweave_error::ErrorStrategy;
 use streamweave_redis::{RedisConsumer, RedisProducerConfig};
 
 #[derive(Debug, Clone, Serialize)]
@@ -117,7 +117,7 @@ fn test_redis_consumer_with_error_strategy_skip() {
 fn test_redis_consumer_with_error_strategy_custom() {
   let redis_config = RedisProducerConfig::default().with_stream("test-stream");
   let custom_handler =
-    |_error: &streamweave_error::StreamError<TestEvent>| streamweave_error::ErrorAction::Skip;
+    |_error: &streamweave::error::StreamError<TestEvent>| streamweave::error::ErrorAction::Skip;
   let consumer = RedisConsumer::<TestEvent>::new(redis_config)
     .with_error_strategy(ErrorStrategy::new_custom(custom_handler));
 

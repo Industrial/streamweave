@@ -1,7 +1,7 @@
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::output::Output;
 use crate::port::PortList;
 use async_trait::async_trait;
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 /// Configuration for a producer component.
 ///
@@ -99,7 +99,7 @@ where
 /// When implementing a producer, you need to wrap your data in `Message<T>`:
 ///
 /// ```rust,ignore
-/// use streamweave::{Producer, Output, ProducerConfig};
+/// use crate::{Producer, Output, ProducerConfig};
 /// use streamweave::message::{Message, MessageId, wrap_message, MessageMetadata};
 /// use futures::Stream;
 /// use std::pin::Pin;
@@ -202,7 +202,7 @@ where
   /// # Example
   ///
   /// ```rust,no_run
-  /// use streamweave::{Producer, Output};
+  /// use crate::{Producer, Output};
   /// use streamweave::message::wrap_message;
   /// use futures::Stream;
   /// use std::pin::Pin;

@@ -3,11 +3,13 @@
 //! This module provides a BroadcastRouter that clones each item and sends it
 //! to all output ports. This implements the broadcast pattern for OutputRouter.
 
-use crate::router::OutputRouter;
+use crate::graph::router::OutputRouter;
 use async_trait::async_trait;
 use futures::Stream;
+use futures::stream::StreamExt as _;
 use std::marker::PhantomData;
 use std::pin::Pin;
+use tokio::sync::mpsc;
 
 /// A router that broadcasts each item to all output ports.
 ///
@@ -64,9 +66,6 @@ where
   ) -> Vec<(String, Pin<Box<dyn Stream<Item = O> + Send>>)> {
     // For broadcast, we need to clone each item to all ports
     // We'll use individual mpsc channels for each port
-    use futures::stream::StreamExt as _;
-    use tokio::sync::mpsc;
-
     if self.output_ports.is_empty() {
       return Vec::new();
     }

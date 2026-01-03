@@ -110,7 +110,7 @@ mod readme_tests {
   #[test]
   fn test_error_handling_example() {
     // Example from README: Error Handling
-    use streamweave_error::ErrorStrategy;
+    use streamweave::error::ErrorStrategy;
 
     let config = RedisConsumerConfig::default()
       .with_connection_url("redis://localhost:6379")

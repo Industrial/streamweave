@@ -35,8 +35,8 @@
 
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
+use streamweave::error::ErrorStrategy;
 use streamweave::{Transformer, TransformerConfig};
-use streamweave_error::ErrorStrategy;
 
 /// Error type for state operations.
 #[derive(Debug, Clone)]

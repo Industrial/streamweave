@@ -2,19 +2,35 @@
 
 pub mod adapters;
 pub mod consumer;
+pub mod consumers;
+pub mod distributed;
+pub mod error;
 pub mod graph;
 pub mod input;
 pub mod message;
+pub mod offset;
 pub mod output;
+pub mod pipeline;
 pub mod port;
 pub mod producer;
+pub mod producers;
+pub mod transaction;
 pub mod transformer;
+pub mod transformers;
 
 pub use adapters::*;
 pub use consumer::*;
+pub use consumers::*;
+pub use distributed::*;
+pub use error::*;
 pub use input::*;
 pub use message::*;
+pub use offset::*;
 pub use output::*;
+pub use pipeline::*;
 pub use port::*;
 pub use producer::*;
+pub use producers::*;
+pub use transaction::*;
 pub use transformer::*;
+pub use transformers::*;

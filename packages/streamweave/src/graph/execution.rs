@@ -2443,8 +2443,8 @@ impl GraphExecutor {
   /// This method is used by node tasks to send data to downstream nodes.
   /// The sender will block when the channel buffer is full, providing
   /// automatic backpressure. Nodes should wrap items in `Message<T>` and then
-  /// send as `ChannelItem::Bytes` (serialized Message<T>) or `ChannelItem::Arc`
-  /// (Arc<Message<T>>) based on `ExecutionMode`.
+  /// send as `ChannelItem::Bytes` (serialized `Message<T>`) or `ChannelItem::Arc`
+  /// (`Arc<Message<T>>`) based on `ExecutionMode`.
   pub fn get_channel_sender(&self, node_name: &str, port_name: &str) -> Option<&TypeErasedSender> {
     self
       .channel_senders
@@ -2465,9 +2465,9 @@ impl GraphExecutor {
   /// # Note
   ///
   /// This method is used by node tasks to receive data from upstream nodes.
-  /// Nodes should extract `ChannelItem::Bytes` (deserialize to Message<T>) or
-  /// `ChannelItem::Arc` (downcast to Arc<Message<T>>) based on `ExecutionMode`,
-  /// then unwrap the Message<T> to get the payload.
+  /// Nodes should extract `ChannelItem::Bytes` (deserialize to `Message<T>`) or
+  /// `ChannelItem::Arc` (downcast to `Arc<Message<T>>`) based on `ExecutionMode`,
+  /// then unwrap the `Message<T>` to get the payload.
   pub fn get_channel_receiver(
     &mut self,
     node_name: &str,

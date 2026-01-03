@@ -16,9 +16,7 @@ base64 = "0.22"
 chrono = { workspace = true }
 async-stream = { workspace = true }
 streamweave = { path = "../streamweave" }
-streamweave-error = { path = "../error" }
 streamweave-database = { path = "../database" }
-streamweave-message = { path = "../message", optional = true }
 sqlx = { workspace = true, features = ["sqlite", "runtime-tokio-native-tls"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -30,11 +28,7 @@ tracing = { workspace = true }
 
 [features]
 default = []
-message-envelope = ["dep:streamweave-message"]
 
 [dev-dependencies]
-streamweave-vec = { path = "../vec" }
-streamweave-pipeline = { path = "../pipeline" }
-streamweave-transformers = { path = "../transformers" }
 tempfile = { workspace = true }
 futures = { workspace = true }

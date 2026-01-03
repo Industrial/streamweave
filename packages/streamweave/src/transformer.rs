@@ -1,7 +1,7 @@
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::port::PortList;
 use crate::{input::Input, output::Output};
 use async_trait::async_trait;
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 /// Helper trait for providing default port types for Transformers.
 ///
@@ -103,7 +103,7 @@ impl<M: std::fmt::Debug + Clone + Send + Sync> TransformerConfig<M> {
 /// When implementing a transformer, you receive and produce `Message<T>`:
 ///
 /// ```rust,ignore
-/// use streamweave::{Transformer, Input, Output, TransformerConfig};
+/// use crate::{Transformer, Input, Output, TransformerConfig};
 /// use streamweave::message::Message;
 /// use futures::StreamExt;
 /// use std::pin::Pin;
@@ -222,7 +222,7 @@ where
   /// # Example
   ///
   /// ```rust,no_run
-  /// use streamweave::{Transformer, Input, Output};
+  /// use crate::{Transformer, Input, Output};
   /// use streamweave::message::Message;
   /// use futures::StreamExt;
   ///

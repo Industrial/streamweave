@@ -4,13 +4,13 @@
 //! Nodes wrap Producer, Transformer, and Consumer components
 //! to enable them to participate in graph execution.
 //!
-//! ## Message<T> Based Data Flow
+//! ## `Message<T>` Based Data Flow
 //!
 //! **All data flowing through graph nodes is automatically wrapped in `Message<T>`.** Nodes handle
 //! message wrapping and unwrapping internally, so you work with raw types while the system ensures
 //! message IDs and metadata are preserved.
 //!
-//! ### How Nodes Handle Message<T>
+//! ### How Nodes Handle `Message<T>`
 //!
 //! - **ProducerNode**: Wraps producer output in `Message<T>` before sending to output channels.
 //!   The producer itself works with raw types, but the node wraps each item in a message.
@@ -56,7 +56,7 @@
 //!
 //! ```rust,no_run
 //! use streamweave::graph::nodes::TransformerNode;
-//! use streamweave_transformers::MapTransformer;
+//! use streamweave::transformers::MapTransformer;
 //!
 //! // Transformer works with raw types (i32 -> i32)
 //! let transformer = TransformerNode::from_transformer(
@@ -76,7 +76,7 @@
 //!
 //! ```rust,no_run
 //! use streamweave::graph::nodes::ConsumerNode;
-//! use streamweave_vec::VecConsumer;
+//! use crate::consumers::VecConsumer;
 //!
 //! // Consumer works with raw types (i32)
 //! let consumer = ConsumerNode::from_consumer(
@@ -119,14 +119,14 @@
 //! **Message Handling**: Router nodes unwrap `Message<T>` from input channels, route raw types, then wrap
 //! `Message<T>` before sending to output channels. All routed messages preserve their original IDs and metadata.
 //!
-//! ## Example: Complete Graph with Message<T>
+//! ## Example: Complete Graph with `Message<T>`
 //!
 //! ```rust,no_run
 //! use streamweave::graph::{GraphBuilder, GraphExecution};
 //! use streamweave::graph::nodes::{ProducerNode, TransformerNode, ConsumerNode};
 //! use streamweave_array::ArrayProducer;
-//! use streamweave_transformers::MapTransformer;
-//! use streamweave_vec::VecConsumer;
+//! use streamweave::transformers::MapTransformer;
+//! use crate::consumers::VecConsumer;
 //!
 //! // Create a graph - all data flows as Message<T>
 //! let graph = GraphBuilder::new()
@@ -165,10 +165,14 @@ pub mod merge_router;
 pub mod node;
 pub mod round_robin_router;
 pub mod synchronize;
+pub mod timeout;
+pub mod variables;
+pub mod while_loop;
 
-pub use aggregate::{Aggregate, Aggregator, CountAggregator, MaxAggregator, MinAggregator, SumAggregator};
+pub use aggregate::{
+  Aggregate, Aggregator, CountAggregator, MaxAggregator, MinAggregator, SumAggregator,
+};
 pub use broadcast_router::*;
-pub use control_flow::*;
 pub use delay::Delay;
 pub use error_branch::ErrorBranch;
 pub use for_each::ForEach;
@@ -178,7 +182,10 @@ pub use join::{Join, JoinStrategy};
 pub use key_based_router::*;
 pub use match_router::{Match, Pattern, PredicatePattern, RangePattern};
 pub use merge_router::*;
-pub use node::{ConsumerNode, ProducerNode, TransformerNode, ValidateConsumerPorts, ValidateProducerPorts, ValidateTransformerPorts};
+pub use node::{
+  ConsumerNode, ProducerNode, TransformerNode, ValidateConsumerPorts, ValidateProducerPorts,
+  ValidateTransformerPorts,
+};
 pub use round_robin_router::*;
 pub use synchronize::Synchronize;
 pub use timeout::{Timeout, TimeoutError};

@@ -3,8 +3,8 @@
 //! Tests for batched inference transformer that processes multiple items at once.
 
 use streamweave::prelude::*;
+use streamweave::producers::VecProducer;
 use streamweave_ml::*;
-use streamweave_vec::VecProducer;
 
 // Mock backend for testing
 #[derive(Clone)]

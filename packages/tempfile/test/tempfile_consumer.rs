@@ -1,8 +1,8 @@
 //! Tests for TempFileConsumer
 
 use futures::{StreamExt, stream};
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave::{Consumer, Input};
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave_tempfile::TempFileConsumer;
 use tempfile::NamedTempFile;
 

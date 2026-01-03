@@ -2,8 +2,8 @@
 
 use futures::StreamExt;
 use streamweave::Producer;
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave_command::CommandProducer;
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 
 #[tokio::test]
 async fn test_command_producer_echo() {

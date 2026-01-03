@@ -13,14 +13,11 @@ description = "Jsonl producer and consumer for StreamWeave"
 
 [features]
 default = []
-message-envelope = ["dep:streamweave-message"]
 
 [dependencies]
 chrono = { workspace = true }
 async-stream = { workspace = true }
 streamweave = { path = "../streamweave" }
-streamweave-error = { path = "../error" }
-streamweave-message = { path = "../message", optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "fs", "io-util"] }

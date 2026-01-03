@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
+use streamweave::pipeline::PipelineBuilder;
 use streamweave::prelude::*;
-use streamweave_array::ArrayProducer;
+use streamweave::producers::ArrayProducer;
 use streamweave_json::JsonConsumer;
-use streamweave_pipeline::PipelineBuilder;
 use tempfile::NamedTempFile;
 use tokio::fs::read_to_string;
 
@@ -77,7 +77,7 @@ async fn test_json_consumer_single_value() {
     name: "Alice".to_string(),
   };
 
-  let producer = ArrayProducer::new(vec![data.clone()]);
+  let producer = ArrayProducer::new([data.clone()]);
   let mut consumer = JsonConsumer::<TestData>::new(&path).with_as_array(false);
 
   let pipeline = PipelineBuilder::new().producer(producer).consumer(consumer);

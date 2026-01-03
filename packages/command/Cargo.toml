@@ -13,14 +13,11 @@ description = "Command producer and consumer for StreamWeave"
 
 [features]
 default = []
-message-envelope = ["dep:streamweave-message"]
 
 [dependencies]
 chrono = { workspace = true }
 async-stream = { workspace = true }
 streamweave = { path = "../streamweave" }
-streamweave-error = { path = "../error" }
-streamweave-message = { path = "../message", optional = true }
 tokio = { workspace = true, features = ["macros", "rt", "process", "io-util"] }
 futures = { workspace = true }
 async-trait = { workspace = true }

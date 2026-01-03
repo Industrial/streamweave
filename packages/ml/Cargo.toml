@@ -14,7 +14,6 @@ description = "Machine learning transformers for StreamWeave"
 [dependencies]
 # Core dependencies
 streamweave = { path = "../streamweave" }
-streamweave-error = { path = "../error" }
 
 # Async runtime and utilities
 tokio = { workspace = true, features = ["macros", "rt", "time", "sync"] }

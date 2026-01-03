@@ -5,17 +5,17 @@ mod tests {
   use axum::http::{Method, StatusCode, Uri};
   use futures::StreamExt;
   use std::time::Duration;
-  use streamweave_graph::{ExecutionError, ExecutionState};
-  use streamweave_graph::{
+  use streamweave::graph::{ExecutionError, ExecutionState};
+  use streamweave::graph::{
     GraphBuilder,
-    node::{ConsumerNode, ProducerNode},
+    nodes::{ConsumerNode, ProducerNode},
   };
+  use streamweave::message::{Message, MessageId};
+  use streamweave::transformers::MapTransformer;
   use streamweave_http_server::consumer::HttpResponseCorrelationConsumer;
   use streamweave_http_server::graph_server::{HttpGraphServer, HttpGraphServerConfig};
   use streamweave_http_server::producer::LongLivedHttpRequestProducer;
   use streamweave_http_server::types::{ContentType, HttpMethod, HttpRequest, HttpResponse};
-  use streamweave_message::{Message, MessageId};
-  use streamweave_transformers::MapTransformer;
   use tokio::sync::mpsc;
 
   #[tokio::test]

@@ -4,10 +4,11 @@ mod tests {
   use axum::extract::Request;
   use axum::http::{Method, StatusCode};
   use std::time::Duration;
-  use streamweave_graph::{
+  use streamweave::graph::{
     GraphBuilder,
-    node::{ConsumerNode, ProducerNode},
+    nodes::{ConsumerNode, ProducerNode},
   };
+  use streamweave::transformers::MapTransformer;
   use streamweave_http_server::consumer::HttpResponseCorrelationConsumer;
   use streamweave_http_server::graph_server::{HttpGraphServer, HttpGraphServerConfig};
   use streamweave_http_server::handler::{
@@ -15,7 +16,6 @@ mod tests {
   };
   use streamweave_http_server::producer::LongLivedHttpRequestProducer;
   use streamweave_http_server::types::{HttpRequest, HttpResponse};
-  use streamweave_transformers::MapTransformer;
   use tokio::sync::mpsc;
 
   #[tokio::test]

@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave::{Consumer, ConsumerConfig, Input};
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tokio::process::Command;
 
 /// A consumer that executes an external command for each item.

@@ -25,11 +25,11 @@ use std::pin::Pin;
 #[cfg(feature = "http-server")]
 use streamweave::Output;
 #[cfg(feature = "http-server")]
+use streamweave::error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
+#[cfg(feature = "http-server")]
+use streamweave::message::Message;
+#[cfg(feature = "http-server")]
 use streamweave::{Producer, ProducerConfig};
-#[cfg(feature = "http-server")]
-use streamweave_error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
-#[cfg(feature = "http-server")]
-use streamweave_message::Message;
 #[cfg(feature = "http-server")]
 use tracing::{error, warn};
 
@@ -549,7 +549,7 @@ impl Producer for HttpRequestProducer {
 #[cfg(feature = "http-server")]
 pub struct LongLivedHttpRequestProducer {
   /// Producer configuration.
-  pub config: ProducerConfig<streamweave_message::Message<HttpRequest>>,
+  pub config: ProducerConfig<streamweave::message::Message<HttpRequest>>,
   /// HTTP request-specific configuration.
   pub http_config: HttpRequestProducerConfig,
   /// Channel receiver for incoming Axum requests.
@@ -609,7 +609,7 @@ impl Clone for LongLivedHttpRequestProducer {
 #[cfg(feature = "http-server")]
 #[async_trait]
 impl Producer for LongLivedHttpRequestProducer {
-  type OutputPorts = (streamweave_message::Message<HttpRequest>,);
+  type OutputPorts = (streamweave::message::Message<HttpRequest>,);
 
   /// Produces a stream of `Message<HttpRequest>` items from incoming Axum requests.
   ///
@@ -647,8 +647,8 @@ impl Producer for LongLivedHttpRequestProducer {
 
             // Create Message with unique ID
             // Use the request_id from HttpRequest as the MessageId for correlation
-            let message_id = streamweave_message::MessageId::new_custom(http_request.request_id.clone());
-            let message = streamweave_message::Message::new(http_request, message_id);
+            let message_id = streamweave::message::MessageId::new_custom(http_request.request_id.clone());
+            let message = streamweave::message::Message::new(http_request, message_id);
 
             yield message;
           }
@@ -665,17 +665,20 @@ impl Producer for LongLivedHttpRequestProducer {
     })
   }
 
-  fn set_config_impl(&mut self, config: ProducerConfig<streamweave_message::Message<HttpRequest>>) {
+  fn set_config_impl(
+    &mut self,
+    config: ProducerConfig<streamweave::message::Message<HttpRequest>>,
+  ) {
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> &ProducerConfig<streamweave_message::Message<HttpRequest>> {
+  fn get_config_impl(&self) -> &ProducerConfig<streamweave::message::Message<HttpRequest>> {
     &self.config
   }
 
   fn get_config_mut_impl(
     &mut self,
-  ) -> &mut ProducerConfig<streamweave_message::Message<HttpRequest>> {
+  ) -> &mut ProducerConfig<streamweave::message::Message<HttpRequest>> {
     &mut self.config
   }
 }

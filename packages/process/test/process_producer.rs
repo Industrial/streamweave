@@ -1,6 +1,6 @@
 //! Tests for ProcessProducer
 
-use streamweave_error::ErrorStrategy;
+use streamweave::error::ErrorStrategy;
 use streamweave_process::ProcessProducer;
 
 #[test]
@@ -133,7 +133,7 @@ fn test_process_producer_config_methods() {
 fn test_process_producer_handle_error_stop() {
   use std::error::Error;
   use std::fmt;
-  use streamweave_error::{ComponentInfo, ErrorContext, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, StreamError};
 
   let producer = ProcessProducer::new("echo".to_string()).with_error_strategy(ErrorStrategy::Stop);
 
@@ -154,13 +154,13 @@ fn test_process_producer_handle_error_stop() {
 
   assert!(matches!(
     producer.handle_error(&error),
-    streamweave_error::ErrorAction::Stop
+    streamweave::error::ErrorAction::Stop
   ));
 }
 
 #[test]
 fn test_process_producer_handle_error_skip() {
-  use streamweave_error::{ComponentInfo, ErrorContext, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, StreamError};
 
   let producer = ProcessProducer::new("echo".to_string()).with_error_strategy(ErrorStrategy::Skip);
 
@@ -181,13 +181,13 @@ fn test_process_producer_handle_error_skip() {
 
   assert!(matches!(
     producer.handle_error(&error),
-    streamweave_error::ErrorAction::Skip
+    streamweave::error::ErrorAction::Skip
   ));
 }
 
 #[test]
 fn test_process_producer_handle_error_retry() {
-  use streamweave_error::{ComponentInfo, ErrorContext, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, StreamError};
 
   let producer =
     ProcessProducer::new("echo".to_string()).with_error_strategy(ErrorStrategy::Retry(3));
@@ -209,13 +209,13 @@ fn test_process_producer_handle_error_retry() {
 
   assert!(matches!(
     producer.handle_error(&error),
-    streamweave_error::ErrorAction::Retry
+    streamweave::error::ErrorAction::Retry
   ));
 }
 
 #[test]
 fn test_process_producer_handle_error_retry_exceeded() {
-  use streamweave_error::{ComponentInfo, ErrorContext, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, StreamError};
 
   let producer =
     ProcessProducer::new("echo".to_string()).with_error_strategy(ErrorStrategy::Retry(3));
@@ -237,13 +237,13 @@ fn test_process_producer_handle_error_retry_exceeded() {
 
   assert!(matches!(
     producer.handle_error(&error),
-    streamweave_error::ErrorAction::Stop
+    streamweave::error::ErrorAction::Stop
   ));
 }
 
 #[test]
 fn test_process_producer_handle_error_custom() {
-  use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
 
   let producer = ProcessProducer::new("echo".to_string())
     .with_error_strategy(ErrorStrategy::new_custom(|_| ErrorAction::Skip));
@@ -265,7 +265,7 @@ fn test_process_producer_handle_error_custom() {
 
   assert!(matches!(
     producer.handle_error(&error),
-    streamweave_error::ErrorAction::Skip
+    streamweave::error::ErrorAction::Skip
   ));
 }
 

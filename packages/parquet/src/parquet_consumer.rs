@@ -8,8 +8,8 @@ use parquet::file::properties::WriterProperties;
 use std::fs::File;
 use std::path::PathBuf;
 use std::pin::Pin;
+use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use streamweave::{Consumer, ConsumerConfig, Input};
-use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use tracing::{error, warn};
 
 /// Configuration for Parquet writing behavior.

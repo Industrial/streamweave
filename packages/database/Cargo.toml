@@ -14,11 +14,9 @@ description = "Base types for StreamWeave database packages"
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
-streamweave-message = { path = "../message", optional = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
 
 [features]
 default = []
-message-envelope = ["dep:streamweave-message"]

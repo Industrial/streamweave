@@ -90,7 +90,7 @@ fn test_kafka_producer_clone() {
 #[test]
 fn test_kafka_producer_config_methods() {
   use streamweave::Producer;
-  use streamweave_error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
 
   let mut producer = KafkaProducer::new(KafkaConsumerConfig::default().with_topic("test-topic"));
   let config = producer.config().clone();
@@ -108,7 +108,7 @@ fn test_kafka_producer_config_methods() {
 #[test]
 fn test_kafka_producer_handle_error() {
   use streamweave::Producer;
-  use streamweave_error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+  use streamweave::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
   use streamweave_kafka::KafkaMessage;
 
   let producer = KafkaProducer::new(KafkaConsumerConfig::default().with_topic("test-topic"))

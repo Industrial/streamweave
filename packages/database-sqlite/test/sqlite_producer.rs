@@ -5,9 +5,9 @@ use serde_json::Value;
 use sqlx::sqlite::SqlitePoolOptions;
 use std::collections::HashMap;
 use std::time::Duration;
+use streamweave::error::ErrorStrategy;
 use streamweave_database::{DatabaseProducerConfig, DatabaseRow, DatabaseType};
 use streamweave_database_sqlite::SqliteProducer;
-use streamweave_error::ErrorStrategy;
 use tempfile;
 
 async fn setup_test_db() -> String {
