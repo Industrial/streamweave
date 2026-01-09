@@ -3,346 +3,308 @@
 		"tasks": [
 			{
 				"id": "1",
-				"title": "Move Graph Package into streamweave Package",
-				"description": "Move the streamweave-graph package into the core streamweave package as a module. This consolidates graph functionality into the core package where it will be used universally.",
-				"status": "done",
+				"title": "Create Test Files for Untested Source Files",
+				"description": "Create comprehensive test files for all 130 source files that currently lack corresponding test files. Tests should follow the project's inline testing pattern and cover core functionality, edge cases, and error handling.",
+				"status": "in-progress",
 				"priority": "high",
 				"dependencies": [],
-				"details": "The graph package currently exists as a separate package. We need to move it into streamweave/src/graph/ and update all imports. This is the foundation for integrating graph functionality into the core package.",
+				"details": "This task covers creating test files for all untested source files identified in the codebase. Tests should be placed in the test/ directory following the same structure as src/. Each test file should test the corresponding source file's functionality comprehensively.",
 				"subtasks": [
 					{
 						"id": 1,
-						"title": "Create graph module directory structure",
-						"description": "Create packages/streamweave/src/graph/ directory and packages/streamweave/src/graph/nodes/ subdirectory. Set up the basic module structure.",
+						"title": "Create tests for consumer modules",
+						"description": "Create test files for: src/consumers/console_consumer.rs, src/consumers/tcp_consumer.rs. Test consumer functionality, error handling, and integration with streams.",
 						"status": "done",
 						"dependencies": [],
 						"parentId": "1",
-						"updatedAt": "2026-01-03T16:27:56.997Z"
+						"updatedAt": "2026-01-04T00:41:21.593Z"
 					},
 					{
 						"id": 2,
-						"title": "Copy core graph modules into streamweave",
-						"description": "Copy core graph modules (graph.rs, execution.rs, connection.rs, channels.rs, traits.rs, etc.) from packages/graph/src/ to packages/streamweave/src/graph/. Update module path references and imports.",
+						"title": "Create tests for graph HTTP server modules",
+						"description": "Create test files for all graph HTTP server modules: src/graph/http_server/error.rs, src/graph/http_server/graph_server.rs, src/graph/http_server/handler.rs, src/graph/http_server/middleware.rs, src/graph/http_server/mod.rs, src/graph/http_server/nodes/consumer.rs, src/graph/http_server/nodes/mod.rs, src/graph/http_server/nodes/path_router_transformer.rs, src/graph/http_server/nodes/producer.rs, src/graph/http_server/types.rs. Test HTTP server functionality, request handling, middleware, and graph integration.",
 						"status": "done",
-						"dependencies": ["1.1"],
+						"dependencies": [],
 						"parentId": "1",
-						"updatedAt": "2026-01-03T16:29:57.694Z"
+						"updatedAt": "2026-01-04T00:41:51.669Z"
 					},
 					{
 						"id": 3,
-						"title": "Move all node types to graph/nodes/",
-						"description": "Move node.rs and all control flow nodes (from control_flow/) to packages/streamweave/src/graph/nodes/. Create nodes/mod.rs to export all node types. Move router nodes (broadcast_router, key_based_router, merge_router, round_robin_router) to nodes/ as well.",
+						"title": "Create tests for graph nodes - array operations",
+						"description": "Create test files for array operation nodes: src/graph/nodes/array_concat.rs, src/graph/nodes/array_contains.rs, src/graph/nodes/array_find.rs, src/graph/nodes/array_index_of.rs, src/graph/nodes/array_join.rs, src/graph/nodes/array_length.rs, src/graph/nodes/array_modify.rs, src/graph/nodes/array_reverse.rs, src/graph/nodes/array_slice.rs. Test array manipulation operations, edge cases, and Message<T> handling.",
 						"status": "done",
-						"dependencies": ["1.2"],
+						"dependencies": [],
 						"parentId": "1",
-						"updatedAt": "2026-01-03T16:31:29.518Z"
+						"updatedAt": "2026-01-04T00:44:03.986Z"
 					},
 					{
 						"id": 4,
-						"title": "Move supporting modules to graph/",
-						"description": "Move supporting modules (batching.rs, compression.rs, serialization.rs, shared_memory_channel.rs, stateful.rs, subgraph.rs, throughput.rs, windowing.rs, zero_copy.rs) to packages/streamweave/src/graph/. Update all internal imports.",
+						"title": "Create tests for graph nodes - CSV operations",
+						"description": "Create test files for CSV operation nodes: src/graph/nodes/csv_parse.rs, src/graph/nodes/csv_stringify.rs. Test CSV parsing and serialization, error handling, and various CSV formats.",
 						"status": "done",
-						"dependencies": ["1.3"],
+						"dependencies": [],
 						"parentId": "1",
-						"updatedAt": "2026-01-03T16:32:35.959Z"
+						"updatedAt": "2026-01-04T00:44:33.177Z"
 					},
 					{
 						"id": 5,
-						"title": "Update streamweave lib.rs to export graph module",
-						"description": "Add 'pub mod graph;' to packages/streamweave/src/lib.rs. Create graph/mod.rs that exports all graph functionality. Ensure Graph, GraphBuilder, and all node types are accessible.",
+						"title": "Create tests for graph nodes - database operations",
+						"description": "Create test files for database operation nodes: src/graph/nodes/database_operation.rs, src/graph/nodes/database_query.rs. Test database operations, query execution, error handling, and connection management.",
 						"status": "done",
-						"dependencies": ["1.4"],
+						"dependencies": [],
 						"parentId": "1",
-						"updatedAt": "2026-01-03T16:32:50.594Z"
+						"updatedAt": "2026-01-04T00:45:11.090Z"
 					},
 					{
 						"id": 6,
-						"title": "Update streamweave Cargo.toml dependencies",
-						"description": "Add all dependencies from graph package to streamweave Cargo.toml. Check for tokio, async-stream, serde, tracing, and any other graph-specific dependencies. Remove graph package from workspace if it exists.",
+						"title": "Create tests for graph nodes - utility operations",
+						"description": "Create test files for utility nodes: src/graph/nodes/drop.rs, src/graph/nodes/http_request.rs, src/graph/nodes/repeat.rs. Test utility operations, HTTP requests, and repeat functionality.",
 						"status": "done",
-						"dependencies": ["1.5"],
+						"dependencies": [],
 						"parentId": "1",
-						"updatedAt": "2026-01-03T16:33:10.135Z"
+						"updatedAt": "2026-01-04T00:45:48.092Z"
 					},
 					{
 						"id": 7,
-						"title": "Update all graph module imports",
-						"description": "Update all imports throughout the codebase that reference streamweave_graph to use streamweave::graph instead. Update examples, tests, and any other code that uses graph functionality.",
-						"status": "done",
-						"dependencies": ["1.6"],
+						"title": "Create tests for graph nodes - JSON operations",
+						"description": "Create test files for JSON operation nodes: src/graph/nodes/json_parse.rs, src/graph/nodes/jsonpath.rs, src/graph/nodes/json_stringify.rs. Test JSON parsing, JSONPath queries, and JSON serialization.",
+						"status": "in-progress",
+						"dependencies": [],
 						"parentId": "1",
-						"updatedAt": "2026-01-03T16:33:41.890Z"
+						"updatedAt": "2026-01-04T00:45:51.793Z"
 					},
 					{
 						"id": 8,
-						"title": "Verify graph module compiles in streamweave",
-						"description": "Run 'cargo check' on streamweave package to ensure graph module compiles correctly. Fix any import, dependency, or module path issues.",
-						"status": "done",
-						"dependencies": ["1.7"],
-						"parentId": "1",
-						"updatedAt": "2026-01-03T16:36:06.772Z"
-					}
-				],
-				"updatedAt": "2026-01-03T16:36:06.772Z"
-			},
-			{
-				"id": "2",
-				"title": "Refactor Graph to Use Message<T>",
-				"description": "Refactor the entire graph system to work with Message<T> as the universal type. This ensures all data flowing through the graph is wrapped in messages, providing consistent metadata and ID tracking.",
-				"status": "done",
-				"priority": "high",
-				"dependencies": ["1"],
-				"details": "The graph system currently works with raw types (T). We need to update it to work with Message<T> internally, ensuring all channels, nodes, and connections handle messages. This affects channels, node execution, serialization, and all graph operations.",
-				"subtasks": [
-					{
-						"id": 1,
-						"title": "Update ChannelItem to use Message<T>",
-						"description": "Modify ChannelItem enum and channel types to work with Message<T> instead of raw types. Update TypeErasedSender and TypeErasedReceiver to handle Message<T>. Ensure serialization works with messages.",
-						"status": "done",
-						"dependencies": ["1"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T16:37:13.464Z"
-					},
-					{
-						"id": 2,
-						"title": "Update Node types to work with Message<T>",
-						"description": "Update ProducerNode, TransformerNode, and ConsumerNode to work with Message<T>. Modify node execution logic to handle Message streams. Update port type extraction to work with Message-wrapped types.",
-						"status": "done",
-						"dependencies": ["2.1"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T16:44:51.821Z"
-					},
-					{
-						"id": 3,
-						"title": "Update Graph execution to use Message<T>",
-						"description": "Update Graph execution engine to ensure all data flowing through connections is Message<T>. Modify spawn_node_task and execution logic to handle Message streams. Update channel creation to use Message types.",
-						"status": "done",
-						"dependencies": ["2.2"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T16:46:20.260Z"
-					},
-					{
-						"id": 4,
-						"title": "Update connection validation for Message types",
-						"description": "Update CompatibleWith trait and connection validation to work with Message<T> types. Ensure type compatibility checks work correctly with Message-wrapped types. Update port type extraction.",
-						"status": "done",
-						"dependencies": ["2.3"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T16:47:24.391Z"
-					},
-					{
-						"id": 5,
-						"title": "Update control flow nodes for Message<T>",
-						"description": "Update all control flow nodes (aggregate, delay, error_branch, for_each, group_by, if_router, join, match_router, synchronize, timeout, while_loop) to work with Message<T>. Ensure they preserve message IDs and metadata.",
-						"status": "done",
-						"dependencies": ["2.4"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T16:49:33.570Z"
-					},
-					{
-						"id": 6,
-						"title": "Update router nodes for Message<T>",
-						"description": "Update all router nodes (broadcast_router, key_based_router, merge_router, round_robin_router) to work with Message<T>. Ensure routing logic preserves message metadata and IDs when distributing messages.",
-						"status": "done",
-						"dependencies": ["2.5"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T16:50:47.885Z"
-					},
-					{
-						"id": 7,
-						"title": "Update serialization for Message<T>",
-						"description": "Update serialization module to handle Message<T> serialization. Ensure message IDs and metadata are preserved during serialization/deserialization. Update compression to work with messages.",
-						"status": "done",
-						"dependencies": ["2.6"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T16:51:46.865Z"
-					},
-					{
-						"id": 8,
-						"title": "Update zero-copy and shared memory for Message<T>",
-						"description": "Update zero-copy channel and shared memory channel implementations to work with Message<T>. Ensure zero-copy optimizations work correctly with message types. Update ArcPool and related types.",
-						"status": "done",
-						"dependencies": ["2.7"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T16:53:05.038Z"
+						"title": "Create tests for graph nodes - math operations",
+						"description": "Create test files for math operation nodes: src/graph/nodes/math_function.rs, src/graph/nodes/math_hyperbolic.rs, src/graph/nodes/math_logarithmic.rs, src/graph/nodes/math_min_max.rs, src/graph/nodes/math_operation.rs, src/graph/nodes/math_random.rs, src/graph/nodes/math_rounding.rs, src/graph/nodes/math_trigonometric.rs, src/graph/nodes/math_utility.rs. Test mathematical operations, edge cases, and special values (NaN, infinity).",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
 					},
 					{
 						"id": 9,
-						"title": "Update stateful and windowing for Message<T>",
-						"description": "Update stateful node support and windowing functionality to work with Message<T>. Ensure state management and windowing operations preserve message metadata. Update checkpointing for messages.",
-						"status": "done",
-						"dependencies": ["2.8"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T16:54:26.887Z"
+						"title": "Create tests for graph nodes - object operations",
+						"description": "Create test files for object operation nodes: src/graph/nodes/object_entries.rs, src/graph/nodes/object_has_property.rs, src/graph/nodes/object_keys.rs, src/graph/nodes/object_merge.rs, src/graph/nodes/object_property.rs, src/graph/nodes/object_random_member.rs, src/graph/nodes/object_values.rs. Test object manipulation operations, property access, and merging.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
 					},
 					{
 						"id": 10,
-						"title": "Update subgraph support for Message<T>",
-						"description": "Update subgraph functionality to work with Message<T>. Ensure messages flow correctly through subgraph boundaries. Update subgraph node execution to handle Message streams.",
-						"status": "done",
-						"dependencies": ["2.9"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T16:54:53.487Z"
+						"title": "Create tests for graph nodes - string operations",
+						"description": "Create test files for string operation nodes: src/graph/nodes/string_case.rs, src/graph/nodes/string_char.rs, src/graph/nodes/string_concat.rs, src/graph/nodes/string_index_of.rs, src/graph/nodes/string_join.rs, src/graph/nodes/string_length.rs, src/graph/nodes/string_match.rs, src/graph/nodes/string_pad.rs, src/graph/nodes/string_predicate.rs, src/graph/nodes/string_repeat.rs, src/graph/nodes/string_replace.rs, src/graph/nodes/string_reverse.rs, src/graph/nodes/string_search.rs, src/graph/nodes/string_slice.rs, src/graph/nodes/string_split.rs, src/graph/nodes/string_split_lines.rs, src/graph/nodes/string_split_words.rs, src/graph/nodes/string_trim.rs. Test string manipulation operations, edge cases, and Unicode handling.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
 					},
 					{
 						"id": 11,
-						"title": "Update error handling in graph for Message<T>",
-						"description": "Update graph error handling to work with Message<T>. Ensure error contexts include message information. Update error propagation through graph connections to preserve message metadata.",
-						"status": "done",
-						"dependencies": ["2.10"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T16:56:31.207Z"
+						"title": "Create tests for graph nodes - TCP operations",
+						"description": "Create test files for TCP operation nodes: src/graph/nodes/tcp_receive.rs, src/graph/nodes/tcp_request.rs, src/graph/nodes/tcp_send.rs. Test TCP communication, error handling, and network operations.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
 					},
 					{
 						"id": 12,
-						"title": "Verify graph compiles with Message<T>",
-						"description": "Run 'cargo check' on streamweave package to ensure all graph functionality compiles correctly with Message<T>. Fix any type errors, import issues, or compilation problems.",
-						"status": "done",
-						"dependencies": ["2.11"],
-						"parentId": "2",
-						"updatedAt": "2026-01-03T16:57:34.539Z"
+						"title": "Create tests for graph nodes - XML operations",
+						"description": "Create test files for XML operation nodes: src/graph/nodes/xml_parse.rs, src/graph/nodes/xml_stringify.rs. Test XML parsing and serialization, error handling, and various XML formats.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 13,
+						"title": "Create tests for graph nodes - utility operations (trace, wrap, xor)",
+						"description": "Create test files for utility nodes: src/graph/nodes/trace.rs, src/graph/nodes/wrap.rs, src/graph/nodes/xor.rs. Test debugging utilities, wrapping operations, and XOR operations.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 14,
+						"title": "Create tests for graph TCP server",
+						"description": "Create test files for TCP server: src/graph/tcp_server/mod.rs, src/graph/tcp_server/server.rs. Test TCP server functionality, connection handling, and message routing.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 15,
+						"title": "Create tests for core modules",
+						"description": "Create test files for core modules: src/lib.rs, src/metrics/mod.rs, src/ml/mod.rs. Test module exports, metrics functionality, and ML module integration.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 16,
+						"title": "Create tests for producer modules",
+						"description": "Create test files for producer modules: src/producers/range_producer.rs, src/producers/tcp_producer.rs. Test producer functionality, stream generation, and error handling.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 17,
+						"title": "Create tests for transformers - array operations",
+						"description": "Create test files for array transformer operations: src/transformers/array_concat_transformer.rs, src/transformers/array_contains_transformer.rs, src/transformers/array_find_transformer.rs, src/transformers/array_index_of_transformer.rs, src/transformers/array_join_transformer.rs, src/transformers/array_length_transformer.rs, src/transformers/array_modify_transformer.rs, src/transformers/array_reverse_transformer.rs, src/transformers/array_slice_transformer.rs. Test array transformation operations, edge cases, and stream processing.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 18,
+						"title": "Create tests for transformers - CSV operations",
+						"description": "Create test files for CSV transformer operations: src/transformers/csv_parse_transformer.rs, src/transformers/csv_stringify_transformer.rs. Test CSV parsing and serialization transformers, error handling, and stream processing.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 19,
+						"title": "Create tests for transformers - database operations",
+						"description": "Create test files for database transformer operations: src/transformers/database_operation_transformer.rs, src/transformers/database_query_transformer.rs. Test database transformation operations, query execution, and error handling.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 20,
+						"title": "Create tests for transformers - utility operations (delay, drop)",
+						"description": "Create test files for utility transformers: src/transformers/delay_transformer.rs, src/transformers/drop_transformer.rs. Test delay functionality, drop operations, and timing behavior.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 21,
+						"title": "Create tests for transformers - HTTP operations",
+						"description": "Create test files for HTTP transformer: src/transformers/http_request_transformer.rs. Test HTTP request functionality, error handling, and response processing.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 22,
+						"title": "Create tests for transformers - JSON operations",
+						"description": "Create test files for JSON transformer operations: src/transformers/json_parse_transformer.rs, src/transformers/jsonpath_transformer.rs, src/transformers/json_stringify_transformer.rs. Test JSON parsing, JSONPath queries, and JSON serialization transformers.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 23,
+						"title": "Create tests for transformers - math operations",
+						"description": "Create test files for math transformer operations: src/transformers/math_function_transformer.rs, src/transformers/math_hyperbolic_transformer.rs, src/transformers/math_logarithmic_transformer.rs, src/transformers/math_min_max_transformer.rs, src/transformers/math_operation_transformer.rs, src/transformers/math_random_transformer.rs, src/transformers/math_rounding_transformer.rs, src/transformers/math_trigonometric_transformer.rs, src/transformers/math_utility_transformer.rs. Test mathematical transformation operations, edge cases, and special values.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 24,
+						"title": "Create tests for transformers - object operations",
+						"description": "Create test files for object transformer operations: src/transformers/object_entries_transformer.rs, src/transformers/object_has_property_transformer.rs, src/transformers/object_keys_transformer.rs, src/transformers/object_merge_transformer.rs, src/transformers/object_property_transformer.rs, src/transformers/object_random_member_transformer.rs, src/transformers/object_values_transformer.rs. Test object transformation operations, property access, and merging.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 25,
+						"title": "Create tests for transformers - process operations",
+						"description": "Create test files for process transformer: src/transformers/process_transformer.rs. Test process execution, output handling, and error management.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 26,
+						"title": "Create tests for transformers - utility operations (repeat, trace)",
+						"description": "Create test files for utility transformers: src/transformers/repeat_transformer.rs, src/transformers/trace_transformer.rs. Test repeat functionality and debugging utilities.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 27,
+						"title": "Create tests for transformers - string operations",
+						"description": "Create test files for string transformer operations: src/transformers/string_case_transformer.rs, src/transformers/string_char_transformer.rs, src/transformers/string_concat_transformer.rs, src/transformers/string_index_of_transformer.rs, src/transformers/string_join_transformer.rs, src/transformers/string_length_transformer.rs, src/transformers/string_match_transformer.rs, src/transformers/string_pad_transformer.rs, src/transformers/string_predicate_transformer.rs, src/transformers/string_repeat_transformer.rs, src/transformers/string_replace_transformer.rs, src/transformers/string_reverse_transformer.rs, src/transformers/string_search_transformer.rs, src/transformers/string_slice_transformer.rs, src/transformers/string_split_transformer.rs, src/transformers/string_split_lines_transformer.rs, src/transformers/string_split_words_transformer.rs, src/transformers/string_trim_transformer.rs. Test string transformation operations, edge cases, and Unicode handling.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 28,
+						"title": "Create tests for transformers - TCP operations",
+						"description": "Create test files for TCP transformer operations: src/transformers/tcp_receive_transformer.rs, src/transformers/tcp_request_transformer.rs, src/transformers/tcp_send_transformer.rs. Test TCP transformation operations, network communication, and error handling.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 29,
+						"title": "Create tests for transformers - utility operations (wrap, xor)",
+						"description": "Create test files for utility transformers: src/transformers/wrap_transformer.rs, src/transformers/xor_transformer.rs. Test wrapping operations and XOR transformations.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 30,
+						"title": "Create tests for transformers - XML operations",
+						"description": "Create test files for XML transformer operations: src/transformers/xml_parse_transformer.rs, src/transformers/xml_stringify_transformer.rs. Test XML parsing and serialization transformers, error handling, and various XML formats.",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 31,
+						"title": "Run all new tests and fix any failures",
+						"description": "Run all newly created test files using 'devenv shell -- ./bin/test' and fix any compilation errors, test failures, or issues. Ensure all tests pass and follow the project's testing patterns.",
+						"status": "pending",
+						"dependencies": [
+							"1.1",
+							"1.2",
+							"1.3",
+							"1.4",
+							"1.5",
+							"1.6",
+							"1.7",
+							"1.8",
+							"1.9",
+							"1.10",
+							"1.11",
+							"1.12",
+							"1.13",
+							"1.14",
+							"1.15",
+							"1.16",
+							"1.17",
+							"1.18",
+							"1.19",
+							"1.20",
+							"1.21",
+							"1.22",
+							"1.23",
+							"1.24",
+							"1.25",
+							"1.26",
+							"1.27",
+							"1.28",
+							"1.29",
+							"1.30"
+						],
+						"parentId": "1"
 					}
 				],
-				"updatedAt": "2026-01-03T16:57:34.539Z"
-			},
-			{
-				"id": "3",
-				"title": "Update Tests and Examples for Graph Integration",
-				"description": "Update all tests and examples to work with the integrated graph module and Message<T> types. Ensure all graph functionality is properly tested.",
-				"status": "done",
-				"priority": "high",
-				"dependencies": ["2"],
-				"details": "All existing graph tests need to be moved and updated to work with the new module structure and Message<T> types. Examples need to be updated to demonstrate the integrated graph API.",
-				"subtasks": [
-					{
-						"id": 1,
-						"title": "Move graph tests to streamweave package",
-						"description": "Move all tests from packages/graph/ to packages/streamweave/tests/graph/. Update test imports to use streamweave::graph. Organize tests by module (nodes, execution, channels, etc.).",
-						"status": "done",
-						"dependencies": ["2"],
-						"parentId": "3",
-						"updatedAt": "2026-01-03T17:01:04.460Z"
-					},
-					{
-						"id": 2,
-						"title": "Update graph tests for Message<T>",
-						"description": "Update all graph tests to work with Message<T> types. Update test data creation to use wrap_message(). Verify message IDs and metadata are preserved in tests. Update assertions to check message properties.",
-						"status": "done",
-						"dependencies": ["3.1"],
-						"parentId": "3",
-						"updatedAt": "2026-01-03T17:15:28.125Z"
-					},
-					{
-						"id": 3,
-						"title": "Test node execution with Message<T>",
-						"description": "Create comprehensive tests for node execution with Message<T>. Test ProducerNode, TransformerNode, and ConsumerNode with messages. Verify message flow, ID preservation, and metadata handling.",
-						"status": "done",
-						"dependencies": ["3.2"],
-						"parentId": "3",
-						"updatedAt": "2026-01-03T17:15:40.540Z"
-					},
-					{
-						"id": 4,
-						"title": "Test graph execution with Message<T>",
-						"description": "Create integration tests for full graph execution with Message<T>. Test multi-node graphs, verify message flow through connections, and ensure metadata is preserved throughout the graph.",
-						"status": "done",
-						"dependencies": ["3.3"],
-						"parentId": "3",
-						"updatedAt": "2026-01-03T17:15:44.827Z"
-					},
-					{
-						"id": 5,
-						"title": "Test control flow nodes with Message<T>",
-						"description": "Test all control flow nodes (aggregate, delay, if_router, join, etc.) with Message<T>. Verify they correctly handle messages, preserve IDs and metadata, and route messages appropriately.",
-						"status": "done",
-						"dependencies": ["3.4"],
-						"parentId": "3",
-						"updatedAt": "2026-01-03T17:15:50.424Z"
-					},
-					{
-						"id": 6,
-						"title": "Update graph examples",
-						"description": "Update all graph examples in examples/ directory to use streamweave::graph and Message<T>. Update example code to demonstrate message-based graph usage. Ensure examples compile and run correctly.",
-						"status": "done",
-						"dependencies": ["3.5"],
-						"parentId": "3",
-						"updatedAt": "2026-01-03T17:17:14.877Z"
-					},
-					{
-						"id": 7,
-						"title": "Run all tests and fix breakages",
-						"description": "Run all tests in the streamweave package. Fix any test breakages caused by the graph integration and Message<T> refactoring. Ensure all tests pass before considering the integration complete.",
-						"status": "done",
-						"dependencies": ["3.6"],
-						"parentId": "3",
-						"updatedAt": "2026-01-03T17:17:56.110Z"
-					}
-				],
-				"updatedAt": "2026-01-03T17:17:56.110Z"
-			},
-			{
-				"id": "4",
-				"title": "Update Documentation for Graph Integration",
-				"description": "Update all documentation to reflect the integrated graph module and Message<T> usage. Ensure users understand how to use the graph API with messages.",
-				"status": "done",
-				"priority": "medium",
-				"dependencies": ["2", "3"],
-				"details": "Documentation needs to be updated to explain the integrated graph API, how to use it with Message<T>, and how graph nodes work with messages. Include examples and migration guidance.",
-				"subtasks": [
-					{
-						"id": 1,
-						"title": "Update streamweave README with graph documentation",
-						"description": "Add graph section to packages/streamweave/README.md explaining the integrated graph API. Document how to create graphs, add nodes, connect nodes, and execute graphs with Message<T>.",
-						"status": "done",
-						"dependencies": ["2", "3"],
-						"parentId": "4",
-						"updatedAt": "2026-01-03T17:19:57.458Z"
-					},
-					{
-						"id": 2,
-						"title": "Update graph module rustdoc",
-						"description": "Update all rustdoc comments in graph module to explain Message<T> usage. Add examples showing graph creation, node usage, and message handling. Document all public APIs.",
-						"status": "done",
-						"dependencies": ["4.1"],
-						"parentId": "4",
-						"updatedAt": "2026-01-03T17:22:03.615Z"
-					},
-					{
-						"id": 3,
-						"title": "Create graph nodes documentation",
-						"description": "Add comprehensive documentation to graph/nodes/ module explaining all node types, how they work with Message<T>, and usage examples. Document ProducerNode, TransformerNode, ConsumerNode, and all control flow nodes.",
-						"status": "done",
-						"dependencies": ["4.2"],
-						"parentId": "4",
-						"updatedAt": "2026-01-03T17:24:25.099Z"
-					},
-					{
-						"id": 4,
-						"title": "Update graph examples in documentation",
-						"description": "Update all example code in documentation to use streamweave::graph and Message<T>. Show both simple and complex graph examples. Ensure all examples compile and demonstrate best practices.",
-						"status": "done",
-						"dependencies": ["4.3"],
-						"parentId": "4",
-						"updatedAt": "2026-01-03T17:24:59.034Z"
-					},
-					{
-						"id": 5,
-						"title": "Create graph migration guide",
-						"description": "Create a migration guide explaining how to update code from streamweave-graph package to streamweave::graph. Include examples of API changes and Message<T> usage patterns.",
-						"status": "done",
-						"dependencies": ["4.4"],
-						"parentId": "4",
-						"updatedAt": "2026-01-03T17:25:40.021Z"
-					}
-				],
-				"updatedAt": "2026-01-03T17:25:40.021Z"
+				"updatedAt": "2026-01-04T00:45:51.793Z"
 			}
 		],
 		"metadata": {
 			"version": "1.0.0",
-			"lastModified": "2026-01-03T17:25:40.021Z",
-			"taskCount": 4,
-			"completedCount": 4,
+			"lastModified": "2026-01-04T00:45:51.793Z",
+			"taskCount": 1,
+			"completedCount": 0,
 			"tags": ["master"]
 		}
 	}
