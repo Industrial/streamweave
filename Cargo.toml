@@ -70,7 +70,7 @@ reqwest = { version = "0.13", default-features = false, features = [
   "json",
   "multipart",
 ] }
-quick-xml = { version = "0.31", features = ["serialize"] }
+quick-xml = { version = "0.38", features = ["serialize"] }
 
 [dev-dependencies]
 proptest = "1.5"
