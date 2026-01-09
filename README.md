@@ -57,7 +57,7 @@ Add StreamWeave to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave = "0.6.0"
+streamweave = "0.7.0"
 ```
 
 ### Basic Example

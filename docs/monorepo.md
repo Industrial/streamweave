@@ -130,7 +130,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.6.0"  # Shared version
+version = "0.7.0"  # Shared version
 edition = "2024"
 authors = ["Tom Wieland <tom.wieland@gmail.com>"]
 license = "CC-BY-SA-4.0"

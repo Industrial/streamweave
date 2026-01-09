@@ -33,14 +33,14 @@ use streamweave::graph::nodes::{If, Match, Aggregate};
 **Before:**
 ```toml
 [dependencies]
-streamweave = "0.6.0"
+streamweave = "0.7.0"
 streamweave-graph = "0.6.0"
 ```
 
 **After:**
 ```toml
 [dependencies]
-streamweave = "0.6.0"
+streamweave = "0.7.0"
 # streamweave-graph is now included in streamweave
 ```
 
@@ -124,7 +124,7 @@ Remove `streamweave-graph` from your dependencies:
 
 ```toml
 [dependencies]
-streamweave = "0.6.0"
+streamweave = "0.7.0"
 # Remove: streamweave-graph = "0.6.0"
 ```
 
