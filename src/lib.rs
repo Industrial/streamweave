@@ -5,6 +5,8 @@ mod consumer_test;
 #[cfg(test)]
 mod error_test;
 #[cfg(test)]
+mod input_test;
+#[cfg(test)]
 mod message_test;
 #[cfg(test)]
 mod pipeline_test;
