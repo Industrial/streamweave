@@ -18,7 +18,7 @@
 //! access methods use runtime detection to safely lock the mutex and access
 //! transformer fields.
 //!
-//! ## Message<T> Support
+//! ## `Message<T>` Support
 //!
 //! When this module is re-enabled, stateful nodes will work with `Message<T>` types.
 //! All data flowing through stateful nodes is wrapped in `Message<T>`, preserving
@@ -26,7 +26,7 @@
 //! receive unwrapped payloads (`T`) and produce outputs that are automatically
 //! wrapped in `Message<T>` before being sent to downstream nodes.
 //!
-//! ### Checkpointing with Message<T>
+//! ### Checkpointing with `Message<T>`
 //!
 //! When checkpointing state, the stateful node implementation should preserve
 //! message metadata when possible. Checkpointed state should include:

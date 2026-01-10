@@ -1,6 +1,8 @@
 #![doc = include_str!("../README.md")]
 
-pub mod adapters;
+#[cfg(test)]
+mod message_test;
+
 pub mod consumer;
 pub mod consumers;
 pub mod db;
@@ -23,7 +25,6 @@ pub mod transformer;
 pub mod transformers;
 pub mod window;
 
-pub use adapters::*;
 pub use consumer::*;
 pub use consumers::*;
 pub use db::*;

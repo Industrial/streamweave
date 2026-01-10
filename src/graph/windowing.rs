@@ -24,7 +24,7 @@
 //! read window configuration. The `window_config()` method uses runtime detection
 //! to safely lock the mutex and access transformer fields.
 //!
-//! ## Message<T> Support
+//! ## `Message<T>` Support
 //!
 //! When this module is re-enabled, windowing operations will work with `Message<T>` types.
 //! All data flowing through windowed nodes is wrapped in `Message<T>`, preserving

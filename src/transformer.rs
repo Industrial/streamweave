@@ -162,14 +162,11 @@ impl<M: std::fmt::Debug + Clone + Send + Sync> TransformerConfig<M> {
 /// - `message.metadata()` - Access or modify metadata
 /// - `message.map(f)` - Transform payload while preserving ID and metadata
 ///
-/// ## Adapter Pattern
+/// ## Message Wrapping
 ///
-/// If you have existing code that works with raw types, use `PayloadExtractor`:
-/// ```rust,no_run
-/// use crate::adapters::PayloadExtractor;
-/// // let raw_transformer = MyRawTransformer::new();
-/// // let transformer = PayloadExtractor::new(raw_transformer);  // Works with raw types internally
-/// ```
+/// Transformers work with raw types (`T::Input` -> `T::Output`). When using `TransformerNode`
+/// in graphs, messages are automatically unwrapped before transformation, and the output is
+/// wrapped back into `Message<T::Output>` with preserved IDs and metadata.
 ///
 /// # Implementations
 ///

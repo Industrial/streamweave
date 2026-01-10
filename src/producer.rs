@@ -154,14 +154,11 @@ where
 /// - `message.id()` - Access the unique message ID
 /// - `message.metadata()` - Access metadata (source, headers, etc.)
 ///
-/// ## Adapter Pattern
+/// ## Message Wrapping
 ///
-/// If you have existing code that produces raw types, use `MessageWrapper`:
-/// ```rust,no_run
-/// use crate::adapters::MessageWrapper;
-/// // let raw_producer = MyRawProducer::new();
-/// // let producer = MessageWrapper::new(raw_producer);  // Now produces Message<T>
-/// ```
+/// Producers work with raw types (`T`), and graph nodes automatically wrap them in `Message<T>`.
+/// When using `ProducerNode` in graphs, each item is automatically wrapped with message IDs
+/// and metadata before sending to output channels.
 ///
 /// # Implementations
 ///

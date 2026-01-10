@@ -384,11 +384,13 @@ impl Default for MessageId {
 #[serde(rename_all = "snake_case")]
 pub struct MessageMetadata {
   /// When the message was created (as Duration since UNIX_EPOCH).
+  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub timestamp: Option<Duration>,
 
   /// The source of the message (e.g., topic, file, etc.).
   /// Uses `Arc<str>` for zero-copy string sharing.
   #[serde(
+    default,
     skip_serializing_if = "Option::is_none",
     serialize_with = "serialize_arc_str_option",
     deserialize_with = "deserialize_arc_str_option"
@@ -396,14 +398,17 @@ pub struct MessageMetadata {
   pub source: Option<Arc<str>>,
 
   /// Partition or shard information.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub partition: Option<u32>,
 
   /// Offset within the partition/source.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub offset: Option<u64>,
 
   /// User-defined key for routing/grouping.
   /// Uses `Arc<str>` for zero-copy string sharing.
   #[serde(
+    default,
     skip_serializing_if = "Option::is_none",
     serialize_with = "serialize_arc_str_option",
     deserialize_with = "deserialize_arc_str_option"
@@ -413,6 +418,7 @@ pub struct MessageMetadata {
   /// Additional headers/attributes.
   /// Uses `Arc<str>` for both keys and values to enable zero-copy sharing.
   #[serde(
+    default,
     serialize_with = "serialize_arc_str_vec",
     deserialize_with = "deserialize_arc_str_vec"
   )]
@@ -917,7 +923,7 @@ impl<T: Hash> Hash for Message<T> {
 /// Trait for generating unique message IDs.
 ///
 /// Implementations of this trait provide different strategies for generating
-/// message identifiers. The trait is used by adapters and helper functions
+/// message identifiers. The trait is used by graph nodes and helper functions
 /// to automatically generate IDs for messages.
 ///
 /// # Implementations

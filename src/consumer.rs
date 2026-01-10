@@ -158,14 +158,11 @@ impl<M: std::fmt::Debug + Clone + Send + Sync + 'static> ConsumerConfig<M> {
 /// - `message.metadata()` - Access metadata (source, headers, etc.)
 /// - `message.into_payload()` - Extract payload, consuming the message
 ///
-/// ## Adapter Pattern
+/// ## Message Wrapping
 ///
-/// If you have existing code that works with raw types, use `PayloadExtractorConsumer`:
-/// ```rust,no_run
-/// use crate::adapters::PayloadExtractorConsumer;
-/// // let raw_consumer = MyRawConsumer::new();
-/// // let consumer = PayloadExtractorConsumer::new(raw_consumer);  // Receives raw types internally
-/// ```
+/// Consumers work with raw types (`C::Input`). When using `ConsumerNode` in graphs, messages
+/// are automatically unwrapped before being passed to the consumer, so the consumer receives
+/// just the payload data.
 ///
 /// # Implementations
 ///
