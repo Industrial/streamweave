@@ -13,6 +13,8 @@ mod output_test;
 #[cfg(test)]
 mod pipeline_test;
 #[cfg(test)]
+mod port_test;
+#[cfg(test)]
 mod producer_test;
 #[cfg(test)]
 mod transformer_test;
