@@ -21,6 +21,8 @@ mod port_test;
 #[cfg(test)]
 mod producer_test;
 #[cfg(test)]
+mod transaction_test;
+#[cfg(test)]
 mod transformer_test;
 #[cfg(test)]
 mod window_test;
