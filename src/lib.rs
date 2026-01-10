@@ -20,6 +20,8 @@ mod port_test;
 mod producer_test;
 #[cfg(test)]
 mod transformer_test;
+#[cfg(test)]
+mod window_test;
 
 pub mod consumer;
 pub mod consumers;
