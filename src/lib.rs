@@ -9,6 +9,8 @@ mod input_test;
 #[cfg(test)]
 mod message_test;
 #[cfg(test)]
+mod offset_test;
+#[cfg(test)]
 mod output_test;
 #[cfg(test)]
 mod pipeline_test;
