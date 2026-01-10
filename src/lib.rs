@@ -7,6 +7,8 @@ mod error_test;
 #[cfg(test)]
 mod message_test;
 #[cfg(test)]
+mod pipeline_test;
+#[cfg(test)]
 mod producer_test;
 #[cfg(test)]
 mod transformer_test;
