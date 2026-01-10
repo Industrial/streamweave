@@ -6,6 +6,8 @@ mod consumer_test;
 mod message_test;
 #[cfg(test)]
 mod producer_test;
+#[cfg(test)]
+mod transformer_test;
 
 pub mod consumer;
 pub mod consumers;
