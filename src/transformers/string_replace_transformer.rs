@@ -15,7 +15,7 @@ use std::pin::Pin;
 /// # Example
 ///
 /// ```rust
-/// use streamweave::transformers::StringReplaceTransformer;
+/// use crate::transformers::StringReplaceTransformer;
 ///
 /// // Replace all occurrences
 /// let transformer = StringReplaceTransformer::new("old", "new", true);

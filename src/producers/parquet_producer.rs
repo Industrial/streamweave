@@ -325,7 +325,7 @@ impl Producer for ParquetProducer {
 }
 
 /// Helper function to handle error strategy
-fn handle_error_strategy(
+pub(crate) fn handle_error_strategy(
   strategy: &ErrorStrategy<RecordBatch>,
   error: &StreamError<RecordBatch>,
 ) -> ErrorAction {

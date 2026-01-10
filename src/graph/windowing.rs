@@ -50,7 +50,7 @@
 // 2. Breaking the circular dependency by restructuring the packages
 // 3. Making windowing support optional at a different level
 
-#![cfg(feature = "windowing")]
+#![allow(unexpected_cfgs)]
 
 // TODO: Re-enable when circular dependency is resolved
 // The original implementation is preserved in packages/graph/src/windowing.rs

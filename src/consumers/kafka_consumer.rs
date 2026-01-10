@@ -112,6 +112,13 @@ impl KafkaProducerConfig {
     self
   }
 
+  /// Sets the maximum request size.
+  #[must_use]
+  pub fn with_max_request_size(mut self, size: usize) -> Self {
+    self.max_request_size = size;
+    self
+  }
+
   /// Sets a custom property.
   #[must_use]
   pub fn with_custom_property(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
@@ -129,7 +136,6 @@ impl KafkaProducerConfig {
 ///
 /// ```ignore
 /// use streamweave_kafka::KafkaConsumer;
-/// use serde::Serialize;
 ///
 /// #[derive(Serialize)]
 /// struct Event {
@@ -390,7 +396,10 @@ where
   }
 }
 
-fn handle_error_strategy<T>(strategy: &ErrorStrategy<T>, error: &StreamError<T>) -> ErrorAction
+pub(crate) fn handle_error_strategy<T>(
+  strategy: &ErrorStrategy<T>,
+  error: &StreamError<T>,
+) -> ErrorAction
 where
   T: std::fmt::Debug + Clone + Send + Sync,
 {

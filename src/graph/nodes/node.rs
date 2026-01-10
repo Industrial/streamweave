@@ -776,6 +776,23 @@ where
   // Router deferred to Phase 2
 }
 
+impl<P, Outputs> Clone for ProducerNode<P, Outputs>
+where
+  P: Producer,
+  P::Output: std::fmt::Debug + Clone + Send + Sync,
+  Outputs: PortList,
+  (): ValidateProducerPorts<P, Outputs>,
+{
+  fn clone(&self) -> Self {
+    Self {
+      name: self.name.clone(),
+      producer: Arc::clone(&self.producer),
+      output_port_names: self.output_port_names.clone(),
+      _phantom: self._phantom,
+    }
+  }
+}
+
 impl<P, Outputs> ProducerNode<P, Outputs>
 where
   P: Producer,
@@ -1005,6 +1022,26 @@ where
   output_port_names: Vec<String>,
   _phantom: std::marker::PhantomData<(Inputs, Outputs)>,
   // Routers deferred to Phase 2
+}
+
+impl<T, Inputs, Outputs> Clone for TransformerNode<T, Inputs, Outputs>
+where
+  T: Transformer,
+  T::Input: std::fmt::Debug + Clone + Send + Sync,
+  T::Output: std::fmt::Debug + Clone + Send + Sync,
+  Inputs: PortList,
+  Outputs: PortList,
+  (): ValidateTransformerPorts<T, Inputs, Outputs>,
+{
+  fn clone(&self) -> Self {
+    Self {
+      name: self.name.clone(),
+      transformer: Arc::clone(&self.transformer),
+      input_port_names: self.input_port_names.clone(),
+      output_port_names: self.output_port_names.clone(),
+      _phantom: self._phantom,
+    }
+  }
 }
 
 impl<T, Inputs, Outputs> TransformerNode<T, Inputs, Outputs>
@@ -1279,6 +1316,23 @@ where
   // Router deferred to Phase 2
 }
 
+impl<C, Inputs> Clone for ConsumerNode<C, Inputs>
+where
+  C: Consumer,
+  C::Input: std::fmt::Debug + Clone + Send + Sync,
+  Inputs: PortList,
+  (): ValidateConsumerPorts<C, Inputs>,
+{
+  fn clone(&self) -> Self {
+    Self {
+      name: self.name.clone(),
+      consumer: Arc::clone(&self.consumer),
+      input_port_names: self.input_port_names.clone(),
+      _phantom: self._phantom,
+    }
+  }
+}
+
 impl<C, Inputs> ConsumerNode<C, Inputs>
 where
   C: Consumer,
@@ -1453,9 +1507,9 @@ where
 // Implement NodeTrait for ProducerNode
 impl<P, Outputs> NodeTrait for ProducerNode<P, Outputs>
 where
-  P: Producer + Send + Sync + 'static,
+  P: Producer + Clone + Send + Sync + 'static,
   P::Output: std::fmt::Debug + Clone + Send + Sync + Serialize,
-  Outputs: PortList + Send + Sync + 'static,
+  Outputs: PortList + Clone + Send + Sync + 'static,
   (): ValidateProducerPorts<P, Outputs>,
 {
   fn name(&self) -> &str {
@@ -1507,6 +1561,7 @@ where
 
     let node_name = self.name.clone();
     let producer = Arc::clone(&self.producer);
+    let execution_mode_clone = execution_mode.clone();
     let _batching_channels_clone = batching_channels.clone();
     let arc_pool_clone = arc_pool.clone();
 
@@ -1561,7 +1616,7 @@ where
 
         // Check execution mode for zero-copy optimization
         let is_in_process = matches!(
-          execution_mode,
+          execution_mode_clone,
           crate::graph::execution::ExecutionMode::InProcess { .. }
         );
         let is_fan_out = output_channels.len() > 1;
@@ -1654,7 +1709,7 @@ where
           let final_bytes = if let crate::graph::execution::ExecutionMode::Distributed {
             compression: Some(algorithm),
             ..
-          } = &execution_mode
+          } = &execution_mode_clone
           {
             // Create compression instance with configured level
             let compressor: Box<dyn Compression> = match *algorithm {
@@ -1794,11 +1849,11 @@ where
 // Implement NodeTrait for TransformerNode
 impl<T, Inputs, Outputs> NodeTrait for TransformerNode<T, Inputs, Outputs>
 where
-  T: Transformer + Send + Sync + 'static,
+  T: Transformer + Clone + Send + Sync + 'static,
   T::Input: std::fmt::Debug + Clone + Send + Sync + DeserializeOwned,
   T::Output: std::fmt::Debug + Clone + Send + Sync + Serialize,
-  Inputs: PortList + Send + Sync + 'static,
-  Outputs: PortList + Send + Sync + 'static,
+  Inputs: PortList + Clone + Send + Sync + 'static,
+  Outputs: PortList + Clone + Send + Sync + 'static,
   (): ValidateTransformerPorts<T, Inputs, Outputs>,
 {
   fn name(&self) -> &str {
@@ -2187,9 +2242,9 @@ where
 // Implement NodeTrait for ConsumerNode
 impl<C, Inputs> NodeTrait for ConsumerNode<C, Inputs>
 where
-  C: Consumer + Send + Sync + 'static,
+  C: Consumer + Clone + Send + Sync + 'static,
   C::Input: std::fmt::Debug + Clone + Send + Sync + DeserializeOwned + 'static,
-  Inputs: PortList + Send + Sync + 'static,
+  Inputs: PortList + Clone + Send + Sync + 'static,
   (): ValidateConsumerPorts<C, Inputs>,
 {
   fn name(&self) -> &str {
@@ -2328,6 +2383,24 @@ where
   _phantom: std::marker::PhantomData<(I, Inputs, Outputs)>,
 }
 
+impl<R, I, Inputs, Outputs> Clone for OutputRouterNode<R, I, Inputs, Outputs>
+where
+  R: crate::graph::router::OutputRouter<I>,
+  I: std::fmt::Debug + Clone + Send + Sync + Serialize + 'static,
+  Inputs: PortList,
+  Outputs: PortList,
+{
+  fn clone(&self) -> Self {
+    Self {
+      name: self.name.clone(),
+      router: Arc::clone(&self.router),
+      input_port_names: self.input_port_names.clone(),
+      output_port_names: self.output_port_names.clone(),
+      _phantom: self._phantom,
+    }
+  }
+}
+
 impl<R, I, Inputs, Outputs> OutputRouterNode<R, I, Inputs, Outputs>
 where
   R: crate::graph::router::OutputRouter<I>,
@@ -2412,10 +2485,10 @@ where
 // Implement NodeTrait for OutputRouterNode
 impl<R, I, Inputs, Outputs> NodeTrait for OutputRouterNode<R, I, Inputs, Outputs>
 where
-  R: crate::graph::router::OutputRouter<I> + Send + Sync + 'static,
+  R: crate::graph::router::OutputRouter<I> + Clone + Send + Sync + 'static,
   I: std::fmt::Debug + Clone + Send + Sync + Serialize + DeserializeOwned + 'static,
-  Inputs: PortList + Send + Sync + 'static,
-  Outputs: PortList + Send + Sync + 'static,
+  Inputs: PortList + Clone + Send + Sync + 'static,
+  Outputs: PortList + Clone + Send + Sync + 'static,
 {
   fn name(&self) -> &str {
     &self.name
@@ -2609,8 +2682,9 @@ where
       drop(router_guard);
 
       // Extract execution mode info before the loop
+      let execution_mode_clone = execution_mode.clone();
       let is_in_process = matches!(
-        execution_mode,
+        execution_mode_clone,
         crate::graph::execution::ExecutionMode::InProcess { .. }
       );
 
@@ -2722,6 +2796,24 @@ where
   _phantom: std::marker::PhantomData<(I, Inputs, Outputs)>,
 }
 
+impl<R, I, Inputs, Outputs> Clone for InputRouterNode<R, I, Inputs, Outputs>
+where
+  R: crate::graph::router::InputRouter<I>,
+  I: std::fmt::Debug + Clone + Send + Sync + Serialize + 'static,
+  Inputs: PortList,
+  Outputs: PortList,
+{
+  fn clone(&self) -> Self {
+    Self {
+      name: self.name.clone(),
+      router: Arc::clone(&self.router),
+      input_port_names: self.input_port_names.clone(),
+      output_port_names: self.output_port_names.clone(),
+      _phantom: self._phantom,
+    }
+  }
+}
+
 impl<R, I, Inputs, Outputs> InputRouterNode<R, I, Inputs, Outputs>
 where
   R: crate::graph::router::InputRouter<I>,
@@ -2806,10 +2898,10 @@ where
 // Implement NodeTrait for InputRouterNode
 impl<R, I, Inputs, Outputs> NodeTrait for InputRouterNode<R, I, Inputs, Outputs>
 where
-  R: crate::graph::router::InputRouter<I> + Send + Sync + 'static,
+  R: crate::graph::router::InputRouter<I> + Clone + Send + Sync + 'static,
   I: std::fmt::Debug + Clone + Send + Sync + Serialize + DeserializeOwned + 'static,
-  Inputs: PortList + Send + Sync + 'static,
-  Outputs: PortList + Send + Sync + 'static,
+  Inputs: PortList + Clone + Send + Sync + 'static,
+  Outputs: PortList + Clone + Send + Sync + 'static,
 {
   fn name(&self) -> &str {
     &self.name
@@ -2931,8 +3023,9 @@ where
       drop(router_guard);
 
       // Extract execution mode info before using it
+      let execution_mode_clone = execution_mode.clone();
       let is_in_process = matches!(
-        execution_mode,
+        execution_mode_clone,
         crate::graph::execution::ExecutionMode::InProcess { .. }
       );
 

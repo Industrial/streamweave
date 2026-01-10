@@ -3,6 +3,8 @@
 //! This module provides traits for type-erased node access in the graph structure.
 //! These traits are separated from the graph module to avoid circular dependencies.
 
+use dyn_clone::DynClone;
+
 /// Trait for type-erased node access.
 ///
 /// This trait allows nodes to be stored in a type-erased HashMap while still
@@ -13,7 +15,7 @@
 /// All ports are identified by string names, not numeric indices. Nodes must
 /// explicitly specify their port names when created. This enables clearer,
 /// more maintainable graph definitions.
-pub trait NodeTrait: Send + Sync + std::any::Any {
+pub trait NodeTrait: Send + Sync + std::any::Any + DynClone {
   /// Returns the name of this node.
   fn name(&self) -> &str;
 

@@ -102,35 +102,37 @@ where
         let mut counter = 0;
 
         while let Some(item) = input.next().await {
-            #[cfg(test)]
-            let should_emit = if probability == 0.0 {
-                false
-            } else if probability == 1.0 {
-                true
-            } else {
-                // For other probabilities in tests, use a fixed pattern
-                // that matches the expected test output
-                counter < 2  // Only emit the first two items
-            };
-            #[cfg(not(test))]
             let should_emit = {
-              use rand::rngs::StdRng;
-              use rand::{Rng, SeedableRng};
-              let mut rng = StdRng::seed_from_u64(
-                std::time::SystemTime::now()
-                  .duration_since(std::time::UNIX_EPOCH)
-                  .unwrap()
-                  .as_nanos() as u64,
-              );
-              rng.gen_bool(probability)
+              #[cfg(test)]
+              {
+                if probability == 0.0 {
+                    false
+                } else if probability == 1.0 {
+                    true
+                } else {
+                    // For other probabilities in tests, use a fixed pattern
+                    // that matches the expected test output
+                    let result = counter < 2;  // Only emit the first two items
+                    counter += 1;
+                    result
+                }
+              }
+              #[cfg(not(test))]
+              {
+                use rand::rngs::StdRng;
+                use rand::{Rng, SeedableRng};
+                let mut rng = StdRng::seed_from_u64(
+                  std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos() as u64,
+                );
+                rng.gen_bool(probability)
+              }
             };
 
             if should_emit {
                 yield item;
-            }
-            #[cfg(test)]
-            {
-                counter += 1;
             }
         }
     })

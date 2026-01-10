@@ -164,7 +164,6 @@ where
     } else {
       self.config.name.clone()
     };
-    let error_strategy = self.config.error_strategy.clone();
     let append = self.jsonl_config.append;
     let buffer_size = self.jsonl_config.buffer_size;
 
@@ -214,7 +213,7 @@ where
                 type_name: std::any::type_name::<Self>().to_string(),
               },
             );
-            match handle_error_strategy(&error_strategy, &error) {
+            match self.handle_error(&error) {
               ErrorAction::Stop => {
                 error!(
                   component = %component_name,
@@ -257,7 +256,7 @@ where
                 type_name: std::any::type_name::<Self>().to_string(),
               },
             );
-            match handle_error_strategy(&error_strategy, &error) {
+            match self.handle_error(&error) {
               ErrorAction::Stop => {
                 error!(
                   component = %component_name,
@@ -290,7 +289,7 @@ where
               type_name: std::any::type_name::<Self>().to_string(),
             },
           );
-          match handle_error_strategy(&error_strategy, &error) {
+          match self.handle_error(&error) {
             ErrorAction::Stop => {
               error!(
                 component = %component_name,
@@ -367,19 +366,5 @@ where
       name: self.config.name.clone(),
       type_name: std::any::type_name::<Self>().to_string(),
     }
-  }
-}
-
-/// Helper function to handle error strategy
-fn handle_error_strategy<T>(strategy: &ErrorStrategy<T>, error: &StreamError<T>) -> ErrorAction
-where
-  T: std::fmt::Debug + Clone + Send + Sync,
-{
-  match strategy {
-    ErrorStrategy::Stop => ErrorAction::Stop,
-    ErrorStrategy::Skip => ErrorAction::Skip,
-    ErrorStrategy::Retry(n) if error.retries < *n => ErrorAction::Retry,
-    ErrorStrategy::Custom(handler) => handler(error),
-    _ => ErrorAction::Stop,
   }
 }

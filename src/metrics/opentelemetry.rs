@@ -29,6 +29,7 @@
 
 use opentelemetry::{
   KeyValue, global,
+  metrics::Meter,
   trace::{Tracer, TracerProvider},
 };
 use opentelemetry_sdk::{
@@ -224,11 +225,7 @@ impl OpenTelemetryConfig {
   /// # Errors
   ///
   /// Returns an error if the meter provider cannot be initialized.
-  pub async fn init_meter(
-    &self,
-  ) -> Result<opentelemetry::metrics::Meter, Box<dyn std::error::Error + Send + Sync>> {
-    use opentelemetry::metrics::MeterProvider;
-
+  pub async fn init_meter(&self) -> Result<Meter, Box<dyn std::error::Error + Send + Sync>> {
     let service_name = self.service_name.clone();
     let service_version = self.service_version.clone();
     let resource_attributes = self.resource_attributes.clone();
@@ -267,8 +264,10 @@ impl OpenTelemetryConfig {
       .with_resource(resource)
       .build();
 
-    let meter = meter_provider.meter("streamweave");
+    // Set the global meter provider first
     global::set_meter_provider(meter_provider.clone());
+    // Then get meter from global provider
+    let meter = global::meter("streamweave");
 
     Ok(meter)
   }

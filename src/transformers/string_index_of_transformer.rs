@@ -25,7 +25,7 @@ pub enum IndexOfMode {
 /// # Example
 ///
 /// ```rust
-/// use streamweave::transformers::{StringIndexOfTransformer, IndexOfMode};
+/// use crate::transformers::{StringIndexOfTransformer, IndexOfMode};
 ///
 /// let transformer = StringIndexOfTransformer::new("lo", IndexOfMode::First);
 /// // Input: ["hello world"]

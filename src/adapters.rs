@@ -344,11 +344,11 @@ impl<T: RawTransformer> Transformer for PayloadExtractor<T> {
     let ids = ids;
     let metadatas = metadatas;
     let mut id_iter = ids.into_iter();
-    let mut metadata_iter = metadatas.into_iter();
+    let mut metadatas_iter = metadatas.into_iter();
 
     Box::pin(transformed_payloads.map(move |payload| {
       // Use the next message's ID and metadata, or create new ones if exhausted
-      if let (Some(id), Some(metadata)) = (id_iter.next(), metadata_iter.next()) {
+      if let (Some(id), Some(metadata)) = (id_iter.next(), metadatas_iter.next()) {
         Message::with_metadata(payload, id, metadata)
       } else {
         // If we have more outputs than inputs, create new messages
@@ -385,6 +385,7 @@ impl<T: RawTransformer> Output for PayloadExtractor<T> {
 /// This trait is used by adapters to wrap raw consumers into message-consuming consumers.
 /// Implementations of this trait consume raw types `T`, which are automatically extracted
 /// from `Message<T>` by the `PayloadExtractor` adapter.
+#[async_trait]
 pub trait RawConsumer: Send {
   /// The raw input payload type.
   type Payload: std::fmt::Debug + Clone + Send + Sync + 'static;
@@ -396,10 +397,7 @@ pub trait RawConsumer: Send {
   /// * `stream` - The input stream of raw payloads
   ///
   /// The returned future must be `Send` to allow cross-thread execution.
-  fn consume_raw(
-    &mut self,
-    stream: Pin<Box<dyn Stream<Item = Self::Payload> + Send>>,
-  ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send>>;
+  async fn consume_raw(&mut self, stream: Pin<Box<dyn Stream<Item = Self::Payload> + Send>>);
 }
 
 /// Adapter that extracts payloads from `Message<T>` before passing them to a raw consumer.
@@ -529,4 +527,9 @@ impl<C: RawConsumer> Consumer for PayloadExtractorConsumer<C> {
 impl<C: RawConsumer> Input for PayloadExtractorConsumer<C> {
   type Input = Message<C::Payload>;
   type InputStream = Pin<Box<dyn Stream<Item = Message<C::Payload>> + Send>>;
+}
+
+impl<C: RawConsumer> Output for PayloadExtractorConsumer<C> {
+  type Output = Message<C::Payload>;
+  type OutputStream = Pin<Box<dyn Stream<Item = Message<C::Payload>> + Send>>;
 }

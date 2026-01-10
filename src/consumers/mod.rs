@@ -32,7 +32,7 @@ pub use dead_letter_queue::*;
 pub use env_var_consumer::*;
 pub use fs_directory_consumer::*;
 pub use fs_file_consumer::*;
-pub use json_consumer::*;
+// pub use json_consumer::*; // TODO: JsonConsumer struct not yet implemented, file only contains tests
 pub use jsonl_consumer::*;
 pub use kafka_consumer::*;
 pub use parquet_consumer::*;

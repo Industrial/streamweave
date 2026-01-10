@@ -17,7 +17,7 @@ use std::pin::Pin;
 /// # Example
 ///
 /// ```rust
-/// use streamweave::transformers::StringSearchTransformer;
+/// use crate::transformers::StringSearchTransformer;
 ///
 /// let transformer = StringSearchTransformer::new(r"\d+").unwrap();
 /// // Input: ["hello 123 world"]

@@ -13,13 +13,10 @@ pub mod transport;
 pub mod worker;
 
 pub use checkpoint::*;
-pub use connection::*;
 pub use coordinator::*;
-pub use discovery::*;
 pub use failure_detector::*;
-pub use partitioner::*;
+// pub use partitioner::*; // TODO: Partitioner types not yet implemented, file only contains tests
 pub use pool::*;
-pub use protocol::*;
 pub use recovery::*;
 pub use transport::*;
 pub use worker::*;

@@ -15,7 +15,7 @@ use std::pin::Pin;
 /// # Example
 ///
 /// ```rust
-/// use streamweave::transformers::StringConcatTransformer;
+/// use crate::transformers::StringConcatTransformer;
 ///
 /// let transformer = StringConcatTransformer::new();
 /// // Input: [vec!["hello", " ", "world"]]

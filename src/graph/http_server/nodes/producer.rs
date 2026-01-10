@@ -5,7 +5,7 @@
 
 use crate::Output;
 use crate::error::{ComponentInfo, ErrorContext, ErrorStrategy, StreamError};
-use crate::graph::http_server::types::HttpRequest;
+use crate::graph::http_server::types::HttpServerRequest;
 use crate::message::Message;
 use crate::{Producer, ProducerConfig};
 use async_stream::stream;
@@ -122,7 +122,7 @@ impl HttpRequestProducerConfig {
 
 /// A producer that converts incoming HTTP requests into stream items.
 ///
-/// This producer accepts an Axum `Request` and converts it to a `HttpRequest`
+/// This producer accepts an Axum `Request` and converts it to a `HttpServerRequest`
 /// that can flow through StreamWeave pipelines. It supports extracting request
 /// metadata, query parameters, path parameters, and request bodies.
 ///
@@ -139,17 +139,17 @@ impl HttpRequestProducerConfig {
 ///     ).await;
 ///     
 ///     let stream = producer.produce();
-///     // Stream yields a single HttpRequest item
+///     // Stream yields a single HttpServerRequest item
 /// }
 /// ```
 #[derive(Debug)]
 pub struct HttpRequestProducer {
   /// Producer configuration.
-  pub config: ProducerConfig<HttpRequest>,
+  pub config: ProducerConfig<HttpServerRequest>,
   /// HTTP request-specific configuration.
   pub http_config: HttpRequestProducerConfig,
   /// The HTTP request to produce.
-  pub request: Option<HttpRequest>,
+  pub request: Option<HttpServerRequest>,
   /// The Axum request body stream (for streaming mode).
   /// This is stored when streaming is enabled so we can stream chunks later.
   pub body_stream: Option<axum::body::Body>,
@@ -192,7 +192,7 @@ impl HttpRequestProducer {
     let request_without_body = Request::from_parts(parts, axum::body::Body::empty());
 
     // Extract metadata first (before consuming the request)
-    let mut request = HttpRequest::from_axum_request(request_without_body).await;
+    let mut request = HttpServerRequest::from_axum_request(request_without_body).await;
 
     // Extract body if configured
     let body_stream = if http_config.extract_body {
@@ -257,7 +257,7 @@ impl HttpRequestProducer {
 
   /// Sets the error strategy for the producer.
   #[must_use]
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<HttpRequest>) -> Self {
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<HttpServerRequest>) -> Self {
     self.config.error_strategy = strategy;
     self
   }
@@ -277,10 +277,10 @@ impl HttpRequestProducer {
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::{HttpRequestProducer, HttpRequest};
+  /// use crate::http_server::{HttpRequestProducer, HttpServerRequest};
   /// use std::collections::HashMap;
   ///
-  /// let request = HttpRequest::new(axum::http::Method::GET, "/users/123".parse().unwrap());
+  /// let request = HttpServerRequest::new(axum::http::Method::GET, "/users/123".parse().unwrap());
   /// let mut producer = HttpRequestProducer::new(request);
   /// let mut path_params = HashMap::new();
   /// path_params.insert("id".to_string(), "123".to_string());
@@ -312,21 +312,21 @@ impl Clone for HttpRequestProducer {
 }
 
 impl Output for HttpRequestProducer {
-  type Output = HttpRequest;
+  type Output = HttpServerRequest;
   type OutputStream = Pin<Box<dyn Stream<Item = Self::Output> + Send>>;
 }
 
 #[async_trait]
 impl Producer for HttpRequestProducer {
-  type OutputPorts = (HttpRequest,);
+  type OutputPorts = (HttpServerRequest,);
 
   /// Produces a stream containing HTTP request items.
   ///
   /// When streaming is enabled, the stream yields:
-  /// 1. First: The `HttpRequest` with metadata (body = None when streaming)
-  /// 2. Then: Body chunks as `HttpRequest` items with only the body field set
+  /// 1. First: The `HttpServerRequest` with metadata (body = None when streaming)
+  /// 2. Then: Body chunks as `HttpServerRequest` items with only the body field set
   ///
-  /// When streaming is disabled, the stream yields a single `HttpRequest` with the full body.
+  /// When streaming is disabled, the stream yields a single `HttpServerRequest` with the full body.
   ///
   /// ## Error Handling
   ///
@@ -367,7 +367,7 @@ impl Producer for HttpRequestProducer {
                     // chunk is already bytes::Bytes
                     total_bytes += chunk.len() as u64;
 
-                    // Yield chunk as HttpRequest with body set
+                    // Yield chunk as HttpServerRequest with body set
                     // Clone minimal metadata for context
                     // Add progress tracking via custom header
                     let mut chunk_headers = req.headers.clone();
@@ -382,7 +382,7 @@ impl Producer for HttpRequestProducer {
                         .unwrap_or_else(|_| axum::http::HeaderValue::from_static("0")),
                     );
 
-                    let chunk_request = HttpRequest {
+                    let chunk_request = HttpServerRequest {
                       request_id: req.request_id.clone(),
                       method: req.method,
                       uri: req.uri.clone(),
@@ -443,7 +443,7 @@ impl Producer for HttpRequestProducer {
             }
         }
         None => {
-          let error: StreamError<HttpRequest> = StreamError::new(
+          let error: StreamError<HttpServerRequest> = StreamError::new(
             Box::new(std::io::Error::other("No request available")),
             ErrorContext {
               timestamp: chrono::Utc::now(),
@@ -493,15 +493,15 @@ impl Producer for HttpRequestProducer {
     })
   }
 
-  fn set_config_impl(&mut self, config: ProducerConfig<HttpRequest>) {
+  fn set_config_impl(&mut self, config: ProducerConfig<HttpServerRequest>) {
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> &ProducerConfig<HttpRequest> {
+  fn get_config_impl(&self) -> &ProducerConfig<HttpServerRequest> {
     &self.config
   }
 
-  fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<HttpRequest> {
+  fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<HttpServerRequest> {
     &mut self.config
   }
 }
@@ -509,7 +509,7 @@ impl Producer for HttpRequestProducer {
 /// Long-lived HTTP request producer for graph-based HTTP servers.
 ///
 /// This producer accepts HTTP requests from a channel and converts them to
-/// `Message<HttpRequest>` items for processing through a graph. It runs
+/// `Message<HttpServerRequest>` items for processing through a graph. It runs
 /// continuously until the channel closes, making it suitable for long-lived
 /// graph-based HTTP servers.
 ///
@@ -523,12 +523,12 @@ impl Producer for HttpRequestProducer {
 ///
 /// let (tx, rx) = mpsc::channel(100);
 /// let producer = LongLivedHttpRequestProducer::new(rx);
-/// // Producer will convert requests from rx to Message<HttpRequest>
+/// // Producer will convert requests from rx to Message<HttpServerRequest>
 /// ```
 #[derive(Debug)]
 pub struct LongLivedHttpRequestProducer {
   /// Producer configuration.
-  pub config: ProducerConfig<crate::message::Message<HttpRequest>>,
+  pub config: ProducerConfig<crate::message::Message<HttpServerRequest>>,
   /// HTTP request-specific configuration.
   pub http_config: HttpRequestProducerConfig,
   /// Channel receiver for incoming Axum requests.
@@ -585,12 +585,12 @@ impl Clone for LongLivedHttpRequestProducer {
 
 #[async_trait]
 impl Producer for LongLivedHttpRequestProducer {
-  type OutputPorts = (crate::message::Message<HttpRequest>,);
+  type OutputPorts = (crate::message::Message<HttpServerRequest>,);
 
-  /// Produces a stream of `Message<HttpRequest>` items from incoming Axum requests.
+  /// Produces a stream of `Message<HttpServerRequest>` items from incoming Axum requests.
   ///
   /// This method continuously receives requests from the channel and converts
-  /// them to `Message<HttpRequest>` items. Each request gets a unique `MessageId`
+  /// them to `Message<HttpServerRequest>` items. Each request gets a unique `MessageId`
   /// for deduplication and exactly-once processing.
   ///
   /// The stream runs until the channel closes, at which point it terminates gracefully.
@@ -618,11 +618,11 @@ impl Producer for LongLivedHttpRequestProducer {
       loop {
         match request_receiver.recv().await {
           Some(axum_request) => {
-            // Convert Axum request to HttpRequest
-            let http_request = HttpRequest::from_axum_request(axum_request).await;
+            // Convert Axum request to HttpServerRequest
+            let http_request = HttpServerRequest::from_axum_request(axum_request).await;
 
             // Create Message with unique ID
-            // Use the request_id from HttpRequest as the MessageId for correlation
+            // Use the request_id from HttpServerRequest as the MessageId for correlation
             let message_id = crate::message::MessageId::new_custom(http_request.request_id.clone());
             let message = crate::message::Message::new(http_request, message_id);
 
@@ -641,20 +641,25 @@ impl Producer for LongLivedHttpRequestProducer {
     })
   }
 
-  fn set_config_impl(&mut self, config: ProducerConfig<crate::message::Message<HttpRequest>>) {
+  fn set_config_impl(
+    &mut self,
+    config: ProducerConfig<crate::message::Message<HttpServerRequest>>,
+  ) {
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> &ProducerConfig<crate::message::Message<HttpRequest>> {
+  fn get_config_impl(&self) -> &ProducerConfig<crate::message::Message<HttpServerRequest>> {
     &self.config
   }
 
-  fn get_config_mut_impl(&mut self) -> &mut ProducerConfig<crate::message::Message<HttpRequest>> {
+  fn get_config_mut_impl(
+    &mut self,
+  ) -> &mut ProducerConfig<crate::message::Message<HttpServerRequest>> {
     &mut self.config
   }
 }
 
 impl Output for LongLivedHttpRequestProducer {
-  type Output = Message<HttpRequest>;
+  type Output = Message<HttpServerRequest>;
   type OutputStream = Pin<Box<dyn Stream<Item = Self::Output> + Send>>;
 }

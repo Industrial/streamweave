@@ -10,6 +10,7 @@ pub mod middleware;
 pub mod nodes;
 pub mod types;
 
+pub use crate::error::{ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 pub use error::*;
 pub use graph_server::*;
 pub use handler::*;

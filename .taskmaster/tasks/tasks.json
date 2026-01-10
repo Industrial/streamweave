@@ -3,306 +3,2575 @@
 		"tasks": [
 			{
 				"id": "1",
-				"title": "Create Test Files for Untested Source Files",
-				"description": "Create comprehensive test files for all 130 source files that currently lack corresponding test files. Tests should follow the project's inline testing pattern and cover core functionality, edge cases, and error handling.",
+				"title": "Move tests from test/ to src/ files",
+				"description": "Move all tests from the test/ directory to the bottom of corresponding files in src/, or write unit tests if they don't exist",
 				"status": "in-progress",
 				"priority": "high",
 				"dependencies": [],
-				"details": "This task covers creating test files for all untested source files identified in the codebase. Tests should be placed in the test/ directory following the same structure as src/. Each test file should test the corresponding source file's functionality comprehensively.",
+				"details": "This task covers moving all tests from the test/ directory to inline tests at the bottom of source files in src/. For files without existing tests, write comprehensive unit tests.",
 				"subtasks": [
 					{
-						"id": 1,
-						"title": "Create tests for consumer modules",
-						"description": "Create test files for: src/consumers/console_consumer.rs, src/consumers/tcp_consumer.rs. Test consumer functionality, error handling, and integration with streams.",
+						"id": 1.1,
+						"title": "Add tests to adapters.rs",
+						"description": "Move tests from test/adapters.rs to the bottom of src/adapters.rs",
 						"status": "done",
-						"dependencies": [],
-						"parentId": "1",
-						"updatedAt": "2026-01-04T00:41:21.593Z"
-					},
-					{
-						"id": 2,
-						"title": "Create tests for graph HTTP server modules",
-						"description": "Create test files for all graph HTTP server modules: src/graph/http_server/error.rs, src/graph/http_server/graph_server.rs, src/graph/http_server/handler.rs, src/graph/http_server/middleware.rs, src/graph/http_server/mod.rs, src/graph/http_server/nodes/consumer.rs, src/graph/http_server/nodes/mod.rs, src/graph/http_server/nodes/path_router_transformer.rs, src/graph/http_server/nodes/producer.rs, src/graph/http_server/types.rs. Test HTTP server functionality, request handling, middleware, and graph integration.",
-						"status": "done",
-						"dependencies": [],
-						"parentId": "1",
-						"updatedAt": "2026-01-04T00:41:51.669Z"
-					},
-					{
-						"id": 3,
-						"title": "Create tests for graph nodes - array operations",
-						"description": "Create test files for array operation nodes: src/graph/nodes/array_concat.rs, src/graph/nodes/array_contains.rs, src/graph/nodes/array_find.rs, src/graph/nodes/array_index_of.rs, src/graph/nodes/array_join.rs, src/graph/nodes/array_length.rs, src/graph/nodes/array_modify.rs, src/graph/nodes/array_reverse.rs, src/graph/nodes/array_slice.rs. Test array manipulation operations, edge cases, and Message<T> handling.",
-						"status": "done",
-						"dependencies": [],
-						"parentId": "1",
-						"updatedAt": "2026-01-04T00:44:03.986Z"
-					},
-					{
-						"id": 4,
-						"title": "Create tests for graph nodes - CSV operations",
-						"description": "Create test files for CSV operation nodes: src/graph/nodes/csv_parse.rs, src/graph/nodes/csv_stringify.rs. Test CSV parsing and serialization, error handling, and various CSV formats.",
-						"status": "done",
-						"dependencies": [],
-						"parentId": "1",
-						"updatedAt": "2026-01-04T00:44:33.177Z"
-					},
-					{
-						"id": 5,
-						"title": "Create tests for graph nodes - database operations",
-						"description": "Create test files for database operation nodes: src/graph/nodes/database_operation.rs, src/graph/nodes/database_query.rs. Test database operations, query execution, error handling, and connection management.",
-						"status": "done",
-						"dependencies": [],
-						"parentId": "1",
-						"updatedAt": "2026-01-04T00:45:11.090Z"
-					},
-					{
-						"id": 6,
-						"title": "Create tests for graph nodes - utility operations",
-						"description": "Create test files for utility nodes: src/graph/nodes/drop.rs, src/graph/nodes/http_request.rs, src/graph/nodes/repeat.rs. Test utility operations, HTTP requests, and repeat functionality.",
-						"status": "done",
-						"dependencies": [],
-						"parentId": "1",
-						"updatedAt": "2026-01-04T00:45:48.092Z"
-					},
-					{
-						"id": 7,
-						"title": "Create tests for graph nodes - JSON operations",
-						"description": "Create test files for JSON operation nodes: src/graph/nodes/json_parse.rs, src/graph/nodes/jsonpath.rs, src/graph/nodes/json_stringify.rs. Test JSON parsing, JSONPath queries, and JSON serialization.",
-						"status": "in-progress",
-						"dependencies": [],
-						"parentId": "1",
-						"updatedAt": "2026-01-04T00:45:51.793Z"
-					},
-					{
-						"id": 8,
-						"title": "Create tests for graph nodes - math operations",
-						"description": "Create test files for math operation nodes: src/graph/nodes/math_function.rs, src/graph/nodes/math_hyperbolic.rs, src/graph/nodes/math_logarithmic.rs, src/graph/nodes/math_min_max.rs, src/graph/nodes/math_operation.rs, src/graph/nodes/math_random.rs, src/graph/nodes/math_rounding.rs, src/graph/nodes/math_trigonometric.rs, src/graph/nodes/math_utility.rs. Test mathematical operations, edge cases, and special values (NaN, infinity).",
-						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 9,
-						"title": "Create tests for graph nodes - object operations",
-						"description": "Create test files for object operation nodes: src/graph/nodes/object_entries.rs, src/graph/nodes/object_has_property.rs, src/graph/nodes/object_keys.rs, src/graph/nodes/object_merge.rs, src/graph/nodes/object_property.rs, src/graph/nodes/object_random_member.rs, src/graph/nodes/object_values.rs. Test object manipulation operations, property access, and merging.",
-						"status": "pending",
+						"id": 2,
+						"title": "Add tests to consumer.rs",
+						"description": "Move tests from test/consumer.rs to the bottom of src/consumer.rs",
+						"status": "done",
 						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 1.3,
+						"title": "Add tests to consumers/array_consumer.rs",
+						"description": "Move tests from test/consumers/array_consumer.rs to the bottom of src/consumers/array_consumer.rs",
+						"status": "done",
+						"dependencies": ["1.17"],
+						"parentId": "1"
+					},
+					{
+						"id": 4,
+						"title": "Add tests to consumers/command_consumer.rs",
+						"description": "Move tests from test/consumers/command_consumer.rs to the bottom of src/consumers/command_consumer.rs",
+						"status": "done",
+						"dependencies": ["1.17"],
+						"parentId": "1"
+					},
+					{
+						"id": 5,
+						"title": "Add tests to consumers/console_consumer.rs",
+						"description": "Move tests from test/consumers/console_consumer.rs to the bottom of src/consumers/console_consumer.rs",
+						"status": "done",
+						"dependencies": ["1.17"],
+						"parentId": "1",
+						"updatedAt": "2026-01-09T14:47:55.243Z"
+					},
+					{
+						"id": 6,
+						"title": "Add tests to consumers/csv_consumer.rs",
+						"description": "Move tests from test/consumers/csv_consumer.rs to the bottom of src/consumers/csv_consumer.rs",
+						"status": "done",
+						"dependencies": ["1.17"],
+						"parentId": "1",
+						"updatedAt": "2026-01-09T14:48:28.547Z"
+					},
+					{
+						"id": 7,
+						"title": "Add tests to consumers/db_mysql_consumer.rs",
+						"description": "Move tests from test/consumers/db_mysql_consumer.rs to the bottom of src/consumers/db_mysql_consumer.rs",
+						"status": "done",
+						"dependencies": ["1.17"],
+						"parentId": "1",
+						"updatedAt": "2026-01-09T14:48:41.365Z"
+					},
+					{
+						"id": 8,
+						"title": "Add tests to consumers/db_postgres_consumer.rs",
+						"description": "Move tests from test/consumers/db_postgres_consumer.rs to the bottom of src/consumers/db_postgres_consumer.rs",
+						"status": "in-progress",
+						"dependencies": ["1.17"],
+						"parentId": "1",
+						"updatedAt": "2026-01-09T14:48:22.619Z"
+					},
+					{
+						"id": 9,
+						"title": "Add tests to consumers/db_sqlite_consumer.rs",
+						"description": "Move tests from test/consumers/db_sqlite_consumer.rs to the bottom of src/consumers/db_sqlite_consumer.rs",
+						"status": "in-progress",
+						"dependencies": ["1.17"],
 						"parentId": "1"
 					},
 					{
 						"id": 10,
-						"title": "Create tests for graph nodes - string operations",
-						"description": "Create test files for string operation nodes: src/graph/nodes/string_case.rs, src/graph/nodes/string_char.rs, src/graph/nodes/string_concat.rs, src/graph/nodes/string_index_of.rs, src/graph/nodes/string_join.rs, src/graph/nodes/string_length.rs, src/graph/nodes/string_match.rs, src/graph/nodes/string_pad.rs, src/graph/nodes/string_predicate.rs, src/graph/nodes/string_repeat.rs, src/graph/nodes/string_replace.rs, src/graph/nodes/string_reverse.rs, src/graph/nodes/string_search.rs, src/graph/nodes/string_slice.rs, src/graph/nodes/string_split.rs, src/graph/nodes/string_split_lines.rs, src/graph/nodes/string_split_words.rs, src/graph/nodes/string_trim.rs. Test string manipulation operations, edge cases, and Unicode handling.",
-						"status": "pending",
-						"dependencies": [],
+						"title": "Add tests to consumers/dead_letter_queue.rs",
+						"description": "Move tests from test/consumers/dead_letter_queue.rs to the bottom of src/consumers/dead_letter_queue.rs",
+						"status": "done",
+						"dependencies": ["1.17"],
 						"parentId": "1"
 					},
 					{
 						"id": 11,
-						"title": "Create tests for graph nodes - TCP operations",
-						"description": "Create test files for TCP operation nodes: src/graph/nodes/tcp_receive.rs, src/graph/nodes/tcp_request.rs, src/graph/nodes/tcp_send.rs. Test TCP communication, error handling, and network operations.",
-						"status": "pending",
-						"dependencies": [],
+						"title": "Add tests to consumers/env_var_consumer.rs",
+						"description": "Move tests from test/consumers/env_var_consumer.rs to the bottom of src/consumers/env_var_consumer.rs",
+						"status": "in-progress",
+						"dependencies": ["1.17"],
 						"parentId": "1"
 					},
 					{
 						"id": 12,
-						"title": "Create tests for graph nodes - XML operations",
-						"description": "Create test files for XML operation nodes: src/graph/nodes/xml_parse.rs, src/graph/nodes/xml_stringify.rs. Test XML parsing and serialization, error handling, and various XML formats.",
-						"status": "pending",
-						"dependencies": [],
+						"title": "Add tests to consumers/fs_directory_consumer.rs",
+						"description": "Move tests from test/consumers/fs_directory_consumer.rs to the bottom of src/consumers/fs_directory_consumer.rs",
+						"status": "in-progress",
+						"dependencies": ["1.17"],
 						"parentId": "1"
 					},
 					{
 						"id": 13,
-						"title": "Create tests for graph nodes - utility operations (trace, wrap, xor)",
-						"description": "Create test files for utility nodes: src/graph/nodes/trace.rs, src/graph/nodes/wrap.rs, src/graph/nodes/xor.rs. Test debugging utilities, wrapping operations, and XOR operations.",
-						"status": "pending",
-						"dependencies": [],
+						"title": "Add tests to consumers/fs_file_consumer.rs",
+						"description": "Move tests from test/consumers/fs_file_consumer.rs to the bottom of src/consumers/fs_file_consumer.rs",
+						"status": "done",
+						"dependencies": ["1.17"],
 						"parentId": "1"
 					},
 					{
 						"id": 14,
-						"title": "Create tests for graph TCP server",
-						"description": "Create test files for TCP server: src/graph/tcp_server/mod.rs, src/graph/tcp_server/server.rs. Test TCP server functionality, connection handling, and message routing.",
-						"status": "pending",
-						"dependencies": [],
+						"title": "Add tests to consumers/json_consumer.rs",
+						"description": "Move tests from test/consumers/json_consumer.rs to the bottom of src/consumers/json_consumer.rs",
+						"status": "done",
+						"dependencies": ["1.17"],
 						"parentId": "1"
 					},
 					{
 						"id": 15,
-						"title": "Create tests for core modules",
-						"description": "Create test files for core modules: src/lib.rs, src/metrics/mod.rs, src/ml/mod.rs. Test module exports, metrics functionality, and ML module integration.",
-						"status": "pending",
-						"dependencies": [],
+						"title": "Add tests to consumers/jsonl_consumer.rs",
+						"description": "Move tests from test/consumers/jsonl_consumer.rs to the bottom of src/consumers/jsonl_consumer.rs",
+						"status": "done",
+						"dependencies": ["1.17"],
 						"parentId": "1"
 					},
 					{
 						"id": 16,
-						"title": "Create tests for producer modules",
-						"description": "Create test files for producer modules: src/producers/range_producer.rs, src/producers/tcp_producer.rs. Test producer functionality, stream generation, and error handling.",
-						"status": "pending",
-						"dependencies": [],
+						"title": "Add tests to consumers/kafka_consumer.rs",
+						"description": "Move tests from test/consumers/kafka_consumer.rs to the bottom of src/consumers/kafka_consumer.rs",
+						"status": "done",
+						"dependencies": ["1.17"],
 						"parentId": "1"
 					},
 					{
 						"id": 17,
-						"title": "Create tests for transformers - array operations",
-						"description": "Create test files for array transformer operations: src/transformers/array_concat_transformer.rs, src/transformers/array_contains_transformer.rs, src/transformers/array_find_transformer.rs, src/transformers/array_index_of_transformer.rs, src/transformers/array_join_transformer.rs, src/transformers/array_length_transformer.rs, src/transformers/array_modify_transformer.rs, src/transformers/array_reverse_transformer.rs, src/transformers/array_slice_transformer.rs. Test array transformation operations, edge cases, and stream processing.",
-						"status": "pending",
+						"title": "Add tests to consumers/mod.rs",
+						"description": "Move tests from test/consumers/mod.rs to the bottom of src/consumers/mod.rs",
+						"status": "in-progress",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
 						"id": 18,
-						"title": "Create tests for transformers - CSV operations",
-						"description": "Create test files for CSV transformer operations: src/transformers/csv_parse_transformer.rs, src/transformers/csv_stringify_transformer.rs. Test CSV parsing and serialization transformers, error handling, and stream processing.",
+						"title": "Add tests to consumers/parquet_consumer.rs",
+						"description": "Move tests from test/consumers/parquet_consumer.rs to the bottom of src/consumers/parquet_consumer.rs",
+						"status": "done",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 59,
+						"title": "Add tests to graph/nodes/array_contains.rs",
+						"description": "Move tests from test/graph/nodes/array_contains.rs to the bottom of src/graph/nodes/array_contains.rs",
+						"status": "done",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 60,
+						"title": "Add tests to graph/nodes/array_find.rs",
+						"description": "Move tests from test/graph/nodes/array_find.rs to the bottom of src/graph/nodes/array_find.rs",
+						"status": "done",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 61,
+						"title": "Add tests to graph/nodes/array_index_of.rs",
+						"description": "Move tests from test/graph/nodes/array_index_of.rs to the bottom of src/graph/nodes/array_index_of.rs",
+						"status": "done",
+						"dependencies": ["1.125"],
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 66,
+						"title": "Add tests to graph/nodes/array_slice.rs",
+						"description": "Move tests from test/graph/nodes/array_slice.rs to the bottom of src/graph/nodes/array_slice.rs",
+						"status": "done",
+						"dependencies": ["1.125"],
+						"dependencies": ["1.125"],
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 67,
+						"title": "Add tests to graph/nodes/batch.rs",
+						"description": "Write unit tests for src/graph/nodes/batch.rs and add them to the bottom of the file",
+						"status": "done",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 68,
+						"title": "Add tests to graph/nodes/broadcast_router.rs",
+						"description": "Move tests from test/graph/nodes/broadcast_router.rs to the bottom of src/graph/nodes/broadcast_router.rs",
+						"status": "done",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 69,
+						"title": "Add tests to graph/nodes/circuit_breaker.rs",
+						"description": "Write unit tests for src/graph/nodes/circuit_breaker.rs and add them to the bottom of the file",
+						"status": "done",
+						"dependencies": ["1.125"],
+						"dependencies": ["1.125"],
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 70,
+						"title": "Add tests to graph/nodes/command_execute.rs",
+						"description": "Write unit tests for src/graph/nodes/command_execute.rs and add them to the bottom of the file",
+						"status": "done",
+						"dependencies": ["1.125"],
+						"dependencies": ["1.125"],
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 71,
+						"title": "Add tests to graph/nodes/csv_parse.rs",
+						"description": "Move tests from test/graph/nodes/csv_parse.rs to the bottom of src/graph/nodes/csv_parse.rs",
+						"status": "done",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 72,
+						"title": "Add tests to graph/nodes/csv_read.rs",
+						"description": "Write unit tests for src/graph/nodes/csv_read.rs and add them to the bottom of the file",
+						"status": "done",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 73,
+						"title": "Add tests to graph/nodes/csv_stringify.rs",
+						"description": "Move tests from test/graph/nodes/csv_stringify.rs to the bottom of src/graph/nodes/csv_stringify.rs",
+						"status": "done",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 74,
+						"title": "Add tests to graph/nodes/csv_write.rs",
+						"description": "Write unit tests for src/graph/nodes/csv_write.rs and add them to the bottom of the file",
+						"status": "in-progress",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 75,
+						"title": "Add tests to graph/nodes/database_operation.rs",
+						"description": "Move tests from test/graph/nodes/database_operation.rs to the bottom of src/graph/nodes/database_operation.rs",
+						"status": "in-progress",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 76,
+						"title": "Add tests to graph/nodes/database_query.rs",
+						"description": "Move tests from test/graph/nodes/database_query.rs to the bottom of src/graph/nodes/database_query.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 77,
+						"title": "Add tests to graph/nodes/db_mysql_query.rs",
+						"description": "Write unit tests for src/graph/nodes/db_mysql_query.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 78,
+						"title": "Add tests to graph/nodes/db_mysql_write.rs",
+						"description": "Write unit tests for src/graph/nodes/db_mysql_write.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 79,
+						"title": "Add tests to graph/nodes/db_postgres_query.rs",
+						"description": "Write unit tests for src/graph/nodes/db_postgres_query.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 80,
+						"title": "Add tests to graph/nodes/db_postgres_write.rs",
+						"description": "Write unit tests for src/graph/nodes/db_postgres_write.rs and add them to the bottom of the file",
+						"status": "in-progress",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 81,
+						"title": "Add tests to graph/nodes/db_sqlite_query.rs",
+						"description": "Write unit tests for src/graph/nodes/db_sqlite_query.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 82,
+						"title": "Add tests to graph/nodes/db_sqlite_write.rs",
+						"description": "Write unit tests for src/graph/nodes/db_sqlite_write.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 83,
+						"title": "Add tests to graph/nodes/delay.rs",
+						"description": "Move tests from test/graph/nodes/delay.rs to the bottom of src/graph/nodes/delay.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 84,
+						"title": "Add tests to graph/nodes/drop.rs",
+						"description": "Move tests from test/graph/nodes/drop.rs to the bottom of src/graph/nodes/drop.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 85,
+						"title": "Add tests to graph/nodes/error_branch.rs",
+						"description": "Move tests from test/graph/nodes/error_branch.rs to the bottom of src/graph/nodes/error_branch.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 86,
+						"title": "Add tests to graph/nodes/filter.rs",
+						"description": "Write unit tests for src/graph/nodes/filter.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 87,
+						"title": "Add tests to graph/nodes/for_each.rs",
+						"description": "Move tests from test/graph/nodes/for_each.rs to the bottom of src/graph/nodes/for_each.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 88,
+						"title": "Add tests to graph/nodes/fs_directory_create.rs",
+						"description": "Write unit tests for src/graph/nodes/fs_directory_create.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 89,
+						"title": "Add tests to graph/nodes/fs_directory_list.rs",
+						"description": "Write unit tests for src/graph/nodes/fs_directory_list.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 90,
+						"title": "Add tests to graph/nodes/fs_file_name.rs",
+						"description": "Write unit tests for src/graph/nodes/fs_file_name.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 91,
+						"title": "Add tests to graph/nodes/fs_file_read.rs",
+						"description": "Write unit tests for src/graph/nodes/fs_file_read.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 92,
+						"title": "Add tests to graph/nodes/fs_file_write.rs",
+						"description": "Write unit tests for src/graph/nodes/fs_file_write.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 93,
+						"title": "Add tests to graph/nodes/fs_normalize_path.rs",
+						"description": "Write unit tests for src/graph/nodes/fs_normalize_path.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 94,
+						"title": "Add tests to graph/nodes/fs_parent_path.rs",
+						"description": "Write unit tests for src/graph/nodes/fs_parent_path.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 95,
+						"title": "Add tests to graph/nodes/group_by.rs",
+						"description": "Move tests from test/graph/nodes/group_by.rs to the bottom of src/graph/nodes/group_by.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 96,
+						"title": "Add tests to graph/nodes/http_request.rs",
+						"description": "Move tests from test/graph/nodes/http_request.rs to the bottom of src/graph/nodes/http_request.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 97,
+						"title": "Add tests to graph/nodes/if_router.rs",
+						"description": "Move tests from test/graph/nodes/if_router.rs to the bottom of src/graph/nodes/if_router.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 98,
+						"title": "Add tests to graph/nodes/interleave.rs",
+						"description": "Write unit tests for src/graph/nodes/interleave.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 99,
+						"title": "Add tests to graph/nodes/join.rs",
+						"description": "Move tests from test/graph/nodes/join.rs to the bottom of src/graph/nodes/join.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 100,
+						"title": "Add tests to graph/nodes/json_parse.rs",
+						"description": "Move tests from test/graph/nodes/json_parse.rs to the bottom of src/graph/nodes/json_parse.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 101,
+						"title": "Add tests to graph/nodes/json_read.rs",
+						"description": "Write unit tests for src/graph/nodes/json_read.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 102,
+						"title": "Add tests to graph/nodes/json_stringify.rs",
+						"description": "Write unit tests for src/graph/nodes/json_stringify.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 103,
+						"title": "Add tests to graph/nodes/json_write.rs",
+						"description": "Write unit tests for src/graph/nodes/json_write.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 104,
+						"title": "Add tests to graph/nodes/jsonl_read.rs",
+						"description": "Write unit tests for src/graph/nodes/jsonl_read.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 105,
+						"title": "Add tests to graph/nodes/jsonl_write.rs",
+						"description": "Write unit tests for src/graph/nodes/jsonl_write.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 106,
+						"title": "Add tests to graph/nodes/jsonpath.rs",
+						"description": "Move tests from test/graph/nodes/jsonpath.rs to the bottom of src/graph/nodes/jsonpath.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 107,
+						"title": "Add tests to graph/nodes/kafka_publish.rs",
+						"description": "Write unit tests for src/graph/nodes/kafka_publish.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 108,
+						"title": "Add tests to graph/nodes/key_based_router.rs",
+						"description": "Move tests from test/graph/nodes/key_based_router.rs to the bottom of src/graph/nodes/key_based_router.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 109,
+						"title": "Add tests to graph/nodes/limit.rs",
+						"description": "Write unit tests for src/graph/nodes/limit.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 110,
+						"title": "Add tests to graph/nodes/map.rs",
+						"description": "Write unit tests for src/graph/nodes/map.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 111,
+						"title": "Add tests to graph/nodes/match_router.rs",
+						"description": "Move tests from test/graph/nodes/match_router.rs to the bottom of src/graph/nodes/match_router.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 112,
+						"title": "Add tests to graph/nodes/math_function.rs",
+						"description": "Write unit tests for src/graph/nodes/math_function.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 113,
+						"title": "Add tests to graph/nodes/math_hyperbolic.rs",
+						"description": "Write unit tests for src/graph/nodes/math_hyperbolic.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 114,
+						"title": "Add tests to graph/nodes/math_logarithmic.rs",
+						"description": "Write unit tests for src/graph/nodes/math_logarithmic.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 115,
+						"title": "Add tests to graph/nodes/math_min_max.rs",
+						"description": "Write unit tests for src/graph/nodes/math_min_max.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 116,
+						"title": "Add tests to graph/nodes/math_operation.rs",
+						"description": "Write unit tests for src/graph/nodes/math_operation.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 117,
+						"title": "Add tests to graph/nodes/math_random.rs",
+						"description": "Write unit tests for src/graph/nodes/math_random.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 118,
+						"title": "Add tests to graph/nodes/math_rounding.rs",
+						"description": "Write unit tests for src/graph/nodes/math_rounding.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 119,
+						"title": "Add tests to graph/nodes/math_trigonometric.rs",
+						"description": "Write unit tests for src/graph/nodes/math_trigonometric.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 120,
+						"title": "Add tests to graph/nodes/math_utility.rs",
+						"description": "Write unit tests for src/graph/nodes/math_utility.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 121,
+						"title": "Add tests to graph/nodes/merge_router.rs",
+						"description": "Move tests from test/graph/nodes/merge_router.rs to the bottom of src/graph/nodes/merge_router.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 122,
+						"title": "Add tests to graph/nodes/message_dedupe.rs",
+						"description": "Write unit tests for src/graph/nodes/message_dedupe.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 123,
+						"title": "Add tests to graph/nodes/ml_batched_inference.rs",
+						"description": "Write unit tests for src/graph/nodes/ml_batched_inference.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 124,
+						"title": "Add tests to graph/nodes/ml_inference.rs",
+						"description": "Write unit tests for src/graph/nodes/ml_inference.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 125,
+						"title": "Add tests to graph/nodes/mod.rs",
+						"description": "Move tests from test/graph/nodes/mod.rs to the bottom of src/graph/nodes/mod.rs",
 						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 19,
-						"title": "Create tests for transformers - database operations",
-						"description": "Create test files for database transformer operations: src/transformers/database_operation_transformer.rs, src/transformers/database_query_transformer.rs. Test database transformation operations, query execution, and error handling.",
+						"id": 126,
+						"title": "Add tests to graph/nodes/node.rs",
+						"description": "Move tests from test/graph/nodes/node.rs to the bottom of src/graph/nodes/node.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 127,
+						"title": "Add tests to graph/nodes/object_entries.rs",
+						"description": "Write unit tests for src/graph/nodes/object_entries.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 128,
+						"title": "Add tests to graph/nodes/object_has_property.rs",
+						"description": "Write unit tests for src/graph/nodes/object_has_property.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 129,
+						"title": "Add tests to graph/nodes/object_keys.rs",
+						"description": "Write unit tests for src/graph/nodes/object_keys.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 130,
+						"title": "Add tests to graph/nodes/object_merge.rs",
+						"description": "Write unit tests for src/graph/nodes/object_merge.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 131,
+						"title": "Add tests to graph/nodes/object_property.rs",
+						"description": "Write unit tests for src/graph/nodes/object_property.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 132,
+						"title": "Add tests to graph/nodes/object_random_member.rs",
+						"description": "Write unit tests for src/graph/nodes/object_random_member.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 133,
+						"title": "Add tests to graph/nodes/object_values.rs",
+						"description": "Write unit tests for src/graph/nodes/object_values.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 134,
+						"title": "Add tests to graph/nodes/ordered_merge.rs",
+						"description": "Write unit tests for src/graph/nodes/ordered_merge.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 135,
+						"title": "Add tests to graph/nodes/parquet_read.rs",
+						"description": "Write unit tests for src/graph/nodes/parquet_read.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 136,
+						"title": "Add tests to graph/nodes/parquet_write.rs",
+						"description": "Write unit tests for src/graph/nodes/parquet_write.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 137,
+						"title": "Add tests to graph/nodes/partition.rs",
+						"description": "Write unit tests for src/graph/nodes/partition.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 138,
+						"title": "Add tests to graph/nodes/process.rs",
+						"description": "Write unit tests for src/graph/nodes/process.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 139,
+						"title": "Add tests to graph/nodes/process_execute.rs",
+						"description": "Write unit tests for src/graph/nodes/process_execute.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 140,
+						"title": "Add tests to graph/nodes/rate_limit.rs",
+						"description": "Write unit tests for src/graph/nodes/rate_limit.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 141,
+						"title": "Add tests to graph/nodes/redis_write.rs",
+						"description": "Write unit tests for src/graph/nodes/redis_write.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 142,
+						"title": "Add tests to graph/nodes/reduce.rs",
+						"description": "Write unit tests for src/graph/nodes/reduce.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 143,
+						"title": "Add tests to graph/nodes/repeat.rs",
+						"description": "Move tests from test/graph/nodes/repeat.rs to the bottom of src/graph/nodes/repeat.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 144,
+						"title": "Add tests to graph/nodes/retry.rs",
+						"description": "Write unit tests for src/graph/nodes/retry.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 145,
+						"title": "Add tests to graph/nodes/round_robin_router.rs",
+						"description": "Move tests from test/graph/nodes/round_robin_router.rs to the bottom of src/graph/nodes/round_robin_router.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 146,
+						"title": "Add tests to graph/nodes/router.rs",
+						"description": "Write unit tests for src/graph/nodes/router.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 147,
+						"title": "Add tests to graph/nodes/sample.rs",
+						"description": "Write unit tests for src/graph/nodes/sample.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 148,
+						"title": "Add tests to graph/nodes/skip.rs",
+						"description": "Write unit tests for src/graph/nodes/skip.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 149,
+						"title": "Add tests to graph/nodes/sort.rs",
+						"description": "Write unit tests for src/graph/nodes/sort.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 150,
+						"title": "Add tests to graph/nodes/split.rs",
+						"description": "Write unit tests for src/graph/nodes/split.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 151,
+						"title": "Add tests to graph/nodes/split_at.rs",
+						"description": "Write unit tests for src/graph/nodes/split_at.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 152,
+						"title": "Add tests to graph/nodes/string_case.rs",
+						"description": "Write unit tests for src/graph/nodes/string_case.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 153,
+						"title": "Add tests to graph/nodes/string_char.rs",
+						"description": "Write unit tests for src/graph/nodes/string_char.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 154,
+						"title": "Add tests to graph/nodes/string_concat.rs",
+						"description": "Write unit tests for src/graph/nodes/string_concat.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 155,
+						"title": "Add tests to graph/nodes/string_index_of.rs",
+						"description": "Write unit tests for src/graph/nodes/string_index_of.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 156,
+						"title": "Add tests to graph/nodes/string_join.rs",
+						"description": "Write unit tests for src/graph/nodes/string_join.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 157,
+						"title": "Add tests to graph/nodes/string_length.rs",
+						"description": "Write unit tests for src/graph/nodes/string_length.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 158,
+						"title": "Add tests to graph/nodes/string_match.rs",
+						"description": "Write unit tests for src/graph/nodes/string_match.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 159,
+						"title": "Add tests to graph/nodes/string_pad.rs",
+						"description": "Write unit tests for src/graph/nodes/string_pad.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 160,
+						"title": "Add tests to graph/nodes/string_predicate.rs",
+						"description": "Write unit tests for src/graph/nodes/string_predicate.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 161,
+						"title": "Add tests to graph/nodes/string_repeat.rs",
+						"description": "Write unit tests for src/graph/nodes/string_repeat.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 162,
+						"title": "Add tests to graph/nodes/string_replace.rs",
+						"description": "Write unit tests for src/graph/nodes/string_replace.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 163,
+						"title": "Add tests to graph/nodes/string_reverse.rs",
+						"description": "Write unit tests for src/graph/nodes/string_reverse.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 164,
+						"title": "Add tests to graph/nodes/string_search.rs",
+						"description": "Write unit tests for src/graph/nodes/string_search.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 165,
+						"title": "Add tests to graph/nodes/string_slice.rs",
+						"description": "Write unit tests for src/graph/nodes/string_slice.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 166,
+						"title": "Add tests to graph/nodes/string_split.rs",
+						"description": "Write unit tests for src/graph/nodes/string_split.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 167,
+						"title": "Add tests to graph/nodes/string_split_lines.rs",
+						"description": "Write unit tests for src/graph/nodes/string_split_lines.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 168,
+						"title": "Add tests to graph/nodes/string_split_words.rs",
+						"description": "Write unit tests for src/graph/nodes/string_split_words.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 169,
+						"title": "Add tests to graph/nodes/string_trim.rs",
+						"description": "Write unit tests for src/graph/nodes/string_trim.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 170,
+						"title": "Add tests to graph/nodes/synchronize.rs",
+						"description": "Move tests from test/graph/nodes/synchronize.rs to the bottom of src/graph/nodes/synchronize.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 171,
+						"title": "Add tests to graph/nodes/take.rs",
+						"description": "Write unit tests for src/graph/nodes/take.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 172,
+						"title": "Add tests to graph/nodes/tcp_receive.rs",
+						"description": "Write unit tests for src/graph/nodes/tcp_receive.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 173,
+						"title": "Add tests to graph/nodes/tcp_request.rs",
+						"description": "Write unit tests for src/graph/nodes/tcp_request.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 174,
+						"title": "Add tests to graph/nodes/tcp_send.rs",
+						"description": "Write unit tests for src/graph/nodes/tcp_send.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 175,
+						"title": "Add tests to graph/nodes/time_window.rs",
+						"description": "Write unit tests for src/graph/nodes/time_window.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 176,
+						"title": "Add tests to graph/nodes/timeout.rs",
+						"description": "Move tests from test/graph/nodes/timeout.rs to the bottom of src/graph/nodes/timeout.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 177,
+						"title": "Add tests to graph/nodes/tokio_channel_send.rs",
+						"description": "Write unit tests for src/graph/nodes/tokio_channel_send.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 178,
+						"title": "Add tests to graph/nodes/trace.rs",
+						"description": "Write unit tests for src/graph/nodes/trace.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 179,
+						"title": "Add tests to graph/nodes/variables.rs",
+						"description": "Move tests from test/graph/nodes/variables.rs to the bottom of src/graph/nodes/variables.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 180,
+						"title": "Add tests to graph/nodes/while_loop.rs",
+						"description": "Move tests from test/graph/nodes/while_loop.rs to the bottom of src/graph/nodes/while_loop.rs",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 181,
+						"title": "Add tests to graph/nodes/window.rs",
+						"description": "Write unit tests for src/graph/nodes/window.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 182,
+						"title": "Add tests to graph/nodes/wrap.rs",
+						"description": "Write unit tests for src/graph/nodes/wrap.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 183,
+						"title": "Add tests to graph/nodes/xml_parse.rs",
+						"description": "Write unit tests for src/graph/nodes/xml_parse.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 184,
+						"title": "Add tests to graph/nodes/xml_stringify.rs",
+						"description": "Write unit tests for src/graph/nodes/xml_stringify.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 185,
+						"title": "Add tests to graph/nodes/xor.rs",
+						"description": "Write unit tests for src/graph/nodes/xor.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 186,
+						"title": "Add tests to graph/nodes/zip.rs",
+						"description": "Write unit tests for src/graph/nodes/zip.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.125"],
+						"parentId": "1"
+					},
+					{
+						"id": 187,
+						"title": "Add tests to graph/router.rs",
+						"description": "Move tests from test/graph/router.rs to the bottom of src/graph/router.rs",
+						"status": "pending",
+						"dependencies": ["1.56"],
+						"parentId": "1"
+					},
+					{
+						"id": 188,
+						"title": "Add tests to graph/serialization.rs",
+						"description": "Move tests from test/graph/serialization.rs to the bottom of src/graph/serialization.rs",
+						"status": "pending",
+						"dependencies": ["1.56"],
+						"parentId": "1"
+					},
+					{
+						"id": 189,
+						"title": "Add tests to graph/shared_memory_channel.rs",
+						"description": "Move tests from test/graph/shared_memory_channel.rs to the bottom of src/graph/shared_memory_channel.rs",
+						"status": "pending",
+						"dependencies": ["1.56"],
+						"parentId": "1"
+					},
+					{
+						"id": 190,
+						"title": "Add tests to graph/stateful.rs",
+						"description": "Move tests from test/graph/stateful.rs to the bottom of src/graph/stateful.rs",
+						"status": "pending",
+						"dependencies": ["1.56"],
+						"parentId": "1"
+					},
+					{
+						"id": 191,
+						"title": "Add tests to graph/subgraph.rs",
+						"description": "Move tests from test/graph/subgraph.rs to the bottom of src/graph/subgraph.rs",
+						"status": "pending",
+						"dependencies": ["1.56"],
+						"parentId": "1"
+					},
+					{
+						"id": 192,
+						"title": "Add tests to graph/tcp_server/mod.rs",
+						"description": "Write unit tests for src/graph/tcp_server/mod.rs and add them to the bottom of the file",
 						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 20,
-						"title": "Create tests for transformers - utility operations (delay, drop)",
-						"description": "Create test files for utility transformers: src/transformers/delay_transformer.rs, src/transformers/drop_transformer.rs. Test delay functionality, drop operations, and timing behavior.",
+						"id": 193,
+						"title": "Add tests to graph/tcp_server/server.rs",
+						"description": "Write unit tests for src/graph/tcp_server/server.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.192"],
+						"parentId": "1"
+					},
+					{
+						"id": 194,
+						"title": "Add tests to graph/throughput.rs",
+						"description": "Move tests from test/graph/throughput.rs to the bottom of src/graph/throughput.rs",
+						"status": "pending",
+						"dependencies": ["1.56"],
+						"parentId": "1"
+					},
+					{
+						"id": 195,
+						"title": "Add tests to graph/traits.rs",
+						"description": "Move tests from test/graph/traits.rs to the bottom of src/graph/traits.rs",
+						"status": "pending",
+						"dependencies": ["1.56"],
+						"parentId": "1"
+					},
+					{
+						"id": 196,
+						"title": "Add tests to graph/windowing.rs",
+						"description": "Move tests from test/graph/windowing.rs to the bottom of src/graph/windowing.rs",
+						"status": "pending",
+						"dependencies": ["1.56"],
+						"parentId": "1"
+					},
+					{
+						"id": 197,
+						"title": "Add tests to graph/zero_copy.rs",
+						"description": "Move tests from test/graph/zero_copy.rs to the bottom of src/graph/zero_copy.rs",
+						"status": "pending",
+						"dependencies": ["1.56"],
+						"parentId": "1"
+					},
+					{
+						"id": 198,
+						"title": "Add tests to input.rs",
+						"description": "Move tests from test/input.rs to the bottom of src/input.rs",
 						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 21,
-						"title": "Create tests for transformers - HTTP operations",
-						"description": "Create test files for HTTP transformer: src/transformers/http_request_transformer.rs. Test HTTP request functionality, error handling, and response processing.",
+						"id": 199,
+						"title": "Add tests to lib.rs",
+						"description": "Write unit tests for src/lib.rs and add them to the bottom of the file",
 						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 22,
-						"title": "Create tests for transformers - JSON operations",
-						"description": "Create test files for JSON transformer operations: src/transformers/json_parse_transformer.rs, src/transformers/jsonpath_transformer.rs, src/transformers/json_stringify_transformer.rs. Test JSON parsing, JSONPath queries, and JSON serialization transformers.",
+						"id": 200,
+						"title": "Add tests to message.rs",
+						"description": "Move tests from test/message.rs to the bottom of src/message.rs",
 						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 23,
-						"title": "Create tests for transformers - math operations",
-						"description": "Create test files for math transformer operations: src/transformers/math_function_transformer.rs, src/transformers/math_hyperbolic_transformer.rs, src/transformers/math_logarithmic_transformer.rs, src/transformers/math_min_max_transformer.rs, src/transformers/math_operation_transformer.rs, src/transformers/math_random_transformer.rs, src/transformers/math_rounding_transformer.rs, src/transformers/math_trigonometric_transformer.rs, src/transformers/math_utility_transformer.rs. Test mathematical transformation operations, edge cases, and special values.",
+						"id": 201,
+						"title": "Add tests to metrics/collector.rs",
+						"description": "Move tests from test/metrics/collector.rs to the bottom of src/metrics/collector.rs",
+						"status": "pending",
+						"dependencies": ["1.203"],
+						"parentId": "1"
+					},
+					{
+						"id": 202,
+						"title": "Add tests to metrics/health.rs",
+						"description": "Move tests from test/metrics/health.rs to the bottom of src/metrics/health.rs",
+						"status": "pending",
+						"dependencies": ["1.203"],
+						"parentId": "1"
+					},
+					{
+						"id": 203,
+						"title": "Add tests to metrics/mod.rs",
+						"description": "Write unit tests for src/metrics/mod.rs and add them to the bottom of the file",
 						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 24,
-						"title": "Create tests for transformers - object operations",
-						"description": "Create test files for object transformer operations: src/transformers/object_entries_transformer.rs, src/transformers/object_has_property_transformer.rs, src/transformers/object_keys_transformer.rs, src/transformers/object_merge_transformer.rs, src/transformers/object_property_transformer.rs, src/transformers/object_random_member_transformer.rs, src/transformers/object_values_transformer.rs. Test object transformation operations, property access, and merging.",
+						"id": 204,
+						"title": "Add tests to metrics/opentelemetry.rs",
+						"description": "Move tests from test/metrics/opentelemetry.rs to the bottom of src/metrics/opentelemetry.rs",
+						"status": "pending",
+						"dependencies": ["1.203"],
+						"parentId": "1"
+					},
+					{
+						"id": 205,
+						"title": "Add tests to metrics/prometheus.rs",
+						"description": "Move tests from test/metrics/prometheus.rs to the bottom of src/metrics/prometheus.rs",
+						"status": "pending",
+						"dependencies": ["1.203"],
+						"parentId": "1"
+					},
+					{
+						"id": 206,
+						"title": "Add tests to metrics/types.rs",
+						"description": "Move tests from test/metrics/types.rs to the bottom of src/metrics/types.rs",
+						"status": "pending",
+						"dependencies": ["1.203"],
+						"parentId": "1"
+					},
+					{
+						"id": 207,
+						"title": "Add tests to ml/hotswap.rs",
+						"description": "Move tests from test/ml/hotswap.rs to the bottom of src/ml/hotswap.rs",
+						"status": "pending",
+						"dependencies": ["1.209"],
+						"parentId": "1"
+					},
+					{
+						"id": 208,
+						"title": "Add tests to ml/inference_backend.rs",
+						"description": "Move tests from test/ml/inference_backend.rs to the bottom of src/ml/inference_backend.rs",
+						"status": "pending",
+						"dependencies": ["1.209"],
+						"parentId": "1"
+					},
+					{
+						"id": 209,
+						"title": "Add tests to ml/mod.rs",
+						"description": "Write unit tests for src/ml/mod.rs and add them to the bottom of the file",
 						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 25,
-						"title": "Create tests for transformers - process operations",
-						"description": "Create test files for process transformer: src/transformers/process_transformer.rs. Test process execution, output handling, and error management.",
+						"id": 210,
+						"title": "Add tests to ml/onnx.rs",
+						"description": "Move tests from test/ml/onnx.rs to the bottom of src/ml/onnx.rs",
+						"status": "pending",
+						"dependencies": ["1.209"],
+						"parentId": "1"
+					},
+					{
+						"id": 211,
+						"title": "Add tests to offset.rs",
+						"description": "Move tests from test/offset.rs to the bottom of src/offset.rs",
 						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 26,
-						"title": "Create tests for transformers - utility operations (repeat, trace)",
-						"description": "Create test files for utility transformers: src/transformers/repeat_transformer.rs, src/transformers/trace_transformer.rs. Test repeat functionality and debugging utilities.",
+						"id": 212,
+						"title": "Add tests to output.rs",
+						"description": "Move tests from test/output.rs to the bottom of src/output.rs",
 						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 27,
-						"title": "Create tests for transformers - string operations",
-						"description": "Create test files for string transformer operations: src/transformers/string_case_transformer.rs, src/transformers/string_char_transformer.rs, src/transformers/string_concat_transformer.rs, src/transformers/string_index_of_transformer.rs, src/transformers/string_join_transformer.rs, src/transformers/string_length_transformer.rs, src/transformers/string_match_transformer.rs, src/transformers/string_pad_transformer.rs, src/transformers/string_predicate_transformer.rs, src/transformers/string_repeat_transformer.rs, src/transformers/string_replace_transformer.rs, src/transformers/string_reverse_transformer.rs, src/transformers/string_search_transformer.rs, src/transformers/string_slice_transformer.rs, src/transformers/string_split_transformer.rs, src/transformers/string_split_lines_transformer.rs, src/transformers/string_split_words_transformer.rs, src/transformers/string_trim_transformer.rs. Test string transformation operations, edge cases, and Unicode handling.",
+						"id": 213,
+						"title": "Add tests to pipeline.rs",
+						"description": "Move tests from test/pipeline.rs to the bottom of src/pipeline.rs",
 						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 28,
-						"title": "Create tests for transformers - TCP operations",
-						"description": "Create test files for TCP transformer operations: src/transformers/tcp_receive_transformer.rs, src/transformers/tcp_request_transformer.rs, src/transformers/tcp_send_transformer.rs. Test TCP transformation operations, network communication, and error handling.",
+						"id": 214,
+						"title": "Add tests to port.rs",
+						"description": "Move tests from test/port.rs to the bottom of src/port.rs",
 						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 29,
-						"title": "Create tests for transformers - utility operations (wrap, xor)",
-						"description": "Create test files for utility transformers: src/transformers/wrap_transformer.rs, src/transformers/xor_transformer.rs. Test wrapping operations and XOR transformations.",
+						"id": 215,
+						"title": "Add tests to producer.rs",
+						"description": "Move tests from test/producer.rs to the bottom of src/producer.rs",
 						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 30,
-						"title": "Create tests for transformers - XML operations",
-						"description": "Create test files for XML transformer operations: src/transformers/xml_parse_transformer.rs, src/transformers/xml_stringify_transformer.rs. Test XML parsing and serialization transformers, error handling, and various XML formats.",
+						"id": 216,
+						"title": "Add tests to producers/array_producer.rs",
+						"description": "Move tests from test/producers/array_producer.rs to the bottom of src/producers/array_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 217,
+						"title": "Add tests to producers/command_producer.rs",
+						"description": "Move tests from test/producers/command_producer.rs to the bottom of src/producers/command_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 218,
+						"title": "Add tests to producers/csv_producer.rs",
+						"description": "Move tests from test/producers/csv_producer.rs to the bottom of src/producers/csv_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 219,
+						"title": "Add tests to producers/db_mysql_producer.rs",
+						"description": "Move tests from test/producers/db_mysql_producer.rs to the bottom of src/producers/db_mysql_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 220,
+						"title": "Add tests to producers/db_postgres_producer.rs",
+						"description": "Move tests from test/producers/db_postgres_producer.rs to the bottom of src/producers/db_postgres_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 221,
+						"title": "Add tests to producers/db_sqlite_producer.rs",
+						"description": "Move tests from test/producers/db_sqlite_producer.rs to the bottom of src/producers/db_sqlite_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 222,
+						"title": "Add tests to producers/env_var_producer.rs",
+						"description": "Move tests from test/producers/env_var_producer.rs to the bottom of src/producers/env_var_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 223,
+						"title": "Add tests to producers/fs_directory_producer.rs",
+						"description": "Move tests from test/producers/fs_directory_producer.rs to the bottom of src/producers/fs_directory_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 224,
+						"title": "Add tests to producers/fs_file_producer.rs",
+						"description": "Move tests from test/producers/fs_file_producer.rs to the bottom of src/producers/fs_file_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 225,
+						"title": "Add tests to producers/json_producer.rs",
+						"description": "Move tests from test/producers/json_producer.rs to the bottom of src/producers/json_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 226,
+						"title": "Add tests to producers/jsonl_producer.rs",
+						"description": "Move tests from test/producers/jsonl_producer.rs to the bottom of src/producers/jsonl_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 227,
+						"title": "Add tests to producers/kafka_producer.rs",
+						"description": "Move tests from test/producers/kafka_producer.rs to the bottom of src/producers/kafka_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 228,
+						"title": "Add tests to producers/mod.rs",
+						"description": "Move tests from test/producers/mod.rs to the bottom of src/producers/mod.rs",
 						"status": "pending",
 						"dependencies": [],
 						"parentId": "1"
 					},
 					{
-						"id": 31,
-						"title": "Run all new tests and fix any failures",
-						"description": "Run all newly created test files using 'devenv shell -- ./bin/test' and fix any compilation errors, test failures, or issues. Ensure all tests pass and follow the project's testing patterns.",
+						"id": 229,
+						"title": "Add tests to producers/parquet_producer.rs",
+						"description": "Move tests from test/producers/parquet_producer.rs to the bottom of src/producers/parquet_producer.rs",
 						"status": "pending",
-						"dependencies": [
-							"1.1",
-							"1.2",
-							"1.3",
-							"1.4",
-							"1.5",
-							"1.6",
-							"1.7",
-							"1.8",
-							"1.9",
-							"1.10",
-							"1.11",
-							"1.12",
-							"1.13",
-							"1.14",
-							"1.15",
-							"1.16",
-							"1.17",
-							"1.18",
-							"1.19",
-							"1.20",
-							"1.21",
-							"1.22",
-							"1.23",
-							"1.24",
-							"1.25",
-							"1.26",
-							"1.27",
-							"1.28",
-							"1.29",
-							"1.30"
-						],
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 230,
+						"title": "Add tests to producers/process_producer.rs",
+						"description": "Move tests from test/producers/process_producer.rs to the bottom of src/producers/process_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 231,
+						"title": "Add tests to producers/range_producer.rs",
+						"description": "Write unit tests for src/producers/range_producer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 232,
+						"title": "Add tests to producers/redis_producer.rs",
+						"description": "Move tests from test/producers/redis_producer.rs to the bottom of src/producers/redis_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 233,
+						"title": "Add tests to producers/signal_producer.rs",
+						"description": "Move tests from test/producers/signal_producer.rs to the bottom of src/producers/signal_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 234,
+						"title": "Add tests to producers/stdio_stdin_producer.rs",
+						"description": "Move tests from test/producers/stdio_stdin_producer.rs to the bottom of src/producers/stdio_stdin_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 235,
+						"title": "Add tests to producers/tcp_producer.rs",
+						"description": "Write unit tests for src/producers/tcp_producer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 236,
+						"title": "Add tests to producers/timer_interval_producer.rs",
+						"description": "Move tests from test/producers/timer_interval_producer.rs to the bottom of src/producers/timer_interval_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 237,
+						"title": "Add tests to producers/tokio_channel_producer.rs",
+						"description": "Move tests from test/producers/tokio_channel_producer.rs to the bottom of src/producers/tokio_channel_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 238,
+						"title": "Add tests to producers/vec_producer.rs",
+						"description": "Move tests from test/producers/vec_producer.rs to the bottom of src/producers/vec_producer.rs",
+						"status": "pending",
+						"dependencies": ["1.228"],
+						"parentId": "1"
+					},
+					{
+						"id": 239,
+						"title": "Add tests to stateful_transformer.rs",
+						"description": "Move tests from test/stateful_transformer.rs to the bottom of src/stateful_transformer.rs",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 240,
+						"title": "Add tests to transaction.rs",
+						"description": "Move tests from test/transaction.rs to the bottom of src/transaction.rs",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 241,
+						"title": "Add tests to transformer.rs",
+						"description": "Move tests from test/transformer.rs to the bottom of src/transformer.rs",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 242,
+						"title": "Add tests to transformers/array_concat_transformer.rs",
+						"description": "Write unit tests for src/transformers/array_concat_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 243,
+						"title": "Add tests to transformers/array_contains_transformer.rs",
+						"description": "Write unit tests for src/transformers/array_contains_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 244,
+						"title": "Add tests to transformers/array_find_transformer.rs",
+						"description": "Write unit tests for src/transformers/array_find_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 245,
+						"title": "Add tests to transformers/array_index_of_transformer.rs",
+						"description": "Write unit tests for src/transformers/array_index_of_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 246,
+						"title": "Add tests to transformers/array_join_transformer.rs",
+						"description": "Write unit tests for src/transformers/array_join_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 247,
+						"title": "Add tests to transformers/array_length_transformer.rs",
+						"description": "Write unit tests for src/transformers/array_length_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 248,
+						"title": "Add tests to transformers/array_modify_transformer.rs",
+						"description": "Write unit tests for src/transformers/array_modify_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 249,
+						"title": "Add tests to transformers/array_reverse_transformer.rs",
+						"description": "Write unit tests for src/transformers/array_reverse_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 250,
+						"title": "Add tests to transformers/array_slice_transformer.rs",
+						"description": "Write unit tests for src/transformers/array_slice_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 251,
+						"title": "Add tests to transformers/batch_transformer.rs",
+						"description": "Move tests from test/transformers/batch_transformer.rs to the bottom of src/transformers/batch_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 252,
+						"title": "Add tests to transformers/circuit_breaker_transformer.rs",
+						"description": "Move tests from test/transformers/circuit_breaker_transformer.rs to the bottom of src/transformers/circuit_breaker_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 253,
+						"title": "Add tests to transformers/command_execute_transformer.rs",
+						"description": "Write unit tests for src/transformers/command_execute_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 254,
+						"title": "Add tests to transformers/csv_parse_transformer.rs",
+						"description": "Write unit tests for src/transformers/csv_parse_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 255,
+						"title": "Add tests to transformers/csv_read_transformer.rs",
+						"description": "Write unit tests for src/transformers/csv_read_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 256,
+						"title": "Add tests to transformers/csv_stringify_transformer.rs",
+						"description": "Write unit tests for src/transformers/csv_stringify_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 257,
+						"title": "Add tests to transformers/csv_write_transformer.rs",
+						"description": "Write unit tests for src/transformers/csv_write_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 258,
+						"title": "Add tests to transformers/database_operation_transformer.rs",
+						"description": "Write unit tests for src/transformers/database_operation_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 259,
+						"title": "Add tests to transformers/database_query_transformer.rs",
+						"description": "Write unit tests for src/transformers/database_query_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 260,
+						"title": "Add tests to transformers/db_mysql_query_transformer.rs",
+						"description": "Write unit tests for src/transformers/db_mysql_query_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 261,
+						"title": "Add tests to transformers/db_mysql_write_transformer.rs",
+						"description": "Write unit tests for src/transformers/db_mysql_write_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 262,
+						"title": "Add tests to transformers/db_postgres_query_transformer.rs",
+						"description": "Write unit tests for src/transformers/db_postgres_query_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 263,
+						"title": "Add tests to transformers/db_postgres_write_transformer.rs",
+						"description": "Write unit tests for src/transformers/db_postgres_write_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 264,
+						"title": "Add tests to transformers/db_sqlite_query_transformer.rs",
+						"description": "Write unit tests for src/transformers/db_sqlite_query_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 265,
+						"title": "Add tests to transformers/db_sqlite_write_transformer.rs",
+						"description": "Write unit tests for src/transformers/db_sqlite_write_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 266,
+						"title": "Add tests to transformers/delay_transformer.rs",
+						"description": "Write unit tests for src/transformers/delay_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 267,
+						"title": "Add tests to transformers/drop_transformer.rs",
+						"description": "Write unit tests for src/transformers/drop_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 268,
+						"title": "Add tests to transformers/filter_transformer.rs",
+						"description": "Move tests from test/transformers/filter_transformer.rs to the bottom of src/transformers/filter_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 269,
+						"title": "Add tests to transformers/fs_directory_create_transformer.rs",
+						"description": "Write unit tests for src/transformers/fs_directory_create_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 270,
+						"title": "Add tests to transformers/fs_directory_list_transformer.rs",
+						"description": "Write unit tests for src/transformers/fs_directory_list_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 271,
+						"title": "Add tests to transformers/fs_file_name_transformer.rs",
+						"description": "Move tests from test/transformers/fs_file_name_transformer.rs to the bottom of src/transformers/fs_file_name_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 272,
+						"title": "Add tests to transformers/fs_file_read_transformer.rs",
+						"description": "Write unit tests for src/transformers/fs_file_read_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 273,
+						"title": "Add tests to transformers/fs_file_write_transformer.rs",
+						"description": "Write unit tests for src/transformers/fs_file_write_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 274,
+						"title": "Add tests to transformers/fs_normalize_path_transformer.rs",
+						"description": "Move tests from test/transformers/fs_normalize_path_transformer.rs to the bottom of src/transformers/fs_normalize_path_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 275,
+						"title": "Add tests to transformers/fs_parent_path_transformer.rs",
+						"description": "Move tests from test/transformers/fs_parent_path_transformer.rs to the bottom of src/transformers/fs_parent_path_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 276,
+						"title": "Add tests to transformers/group_by_transformer.rs",
+						"description": "Move tests from test/transformers/group_by_transformer.rs to the bottom of src/transformers/group_by_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 277,
+						"title": "Add tests to transformers/http_request_transformer.rs",
+						"description": "Write unit tests for src/transformers/http_request_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 278,
+						"title": "Add tests to transformers/interleave_transformer.rs",
+						"description": "Move tests from test/transformers/interleave_transformer.rs to the bottom of src/transformers/interleave_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 279,
+						"title": "Add tests to transformers/json_parse_transformer.rs",
+						"description": "Write unit tests for src/transformers/json_parse_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 280,
+						"title": "Add tests to transformers/json_read_transformer.rs",
+						"description": "Write unit tests for src/transformers/json_read_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 281,
+						"title": "Add tests to transformers/json_stringify_transformer.rs",
+						"description": "Write unit tests for src/transformers/json_stringify_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 282,
+						"title": "Add tests to transformers/json_write_transformer.rs",
+						"description": "Write unit tests for src/transformers/json_write_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 283,
+						"title": "Add tests to transformers/jsonl_read_transformer.rs",
+						"description": "Write unit tests for src/transformers/jsonl_read_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 284,
+						"title": "Add tests to transformers/jsonl_write_transformer.rs",
+						"description": "Write unit tests for src/transformers/jsonl_write_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 285,
+						"title": "Add tests to transformers/jsonpath_transformer.rs",
+						"description": "Write unit tests for src/transformers/jsonpath_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 286,
+						"title": "Add tests to transformers/kafka_publish_transformer.rs",
+						"description": "Write unit tests for src/transformers/kafka_publish_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 287,
+						"title": "Add tests to transformers/limit_transformer.rs",
+						"description": "Move tests from test/transformers/limit_transformer.rs to the bottom of src/transformers/limit_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 288,
+						"title": "Add tests to transformers/map_transformer.rs",
+						"description": "Move tests from test/transformers/map_transformer.rs to the bottom of src/transformers/map_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 289,
+						"title": "Add tests to transformers/math_function_transformer.rs",
+						"description": "Write unit tests for src/transformers/math_function_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 290,
+						"title": "Add tests to transformers/math_hyperbolic_transformer.rs",
+						"description": "Write unit tests for src/transformers/math_hyperbolic_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 291,
+						"title": "Add tests to transformers/math_logarithmic_transformer.rs",
+						"description": "Write unit tests for src/transformers/math_logarithmic_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 292,
+						"title": "Add tests to transformers/math_min_max_transformer.rs",
+						"description": "Write unit tests for src/transformers/math_min_max_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 293,
+						"title": "Add tests to transformers/math_operation_transformer.rs",
+						"description": "Write unit tests for src/transformers/math_operation_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 294,
+						"title": "Add tests to transformers/math_random_transformer.rs",
+						"description": "Write unit tests for src/transformers/math_random_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 295,
+						"title": "Add tests to transformers/math_rounding_transformer.rs",
+						"description": "Write unit tests for src/transformers/math_rounding_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 296,
+						"title": "Add tests to transformers/math_trigonometric_transformer.rs",
+						"description": "Write unit tests for src/transformers/math_trigonometric_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 297,
+						"title": "Add tests to transformers/math_utility_transformer.rs",
+						"description": "Write unit tests for src/transformers/math_utility_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 298,
+						"title": "Add tests to transformers/merge_transformer.rs",
+						"description": "Move tests from test/transformers/merge_transformer.rs to the bottom of src/transformers/merge_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 299,
+						"title": "Add tests to transformers/message_dedupe_transformer.rs",
+						"description": "Move tests from test/transformers/message_dedupe_transformer.rs to the bottom of src/transformers/message_dedupe_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 300,
+						"title": "Add tests to transformers/ml_batched_inference_transformer.rs",
+						"description": "Move tests from test/transformers/ml_batched_inference_transformer.rs to the bottom of src/transformers/ml_batched_inference_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 301,
+						"title": "Add tests to transformers/ml_inference_transformer.rs",
+						"description": "Move tests from test/transformers/ml_inference_transformer.rs to the bottom of src/transformers/ml_inference_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 302,
+						"title": "Add tests to transformers/mod.rs",
+						"description": "Move tests from test/transformers/mod.rs to the bottom of src/transformers/mod.rs",
+						"status": "pending",
+						"dependencies": [],
+						"parentId": "1"
+					},
+					{
+						"id": 303,
+						"title": "Add tests to transformers/moving_average_transformer.rs",
+						"description": "Move tests from test/transformers/moving_average_transformer.rs to the bottom of src/transformers/moving_average_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 304,
+						"title": "Add tests to transformers/object_entries_transformer.rs",
+						"description": "Write unit tests for src/transformers/object_entries_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 305,
+						"title": "Add tests to transformers/object_has_property_transformer.rs",
+						"description": "Write unit tests for src/transformers/object_has_property_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 306,
+						"title": "Add tests to transformers/object_keys_transformer.rs",
+						"description": "Write unit tests for src/transformers/object_keys_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 307,
+						"title": "Add tests to transformers/object_merge_transformer.rs",
+						"description": "Write unit tests for src/transformers/object_merge_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 308,
+						"title": "Add tests to transformers/object_property_transformer.rs",
+						"description": "Write unit tests for src/transformers/object_property_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 309,
+						"title": "Add tests to transformers/object_random_member_transformer.rs",
+						"description": "Write unit tests for src/transformers/object_random_member_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 310,
+						"title": "Add tests to transformers/object_values_transformer.rs",
+						"description": "Write unit tests for src/transformers/object_values_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 311,
+						"title": "Add tests to transformers/ordered_merge_transformer.rs",
+						"description": "Move tests from test/transformers/ordered_merge_transformer.rs to the bottom of src/transformers/ordered_merge_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 312,
+						"title": "Add tests to transformers/parquet_read_transformer.rs",
+						"description": "Write unit tests for src/transformers/parquet_read_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 313,
+						"title": "Add tests to transformers/parquet_write_transformer.rs",
+						"description": "Write unit tests for src/transformers/parquet_write_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 314,
+						"title": "Add tests to transformers/partition_transformer.rs",
+						"description": "Move tests from test/transformers/partition_transformer.rs to the bottom of src/transformers/partition_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 315,
+						"title": "Add tests to transformers/process_execute_transformer.rs",
+						"description": "Write unit tests for src/transformers/process_execute_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 316,
+						"title": "Add tests to transformers/process_transformer.rs",
+						"description": "Write unit tests for src/transformers/process_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 317,
+						"title": "Add tests to transformers/rate_limit_transformer.rs",
+						"description": "Move tests from test/transformers/rate_limit_transformer.rs to the bottom of src/transformers/rate_limit_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 318,
+						"title": "Add tests to transformers/redis_write_transformer.rs",
+						"description": "Write unit tests for src/transformers/redis_write_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 319,
+						"title": "Add tests to transformers/reduce_transformer.rs",
+						"description": "Move tests from test/transformers/reduce_transformer.rs to the bottom of src/transformers/reduce_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 320,
+						"title": "Add tests to transformers/repeat_transformer.rs",
+						"description": "Write unit tests for src/transformers/repeat_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 321,
+						"title": "Add tests to transformers/retry_transformer.rs",
+						"description": "Move tests from test/transformers/retry_transformer.rs to the bottom of src/transformers/retry_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 322,
+						"title": "Add tests to transformers/round_robin_transformer.rs",
+						"description": "Move tests from test/transformers/round_robin_transformer.rs to the bottom of src/transformers/round_robin_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 323,
+						"title": "Add tests to transformers/router_transformer.rs",
+						"description": "Move tests from test/transformers/router_transformer.rs to the bottom of src/transformers/router_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 324,
+						"title": "Add tests to transformers/running_sum_transformer.rs",
+						"description": "Move tests from test/transformers/running_sum_transformer.rs to the bottom of src/transformers/running_sum_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 325,
+						"title": "Add tests to transformers/sample_transformer.rs",
+						"description": "Move tests from test/transformers/sample_transformer.rs to the bottom of src/transformers/sample_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 326,
+						"title": "Add tests to transformers/skip_transformer.rs",
+						"description": "Move tests from test/transformers/skip_transformer.rs to the bottom of src/transformers/skip_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 327,
+						"title": "Add tests to transformers/sort_transformer.rs",
+						"description": "Move tests from test/transformers/sort_transformer.rs to the bottom of src/transformers/sort_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 328,
+						"title": "Add tests to transformers/split_at_transformer.rs",
+						"description": "Move tests from test/transformers/split_at_transformer.rs to the bottom of src/transformers/split_at_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 329,
+						"title": "Add tests to transformers/split_transformer.rs",
+						"description": "Move tests from test/transformers/split_transformer.rs to the bottom of src/transformers/split_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 330,
+						"title": "Add tests to transformers/string_case_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_case_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 331,
+						"title": "Add tests to transformers/string_char_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_char_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 332,
+						"title": "Add tests to transformers/string_concat_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_concat_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 333,
+						"title": "Add tests to transformers/string_index_of_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_index_of_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 334,
+						"title": "Add tests to transformers/string_join_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_join_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 335,
+						"title": "Add tests to transformers/string_length_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_length_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 336,
+						"title": "Add tests to transformers/string_match_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_match_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 337,
+						"title": "Add tests to transformers/string_pad_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_pad_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 338,
+						"title": "Add tests to transformers/string_predicate_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_predicate_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 339,
+						"title": "Add tests to transformers/string_repeat_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_repeat_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 340,
+						"title": "Add tests to transformers/string_replace_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_replace_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 341,
+						"title": "Add tests to transformers/string_reverse_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_reverse_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 342,
+						"title": "Add tests to transformers/string_search_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_search_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 343,
+						"title": "Add tests to transformers/string_slice_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_slice_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 344,
+						"title": "Add tests to transformers/string_split_lines_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_split_lines_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 345,
+						"title": "Add tests to transformers/string_split_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_split_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 346,
+						"title": "Add tests to transformers/string_split_words_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_split_words_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 347,
+						"title": "Add tests to transformers/string_trim_transformer.rs",
+						"description": "Write unit tests for src/transformers/string_trim_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 348,
+						"title": "Add tests to transformers/take_transformer.rs",
+						"description": "Move tests from test/transformers/take_transformer.rs to the bottom of src/transformers/take_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 349,
+						"title": "Add tests to transformers/tcp_receive_transformer.rs",
+						"description": "Write unit tests for src/transformers/tcp_receive_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 350,
+						"title": "Add tests to transformers/tcp_request_transformer.rs",
+						"description": "Write unit tests for src/transformers/tcp_request_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 351,
+						"title": "Add tests to transformers/tcp_send_transformer.rs",
+						"description": "Write unit tests for src/transformers/tcp_send_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 352,
+						"title": "Add tests to transformers/time_window_transformer.rs",
+						"description": "Move tests from test/transformers/time_window_transformer.rs to the bottom of src/transformers/time_window_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 353,
+						"title": "Add tests to transformers/timeout_transformer.rs",
+						"description": "Move tests from test/transformers/timeout_transformer.rs to the bottom of src/transformers/timeout_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 354,
+						"title": "Add tests to transformers/tokio_channel_send_transformer.rs",
+						"description": "Write unit tests for src/transformers/tokio_channel_send_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 355,
+						"title": "Add tests to transformers/trace_transformer.rs",
+						"description": "Write unit tests for src/transformers/trace_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 356,
+						"title": "Add tests to transformers/window_transformer.rs",
+						"description": "Move tests from test/transformers/window_transformer.rs to the bottom of src/transformers/window_transformer.rs",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 357,
+						"title": "Add tests to transformers/wrap_transformer.rs",
+						"description": "Write unit tests for src/transformers/wrap_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 358,
+						"title": "Add tests to transformers/xml_parse_transformer.rs",
+						"description": "Write unit tests for src/transformers/xml_parse_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 359,
+						"title": "Add tests to transformers/xml_stringify_transformer.rs",
+						"description": "Write unit tests for src/transformers/xml_stringify_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 360,
+						"title": "Add tests to transformers/xor_transformer.rs",
+						"description": "Write unit tests for src/transformers/xor_transformer.rs and add them to the bottom of the file",
+						"status": "pending",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 361,
+						"title": "Add tests to transformers/zip_transformer.rs",
+						"description": "Move tests from test/transformers/zip_transformer.rs to the bottom of src/transformers/zip_transformer.rs",
+						"status": "done",
+						"dependencies": ["1.302"],
+						"parentId": "1"
+					},
+					{
+						"id": 362,
+						"title": "Add tests to window.rs",
+						"description": "Move tests from test/window.rs to the bottom of src/window.rs",
+						"status": "pending",
+						"dependencies": [],
 						"parentId": "1"
 					}
 				],
-				"updatedAt": "2026-01-04T00:45:51.793Z"
+				"updatedAt": "2026-01-09T14:48:41.365Z"
 			}
 		],
 		"metadata": {
 			"version": "1.0.0",
-			"lastModified": "2026-01-04T00:45:51.793Z",
+			"lastModified": "2026-01-09T14:48:41.366Z",
 			"taskCount": 1,
 			"completedCount": 0,
 			"tags": ["master"]

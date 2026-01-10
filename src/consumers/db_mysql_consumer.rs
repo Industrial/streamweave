@@ -385,7 +385,10 @@ fn bind_value_mysql<'q>(
   Ok(bound_query)
 }
 
-fn handle_error_strategy<T>(strategy: &ErrorStrategy<T>, error: &StreamError<T>) -> ErrorAction
+pub(crate) fn handle_error_strategy<T>(
+  strategy: &ErrorStrategy<T>,
+  error: &StreamError<T>,
+) -> ErrorAction
 where
   T: std::fmt::Debug + Clone + Send + Sync,
 {

@@ -7,7 +7,13 @@ use crate::transformers::{ArrayFindTransformer, FindOperation};
 use crate::{Input, Output, Transformer, TransformerConfig};
 use async_trait::async_trait;
 use futures::Stream;
+#[allow(unused_imports)]
+use futures::StreamExt;
+#[allow(unused_imports)]
+use futures::stream;
 use serde_json::Value;
+#[allow(unused_imports)]
+use serde_json::json;
 use std::pin::Pin;
 
 /// Node that finds elements or indices in arrays.

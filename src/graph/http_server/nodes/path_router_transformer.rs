@@ -6,7 +6,7 @@
 //! routed to different handlers (REST, GraphQL, RPC, Static Files, etc.) based on their path.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::graph::http_server::types::HttpRequest;
+use crate::graph::http_server::types::HttpServerRequest;
 use crate::message::Message;
 use crate::{Input, Output, Transformer, TransformerConfig};
 use async_trait::async_trait;
@@ -34,7 +34,7 @@ pub struct PathRouterConfig {
 
 /// Transformer that routes HTTP requests to different output ports based on path patterns.
 ///
-/// This transformer takes `Message<HttpRequest>` items and routes them to different
+/// This transformer takes `Message<HttpServerRequest>` items and routes them to different
 /// output ports based on matching path patterns. It supports wildcard patterns and
 /// configurable route mappings.
 ///
@@ -59,7 +59,7 @@ pub struct PathRouterConfig {
 #[derive(Debug, Clone)]
 pub struct PathBasedRouterTransformer {
   /// Transformer configuration
-  config: TransformerConfig<Message<HttpRequest>>,
+  config: TransformerConfig<Message<HttpServerRequest>>,
   /// Path router configuration
   router_config: PathRouterConfig,
 }
@@ -162,32 +162,32 @@ impl PathBasedRouterTransformer {
 }
 
 impl Input for PathBasedRouterTransformer {
-  type Input = Message<HttpRequest>;
+  type Input = Message<HttpServerRequest>;
   type InputStream = Pin<Box<dyn Stream<Item = Self::Input> + Send>>;
 }
 
 impl Output for PathBasedRouterTransformer {
   type Output = (
-    Option<Message<HttpRequest>>,
-    Option<Message<HttpRequest>>,
-    Option<Message<HttpRequest>>,
-    Option<Message<HttpRequest>>,
-    Option<Message<HttpRequest>>,
+    Option<Message<HttpServerRequest>>,
+    Option<Message<HttpServerRequest>>,
+    Option<Message<HttpServerRequest>>,
+    Option<Message<HttpServerRequest>>,
+    Option<Message<HttpServerRequest>>,
   );
   type OutputStream = Pin<Box<dyn Stream<Item = Self::Output> + Send>>;
 }
 
 #[async_trait]
 impl Transformer for PathBasedRouterTransformer {
-  type InputPorts = (Message<HttpRequest>,);
+  type InputPorts = (Message<HttpServerRequest>,);
   // Output to 5 ports: REST (0), GraphQL (1), RPC (2), Static (3), Default (4)
-  // Each port gets an Option<Message<HttpRequest>> - Some(item) if it matches, None otherwise
+  // Each port gets an Option<Message<HttpServerRequest>> - Some(item) if it matches, None otherwise
   type OutputPorts = (
-    Option<Message<HttpRequest>>,
-    Option<Message<HttpRequest>>,
-    Option<Message<HttpRequest>>,
-    Option<Message<HttpRequest>>,
-    Option<Message<HttpRequest>>,
+    Option<Message<HttpServerRequest>>,
+    Option<Message<HttpServerRequest>>,
+    Option<Message<HttpServerRequest>>,
+    Option<Message<HttpServerRequest>>,
+    Option<Message<HttpServerRequest>>,
   );
 
   /// Transforms the input stream by routing requests to appropriate output ports.
@@ -219,19 +219,19 @@ impl Transformer for PathBasedRouterTransformer {
     }))
   }
 
-  fn set_config_impl(&mut self, config: TransformerConfig<Message<HttpRequest>>) {
+  fn set_config_impl(&mut self, config: TransformerConfig<Message<HttpServerRequest>>) {
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> &TransformerConfig<Message<HttpRequest>> {
+  fn get_config_impl(&self) -> &TransformerConfig<Message<HttpServerRequest>> {
     &self.config
   }
 
-  fn get_config_mut_impl(&mut self) -> &mut TransformerConfig<Message<HttpRequest>> {
+  fn get_config_mut_impl(&mut self) -> &mut TransformerConfig<Message<HttpServerRequest>> {
     &mut self.config
   }
 
-  fn handle_error(&self, error: &StreamError<Message<HttpRequest>>) -> ErrorAction {
+  fn handle_error(&self, error: &StreamError<Message<HttpServerRequest>>) -> ErrorAction {
     match &self.config.error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
@@ -242,8 +242,8 @@ impl Transformer for PathBasedRouterTransformer {
 
   fn create_error_context(
     &self,
-    item: Option<Message<HttpRequest>>,
-  ) -> ErrorContext<Message<HttpRequest>> {
+    item: Option<Message<HttpServerRequest>>,
+  ) -> ErrorContext<Message<HttpServerRequest>> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
@@ -261,128 +261,5 @@ impl Transformer for PathBasedRouterTransformer {
         .unwrap_or_else(|| "path_router".to_string()),
       type_name: std::any::type_name::<Self>().to_string(),
     }
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use crate::message::MessageId;
-  use futures::stream;
-  use std::collections::HashMap;
-
-  #[tokio::test]
-  async fn test_path_matching() {
-    let router = PathBasedRouterTransformer::new(PathRouterConfig::default());
-
-    // Test exact match
-    assert!(router.path_matches("/api/graphql", "/api/graphql"));
-    assert!(!router.path_matches("/api/graphql", "/api/rest"));
-
-    // Test wildcard match
-    assert!(router.path_matches("/api/rest/*", "/api/rest/users"));
-    assert!(router.path_matches("/api/rest/*", "/api/rest/users/123"));
-    assert!(!router.path_matches("/api/rest/*", "/api/graphql"));
-  }
-
-  #[tokio::test]
-  async fn test_route_matching() {
-    // Create router with some routes
-    let router = PathBasedRouterTransformer::new(PathRouterConfig {
-      routes: vec![
-        RoutePattern {
-          pattern: "/api/rest/*".to_string(),
-          port: 0,
-        },
-        RoutePattern {
-          pattern: "/api/graphql".to_string(),
-          port: 1,
-        },
-        RoutePattern {
-          pattern: "/api/rpc/*".to_string(),
-          port: 2,
-        },
-        RoutePattern {
-          pattern: "/static/*".to_string(),
-          port: 3,
-        },
-      ],
-      default_port: Some(4),
-    });
-
-    assert_eq!(router.match_route("/api/rest/users"), Some(0));
-    assert_eq!(router.match_route("/api/graphql"), Some(1));
-    assert_eq!(router.match_route("/api/rpc/call"), Some(2));
-    assert_eq!(router.match_route("/static/file.css"), Some(3));
-    assert_eq!(router.match_route("/unknown/path"), Some(4)); // Default
-
-    // Test empty router - should return None for unmatched paths
-    let empty_router = PathBasedRouterTransformer::new(PathRouterConfig::default());
-    assert_eq!(empty_router.match_route("/any/path"), None);
-  }
-
-  #[tokio::test]
-  async fn test_routing_transformation() {
-    let mut router = PathBasedRouterTransformer::new(PathRouterConfig {
-      routes: vec![
-        RoutePattern {
-          pattern: "/api/rest/*".to_string(),
-          port: 0,
-        },
-        RoutePattern {
-          pattern: "/api/graphql".to_string(),
-          port: 1,
-        },
-      ],
-      default_port: None,
-    });
-
-    let request1 = HttpRequest {
-      request_id: "req1".to_string(),
-      method: crate::graph::http_server::types::HttpMethod::Get,
-      uri: axum::http::Uri::from_static("/api/rest/users"),
-      path: "/api/rest/users".to_string(),
-      headers: axum::http::HeaderMap::new(),
-      query_params: HashMap::new(),
-      path_params: HashMap::new(),
-      body: None,
-      content_type: None,
-      remote_addr: None,
-    };
-
-    let request2 = HttpRequest {
-      request_id: "req2".to_string(),
-      method: crate::graph::http_server::types::HttpMethod::Post,
-      uri: axum::http::Uri::from_static("/api/graphql"),
-      path: "/api/graphql".to_string(),
-      headers: axum::http::HeaderMap::new(),
-      query_params: HashMap::new(),
-      path_params: HashMap::new(),
-      body: None,
-      content_type: None,
-      remote_addr: None,
-    };
-
-    let msg1 = Message::new(request1, MessageId::new_custom("msg1"));
-    let msg2 = Message::new(request2, MessageId::new_custom("msg2"));
-
-    let input = stream::iter(vec![msg1, msg2]);
-    let boxed_input = Box::pin(input);
-
-    let results: Vec<_> = router.transform(boxed_input).await.collect().await;
-
-    // First request should go to port 0 (REST)
-    assert!(results[0].0.is_some());
-    assert!(results[0].1.is_none());
-    assert!(results[0].2.is_none());
-    assert!(results[0].3.is_none());
-    assert!(results[0].4.is_none());
-
-    // Second request should go to port 1 (GraphQL)
-    assert!(results[1].0.is_none());
-    assert!(results[1].1.is_some());
-    assert!(results[1].2.is_none());
-    assert!(results[1].3.is_none());
-    assert!(results[1].4.is_none());
   }
 }

@@ -71,10 +71,11 @@ reqwest = { version = "0.13", default-features = false, features = [
   "multipart",
 ] }
 quick-xml = { version = "0.38", features = ["serialize"] }
-
+dyn-clone = "1.0"
 [dev-dependencies]
 proptest = "1.5"
 tempfile = "3.10"
+tokio-test = "0.4.2"
 
 [lints.rust]
 # Shared lint configuration

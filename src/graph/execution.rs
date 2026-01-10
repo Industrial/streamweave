@@ -1072,10 +1072,10 @@ impl GraphExecutor {
 
     // Spawn tasks for each node with distributed mode
     for node_name in self.graph.node_names() {
-      if let Some(node) = self.graph.get_node(node_name) {
+      if let Some(node) = self.graph.get_node(&node_name) {
         // Collect input channels for this node
         let mut input_channels = HashMap::new();
-        let parents = self.graph.get_parents(node_name);
+        let parents = self.graph.get_parents(&node_name);
         for (parent_name, parent_port_name) in parents {
           for conn in self.graph.get_connections() {
             if conn.source.0 == parent_name
@@ -1097,7 +1097,7 @@ impl GraphExecutor {
 
         // Collect output channels for this node
         let mut output_channels = HashMap::new();
-        let children = self.graph.get_children(node_name);
+        let children = self.graph.get_children(&node_name);
         for (child_name, child_port_name) in children {
           for conn in self.graph.get_connections() {
             if conn.source.0 == node_name
@@ -1143,7 +1143,7 @@ impl GraphExecutor {
           None
         };
 
-        // Clone arc_pool if available
+        // Clone arc_pool if available (wrap in Arc for sharing across tasks)
         let arc_pool_clone = self.arc_pool.as_ref().map(|p| Arc::new(p.clone()));
 
         if let Some(handle) = node.spawn_execution_task(
@@ -1858,10 +1858,10 @@ impl GraphExecutor {
     // Spawn tasks for each node
     // In in-process mode, nodes will use direct stream connections and Arc for fan-out
     for node_name in self.graph.node_names() {
-      if let Some(node) = self.graph.get_node(node_name) {
+      if let Some(node) = self.graph.get_node(&node_name) {
         // Collect input channels for this node
         let mut input_channels = HashMap::new();
-        let parents = self.graph.get_parents(node_name);
+        let parents = self.graph.get_parents(&node_name);
         for (parent_name, parent_port_name) in parents {
           // Find which input port this connection targets
           for conn in self.graph.get_connections() {
@@ -1884,7 +1884,7 @@ impl GraphExecutor {
 
         // Collect output channels for this node
         let mut output_channels = HashMap::new();
-        let children = self.graph.get_children(node_name);
+        let children = self.graph.get_children(&node_name);
         for (child_name, child_port_name) in children {
           // Find which output port this connection comes from
           for conn in self.graph.get_connections() {
@@ -1913,7 +1913,7 @@ impl GraphExecutor {
         // In in-process mode, nodes will use Arc<Message<T>> channels and direct stream passing
         // The node execution code checks ExecutionMode and uses appropriate channel types
         // All data is wrapped in Message<T> for end-to-end traceability
-        // Clone arc_pool if available
+        // Clone arc_pool if available (wrap in Arc for sharing across tasks)
         let arc_pool_clone = self.arc_pool.as_ref().map(|p| Arc::new(p.clone()));
 
         if let Some(handle) = node.spawn_execution_task(
@@ -2188,10 +2188,10 @@ impl GraphExecutor {
 
     // Step 6: Spawn nodes with distributed mode
     for node_name in self.graph.node_names() {
-      if let Some(node) = self.graph.get_node(node_name) {
+      if let Some(node) = self.graph.get_node(&node_name) {
         // Collect input channels
         let mut input_channels = HashMap::new();
-        let parents = self.graph.get_parents(node_name);
+        let parents = self.graph.get_parents(&node_name);
         for (parent_name, parent_port_name) in parents {
           for conn in self.graph.get_connections() {
             if conn.source.0 == parent_name
@@ -2213,7 +2213,7 @@ impl GraphExecutor {
 
         // Collect output channels
         let mut output_channels = HashMap::new();
-        let children = self.graph.get_children(node_name);
+        let children = self.graph.get_children(&node_name);
         for (child_name, child_port_name) in children {
           for conn in self.graph.get_connections() {
             if conn.source.0 == node_name
@@ -2239,7 +2239,7 @@ impl GraphExecutor {
           batching: None,
         };
 
-        // Clone arc_pool if available
+        // Clone arc_pool if available (wrap in Arc for sharing across tasks)
         let arc_pool_clone = self.arc_pool.as_ref().map(|p| Arc::new(p.clone()));
 
         if let Some(handle) = node.spawn_execution_task(

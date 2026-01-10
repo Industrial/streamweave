@@ -4,6 +4,7 @@ set -euo pipefail
 echo "> pre-commit"
 
 bin/format
+bin/fix
 bin/check
 bin/lint
 bin/build

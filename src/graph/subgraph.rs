@@ -98,6 +98,7 @@ use std::collections::HashSet;
 ///     1, // 1 output port
 /// );
 /// ```
+#[derive(Clone)]
 pub struct SubgraphNode {
   /// The name of this subgraph node
   name: String,

@@ -3,6 +3,60 @@ use crate::{Output, Producer, ProducerConfig};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Configuration for writing to Redis Streams (producing).
+#[derive(Debug, Clone)]
+pub struct RedisProducerConfig {
+  /// Redis connection URL (e.g., "redis://localhost:6379").
+  pub connection_url: String,
+  /// Stream name to write to.
+  pub stream: String,
+  /// Maximum length of the stream (None for unlimited).
+  pub maxlen: Option<usize>,
+  /// Whether to use approximate maxlen (more efficient for large streams).
+  pub approximate_maxlen: bool,
+}
+
+impl Default for RedisProducerConfig {
+  fn default() -> Self {
+    Self {
+      connection_url: "redis://localhost:6379".to_string(),
+      stream: String::new(),
+      maxlen: None,
+      approximate_maxlen: false,
+    }
+  }
+}
+
+impl RedisProducerConfig {
+  /// Sets the Redis connection URL.
+  #[must_use]
+  pub fn with_connection_url(mut self, url: impl Into<String>) -> Self {
+    self.connection_url = url.into();
+    self
+  }
+
+  /// Sets the stream name.
+  #[must_use]
+  pub fn with_stream(mut self, stream: impl Into<String>) -> Self {
+    self.stream = stream.into();
+    self
+  }
+
+  /// Sets the maximum length of the stream.
+  #[must_use]
+  pub fn with_maxlen(mut self, maxlen: usize) -> Self {
+    self.maxlen = Some(maxlen);
+    self
+  }
+
+  /// Sets whether to use approximate maxlen.
+  #[must_use]
+  pub fn with_approximate_maxlen(mut self, approximate: bool) -> Self {
+    self.approximate_maxlen = approximate;
+    self
+  }
+}
+
 /// Configuration for Redis Streams consumer behavior.
 #[derive(Debug, Clone)]
 pub struct RedisConsumerConfig {
@@ -384,7 +438,7 @@ impl Producer for RedisProducer {
   }
 }
 
-fn handle_error_strategy<T>(
+pub(crate) fn handle_error_strategy<T>(
   strategy: &crate::error::ErrorStrategy<T>,
   error: &StreamError<T>,
 ) -> ErrorAction

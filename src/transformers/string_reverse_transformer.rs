@@ -15,7 +15,7 @@ use std::pin::Pin;
 /// # Example
 ///
 /// ```rust
-/// use streamweave::transformers::StringReverseTransformer;
+/// use crate::transformers::StringReverseTransformer;
 ///
 /// let transformer = StringReverseTransformer::new();
 /// // Input: ["hello"]

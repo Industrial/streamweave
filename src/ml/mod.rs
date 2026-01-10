@@ -7,6 +7,7 @@ pub mod hotswap;
 pub mod inference_backend;
 pub mod onnx;
 
+pub use crate::error::{ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 pub use hotswap::*;
 pub use inference_backend::*;
 pub use onnx::*;

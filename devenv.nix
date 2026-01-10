@@ -73,6 +73,11 @@
     zlib
     zstd
 
+    # For task-master
+    nodejs
+    task-master-ai
+    npm
+
     # treefmt
     actionlint
     alejandra

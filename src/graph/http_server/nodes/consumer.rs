@@ -3,10 +3,9 @@
 //! Consumer that converts stream items into HTTP responses for sending back to clients
 //! via Axum.
 
-use crate::Input;
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::graph::http_server::types::HttpResponse;
 use crate::{Consumer, ConsumerConfig};
+use crate::{HttpServerResponse, Input};
 use async_stream::stream;
 use async_trait::async_trait;
 use axum::body::Bytes;
@@ -73,7 +72,7 @@ impl HttpResponseConsumerConfig {
 
 /// A consumer that converts stream items into HTTP responses.
 ///
-/// This consumer accepts `HttpResponse` items from a pipeline and converts them
+/// This consumer accepts `HttpServerResponse` items from a pipeline and converts them
 /// into Axum `Response<Body>` that can be sent back to clients. It supports
 /// both single-item and multi-item responses, as well as streaming responses.
 ///
@@ -81,7 +80,7 @@ impl HttpResponseConsumerConfig {
 ///
 /// ```rust,no_run
 /// use crate::http_server::{HttpResponseConsumer, HttpResponseConsumerConfig};
-/// use crate::http_server::HttpResponse;
+/// use crate::http_server::HttpServerResponse;
 /// use axum::http::StatusCode;
 ///
 /// async fn handle_response(mut consumer: HttpResponseConsumer) {
@@ -92,11 +91,11 @@ impl HttpResponseConsumerConfig {
 #[derive(Debug)]
 pub struct HttpResponseConsumer {
   /// Consumer configuration.
-  pub config: ConsumerConfig<HttpResponse>,
+  pub config: ConsumerConfig<HttpServerResponse>,
   /// HTTP response-specific configuration.
   pub http_config: HttpResponseConsumerConfig,
   /// Collected responses.
-  pub responses: Vec<HttpResponse>,
+  pub responses: Vec<HttpServerResponse>,
   /// Whether the consumer has finished consuming.
   pub finished: bool,
 }
@@ -146,7 +145,7 @@ impl HttpResponseConsumer {
 
   /// Sets the error strategy for the consumer.
   #[must_use]
-  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<HttpResponse>) -> Self {
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<HttpServerResponse>) -> Self {
     self.config.error_strategy = strategy;
     self
   }
@@ -176,7 +175,7 @@ impl HttpResponseConsumer {
   pub async fn get_response(&mut self) -> Response<Body> {
     if self.responses.is_empty() {
       // Return empty response with default status
-      HttpResponse::new(
+      HttpServerResponse::new(
         self.http_config.default_status,
         Vec::new(),
         crate::graph::http_server::types::ContentType::Text,
@@ -195,21 +194,21 @@ impl HttpResponseConsumer {
     }
   }
 
-  /// Creates a streaming response from a stream of HttpResponse items.
+  /// Creates a streaming response from a stream of HttpServerResponse items.
   ///
-  /// This method converts a stream of `HttpResponse` items into a streaming Axum
+  /// This method converts a stream of `HttpServerResponse` items into a streaming Axum
   /// response with chunked transfer encoding. The first response's status and headers
   /// are used, and subsequent responses' bodies are streamed as chunks.
   ///
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::{HttpResponseConsumer, HttpResponse};
+  /// use crate::http_server::{HttpResponseConsumer, HttpServerResponse};
   /// use crate::consumer::Consumer;
   /// use futures::StreamExt;
   /// use axum::http::StatusCode;
   ///
-  /// async fn stream_responses(mut stream: impl futures::Stream<Item = HttpResponse> + Send) {
+  /// async fn stream_responses(mut stream: impl futures::Stream<Item = HttpServerResponse> + Send) {
   ///     let consumer = HttpResponseConsumer::new();
   ///     let response = consumer.create_streaming_response(stream).await;
   ///     // Send response to client
@@ -217,7 +216,7 @@ impl HttpResponseConsumer {
   /// ```
   pub async fn create_streaming_response(
     &self,
-    stream: impl futures::Stream<Item = HttpResponse> + Send + 'static,
+    stream: impl futures::Stream<Item = HttpServerResponse> + Send + 'static,
   ) -> Response<Body> {
     use std::pin::Pin;
     use std::sync::{Arc, Mutex};
@@ -358,9 +357,9 @@ impl HttpResponseConsumer {
   ///
   /// This combines the bodies of all responses and uses the status code
   /// from the first response.
-  fn merge_responses(&mut self) -> HttpResponse {
+  fn merge_responses(&mut self) -> HttpServerResponse {
     if self.responses.is_empty() {
-      return HttpResponse::new(
+      return HttpServerResponse::new(
         self.http_config.default_status,
         Vec::new(),
         crate::graph::http_server::types::ContentType::Text,
@@ -384,7 +383,7 @@ impl HttpResponseConsumer {
       }
     }
 
-    HttpResponse {
+    HttpServerResponse {
       request_id: first.request_id.clone(),
       status,
       headers,
@@ -401,7 +400,7 @@ impl HttpResponseConsumer {
 
   /// Returns the collected responses.
   #[must_use]
-  pub fn responses(&self) -> &[HttpResponse] {
+  pub fn responses(&self) -> &[HttpServerResponse] {
     &self.responses
   }
 }
@@ -424,17 +423,17 @@ impl Clone for HttpResponseConsumer {
 }
 
 impl Input for HttpResponseConsumer {
-  type Input = HttpResponse;
+  type Input = HttpServerResponse;
   type InputStream = Pin<Box<dyn Stream<Item = Self::Input> + Send>>;
 }
 
 #[async_trait]
 impl Consumer for HttpResponseConsumer {
-  type InputPorts = (HttpResponse,);
+  type InputPorts = (HttpServerResponse,);
 
   /// Consumes a stream of HTTP response items.
   ///
-  /// This collects all `HttpResponse` items from the stream and stores them
+  /// This collects all `HttpServerResponse` items from the stream and stores them
   /// for later conversion to an Axum response via `get_response()`.
   ///
   /// ## Error Handling
@@ -514,22 +513,22 @@ impl Consumer for HttpResponseConsumer {
     self.finished = true;
   }
 
-  fn set_config_impl(&mut self, config: ConsumerConfig<HttpResponse>) {
+  fn set_config_impl(&mut self, config: ConsumerConfig<HttpServerResponse>) {
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> &ConsumerConfig<HttpResponse> {
+  fn get_config_impl(&self) -> &ConsumerConfig<HttpServerResponse> {
     &self.config
   }
 
-  fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<HttpResponse> {
+  fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<HttpServerResponse> {
     &mut self.config
   }
 }
 
 /// Consumer that correlates HTTP responses with their original requests.
 ///
-/// This consumer accepts `Message<HttpResponse>` items from the graph and
+/// This consumer accepts `Message<HttpServerResponse>` items from the graph and
 /// correlates them with their original requests using the `request_id` field.
 /// It maintains a mapping of request IDs to response senders and sends responses
 /// back to the correct HTTP clients.
@@ -550,7 +549,7 @@ impl Consumer for HttpResponseConsumer {
 #[derive(Debug)]
 pub struct HttpResponseCorrelationConsumer {
   /// Consumer configuration
-  config: crate::ConsumerConfig<crate::message::Message<HttpResponse>>,
+  config: crate::ConsumerConfig<crate::message::Message<HttpServerResponse>>,
   /// Mapping of request IDs to response senders
   response_senders: std::sync::Arc<
     tokio::sync::RwLock<
@@ -609,8 +608,10 @@ impl HttpResponseCorrelationConsumer {
     senders.remove(request_id);
   }
 
-  /// Converts an `HttpResponse` to an Axum `Response<Body>`.
-  fn http_response_to_axum(response: &HttpResponse) -> axum::response::Response<axum::body::Body> {
+  /// Converts an `HttpServerResponse` to an Axum `Response<Body>`.
+  fn http_response_to_axum(
+    response: &HttpServerResponse,
+  ) -> axum::response::Response<axum::body::Body> {
     let mut axum_response = axum::response::Response::builder()
       .status(response.status)
       .body(axum::body::Body::from(response.body.clone()))
@@ -642,14 +643,14 @@ impl Default for HttpResponseCorrelationConsumer {
 
 #[async_trait]
 impl crate::Consumer for HttpResponseCorrelationConsumer {
-  type InputPorts = (crate::message::Message<HttpResponse>,);
+  type InputPorts = (crate::message::Message<HttpServerResponse>,);
 
-  /// Consumes a stream of `Message<HttpResponse>` items and correlates them with requests.
+  /// Consumes a stream of `Message<HttpServerResponse>` items and correlates them with requests.
   ///
   /// For each response message, this method:
   /// 1. Extracts the `request_id` from the response
   /// 2. Looks up the corresponding response sender
-  /// 3. Converts the `HttpResponse` to an Axum `Response<Body>`
+  /// 3. Converts the `HttpServerResponse` to an Axum `Response<Body>`
   /// 4. Sends the response to the client
   /// 5. Removes the request from the mapping
   async fn consume(&mut self, input: Self::InputStream) {
@@ -675,7 +676,7 @@ impl crate::Consumer for HttpResponseCorrelationConsumer {
 
       match sender {
         Some(sender) => {
-          // Convert HttpResponse to Axum Response
+          // Convert HttpServerResponse to Axum Response
           let axum_response = Self::http_response_to_axum(response);
 
           // Send response to client
@@ -711,24 +712,24 @@ impl crate::Consumer for HttpResponseCorrelationConsumer {
 
   fn set_config_impl(
     &mut self,
-    config: crate::ConsumerConfig<crate::message::Message<HttpResponse>>,
+    config: crate::ConsumerConfig<crate::message::Message<HttpServerResponse>>,
   ) {
     self.config = config;
   }
 
-  fn get_config_impl(&self) -> &crate::ConsumerConfig<crate::message::Message<HttpResponse>> {
+  fn get_config_impl(&self) -> &crate::ConsumerConfig<crate::message::Message<HttpServerResponse>> {
     &self.config
   }
 
   fn get_config_mut_impl(
     &mut self,
-  ) -> &mut crate::ConsumerConfig<crate::message::Message<HttpResponse>> {
+  ) -> &mut crate::ConsumerConfig<crate::message::Message<HttpServerResponse>> {
     &mut self.config
   }
 
   fn handle_error(
     &self,
-    error: &crate::error::StreamError<crate::message::Message<HttpResponse>>,
+    error: &crate::error::StreamError<crate::message::Message<HttpServerResponse>>,
   ) -> crate::error::ErrorAction {
     match &self.config.error_strategy {
       crate::error::ErrorStrategy::Stop => crate::error::ErrorAction::Stop,
@@ -742,8 +743,8 @@ impl crate::Consumer for HttpResponseCorrelationConsumer {
 
   fn create_error_context(
     &self,
-    item: Option<crate::message::Message<HttpResponse>>,
-  ) -> crate::error::ErrorContext<crate::message::Message<HttpResponse>> {
+    item: Option<crate::message::Message<HttpServerResponse>>,
+  ) -> crate::error::ErrorContext<crate::message::Message<HttpServerResponse>> {
     crate::error::ErrorContext {
       timestamp: chrono::Utc::now(),
       item,
@@ -767,6 +768,6 @@ impl crate::Consumer for HttpResponseCorrelationConsumer {
 use crate::message::Message;
 
 impl Input for HttpResponseCorrelationConsumer {
-  type Input = Message<HttpResponse>;
+  type Input = Message<HttpServerResponse>;
   type InputStream = Pin<Box<dyn Stream<Item = Self::Input> + Send>>;
 }

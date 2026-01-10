@@ -151,15 +151,15 @@ impl ContentType {
 /// ## Example
 ///
 /// ```rust,no_run
-/// use crate::http_server::HttpRequest;
+/// use crate::http_server::HttpServerRequest;
 /// use axum::extract::Request;
 ///
-/// async fn handle_request(axum_request: Request) -> HttpRequest {
-///     HttpRequest::from_axum_request(axum_request).await
+/// async fn handle_request(axum_request: Request) -> HttpServerRequest {
+///     HttpServerRequest::from_axum_request(axum_request).await
 /// }
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpRequest {
+pub struct HttpServerRequest {
   /// Unique request ID for correlation with responses
   pub request_id: String,
   /// HTTP method (GET, POST, etc.)
@@ -184,19 +184,19 @@ pub struct HttpRequest {
   pub remote_addr: Option<String>,
 }
 
-impl HttpRequest {
-  /// Create an `HttpRequest` from an Axum `Request`.
+impl HttpServerRequest {
+  /// Create an `HttpServerRequest` from an Axum `Request`.
   ///
   /// This extracts all relevant metadata from the Axum request and parses query parameters.
   ///
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::HttpRequest;
+  /// use crate::http_server::HttpServerRequest;
   /// use axum::extract::Request;
   ///
   /// async fn process_request(axum_request: Request) {
-  ///     let request = HttpRequest::from_axum_request(axum_request).await;
+  ///     let request = HttpServerRequest::from_axum_request(axum_request).await;
   ///     println!("Method: {:?}, Path: {}", request.method, request.path);
   /// }
   /// ```
@@ -271,7 +271,7 @@ impl HttpRequest {
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::HttpRequest;
+  /// use crate::http_server::HttpServerRequest;
   ///
   /// let request = /* ... */;
   /// if let Some(user_id) = request.get_path_param("id") {
@@ -287,7 +287,7 @@ impl HttpRequest {
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::HttpRequest;
+  /// use crate::http_server::HttpServerRequest;
   ///
   /// let request = /* ... */;
   /// if let Some(auth) = request.get_header("authorization") {
@@ -303,7 +303,7 @@ impl HttpRequest {
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::{HttpRequest, ContentType};
+  /// use crate::http_server::{HttpServerRequest, ContentType};
   ///
   /// let request = /* ... */;
   /// if request.is_content_type(ContentType::Json) {
@@ -318,7 +318,7 @@ impl HttpRequest {
       .unwrap_or(false)
   }
 
-  /// Check if this HttpRequest is a body chunk (from streaming mode).
+  /// Check if this HttpServerRequest is a body chunk (from streaming mode).
   ///
   /// When streaming is enabled, the producer yields:
   /// 1. First: Request metadata with body = None
@@ -327,7 +327,7 @@ impl HttpRequest {
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::HttpRequest;
+  /// use crate::http_server::HttpServerRequest;
   ///
   /// let request = /* ... */;
   /// if request.is_body_chunk() {
@@ -372,10 +372,10 @@ impl HttpRequest {
 /// ## Example
 ///
 /// ```rust,no_run
-/// use crate::http_server::{HttpResponse, ContentType, HttpMethod};
+/// use crate::http_server::{HttpServerResponse, ContentType, HttpMethod};
 /// use axum::http::StatusCode;
 ///
-/// let response = HttpResponse {
+/// let response = HttpServerResponse {
 ///     status: StatusCode::OK,
 ///     headers: HeaderMap::new(),
 ///     body: serde_json::to_vec(&data).unwrap(),
@@ -383,7 +383,7 @@ impl HttpRequest {
 /// };
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HttpResponse {
+pub struct HttpServerResponse {
   /// Request ID for correlation with the original request
   pub request_id: String,
   /// HTTP status code
@@ -398,16 +398,16 @@ pub struct HttpResponse {
   pub content_type: ContentType,
 }
 
-impl HttpResponse {
+impl HttpServerResponse {
   /// Create a new HTTP response with the given status code and body.
   ///
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::{HttpResponse, ContentType};
+  /// use crate::http_server::{HttpServerResponse, ContentType};
   /// use axum::http::StatusCode;
   ///
-  /// let response = HttpResponse::new(
+  /// let response = HttpServerResponse::new(
   ///     StatusCode::OK,
   ///     b"Hello, world!".to_vec(),
   ///     ContentType::Text,
@@ -422,10 +422,10 @@ impl HttpResponse {
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::{HttpResponse, ContentType};
+  /// use crate::http_server::{HttpServerResponse, ContentType};
   /// use axum::http::StatusCode;
   ///
-  /// let response = HttpResponse::with_request_id(
+  /// let response = HttpServerResponse::with_request_id(
   ///     StatusCode::OK,
   ///     b"Hello, world!".to_vec(),
   ///     ContentType::Text,
@@ -457,7 +457,7 @@ impl HttpResponse {
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::HttpResponse;
+  /// use crate::http_server::HttpServerResponse;
   /// use axum::http::StatusCode;
   /// use serde::Serialize;
   ///
@@ -465,7 +465,7 @@ impl HttpResponse {
   /// struct Data { value: u32 }
   ///
   /// let data = Data { value: 42 };
-  /// let response = HttpResponse::json(StatusCode::OK, &data).unwrap();
+  /// let response = HttpServerResponse::json(StatusCode::OK, &data).unwrap();
   /// ```
   pub fn json<T: Serialize>(status: StatusCode, value: &T) -> Result<Self, serde_json::Error> {
     Self::json_with_request_id(status, value, String::new())
@@ -491,10 +491,10 @@ impl HttpResponse {
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::HttpResponse;
+  /// use crate::http_server::HttpServerResponse;
   /// use axum::http::StatusCode;
   ///
-  /// let response = HttpResponse::text(StatusCode::OK, "Hello, world!");
+  /// let response = HttpServerResponse::text(StatusCode::OK, "Hello, world!");
   /// ```
   pub fn text(status: StatusCode, text: &str) -> Self {
     Self::text_with_request_id(status, text, String::new())
@@ -515,11 +515,11 @@ impl HttpResponse {
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::HttpResponse;
+  /// use crate::http_server::HttpServerResponse;
   /// use axum::http::StatusCode;
   ///
   /// let data = vec![0u8, 1u8, 2u8];
-  /// let response = HttpResponse::binary(StatusCode::OK, data);
+  /// let response = HttpServerResponse::binary(StatusCode::OK, data);
   /// ```
   pub fn binary(status: StatusCode, body: Vec<u8>) -> Self {
     Self::binary_with_request_id(status, body, String::new())
@@ -535,10 +535,10 @@ impl HttpResponse {
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::HttpResponse;
+  /// use crate::http_server::HttpServerResponse;
   /// use axum::http::StatusCode;
   ///
-  /// let response = HttpResponse::error(
+  /// let response = HttpServerResponse::error(
   ///     StatusCode::INTERNAL_SERVER_ERROR,
   ///     "An error occurred",
   /// );
@@ -562,10 +562,10 @@ impl HttpResponse {
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::HttpResponse;
+  /// use crate::http_server::HttpServerResponse;
   /// use axum::http::{StatusCode, HeaderValue};
   ///
-  /// let mut response = HttpResponse::text(StatusCode::OK, "Hello");
+  /// let mut response = HttpServerResponse::text(StatusCode::OK, "Hello");
   /// response.add_header("x-custom-header", HeaderValue::from_static("value"));
   /// ```
   pub fn add_header(&mut self, name: &str, value: HeaderValue) {
@@ -579,10 +579,10 @@ impl HttpResponse {
   /// ## Example
   ///
   /// ```rust,no_run
-  /// use crate::http_server::HttpResponse;
+  /// use crate::http_server::HttpServerResponse;
   /// use axum::http::{StatusCode, HeaderValue};
   ///
-  /// let mut response = HttpResponse::text(StatusCode::OK, "Hello");
+  /// let mut response = HttpServerResponse::text(StatusCode::OK, "Hello");
   /// response.set_header("x-custom-header", HeaderValue::from_static("value"));
   /// ```
   pub fn set_header(&mut self, name: &str, value: HeaderValue) {
@@ -593,7 +593,7 @@ impl HttpResponse {
 
   /// Convert the response to an Axum response.
   ///
-  /// This converts the StreamWeave `HttpResponse` into an Axum `Response<Body>`.
+  /// This converts the StreamWeave `HttpServerResponse` into an Axum `Response<Body>`.
   pub fn to_axum_response(self) -> axum::response::Response<Body> {
     let mut response = axum::response::Response::builder()
       .status(self.status)
@@ -607,7 +607,7 @@ impl HttpResponse {
   }
 }
 
-impl Default for HttpResponse {
+impl Default for HttpServerResponse {
   fn default() -> Self {
     Self::new(StatusCode::OK, Vec::new(), ContentType::Text)
   }
@@ -622,10 +622,10 @@ impl Default for HttpResponse {
 /// ## Example
 ///
 /// ```rust,no_run
-/// use crate::http_server::{HttpRequestItem, HttpRequest};
+/// use crate::http_server::{HttpRequestItem, HttpServerRequest};
 ///
 /// // Request metadata
-/// let request = HttpRequest::from_axum_request(axum_request).await;
+/// let request = HttpServerRequest::from_axum_request(axum_request).await;
 /// let item = HttpRequestItem::Request(request);
 ///
 /// // Body chunk
@@ -637,7 +637,7 @@ impl Default for HttpResponse {
 pub enum HttpRequestItem {
   /// HTTP request with metadata (method, path, headers, etc.)
   /// When streaming, this is yielded first with body = None.
-  Request(HttpRequest),
+  Request(HttpServerRequest),
   /// A chunk of the request body (bytes).
   /// These are yielded after the Request item when streaming.
   BodyChunk(Vec<u8>),

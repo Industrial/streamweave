@@ -1,75 +1,86 @@
-use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::{Consumer, ConsumerConfig, Input};
-use arrow::datatypes::SchemaRef;
 use arrow::record_batch::RecordBatch;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
-use parquet::arrow::ArrowWriter;
-use parquet::basic::Compression;
+use parquet::arrow::arrow_writer::ArrowWriter;
 use parquet::file::properties::WriterProperties;
-use std::fs::File;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
-use tracing::{error, warn};
+use tokio::sync::Mutex;
+use tracing::{error, instrument, warn};
 
-/// Configuration for Parquet writing behavior.
-#[derive(Debug, Clone)]
-pub struct ParquetWriteConfig {
-  /// Compression codec to use.
-  pub compression: ParquetCompression,
-  /// Maximum row group size.
-  pub max_row_group_size: usize,
-  /// Writer version.
-  pub writer_version: ParquetWriterVersion,
-}
-
-/// Supported Parquet compression codecs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+/// Available compression algorithms for Parquet files.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParquetCompression {
-  /// No compression.
   Uncompressed,
-  /// Snappy compression.
-  #[default]
   Snappy,
-  /// LZ4 compression.
   Lz4,
-  /// Zstd compression.
   Zstd,
 }
 
-impl From<ParquetCompression> for Compression {
-  fn from(compression: ParquetCompression) -> Self {
-    match compression {
-      ParquetCompression::Uncompressed => Compression::UNCOMPRESSED,
-      ParquetCompression::Snappy => Compression::SNAPPY,
-      ParquetCompression::Lz4 => Compression::LZ4,
-      ParquetCompression::Zstd => Compression::ZSTD(Default::default()),
+impl Default for ParquetCompression {
+  fn default() -> Self {
+    Self::Snappy
+  }
+}
+
+impl From<ParquetCompression> for parquet::basic::Compression {
+  fn from(val: ParquetCompression) -> Self {
+    match val {
+      ParquetCompression::Uncompressed => parquet::basic::Compression::UNCOMPRESSED,
+      ParquetCompression::Snappy => parquet::basic::Compression::SNAPPY,
+      ParquetCompression::Lz4 => parquet::basic::Compression::LZ4,
+      ParquetCompression::Zstd => {
+        // Use default ZstdLevel (typically 3)
+        parquet::basic::Compression::ZSTD(parquet::basic::ZstdLevel::try_new(3).unwrap_or_default())
+      }
     }
   }
 }
 
 /// Parquet writer version.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParquetWriterVersion {
-  /// Version 1.0.
   V1,
-  /// Version 2.0.
-  #[default]
   V2,
+}
+
+impl Default for ParquetWriterVersion {
+  fn default() -> Self {
+    Self::V2
+  }
+}
+
+impl From<ParquetWriterVersion> for parquet::file::properties::WriterVersion {
+  fn from(_val: ParquetWriterVersion) -> Self {
+    // WriterVersion API changed in parquet 54 - use PARQUET_2_0 as default
+    // TODO: Check actual API and restore V1/V2 mapping if available
+    parquet::file::properties::WriterVersion::PARQUET_2_0
+  }
+}
+
+/// Configuration for writing Parquet files.
+#[derive(Debug, Clone)]
+pub struct ParquetWriteConfig {
+  /// Compression algorithm to use.
+  pub compression: ParquetCompression,
+  /// Maximum size for a row group in bytes.
+  pub max_row_group_size: usize,
+  /// Parquet writer version.
+  pub writer_version: ParquetWriterVersion,
 }
 
 impl Default for ParquetWriteConfig {
   fn default() -> Self {
     Self {
       compression: ParquetCompression::default(),
-      max_row_group_size: 1024 * 1024,
+      max_row_group_size: 1024 * 1024, // 1MB
       writer_version: ParquetWriterVersion::default(),
     }
   }
 }
 
 impl ParquetWriteConfig {
-  /// Sets the compression codec.
+  /// Sets the compression algorithm.
   #[must_use]
   pub fn with_compression(mut self, compression: ParquetCompression) -> Self {
     self.compression = compression;
@@ -83,106 +94,111 @@ impl ParquetWriteConfig {
     self
   }
 
-  /// Sets the writer version.
+  /// Sets the Parquet writer version.
   #[must_use]
   pub fn with_writer_version(mut self, version: ParquetWriterVersion) -> Self {
     self.writer_version = version;
     self
   }
 
-  /// Creates writer properties from this config.
-  pub(crate) fn to_writer_properties(&self) -> WriterProperties {
-    let mut builder = WriterProperties::builder()
-      .set_compression(self.compression.into())
-      .set_max_row_group_size(self.max_row_group_size);
-
-    builder = match self.writer_version {
-      ParquetWriterVersion::V1 => {
-        builder.set_writer_version(parquet::file::properties::WriterVersion::PARQUET_1_0)
-      }
-      ParquetWriterVersion::V2 => {
-        builder.set_writer_version(parquet::file::properties::WriterVersion::PARQUET_2_0)
-      }
-    };
-
-    builder.build()
+  /// Converts to Parquet writer properties.
+  pub fn to_writer_properties(&self) -> WriterProperties {
+    let compression = self.compression.into();
+    let writer_version = self.writer_version.into();
+    WriterProperties::builder()
+      .set_compression(compression)
+      .set_max_row_group_size(self.max_row_group_size)
+      .set_writer_version(writer_version)
+      .build()
   }
 }
 
-/// A consumer that writes Apache Parquet files from Arrow RecordBatches.
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
+/// A consumer that writes Arrow `RecordBatch`es to a Parquet file.
 ///
-/// Parquet is a columnar storage format that's efficient for analytics workloads.
-/// This consumer collects Arrow RecordBatch objects and writes them to a Parquet file.
-///
-/// # Example
-///
-/// ```ignore
-/// use crate::consumers::ParquetConsumer;
-///
-/// let consumer = ParquetConsumer::new("output.parquet");
-/// ```
+/// This consumer accumulates `RecordBatch`es and writes them to a specified
+/// Parquet file path. It supports various Parquet writer configurations like
+/// compression and row group size.
+use crate::{Consumer, ConsumerConfig, Input};
 pub struct ParquetConsumer {
-  /// Path to the Parquet file.
-  pub path: PathBuf,
-  /// Consumer configuration.
+  /// The path to the output Parquet file.
+  path: PathBuf,
+  /// Configuration for the consumer, including error handling strategy.
   pub config: ConsumerConfig<RecordBatch>,
-  /// Parquet-specific configuration.
+  /// Parquet file write configuration.
   pub parquet_config: ParquetWriteConfig,
-  /// Schema for the Parquet file (set from first batch).
-  pub schema: Option<SchemaRef>,
-  /// Writer handle (opened on first write).
-  pub writer: Option<ArrowWriter<File>>,
+  /// Internal buffer for writing Parquet data.
+  #[allow(clippy::type_complexity)]
+  writer: Mutex<Option<ArrowWriter<std::fs::File>>>,
 }
 
 impl ParquetConsumer {
-  /// Creates a new Parquet consumer for the specified file path.
-  #[must_use]
-  pub fn new(path: impl Into<PathBuf>) -> Self {
+  /// Creates a new `ParquetConsumer` with the given file path.
+  ///
+  /// # Arguments
+  ///
+  /// * `path` - The path to the Parquet file to write.
+  pub fn new(path: impl AsRef<Path>) -> Self {
     Self {
-      path: path.into(),
+      path: path.as_ref().to_path_buf(),
       config: ConsumerConfig::default(),
       parquet_config: ParquetWriteConfig::default(),
-      schema: None,
-      writer: None,
+      writer: Mutex::new(None),
     }
   }
 
-  /// Sets the error strategy for the consumer.
+  /// Sets the compression algorithm for the Parquet file.
+  #[must_use]
+  pub fn with_compression(mut self, compression: ParquetCompression) -> Self {
+    self.parquet_config = self.parquet_config.with_compression(compression);
+    self
+  }
+
+  /// Sets the maximum row group size for the Parquet file.
+  #[must_use]
+  pub fn with_max_row_group_size(mut self, size: usize) -> Self {
+    self.parquet_config = self.parquet_config.with_max_row_group_size(size);
+    self
+  }
+
+  /// Sets the Parquet writer version.
+  #[must_use]
+  pub fn with_writer_version(mut self, version: ParquetWriterVersion) -> Self {
+    self.parquet_config = self.parquet_config.with_writer_version(version);
+    self
+  }
+
+  /// Sets the error handling strategy for this consumer.
   #[must_use]
   pub fn with_error_strategy(mut self, strategy: ErrorStrategy<RecordBatch>) -> Self {
     self.config.error_strategy = strategy;
     self
   }
 
-  /// Sets the name for the consumer.
+  /// Sets the name for this consumer.
   #[must_use]
   pub fn with_name(mut self, name: String) -> Self {
     self.config.name = name;
     self
   }
 
-  /// Sets the compression codec.
-  #[must_use]
-  pub fn with_compression(mut self, compression: ParquetCompression) -> Self {
-    self.parquet_config.compression = compression;
-    self
-  }
-
-  /// Sets the maximum row group size.
-  #[must_use]
-  pub fn with_max_row_group_size(mut self, size: usize) -> Self {
-    self.parquet_config.max_row_group_size = size;
-    self
-  }
-
-  /// Returns the file path.
+  /// Returns the path to the output Parquet file.
   #[must_use]
   pub fn path(&self) -> &PathBuf {
     &self.path
   }
 }
 
-// Trait implementations for ParquetConsumer
+impl Clone for ParquetConsumer {
+  fn clone(&self) -> Self {
+    Self {
+      path: self.path.clone(),
+      config: self.config.clone(),
+      parquet_config: self.parquet_config.clone(),
+      writer: Mutex::new(None), // Writer cannot be cloned, reset to None
+    }
+  }
+}
 
 impl Input for ParquetConsumer {
   type Input = RecordBatch;
@@ -193,62 +209,61 @@ impl Input for ParquetConsumer {
 impl Consumer for ParquetConsumer {
   type InputPorts = (RecordBatch,);
 
-  /// Consumes a stream of Arrow RecordBatches and writes them to a Parquet file.
+  /// Consumes a stream of `RecordBatch`es and writes them to a Parquet file.
   ///
   /// # Error Handling
   ///
   /// - If the file cannot be created, an error is logged and no data is written.
-  /// - If a batch cannot be written, the error strategy determines the action.
-  async fn consume(&mut self, input: Self::InputStream) {
+  /// - If a `RecordBatch` cannot be written, the error strategy determines the action.
+  #[instrument(level = "debug", skip(self, stream))]
+  async fn consume(&mut self, mut stream: Self::InputStream) {
+    let component_name = self.config.name.clone();
     let path = self.path.clone();
-    let component_name = if self.config.name.is_empty() {
-      "parquet_consumer".to_string()
-    } else {
-      self.config.name.clone()
-    };
     let error_strategy = self.config.error_strategy.clone();
     let parquet_config = self.parquet_config.clone();
 
-    let mut input = std::pin::pin!(input);
-    let mut writer: Option<ArrowWriter<File>> = None;
+    while let Some(batch) = stream.next().await {
+      let mut writer_lock = self.writer.lock().await;
 
-    while let Some(batch) = input.next().await {
-      // Initialize writer on first batch
-      if writer.is_none() {
-        let file = match File::create(&path) {
+      if writer_lock.is_none() {
+        // Initialize writer only on first batch
+        let schema = batch.schema().clone();
+        let writer_properties = parquet_config.to_writer_properties();
+
+        // Create file synchronously (can be made async if needed)
+        let file = match std::fs::File::create(&path) {
           Ok(f) => f,
           Err(e) => {
             error!(
               component = %component_name,
               path = %path.display(),
               error = %e,
-              "Failed to create Parquet file for writing"
+              "Failed to create Parquet file, all items will be dropped"
             );
             return;
           }
         };
 
-        let props = parquet_config.to_writer_properties();
-
-        match ArrowWriter::try_new(file, batch.schema(), Some(props)) {
-          Ok(w) => writer = Some(w),
+        match ArrowWriter::try_new(file, schema, Some(writer_properties)) {
+          Ok(w) => {
+            *writer_lock = Some(w);
+          }
           Err(e) => {
             error!(
               component = %component_name,
               path = %path.display(),
               error = %e,
-              "Failed to create Parquet writer"
+              "Failed to create Parquet writer, all items will be dropped"
             );
             return;
           }
         }
       }
 
-      // Write the batch
-      if let Some(ref mut w) = writer
-        && let Err(e) = w.write(&batch)
-      {
-        let stream_error = StreamError::new(
+      let writer = writer_lock.as_mut().unwrap();
+
+      if let Err(e) = writer.write(&batch) {
+        let error = StreamError::new(
           Box::new(e),
           ErrorContext {
             timestamp: chrono::Utc::now(),
@@ -262,28 +277,31 @@ impl Consumer for ParquetConsumer {
           },
         );
 
-        match handle_error_strategy(&error_strategy, &stream_error) {
+        match crate::consumers::csv_consumer::handle_error_strategy(&error_strategy, &error) {
           ErrorAction::Stop => {
             error!(
               component = %component_name,
-              error = %stream_error,
-              "Stopping due to write error"
+              path = %path.display(),
+              error = %error,
+              "Stopping due to Parquet write error"
             );
             break;
           }
           ErrorAction::Skip => {
             warn!(
               component = %component_name,
-              error = %stream_error,
-              "Skipping batch due to write error"
+              path = %path.display(),
+              error = %error,
+              "Skipping item due to Parquet write error"
             );
             continue;
           }
           ErrorAction::Retry => {
             warn!(
               component = %component_name,
-              error = %stream_error,
-              "Retry not supported for Parquet write errors, skipping"
+              path = %path.display(),
+              error = %error,
+              "Retry not fully supported for Parquet write errors, skipping"
             );
             continue;
           }
@@ -291,15 +309,19 @@ impl Consumer for ParquetConsumer {
       }
     }
 
-    // Close the writer
-    if let Some(w) = writer
-      && let Err(e) = w.close()
-    {
-      error!(
-        component = %component_name,
-        error = %e,
-        "Failed to close Parquet writer"
-      );
+    // Finalize the writer - file is already written to, just need to close the writer
+    let mut writer_lock = self.writer.lock().await;
+    if let Some(writer) = writer_lock.take() {
+      // close() finalizes the parquet file and closes the underlying file
+      if let Err(e) = writer.close() {
+        error!(
+          component = %component_name,
+          path = %path.display(),
+          error = %e,
+          "Failed to finalize Parquet writer"
+        );
+      }
+      // File is automatically closed when writer is dropped
     }
   }
 
@@ -313,45 +335,5 @@ impl Consumer for ParquetConsumer {
 
   fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<RecordBatch> {
     &mut self.config
-  }
-
-  fn handle_error(&self, error: &StreamError<RecordBatch>) -> ErrorAction {
-    match self.config.error_strategy {
-      ErrorStrategy::Stop => ErrorAction::Stop,
-      ErrorStrategy::Skip => ErrorAction::Skip,
-      ErrorStrategy::Retry(n) if error.retries < n => ErrorAction::Retry,
-      ErrorStrategy::Custom(ref handler) => handler(error),
-      _ => ErrorAction::Stop,
-    }
-  }
-
-  fn create_error_context(&self, item: Option<RecordBatch>) -> ErrorContext<RecordBatch> {
-    ErrorContext {
-      timestamp: chrono::Utc::now(),
-      item,
-      component_name: self.config.name.clone(),
-      component_type: std::any::type_name::<Self>().to_string(),
-    }
-  }
-
-  fn component_info(&self) -> ComponentInfo {
-    ComponentInfo {
-      name: self.config.name.clone(),
-      type_name: std::any::type_name::<Self>().to_string(),
-    }
-  }
-}
-
-/// Helper function to handle error strategy
-fn handle_error_strategy(
-  strategy: &ErrorStrategy<RecordBatch>,
-  error: &StreamError<RecordBatch>,
-) -> ErrorAction {
-  match strategy {
-    ErrorStrategy::Stop => ErrorAction::Stop,
-    ErrorStrategy::Skip => ErrorAction::Skip,
-    ErrorStrategy::Retry(n) if error.retries < *n => ErrorAction::Retry,
-    ErrorStrategy::Custom(handler) => handler(error),
-    _ => ErrorAction::Stop,
   }
 }

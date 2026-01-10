@@ -16,7 +16,7 @@ use std::pin::Pin;
 /// # Example
 ///
 /// ```rust
-/// use streamweave::transformers::StringMatchTransformer;
+/// use crate::transformers::StringMatchTransformer;
 ///
 /// let transformer = StringMatchTransformer::new(r"^\d+$").unwrap();
 /// // Input: ["123", "abc", "456"]

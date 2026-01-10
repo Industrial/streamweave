@@ -162,7 +162,7 @@ impl MetricsHandle {
   ///
   /// A reference to the throughput metrics.
   #[must_use]
-  pub fn throughput(&self) -> &crate::types::ThroughputMetrics {
+  pub fn throughput(&self) -> &crate::metrics::types::ThroughputMetrics {
     self.metrics.throughput()
   }
 
@@ -172,7 +172,7 @@ impl MetricsHandle {
   ///
   /// A reference to the latency metrics.
   #[must_use]
-  pub fn latency(&self) -> &crate::types::LatencyMetrics {
+  pub fn latency(&self) -> &crate::metrics::types::LatencyMetrics {
     self.metrics.latency()
   }
 
@@ -182,7 +182,7 @@ impl MetricsHandle {
   ///
   /// A reference to the error metrics.
   #[must_use]
-  pub fn errors(&self) -> &crate::types::ErrorMetrics {
+  pub fn errors(&self) -> &crate::metrics::types::ErrorMetrics {
     self.metrics.errors()
   }
 
@@ -212,7 +212,7 @@ impl MetricsHandle {
   ///
   /// The current backpressure level.
   #[must_use]
-  pub fn backpressure(&self) -> crate::types::BackpressureLevel {
+  pub fn backpressure(&self) -> crate::metrics::types::BackpressureLevel {
     self.metrics.backpressure()
   }
 }

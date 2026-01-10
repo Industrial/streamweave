@@ -1,71 +1,75 @@
-//! Communication protocol for distributed stream processing.
-//!
-//! Defines message types, protocol versions, and communication patterns
-//! between coordinator and worker nodes.
-
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
-/// Protocol version for backward compatibility.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+/// Protocol version.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProtocolVersion {
-  /// Version 1.0 - Initial distributed processing protocol.
-  #[default]
+  /// Version 1 of the protocol.
   V1,
 }
 
-/// ProtocolMessage types for coordinator-worker communication.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+impl Default for ProtocolVersion {
+  fn default() -> Self {
+    Self::V1
+  }
+}
+
+/// Message types for the distributed protocol.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MessageType {
-  /// Heartbeat from worker to coordinator.
+  /// Heartbeat message.
   Heartbeat,
-  /// Task assignment from coordinator to worker.
+  /// Task assignment message.
   TaskAssignment,
-  /// Task completion notification from worker to coordinator.
+  /// Task completion message.
   TaskComplete,
-  /// Task failure notification from worker to coordinator.
+  /// Task failure message.
   TaskFailure,
-  /// Request for state checkpoint.
+  /// Checkpoint request message.
   CheckpointRequest,
-  /// State checkpoint data.
+  /// Checkpoint response message.
   CheckpointResponse,
-  /// Request to redistribute partitions.
+  /// Rebalance request message.
   RebalanceRequest,
-  /// Acknowledgment of rebalance.
+  /// Rebalance acknowledgment message.
   RebalanceAck,
-  /// Worker registration request.
+  /// Worker registration message.
   WorkerRegister,
-  /// Worker registration response.
+  /// Worker registered confirmation message.
   WorkerRegistered,
-  /// Partition data transfer.
+  /// Partition data message.
   PartitionData,
 }
 
-/// Protocol message envelope.
+/// Protocol message for distributed communication.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProtocolMessage {
-  /// Unique message identifier.
-  pub id: String,
-  /// ProtocolMessage type.
+  /// Message type.
   pub message_type: MessageType,
-  /// Timestamp when message was created.
-  pub timestamp: DateTime<Utc>,
+  /// Message payload (serialized bytes).
+  pub payload: Vec<u8>,
+  /// Source identifier.
+  pub source: String,
+  /// Destination identifier.
+  pub destination: String,
   /// Protocol version.
   pub version: ProtocolVersion,
-  /// Payload (serialized message-specific data).
-  pub payload: Vec<u8>,
-  /// Source node ID.
-  pub source: String,
-  /// Destination node ID.
-  pub destination: String,
-  /// Optional correlation ID for request/response pairs.
+  /// Optional correlation ID for request/response matching.
   pub correlation_id: Option<String>,
 }
 
 impl ProtocolMessage {
   /// Creates a new protocol message.
-  #[must_use]
+  ///
+  /// # Arguments
+  ///
+  /// * `message_type` - The type of message.
+  /// * `payload` - The message payload.
+  /// * `source` - The source identifier.
+  /// * `destination` - The destination identifier.
+  ///
+  /// # Returns
+  ///
+  /// A new `ProtocolMessage` instance.
   pub fn new(
     message_type: MessageType,
     payload: Vec<u8>,
@@ -73,22 +77,24 @@ impl ProtocolMessage {
     destination: String,
   ) -> Self {
     Self {
-      id: format!(
-        "msg-{}",
-        chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
-      ),
       message_type,
-      timestamp: Utc::now(),
-      version: ProtocolVersion::default(),
       payload,
       source,
       destination,
+      version: ProtocolVersion::default(),
       correlation_id: None,
     }
   }
 
   /// Sets the correlation ID for request/response matching.
-  #[must_use]
+  ///
+  /// # Arguments
+  ///
+  /// * `id` - The correlation ID.
+  ///
+  /// # Returns
+  ///
+  /// `self` for method chaining.
   pub fn with_correlation_id(mut self, id: String) -> Self {
     self.correlation_id = Some(id);
     self
@@ -96,38 +102,24 @@ impl ProtocolMessage {
 }
 
 /// Protocol-related errors.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum ProtocolError {
-  /// ProtocolMessage serialization failed.
-  Serialization(String),
-  /// ProtocolMessage deserialization failed.
-  Deserialization(String),
-  /// Unsupported protocol version.
-  UnsupportedVersion(ProtocolVersion),
-  /// Invalid message format.
-  InvalidMessage(String),
-  /// Communication timeout.
+  /// Protocol timeout.
+  #[error("Protocol timeout")]
   Timeout,
-  /// Connection error.
-  Connection(String),
+  /// Invalid message format.
+  #[error("Invalid message format: {0}")]
+  InvalidFormat(String),
+  /// Unsupported protocol version.
+  #[error("Unsupported protocol version")]
+  UnsupportedVersion,
+  /// Serialization error.
+  #[error("Serialization error: {0}")]
+  Serialization(String),
+  /// Deserialization error.
+  #[error("Deserialization error: {0}")]
+  Deserialization(String),
   /// Other protocol error.
+  #[error("Protocol error: {0}")]
   Other(String),
 }
-
-impl fmt::Display for ProtocolError {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      ProtocolError::Serialization(msg) => write!(f, "Serialization error: {}", msg),
-      ProtocolError::Deserialization(msg) => write!(f, "Deserialization error: {}", msg),
-      ProtocolError::UnsupportedVersion(v) => {
-        write!(f, "Unsupported protocol version: {:?}", v)
-      }
-      ProtocolError::InvalidMessage(msg) => write!(f, "Invalid message: {}", msg),
-      ProtocolError::Timeout => write!(f, "Protocol timeout"),
-      ProtocolError::Connection(msg) => write!(f, "Connection error: {}", msg),
-      ProtocolError::Other(msg) => write!(f, "Protocol error: {}", msg),
-    }
-  }
-}
-
-impl std::error::Error for ProtocolError {}

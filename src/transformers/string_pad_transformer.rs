@@ -24,7 +24,7 @@ pub enum PadDirection {
 /// # Example
 ///
 /// ```rust
-/// use streamweave::transformers::{StringPadTransformer, PadDirection};
+/// use crate::transformers::{StringPadTransformer, PadDirection};
 ///
 /// let transformer = StringPadTransformer::new(10, ' ', PadDirection::Right);
 /// // Input: ["hello"]

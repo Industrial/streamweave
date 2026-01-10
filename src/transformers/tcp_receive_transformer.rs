@@ -26,7 +26,7 @@ use tokio::time::timeout;
 /// # Example
 ///
 /// ```rust
-/// use streamweave::transformers::TcpReceiveTransformer;
+/// use crate::transformers::TcpReceiveTransformer;
 ///
 /// let transformer = TcpReceiveTransformer::new("127.0.0.1:8080".to_string());
 /// // Connects and reads data, outputs: ["line1", "line2", ...]

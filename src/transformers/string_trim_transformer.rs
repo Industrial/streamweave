@@ -26,7 +26,7 @@ pub enum TrimMode {
 /// # Example
 ///
 /// ```rust
-/// use streamweave::transformers::{StringTrimTransformer, TrimMode};
+/// use crate::transformers::{StringTrimTransformer, TrimMode};
 ///
 /// let transformer = StringTrimTransformer::new(TrimMode::Both);
 /// // Input: ["  hello world  "]

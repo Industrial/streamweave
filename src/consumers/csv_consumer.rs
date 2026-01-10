@@ -66,7 +66,6 @@ impl CsvWriteConfig {
 ///
 /// ```ignore
 /// use streamweave_csv_consumer::CsvConsumer;
-/// use serde::Serialize;
 ///
 /// #[derive(Serialize)]
 /// struct Record {
@@ -319,7 +318,10 @@ where
 }
 
 /// Helper function to handle error strategy
-fn handle_error_strategy<T>(strategy: &ErrorStrategy<T>, error: &StreamError<T>) -> ErrorAction
+pub(crate) fn handle_error_strategy<T>(
+  strategy: &ErrorStrategy<T>,
+  error: &StreamError<T>,
+) -> ErrorAction
 where
   T: std::fmt::Debug + Clone + Send + Sync,
 {

@@ -9,7 +9,7 @@ use crate::graph::http_server::error::{is_development_mode, map_to_http_error};
 use crate::graph::http_server::graph_server::HttpGraphServer;
 use crate::graph::http_server::nodes::consumer::HttpResponseConsumer;
 use crate::graph::http_server::nodes::producer::{HttpRequestProducer, HttpRequestProducerConfig};
-use crate::graph::http_server::types::{HttpRequest, HttpResponse};
+use crate::graph::http_server::types::{HttpServerRequest, HttpServerResponse};
 use crate::pipeline::PipelineBuilder;
 use axum::http::StatusCode;
 use axum::{body::Body, extract::Request, response::Response};
@@ -27,19 +27,19 @@ use tracing::{error, warn};
 ///
 /// ```rust,no_run
 /// use crate::http_server::create_simple_handler;
-/// use crate::http_server::{HttpRequest, HttpResponse};
+/// use crate::http_server::{HttpServerRequest, HttpServerResponse};
 /// use axum::http::StatusCode;
 /// use axum::{Router, routing::get};
 ///
 /// let app = Router::new()
-///     .route("/api/echo", get(create_simple_handler(|req: HttpRequest| {
-///         HttpResponse::text(StatusCode::OK, &format!("Echo: {}", req.path))
+///     .route("/api/echo", get(create_simple_handler(|req: HttpServerRequest| {
+///         HttpServerResponse::text(StatusCode::OK, &format!("Echo: {}", req.path))
 ///     })));
 /// ```
 ///
 /// ## Arguments
 ///
-/// * `transform_fn` - A function that transforms an HttpRequest into an HttpResponse
+/// * `transform_fn` - A function that transforms an HttpServerRequest into an HttpServerResponse
 ///
 /// ## Returns
 ///
@@ -48,7 +48,7 @@ pub fn create_simple_handler<F>(
   transform_fn: F,
 ) -> impl Fn(Request) -> std::pin::Pin<Box<dyn std::future::Future<Output = Response<Body>> + Send>>
 where
-  F: Fn(HttpRequest) -> HttpResponse + Send + Sync + Clone + 'static,
+  F: Fn(HttpServerRequest) -> HttpServerResponse + Send + Sync + Clone + 'static,
 {
   let transform_fn = Arc::new(transform_fn);
   move |request: Request| {
@@ -60,7 +60,7 @@ where
 /// Internal function that handles a simple request transformation.
 async fn handle_simple_request<F>(axum_request: Request, transform_fn: &F) -> Response<Body>
 where
-  F: Fn(HttpRequest) -> HttpResponse,
+  F: Fn(HttpServerRequest) -> HttpServerResponse,
 {
   // Create HTTP request producer
   let producer = HttpRequestProducer::from_axum_request(
@@ -84,7 +84,7 @@ where
     // No request available
     warn!("No request available from producer");
     let error_response = map_to_http_error(
-      &crate::error::StreamError::<HttpRequest>::new(
+      &crate::error::StreamError::<HttpServerRequest>::new(
         Box::new(std::io::Error::other("Failed to extract request")),
         crate::error::ErrorContext {
           timestamp: Utc::now(),
@@ -99,8 +99,10 @@ where
       ),
       is_development_mode(),
     );
-    HttpResponse::json(StatusCode::BAD_REQUEST, &error_response)
-      .unwrap_or_else(|_| HttpResponse::error(StatusCode::BAD_REQUEST, "Failed to extract request"))
+    HttpServerResponse::json(StatusCode::BAD_REQUEST, &error_response)
+      .unwrap_or_else(|_| {
+        HttpServerResponse::error(StatusCode::BAD_REQUEST, "Failed to extract request")
+      })
       .to_axum_response()
   }
 }
@@ -108,22 +110,22 @@ where
 /// Creates a handler that processes requests through a full StreamWeave pipeline.
 ///
 /// This function builds a complete pipeline with HttpRequestProducer, a transformer,
-/// and HttpResponseConsumer, then runs it. The transformer should convert HttpRequest
-/// to HttpResponse.
+/// and HttpResponseConsumer, then runs it. The transformer should convert HttpServerRequest
+/// to HttpServerResponse.
 ///
 /// ## Example
 ///
 /// ```rust,no_run
 /// use crate::http_server::create_pipeline_handler;
 /// use crate::transformers::MapTransformer;
-/// use crate::http_server::{HttpRequest, HttpResponse};
+/// use crate::http_server::{HttpServerRequest, HttpServerResponse};
 /// use axum::http::StatusCode;
 /// use axum::{Router, routing::get};
 ///
 /// let app = Router::new()
 ///     .route("/api/process", get(create_pipeline_handler(|| {
-///         MapTransformer::new(|req: HttpRequest| {
-///             HttpResponse::text(StatusCode::OK, "Processed")
+///         MapTransformer::new(|req: HttpServerRequest| {
+///             HttpServerResponse::text(StatusCode::OK, "Processed")
 ///         })
 ///     })));
 /// ```
@@ -216,7 +218,7 @@ where
     Err(e) => {
       error!(error = ?e, "Pipeline execution failed");
       let error_response = map_to_http_error(
-        &crate::error::StreamError::<HttpResponse>::new(
+        &crate::error::StreamError::<HttpServerResponse>::new(
           Box::new(std::io::Error::other(format!(
             "Pipeline execution failed: {:?}",
             e
@@ -234,9 +236,9 @@ where
         ),
         is_development_mode(),
       );
-      HttpResponse::json(StatusCode::INTERNAL_SERVER_ERROR, &error_response)
+      HttpServerResponse::json(StatusCode::INTERNAL_SERVER_ERROR, &error_response)
         .unwrap_or_else(|_| {
-          HttpResponse::error(
+          HttpServerResponse::error(
             StatusCode::INTERNAL_SERVER_ERROR,
             &format!("Pipeline execution failed: {:?}", e),
           )
@@ -256,7 +258,7 @@ where
 /// ```rust,no_run
 /// use crate::http_server::{HttpGraphServer, HttpGraphServerConfig};
 /// use crate::http_server::create_graph_handler;
-/// use crate::graph::graph::GraphBuilder;
+/// use crate::graph::GraphBuilder;
 /// use axum::{Router, routing::get};
 ///
 /// // Build your graph...

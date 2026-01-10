@@ -1,231 +1,130 @@
-//! Connection management for network communication.
-
-use super::protocol::{ProtocolError, ProtocolMessage};
-use serde::{Deserialize, Serialize};
+use std::io;
 use std::net::SocketAddr;
 use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::io::AsyncWriteExt;
+use tokio::net::TcpStream;
 use tokio::time::timeout;
 
-/// Connection-related errors.
-#[derive(Debug, thiserror::Error)]
-pub enum ConnectionError {
-  /// Network I/O error.
-  #[error("Network error: {0}")]
-  Io(#[from] std::io::Error),
-
-  /// Protocol error during communication.
-  #[error("Protocol error: {0}")]
-  Protocol(#[from] ProtocolError),
-
-  /// Connection timeout.
-  #[error("Connection timeout")]
-  Timeout,
-
-  /// Connection closed unexpectedly.
-  #[error("Connection closed")]
-  Closed,
-
-  /// Invalid address.
-  #[error("Invalid address: {0}")]
-  InvalidAddress(String),
-
-  /// Serialization/deserialization error.
-  #[error("Serialization error: {0}")]
-  Serialization(String),
-
-  /// Other connection error.
-  #[error("Connection error: {0}")]
-  Other(String),
-}
-
-/// Connection state.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// Connection state for distributed network connections.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectionState {
   /// Connection is being established.
   Connecting,
   /// Connection is active and ready.
   Connected,
-  /// Connection is closing.
+  /// Connection is being closed.
   Closing,
   /// Connection is closed.
   Closed,
-  /// Connection is in error state.
+  /// Connection is in an error state.
   Error,
+}
+
+/// Error type for connection-related errors.
+#[derive(Debug, thiserror::Error)]
+pub enum ConnectionError {
+  /// I/O error.
+  #[error("Network error: {0}")]
+  Io(#[from] io::Error),
+  /// Protocol error.
+  #[error("Protocol error: {0}")]
+  Protocol(#[from] crate::distributed::protocol::ProtocolError),
+  /// Connection timeout.
+  #[error("Connection timeout")]
+  Timeout,
+  /// Connection closed.
+  #[error("Connection closed")]
+  Closed,
+  /// Invalid address.
+  #[error("Invalid address: {0}")]
+  InvalidAddress(String),
+  /// Serialization error.
+  #[error("Serialization error: {0}")]
+  Serialization(String),
+  /// Other connection error.
+  #[error("Connection error: {0}")]
+  Other(String),
 }
 
 /// A network connection for distributed processing.
 pub struct Connection {
-  /// Remote address.
-  pub remote_addr: SocketAddr,
-  /// Connection state.
-  pub state: ConnectionState,
-  /// Underlying TCP stream.
+  /// The underlying TCP stream.
   stream: Option<TcpStream>,
-  /// Connection timeout.
-  timeout: Duration,
+  /// Current connection state.
+  state: ConnectionState,
+  /// Remote address.
+  addr: SocketAddr,
 }
 
 impl Connection {
-  /// Creates a new outbound connection to the given address.
+  /// Creates a new connection by connecting to the given address.
+  ///
+  /// # Arguments
+  ///
+  /// * `addr` - The address to connect to.
+  /// * `timeout_duration` - The connection timeout.
+  ///
+  /// # Returns
+  ///
+  /// A `Result` containing the connection or an error.
   pub async fn connect(
     addr: SocketAddr,
     timeout_duration: Duration,
   ) -> Result<Self, ConnectionError> {
-    let connection_future = TcpStream::connect(addr);
-    let stream = timeout(timeout_duration, connection_future)
+    let stream = timeout(timeout_duration, TcpStream::connect(addr))
       .await
       .map_err(|_| ConnectionError::Timeout)?
       .map_err(ConnectionError::Io)?;
 
     Ok(Self {
-      remote_addr: addr,
-      state: ConnectionState::Connected,
       stream: Some(stream),
-      timeout: timeout_duration,
+      state: ConnectionState::Connected,
+      addr,
     })
   }
 
-  /// Creates a connection from an accepted TCP stream.
-  pub fn from_stream(stream: TcpStream, remote_addr: SocketAddr) -> Self {
-    Self {
-      remote_addr,
-      state: ConnectionState::Connected,
-      stream: Some(stream),
-      timeout: Duration::from_secs(30),
-    }
+  /// Checks if the connection is currently connected.
+  ///
+  /// # Returns
+  ///
+  /// `true` if the connection is active, `false` otherwise.
+  pub fn is_connected(&self) -> bool {
+    self.state == ConnectionState::Connected && self.stream.is_some()
   }
 
-  /// Sends a protocol message over this connection.
-  pub async fn send(&mut self, message: &ProtocolMessage) -> Result<(), ConnectionError> {
-    let stream = self.stream.as_mut().ok_or(ConnectionError::Closed)?;
-
-    // Serialize message to JSON
-    let serialized =
-      serde_json::to_vec(message).map_err(|e| ConnectionError::Serialization(e.to_string()))?;
-
-    // Send length prefix
-    let length = serialized.len() as u32;
-    stream
-      .write_u32(length)
-      .await
-      .map_err(ConnectionError::Io)?;
-
-    // Send message data
-    stream
-      .write_all(&serialized)
-      .await
-      .map_err(ConnectionError::Io)?;
-    stream.flush().await.map_err(ConnectionError::Io)?;
-
-    Ok(())
-  }
-
-  /// Receives a protocol message from this connection.
-  pub async fn receive(&mut self) -> Result<ProtocolMessage, ConnectionError> {
-    let stream = self.stream.as_mut().ok_or(ConnectionError::Closed)?;
-
-    // Read length prefix
-    let length = timeout(self.timeout, stream.read_u32())
-      .await
-      .map_err(|_| ConnectionError::Timeout)?
-      .map_err(ConnectionError::Io)? as usize;
-
-    // Read message data
-    let mut buffer = vec![0u8; length];
-    timeout(self.timeout, stream.read_exact(&mut buffer))
-      .await
-      .map_err(|_| ConnectionError::Timeout)?
-      .map_err(ConnectionError::Io)?;
-
-    // Deserialize message
-    let message: ProtocolMessage =
-      serde_json::from_slice(&buffer).map_err(|e| ConnectionError::Serialization(e.to_string()))?;
-
-    Ok(message)
-  }
-
-  /// Closes the connection gracefully.
+  /// Closes the connection.
+  ///
+  /// # Returns
+  ///
+  /// A `Result` indicating success or failure.
   pub async fn close(&mut self) -> Result<(), ConnectionError> {
     self.state = ConnectionState::Closing;
     if let Some(mut stream) = self.stream.take() {
-      let _ = stream.shutdown().await;
+      // Shutdown the write side of the connection
+      // The stream will be dropped after this, which closes it
+      AsyncWriteExt::shutdown(&mut stream)
+        .await
+        .map_err(ConnectionError::Io)?;
     }
     self.state = ConnectionState::Closed;
     Ok(())
   }
 
-  /// Checks if the connection is active.
-  #[must_use]
-  pub fn is_connected(&self) -> bool {
-    matches!(self.state, ConnectionState::Connected)
-  }
-}
-
-/// Trait for managing connections.
-#[async_trait::async_trait]
-pub trait ConnectionManager: Send + Sync {
-  /// Establishes a connection to the given address.
-  async fn connect(&mut self, addr: SocketAddr) -> Result<Connection, ConnectionError>;
-
-  /// Accepts an incoming connection.
-  async fn accept(&mut self) -> Result<Connection, ConnectionError>;
-
-  /// Closes all connections.
-  async fn close_all(&mut self) -> Result<(), ConnectionError>;
-}
-
-/// Simple connection manager implementation.
-pub struct SimpleConnectionManager {
-  listener: Option<TcpListener>,
-  bind_addr: Option<SocketAddr>,
-}
-
-impl SimpleConnectionManager {
-  /// Creates a new connection manager.
-  #[must_use]
-  pub fn new() -> Self {
-    Self {
-      listener: None,
-      bind_addr: None,
-    }
+  /// Returns the remote address.
+  ///
+  /// # Returns
+  ///
+  /// The socket address of the remote peer.
+  pub fn addr(&self) -> SocketAddr {
+    self.addr
   }
 
-  /// Binds to the given address for accepting connections.
-  pub async fn bind(&mut self, addr: SocketAddr) -> Result<(), ConnectionError> {
-    let listener = TcpListener::bind(addr).await.map_err(ConnectionError::Io)?;
-    self.bind_addr = Some(addr);
-    self.listener = Some(listener);
-    Ok(())
-  }
-}
-
-impl Default for SimpleConnectionManager {
-  fn default() -> Self {
-    Self::new()
-  }
-}
-
-#[async_trait::async_trait]
-impl ConnectionManager for SimpleConnectionManager {
-  async fn connect(&mut self, addr: SocketAddr) -> Result<Connection, ConnectionError> {
-    Connection::connect(addr, Duration::from_secs(30)).await
-  }
-
-  async fn accept(&mut self) -> Result<Connection, ConnectionError> {
-    let listener = self.listener.as_ref().ok_or_else(|| {
-      ConnectionError::Other("Listener not bound. Call bind() first.".to_string())
-    })?;
-
-    let (stream, addr) = listener.accept().await.map_err(ConnectionError::Io)?;
-    Ok(Connection::from_stream(stream, addr))
-  }
-
-  async fn close_all(&mut self) -> Result<(), ConnectionError> {
-    // Simple implementation - just clear the listener
-    self.listener = None;
-    self.bind_addr = None;
-    Ok(())
+  /// Returns the current connection state.
+  ///
+  /// # Returns
+  ///
+  /// The current state of the connection.
+  pub fn state(&self) -> ConnectionState {
+    self.state
   }
 }

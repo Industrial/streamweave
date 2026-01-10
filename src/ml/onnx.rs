@@ -554,31 +554,3 @@ impl<T: ExecutionProvider + Clone> InferenceBackend for OnnxBackendGeneric<T> {
     self.session.try_read().is_ok_and(|guard| guard.is_some())
   }
 }
-
-#[cfg(test)]
-mod tests {
-
-  // Note: These tests are disabled as OnnxBackend is now generic over ExecutionProvider
-  // and requires a concrete type parameter. Tests should be updated to use specific
-  // execution provider types (e.g., CpuExecutionProvider) when available.
-  // #[tokio::test]
-  // async fn test_onnx_backend_new() {
-  //   let backend = OnnxBackend::new();
-  //   assert!(backend.is_ok());
-  // }
-
-  // #[tokio::test]
-  // async fn test_onnx_backend_is_loaded() {
-  //   let backend = OnnxBackend::new().unwrap();
-  //   assert!(!backend.is_loaded());
-  // }
-
-  #[tokio::test]
-  async fn test_onnx_backend_optimization_level() {
-    // Note: This test is disabled as GraphOptimizationLevel API may vary by ort version
-    // The optimization level functionality is tested through integration tests
-  }
-
-  // Note: Additional tests would require actual ONNX model files
-  // which are not included in the repository
-}

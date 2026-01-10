@@ -15,7 +15,7 @@ use std::pin::Pin;
 /// # Example
 ///
 /// ```rust
-/// use streamweave::transformers::StringJoinTransformer;
+/// use crate::transformers::StringJoinTransformer;
 ///
 /// let transformer = StringJoinTransformer::new(",");
 /// // Input: [vec!["a", "b", "c"], vec!["x", "y"]]

@@ -96,3 +96,5 @@ impl Transformer for ArrayConcat {
     self.transformer.component_info()
   }
 }
+
+// Tests for ArrayConcat node

@@ -1,5 +1,6 @@
 //! Checkpointing for state recovery.
 
+use chrono;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -69,19 +70,8 @@ pub trait CheckpointStore: Send + Sync {
   async fn delete(&self, checkpoint_id: &str) -> Result<(), CheckpointError>;
 }
 
-/// In-memory checkpoint store (for testing).
 pub struct InMemoryCheckpointStore {
-  checkpoints: tokio::sync::RwLock<HashMap<String, Checkpoint>>,
-}
-
-impl InMemoryCheckpointStore {
-  /// Creates a new in-memory checkpoint store.
-  #[must_use]
-  pub fn new() -> Self {
-    Self {
-      checkpoints: tokio::sync::RwLock::new(HashMap::new()),
-    }
-  }
+  checkpoints: tokio::sync::Mutex<HashMap<String, Checkpoint>>,
 }
 
 impl Default for InMemoryCheckpointStore {
@@ -90,10 +80,18 @@ impl Default for InMemoryCheckpointStore {
   }
 }
 
+impl InMemoryCheckpointStore {
+  pub fn new() -> Self {
+    Self {
+      checkpoints: tokio::sync::Mutex::new(HashMap::new()),
+    }
+  }
+}
+
 #[async_trait::async_trait]
 impl CheckpointStore for InMemoryCheckpointStore {
   async fn save(&self, checkpoint: &Checkpoint) -> Result<(), CheckpointError> {
-    let mut checkpoints = self.checkpoints.write().await;
+    let mut checkpoints = self.checkpoints.lock().await;
     checkpoints.insert(checkpoint.checkpoint_id.clone(), checkpoint.clone());
     Ok(())
   }
@@ -103,18 +101,17 @@ impl CheckpointStore for InMemoryCheckpointStore {
     worker_id: &str,
     partition_id: usize,
   ) -> Result<Option<Checkpoint>, CheckpointError> {
-    let checkpoints = self.checkpoints.read().await;
-    let matching: Vec<&Checkpoint> = checkpoints
+    let checkpoints = self.checkpoints.lock().await;
+    let latest = checkpoints
       .values()
       .filter(|c| c.worker_id == worker_id && c.partition_id == partition_id)
-      .collect();
-
-    // Return the latest checkpoint
-    Ok(matching.into_iter().max_by_key(|c| c.timestamp).cloned())
+      .max_by_key(|c| c.timestamp)
+      .cloned();
+    Ok(latest)
   }
 
   async fn load(&self, checkpoint_id: &str) -> Result<Checkpoint, CheckpointError> {
-    let checkpoints = self.checkpoints.read().await;
+    let checkpoints = self.checkpoints.lock().await;
     checkpoints
       .get(checkpoint_id)
       .cloned()
@@ -122,19 +119,22 @@ impl CheckpointStore for InMemoryCheckpointStore {
   }
 
   async fn list(&self, worker_id: &str) -> Result<Vec<Checkpoint>, CheckpointError> {
-    let checkpoints = self.checkpoints.read().await;
-    Ok(
-      checkpoints
-        .values()
-        .filter(|c| c.worker_id == worker_id)
-        .cloned()
-        .collect(),
-    )
+    let checkpoints = self.checkpoints.lock().await;
+    let mut worker_checkpoints: Vec<Checkpoint> = checkpoints
+      .values()
+      .filter(|c| c.worker_id == worker_id)
+      .cloned()
+      .collect();
+    worker_checkpoints.sort_by_key(|c| c.timestamp);
+    Ok(worker_checkpoints)
   }
 
   async fn delete(&self, checkpoint_id: &str) -> Result<(), CheckpointError> {
-    let mut checkpoints = self.checkpoints.write().await;
-    checkpoints.remove(checkpoint_id);
-    Ok(())
+    let mut checkpoints = self.checkpoints.lock().await;
+    if checkpoints.remove(checkpoint_id).is_some() {
+      Ok(())
+    } else {
+      Err(CheckpointError::NotFound(checkpoint_id.to_string()))
+    }
   }
 }

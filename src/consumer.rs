@@ -1,5 +1,5 @@
+use crate::Input;
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::input::Input;
 use crate::port::PortList;
 use async_trait::async_trait;
 
@@ -10,7 +10,7 @@ use async_trait::async_trait;
 /// explicitly override it.
 pub trait ConsumerPorts: Consumer
 where
-  Self::Input: std::fmt::Debug + Clone + Send + Sync,
+  Self::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   /// The default input port tuple type (single port with the consumer's input type).
   type DefaultInputPorts: PortList;
@@ -32,7 +32,7 @@ where
 ///
 /// The configuration works with `Message<T>` where `M` is the message type.
 #[derive(Debug, Clone)]
-pub struct ConsumerConfig<M: std::fmt::Debug + Clone + Send + Sync> {
+pub struct ConsumerConfig<M: std::fmt::Debug + Clone + Send + Sync + 'static> {
   /// The error handling strategy to use when processing items.
   /// This works with `Message<T>` types.
   pub error_strategy: ErrorStrategy<M>,
@@ -40,12 +40,46 @@ pub struct ConsumerConfig<M: std::fmt::Debug + Clone + Send + Sync> {
   pub name: String,
 }
 
-impl<M: std::fmt::Debug + Clone + Send + Sync> Default for ConsumerConfig<M> {
+impl<M: std::fmt::Debug + Clone + Send + Sync + 'static> Default for ConsumerConfig<M> {
   fn default() -> Self {
     Self {
       error_strategy: ErrorStrategy::Stop,
       name: String::new(),
     }
+  }
+}
+
+impl<M: std::fmt::Debug + Clone + Send + Sync + 'static> ConsumerConfig<M> {
+  /// Sets the error handling strategy for this consumer configuration.
+  ///
+  /// # Arguments
+  ///
+  /// * `strategy` - The error handling strategy to use (works with `Message<T>`).
+  #[must_use]
+  pub fn with_error_strategy(mut self, strategy: ErrorStrategy<M>) -> Self {
+    self.error_strategy = strategy;
+    self
+  }
+
+  /// Sets the name for this consumer configuration.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The name to assign to this consumer.
+  #[must_use]
+  pub fn with_name(mut self, name: String) -> Self {
+    self.name = name;
+    self
+  }
+
+  /// Returns the current error handling strategy.
+  pub fn error_strategy(&self) -> ErrorStrategy<M> {
+    self.error_strategy.clone()
+  }
+
+  /// Returns the current name.
+  pub fn name(&self) -> &str {
+    &self.name
   }
 }
 
@@ -143,7 +177,7 @@ impl<M: std::fmt::Debug + Clone + Send + Sync> Default for ConsumerConfig<M> {
 #[async_trait]
 pub trait Consumer: Input
 where
-  Self::Input: std::fmt::Debug + Clone + Send + Sync,
+  Self::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
   /// The input port tuple type for this consumer.
   ///
@@ -189,7 +223,7 @@ where
   /// - Use `message.payload()` to access the data
   /// - Use `message.id()` for tracking, logging, or correlation
   /// - Use `message.metadata()` for routing decisions or additional context
-  async fn consume(&mut self, stream: Self::InputStream);
+  async fn consume(&mut self, mut stream: Self::InputStream);
 
   /// Creates a new consumer instance with the given configuration.
   ///
@@ -216,11 +250,13 @@ where
   }
 
   /// Returns a reference to the consumer's configuration.
+  ///
   fn config(&self) -> &ConsumerConfig<Self::Input> {
     self.get_config_impl()
   }
 
   /// Returns a mutable reference to the consumer's configuration.
+  ///
   fn config_mut(&mut self) -> &mut ConsumerConfig<Self::Input> {
     self.get_config_mut_impl()
   }
@@ -248,7 +284,9 @@ where
   /// # Returns
   ///
   /// The action to take based on the error strategy.
+  ///
   fn handle_error(&self, error: &StreamError<Self::Input>) -> ErrorAction {
+    use crate::error::ErrorAction;
     match &self.config().error_strategy {
       ErrorStrategy::Stop => ErrorAction::Stop,
       ErrorStrategy::Skip => ErrorAction::Skip,
@@ -267,6 +305,7 @@ where
   /// # Returns
   ///
   /// A `ComponentInfo` struct containing details about the consumer.
+  ///
   fn component_info(&self) -> ComponentInfo {
     ComponentInfo {
       name: self.config().name.clone(),
@@ -288,6 +327,7 @@ where
   /// An error context containing information about when and where the error occurred.
   /// The context includes the full `Message<T>` which provides access to message ID
   /// and metadata.
+  ///
   fn create_error_context(&self, item: Option<Self::Input>) -> ErrorContext<Self::Input> {
     ErrorContext {
       timestamp: chrono::Utc::now(),
@@ -298,9 +338,12 @@ where
   }
 
   /// Internal implementation for setting configuration.
+  ///
   fn set_config_impl(&mut self, config: ConsumerConfig<Self::Input>);
   /// Internal implementation for getting configuration.
+  ///
   fn get_config_impl(&self) -> &ConsumerConfig<Self::Input>;
   /// Internal implementation for getting mutable configuration.
+  ///
   fn get_config_mut_impl(&mut self) -> &mut ConsumerConfig<Self::Input>;
 }

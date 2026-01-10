@@ -26,7 +26,7 @@ pub enum PredicateType {
 /// # Example
 ///
 /// ```rust
-/// use streamweave::transformers::{StringPredicateTransformer, PredicateType};
+/// use crate::transformers::{StringPredicateTransformer, PredicateType};
 ///
 /// let transformer = StringPredicateTransformer::new("hello", PredicateType::StartsWith);
 /// // Input: ["hello world", "hi there", "hello again"]

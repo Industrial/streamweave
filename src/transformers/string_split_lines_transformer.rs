@@ -17,7 +17,7 @@ use std::pin::Pin;
 /// # Example
 ///
 /// ```rust
-/// use streamweave::transformers::StringSplitLinesTransformer;
+/// use crate::transformers::StringSplitLinesTransformer;
 ///
 /// let transformer = StringSplitLinesTransformer::new();
 /// // Input: ["line1\nline2\nline3"]
