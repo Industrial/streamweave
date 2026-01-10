@@ -3,6 +3,8 @@
 #[cfg(test)]
 mod consumer_test;
 #[cfg(test)]
+mod db_test;
+#[cfg(test)]
 mod error_test;
 #[cfg(test)]
 mod input_test;
