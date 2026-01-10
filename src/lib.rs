@@ -1,7 +1,11 @@
 #![doc = include_str!("../README.md")]
 
 #[cfg(test)]
+mod consumer_test;
+#[cfg(test)]
 mod message_test;
+#[cfg(test)]
+mod producer_test;
 
 pub mod consumer;
 pub mod consumers;

@@ -860,3 +860,307 @@ fn test_metadata_roundtrip_serde() {
   assert_eq!(original.get_source(), deserialized.get_source());
   assert_eq!(original.get_header("key"), deserialized.get_header("key"));
 }
+
+// ============================================================================
+// Additional Coverage Tests
+// ============================================================================
+
+#[test]
+fn test_message_id_display_uuid() {
+  let uuid = MessageId::Uuid(0x12345678_90ABCDEF_FEDCBA09_87654321);
+  let display = format!("{}", uuid);
+  assert!(display.contains("-"));
+  assert_eq!(display.len(), 36); // Standard UUID format length
+}
+
+#[test]
+fn test_message_id_display_custom() {
+  let custom = MessageId::Custom("my-id-123".to_string());
+  assert_eq!(format!("{}", custom), "custom:my-id-123");
+}
+
+#[test]
+fn test_message_id_display_content_hash() {
+  let hash = MessageId::ContentHash(0x123456789ABCDEF0);
+  assert_eq!(format!("{}", hash), "hash:123456789abcdef0");
+}
+
+#[test]
+fn test_message_id_hash_all_variants() {
+  use std::collections::hash_map::DefaultHasher;
+  use std::hash::{Hash, Hasher};
+
+  let variants = [
+    MessageId::Uuid(0x12345678_90ABCDEF_FEDCBA09_87654321),
+    MessageId::Sequence(42),
+    MessageId::Custom("test".to_string()),
+    MessageId::ContentHash(0xABCDEF1234567890),
+  ];
+
+  let mut hashers: Vec<DefaultHasher> = variants.iter().map(|_| DefaultHasher::new()).collect();
+
+  for (id, hasher) in variants.iter().zip(hashers.iter_mut()) {
+    id.hash(hasher);
+  }
+
+  // All should produce different hash values
+  let hashes: Vec<u64> = hashers.into_iter().map(|h| h.finish()).collect();
+  for i in 0..hashes.len() {
+    for j in (i + 1)..hashes.len() {
+      assert_ne!(
+        hashes[i], hashes[j],
+        "Different MessageId variants should produce different hashes"
+      );
+    }
+  }
+}
+
+#[test]
+fn test_metadata_with_shared_header() {
+  let name: Arc<str> = Arc::from("header-name");
+  let value: Arc<str> = Arc::from("header-value");
+  let metadata = MessageMetadata::default().with_shared_header(name.clone(), value.clone());
+
+  assert_eq!(metadata.get_header("header-name"), Some("header-value"));
+}
+
+#[test]
+fn test_metadata_with_source_borrowed() {
+  let metadata = MessageMetadata::default().with_source_borrowed("borrowed-source");
+  assert_eq!(metadata.get_source(), Some("borrowed-source"));
+}
+
+#[test]
+fn test_metadata_get_key() {
+  let metadata = MessageMetadata::default().key("test-key");
+  assert_eq!(metadata.get_key(), Some("test-key"));
+
+  let empty = MessageMetadata::default();
+  assert_eq!(empty.get_key(), None);
+}
+
+#[test]
+fn test_metadata_partition_and_offset() {
+  let metadata = MessageMetadata::default().partition(5).offset(12345);
+
+  assert_eq!(metadata.partition, Some(5));
+  assert_eq!(metadata.offset, Some(12345));
+}
+
+#[test]
+fn test_metadata_partition_offset_serde() {
+  use serde_json;
+
+  let original = MessageMetadata::default().partition(10).offset(999);
+
+  let serialized = serde_json::to_string(&original).expect("Should serialize");
+  let deserialized: MessageMetadata =
+    serde_json::from_str(&serialized).expect("Should deserialize");
+
+  assert_eq!(original.partition, deserialized.partition);
+  assert_eq!(original.offset, deserialized.offset);
+}
+
+#[test]
+fn test_metadata_empty_headers_serde() {
+  use serde_json;
+
+  let original = MessageMetadata::default();
+  let serialized = serde_json::to_string(&original).expect("Should serialize");
+  let deserialized: MessageMetadata =
+    serde_json::from_str(&serialized).expect("Should deserialize");
+
+  assert!(deserialized.headers.is_empty());
+}
+
+#[test]
+fn test_metadata_serialize_none_values() {
+  use serde_json;
+
+  let original = MessageMetadata::default(); // All optional fields are None
+  let serialized = serde_json::to_string(&original).expect("Should serialize");
+  let deserialized: MessageMetadata =
+    serde_json::from_str(&serialized).expect("Should deserialize");
+
+  assert_eq!(original.timestamp, deserialized.timestamp);
+  assert_eq!(original.source, deserialized.source);
+  assert_eq!(original.key, deserialized.key);
+  assert_eq!(original.partition, deserialized.partition);
+  assert_eq!(original.offset, deserialized.offset);
+}
+
+#[test]
+fn test_message_default_i32() {
+  let msg: Message<i32> = Message::default();
+  assert_eq!(*msg.payload(), 0);
+  assert!(msg.id().is_uuid());
+}
+
+#[test]
+fn test_message_default_string() {
+  let msg: Message<String> = Message::default();
+  assert_eq!(*msg.payload(), "");
+}
+
+#[test]
+fn test_shared_message_into_arc() {
+  use std::sync::Arc;
+
+  let msg = Message::new(42, MessageId::new_sequence(1));
+  let shared = SharedMessage::from(msg);
+  let arc: Arc<Message<i32>> = shared.into_arc();
+
+  assert_eq!(*arc.payload(), 42);
+}
+
+#[test]
+fn test_shared_message_from_trait_arc() {
+  use std::sync::Arc;
+
+  let msg = Message::new(42, MessageId::new_sequence(1));
+  let arc: Arc<Message<i32>> = Arc::new(msg);
+  // Test the From<Arc<Message<T>>> trait implementation
+  let shared: SharedMessage<i32> = arc.clone().into();
+
+  assert_eq!(*shared.payload(), 42);
+}
+
+#[test]
+fn test_shared_message_arc_from_trait() {
+  use std::sync::Arc;
+
+  let msg = Message::new(42, MessageId::new_sequence(1));
+  let shared = SharedMessage::from(msg);
+  let arc: Arc<Message<i32>> = Arc::from(shared);
+
+  assert_eq!(*arc.payload(), 42);
+}
+
+#[test]
+fn test_shared_message_as_ref() {
+  let msg = Message::new(42, MessageId::new_sequence(1));
+  let shared = SharedMessage::from(msg);
+  let msg_ref: &Message<i32> = shared.as_ref();
+
+  assert_eq!(*msg_ref.payload(), 42);
+}
+
+// Mock StringInternerTrait for testing interned methods
+struct MockInterner;
+
+impl crate::message::StringInternerTrait for MockInterner {
+  fn get_or_intern(&self, s: &str) -> Arc<str> {
+    Arc::from(s.to_string())
+  }
+}
+
+#[test]
+fn test_metadata_with_source_interned() {
+  let interner = MockInterner;
+  let metadata = MessageMetadata::default().with_source_interned("interned-source", &interner);
+
+  assert_eq!(metadata.get_source(), Some("interned-source"));
+}
+
+#[test]
+fn test_metadata_with_key_interned() {
+  let interner = MockInterner;
+  let metadata = MessageMetadata::default().with_key_interned("interned-key", &interner);
+
+  assert_eq!(metadata.get_key(), Some("interned-key"));
+}
+
+#[test]
+fn test_metadata_add_header_interned() {
+  let interner = MockInterner;
+  let metadata =
+    MessageMetadata::default().add_header_interned("interned-header", "interned-value", &interner);
+
+  assert_eq!(
+    metadata.get_header("interned-header"),
+    Some("interned-value")
+  );
+}
+
+#[tokio::test]
+async fn test_message_stream_extract_payloads() {
+  use crate::message::{Message, MessageId, MessageStreamExt};
+  use futures::StreamExt;
+  use futures::stream;
+
+  let messages = stream::iter(vec![
+    Message::new(1, MessageId::new_sequence(1)),
+    Message::new(2, MessageId::new_sequence(2)),
+    Message::new(3, MessageId::new_sequence(3)),
+  ]);
+
+  let payloads: Vec<i32> = messages.extract_payloads().collect().await;
+  assert_eq!(payloads, vec![1, 2, 3]);
+}
+
+#[tokio::test]
+async fn test_message_stream_extract_ids() {
+  use crate::message::{Message, MessageId, MessageStreamExt};
+  use futures::StreamExt;
+  use futures::stream;
+
+  let id1 = MessageId::new_sequence(1);
+  let id2 = MessageId::new_sequence(2);
+  let id3 = MessageId::new_sequence(3);
+
+  let messages = stream::iter(vec![
+    Message::new(1, id1.clone()),
+    Message::new(2, id2.clone()),
+    Message::new(3, id3.clone()),
+  ]);
+
+  let ids: Vec<MessageId> = messages.extract_ids().collect().await;
+  assert_eq!(ids.len(), 3);
+  assert_eq!(ids[0], id1);
+  assert_eq!(ids[1], id2);
+  assert_eq!(ids[2], id3);
+}
+
+#[tokio::test]
+async fn test_message_stream_extract_metadata() {
+  use crate::message::{Message, MessageId, MessageMetadata, MessageStreamExt};
+  use futures::StreamExt;
+  use futures::stream;
+
+  let metadata1 = MessageMetadata::default().source("source1");
+  let metadata2 = MessageMetadata::default().source("source2");
+
+  let messages = stream::iter(vec![
+    Message::with_metadata(1, MessageId::new_sequence(1), metadata1.clone()),
+    Message::with_metadata(2, MessageId::new_sequence(2), metadata2.clone()),
+  ]);
+
+  let metadatas: Vec<MessageMetadata> = messages.extract_metadata().collect().await;
+  assert_eq!(metadatas.len(), 2);
+  assert_eq!(metadatas[0].get_source(), metadata1.get_source());
+  assert_eq!(metadatas[1].get_source(), metadata2.get_source());
+}
+
+#[tokio::test]
+async fn test_message_stream_map_payload() {
+  use crate::message::{Message, MessageId, MessageStreamExt};
+  use futures::StreamExt;
+  use futures::stream;
+
+  let messages = stream::iter(vec![
+    Message::new(1, MessageId::new_sequence(1)),
+    Message::new(2, MessageId::new_sequence(2)),
+  ]);
+
+  let doubled: Vec<Message<i32>> = messages.map_payload(|x| x * 2).collect().await;
+  assert_eq!(doubled.len(), 2);
+  assert_eq!(*doubled[0].payload(), 2);
+  assert_eq!(*doubled[1].payload(), 4);
+  assert_eq!(doubled[0].id(), &MessageId::new_sequence(1));
+}
+
+#[test]
+fn test_message_id_default_impl() {
+  let id: MessageId = Default::default();
+  assert!(id.is_uuid()); // Default should generate UUID
+}

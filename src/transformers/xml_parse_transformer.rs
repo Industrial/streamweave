@@ -151,10 +151,12 @@ fn parse_xml_to_json(
   xml_str: &str,
 ) -> Result<Value, Box<dyn std::error::Error + Send + Sync + 'static>> {
   use quick_xml::Reader;
+  use quick_xml::escape::unescape;
   use quick_xml::events::Event;
 
   let mut reader = Reader::from_str(xml_str);
-  reader.trim_text(true);
+  reader.config_mut().trim_text_start = true;
+  reader.config_mut().trim_text_end = true;
 
   let mut stack: Vec<(String, HashMap<String, String>, Vec<Value>)> = Vec::new();
   let mut root: Option<Value> = None;
@@ -164,7 +166,8 @@ fn parse_xml_to_json(
       Ok(Event::Start(e)) => {
         let name = String::from_utf8_lossy(e.name().as_ref()).to_string();
         let mut attrs = HashMap::new();
-        for attr in e.attributes().flatten() {
+        for attr in e.attributes() {
+          let attr = attr?;
           let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
           let value = String::from_utf8_lossy(&attr.value).to_string();
           attrs.insert(key, value);
@@ -173,7 +176,12 @@ fn parse_xml_to_json(
       }
       Ok(Event::Text(e)) => {
         if let Some((_, _, children)) = stack.last_mut() {
-          let text = e.unescape().unwrap_or_default().to_string();
+          let text_bytes = e.as_ref();
+          let text_utf8 = String::from_utf8_lossy(text_bytes);
+          let text = match unescape(text_utf8.as_ref()) {
+            Ok(cow) => cow.into_owned(),
+            Err(_) => text_utf8.into_owned(),
+          };
           if !text.trim().is_empty() {
             children.push(Value::String(text.trim().to_string()));
           }
