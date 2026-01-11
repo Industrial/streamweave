@@ -2,7 +2,7 @@
 
 This document lists packages that are commonly created for streaming/data processing platforms but are currently missing from StreamWeave. Organized by category.
 
-**Last Updated:** Based on StreamWeave v0.7.0
+**Last Updated:** Based on StreamWeave v0.8.0
 
 **Note:** This document is maintained to track missing packages. Some packages listed as "Missing" may have been added since the last update. Check the main `Cargo.toml` workspace members for the most current list of available packages.
 
