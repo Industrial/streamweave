@@ -1,8 +1,9 @@
 use crate::consumers::VecConsumer;
-use crate::error::ErrorStrategy;
+use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::pipeline::{Empty, HasProducer, HasTransformer, Pipeline, PipelineBuilder};
 use crate::producers::VecProducer;
 use crate::transformers::MapTransformer;
+use std::sync::Arc;
 
 // ============================================================================
 // PipelineBuilder::Empty Tests
@@ -563,4 +564,552 @@ async fn test_pipeline_complex_transformation() {
   let results = consumer.into_vec();
   // 1*2+1=3*3=9, 2*2+1=5*3=15, 3*2+1=7*3=21, 4*2+1=9*3=27, 5*2+1=11*3=33
   assert_eq!(results, vec![9, 15, 21, 27, 33]);
+}
+
+// ============================================================================
+// Pipeline Error Handling Internal Method Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_pipeline_handle_error_stop() {
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let pipeline = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Stop)
+    .producer(producer)
+    .transformer(transformer)
+    .await
+    .consumer(consumer);
+
+  let error = StreamError::new(
+    Box::new(std::io::Error::other("test error")),
+    ErrorContext::default(),
+    ComponentInfo::new("test".to_string(), "TestComponent".to_string()),
+  );
+
+  let action = pipeline._handle_error(error).await.unwrap();
+  assert_eq!(action, ErrorAction::Stop);
+}
+
+#[tokio::test]
+async fn test_pipeline_handle_error_skip() {
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let pipeline = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Skip)
+    .producer(producer)
+    .transformer(transformer)
+    .await
+    .consumer(consumer);
+
+  let error = StreamError::new(
+    Box::new(std::io::Error::other("test error")),
+    ErrorContext::default(),
+    ComponentInfo::new("test".to_string(), "TestComponent".to_string()),
+  );
+
+  let action = pipeline._handle_error(error).await.unwrap();
+  assert_eq!(action, ErrorAction::Skip);
+}
+
+#[tokio::test]
+async fn test_pipeline_handle_error_retry_below_max() {
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let pipeline = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Retry(3))
+    .producer(producer)
+    .transformer(transformer)
+    .await
+    .consumer(consumer);
+
+  let mut error = StreamError::new(
+    Box::new(std::io::Error::other("test error")),
+    ErrorContext::default(),
+    ComponentInfo::new("test".to_string(), "TestComponent".to_string()),
+  );
+  error.retries = 2; // Below max_retries of 3
+
+  let action = pipeline._handle_error(error).await.unwrap();
+  assert_eq!(action, ErrorAction::Retry);
+}
+
+#[tokio::test]
+async fn test_pipeline_handle_error_retry_at_max() {
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let pipeline = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Retry(3))
+    .producer(producer)
+    .transformer(transformer)
+    .await
+    .consumer(consumer);
+
+  let mut error = StreamError::new(
+    Box::new(std::io::Error::other("test error")),
+    ErrorContext::default(),
+    ComponentInfo::new("test".to_string(), "TestComponent".to_string()),
+  );
+  error.retries = 3; // At max_retries of 3
+
+  let action = pipeline._handle_error(error).await.unwrap();
+  assert_eq!(action, ErrorAction::Stop);
+}
+
+#[tokio::test]
+async fn test_pipeline_handle_error_retry_above_max() {
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let pipeline = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Retry(3))
+    .producer(producer)
+    .transformer(transformer)
+    .await
+    .consumer(consumer);
+
+  let mut error = StreamError::new(
+    Box::new(std::io::Error::other("test error")),
+    ErrorContext::default(),
+    ComponentInfo::new("test".to_string(), "TestComponent".to_string()),
+  );
+  error.retries = 4; // Above max_retries of 3
+
+  let action = pipeline._handle_error(error).await.unwrap();
+  assert_eq!(action, ErrorAction::Stop);
+}
+
+#[tokio::test]
+async fn test_pipeline_handle_error_custom_handler() {
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let handler = Arc::new(|error: &StreamError<()>| {
+    if error.retries < 2 {
+      ErrorAction::Retry
+    } else {
+      ErrorAction::Skip
+    }
+  });
+
+  let pipeline = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Custom(handler.clone()))
+    .producer(producer)
+    .transformer(transformer)
+    .await
+    .consumer(consumer);
+
+  let mut error = StreamError::new(
+    Box::new(std::io::Error::other("test error")),
+    ErrorContext::default(),
+    ComponentInfo::new("test".to_string(), "TestComponent".to_string()),
+  );
+  error.retries = 1; // Below threshold of 2
+
+  let action = pipeline._handle_error(error.clone()).await.unwrap();
+  assert_eq!(action, ErrorAction::Retry);
+
+  error.retries = 2; // At threshold of 2
+  let action = pipeline._handle_error(error).await.unwrap();
+  assert_eq!(action, ErrorAction::Skip);
+}
+
+// ============================================================================
+// Additional Edge Cases and Coverage Tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_pipeline_with_error_strategy_all_variants_on_builder() {
+  // Test all error strategy variants on builder
+  let producer1 = VecProducer::new(vec![1, 2, 3]);
+  let transformer1 = MapTransformer::new(|x: i32| x * 2);
+  let consumer1 = VecConsumer::new();
+
+  // Test Stop
+  let pipeline1 = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Stop)
+    .producer(producer1)
+    .transformer(transformer1)
+    .await
+    .consumer(consumer1);
+  let _result1 = pipeline1.run().await;
+
+  // Test Skip
+  let producer2 = VecProducer::new(vec![1, 2, 3]);
+  let transformer2 = MapTransformer::new(|x: i32| x * 2);
+  let consumer2 = VecConsumer::new();
+  let pipeline2 = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Skip)
+    .producer(producer2)
+    .transformer(transformer2)
+    .await
+    .consumer(consumer2);
+  let _result2 = pipeline2.run().await;
+
+  // Test Retry
+  let producer3 = VecProducer::new(vec![1, 2, 3]);
+  let transformer3 = MapTransformer::new(|x: i32| x * 2);
+  let consumer3 = VecConsumer::new();
+  let pipeline3 = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Retry(5))
+    .producer(producer3)
+    .transformer(transformer3)
+    .await
+    .consumer(consumer3);
+  let _result3 = pipeline3.run().await;
+}
+
+#[tokio::test]
+async fn test_pipeline_with_error_strategy_all_variants_on_pipeline() {
+  // Test all error strategy variants on Pipeline struct
+  // Test Stop
+  let producer1 = VecProducer::new(vec![1, 2, 3]);
+  let transformer1 = MapTransformer::new(|x: i32| x * 2);
+  let consumer1 = VecConsumer::new();
+  let pipeline1 = PipelineBuilder::<Empty>::new()
+    .producer(producer1)
+    .transformer(transformer1)
+    .await
+    .consumer(consumer1)
+    .with_error_strategy(ErrorStrategy::Stop);
+  let _result1 = pipeline1.run().await;
+
+  // Test Skip
+  let producer2 = VecProducer::new(vec![1, 2, 3]);
+  let transformer2 = MapTransformer::new(|x: i32| x * 2);
+  let consumer2 = VecConsumer::new();
+  let pipeline2 = PipelineBuilder::<Empty>::new()
+    .producer(producer2)
+    .transformer(transformer2)
+    .await
+    .consumer(consumer2)
+    .with_error_strategy(ErrorStrategy::Skip);
+  let _result2 = pipeline2.run().await;
+
+  // Test Retry
+  let producer3 = VecProducer::new(vec![1, 2, 3]);
+  let transformer3 = MapTransformer::new(|x: i32| x * 2);
+  let consumer3 = VecConsumer::new();
+  let pipeline3 = PipelineBuilder::<Empty>::new()
+    .producer(producer3)
+    .transformer(transformer3)
+    .await
+    .consumer(consumer3)
+    .with_error_strategy(ErrorStrategy::Retry(5));
+  let _result3 = pipeline3.run().await;
+}
+
+#[tokio::test]
+async fn test_pipeline_error_strategy_retry_zero() {
+  // Test Retry with 0 max retries
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let pipeline = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Retry(0))
+    .producer(producer)
+    .transformer(transformer)
+    .await
+    .consumer(consumer);
+
+  let mut error = StreamError::new(
+    Box::new(std::io::Error::other("test error")),
+    ErrorContext::default(),
+    ComponentInfo::new("test".to_string(), "TestComponent".to_string()),
+  );
+  error.retries = 0; // At max_retries of 0
+
+  let action = pipeline._handle_error(error).await.unwrap();
+  assert_eq!(action, ErrorAction::Stop); // Should stop immediately
+}
+
+#[tokio::test]
+async fn test_pipeline_error_strategy_retry_one() {
+  // Test Retry with 1 max retry
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let pipeline = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Retry(1))
+    .producer(producer)
+    .transformer(transformer)
+    .await
+    .consumer(consumer);
+
+  let mut error = StreamError::new(
+    Box::new(std::io::Error::other("test error")),
+    ErrorContext::default(),
+    ComponentInfo::new("test".to_string(), "TestComponent".to_string()),
+  );
+  error.retries = 0; // Below max_retries of 1
+
+  let action = pipeline._handle_error(error).await.unwrap();
+  assert_eq!(action, ErrorAction::Retry);
+
+  let mut error2 = StreamError::new(
+    Box::new(std::io::Error::other("test error")),
+    ErrorContext::default(),
+    ComponentInfo::new("test".to_string(), "TestComponent".to_string()),
+  );
+  error2.retries = 1; // At max_retries of 1
+
+  let action2 = pipeline._handle_error(error2).await.unwrap();
+  assert_eq!(action2, ErrorAction::Stop);
+}
+
+#[tokio::test]
+async fn test_pipeline_custom_handler_all_actions() {
+  // Test custom handler returning all possible actions
+  // Handler that returns Stop
+  let handler_stop = Arc::new(|_error: &StreamError<()>| ErrorAction::Stop);
+  let producer1 = VecProducer::new(vec![1, 2, 3]);
+  let transformer1 = MapTransformer::new(|x: i32| x * 2);
+  let consumer1 = VecConsumer::new();
+  let pipeline_stop = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Custom(handler_stop.clone()))
+    .producer(producer1)
+    .transformer(transformer1)
+    .await
+    .consumer(consumer1);
+
+  let error = StreamError::new(
+    Box::new(std::io::Error::other("test error")),
+    ErrorContext::default(),
+    ComponentInfo::new("test".to_string(), "TestComponent".to_string()),
+  );
+  let action = pipeline_stop._handle_error(error.clone()).await.unwrap();
+  assert_eq!(action, ErrorAction::Stop);
+
+  // Handler that returns Skip
+  let handler_skip = Arc::new(|_error: &StreamError<()>| ErrorAction::Skip);
+  let producer2 = VecProducer::new(vec![1, 2, 3]);
+  let transformer2 = MapTransformer::new(|x: i32| x * 2);
+  let consumer2 = VecConsumer::new();
+  let pipeline_skip = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Custom(handler_skip.clone()))
+    .producer(producer2)
+    .transformer(transformer2)
+    .await
+    .consumer(consumer2);
+
+  let action = pipeline_skip._handle_error(error.clone()).await.unwrap();
+  assert_eq!(action, ErrorAction::Skip);
+
+  // Handler that returns Retry
+  let handler_retry = Arc::new(|_error: &StreamError<()>| ErrorAction::Retry);
+  let producer3 = VecProducer::new(vec![1, 2, 3]);
+  let transformer3 = MapTransformer::new(|x: i32| x * 2);
+  let consumer3 = VecConsumer::new();
+  let pipeline_retry = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Custom(handler_retry.clone()))
+    .producer(producer3)
+    .transformer(transformer3)
+    .await
+    .consumer(consumer3);
+
+  let action = pipeline_retry._handle_error(error).await.unwrap();
+  assert_eq!(action, ErrorAction::Retry);
+}
+
+#[tokio::test]
+async fn test_pipeline_builder_error_strategy_preserved_through_states() {
+  // Test that error strategy is preserved through all builder states
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let pipeline = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Retry(10))
+    .producer(producer)
+    .transformer(transformer)
+    .await
+    .consumer(consumer);
+
+  // Verify error strategy is preserved
+  let error = StreamError::new(
+    Box::new(std::io::Error::other("test error")),
+    ErrorContext::default(),
+    ComponentInfo::new("test".to_string(), "TestComponent".to_string()),
+  );
+  let action = pipeline._handle_error(error).await.unwrap();
+  assert_eq!(action, ErrorAction::Retry);
+}
+
+#[tokio::test]
+async fn test_pipeline_multiple_error_strategy_changes() {
+  // Test changing error strategy multiple times
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let pipeline = PipelineBuilder::<Empty>::new()
+    .with_error_strategy(ErrorStrategy::Stop)
+    .with_error_strategy(ErrorStrategy::Skip)
+    .with_error_strategy(ErrorStrategy::Retry(5))
+    .producer(producer)
+    .transformer(transformer)
+    .await
+    .consumer(consumer)
+    .with_error_strategy(ErrorStrategy::Skip);
+
+  // Last strategy should be Skip
+  let error = StreamError::new(
+    Box::new(std::io::Error::other("test error")),
+    ErrorContext::default(),
+    ComponentInfo::new("test".to_string(), "TestComponent".to_string()),
+  );
+  let action = pipeline._handle_error(error).await.unwrap();
+  assert_eq!(action, ErrorAction::Skip);
+}
+
+// ============================================================================
+// Panic Path Tests (for 100% coverage)
+// ============================================================================
+
+#[tokio::test]
+#[should_panic(expected = "Internal error: producer stream missing")]
+async fn test_pipeline_transformer_panic_producer_stream_missing() {
+  // Test panic path when producer stream is None in HasProducer state
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+
+  let builder = PipelineBuilder::<Empty>::new()
+    .producer(producer)
+    ._test_with_no_producer_stream();
+
+  let _ = builder.transformer(transformer).await;
+}
+
+#[tokio::test]
+#[should_panic(expected = "Internal error: failed to downcast producer stream")]
+async fn test_pipeline_transformer_panic_downcast_fails() {
+  // Test panic path when downcast fails (wrong type)
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+
+  let builder = PipelineBuilder::<Empty>::new()
+    .producer(producer)
+    ._test_with_wrong_producer_stream_type();
+
+  let _ = builder.transformer(transformer).await;
+}
+
+#[tokio::test]
+#[should_panic(expected = "Internal error: transformer stream missing")]
+async fn test_pipeline_transformer_chain_panic_transformer_stream_missing() {
+  // Test panic path when transformer stream is None in HasTransformer state
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer1 = MapTransformer::new(|x: i32| x * 2);
+  let transformer2 = MapTransformer::new(|x: i32| x + 1);
+
+  let builder = PipelineBuilder::<Empty>::new()
+    .producer(producer)
+    .transformer(transformer1)
+    .await
+    ._test_with_no_transformer_stream();
+
+  let _ = builder.transformer(transformer2).await;
+}
+
+#[tokio::test]
+#[should_panic(expected = "Internal error: failed to downcast transformer stream")]
+async fn test_pipeline_transformer_chain_panic_downcast_fails() {
+  // Test panic path when downcast fails in chained transformer
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer1 = MapTransformer::new(|x: i32| x * 2);
+  let transformer2 = MapTransformer::new(|x: i32| x + 1);
+
+  let builder = PipelineBuilder::<Empty>::new()
+    .producer(producer)
+    .transformer(transformer1)
+    .await
+    ._test_with_wrong_transformer_stream_type();
+
+  let _ = builder.transformer(transformer2).await;
+}
+
+#[test]
+#[should_panic(expected = "Internal error: transformer stream missing")]
+fn test_pipeline_consumer_panic_transformer_stream_missing() {
+  // Test panic path when transformer stream is None in HasTransformer state
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let builder = futures::executor::block_on(async {
+    PipelineBuilder::<Empty>::new()
+      .producer(producer)
+      .transformer(transformer)
+      .await
+      ._test_with_no_transformer_stream()
+  });
+
+  let _ = builder.consumer(consumer);
+}
+
+#[test]
+#[should_panic(expected = "Internal error: failed to downcast transformer stream")]
+fn test_pipeline_consumer_panic_downcast_fails() {
+  // Test panic path when downcast fails in consumer
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let builder = futures::executor::block_on(async {
+    PipelineBuilder::<Empty>::new()
+      .producer(producer)
+      .transformer(transformer)
+      .await
+      ._test_with_wrong_transformer_stream_type()
+  });
+
+  let _ = builder.consumer(consumer);
+}
+
+#[tokio::test]
+#[should_panic(expected = "Internal error: transformer stream missing")]
+async fn test_pipeline_run_panic_transformer_stream_missing() {
+  // Test panic path when transformer stream is None in Complete state
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let pipeline = PipelineBuilder::<Empty>::new()
+    .producer(producer)
+    .transformer(transformer)
+    .await
+    .consumer(consumer)
+    ._test_with_no_transformer_stream();
+
+  pipeline.run().await.unwrap();
+}
+
+#[tokio::test]
+#[should_panic(expected = "Internal error: consumer missing")]
+async fn test_pipeline_run_panic_consumer_missing() {
+  // Test panic path when consumer is None in Complete state
+  let producer = VecProducer::new(vec![1, 2, 3]);
+  let transformer = MapTransformer::new(|x: i32| x * 2);
+  let consumer = VecConsumer::new();
+
+  let pipeline = PipelineBuilder::<Empty>::new()
+    .producer(producer)
+    .transformer(transformer)
+    .await
+    .consumer(consumer)
+    ._test_with_no_consumer();
+
+  pipeline.run().await.unwrap();
 }

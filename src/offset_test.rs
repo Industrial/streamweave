@@ -4,6 +4,7 @@ use crate::offset::{
 };
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
+use std::io;
 use tempfile::TempDir;
 
 // ============================================================================
@@ -598,4 +599,292 @@ fn test_offset_tracker_periodic_counter_reset() {
   tracker.record("source1", Offset::sequence(4)).unwrap();
   // Should commit now (counter = 2)
   assert_eq!(tracker.get_offset("source1").unwrap(), Offset::sequence(4));
+}
+
+// ============================================================================
+// Error Path and Edge Case Tests
+// ============================================================================
+
+/// Mock OffsetStore that can return errors for testing error paths
+#[derive(Debug)]
+struct MockErrorStore {
+  should_error_on_get: bool,
+  should_error_on_commit: bool,
+  should_error_on_get_all: bool,
+  should_error_on_clear: bool,
+  should_error_on_clear_all: bool,
+}
+
+impl MockErrorStore {
+  fn new() -> Self {
+    Self {
+      should_error_on_get: false,
+      should_error_on_commit: false,
+      should_error_on_get_all: false,
+      should_error_on_clear: false,
+      should_error_on_clear_all: false,
+    }
+  }
+
+  fn with_get_error(mut self) -> Self {
+    self.should_error_on_get = true;
+    self
+  }
+
+  fn with_commit_error(mut self) -> Self {
+    self.should_error_on_commit = true;
+    self
+  }
+
+  fn with_get_all_error(mut self) -> Self {
+    self.should_error_on_get_all = true;
+    self
+  }
+
+  fn with_clear_error(mut self) -> Self {
+    self.should_error_on_clear = true;
+    self
+  }
+
+  #[allow(dead_code)]
+  fn with_clear_all_error(mut self) -> Self {
+    self.should_error_on_clear_all = true;
+    self
+  }
+}
+
+impl OffsetStore for MockErrorStore {
+  fn get(&self, _source: &str) -> Result<Option<Offset>, OffsetError> {
+    if self.should_error_on_get {
+      Err(OffsetError::IoError(io::Error::other("Mock get error")))
+    } else {
+      Ok(None)
+    }
+  }
+
+  fn commit(&self, _source: &str, _offset: Offset) -> Result<(), OffsetError> {
+    if self.should_error_on_commit {
+      Err(OffsetError::IoError(io::Error::other("Mock commit error")))
+    } else {
+      Ok(())
+    }
+  }
+
+  fn get_all(&self) -> Result<HashMap<String, Offset>, OffsetError> {
+    if self.should_error_on_get_all {
+      Err(OffsetError::IoError(io::Error::other("Mock get_all error")))
+    } else {
+      Ok(HashMap::new())
+    }
+  }
+
+  fn clear(&self, _source: &str) -> Result<(), OffsetError> {
+    if self.should_error_on_clear {
+      Err(OffsetError::IoError(io::Error::other("Mock clear error")))
+    } else {
+      Ok(())
+    }
+  }
+
+  fn clear_all(&self) -> Result<(), OffsetError> {
+    if self.should_error_on_clear_all {
+      Err(OffsetError::IoError(io::Error::other(
+        "Mock clear_all error",
+      )))
+    } else {
+      Ok(())
+    }
+  }
+}
+
+#[test]
+fn test_offset_tracker_get_offset_error() {
+  let store = Box::new(MockErrorStore::new().with_get_error());
+  let tracker = OffsetTracker::new(store);
+  let result = tracker.get_offset("source1");
+  assert!(result.is_err());
+  assert!(matches!(result.unwrap_err(), OffsetError::IoError(_)));
+}
+
+#[test]
+fn test_offset_tracker_record_auto_error() {
+  let store = Box::new(MockErrorStore::new().with_commit_error());
+  let tracker = OffsetTracker::with_strategy(store, CommitStrategy::Auto);
+  let result = tracker.record("source1", Offset::sequence(5));
+  assert!(result.is_err());
+  assert!(matches!(result.unwrap_err(), OffsetError::IoError(_)));
+}
+
+#[test]
+fn test_offset_tracker_record_periodic_error() {
+  let store = Box::new(MockErrorStore::new().with_commit_error());
+  let tracker = OffsetTracker::with_strategy(store, CommitStrategy::Periodic(1));
+  // First record should trigger commit (interval = 1)
+  let result = tracker.record("source1", Offset::sequence(5));
+  assert!(result.is_err());
+  assert!(matches!(result.unwrap_err(), OffsetError::IoError(_)));
+}
+
+#[test]
+fn test_offset_tracker_commit_error() {
+  let store = Box::new(MockErrorStore::new().with_commit_error());
+  let tracker = OffsetTracker::with_strategy(store, CommitStrategy::Manual);
+  tracker.record("source1", Offset::sequence(5)).unwrap();
+  let result = tracker.commit("source1");
+  assert!(result.is_err());
+  assert!(matches!(result.unwrap_err(), OffsetError::IoError(_)));
+}
+
+#[test]
+fn test_offset_tracker_commit_all_error() {
+  let store = Box::new(MockErrorStore::new().with_commit_error());
+  let tracker = OffsetTracker::with_strategy(store, CommitStrategy::Manual);
+  tracker.record("source1", Offset::sequence(5)).unwrap();
+  let result = tracker.commit_all();
+  assert!(result.is_err());
+  assert!(matches!(result.unwrap_err(), OffsetError::IoError(_)));
+}
+
+#[test]
+fn test_offset_tracker_reset_error() {
+  let store = Box::new(MockErrorStore::new().with_commit_error());
+  let tracker = OffsetTracker::new(store);
+  let result = tracker.reset("source1", Offset::sequence(5));
+  assert!(result.is_err());
+  assert!(matches!(result.unwrap_err(), OffsetError::IoError(_)));
+}
+
+#[test]
+fn test_offset_tracker_clear_error() {
+  let store = Box::new(MockErrorStore::new().with_clear_error());
+  let tracker = OffsetTracker::new(store);
+  let result = tracker.clear("source1");
+  assert!(result.is_err());
+  assert!(matches!(result.unwrap_err(), OffsetError::IoError(_)));
+}
+
+#[test]
+fn test_offset_tracker_get_all_committed_error() {
+  let store = Box::new(MockErrorStore::new().with_get_all_error());
+  let tracker = OffsetTracker::new(store);
+  let result = tracker.get_all_committed();
+  assert!(result.is_err());
+  assert!(matches!(result.unwrap_err(), OffsetError::IoError(_)));
+}
+
+#[test]
+fn test_offset_tracker_commit_no_pending() {
+  // Commit when there's no pending offset should succeed (no-op)
+  let store = Box::new(InMemoryOffsetStore::new());
+  let tracker = OffsetTracker::with_strategy(store, CommitStrategy::Manual);
+  let result = tracker.commit("nonexistent");
+  assert!(result.is_ok());
+}
+
+#[test]
+fn test_offset_tracker_commit_all_empty() {
+  // Commit all when there are no pending offsets should succeed
+  let store = Box::new(InMemoryOffsetStore::new());
+  let tracker = OffsetTracker::with_strategy(store, CommitStrategy::Manual);
+  let result = tracker.commit_all();
+  assert!(result.is_ok());
+}
+
+#[test]
+fn test_offset_tracker_get_all_pending_empty() {
+  // Get all pending when there are no pending offsets should return empty map
+  let store = Box::new(InMemoryOffsetStore::new());
+  let tracker = OffsetTracker::with_strategy(store, CommitStrategy::Manual);
+  let pending = tracker.get_all_pending().unwrap();
+  assert!(pending.is_empty());
+}
+
+#[test]
+fn test_offset_tracker_record_periodic_exact_interval() {
+  // Test that periodic commit happens exactly at the interval
+  let store = Box::new(InMemoryOffsetStore::new());
+  let tracker = OffsetTracker::with_strategy(store, CommitStrategy::Periodic(3));
+
+  // Record 3 items - should trigger commit
+  tracker.record("source1", Offset::sequence(1)).unwrap();
+  tracker.record("source1", Offset::sequence(2)).unwrap();
+  tracker.record("source1", Offset::sequence(3)).unwrap();
+
+  // Verify it was committed
+  assert_eq!(tracker.get_offset("source1").unwrap(), Offset::sequence(3));
+
+  // Counter should be reset, next record should not commit yet
+  tracker.record("source1", Offset::sequence(4)).unwrap();
+  // Verify it's still the same (not committed yet)
+  assert_eq!(tracker.get_offset("source1").unwrap(), Offset::sequence(3));
+}
+
+#[test]
+fn test_offset_tracker_record_periodic_multiple_sources() {
+  // Test periodic commit with multiple sources
+  let store = Box::new(InMemoryOffsetStore::new());
+  let tracker = OffsetTracker::with_strategy(store, CommitStrategy::Periodic(2));
+
+  // Record for source1
+  tracker.record("source1", Offset::sequence(1)).unwrap();
+  tracker.record("source1", Offset::sequence(2)).unwrap(); // Should commit
+
+  // Record for source2
+  tracker.record("source2", Offset::sequence(10)).unwrap();
+  tracker.record("source2", Offset::sequence(20)).unwrap(); // Should commit
+
+  assert_eq!(tracker.get_offset("source1").unwrap(), Offset::sequence(2));
+  assert_eq!(tracker.get_offset("source2").unwrap(), Offset::sequence(20));
+}
+
+#[test]
+fn test_offset_tracker_clear_removes_pending() {
+  // Test that clear removes both committed and pending offsets
+  let store = Box::new(InMemoryOffsetStore::new());
+  let tracker = OffsetTracker::with_strategy(store, CommitStrategy::Manual);
+
+  // Record a pending offset
+  tracker.record("source1", Offset::sequence(5)).unwrap();
+  assert_eq!(tracker.get_all_pending().unwrap().len(), 1);
+
+  // Clear it
+  tracker.clear("source1").unwrap();
+
+  // Verify pending is removed
+  assert_eq!(tracker.get_all_pending().unwrap().len(), 0);
+
+  // Verify committed is also cleared
+  assert!(tracker.get_offset("source1").unwrap().is_earliest());
+}
+
+#[test]
+fn test_file_offset_store_invalid_json() {
+  // Test FileOffsetStore with invalid JSON
+  let temp_dir = TempDir::new().unwrap();
+  let file_path = temp_dir.path().join("offsets.json");
+
+  // Write invalid JSON
+  std::fs::write(&file_path, "invalid json").unwrap();
+
+  let result = FileOffsetStore::new(&file_path);
+  assert!(result.is_err());
+  assert!(matches!(
+    result.unwrap_err(),
+    OffsetError::SerializationError(_)
+  ));
+}
+
+#[test]
+fn test_file_offset_store_nonexistent_parent() {
+  // Test FileOffsetStore when parent directory doesn't exist
+  // This should create the parent directory
+  let temp_dir = TempDir::new().unwrap();
+  let file_path = temp_dir.path().join("subdir").join("offsets.json");
+
+  let store = FileOffsetStore::new(&file_path).unwrap();
+  store.commit("source1", Offset::sequence(5)).unwrap();
+
+  // Verify file was created
+  assert!(file_path.exists());
+  assert!(file_path.parent().unwrap().exists());
 }

@@ -1,6 +1,9 @@
-use crate::error::{ErrorAction, ErrorStrategy, PipelineError, StreamError};
+use crate::error::ErrorStrategy;
 use crate::{Consumer, Producer, Transformer};
 use std::marker::PhantomData;
+
+#[cfg(test)]
+use crate::error::{ErrorAction, PipelineError, StreamError};
 
 /// Empty state for pipeline builder.
 ///
@@ -162,6 +165,26 @@ impl Default for PipelineBuilder<Empty> {
   }
 }
 
+#[cfg(test)]
+impl<P> PipelineBuilder<HasProducer<P>>
+where
+  P: Producer + 'static,
+  P::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
+  P::OutputStream: 'static,
+{
+  /// Test-only method to create an invalid state where producer_stream is None.
+  pub(crate) fn _test_with_no_producer_stream(mut self) -> Self {
+    self._producer_stream = None;
+    self
+  }
+
+  /// Test-only method to create an invalid state where producer_stream has wrong type.
+  pub(crate) fn _test_with_wrong_producer_stream_type(mut self) -> Self {
+    self._producer_stream = Some(Box::new("wrong type".to_string()));
+    self
+  }
+}
+
 // After producer is added
 impl<P> PipelineBuilder<HasProducer<P>>
 where
@@ -218,6 +241,29 @@ where
       error_strategy: self.error_strategy,
       _state: HasTransformer(PhantomData),
     }
+  }
+}
+
+#[cfg(test)]
+impl<P, T> PipelineBuilder<HasTransformer<P, T>>
+where
+  P: Producer + 'static,
+  T: Transformer + 'static,
+  P::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
+  T::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
+  T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
+  T::OutputStream: 'static,
+{
+  /// Test-only method to create an invalid state where transformer_stream is None.
+  pub(crate) fn _test_with_no_transformer_stream(mut self) -> Self {
+    self.transformer_stream = None;
+    self
+  }
+
+  /// Test-only method to create an invalid state where transformer_stream has wrong type.
+  pub(crate) fn _test_with_wrong_transformer_stream_type(mut self) -> Self {
+    self.transformer_stream = Some(Box::new("wrong type".to_string()));
+    self
   }
 }
 
@@ -352,7 +398,11 @@ where
     self
   }
 
-  async fn _handle_error(&self, error: StreamError<()>) -> Result<ErrorAction, PipelineError<()>> {
+  #[cfg(test)]
+  pub(crate) async fn _handle_error(
+    &self,
+    error: StreamError<()>,
+  ) -> Result<ErrorAction, PipelineError<()>> {
     match &self.error_strategy {
       ErrorStrategy::Stop => Ok(ErrorAction::Stop),
       ErrorStrategy::Skip => Ok(ErrorAction::Skip),
@@ -405,7 +455,7 @@ where
   /// This method will return an error if:
   /// - The error strategy is set to `Stop` and an error occurs
   /// - The consumer fails to process items (depending on error strategy)
-  pub async fn run(mut self) -> Result<((), C), PipelineError<()>>
+  pub async fn run(mut self) -> Result<((), C), crate::error::PipelineError<()>>
   where
     C::InputStream: From<T::OutputStream>,
   {
@@ -424,5 +474,29 @@ where
 
     consumer.consume(transformer_stream.into()).await;
     Ok(((), consumer))
+  }
+}
+
+#[cfg(test)]
+impl<P, T, C> Pipeline<P, T, C>
+where
+  P: Producer,
+  T: Transformer,
+  C: Consumer,
+  P::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
+  T::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
+  T::Output: std::fmt::Debug + Clone + Send + Sync + 'static,
+  C::Input: std::fmt::Debug + Clone + Send + Sync + 'static,
+{
+  /// Test-only method to create an invalid state where transformer_stream is None.
+  pub(crate) fn _test_with_no_transformer_stream(mut self) -> Self {
+    self.transformer_stream = None;
+    self
+  }
+
+  /// Test-only method to create an invalid state where consumer is None.
+  pub(crate) fn _test_with_no_consumer(mut self) -> Self {
+    self._consumer = None;
+    self
   }
 }
