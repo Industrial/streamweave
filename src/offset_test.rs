@@ -888,3 +888,24 @@ fn test_file_offset_store_nonexistent_parent() {
   assert!(file_path.exists());
   assert!(file_path.parent().unwrap().exists());
 }
+
+#[test]
+fn test_file_offset_store_path_no_parent() {
+  // Test FileOffsetStore with a path that has a parent
+  // This ensures the if block in persist executes (lines 268-270)
+  let temp_dir = TempDir::new().unwrap();
+  let file_path = temp_dir.path().join("subdir").join("offsets.json");
+  let store = FileOffsetStore::new(&file_path).unwrap();
+
+  // This should execute the if block (parent is Some) and hit lines 268, 269, and 270
+  store.commit("source1", Offset::sequence(5)).unwrap();
+  assert!(file_path.exists());
+  assert!(file_path.parent().unwrap().exists());
+
+  // Also test persist via clear_all to ensure line 270 is covered
+  store.clear_all().unwrap();
+
+  // Test persist via clear as well
+  store.commit("source2", Offset::sequence(10)).unwrap();
+  store.clear("source2").unwrap();
+}

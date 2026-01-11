@@ -5,6 +5,43 @@ use std::marker::PhantomData;
 #[cfg(test)]
 use crate::error::{ErrorAction, PipelineError, StreamError};
 
+// Helper functions for panic messages (extracted for better coverage tracking)
+fn panic_producer_stream_missing() -> ! {
+  panic!(
+    "Internal error: producer stream missing in HasProducer state. This indicates a bug in the pipeline builder state machine."
+  )
+}
+
+fn panic_producer_stream_downcast_failed() -> ! {
+  panic!(
+    "Internal error: failed to downcast producer stream to expected type. This indicates a type mismatch in the pipeline builder."
+  )
+}
+
+fn panic_transformer_stream_missing() -> ! {
+  panic!(
+    "Internal error: transformer stream missing in HasTransformer state. This indicates a bug in the pipeline builder state machine."
+  )
+}
+
+fn panic_transformer_stream_downcast_failed() -> ! {
+  panic!(
+    "Internal error: failed to downcast transformer stream to expected type. This indicates a type mismatch in the pipeline builder."
+  )
+}
+
+fn panic_transformer_stream_missing_complete() -> ! {
+  panic!(
+    "Internal error: transformer stream missing in Complete state. This indicates a bug in the pipeline builder state machine."
+  )
+}
+
+fn panic_consumer_missing() -> ! {
+  panic!(
+    "Internal error: consumer missing in Complete state. This indicates a bug in the pipeline builder state machine."
+  )
+}
+
 /// Empty state for pipeline builder.
 ///
 /// This state indicates that no components have been added to the pipeline yet.
@@ -217,13 +254,9 @@ where
     let producer_stream = self
       ._producer_stream
       .take()
-      .unwrap_or_else(|| {
-        panic!("Internal error: producer stream missing in HasProducer state. This indicates a bug in the pipeline builder state machine.")
-      })
+      .unwrap_or_else(|| panic_producer_stream_missing())
       .downcast::<P::OutputStream>()
-      .unwrap_or_else(|_| {
-        panic!("Internal error: failed to downcast producer stream to expected type. This indicates a type mismatch in the pipeline builder.")
-      });
+      .unwrap_or_else(|_| panic_producer_stream_downcast_failed());
 
     let transformer_stream = transformer.transform((*producer_stream).into()).await;
     self.transformer_stream = Some(Box::new(transformer_stream));
@@ -295,13 +328,9 @@ where
     let transformer_stream = self
       .transformer_stream
       .take()
-      .unwrap_or_else(|| {
-        panic!("Internal error: transformer stream missing in HasTransformer state. This indicates a bug in the pipeline builder state machine.")
-      })
+      .unwrap_or_else(|| panic_transformer_stream_missing())
       .downcast::<T::OutputStream>()
-      .unwrap_or_else(|_| {
-        panic!("Internal error: failed to downcast transformer stream to expected type. This indicates a type mismatch in the pipeline builder.")
-      });
+      .unwrap_or_else(|_| panic_transformer_stream_downcast_failed());
 
     let new_stream = transformer.transform((*transformer_stream).into()).await;
     self.transformer_stream = Some(Box::new(new_stream));
@@ -338,13 +367,9 @@ where
     let transformer_stream = self
       .transformer_stream
       .take()
-      .unwrap_or_else(|| {
-        panic!("Internal error: transformer stream missing in HasTransformer state. This indicates a bug in the pipeline builder state machine.")
-      })
+      .unwrap_or_else(|| panic_transformer_stream_missing())
       .downcast::<T::OutputStream>()
-      .unwrap_or_else(|_| {
-        panic!("Internal error: failed to downcast transformer stream to expected type. This indicates a type mismatch in the pipeline builder.")
-      });
+      .unwrap_or_else(|_| panic_transformer_stream_downcast_failed());
 
     Pipeline {
       _producer_stream: None,
@@ -441,12 +466,14 @@ where
   where
     C::InputStream: From<T::OutputStream>,
   {
-    let transformer_stream = self.transformer_stream.take().unwrap_or_else(|| {
-      panic!("Internal error: transformer stream missing in Complete state. This indicates a bug in the pipeline builder state machine.")
-    });
-    let mut consumer = self._consumer.take().unwrap_or_else(|| {
-      panic!("Internal error: consumer missing in Complete state. This indicates a bug in the pipeline builder state machine.")
-    });
+    let transformer_stream = self
+      .transformer_stream
+      .take()
+      .unwrap_or_else(|| panic_transformer_stream_missing_complete());
+    let mut consumer = self
+      ._consumer
+      .take()
+      .unwrap_or_else(|| panic_consumer_missing());
 
     consumer.consume(transformer_stream.into()).await;
     Ok(((), consumer))
