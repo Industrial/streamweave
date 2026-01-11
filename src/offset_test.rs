@@ -363,6 +363,14 @@ fn test_in_memory_offset_store_clone() {
   assert_eq!(cloned.get("source1").unwrap(), Some(Offset::sequence(5)));
 }
 
+#[test]
+fn test_in_memory_offset_store_default() {
+  // Test Default implementation explicitly
+  let store = InMemoryOffsetStore::default();
+  assert!(store.get("test").unwrap().is_none());
+  assert_eq!(store.get_all().unwrap().len(), 0);
+}
+
 // ============================================================================
 // FileOffsetStore Tests
 // ============================================================================
