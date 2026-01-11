@@ -909,3 +909,39 @@ fn test_file_offset_store_path_no_parent() {
   store.commit("source2", Offset::sequence(10)).unwrap();
   store.clear("source2").unwrap();
 }
+
+#[test]
+fn test_file_offset_store_new_with_directory() {
+  // Test FileOffsetStore::new when path points to a directory instead of a file
+  // This should fail because fs::read_to_string can't read a directory
+  let temp_dir = TempDir::new().unwrap();
+  let dir_path = temp_dir.path();
+
+  // Try to create a FileOffsetStore with a directory path
+  // This should return an error because read_to_string will fail
+  let result = FileOffsetStore::new(dir_path);
+  assert!(result.is_err());
+  assert!(matches!(result.unwrap_err(), OffsetError::IoError(_)));
+}
+
+#[test]
+fn test_file_offset_store_new_with_valid_existing_file() {
+  // Test FileOffsetStore::new when file exists with valid JSON
+  // This tests the branch where path.exists() is true and data is not empty
+  let temp_dir = TempDir::new().unwrap();
+  let path = temp_dir.path().join("offsets.json");
+
+  // Write valid JSON to file
+  let initial_offsets = serde_json::json!({
+    "source1": {"Sequence": 5},
+    "source2": {"Sequence": 10}
+  });
+  std::fs::write(&path, serde_json::to_string(&initial_offsets).unwrap()).unwrap();
+
+  // Create store from existing file
+  let store = FileOffsetStore::new(&path).unwrap();
+
+  // Verify offsets were loaded
+  assert_eq!(store.get("source1").unwrap(), Some(Offset::sequence(5)));
+  assert_eq!(store.get("source2").unwrap(), Some(Offset::sequence(10)));
+}
