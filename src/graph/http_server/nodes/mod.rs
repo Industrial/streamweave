@@ -26,6 +26,7 @@
 //!
 //! - **[`HttpRequestProducer`]**: Producer node that generates HTTP requests
 //! - **[`HttpResponseConsumer`]**: Consumer node that handles HTTP responses
+//! - **[`HttpServerConsumerNode`]**: Dedicated graph node for HTTP response consumption
 //! - **[`HttpResponseCorrelationConsumer`]**: Consumer that correlates responses
 //!   with requests
 //! - **[`crate::graph::http_server::nodes::PathRouterTransformer`]**: Transformer that routes requests based on
@@ -66,12 +67,18 @@
 //! mechanisms.
 
 pub mod consumer;
+pub mod consumer_node;
+pub mod path_router_node;
 pub mod path_router_transformer;
 pub mod producer;
+pub mod producer_node;
 
 pub use consumer::*;
+pub use consumer_node::*;
+pub use path_router_node::*;
 pub use path_router_transformer::*;
 pub use producer::*;
+pub use producer_node::*;
 
 // Type alias for rustdoc links
 /// Alias for [`PathBasedRouterTransformer`] used in documentation.

@@ -53,6 +53,7 @@ use super::graph::Graph;
 use super::traits::{NodeKind, NodeTrait};
 use std::collections::HashMap;
 use std::collections::HashSet;
+use tracing::trace;
 
 /// A node that wraps a Graph, allowing it to be used as a node in another graph.
 ///
@@ -146,6 +147,10 @@ impl SubgraphNode {
     input_port_names: Vec<String>,
     output_port_names: Vec<String>,
   ) -> Self {
+    trace!(
+      "SubgraphNode::new(name={}, input_port_names={:?}, output_port_names={:?})",
+      name, input_port_names, output_port_names
+    );
     Self {
       name,
       graph,
@@ -176,6 +181,10 @@ impl SubgraphNode {
     internal_node: String,
     internal_port_name: &str,
   ) -> Result<(), String> {
+    trace!(
+      "SubgraphNode::map_input_port(subgraph_port_name={}, internal_node={}, internal_port_name={})",
+      subgraph_port_name, internal_node, internal_port_name
+    );
     if !self
       .input_port_names
       .iter()
@@ -224,6 +233,10 @@ impl SubgraphNode {
     internal_node: String,
     internal_port_name: &str,
   ) -> Result<(), String> {
+    trace!(
+      "SubgraphNode::map_output_port(subgraph_port_name={}, internal_node={}, internal_port_name={})",
+      subgraph_port_name, internal_node, internal_port_name
+    );
     if !self
       .output_port_names
       .iter()
@@ -260,6 +273,7 @@ impl SubgraphNode {
   ///
   /// A reference to the `Graph` contained in this subgraph.
   pub fn graph(&self) -> &Graph {
+    trace!("SubgraphNode::graph(name={})", self.name);
     &self.graph
   }
 
@@ -269,6 +283,7 @@ impl SubgraphNode {
   ///
   /// A mutable reference to the `Graph` contained in this subgraph.
   pub fn graph_mut(&mut self) -> &mut Graph {
+    trace!("SubgraphNode::graph_mut(name={})", self.name);
     &mut self.graph
   }
 
@@ -282,6 +297,10 @@ impl SubgraphNode {
   ///
   /// `Some((node_name, port_name))` if the port is mapped, `None` otherwise.
   pub fn get_input_port_mapping(&self, port_name: &str) -> Option<&(String, String)> {
+    trace!(
+      "SubgraphNode::get_input_port_mapping(name={}, port_name={})",
+      self.name, port_name
+    );
     self.input_port_map.get(port_name)
   }
 
@@ -295,6 +314,10 @@ impl SubgraphNode {
   ///
   /// `Some((node_name, port_name))` if the port is mapped, `None` otherwise.
   pub fn get_output_port_mapping(&self, port_name: &str) -> Option<&(String, String)> {
+    trace!(
+      "SubgraphNode::get_output_port_mapping(name={}, port_name={})",
+      self.name, port_name
+    );
     self.output_port_map.get(port_name)
   }
 
@@ -324,6 +347,10 @@ impl SubgraphNode {
   /// subgraph.mark_parameter_port("in_a")?;
   /// ```
   pub fn mark_parameter_port(&mut self, port_name: &str) -> Result<(), String> {
+    trace!(
+      "SubgraphNode::mark_parameter_port(name={}, port_name={})",
+      self.name, port_name
+    );
     if !self.input_port_names.iter().any(|name| name == port_name) {
       return Err(format!(
         "Input port '{}' does not exist (available ports: {:?})",
@@ -361,6 +388,10 @@ impl SubgraphNode {
   /// subgraph.mark_return_port("out_a")?;
   /// ```
   pub fn mark_return_port(&mut self, port_name: &str) -> Result<(), String> {
+    trace!(
+      "SubgraphNode::mark_return_port(name={}, port_name={})",
+      self.name, port_name
+    );
     if !self.output_port_names.iter().any(|name| name == port_name) {
       return Err(format!(
         "Output port '{}' does not exist (available ports: {:?})",
@@ -382,7 +413,12 @@ impl SubgraphNode {
   ///
   /// `true` if the port is a parameter port, `false` otherwise.
   pub fn is_parameter_port(&self, port_name: &str) -> bool {
-    self.parameter_ports.contains(port_name)
+    let result = self.parameter_ports.contains(port_name);
+    trace!(
+      "SubgraphNode::is_parameter_port(name={}, port_name={}) -> {}",
+      self.name, port_name, result
+    );
+    result
   }
 
   /// Checks if an output port is a return port.
@@ -395,7 +431,12 @@ impl SubgraphNode {
   ///
   /// `true` if the port is a return port, `false` otherwise.
   pub fn is_return_port(&self, port_name: &str) -> bool {
-    self.return_ports.contains(port_name)
+    let result = self.return_ports.contains(port_name);
+    trace!(
+      "SubgraphNode::is_return_port(name={}, port_name={}) -> {}",
+      self.name, port_name, result
+    );
+    result
   }
 
   /// Returns the set of parameter port names.
@@ -404,6 +445,11 @@ impl SubgraphNode {
   ///
   /// A reference to the set of parameter port names.
   pub fn parameter_ports(&self) -> &HashSet<String> {
+    trace!(
+      "SubgraphNode::parameter_ports(name={}) -> {} ports",
+      self.name,
+      self.parameter_ports.len()
+    );
     &self.parameter_ports
   }
 
@@ -413,34 +459,59 @@ impl SubgraphNode {
   ///
   /// A reference to the set of return port names.
   pub fn return_ports(&self) -> &HashSet<String> {
+    trace!(
+      "SubgraphNode::return_ports(name={}) -> {} ports",
+      self.name,
+      self.return_ports.len()
+    );
     &self.return_ports
   }
 }
 
 impl NodeTrait for SubgraphNode {
   fn name(&self) -> &str {
+    trace!("SubgraphNode::name() -> {}", self.name);
     &self.name
   }
 
   fn node_kind(&self) -> NodeKind {
+    trace!("SubgraphNode::node_kind() -> Subgraph");
     NodeKind::Subgraph
   }
 
   fn input_port_names(&self) -> Vec<String> {
+    trace!(
+      "SubgraphNode::input_port_names(name={}) -> {} ports",
+      self.name,
+      self.input_port_names.len()
+    );
     self.input_port_names.clone()
   }
 
   fn output_port_names(&self) -> Vec<String> {
+    trace!(
+      "SubgraphNode::output_port_names(name={}) -> {} ports",
+      self.name,
+      self.output_port_names.len()
+    );
     self.output_port_names.clone()
   }
 
   fn has_input_port(&self, port_name: &str) -> bool {
-    let port_names = self.input_port_names();
-    port_names.iter().any(|name| name == port_name)
+    let result = self.input_port_names.iter().any(|name| name == port_name);
+    trace!(
+      "SubgraphNode::has_input_port(name={}, port_name={}) -> {}",
+      self.name, port_name, result
+    );
+    result
   }
 
   fn has_output_port(&self, port_name: &str) -> bool {
-    let port_names = self.output_port_names();
-    port_names.iter().any(|name| name == port_name)
+    let result = self.output_port_names.iter().any(|name| name == port_name);
+    trace!(
+      "SubgraphNode::has_output_port(name={}, port_name={}) -> {}",
+      self.name, port_name, result
+    );
+    result
   }
 }

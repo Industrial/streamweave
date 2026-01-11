@@ -54,6 +54,7 @@ use crate::Consumer;
 use crate::Producer;
 use crate::Transformer;
 use crate::port::{GetPort, PortList};
+use tracing::trace;
 
 /// Trait for extracting an output port type from a node at a specific index.
 ///
@@ -266,6 +267,7 @@ where
   ///
   /// A new `Connection` instance.
   pub fn new() -> Self {
+    trace!("Connection::new()");
     Self {
       _phantom: std::marker::PhantomData,
     }
@@ -277,6 +279,7 @@ where
   ///
   /// The compile-time constant source port index.
   pub const fn source_port() -> usize {
+    // Note: const fn cannot contain trace! macro
     SOURCE_PORT
   }
 
@@ -286,6 +289,7 @@ where
   ///
   /// The compile-time constant target port index.
   pub const fn target_port() -> usize {
+    // Note: const fn cannot contain trace! macro
     TARGET_PORT
   }
 }
@@ -299,6 +303,7 @@ where
     CompatibleWith<<TargetNode as HasInputPort<TARGET_PORT>>::InputType>,
 {
   fn default() -> Self {
+    trace!("Connection::default()");
     Self::new()
   }
 }

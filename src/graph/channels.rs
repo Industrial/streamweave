@@ -49,6 +49,7 @@ use super::shared_memory_channel::SharedMemoryRef;
 use std::any::Any;
 use std::sync::Arc;
 use tokio::sync::mpsc;
+use tracing::trace;
 
 /// Type-erased channel item that can hold `Arc<Message<T>>` (in-process)
 /// or shared memory references.
@@ -126,6 +127,7 @@ impl ChannelItem {
   pub fn downcast_message_arc<T: 'static + Send + Sync>(
     self,
   ) -> Result<Arc<crate::message::Message<T>>, Self> {
+    trace!("ChannelItem::downcast_message_arc()");
     match self {
       ChannelItem::Arc(arc) => Arc::downcast(arc).map_err(ChannelItem::Arc),
       other => Err(other),
@@ -160,6 +162,7 @@ impl ChannelItem {
   /// }
   /// ```
   pub fn downcast_arc<T: 'static + Send + Sync>(self) -> Result<Arc<T>, Self> {
+    trace!("ChannelItem::downcast_arc()");
     match self {
       ChannelItem::Arc(arc) => Arc::downcast(arc).map_err(ChannelItem::Arc),
       other => Err(other),
@@ -175,6 +178,7 @@ impl ChannelItem {
   /// Note: Bytes variant has been removed. This method always returns false.
   #[must_use]
   pub fn is_bytes(&self) -> bool {
+    trace!("ChannelItem::is_bytes() -> false");
     false // Bytes variant no longer exists
   }
 
@@ -185,7 +189,9 @@ impl ChannelItem {
   /// `true` if this is an `Arc` variant, `false` otherwise.
   #[must_use]
   pub fn is_arc(&self) -> bool {
-    matches!(self, ChannelItem::Arc(_))
+    let result = matches!(self, ChannelItem::Arc(_));
+    trace!("ChannelItem::is_arc() -> {}", result);
+    result
   }
 }
 

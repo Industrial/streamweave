@@ -64,6 +64,7 @@ use std::any::TypeId;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use thiserror::Error;
+use tracing::trace;
 
 /// Error types for shared memory channel operations.
 #[derive(Error, Debug)]
@@ -159,6 +160,10 @@ impl SharedMemoryChannel {
   ///
   /// A new `SharedMemoryChannel` or an error if creation fails.
   pub fn new(segment_id: &str, capacity: usize) -> Result<Self, SharedMemoryError> {
+    trace!(
+      "SharedMemoryChannel::new(segment_id={}, capacity={})",
+      segment_id, capacity
+    );
     let total_size = METADATA_SIZE + capacity;
 
     let shmem = ShmemConf::new()
@@ -198,6 +203,7 @@ impl SharedMemoryChannel {
   ///
   /// A `SharedMemoryChannel` connected to the existing segment or an error.
   pub fn open(segment_id: &str) -> Result<Self, SharedMemoryError> {
+    trace!("SharedMemoryChannel::open(segment_id={})", segment_id);
     let shmem = ShmemConf::new()
       .os_id(segment_id)
       .open()
@@ -222,6 +228,7 @@ impl SharedMemoryChannel {
 
   /// Get the segment ID for this channel.
   pub fn segment_id(&self) -> &str {
+    trace!("SharedMemoryChannel::segment_id() -> {}", self.segment_id);
     &self.segment_id
   }
 
@@ -241,6 +248,7 @@ impl SharedMemoryChannel {
   /// message to bytes first using the serialization module, then send the
   /// serialized bytes. This preserves message IDs and metadata.
   pub fn send(&self, data: &[u8]) -> Result<SharedMemoryRef, SharedMemoryError> {
+    trace!("SharedMemoryChannel::send(data.len={})", data.len());
     let data_size = data.len();
     let item_size = ITEM_HEADER_SIZE + data_size;
     let offset = self.calculate_write_offset(item_size)?;
@@ -287,6 +295,7 @@ impl SharedMemoryChannel {
   /// bytes to `Message<T>` using the serialization module. This restores message
   /// IDs and metadata.
   pub fn receive(&self) -> Result<Bytes, SharedMemoryError> {
+    trace!("SharedMemoryChannel::receive()");
     let metadata = unsafe { &*self.metadata };
 
     // Check if buffer is empty
@@ -372,6 +381,10 @@ impl SharedMemoryChannel {
   ///
   /// This is used when receiving a `SharedMemoryRef` from another process.
   pub fn read_at(&self, offset: usize, size: usize) -> Result<Bytes, SharedMemoryError> {
+    trace!(
+      "SharedMemoryChannel::read_at(offset={}, size={})",
+      offset, size
+    );
     if offset + size > self.capacity {
       return Err(SharedMemoryError::InvalidOffset);
     }
@@ -395,6 +408,10 @@ impl SharedMemoryChannel {
   /// last `Arc<Shmem>` is dropped. This method is provided for explicit
   /// cleanup if needed.
   pub fn cleanup(&self) {
+    trace!(
+      "SharedMemoryChannel::cleanup(segment_id={})",
+      self.segment_id
+    );
     // The shared_memory crate handles cleanup automatically via Drop
     // when the last Arc<Shmem> is dropped. We just need to ensure
     // all references are dropped.
@@ -407,11 +424,17 @@ impl SharedMemoryChannel {
   ///
   /// `true` if the segment is valid, `false` otherwise.
   pub fn is_valid(&self) -> bool {
+    trace!(
+      "SharedMemoryChannel::is_valid(segment_id={})",
+      self.segment_id
+    );
     // Check if we can still access the metadata
     unsafe {
       let metadata = &*self.metadata;
       // Simple validity check: capacity should be reasonable
-      metadata.capacity > 0 && metadata.capacity < usize::MAX / 2
+      let result = metadata.capacity > 0 && metadata.capacity < usize::MAX / 2;
+      trace!("SharedMemoryChannel::is_valid() -> {}", result);
+      result
     }
   }
 }

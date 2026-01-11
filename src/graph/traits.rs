@@ -38,6 +38,7 @@
 //! ```
 
 use dyn_clone::DynClone;
+use tracing::trace;
 
 /// Trait for type-erased node access.
 ///
@@ -124,6 +125,10 @@ pub trait NodeTrait: Send + Sync + std::any::Any + DynClone {
     _use_shared_memory: bool,
     _arc_pool: Option<std::sync::Arc<super::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), super::execution::ExecutionError>>> {
+    trace!(
+      "NodeTrait::spawn_execution_task(name={}) -> None (default)",
+      self.name()
+    );
     None
   }
 
@@ -138,6 +143,10 @@ pub trait NodeTrait: Send + Sync + std::any::Any + DynClone {
   /// Default implementation returns `None`. Nodes that implement StatefulNode
   /// should override this method to return `Some(self)`.
   fn as_stateful(&self) -> Option<&dyn std::any::Any> {
+    trace!(
+      "NodeTrait::as_stateful(name={}) -> None (default)",
+      self.name()
+    );
     None
   }
 
@@ -152,6 +161,10 @@ pub trait NodeTrait: Send + Sync + std::any::Any + DynClone {
   /// Default implementation returns `None`. Nodes that implement WindowedNode
   /// should override this method to return `Some(self)`.
   fn as_windowed(&self) -> Option<&dyn std::any::Any> {
+    trace!(
+      "NodeTrait::as_windowed(name={}) -> None (default)",
+      self.name()
+    );
     None
   }
 }

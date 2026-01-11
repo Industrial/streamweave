@@ -108,6 +108,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
+use tracing::trace;
 
 /// A monitor that tracks throughput (items/second) with rolling average calculation.
 ///
@@ -146,6 +147,7 @@ impl ThroughputMonitor {
   /// let monitor = ThroughputMonitor::new(Duration::from_secs(1));
   /// ```
   pub fn new(window_size: Duration) -> Self {
+    trace!("ThroughputMonitor::new(window_size={:?})", window_size);
     let now = Instant::now();
     Self {
       item_count: Arc::new(AtomicU64::new(0)),
@@ -159,6 +161,7 @@ impl ThroughputMonitor {
   /// Create a new `ThroughputMonitor` with default window size (1 second).
   #[allow(clippy::should_implement_trait)]
   pub fn default() -> Self {
+    trace!("ThroughputMonitor::default()");
     Self::new(Duration::from_secs(1))
   }
 
@@ -166,6 +169,7 @@ impl ThroughputMonitor {
   ///
   /// This method is thread-safe and can be called from any node or thread.
   pub fn increment_item_count(&self) {
+    trace!("ThroughputMonitor::increment_item_count()");
     self.item_count.fetch_add(1, Ordering::Relaxed);
   }
 
@@ -175,6 +179,7 @@ impl ThroughputMonitor {
   ///
   /// * `count` - Number of items to add
   pub fn increment_by(&self, count: u64) {
+    trace!("ThroughputMonitor::increment_by(count={})", count);
     self.item_count.fetch_add(count, Ordering::Relaxed);
   }
 
@@ -184,7 +189,9 @@ impl ThroughputMonitor {
   ///
   /// The total number of items processed since monitoring started.
   pub fn item_count(&self) -> u64 {
-    self.item_count.load(Ordering::Relaxed)
+    let count = self.item_count.load(Ordering::Relaxed);
+    trace!("ThroughputMonitor::item_count() -> {}", count);
+    count
   }
 
   /// Calculate the current throughput (items/second) using a rolling average.
@@ -196,6 +203,7 @@ impl ThroughputMonitor {
   ///
   /// The current throughput in items/second (as a floating-point value).
   pub async fn calculate_throughput(&self) -> f64 {
+    trace!("ThroughputMonitor::calculate_throughput()");
     let now = Instant::now();
     let current_count = self.item_count.load(Ordering::Relaxed);
 
@@ -275,6 +283,7 @@ impl ThroughputMonitor {
   /// This resets the item count and clears the sample history.
   /// Useful for starting a new measurement period.
   pub async fn reset(&self) {
+    trace!("ThroughputMonitor::reset()");
     self.item_count.store(0, Ordering::Relaxed);
     *self.start_time.write().await = Instant::now();
     *self.last_reset.write().await = Instant::now();
@@ -287,6 +296,7 @@ impl ThroughputMonitor {
   ///
   /// The window size duration.
   pub fn window_size(&self) -> Duration {
+    trace!("ThroughputMonitor::window_size() -> {:?}", self.window_size);
     self.window_size
   }
 
@@ -296,6 +306,7 @@ impl ThroughputMonitor {
   ///
   /// A tuple of (total_items, window_samples_count, elapsed_time).
   pub async fn statistics(&self) -> (u64, usize, Duration) {
+    trace!("ThroughputMonitor::statistics()");
     let total_items = self.item_count.load(Ordering::Relaxed);
     let samples_count = self.samples.read().await.len();
     let elapsed = self.start_time.read().await.elapsed();

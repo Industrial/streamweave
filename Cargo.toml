@@ -1,6 +1,6 @@
 [package]
 name = "streamweave"
-version = "0.8.2"
+version = "0.9.0"
 edition = "2024"
 authors = ["Tom Wieland <tom.wieland@gmail.com>"]
 license = "CC-BY-SA-4.0"
@@ -75,6 +75,11 @@ proptest = "1.5"
 tempfile = "3.10"
 tokio-test = "0.4.2"
 criterion = { version = "0.5", features = ["async_tokio"] }
+tracing-subscriber = "0.3"
+
+[[example]]
+name = "http-server"
+path = "examples/http-server/main.rs"
 
 [[bench]]
 name = "in_process_bench"

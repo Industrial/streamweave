@@ -34,6 +34,7 @@
 use bytes::Bytes;
 use serde::{Serialize, de::DeserializeOwned};
 use std::fmt;
+use tracing::trace;
 
 /// Trait for serializing and deserializing data.
 ///
@@ -173,6 +174,7 @@ impl From<serde_json::Error> for SerializationError {
 /// # Ok::<(), crate::graph::SerializationError>(())
 /// ```
 pub fn serialize<T: Serialize>(item: &T) -> Result<Bytes, SerializationError> {
+  trace!("serialize()");
   serde_json::to_vec(item)
     .map_err(SerializationError::from)
     .map(Bytes::from)
@@ -232,6 +234,7 @@ pub fn serialize<T: Serialize>(item: &T) -> Result<Bytes, SerializationError> {
 /// # Ok::<(), crate::graph::SerializationError>(())
 /// ```
 pub fn deserialize<T: DeserializeOwned>(data: Bytes) -> Result<T, SerializationError> {
+  trace!("deserialize(data.len={})", data.len());
   serde_json::from_slice(data.as_ref()).map_err(SerializationError::from)
 }
 
@@ -296,6 +299,7 @@ impl ZeroCopyDeserializer {
   /// A new `ZeroCopyDeserializer` instance
   #[must_use]
   pub fn new(buffer: Bytes) -> Self {
+    trace!("ZeroCopyDeserializer::new(buffer.len={})", buffer.len());
     Self { buffer }
   }
 
@@ -318,6 +322,10 @@ impl ZeroCopyDeserializer {
   /// For zero-copy string deserialization, use `deserialize_with_lifetime`
   /// which returns values with lifetimes tied to the buffer.
   pub fn deserialize<T: DeserializeOwned>(&self) -> Result<T, SerializationError> {
+    trace!(
+      "ZeroCopyDeserializer::deserialize(buffer.len={})",
+      self.buffer.len()
+    );
     serde_json::from_slice(self.buffer.as_ref()).map_err(Into::into)
   }
 
@@ -328,6 +336,10 @@ impl ZeroCopyDeserializer {
   /// A reference to the `Bytes` buffer
   #[must_use]
   pub fn buffer(&self) -> &Bytes {
+    trace!(
+      "ZeroCopyDeserializer::buffer() -> len={}",
+      self.buffer.len()
+    );
     &self.buffer
   }
 }
@@ -366,6 +378,7 @@ pub fn deserialize_zero_copy_strings<'de, T>(data: &'de [u8]) -> Result<T, Seria
 where
   T: serde::Deserialize<'de>,
 {
+  trace!("deserialize_zero_copy_strings(data.len={})", data.len());
   serde_json::from_slice(data).map_err(Into::into)
 }
 
@@ -378,10 +391,12 @@ pub struct JsonSerializer;
 
 impl Serializer for JsonSerializer {
   fn serialize<T: Serialize>(&self, item: &T) -> Result<Bytes, SerializationError> {
+    trace!("JsonSerializer::serialize()");
     serialize(item)
   }
 
   fn deserialize<T: DeserializeOwned>(&self, bytes: Bytes) -> Result<T, SerializationError> {
+    trace!("JsonSerializer::deserialize(bytes.len={})", bytes.len());
     deserialize(bytes)
   }
 }

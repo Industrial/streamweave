@@ -36,6 +36,7 @@
 use crate::Transformer;
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex, Weak};
+use tracing::trace;
 
 /// Trait for types that can be shared using zero-copy semantics.
 ///
@@ -212,6 +213,7 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
   /// ```
   #[must_use]
   pub fn new(max_size: usize) -> Self {
+    trace!("ArcPool::new(max_size={})", max_size);
     Self {
       pool: Arc::new(Mutex::new(Vec::with_capacity(max_size.min(16)))), // Pre-allocate some capacity
       max_size,
@@ -248,6 +250,7 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
   /// let arc2 = pool.get_or_create("world".to_string()); // May reuse "hello" from pool
   /// ```
   pub fn get_or_create(&self, value: T) -> Arc<T> {
+    trace!("ArcPool::get_or_create()");
     let mut pool = self.pool.lock().unwrap();
 
     // Try to get a value from the pool
@@ -296,6 +299,7 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
   /// let returned = pool.return_arc(arc); // Returns true if successful
   /// ```
   pub fn return_arc(&self, arc: Arc<T>) -> bool {
+    trace!("ArcPool::return_arc()");
     // Try to unwrap the Arc - only succeeds if this is the only reference
     match Arc::try_unwrap(arc) {
       Ok(value) => {
@@ -333,7 +337,9 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
   /// The number of `Arc` instances currently in the pool
   #[must_use]
   pub fn len(&self) -> usize {
-    self.pool.lock().unwrap().len()
+    let len = self.pool.lock().unwrap().len();
+    trace!("ArcPool::len() -> {}", len);
+    len
   }
 
   /// Check if the pool is empty.
@@ -343,7 +349,9 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
   /// `true` if the pool contains no `Arc` instances, `false` otherwise
   #[must_use]
   pub fn is_empty(&self) -> bool {
-    self.pool.lock().unwrap().is_empty()
+    let result = self.pool.lock().unwrap().is_empty();
+    trace!("ArcPool::is_empty() -> {}", result);
+    result
   }
 
   /// Clear all values from the pool.
@@ -351,6 +359,7 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
   /// This will drop all pooled values, freeing their memory.
   /// Statistics are not reset by this method.
   pub fn clear(&self) {
+    trace!("ArcPool::clear()");
     self.pool.lock().unwrap().clear();
   }
 
@@ -370,6 +379,7 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
   /// println!("Hit rate: {:.2}%", stats.hit_rate() * 100.0);
   /// ```
   pub fn statistics(&self) -> PoolStatistics {
+    trace!("ArcPool::statistics()");
     let hits = self.hits.load(std::sync::atomic::Ordering::Relaxed);
     let misses = self.misses.load(std::sync::atomic::Ordering::Relaxed);
     let returns = self.returns.load(std::sync::atomic::Ordering::Relaxed);
@@ -396,7 +406,9 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
   ///
   /// The number of times a value was successfully retrieved from the pool.
   pub fn hits(&self) -> u64 {
-    self.hits.load(std::sync::atomic::Ordering::Relaxed)
+    let hits = self.hits.load(std::sync::atomic::Ordering::Relaxed);
+    trace!("ArcPool::hits() -> {}", hits);
+    hits
   }
 
   /// Get the number of pool misses (new allocations).
@@ -405,7 +417,9 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
   ///
   /// The number of times the pool was empty and a new value had to be allocated.
   pub fn misses(&self) -> u64 {
-    self.misses.load(std::sync::atomic::Ordering::Relaxed)
+    let misses = self.misses.load(std::sync::atomic::Ordering::Relaxed);
+    trace!("ArcPool::misses() -> {}", misses);
+    misses
   }
 
   /// Get the number of successful returns to the pool.
@@ -414,7 +428,9 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
   ///
   /// The number of times a value was successfully returned to the pool.
   pub fn returns(&self) -> u64 {
-    self.returns.load(std::sync::atomic::Ordering::Relaxed)
+    let returns = self.returns.load(std::sync::atomic::Ordering::Relaxed);
+    trace!("ArcPool::returns() -> {}", returns);
+    returns
   }
 
   /// Get the number of failed return attempts.
@@ -423,9 +439,11 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
   ///
   /// The number of times `return_arc` failed (Arc had multiple references or pool was full).
   pub fn return_failures(&self) -> u64 {
-    self
+    let failures = self
       .return_failures
-      .load(std::sync::atomic::Ordering::Relaxed)
+      .load(std::sync::atomic::Ordering::Relaxed);
+    trace!("ArcPool::return_failures() -> {}", failures);
+    failures
   }
 
   /// Reset all statistics counters.
@@ -433,6 +451,7 @@ impl<T: Clone + Send + Sync + 'static> ArcPool<T> {
   /// This resets hits, misses, returns, and return_failures to zero.
   /// The pool contents are not affected.
   pub fn reset_statistics(&self) {
+    trace!("ArcPool::reset_statistics()");
     self.hits.store(0, std::sync::atomic::Ordering::Relaxed);
     self.misses.store(0, std::sync::atomic::Ordering::Relaxed);
     self.returns.store(0, std::sync::atomic::Ordering::Relaxed);
@@ -482,6 +501,7 @@ impl PoolStatistics {
   /// }
   /// ```
   pub fn hit_rate(&self) -> f64 {
+    trace!("PoolStatistics::hit_rate()");
     if self.total_requests == 0 {
       return 0.0;
     }
@@ -494,6 +514,7 @@ impl PoolStatistics {
   ///
   /// Return success rate as a value between 0.0 and 1.0, or 0.0 if no returns attempted.
   pub fn return_success_rate(&self) -> f64 {
+    trace!("PoolStatistics::return_success_rate()");
     let total_returns = self.returns + self.return_failures;
     if total_returns == 0 {
       return 0.0;
@@ -507,6 +528,7 @@ impl PoolStatistics {
   ///
   /// A string containing a human-readable summary of pool statistics.
   pub fn summary(&self) -> String {
+    trace!("PoolStatistics::summary()");
     format!(
       "Pool Statistics:\n  Hits: {} ({:.2}%)\n  Misses: {}\n  Returns: {} ({:.2}%)\n  Return Failures: {}\n  Pool Size: {}/{}\n  Total Requests: {}",
       self.hits,

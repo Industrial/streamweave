@@ -99,6 +99,7 @@ use super::execution::GraphExecution;
 
 use super::graph::Graph;
 use super::traits::NodeTrait;
+use tracing::{info, trace};
 
 /// Builder for constructing graphs with a fluent API.
 ///
@@ -130,6 +131,7 @@ impl GraphBuilder {
   ///
   /// A new `GraphBuilder` with an empty graph.
   pub fn new() -> Self {
+    trace!("GraphBuilder::new()");
     Self {
       graph: Graph::new(),
     }
@@ -146,7 +148,13 @@ impl GraphBuilder {
   /// `Ok(Self)` for method chaining if the node was added successfully,
   /// or an error if a node with the same name already exists.
   pub fn node(mut self, node: Box<dyn NodeTrait + Send + Sync>) -> Result<Self, String> {
+    trace!("GraphBuilder::node()");
+    let node_name = node.name().to_string();
     self.graph.add_node(node)?;
+    info!(
+      node = %node_name,
+      "Added node to graph"
+    );
     Ok(self)
   }
 
@@ -162,7 +170,16 @@ impl GraphBuilder {
   /// `Ok(Self)` for method chaining if the connection was created successfully,
   /// or an error if the nodes don't exist or don't have the required ports.
   pub fn connect_by_name(mut self, source_name: &str, target_name: &str) -> Result<Self, String> {
+    trace!(
+      "GraphBuilder::connect_by_name(source_name = {}, target_name = {})",
+      source_name, target_name
+    );
     self.graph.connect_by_name(source_name, target_name)?;
+    info!(
+      source = %source_name,
+      target = %target_name,
+      "Connected nodes in graph"
+    );
     Ok(self)
   }
 
@@ -186,9 +203,20 @@ impl GraphBuilder {
     target_name: &str,
     target_port: &str,
   ) -> Result<Self, String> {
+    trace!(
+      "GraphBuilder::connect(source_name = {}, source_port = {}, target_name = {}, target_port = {})",
+      source_name, source_port, target_name, target_port
+    );
     self
       .graph
       .connect(source_name, source_port, target_name, target_port)?;
+    info!(
+      source = %source_name,
+      source_port = %source_port,
+      target = %target_name,
+      target_port = %target_port,
+      "Connected nodes in graph"
+    );
     Ok(self)
   }
 
@@ -198,6 +226,11 @@ impl GraphBuilder {
   ///
   /// The constructed `Graph` instance.
   pub fn build(self) -> Graph {
+    trace!(
+      "GraphBuilder::build(nodes = {}, connections = {})",
+      self.graph.node_count(),
+      self.graph.get_connections().len()
+    );
     self.graph
   }
 }

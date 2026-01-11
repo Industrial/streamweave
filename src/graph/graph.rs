@@ -91,6 +91,7 @@ use super::graph_builder::GraphBuilder;
 use std::collections::HashMap;
 
 use super::traits::NodeTrait;
+use tracing::{debug, trace};
 
 /// Runtime connection information for graph execution.
 ///
@@ -123,6 +124,7 @@ impl Graph {
   ///
   /// A new `Graph` instance with no nodes or connections.
   pub fn new() -> Self {
+    trace!("Graph::new()");
     Self {
       nodes: HashMap::new(),
       connections: Vec::new(),
@@ -135,6 +137,7 @@ impl Graph {
   ///
   /// The number of nodes in the graph.
   pub fn node_count(&self) -> usize {
+    trace!("Graph::node_count()");
     self.nodes.len()
   }
 
@@ -144,6 +147,7 @@ impl Graph {
   ///
   /// `true` if the graph has no nodes, `false` otherwise.
   pub fn is_empty(&self) -> bool {
+    trace!("Graph::is_empty()");
     self.nodes.is_empty()
   }
 
@@ -157,9 +161,14 @@ impl Graph {
   ///
   /// `Some(&dyn NodeTrait)` if the node exists, `None` otherwise.
   pub fn get_node(&self, name: &str) -> Option<&dyn NodeTrait> {
+    trace!("Graph::get_node(name = {})", name);
     // Return as &dyn NodeTrait (without Send + Sync bounds in return type)
     // The stored nodes have Send + Sync bounds, but we can safely return them as &dyn NodeTrait
-    self.nodes.get(name).map(|n| n.as_ref() as &dyn NodeTrait)
+    let result = self.nodes.get(name).map(|n| n.as_ref() as &dyn NodeTrait);
+    if result.is_none() {
+      debug!(node = %name, "Graph: Node not found");
+    }
+    result
   }
 
   /// Gets a mutable reference to a node by name.
@@ -172,6 +181,7 @@ impl Graph {
   ///
   /// `Some(&mut dyn NodeTrait)` if the node exists, `None` otherwise.
   pub fn get_node_mut(&mut self, name: &str) -> Option<&mut dyn NodeTrait> {
+    trace!("Graph::get_node_mut(name = {})", name);
     // Return as &mut dyn NodeTrait (without Send + Sync bounds in return type)
     // The stored nodes have Send + Sync bounds, but we can safely return them as &mut dyn NodeTrait
     self
@@ -186,6 +196,7 @@ impl Graph {
   ///
   /// A vector of node names, in no particular order.
   pub fn node_names(&self) -> Vec<String> {
+    trace!("Graph::node_names()");
     self.nodes.keys().cloned().collect()
   }
 
@@ -195,6 +206,7 @@ impl Graph {
   ///
   /// A reference to the list of connections.
   pub fn get_connections(&self) -> &[ConnectionInfo] {
+    trace!("Graph::get_connections()");
     &self.connections
   }
 
@@ -204,6 +216,7 @@ impl Graph {
   ///
   /// A mutable reference to the list of connections.
   pub fn get_connections_mut(&mut self) -> &mut Vec<ConnectionInfo> {
+    trace!("Graph::get_connections_mut()");
     &mut self.connections
   }
 
@@ -217,6 +230,7 @@ impl Graph {
   ///
   /// A vector of `(parent_node_name, parent_output_port_name)` tuples.
   pub fn get_parents(&self, node_name: &str) -> Vec<(String, String)> {
+    trace!("Graph::get_parents(node_name = {})", node_name);
     self
       .connections
       .iter()
@@ -235,6 +249,7 @@ impl Graph {
   ///
   /// A vector of `(child_node_name, child_input_port_name)` tuples.
   pub fn get_children(&self, node_name: &str) -> Vec<(String, String)> {
+    trace!("Graph::get_children(node_name = {})", node_name);
     self
       .connections
       .iter()
@@ -254,10 +269,12 @@ impl Graph {
   /// `Ok(())` if the node was added successfully, or an error if a node with
   /// the same name already exists.
   pub fn add_node(&mut self, node: Box<dyn NodeTrait + Send + Sync>) -> Result<(), String> {
+    trace!("Graph::add_node()");
     let name = node.name().to_string();
     if self.nodes.contains_key(&name) {
       return Err(format!("Node with name '{}' already exists", name));
     }
+    debug!(node = %name, "Graph: Adding node");
     self.nodes.insert(name, node);
     Ok(())
   }
@@ -274,6 +291,11 @@ impl Graph {
   /// `Ok(())` if the connection was created successfully, or an error if
   /// the nodes don't exist or don't have the required ports.
   pub fn connect_by_name(&mut self, source_name: &str, target_name: &str) -> Result<(), String> {
+    trace!(
+      "Graph::connect_by_name(source_name = {}, target_name = {})",
+      source_name, target_name
+    );
+
     // Get source and target nodes
     let source_node = self
       .get_node(source_name)
@@ -312,9 +334,16 @@ impl Graph {
 
     // Create connection
     self.connections.push(ConnectionInfo {
-      source: (source_name.to_string(), source_port),
-      target: (target_name.to_string(), target_port),
+      source: (source_name.to_string(), source_port.clone()),
+      target: (target_name.to_string(), target_port.clone()),
     });
+    debug!(
+      source = %source_name,
+      source_port = %source_port,
+      target = %target_name,
+      target_port = %target_port,
+      "Graph: Connected nodes"
+    );
 
     Ok(())
   }
@@ -339,6 +368,11 @@ impl Graph {
     target_name: &str,
     target_port: &str,
   ) -> Result<(), String> {
+    trace!(
+      "Graph::connect(source_name = {}, source_port = {}, target_name = {}, target_port = {})",
+      source_name, source_port, target_name, target_port
+    );
+
     // Get source and target nodes
     let source_node = self
       .get_node(source_name)
@@ -366,6 +400,13 @@ impl Graph {
       source: (source_name.to_string(), source_port.to_string()),
       target: (target_name.to_string(), target_port.to_string()),
     });
+    debug!(
+      source = %source_name,
+      source_port = %source_port,
+      target = %target_name,
+      target_port = %target_port,
+      "Graph: Connected nodes (with ports)"
+    );
 
     Ok(())
   }
@@ -373,6 +414,7 @@ impl Graph {
 
 impl Clone for Graph {
   fn clone(&self) -> Self {
+    trace!("Graph::clone()");
     // Note: We cannot clone Box<dyn NodeTrait> directly since Clone is not object-safe
     // For now, we create a new graph with the same structure.
     // In practice, nodes should be cloned before adding to the graph if needed.
@@ -386,6 +428,7 @@ impl Clone for Graph {
 
 impl Default for Graph {
   fn default() -> Self {
+    trace!("Graph::default()");
     Self::new()
   }
 }

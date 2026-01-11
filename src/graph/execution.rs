@@ -55,6 +55,7 @@ use std::time::Duration;
 use tokio::sync::{RwLock, mpsc};
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
+use tracing::trace;
 
 /// Error type for graph execution.
 ///
@@ -372,6 +373,10 @@ impl GraphExecutor {
   /// let executor = graph.executor();
   /// ```
   pub fn new(graph: Graph) -> Self {
+    trace!(
+      "GraphExecutor::new(graph=Graph{{node_count={}}})",
+      graph.node_count()
+    );
     Self {
       graph,
       node_handles: HashMap::new(),
@@ -398,6 +403,11 @@ impl GraphExecutor {
   ///
   /// A new `GraphExecutor` instance with the specified shutdown timeout.
   pub fn with_shutdown_timeout(graph: Graph, shutdown_timeout: Duration) -> Self {
+    trace!(
+      "GraphExecutor::with_shutdown_timeout(graph=Graph{{node_count={}}}, shutdown_timeout={:?})",
+      graph.node_count(),
+      shutdown_timeout
+    );
     Self {
       graph,
       node_handles: HashMap::new(),
@@ -439,6 +449,7 @@ impl GraphExecutor {
   /// ```
   #[must_use]
   pub fn with_arc_pool(mut self, pool: ArcPool<Bytes>) -> Self {
+    trace!("GraphExecutor::with_arc_pool()");
     self.arc_pool = Some(pool);
     self
   }
@@ -467,6 +478,10 @@ impl GraphExecutor {
   /// ```
   #[must_use]
   pub fn with_use_shared_memory(mut self, use_shared_memory: bool) -> Self {
+    trace!(
+      "GraphExecutor::with_use_shared_memory(use_shared_memory={})",
+      use_shared_memory
+    );
     self.use_shared_memory = use_shared_memory;
     self
   }
@@ -503,6 +518,7 @@ impl GraphExecutor {
   /// # }
   /// ```
   pub async fn start(&mut self) -> Result<(), ExecutionError> {
+    trace!("GraphExecutor::start()");
     self.execute_in_process(self.use_shared_memory).await
   }
 
@@ -541,6 +557,7 @@ impl GraphExecutor {
   /// # }
   /// ```
   pub async fn stop(&mut self) -> Result<(), ExecutionError> {
+    trace!("GraphExecutor::stop()");
     if self.state == ExecutionState::Stopped {
       return Ok(());
     }
@@ -650,6 +667,7 @@ impl GraphExecutor {
   ///
   /// `Ok(())` if execution was stopped, `Err(ExecutionError)` otherwise.
   pub async fn stop_immediate(&mut self) -> Result<(), ExecutionError> {
+    trace!("GraphExecutor::stop_immediate()");
     if self.state == ExecutionState::Stopped {
       return Ok(());
     }
@@ -682,6 +700,10 @@ impl GraphExecutor {
   ///
   /// A slice of all `ExecutionError` instances that occurred during execution.
   pub fn errors(&self) -> &[ExecutionError] {
+    trace!(
+      "GraphExecutor::errors() -> {} errors",
+      self.execution_errors.len()
+    );
     &self.execution_errors
   }
 
@@ -690,6 +712,7 @@ impl GraphExecutor {
   /// This is useful when you want to reset error state, for example
   /// after handling errors or before restarting execution.
   pub fn clear_errors(&mut self) {
+    trace!("GraphExecutor::clear_errors()");
     self.execution_errors.clear();
   }
 
@@ -699,6 +722,10 @@ impl GraphExecutor {
   ///
   /// The current shutdown timeout.
   pub fn shutdown_timeout(&self) -> Duration {
+    trace!(
+      "GraphExecutor::shutdown_timeout() -> {:?}",
+      self.shutdown_timeout
+    );
     self.shutdown_timeout
   }
 
@@ -708,6 +735,7 @@ impl GraphExecutor {
   ///
   /// * `timeout` - The new shutdown timeout duration
   pub fn set_shutdown_timeout(&mut self, timeout: Duration) {
+    trace!("GraphExecutor::set_shutdown_timeout(timeout={:?})", timeout);
     self.shutdown_timeout = timeout;
   }
 
@@ -717,6 +745,7 @@ impl GraphExecutor {
   ///
   /// The current `ExecutionState`.
   pub fn state(&self) -> ExecutionState {
+    trace!("GraphExecutor::state() -> {:?}", self.state);
     self.state
   }
 
@@ -726,6 +755,10 @@ impl GraphExecutor {
   ///
   /// `true` if the graph is running, `false` otherwise.
   pub fn is_running(&self) -> bool {
+    trace!(
+      "GraphExecutor::is_running() -> {}",
+      self.state == ExecutionState::Running
+    );
     self.state == ExecutionState::Running
   }
 
@@ -735,6 +768,7 @@ impl GraphExecutor {
   ///
   /// A reference to the `Graph` being executed.
   pub fn graph(&self) -> &Graph {
+    trace!("GraphExecutor::graph()");
     &self.graph
   }
 
@@ -770,6 +804,7 @@ impl GraphExecutor {
   /// # }
   /// ```
   pub async fn pause(&mut self) -> Result<(), ExecutionError> {
+    trace!("GraphExecutor::pause()");
     if self.state != ExecutionState::Running {
       return Err(ExecutionError::LifecycleError {
         operation: "pause".to_string(),
@@ -814,6 +849,7 @@ impl GraphExecutor {
   /// # }
   /// ```
   pub async fn resume(&mut self) -> Result<(), ExecutionError> {
+    trace!("GraphExecutor::resume()");
     if self.state != ExecutionState::Paused {
       return Err(ExecutionError::LifecycleError {
         operation: "resume".to_string(),
@@ -834,6 +870,10 @@ impl GraphExecutor {
   ///
   /// `true` if the graph is paused, `false` otherwise.
   pub fn is_paused(&self) -> bool {
+    trace!(
+      "GraphExecutor::is_paused() -> {}",
+      self.state == ExecutionState::Paused
+    );
     self.state == ExecutionState::Paused
   }
 
@@ -845,6 +885,7 @@ impl GraphExecutor {
   ///
   /// A reference to the pause signal `Arc<RwLock<bool>>`.
   pub fn pause_signal(&self) -> Arc<RwLock<bool>> {
+    trace!("GraphExecutor::pause_signal()");
     self.pause_signal.clone()
   }
 
@@ -860,6 +901,7 @@ impl GraphExecutor {
   /// `Ok(())` if the topology is valid, `Err(ExecutionError)` otherwise.
   #[allow(clippy::result_large_err)]
   fn validate_topology(&self) -> Result<(), ExecutionError> {
+    trace!("GraphExecutor::validate_topology()");
     if self.graph.is_empty() {
       return Err(ExecutionError::InvalidTopology(
         "Graph is empty".to_string(),
@@ -931,6 +973,7 @@ impl GraphExecutor {
   /// `Ok(())` if channels were created successfully, `Err(ExecutionError)` otherwise.
   #[allow(clippy::result_large_err)]
   fn create_channels(&mut self) -> Result<(), ExecutionError> {
+    trace!("GraphExecutor::create_channels()");
     self.create_channels_with_buffer_size(1024)
   }
 
@@ -953,6 +996,10 @@ impl GraphExecutor {
     &mut self,
     buffer_size: usize,
   ) -> Result<(), ExecutionError> {
+    trace!(
+      "GraphExecutor::create_channels_with_buffer_size(buffer_size={})",
+      buffer_size
+    );
     let use_shared_memory = self.use_shared_memory;
 
     for conn in self.graph.get_connections() {
@@ -1073,6 +1120,10 @@ impl GraphExecutor {
     &mut self,
     use_shared_memory: bool,
   ) -> Result<(), ExecutionError> {
+    trace!(
+      "GraphExecutor::execute_in_process(use_shared_memory={})",
+      use_shared_memory
+    );
     if self.state == ExecutionState::Running {
       return Err(ExecutionError::ExecutionFailed(
         "Graph is already running".to_string(),
@@ -1107,9 +1158,11 @@ impl GraphExecutor {
             {
               // ConnectionInfo now stores port names directly
               let target_port_name = conn.target.1.clone();
-              let source_port_name = conn.source.1.clone();
+              let _source_port_name = conn.source.1.clone();
 
-              let key = (parent_name.to_string(), source_port_name);
+              // Channel receivers are stored with key (target_node, target_port)
+              // So we need to look them up with (node_name, target_port_name)
+              let key = (node_name.to_string(), target_port_name.clone());
               if let Some(receiver) = self.channel_receivers.remove(&key) {
                 input_channels.insert(target_port_name, receiver);
               }
@@ -1119,23 +1172,17 @@ impl GraphExecutor {
         }
 
         // Collect output channels for this node
+        // Need to check all connections, not just first match, since multiple output ports
+        // may connect to the same target port (fan-out)
         let mut output_channels = HashMap::new();
-        let children = self.graph.get_children(&node_name);
-        for (child_name, child_port_name) in children {
-          // Find which output port this connection comes from
-          for conn in self.graph.get_connections() {
-            if conn.source.0 == node_name
-              && conn.target.0 == child_name
-              && conn.target.1 == child_port_name
-            {
-              // ConnectionInfo now stores port names directly
-              let source_port_name = conn.source.1.clone();
+        for conn in self.graph.get_connections() {
+          if conn.source.0 == node_name {
+            // ConnectionInfo now stores port names directly
+            let source_port_name = conn.source.1.clone();
 
-              let key = (node_name.to_string(), source_port_name.clone());
-              if let Some(sender) = self.channel_senders.get(&key).cloned() {
-                output_channels.insert(source_port_name, sender);
-              }
-              break;
+            let key = (node_name.to_string(), source_port_name.clone());
+            if let Some(sender) = self.channel_senders.get(&key).cloned() {
+              output_channels.insert(source_port_name, sender);
             }
           }
         }
@@ -1189,6 +1236,10 @@ impl GraphExecutor {
   /// send as `ChannelItem::Arc` (`Arc<Message<T>>`) or `ChannelItem::SharedMemory`
   /// (shared memory reference) based on `ExecutionMode`.
   pub fn get_channel_sender(&self, node_name: &str, port_name: &str) -> Option<&TypeErasedSender> {
+    trace!(
+      "GraphExecutor::get_channel_sender(node_name={}, port_name={})",
+      node_name, port_name
+    );
     self
       .channel_senders
       .get(&(node_name.to_string(), port_name.to_string()))
@@ -1216,6 +1267,10 @@ impl GraphExecutor {
     node_name: &str,
     port_name: &str,
   ) -> Option<&mut TypeErasedReceiver> {
+    trace!(
+      "GraphExecutor::get_channel_receiver(node_name={}, port_name={})",
+      node_name, port_name
+    );
     self
       .channel_receivers
       .get_mut(&(node_name.to_string(), port_name.to_string()))
@@ -1241,6 +1296,10 @@ impl GraphExecutor {
     node_name: &str,
     port_name: &str,
   ) -> Option<&SharedMemoryChannel> {
+    trace!(
+      "GraphExecutor::get_shared_memory_channel(node_name={}, port_name={})",
+      node_name, port_name
+    );
     self
       .shared_memory_channels
       .get(&(node_name.to_string(), port_name.to_string()))
@@ -1252,6 +1311,10 @@ impl GraphExecutor {
   ///
   /// The number of channel pairs (one per connection).
   pub fn channel_count(&self) -> usize {
+    trace!(
+      "GraphExecutor::channel_count() -> {}",
+      self.channel_senders.len()
+    );
     self.channel_senders.len()
   }
 
@@ -1267,6 +1330,10 @@ impl GraphExecutor {
   ///
   /// `true` if the channel exists, `false` otherwise.
   pub fn has_channel(&self, node_name: &str, port_name: &str, is_output: bool) -> bool {
+    trace!(
+      "GraphExecutor::has_channel(node_name={}, port_name={}, is_output={})",
+      node_name, port_name, is_output
+    );
     let key = (node_name.to_string(), port_name.to_string());
     if is_output {
       self.channel_senders.contains_key(&key)
@@ -1299,6 +1366,7 @@ pub trait GraphExecution {
 
 impl GraphExecution for Graph {
   fn executor(self) -> GraphExecutor {
+    trace!("Graph::executor()");
     GraphExecutor::new(self)
   }
 }
