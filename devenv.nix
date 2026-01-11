@@ -64,7 +64,7 @@
 
     # Version management
     git
-    gitAndTools.gh
+    gh
 
     # Build dependencies for Kafka integration
     cmake
@@ -76,7 +76,7 @@
     # For task-master
     nodejs
     task-master-ai
-    npm
+    nodePackages.npm
 
     # treefmt
     actionlint

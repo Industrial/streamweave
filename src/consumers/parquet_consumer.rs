@@ -9,18 +9,13 @@ use tokio::sync::Mutex;
 use tracing::{error, instrument, warn};
 
 /// Available compression algorithms for Parquet files.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ParquetCompression {
   Uncompressed,
+  #[default]
   Snappy,
   Lz4,
   Zstd,
-}
-
-impl Default for ParquetCompression {
-  fn default() -> Self {
-    Self::Snappy
-  }
 }
 
 impl From<ParquetCompression> for parquet::basic::Compression {
@@ -38,16 +33,11 @@ impl From<ParquetCompression> for parquet::basic::Compression {
 }
 
 /// Parquet writer version.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ParquetWriterVersion {
   V1,
+  #[default]
   V2,
-}
-
-impl Default for ParquetWriterVersion {
-  fn default() -> Self {
-    Self::V2
-  }
 }
 
 impl From<ParquetWriterVersion> for parquet::file::properties::WriterVersion {
