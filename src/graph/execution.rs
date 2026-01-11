@@ -44,7 +44,6 @@
 //! 3. **Execution**: Nodes run concurrently, with `Message<T>` flowing through channels
 //! 4. **Shutdown**: Gracefully stop all nodes and clean up resources
 
-use super::batching::BatchingChannel;
 use super::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
 use super::graph::Graph;
 use super::shared_memory_channel::SharedMemoryChannel;
@@ -149,17 +148,6 @@ pub enum ExecutionError {
     node: String,
     /// Error reason
     reason: String,
-  },
-  /// Compression or decompression error
-  CompressionError {
-    /// Node name where error occurred
-    node: String,
-    /// Whether this is compression or decompression
-    is_compression: bool,
-    /// Error details
-    reason: String,
-    /// Whether the error is due to corrupted data
-    is_corrupted: bool,
   },
 }
 
@@ -286,28 +274,6 @@ impl std::fmt::Display for ExecutionError {
       ExecutionError::ChannelCreationError { node, reason } => {
         write!(f, "Channel creation failed for node '{}': {}", node, reason)
       }
-      ExecutionError::CompressionError {
-        node,
-        is_compression,
-        reason,
-        is_corrupted,
-      } => {
-        let op = if *is_compression {
-          "compression"
-        } else {
-          "decompression"
-        };
-        let corrupted_msg = if *is_corrupted {
-          " (corrupted data)"
-        } else {
-          ""
-        };
-        write!(
-          f,
-          "{} error on node '{}': {}{}",
-          op, node, reason, corrupted_msg
-        )
-      }
       ExecutionError::Other(msg) => write!(f, "{}", msg),
     }
   }
@@ -358,208 +324,6 @@ pub enum ExecutionMode {
     /// Whether to use shared memory for data sharing
     use_shared_memory: bool,
   },
-  /// Distributed serialized execution mode.
-  ///
-  /// This mode serializes data for transmission between nodes, enabling
-  /// distributed execution across processes or machines. Supports optional
-  /// compression and batching for efficiency.
-  ///
-  /// # Fields
-  ///
-  /// * `serializer` - The serializer to use for data serialization
-  /// * `compression` - Optional compression algorithm for serialized data
-  /// * `batching` - Optional batching configuration for grouping items
-  Distributed {
-    /// Serializer for data serialization
-    serializer: super::serialization::JsonSerializer,
-    /// Optional compression algorithm
-    compression: Option<CompressionAlgorithm>,
-    /// Optional batching configuration
-    batching: Option<BatchConfig>,
-  },
-  /// Hybrid execution mode that adapts between in-process and distributed.
-  ///
-  /// This mode starts in in-process mode and switches to distributed mode
-  /// when the local threshold is exceeded, enabling adaptive performance
-  /// optimization based on load.
-  ///
-  /// # Fields
-  ///
-  /// * `local_threshold` - Threshold for switching from in-process to distributed
-  /// * `serializer` - Serializer to use when in distributed mode
-  Hybrid {
-    /// Threshold for switching to distributed mode
-    local_threshold: usize,
-    /// Serializer for distributed mode
-    serializer: super::serialization::JsonSerializer,
-  },
-}
-
-/// Compression algorithm for distributed execution.
-///
-/// This enum defines compression algorithms that can be used to compress
-/// serialized data in distributed execution mode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CompressionAlgorithm {
-  /// Gzip compression with configurable level (1-9)
-  Gzip {
-    /// Compression level (1-9, default 6)
-    level: u32,
-  },
-  /// Zstandard compression with configurable level (1-22)
-  Zstd {
-    /// Compression level (1-22, default 3)
-    level: u32,
-  },
-}
-
-impl CompressionAlgorithm {
-  /// Create a new Gzip compression algorithm with the specified level.
-  ///
-  /// # Arguments
-  ///
-  /// * `level` - Compression level (1-9). Defaults to 6 if out of range.
-  ///
-  /// # Returns
-  ///
-  /// A `CompressionAlgorithm::Gzip` variant with the specified level.
-  pub fn gzip(level: u32) -> Self {
-    Self::Gzip {
-      level: level.clamp(1, 9),
-    }
-  }
-
-  /// Create a new Gzip compression algorithm with default level (6).
-  pub fn gzip_default() -> Self {
-    Self::Gzip { level: 6 }
-  }
-
-  /// Create a new Zstd compression algorithm with the specified level.
-  ///
-  /// # Arguments
-  ///
-  /// * `level` - Compression level (1-22). Defaults to 3 if out of range.
-  ///
-  /// # Returns
-  ///
-  /// A `CompressionAlgorithm::Zstd` variant with the specified level.
-  pub fn zstd(level: u32) -> Self {
-    Self::Zstd {
-      level: level.clamp(1, 22),
-    }
-  }
-
-  /// Create a new Zstd compression algorithm with default level (3).
-  pub fn zstd_default() -> Self {
-    Self::Zstd { level: 3 }
-  }
-
-  /// Get the compression level for this algorithm.
-  ///
-  /// # Returns
-  ///
-  /// The compression level (1-9 for gzip, 1-22 for zstd).
-  pub fn level(&self) -> u32 {
-    match self {
-      CompressionAlgorithm::Gzip { level } => *level,
-      CompressionAlgorithm::Zstd { level } => *level,
-    }
-  }
-}
-
-/// Batching configuration for distributed execution.
-///
-/// This structure defines how items should be batched together before
-/// serialization and transmission in distributed execution mode.
-#[derive(Debug, Clone)]
-pub struct BatchConfig {
-  /// Maximum number of items per batch
-  pub batch_size: usize,
-  /// Maximum time to wait before sending a batch (in milliseconds)
-  pub batch_timeout_ms: u64,
-}
-
-impl BatchConfig {
-  /// Create a new `BatchConfig` with the given batch size and timeout.
-  ///
-  /// # Arguments
-  ///
-  /// * `batch_size` - Maximum number of items per batch (must be > 0)
-  /// * `batch_timeout_ms` - Maximum time to wait before sending a batch (in milliseconds, must be > 0)
-  ///
-  /// # Returns
-  ///
-  /// A new `BatchConfig` instance
-  ///
-  /// # Panics
-  ///
-  /// Panics if `batch_size` is 0 or `batch_timeout_ms` is 0.
-  #[must_use]
-  pub fn new(batch_size: usize, batch_timeout_ms: u64) -> Self {
-    Self::validate(batch_size, batch_timeout_ms).expect("Invalid batch configuration");
-    Self {
-      batch_size,
-      batch_timeout_ms,
-    }
-  }
-
-  /// Create a new `BatchConfig` with validation.
-  ///
-  /// # Arguments
-  ///
-  /// * `batch_size` - Maximum number of items per batch
-  /// * `batch_timeout_ms` - Maximum time to wait before sending a batch (in milliseconds)
-  ///
-  /// # Returns
-  ///
-  /// `Ok(BatchConfig)` if the configuration is valid, `Err(String)` otherwise.
-  pub fn try_new(batch_size: usize, batch_timeout_ms: u64) -> Result<Self, String> {
-    Self::validate(batch_size, batch_timeout_ms)?;
-    Ok(Self {
-      batch_size,
-      batch_timeout_ms,
-    })
-  }
-
-  /// Validate batch configuration parameters.
-  ///
-  /// # Arguments
-  ///
-  /// * `batch_size` - Maximum number of items per batch
-  /// * `batch_timeout_ms` - Maximum time to wait before sending a batch (in milliseconds)
-  ///
-  /// # Returns
-  ///
-  /// `Ok(())` if valid, `Err(String)` with error message otherwise.
-  pub fn validate(batch_size: usize, batch_timeout_ms: u64) -> Result<(), String> {
-    if batch_size == 0 {
-      return Err("batch_size must be greater than 0".to_string());
-    }
-
-    if batch_timeout_ms == 0 {
-      return Err("batch_timeout_ms must be greater than 0".to_string());
-    }
-
-    // Reasonable upper limit: 1 hour (3,600,000 ms)
-    const MAX_TIMEOUT_MS: u64 = 3_600_000;
-    if batch_timeout_ms > MAX_TIMEOUT_MS {
-      return Err(format!(
-        "batch_timeout_ms ({}) exceeds maximum allowed value ({} ms = 1 hour)",
-        batch_timeout_ms, MAX_TIMEOUT_MS
-      ));
-    }
-
-    // Reasonable upper limit for batch size: 1 million items
-    const MAX_BATCH_SIZE: usize = 1_000_000;
-    if batch_size > MAX_BATCH_SIZE {
-      return Err(format!(
-        "batch_size ({}) exceeds maximum allowed value ({})",
-        batch_size, MAX_BATCH_SIZE
-      ));
-    }
-
-    Ok(())
-  }
 }
 
 /// Metrics for tracking mode switches in hybrid execution mode.
@@ -675,71 +439,6 @@ impl ExecutionMode {
       use_shared_memory: true,
     }
   }
-
-  /// Create a new `Distributed` execution mode with the given serializer.
-  ///
-  /// This mode serializes data for transmission between nodes, enabling
-  /// distributed execution. Compression and batching are optional.
-  ///
-  /// # Arguments
-  ///
-  /// * `serializer` - The serializer to use for data serialization
-  ///
-  /// # Returns
-  ///
-  /// An `ExecutionMode::Distributed` variant with no compression or batching
-  ///
-  /// # Example
-  ///
-  /// ```rust
-  /// use crate::graph::execution::ExecutionMode;
-  /// use crate::graph::serialization::Serializer;
-  ///
-  /// let serializer = super::serialization::JsonSerializer::default();
-  /// let mode = ExecutionMode::new_distributed(serializer);
-  /// ```
-  #[must_use]
-  pub fn new_distributed(serializer: super::serialization::JsonSerializer) -> Self {
-    Self::Distributed {
-      serializer,
-      compression: None,
-      batching: None,
-    }
-  }
-
-  /// Create a new `Hybrid` execution mode with the given threshold and serializer.
-  ///
-  /// This mode starts in in-process mode and switches to distributed mode
-  /// when the local threshold is exceeded.
-  ///
-  /// # Arguments
-  ///
-  /// * `local_threshold` - Threshold for switching from in-process to distributed mode
-  /// * `serializer` - Serializer to use when in distributed mode
-  ///
-  /// # Returns
-  ///
-  /// An `ExecutionMode::Hybrid` variant with the specified threshold and serializer
-  ///
-  /// # Example
-  ///
-  /// ```rust
-  /// use crate::graph::execution::ExecutionMode;
-  /// use crate::graph::serialization::Serializer;
-  ///
-  /// let serializer = super::serialization::JsonSerializer::default();
-  /// let mode = ExecutionMode::new_hybrid(1000, serializer);
-  /// ```
-  #[must_use]
-  pub fn new_hybrid(
-    local_threshold: usize,
-    serializer: super::serialization::JsonSerializer,
-  ) -> Self {
-    Self::Hybrid {
-      local_threshold,
-      serializer,
-    }
-  }
 }
 
 /// Execution state for the graph executor.
@@ -815,18 +514,22 @@ pub struct GraphExecutor {
   /// Batching channels for distributed execution with batching enabled
   /// Key: (node_name, port_name) for source nodes
   /// Value: Batching channel wrapper for that connection
-  batching_channels: HashMap<(String, String), Arc<BatchingChannel>>,
   /// Throughput monitor for hybrid execution mode
   /// Tracks items/second processed across the graph
   throughput_monitor: Option<Arc<ThroughputMonitor>>,
   /// Current actual execution mode (may differ from execution_mode during transitions)
   /// In hybrid mode, this tracks whether we're currently in-process or distributed
+  #[allow(dead_code)]
   current_execution_mode: Option<ExecutionMode>,
   /// Background task handle for throughput monitoring in hybrid mode
+  #[allow(dead_code)]
   throughput_monitoring_task: Option<tokio::task::JoinHandle<Result<(), ExecutionError>>>,
   /// Metrics for mode switching in hybrid mode
   mode_switch_metrics: Option<Arc<RwLock<ModeSwitchMetrics>>>,
 }
+
+// Type alias for in-flight items during mode switching (deprecated, kept for API compatibility)
+type InFlightItems = Vec<((String, String), (String, String), ChannelItem)>;
 
 impl GraphExecutor {
   /// Detects the optimal execution mode for the graph.
@@ -900,7 +603,6 @@ impl GraphExecutor {
       arc_pool: None,
       execution_mode: ExecutionMode::new_in_process(), // Default to in-process for zero-copy
       shared_memory_channels: HashMap::new(),
-      batching_channels: HashMap::new(),
       throughput_monitor: None,
       current_execution_mode: None,
       throughput_monitoring_task: None,
@@ -931,7 +633,6 @@ impl GraphExecutor {
       arc_pool: None,
       execution_mode: ExecutionMode::new_in_process(), // Default to in-process for zero-copy
       shared_memory_channels: HashMap::new(),
-      batching_channels: HashMap::new(),
       throughput_monitor: None,
       current_execution_mode: None,
       throughput_monitoring_task: None,
@@ -1001,234 +702,12 @@ impl GraphExecutor {
   /// # }
   /// ```
   pub async fn start(&mut self) -> Result<(), ExecutionError> {
-    // Route to appropriate execution method based on execution mode
+    // Only in-process execution is supported
     match &self.execution_mode {
       ExecutionMode::InProcess { use_shared_memory } => {
         self.execute_in_process(*use_shared_memory).await
       }
-      ExecutionMode::Distributed { .. } => {
-        // For distributed mode, extract configuration from execution_mode
-        // Since we can't easily clone Box<dyn Serializer>, we'll use the stored one
-        // This requires refactoring - for now, use execute_distributed directly
-        // or extract from execution_mode (which we'll do in a helper)
-        if let ExecutionMode::Distributed {
-          serializer: _,
-          compression: _,
-          batching: _,
-        } = &self.execution_mode
-        {
-          // We can't move serializer out, so we need a different approach
-          // For now, nodes will use the serialize() function from serialization module
-          // Future: pass serializer reference to nodes or make Serializer Clone
-          self.execute_distributed_internal().await
-        } else {
-          unreachable!()
-        }
-      }
-      ExecutionMode::Hybrid { .. } => {
-        // Hybrid mode starts in-process, will be handled separately
-        self.execute_in_process(false).await
-      }
     }
-  }
-
-  /// Internal helper for distributed execution using stored execution_mode
-  ///
-  /// This method handles compression and batching configuration when present.
-  /// Compression is applied to serialized data before transmission.
-  /// Batching groups multiple items together for efficient transmission.
-  async fn execute_distributed_internal(&mut self) -> Result<(), ExecutionError> {
-    // Extract compression and batching config from execution_mode
-    let (_compression, batching) = match &self.execution_mode {
-      ExecutionMode::Distributed {
-        compression,
-        batching,
-        ..
-      } => (*compression, batching.clone()),
-      _ => (None, None),
-    };
-
-    // Compression is now implemented in nodes (ProducerNode, TransformerNode)
-    // Nodes check ExecutionMode and apply compression after serialization
-    // Decompression is handled in StreamWrapper when receiving data
-
-    // Batching is configured but not yet fully implemented
-    // Future: Buffer items according to BatchConfig and send in batches
-    if batching.is_some() {
-      // TODO: Implement batching
-      // Buffer items up to batch_size or batch_timeout_ms, then send as batch
-    }
-    if self.state == ExecutionState::Running {
-      return Err(ExecutionError::ExecutionFailed(
-        "Graph is already running".to_string(),
-      ));
-    }
-
-    // Validate graph topology
-    self.validate_topology()?;
-
-    // Create channels for all connections
-    self.create_channels()?;
-
-    // Spawn tasks for each node with distributed mode
-    for node_name in self.graph.node_names() {
-      if let Some(node) = self.graph.get_node(&node_name) {
-        // Collect input channels for this node
-        let mut input_channels = HashMap::new();
-        let parents = self.graph.get_parents(&node_name);
-        for (parent_name, parent_port_name) in parents {
-          for conn in self.graph.get_connections() {
-            if conn.source.0 == parent_name
-              && conn.source.1 == parent_port_name
-              && conn.target.0 == node_name
-            {
-              // ConnectionInfo now stores port names directly
-              let target_port_name = conn.target.1.clone();
-              let source_port_name = conn.source.1.clone();
-
-              let key = (parent_name.to_string(), source_port_name);
-              if let Some(receiver) = self.channel_receivers.remove(&key) {
-                input_channels.insert(target_port_name, receiver);
-              }
-              break;
-            }
-          }
-        }
-
-        // Collect output channels for this node
-        let mut output_channels = HashMap::new();
-        let children = self.graph.get_children(&node_name);
-        for (child_name, child_port_name) in children {
-          for conn in self.graph.get_connections() {
-            if conn.source.0 == node_name
-              && conn.target.0 == child_name
-              && conn.target.1 == child_port_name
-            {
-              // ConnectionInfo now stores port names directly
-              let source_port_name = conn.source.1.clone();
-
-              let key = (node_name.to_string(), source_port_name.clone());
-              if let Some(sender) = self.channel_senders.get(&key).cloned() {
-                output_channels.insert(source_port_name, sender);
-              }
-              break;
-            }
-          }
-        }
-
-        // Spawn execution task with distributed mode
-        // Collect batching channels for this node if batching is enabled
-        let batching_channels: Option<HashMap<String, Arc<BatchingChannel>>> = if matches!(
-          self.execution_mode,
-          ExecutionMode::Distributed {
-            batching: Some(_),
-            ..
-          }
-        ) {
-          let mut batch_map = HashMap::new();
-          for port_name in output_channels.keys() {
-            if let Some(batching_channel) = self
-              .batching_channels
-              .get(&(node_name.to_string(), port_name.clone()))
-            {
-              batch_map.insert(port_name.clone(), Arc::clone(batching_channel));
-            }
-          }
-          if !batch_map.is_empty() {
-            Some(batch_map)
-          } else {
-            None
-          }
-        } else {
-          None
-        };
-
-        // Clone arc_pool if available (wrap in Arc for sharing across tasks)
-        let arc_pool_clone = self.arc_pool.as_ref().map(|p| Arc::new(p.clone()));
-
-        if let Some(handle) = node.spawn_execution_task(
-          input_channels,
-          output_channels,
-          self.pause_signal.clone(),
-          self.execution_mode.clone(),
-          batching_channels,
-          arc_pool_clone,
-        ) {
-          self.node_handles.insert(node_name.to_string(), handle);
-        } else {
-          return Err(ExecutionError::NodeExecutionFailed {
-            node: node_name.to_string(),
-            reason: "Node does not support execution".to_string(),
-            message_id: None,
-          });
-        }
-      }
-    }
-
-    self.state = ExecutionState::Running;
-    Ok(())
-  }
-
-  /// Executes the graph in distributed serialized mode.
-  ///
-  /// This method implements distributed execution by serializing data
-  /// between nodes using the configured Serializer trait. Compression
-  /// and batching options are respected when specified.
-  ///
-  /// # Arguments
-  ///
-  /// * `serializer` - The serializer to use for data serialization
-  /// * `compression` - Optional compression algorithm for serialized data
-  /// * `batching` - Optional batching configuration for network efficiency
-  ///
-  /// # Returns
-  ///
-  /// `Ok(())` if execution started successfully, `Err(ExecutionError)` otherwise.
-  ///
-  /// # Distributed Execution Semantics
-  ///
-  /// - Data is serialized using the configured Serializer trait
-  /// - Optional compression reduces network bandwidth
-  /// - Optional batching improves network efficiency
-  /// - Suitable for cross-process or cross-network execution
-  ///
-  /// # Example
-  ///
-  /// ```rust,no_run
-  /// use crate::graph::{Graph, GraphExecution};
-  /// use crate::graph::execution::ExecutionMode;
-  /// use crate::graph::serialization::Serializer;
-  ///
-  /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-  /// let graph = Graph::new();
-  /// let mut executor = graph.executor();
-  ///
-  /// let serializer: Box<dyn Serializer> = /* your serializer */;
-  /// executor.execute_distributed(serializer, None, None).await?;
-  /// # Ok(())
-  /// # }
-  /// ```
-  pub async fn execute_distributed(
-    &mut self,
-    serializer: super::serialization::JsonSerializer,
-    compression: Option<CompressionAlgorithm>,
-    batching: Option<BatchConfig>,
-  ) -> Result<(), ExecutionError> {
-    if self.state == ExecutionState::Running {
-      return Err(ExecutionError::ExecutionFailed(
-        "Graph is already running".to_string(),
-      ));
-    }
-
-    // Set execution mode to Distributed
-    self.execution_mode = ExecutionMode::Distributed {
-      serializer,
-      compression,
-      batching,
-    };
-
-    // Use internal helper to execute
-    self.execute_distributed_internal().await
   }
 
   /// Stops graph execution with graceful shutdown.
@@ -1345,12 +824,6 @@ impl GraphExecutor {
     }
     self.shared_memory_channels.clear();
 
-    // Cleanup batching channels (flush remaining items)
-    for channel in self.batching_channels.values() {
-      let _ = channel.shutdown().await;
-    }
-    self.batching_channels.clear();
-
     *self.pause_signal.write().await = false;
 
     // Check if there were any errors during execution
@@ -1400,12 +873,6 @@ impl GraphExecutor {
       channel.cleanup();
     }
     self.shared_memory_channels.clear();
-
-    // Cleanup batching channels
-    for channel in self.batching_channels.values() {
-      let _ = channel.shutdown().await;
-    }
-    self.batching_channels.clear();
 
     *self.pause_signal.write().await = false;
 
@@ -1697,12 +1164,6 @@ impl GraphExecutor {
       }
     );
 
-    // Extract batching config from execution mode
-    let batching_config = match &self.execution_mode {
-      ExecutionMode::Distributed { batching, .. } => batching.clone(),
-      _ => None,
-    };
-
     for conn in self.graph.get_connections() {
       // ConnectionInfo now stores port names directly
       let source_port_name = &conn.source.1;
@@ -1758,26 +1219,10 @@ impl GraphExecutor {
         // or Arc<Message<T>>. Nodes will determine which variant to use based on ExecutionMode
         let (sender, receiver): (TypeErasedSender, TypeErasedReceiver) = mpsc::channel(buffer_size);
 
-        // If batching is enabled, wrap the sender with BatchingChannel
-        if let Some(ref batch_config) = batching_config {
-          let batching_channel =
-            Arc::new(BatchingChannel::new(sender.clone(), batch_config.clone()));
-          self.batching_channels.insert(
-            (conn.source.0.clone(), source_port_name.clone()),
-            batching_channel,
-          );
-
-          // Still store the inner sender for backward compatibility
-          // Nodes will check for batching and use BatchingChannel if available
-          self
-            .channel_senders
-            .insert((conn.source.0.clone(), source_port_name.clone()), sender);
-        } else {
-          // Store sender for source node's output port
-          self
-            .channel_senders
-            .insert((conn.source.0.clone(), source_port_name.clone()), sender);
-        }
+        // Store the sender
+        self
+          .channel_senders
+          .insert((conn.source.0.clone(), source_port_name.clone()), sender);
 
         // Store receiver for target node's input port
         self
@@ -1921,7 +1366,6 @@ impl GraphExecutor {
           output_channels,
           self.pause_signal.clone(),
           ExecutionMode::InProcess { use_shared_memory },
-          None, // No batching in in-process mode
           arc_pool_clone,
         ) {
           // Wrap handle to track throughput
@@ -1963,166 +1407,31 @@ impl GraphExecutor {
     Ok(())
   }
 
-  /// Executes the graph in hybrid mode.
-  ///
-  /// Hybrid mode starts in in-process mode and switches to distributed mode
-  /// when the local threshold is exceeded. This enables adaptive performance
-  /// optimization based on load.
-  ///
-  /// # Arguments
-  ///
-  /// * `local_threshold` - Threshold for switching from in-process to distributed
-  /// * `serializer` - Serializer to use when switching to distributed mode
-  ///
-  /// # Returns
-  ///
-  /// `Ok(())` if execution started successfully, `Err(ExecutionError)` otherwise.
-  ///
-  /// # Hybrid Mode Semantics
-  ///
-  /// - Starts in in-process zero-copy mode
-  /// - Monitors throughput and load
-  /// - Switches to distributed mode when threshold exceeded
-  /// - Provides adaptive performance optimization
-  ///
-  /// # Note
-  ///
-  /// Mode switching is currently a placeholder. Future implementation will:
-  /// - Monitor item count or throughput
-  /// - Dynamically switch execution modes
-  /// - Handle state migration between modes
-  ///
-  /// # Example
-  ///
-  /// ```rust,no_run
-  /// use crate::graph::{Graph, GraphExecution};
-  /// use crate::graph::execution::ExecutionMode;
-  /// use crate::graph::serialization::Serializer;
-  ///
-  /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-  /// let graph = Graph::new();
-  /// let mut executor = graph.executor();
-  ///
-  /// let serializer: Box<dyn Serializer> = /* your serializer */;
-  /// executor.execute_hybrid(1000, serializer).await?;
-  /// # Ok(())
-  /// # }
-  /// ```
-  pub async fn execute_hybrid(
-    &mut self,
-    local_threshold: usize,
-    serializer: super::serialization::JsonSerializer,
-  ) -> Result<(), ExecutionError> {
-    if self.state == ExecutionState::Running {
-      return Err(ExecutionError::ExecutionFailed(
-        "Graph is already running".to_string(),
-      ));
-    }
-
-    // Set execution mode to Hybrid
-    self.execution_mode = ExecutionMode::Hybrid {
-      local_threshold,
-      serializer: serializer.clone(),
-    };
-
-    // Initialize throughput monitor for hybrid mode
-    let throughput_monitor = Arc::new(ThroughputMonitor::new(Duration::from_secs(1)));
-    self.throughput_monitor = Some(Arc::clone(&throughput_monitor));
-    self.current_execution_mode = Some(ExecutionMode::InProcess {
-      use_shared_memory: false,
-    });
-
-    // Initialize mode switch metrics
-    let metrics = Arc::new(RwLock::new(ModeSwitchMetrics::new()));
-    self.mode_switch_metrics = Some(Arc::clone(&metrics));
-
-    // Start in in-process mode
-    self.execute_in_process(false).await?;
-
-    // Start background throughput monitoring task
-    let monitor_task = self
-      .start_throughput_monitoring(Arc::clone(&throughput_monitor), local_threshold)
-      .await?;
-    self.throughput_monitoring_task = Some(monitor_task);
-
-    Ok(())
-  }
-
-  /// Start background throughput monitoring task for hybrid mode.
-  ///
-  /// This task periodically checks throughput and triggers mode switches
-  /// when the threshold is exceeded.
-  ///
-  /// # Arguments
-  ///
-  /// * `monitor` - The throughput monitor to use
-  /// * `local_threshold` - Threshold for switching to distributed mode (items/second)
-  ///
-  /// # Returns
-  ///
-  /// A join handle for the monitoring task.
-  ///
-  /// # Note
-  ///
-  /// The monitoring task will check throughput periodically and log when
-  /// threshold is exceeded. The actual mode switch will be triggered by
-  /// calling `trigger_mode_switch` method.
-  async fn start_throughput_monitoring(
-    &mut self,
-    monitor: Arc<ThroughputMonitor>,
-    local_threshold: usize,
-  ) -> Result<tokio::task::JoinHandle<Result<(), ExecutionError>>, ExecutionError> {
-    let pause_signal = Arc::clone(&self.pause_signal);
-
-    let handle = tokio::spawn(async move {
-      let monitoring_interval = Duration::from_millis(100); // Check every 100ms
-
-      loop {
-        tokio::time::sleep(monitoring_interval).await;
-
-        // Check if we should stop (graph stopped or paused)
-        if *pause_signal.read().await {
-          // Check if this is a shutdown or just a pause
-          // For now, exit on pause (can be refined later)
-          break;
-        }
-
-        // Calculate current throughput
-        let throughput = monitor.calculate_throughput().await;
-
-        // Check if we should switch to distributed mode
-        if throughput > local_threshold as f64 {
-          // Signal that a mode switch is needed
-          tracing::info!(
-            throughput = throughput,
-            threshold = local_threshold,
-            "Throughput exceeded threshold, mode switch needed"
-          );
-          // Note: Actual mode switch will be handled by calling trigger_mode_switch
-          // from the main executor. This task just monitors and logs.
-        }
-      }
-
-      Ok(())
-    });
-
-    Ok(handle)
-  }
-
   /// Trigger a mode switch from in-process to distributed mode.
   ///
-  /// This method handles the graceful transition:
-  /// 1. Pause all nodes
-  /// 2. Drain in-process channels
-  /// 3. Create distributed channels
-  /// 4. Migrate state
-  /// 5. Resume with distributed mode
+  /// This method is no longer supported as distributed mode has been removed.
+  /// This function is kept for API compatibility but always returns an error.
   ///
   /// # Returns
   ///
-  /// `Ok(())` if the switch completed successfully, `Err` otherwise.
+  /// Always returns an error indicating that mode switching is not supported.
+  #[deprecated(note = "Mode switching is no longer supported. Use in-process mode only.")]
   pub async fn trigger_mode_switch(&mut self) -> Result<(), ExecutionError> {
-    // Check if we're in hybrid mode and currently in-process
+    Err(ExecutionError::ExecutionFailed(
+      "Mode switching is no longer supported. StreamWeave now only supports in-process execution."
+        .to_string(),
+    ))
+  }
+
+  #[allow(dead_code)]
+  async fn _trigger_mode_switch_old_implementation(&mut self) -> Result<(), ExecutionError> {
+    // Old implementation removed - ExecutionMode::Hybrid no longer exists
+    Err(ExecutionError::ExecutionFailed(
+      "Mode switching is no longer supported".to_string(),
+    ))
+
+    // The following code is commented out as ExecutionMode::Hybrid no longer exists
+    /*
     let (local_threshold, serializer) = match &self.execution_mode {
       ExecutionMode::Hybrid {
         local_threshold,
@@ -2232,11 +1541,9 @@ impl GraphExecutor {
           }
         }
 
-        // Spawn with distributed mode
-        let distributed_mode = ExecutionMode::Distributed {
-          serializer: serializer.clone(),
-          compression: None,
-          batching: None,
+        // Spawn with in-process mode (distributed mode no longer exists)
+        let distributed_mode = ExecutionMode::InProcess {
+          use_shared_memory: false,
         };
 
         // Clone arc_pool if available (wrap in Arc for sharing across tasks)
@@ -2247,7 +1554,6 @@ impl GraphExecutor {
           output_channels,
           self.pause_signal.clone(),
           distributed_mode,
-          None, // No batching initially
           arc_pool_clone,
         ) {
           self.node_handles.insert(node_name.to_string(), handle);
@@ -2259,11 +1565,9 @@ impl GraphExecutor {
     let in_flight_count = in_flight_items.len();
     self.send_in_flight_items(in_flight_items).await?;
 
-    // Step 8: Update current execution mode
-    self.current_execution_mode = Some(ExecutionMode::Distributed {
-      serializer: serializer.clone(),
-      compression: None,
-      batching: None,
+    // Step 8: Update current execution mode (always in-process now)
+    self.current_execution_mode = Some(ExecutionMode::InProcess {
+      use_shared_memory: false,
     });
 
     // Step 9: Resume processing
@@ -2282,6 +1586,9 @@ impl GraphExecutor {
     }
 
     Ok(())
+    */
+    // Note: This function always returns early, so code below is unreachable
+    // The unreachable!() is removed to avoid warnings
   }
 
   /// Get mode switch metrics (if available).
@@ -2298,9 +1605,8 @@ impl GraphExecutor {
   /// # Returns
   ///
   /// Vector of tuples containing (connection_info, item) for routing items correctly.
-  async fn drain_in_process_channels(
-    &mut self,
-  ) -> Vec<((String, String), (String, String), ChannelItem)> {
+  #[allow(dead_code)]
+  async fn drain_in_process_channels(&mut self) -> InFlightItems {
     let mut in_flight_items = Vec::new();
 
     // Collect items from all receivers, tracking which connection they belong to
@@ -2332,93 +1638,46 @@ impl GraphExecutor {
 
   /// Send in-flight items to distributed channels.
   ///
-  /// This method routes items to the correct distributed channels based on
-  /// their connection information. Items from in-process mode (Arc<Message<T>>) are
-  /// serialized to Bytes (containing serialized Message<T>) before sending.
-  ///
-  /// # Arguments
-  ///
-  /// * `items` - Vector of (source_info, target_info, item) tuples
-  ///
-  /// # Returns
-  ///
-  /// `Ok(())` if all items were sent successfully, `Err` otherwise.
-  #[allow(clippy::type_complexity)]
+  /// This method is no longer supported as distributed mode has been removed.
+  #[allow(dead_code, clippy::type_complexity)]
+  async fn _send_in_flight_items_old(
+    &self,
+    _items: Vec<((String, String), (String, String), ChannelItem)>,
+  ) -> Result<(), ExecutionError> {
+    Err(ExecutionError::ExecutionFailed(
+      "send_in_flight_items is no longer supported. StreamWeave now only supports in-process execution.".to_string(),
+    ))
+  }
+
+  #[allow(dead_code, clippy::type_complexity)]
   async fn send_in_flight_items(
     &self,
-    items: Vec<((String, String), (String, String), ChannelItem)>,
+    _items: Vec<((String, String), (String, String), ChannelItem)>,
   ) -> Result<(), ExecutionError> {
-    // Get serializer from execution mode
-    let _serializer = match &self.execution_mode {
-      ExecutionMode::Hybrid { serializer, .. } => serializer,
-      _ => {
-        return Err(ExecutionError::ExecutionFailed(
-          "send_in_flight_items can only be called in hybrid mode".to_string(),
-        ));
-      }
-    };
+    Err(ExecutionError::ExecutionFailed(
+      "send_in_flight_items is no longer supported. StreamWeave now only supports in-process execution.".to_string(),
+    ))
+  }
 
-    // Route each item to the correct distributed channel
-    for (source_info, _target_info, item) in items {
-      // Find the channel sender for this connection
-      let channel_key = (source_info.0.clone(), source_info.1.clone());
-      let sender = self.channel_senders.get(&channel_key);
+  #[allow(dead_code)]
+  async fn _send_in_flight_items_implementation(
+    &self,
+    _items: InFlightItems,
+  ) -> Result<(), ExecutionError> {
+    // This function is deprecated - mode switching is no longer supported
+    // Old implementation removed - ExecutionMode::Hybrid no longer exists
+    Err(ExecutionError::ExecutionFailed(
+      "send_in_flight_items is no longer supported. StreamWeave now only supports in-process execution.".to_string(),
+    ))
+  }
 
-      if let Some(sender) = sender {
-        // Convert item to Bytes if needed
-        let bytes_item = match item {
-          ChannelItem::Bytes(bytes) => {
-            // Already serialized, send directly
-            ChannelItem::Bytes(bytes)
-          }
-          ChannelItem::Arc(_arc) => {
-            // Need to serialize Arc<Message<T>> to Bytes
-            // Try to downcast to Arc<Message<T>> and serialize
-            // This is a limitation - we need to know the payload type to serialize
-            // In practice, nodes should track the type information
-            // For now, log a warning and skip items we can't serialize
-            // TODO: Implement proper Message<T> serialization during mode switch
-            tracing::warn!(
-              source_node = %source_info.0,
-              source_port = %source_info.1,
-              "Cannot serialize Arc<Message<T>> item during mode switch - item will be dropped. \
-               This requires type information that is not available at runtime."
-            );
-            continue;
-          }
-          ChannelItem::SharedMemory(_) => {
-            // Shared memory items need special handling
-            tracing::warn!(
-              source_node = %source_info.0,
-              source_port = %source_info.1,
-              "SharedMemory items not supported in mode switch - item will be dropped"
-            );
-            continue;
-          }
-        };
-
-        // Send to distributed channel
-        if let Err(e) = sender.send(bytes_item).await {
-          return Err(ExecutionError::ChannelError {
-            node: source_info.0,
-            port: source_info.1,
-            is_input: false,
-            reason: format!("Failed to send in-flight item: {}", e),
-            message_id: None,
-          });
-        }
-      } else {
-        tracing::warn!(
-          source_node = %source_info.0,
-          source_port = %source_info.1,
-          target_node = %_target_info.0,
-          target_port = %_target_info.1,
-          "No channel sender found for connection - item will be dropped"
-        );
-      }
-    }
-
-    Ok(())
+  #[allow(dead_code, clippy::type_complexity)]
+  async fn _send_in_flight_items_old_implementation(
+    &self,
+    _items: Vec<((String, String), (String, String), ChannelItem)>,
+  ) -> Result<(), ExecutionError> {
+    // Old implementation removed - distributed mode no longer exists
+    unreachable!()
   }
 
   /// Get the throughput monitor (if available).

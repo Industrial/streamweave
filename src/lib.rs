@@ -32,7 +32,6 @@ mod window_test;
 pub mod consumer;
 pub mod consumers;
 pub mod db;
-pub mod distributed;
 pub mod error;
 pub mod graph;
 pub mod input;
@@ -54,8 +53,6 @@ pub mod window;
 pub use consumer::*;
 pub use consumers::*;
 pub use db::*;
-#[allow(ambiguous_glob_reexports)]
-pub use distributed::*;
 pub use error::*;
 #[allow(ambiguous_glob_reexports)]
 pub use graph::*;

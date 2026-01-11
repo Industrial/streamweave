@@ -91,7 +91,6 @@ streamweave/
 │   │   ├── moving-average/
 │   │   └── ml/                    # ML transformers (inference, etc.)
 │   ├── integrations/             # Integration packages
-│   │   ├── distributed/          # Distributed processing
 │   │   ├── http-server/          # HTTP server integration
 │   │   ├── sql/                  # SQL query support
 │   │   └── opentelemetry/        # OpenTelemetry integration
@@ -456,12 +455,6 @@ All depend on: `streamweave-core`
 Optional dependencies: `streamweave-error`, `streamweave-message`, `streamweave-window`, `streamweave-stateful`
 
 ### Integration Packages
-
-#### `streamweave-integration-distributed`
-- Purpose: Distributed processing
-- Contents: Coordinator, worker, network, fault tolerance
-- Dependencies: `streamweave-core`, `streamweave-graph`
-- Features: None
 
 #### `streamweave-integration-http-server`
 - Purpose: HTTP server integration

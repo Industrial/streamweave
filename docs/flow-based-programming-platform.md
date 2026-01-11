@@ -1116,7 +1116,7 @@ graph.run().await?;
 **Solution**:
 - Use `Arc<RwLock<T>>` for shared state
 - Provide atomic operations where possible
-- Support state persistence for distributed execution
+- Support state persistence for in-process execution
 - Document state access patterns
 
 ### 5. Composability

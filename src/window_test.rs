@@ -1725,9 +1725,11 @@ fn test_late_data_stats_default() {
 
 #[test]
 fn test_late_data_stats_clone() {
-  let mut stats1 = LateDataStats::default();
-  stats1.on_time = 10;
-  stats1.dropped = 5;
+  let stats1 = LateDataStats {
+    on_time: 10,
+    dropped: 5,
+    ..Default::default()
+  };
   let stats2 = stats1.clone();
   assert_eq!(stats1.on_time, stats2.on_time);
   assert_eq!(stats1.dropped, stats2.dropped);

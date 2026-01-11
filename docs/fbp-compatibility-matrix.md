@@ -107,7 +107,6 @@ This document provides a comprehensive feature-by-feature comparison between the
 | **Variable Types** | Variables can store different types. | ✅ **Implemented** | Variables use type erasure (`Box<dyn Any>`) with downcasting. Type-safe getters. | **None** - Fully compatible |
 | **Variable Scope** | Variables can be scoped to graphs or subgraphs. | ⚠️ **Partial** | Variables are graph-level. No subgraph-scoped variables. | **Action**: Add subgraph-scoped variables with variable shadowing |
 | **Stateful Components** | Components can maintain internal state. | ✅ **Implemented** | Stateful transformers are supported. Components can maintain state across IPs. | **None** - Fully compatible |
-| **Distributed State** | State can be shared across distributed components. | ⚠️ **Partial** | Distributed package exists but state sharing is limited. | **Action**: Enhance distributed state management with checkpointing and recovery |
 
 ### 10. Error Handling
 
@@ -144,20 +143,10 @@ This document provides a comprehensive feature-by-feature comparison between the
 |---------|-------------------|-------------------|------------------------|----------------------|
 | **Graph Serialization** | Graphs should be serializable for persistence. | ✅ **Implemented** | Graphs can be serialized to JSON via `serialize()` and deserialized via `deserialize()`. | **Action**: Add support for more formats (YAML, TOML, binary) |
 | **Graph Persistence** | Graphs should be persistable to storage. | ⚠️ **Partial** | Serialization exists but no built-in persistence layer. | **Action**: Add graph persistence API (save/load from file, database) |
-| **IP Serialization** | IPs should be serializable for distributed execution. | ✅ **Implemented** | IPs are serialized via `serde` for distributed execution. JSON and binary formats supported. | **Action**: Optimize serialization (use binary formats like bincode for better performance) |
+| **IP Serialization** | IPs should be serializable for persistence. | ✅ **Implemented** | IPs can be serialized via `serde` when needed. JSON and binary formats supported. | **Action**: Optimize serialization (use binary formats like bincode for better performance) |
 | **State Persistence** | Component state should be persistable. | ⚠️ **Partial** | Stateful transformers exist but no built-in state persistence. | **Action**: Add state checkpointing and recovery mechanisms |
 
-### 14. Distributed Execution
-
-| Feature | FBP Specification | StreamWeave Status | Implementation Details | Compatibility Actions |
-|---------|-------------------|-------------------|------------------------|----------------------|
-| **Distributed Components** | Components can execute on different machines. | ✅ **Implemented** | `streamweave-distributed` package provides coordinator-worker architecture. | **None** - Fully compatible |
-| **Network Communication** | Components communicate over network. | ✅ **Implemented** | Distributed package handles network communication between coordinator and workers. | **None** - Fully compatible |
-| **Fault Tolerance** | System should handle component failures. | ✅ **Implemented** | Failure detection, recovery, and task redistribution are supported. | **None** - Fully compatible |
-| **Load Balancing** | Distribute work across workers. | ✅ **Implemented** | Partitioning and rebalancing distribute work across workers. | **None** - Fully compatible |
-| **State Synchronization** | State should be synchronized across distributed components. | ⚠️ **Partial** | Checkpointing exists but distributed state synchronization is limited. | **Action**: Enhance distributed state synchronization with consensus protocols |
-
-### 15. Monitoring and Observability
+### 14. Monitoring and Observability
 
 | Feature | FBP Specification | StreamWeave Status | Implementation Details | Compatibility Actions |
 |---------|-------------------|-------------------|------------------------|----------------------|
@@ -226,8 +215,8 @@ This document provides a comprehensive feature-by-feature comparison between the
 
 6. **State Management**
    - Add subgraph-scoped variables
-   - Enhance distributed state synchronization
    - Add state checkpointing UI
+   - Enhance state persistence
 
 #### Low Priority (Nice to Have)
 

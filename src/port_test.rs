@@ -239,7 +239,7 @@ fn test_get_port_four_all_indices() {
   let _port0: Port0 = Message::new(42, crate::message::MessageId::new_uuid());
   let _port1: Port1 = Message::new("test".to_string(), crate::message::MessageId::new_uuid());
   let _port2: Port2 = Message::new(true, crate::message::MessageId::new_uuid());
-  let _port3: Port3 = Message::new(3.14, crate::message::MessageId::new_uuid());
+  let _port3: Port3 = Message::new(std::f64::consts::PI, crate::message::MessageId::new_uuid());
 }
 
 #[test]
@@ -390,7 +390,7 @@ fn test_get_port_eleven_all_indices() {
   ) as GetPort<10>>::Type;
 
   let _port0: Port0 = Message::new(42, crate::message::MessageId::new_uuid());
-  let _port10: Port10 = Message::new(3.14f32, crate::message::MessageId::new_uuid());
+  let _port10: Port10 = Message::new(std::f32::consts::PI, crate::message::MessageId::new_uuid());
 }
 
 #[test]

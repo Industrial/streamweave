@@ -4,9 +4,7 @@
 //! producers, transformers, and consumers to be connected in a graph
 //! structure for complex data processing pipelines.
 
-pub mod batching;
 pub mod channels;
-pub mod compression;
 pub mod connection;
 pub mod execution;
 #[allow(clippy::module_inception)]
@@ -25,9 +23,7 @@ pub mod traits;
 pub mod windowing;
 pub mod zero_copy;
 
-pub use batching::*;
 pub use channels::*;
-pub use compression::*;
 pub use connection::*;
 pub use execution::*;
 pub use graph::*;

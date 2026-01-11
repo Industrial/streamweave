@@ -4,7 +4,7 @@
 
 StreamWeave started with a simple, linear pipeline model that worked well for
 basic streaming operations. However, as we added more complex features like
-fan-out/fan-in patterns, stateful processing, and distributed computing, we
+fan-out/fan-in patterns and stateful processing, we
 realized we needed a more flexible architecture. The graph model emerged as the
 natural solution because:
 
@@ -12,7 +12,7 @@ natural solution because:
 represented as graphs
 2. **Flexibility**: Graphs can represent complex topologies beyond simple linear
 pipelines
-3. **Scalability**: Easy to distribute processing across multiple nodes
+3. **Scalability**: Efficient in-process execution with zero-copy optimizations
 4. **Maintainability**: Clear separation of concerns between routing and
 processing
 5. **Visualization**: Graphs are easy to visualize and debug
@@ -255,20 +255,15 @@ let windowing_node = Node::new(
    - Real-time monitoring
    - Performance metrics
 
-2. **Distributed Processing**
-   - Node distribution across machines
-   - Fault tolerance
-   - Load balancing
-
-3. **Advanced Routing**
+2. **Advanced Routing**
    - Dynamic routing based on load
    - Circuit breaking
    - Rate limiting
 
-4. **State Management**
-   - Distributed state
+3. **State Management**
    - State persistence
    - State recovery
+   - Advanced stateful patterns
 
 ## 🤝 Contributing
 
@@ -277,6 +272,6 @@ interest:
 
 1. New routing strategies
 2. Visualization tools
-3. Distributed processing support
-4. State management improvements
-5. Performance optimizations 
+3. State management improvements
+4. Performance optimizations
+5. Advanced control flow patterns 

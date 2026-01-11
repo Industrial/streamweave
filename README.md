@@ -12,7 +12,7 @@
 StreamWeave is a general-purpose Rust framework built around the concept of
 **streaming data**, with a focus on simplicity, composability, and performance.
 
-**High-Performance Streaming:** Process **2-6 million messages per second** with in-process zero-copy execution, or **2-3 million messages/second** in distributed mode. Perfect for high-throughput data processing pipelines.
+**High-Performance Streaming:** Process **2-6 million messages per second** with in-process zero-copy execution. Perfect for high-throughput data processing pipelines.
 
 ## ✨ Key Features
 
@@ -105,7 +105,6 @@ Core system functionality:
 - **[graph](packages/graph/README.md)** - Graph API for complex topologies
 - **[stateful](packages/stateful/README.md)** - Stateful processing and state management
 - **[window](packages/window/README.md)** - Windowing operations (tumbling, sliding, session)
-- **[distributed](packages/distributed/README.md)** - Distributed processing and coordination
 
 ### I/O Packages
 

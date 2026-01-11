@@ -79,7 +79,7 @@ Follow this systematic deployment strategy development approach:
 - [ ] **Metrics Collection**: Collect deployment and application metrics
 - [ ] **Logging Strategy**: Implement structured logging and log aggregation
 - [ ] **Alerting**: Set up automated alerting for deployment issues
-- [ ] **Tracing**: Implement distributed tracing for request flow analysis
+- [ ] **Tracing**: Implement tracing for request flow analysis
 - [ ] **Dashboard Creation**: Create monitoring dashboards for stakeholders
 
 ### 7. **Disaster Recovery & Business Continuity**

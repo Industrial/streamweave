@@ -52,7 +52,6 @@
 //! ```
 
 use super::shared_memory_channel::SharedMemoryRef;
-use bytes::Bytes;
 use std::any::Any;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -102,12 +101,6 @@ use tokio::sync::mpsc;
 /// ```
 #[derive(Clone, Debug)]
 pub enum ChannelItem {
-  /// Serialized `Message<T>` as bytes for distributed execution.
-  ///
-  /// This variant is used when `ExecutionMode::Distributed` is active.
-  /// `Message<T>` is serialized to `Bytes` before transmission, preserving
-  /// message ID and metadata.
-  Bytes(Bytes),
   /// Type-erased `Arc<Message<T>>` for zero-copy in-process execution.
   ///
   /// This variant is used when `ExecutionMode::InProcess` is active.
@@ -123,56 +116,6 @@ pub enum ChannelItem {
 }
 
 impl ChannelItem {
-  /// Extract a reference to `Bytes` if this is a `Bytes` variant.
-  ///
-  /// # Returns
-  ///
-  /// `Some(&Bytes)` if this is a `Bytes` variant, `None` otherwise.
-  ///
-  /// # Example
-  ///
-  /// ```rust
-  /// use crate::graph::channels::ChannelItem;
-  /// use bytes::Bytes;
-  ///
-  /// let item = ChannelItem::Bytes(Bytes::from("hello"));
-  /// if let Some(bytes) = item.as_bytes() {
-  ///     assert_eq!(bytes, &Bytes::from("hello"));
-  /// }
-  /// ```
-  #[must_use]
-  pub fn as_bytes(&self) -> Option<&Bytes> {
-    match self {
-      ChannelItem::Bytes(b) => Some(b),
-      _ => None,
-    }
-  }
-
-  /// Extract `Bytes` by consuming this `ChannelItem`.
-  ///
-  /// # Returns
-  ///
-  /// `Ok(Bytes)` if this is a `Bytes` variant, `Err(self)` otherwise.
-  ///
-  /// # Example
-  ///
-  /// ```rust
-  /// use crate::graph::channels::ChannelItem;
-  /// use bytes::Bytes;
-  ///
-  /// let item = ChannelItem::Bytes(Bytes::from("hello"));
-  /// match item.into_bytes() {
-  ///     Ok(bytes) => assert_eq!(bytes, Bytes::from("hello")),
-  ///     Err(_) => panic!("Expected Bytes variant"),
-  /// }
-  /// ```
-  pub fn into_bytes(self) -> Result<Bytes, Self> {
-    match self {
-      ChannelItem::Bytes(b) => Ok(b),
-      other => Err(other),
-    }
-  }
-
   /// Extract and downcast `Arc<Message<T>>` if this is an `Arc` variant.
   ///
   /// # Type Parameters
@@ -245,9 +188,11 @@ impl ChannelItem {
   /// # Returns
   ///
   /// `true` if this is a `Bytes` variant, `false` otherwise.
+  ///
+  /// Note: Bytes variant has been removed. This method always returns false.
   #[must_use]
   pub fn is_bytes(&self) -> bool {
-    matches!(self, ChannelItem::Bytes(_))
+    false // Bytes variant no longer exists
   }
 
   /// Check if this is an `Arc` variant.

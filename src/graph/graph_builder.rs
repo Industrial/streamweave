@@ -125,8 +125,27 @@ impl GraphBuilder {
   /// # Returns
   ///
   /// `Self` for method chaining.
+  /// Sets the execution mode for the graph.
+  ///
+  /// # Arguments
+  ///
+  /// * `mode` - The execution mode (must be in-process)
+  ///
+  /// # Panics
+  ///
+  /// Panics if a non-in-process execution mode is provided, as distributed mode is no longer supported.
   pub fn with_execution_mode(mut self, mode: ExecutionMode) -> Self {
-    self.graph.set_execution_mode(mode);
+    #[allow(unreachable_patterns)]
+    match mode {
+      ExecutionMode::InProcess { .. } => {
+        self.graph.set_execution_mode(mode);
+      }
+      _ => {
+        panic!(
+          "Only in-process execution mode is supported. Distributed and hybrid modes have been removed."
+        );
+      }
+    }
     self
   }
 

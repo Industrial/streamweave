@@ -68,8 +68,8 @@ pub trait NodeTrait: Send + Sync + std::any::Any + DynClone {
   /// * `input_channels` - Map of (port_name, receiver) for input ports
   /// * `output_channels` - Map of (port_name, sender) for output ports
   /// * `pause_signal` - Shared signal for pausing execution
-  /// * `execution_mode` - The execution mode (InProcess, Distributed, or Hybrid)
-  /// * `batching_channels` - Optional map of (port_name, batching_channel) for batching
+  /// * `execution_mode` - The execution mode (InProcess only)
+  /// * `arc_pool` - Optional Arc pool for zero-copy memory management
   ///
   /// # Returns
   ///
@@ -80,20 +80,14 @@ pub trait NodeTrait: Send + Sync + std::any::Any + DynClone {
   ///
   /// Default implementation returns `None`. Concrete node types should
   /// override this method to provide execution capability.
-  /// When `execution_mode` is `ExecutionMode::InProcess`, nodes should use
-  /// `Arc<T>` channels instead of `Bytes` channels for zero-copy execution.
-  /// Nodes receive type-erased channels and extract the appropriate type
-  /// (Bytes or `Arc<T>`) based on ExecutionMode.
-  /// When batching is enabled, nodes should use `batching_channels` instead of `output_channels`.
+  /// Nodes always use `Arc<Message<T>>` channels for zero-copy in-process execution.
+  /// All data is wrapped in `Message<T>` for end-to-end traceability.
   fn spawn_execution_task(
     &self,
     _input_channels: std::collections::HashMap<String, super::channels::TypeErasedReceiver>,
     _output_channels: std::collections::HashMap<String, super::channels::TypeErasedSender>,
     _pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
     _execution_mode: super::execution::ExecutionMode,
-    _batching_channels: Option<
-      std::collections::HashMap<String, std::sync::Arc<super::batching::BatchingChannel>>,
-    >,
     _arc_pool: Option<std::sync::Arc<super::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), super::execution::ExecutionError>>> {
     None

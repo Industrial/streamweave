@@ -44,7 +44,6 @@ This document lists packages that are commonly created for streaming/data proces
 - `message` - Message types ✅
 - `offset` - Offset management ✅
 - `transaction` - Transaction support ✅
-- `distributed` - Distributed processing ✅
 - `error` - Error handling types ✅
 - `tokio` - Tokio integration ✅
 - `transformers` - Collection of transformers ✅
@@ -174,7 +173,7 @@ This document lists packages that are commonly created for streaming/data proces
 
 ### ❌ Missing
 - **`streamweave-logging`** - Structured logging producer/consumer
-- **`streamweave-tracing`** - Distributed tracing integration
+- **`streamweave-tracing`** - Tracing integration
 - **`streamweave-jaeger`** - Jaeger tracing integration
 - **`streamweave-zipkin`** - Zipkin tracing integration
 - **`streamweave-datadog`** - Datadog metrics/logs integration
@@ -348,7 +347,7 @@ This document lists packages that are commonly created for streaming/data proces
 - **High Priority** (commonly needed): ~44
 - **Medium Priority** (domain-specific): ~100
 - **Low Priority** (niche use cases): ~50
-- **Recently Added**: timer, signal, process, tempfile, path, fs, array, vec, graph, pipeline, stateful, message, offset, transaction, distributed, error, tokio, transformers, visualization, window, json
+- **Recently Added**: timer, signal, process, tempfile, path, fs, array, vec, graph, pipeline, stateful, message, offset, transaction, error, tokio, transformers, visualization, window, json
 
 ---
 

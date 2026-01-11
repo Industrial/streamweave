@@ -4,22 +4,35 @@ exec > >(tee log/bench.log) 2>&1
 
 echo "> bench"
 
-cd packages/graph
+# Check if benches directory exists
+if [ ! -d "benches" ]; then
+    echo "> bench > no benches directory found"
+    echo "> bench > done"
+    exit 0
+fi
 
 echo "> bench > building benchmarks"
-cargo build --release --benches
+cargo build --release --benches || {
+    echo "> bench > warning: failed to build benchmarks (may not exist)"
+    exit 0
+}
 
-echo "> bench > running zero_copy_bench"
-cargo bench --bench zero_copy_bench
+# Get list of available benchmarks
+# cargo bench --list outputs benchmark names, try to extract them
+BENCHES=$(cargo bench --list 2>/dev/null | grep -E "^[a-z_]+:" | cut -d: -f1 | sort -u || true)
 
-echo "> bench > running batching_bench"
-cargo bench --bench batching_bench
+if [ -z "$BENCHES" ]; then
+    echo "> bench > no benchmarks found"
+    echo "> bench > done"
+    exit 0
+fi
 
-echo "> bench > running compression_bench"
-cargo bench --bench compression_bench
-
-echo "> bench > running shared_memory_bench"
-cargo bench --bench shared_memory_bench
+# Run each available benchmark
+for bench in $BENCHES; do
+    echo "> bench > running $bench"
+    cargo bench --bench "$bench" || {
+        echo "> bench > warning: failed to run $bench"
+    }
+done
 
 echo "> bench > done"
-

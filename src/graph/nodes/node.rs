@@ -112,11 +112,8 @@ use crate::ProducerPorts;
 use crate::Transformer;
 use crate::TransformerPorts;
 use crate::graph::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-use crate::graph::compression::Compression;
-use crate::graph::execution::CompressionAlgorithm;
-use crate::graph::serialization::serialize;
 use crate::graph::traits::{NodeKind, NodeTrait};
-use crate::message::{Message, wrap_message};
+use crate::message::wrap_message;
 use crate::port::{GetPort, PortList};
 use async_stream::stream;
 use futures::StreamExt;
@@ -233,106 +230,10 @@ where
   /// # Returns
   ///
   /// A new `StreamWrapper` that can be converted to `T::InputStream`.
-  fn from_receiver(
-    mut receiver: TypeErasedReceiver,
-    compression: Option<CompressionAlgorithm>,
-    batching: bool,
-  ) -> Self {
+  fn from_receiver(mut receiver: TypeErasedReceiver) -> Self {
     let stream = Box::pin(stream! {
       while let Some(channel_item) = receiver.recv().await {
         match channel_item {
-          ChannelItem::Bytes(bytes) => {
-            // Distributed mode: decompress if needed, then deserialize
-            let decompressed_bytes = if let Some(algorithm) = compression {
-              // Create decompressor (level doesn't matter for decompression, but we need to match the algorithm)
-              let decompressor: Box<dyn Compression> = match algorithm {
-                CompressionAlgorithm::Gzip { level } => {
-                  Box::new(crate::graph::compression::GzipCompression::new(level))
-                }
-                CompressionAlgorithm::Zstd { level } => {
-                  Box::new(crate::graph::compression::ZstdCompression::new(level))
-                }
-              };
-
-              // Decompress in blocking task
-              match tokio::task::spawn_blocking(move || decompressor.decompress(&bytes)).await {
-                Ok(Ok(decompressed)) => decompressed,
-                Ok(Err(e)) => {
-                  // Handle corrupted data gracefully - log and skip
-                  let is_corrupted = matches!(e, crate::graph::compression::CompressionError::CorruptedData);
-                  if is_corrupted {
-                    warn!(
-                      "Corrupted compressed data detected, skipping item"
-                    );
-                  } else {
-                    warn!(
-                      error = %e,
-                      "Failed to decompress input item, skipping"
-                    );
-                  }
-                  continue;
-                }
-                Err(e) => {
-                  warn!(
-                    error = %e,
-                    "Decompression task failed, skipping"
-                  );
-                  continue;
-                }
-              }
-            } else {
-              bytes
-            };
-
-            // If batching is enabled, deserialize batch and yield individual items
-            if batching {
-              match crate::graph::batching::deserialize_batch(decompressed_bytes) {
-                Ok(batch_items) => {
-                  // Yield each item from the batch
-                  for item_bytes in batch_items {
-                    let deserializer = crate::graph::serialization::ZeroCopyDeserializer::new(item_bytes);
-                    // Deserialize to Message<T::Input> and extract payload
-                    match deserializer.deserialize::<Message<<T as Input>::Input>>() {
-                      Ok(message) => {
-                        let payload = message.into_payload();
-                        yield payload;
-                      }
-                      Err(e) => {
-                        warn!(
-                          error = %e,
-                          "Failed to deserialize Message from batch, skipping"
-                        );
-                        continue;
-                      }
-                    }
-                  }
-                }
-                Err(e) => {
-                  warn!(
-                    error = %e,
-                    "Failed to deserialize batch, skipping"
-                  );
-                  continue;
-                }
-              }
-            } else {
-              // Regular single item deserialization: deserialize to Message<T::Input> and extract payload
-              let deserializer = crate::graph::serialization::ZeroCopyDeserializer::new(decompressed_bytes);
-              match deserializer.deserialize::<Message<<T as Input>::Input>>() {
-                Ok(message) => {
-                  let payload = message.into_payload();
-                  yield payload;
-                }
-                Err(e) => {
-                  warn!(
-                    error = %e,
-                    "Failed to deserialize Message from input item, skipping"
-                  );
-                  continue;
-                }
-              }
-            }
-          }
           ChannelItem::Arc(arc) => {
             // In-process mode: try to downcast to Arc<Message<T::Input>> first, then fall back to Arc<T::Input>
             // Note: This requires <T as Input>::Input: Send + Sync + 'static
@@ -406,101 +307,14 @@ where
   /// A new `StreamWrapper` containing the merged stream from all inputs.
   fn from_multiple_receivers(
     receivers: impl Iterator<Item = (String, TypeErasedReceiver)>,
-    compression: Option<CompressionAlgorithm>,
-    batching: bool,
   ) -> Self {
     // Create streams from each receiver
     let streams: Vec<_> = receivers
       .map(|(_port_name, receiver)| {
-        let comp = compression;
         Box::pin(stream! {
           let mut recv = receiver;
           while let Some(channel_item) = recv.recv().await {
             match channel_item {
-              ChannelItem::Bytes(bytes) => {
-                // Distributed mode: decompress if needed, then deserialize
-                let decompressed_bytes = if let Some(algorithm) = comp {
-                  let decompressor: Box<dyn Compression> = match algorithm {
-                    CompressionAlgorithm::Gzip { level } => {
-                      Box::new(crate::graph::compression::GzipCompression::new(level))
-                    }
-                    CompressionAlgorithm::Zstd { level } => {
-                      Box::new(crate::graph::compression::ZstdCompression::new(level))
-                    }
-                  };
-
-                  match tokio::task::spawn_blocking(move || decompressor.decompress(&bytes)).await {
-                    Ok(Ok(decompressed)) => decompressed,
-                    Ok(Err(e)) => {
-                      error!(
-                        error = %e,
-                        "Failed to decompress input item from channel, skipping"
-                      );
-                      continue;
-                    }
-                    Err(e) => {
-                      error!(
-                        error = %e,
-                        "Decompression task failed, skipping"
-                      );
-                      continue;
-                    }
-                  }
-                } else {
-                  bytes
-                };
-
-                // If batching is enabled, deserialize batch and yield individual items
-                if batching {
-                  match crate::graph::batching::deserialize_batch(decompressed_bytes) {
-                    Ok(batch_items) => {
-                      // Yield each item from the batch
-                      for item_bytes in batch_items {
-                        let deserializer = crate::graph::serialization::ZeroCopyDeserializer::new(item_bytes);
-                        // Deserialize to Message<T::Input> and extract payload
-                        match deserializer.deserialize::<Message<<T as Input>::Input>>() {
-                          Ok(message) => {
-                            let payload = message.into_payload();
-                            yield payload;
-                          }
-                          Err(e) => {
-                            error!(
-                              error = %e,
-                              "Failed to deserialize Message from batch, skipping"
-                            );
-                            continue;
-                          }
-                        }
-                      }
-                    }
-                    Err(e) => {
-                      error!(
-                        error = %e,
-                        "Failed to deserialize batch, skipping"
-                      );
-                      continue;
-                    }
-                  }
-                } else {
-                  // Regular single item deserialization: deserialize to Message<T::Input> and extract payload
-                  let bytes_len = decompressed_bytes.len();
-                  let deserializer = crate::graph::serialization::ZeroCopyDeserializer::new(decompressed_bytes);
-                  match deserializer.deserialize::<Message<<T as Input>::Input>>() {
-                    Ok(message) => {
-                      let payload = message.into_payload();
-                      yield payload;
-                    }
-                    Err(e) => {
-                      error!(
-                        error = %e,
-                        bytes_len = bytes_len,
-                        "Failed to deserialize Message from input item, skipping"
-                      );
-                      continue;
-                    }
-                  }
-                }
-              }
               ChannelItem::Arc(arc) => {
                 // In-process mode: try to downcast to Arc<Message<T::Input>> first, then fall back to Arc<T::Input>
                 let channel_item = crate::graph::channels::ChannelItem::Arc(arc.clone());
@@ -1541,10 +1355,7 @@ where
     _input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
     output_channels: std::collections::HashMap<String, TypeErasedSender>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
-    execution_mode: crate::graph::execution::ExecutionMode,
-    batching_channels: Option<
-      std::collections::HashMap<String, std::sync::Arc<crate::graph::batching::BatchingChannel>>,
-    >,
+    _execution_mode: crate::graph::execution::ExecutionMode,
     arc_pool: Option<std::sync::Arc<crate::graph::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::graph::execution::ExecutionError>>> {
     // Implementation requires P::Output: Serialize (added to trait bounds above)
@@ -1561,9 +1372,8 @@ where
 
     let node_name = self.name.clone();
     let producer = Arc::clone(&self.producer);
-    let execution_mode_clone = execution_mode.clone();
-    let _batching_channels_clone = batching_channels.clone();
-    let arc_pool_clone = arc_pool.clone();
+    let _execution_mode_clone = _execution_mode.clone();
+    let _arc_pool_clone = arc_pool.clone();
 
     let handle = tokio::spawn(async move {
       // Get the stream from the producer and pin it
@@ -1614,57 +1424,23 @@ where
           return Ok(());
         }
 
-        // Check execution mode for zero-copy optimization
-        let is_in_process = matches!(
-          execution_mode_clone,
-          crate::graph::execution::ExecutionMode::InProcess { .. }
-        );
+        // In-process zero-copy mode: wrap Message in Arc and send directly (no serialization)
         let is_fan_out = output_channels.len() > 1;
 
         // Wrap the producer output in Message<T> before sending through channels
         // This ensures all data flowing through the graph is wrapped in messages
         let message = wrap_message(item);
+        let message_arc = Arc::new(message);
 
-        // In in-process mode: use Arc<Message<T>> for true zero-copy (no serialization)
-        // In distributed mode: serialize Message<T> to Bytes
         let mut send_succeeded = 0;
         let mut send_failed_count = 0;
 
-        if is_in_process {
-          // In-process zero-copy mode: wrap Message in Arc and send directly (no serialization)
-          let message_arc = Arc::new(message);
-
-          if is_fan_out {
-            // Fan-out: clone Arc<Message<T>> (zero-copy) to all outputs
-            for (port_name, sender) in &output_channels {
-              // Convert Arc<Message<T>> to Arc<dyn Any + Send + Sync> for type erasure
-              let arc_any: Arc<dyn Any + Send + Sync> = unsafe {
-                Arc::from_raw(Arc::into_raw(message_arc.clone()) as *const (dyn Any + Send + Sync))
-              };
-              match sender.send(ChannelItem::Arc(arc_any)).await {
-                Ok(()) => {
-                  send_succeeded += 1;
-                }
-                Err(_e) => {
-                  let paused = *pause_signal.read().await;
-                  if paused {
-                    return Ok(());
-                  }
-                  send_failed_count += 1;
-                  warn!(
-                    node = %node_name,
-                    port = %port_name,
-                    "Output channel receiver dropped (may be normal in fan-out scenarios)"
-                  );
-                }
-              }
-            }
-          } else {
-            // Single output: send Arc<Message<T>> directly
-            let (port_name, sender) = output_channels.iter().next().unwrap();
+        if is_fan_out {
+          // Fan-out: clone Arc<Message<T>> (zero-copy) to all outputs
+          for (port_name, sender) in &output_channels {
             // Convert Arc<Message<T>> to Arc<dyn Any + Send + Sync> for type erasure
             let arc_any: Arc<dyn Any + Send + Sync> = unsafe {
-              Arc::from_raw(Arc::into_raw(message_arc) as *const (dyn Any + Send + Sync))
+              Arc::from_raw(Arc::into_raw(message_arc.clone()) as *const (dyn Any + Send + Sync))
             };
             match sender.send(ChannelItem::Arc(arc_any)).await {
               Ok(()) => {
@@ -1678,155 +1454,33 @@ where
                 send_failed_count += 1;
                 warn!(
                   node = %node_name,
-                  port = port_name,
-                  "Output channel receiver dropped"
+                  port = %port_name,
+                  "Output channel receiver dropped (may be normal in fan-out scenarios)"
                 );
               }
             }
           }
         } else {
-          // Distributed mode: serialize Message<T> to Bytes, then compress if enabled
-          let serialized = match serialize(&message) {
-            Ok(bytes) => bytes,
-            Err(e) => {
-              error!(
+          // Single output: send Arc<Message<T>> directly
+          let (port_name, sender) = output_channels.iter().next().unwrap();
+          // Convert Arc<Message<T>> to Arc<dyn Any + Send + Sync> for type erasure
+          let arc_any: Arc<dyn Any + Send + Sync> =
+            unsafe { Arc::from_raw(Arc::into_raw(message_arc) as *const (dyn Any + Send + Sync)) };
+          match sender.send(ChannelItem::Arc(arc_any)).await {
+            Ok(()) => {
+              send_succeeded += 1;
+            }
+            Err(_e) => {
+              let paused = *pause_signal.read().await;
+              if paused {
+                return Ok(());
+              }
+              send_failed_count += 1;
+              warn!(
                 node = %node_name,
-                error = %e,
-                "Failed to serialize producer output"
+                port = port_name,
+                "Output channel receiver dropped"
               );
-              return Err(
-                crate::graph::execution::ExecutionError::SerializationError {
-                  node: node_name,
-                  is_deserialization: false,
-                  reason: format!("Failed to serialize producer output: {}", e),
-                  message_id: None,
-                },
-              );
-            }
-          };
-
-          // Apply compression if configured
-          let final_bytes = if let crate::graph::execution::ExecutionMode::Distributed {
-            compression: Some(algorithm),
-            ..
-          } = &execution_mode_clone
-          {
-            // Create compression instance with configured level
-            let compressor: Box<dyn Compression> = match *algorithm {
-              CompressionAlgorithm::Gzip { level } => {
-                Box::new(crate::graph::compression::GzipCompression::new(level))
-              }
-              CompressionAlgorithm::Zstd { level } => {
-                Box::new(crate::graph::compression::ZstdCompression::new(level))
-              }
-            };
-
-            // Compress in blocking task (compression is CPU-intensive)
-            match tokio::task::spawn_blocking(move || compressor.compress(&serialized)).await {
-              Ok(Ok(compressed)) => compressed,
-              Ok(Err(e)) => {
-                error!(
-                  node = %node_name,
-                  error = %e,
-                  "Failed to compress producer output"
-                );
-                let is_corrupted = matches!(
-                  e,
-                  crate::graph::compression::CompressionError::CorruptedData
-                );
-                return Err(crate::graph::execution::ExecutionError::CompressionError {
-                  node: node_name,
-                  is_compression: true,
-                  reason: e.to_string(),
-                  is_corrupted,
-                });
-              }
-              Err(e) => {
-                error!(
-                  node = %node_name,
-                  error = %e,
-                  "Compression task failed"
-                );
-                return Err(crate::graph::execution::ExecutionError::CompressionError {
-                  node: node_name,
-                  is_compression: true,
-                  reason: format!("Compression task failed: {}", e),
-                  is_corrupted: false,
-                });
-              }
-            }
-          } else {
-            serialized
-          };
-
-          if is_fan_out {
-            // Fan-out: wrap in Arc for zero-copy sharing of serialized data
-            // Use pool if available to reduce allocations
-            let shared_bytes: Arc<bytes::Bytes> = if let Some(ref pool) = arc_pool_clone {
-              pool.get_or_create(final_bytes)
-            } else {
-              Arc::new(final_bytes)
-            };
-            for (port_name, sender) in &output_channels {
-              match sender
-                .send(ChannelItem::Bytes(shared_bytes.as_ref().clone()))
-                .await
-              {
-                Ok(()) => {
-                  send_succeeded += 1;
-                }
-                Err(_e) => {
-                  let paused = *pause_signal.read().await;
-                  if paused {
-                    return Ok(());
-                  }
-                  send_failed_count += 1;
-                  warn!(
-                    node = %node_name,
-                    port = %port_name,
-                    "Output channel receiver dropped (may be normal in fan-out scenarios)"
-                  );
-                }
-              }
-            }
-          } else {
-            // Single output: send Bytes directly
-            let (port_name, sender) = output_channels.iter().next().unwrap();
-
-            // Use batching channel if available, otherwise use regular sender
-            let send_result = if let Some(batching_channel) =
-              batching_channels.as_ref().and_then(|bc| bc.get(port_name))
-            {
-              batching_channel.send(ChannelItem::Bytes(final_bytes)).await
-            } else {
-              sender
-                .send(ChannelItem::Bytes(final_bytes))
-                .await
-                .map_err(|e| crate::graph::execution::ExecutionError::ChannelError {
-                  node: node_name.clone(),
-                  port: port_name.clone(),
-                  is_input: false,
-                  reason: format!("Failed to send item: {}", e),
-                  message_id: None,
-                })
-            };
-
-            match send_result {
-              Ok(()) => {
-                send_succeeded += 1;
-              }
-              Err(_e) => {
-                let paused = *pause_signal.read().await;
-                if paused {
-                  return Ok(());
-                }
-                send_failed_count += 1;
-                warn!(
-                  node = %node_name,
-                  port = %port_name,
-                  "Output channel receiver dropped"
-                );
-              }
             }
           }
         }
@@ -1885,10 +1539,7 @@ where
     input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
     output_channels: std::collections::HashMap<String, TypeErasedSender>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
-    execution_mode: crate::graph::execution::ExecutionMode,
-    batching_channels: Option<
-      std::collections::HashMap<String, std::sync::Arc<crate::graph::batching::BatchingChannel>>,
-    >,
+    _execution_mode: crate::graph::execution::ExecutionMode,
     arc_pool: Option<std::sync::Arc<crate::graph::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::graph::execution::ExecutionError>>> {
     // NOTE: Serialization is handled via the serialize() function from the
@@ -1897,23 +1548,12 @@ where
     // trait directly to nodes for pluggable serialization formats.
     let node_name = self.name.clone();
     let transformer = Arc::clone(&self.transformer);
-    let execution_mode_clone = execution_mode.clone();
-    let _batching_channels_clone = batching_channels.clone();
-    let arc_pool_clone = arc_pool.clone();
+    let execution_mode_clone = _execution_mode.clone();
+    let _arc_pool_clone = arc_pool.clone();
 
     let handle = tokio::spawn(async move {
       // Create input stream from channels by deserializing
       // Support both single and multiple input channels (fan-in)
-
-      // Extract compression and batching info from execution mode
-      let (compression, batching) = match &execution_mode {
-        crate::graph::execution::ExecutionMode::Distributed {
-          compression: comp,
-          batching: batch,
-          ..
-        } => (*comp, batch.is_some()),
-        _ => (None, false),
-      };
 
       // Create StreamWrapper using Option 6 (Phantom Type Pattern with Conversion Trait)
       let stream_wrapper: StreamWrapper<T> = if input_channels.is_empty() {
@@ -1921,10 +1561,10 @@ where
       } else if input_channels.len() == 1 {
         // Single input: create stream from single receiver
         let (_port_name, receiver) = input_channels.into_iter().next().unwrap();
-        StreamWrapper::from_receiver(receiver, compression, batching)
+        StreamWrapper::from_receiver(receiver)
       } else {
         // Multiple inputs: merge streams from all receivers
-        StreamWrapper::from_multiple_receivers(input_channels.into_iter(), compression, batching)
+        StreamWrapper::from_multiple_receivers(input_channels.into_iter())
       };
 
       // Convert to T::InputStream using the StreamConverter trait
@@ -2082,146 +1722,6 @@ where
               }
             }
           }
-        } else {
-          // Distributed mode: serialize Message<T> to Bytes, then compress if enabled
-          let serialized = match serialize(&message) {
-            Ok(bytes) => bytes,
-            Err(e) => {
-              error!(
-                node = %node_name,
-                error = %e,
-                "Failed to serialize Message<T> transformer output"
-              );
-              return Err(
-                crate::graph::execution::ExecutionError::SerializationError {
-                  node: node_name,
-                  is_deserialization: false,
-                  reason: format!("Failed to serialize Message<T> transformer output: {}", e),
-                  message_id: None,
-                },
-              );
-            }
-          };
-
-          // Apply compression if configured
-          let final_bytes = if let crate::graph::execution::ExecutionMode::Distributed {
-            compression: Some(algorithm),
-            ..
-          } = &execution_mode_clone
-          {
-            // Create compression instance with the configured level
-            let compressor: Box<dyn Compression> = match *algorithm {
-              CompressionAlgorithm::Gzip { level } => {
-                Box::new(crate::graph::compression::GzipCompression::new(level))
-              }
-              CompressionAlgorithm::Zstd { level } => {
-                Box::new(crate::graph::compression::ZstdCompression::new(level))
-              }
-            };
-
-            // Compress in blocking task (compression is CPU-intensive)
-            match tokio::task::spawn_blocking(move || compressor.compress(&serialized)).await {
-              Ok(Ok(compressed)) => compressed,
-              Ok(Err(e)) => {
-                error!(
-                  node = %node_name,
-                  error = %e,
-                  "Failed to compress transformer output"
-                );
-                return Err(
-                  crate::graph::execution::ExecutionError::SerializationError {
-                    node: node_name,
-                    is_deserialization: false,
-                    reason: format!("Compression failed: {}", e),
-                    message_id: None,
-                  },
-                );
-              }
-              Err(e) => {
-                error!(
-                  node = %node_name,
-                  error = %e,
-                  "Compression task failed"
-                );
-                return Err(crate::graph::execution::ExecutionError::ExecutionFailed(
-                  format!("Compression task failed: {}", e),
-                ));
-              }
-            }
-          } else {
-            serialized
-          };
-
-          if is_fan_out {
-            // Fan-out: wrap in Arc for zero-copy sharing of serialized data
-            // Use pool if available to reduce allocations
-            let shared_bytes: Arc<bytes::Bytes> = if let Some(ref pool) = arc_pool_clone {
-              pool.get_or_create(final_bytes)
-            } else {
-              Arc::new(final_bytes)
-            };
-            for (port_name, sender) in &output_channels {
-              match sender
-                .send(ChannelItem::Bytes(shared_bytes.as_ref().clone()))
-                .await
-              {
-                Ok(()) => {
-                  send_succeeded += 1;
-                }
-                Err(_e) => {
-                  let paused = *pause_signal.read().await;
-                  if paused {
-                    return Ok(());
-                  }
-                  send_failed_count += 1;
-                  warn!(
-                    node = %node_name,
-                    port = %port_name,
-                    "Output channel receiver dropped (may be normal in fan-out scenarios)"
-                  );
-                }
-              }
-            }
-          } else {
-            // Single output: send Bytes directly
-            let (port_name, sender) = output_channels.iter().next().unwrap();
-
-            // Use batching channel if available, otherwise use regular sender
-            let send_result = if let Some(batching_channel) =
-              batching_channels.as_ref().and_then(|bc| bc.get(port_name))
-            {
-              batching_channel.send(ChannelItem::Bytes(final_bytes)).await
-            } else {
-              sender
-                .send(ChannelItem::Bytes(final_bytes))
-                .await
-                .map_err(|e| crate::graph::execution::ExecutionError::ChannelError {
-                  node: node_name.clone(),
-                  port: port_name.clone(),
-                  is_input: false,
-                  reason: format!("Failed to send item: {}", e),
-                  message_id: None,
-                })
-            };
-
-            match send_result {
-              Ok(()) => {
-                send_succeeded += 1;
-              }
-              Err(_e) => {
-                let paused = *pause_signal.read().await;
-                if paused {
-                  return Ok(());
-                }
-                send_failed_count += 1;
-                warn!(
-                  node = %node_name,
-                  port = %port_name,
-                  "Output channel receiver dropped"
-                );
-              }
-            }
-          }
         }
 
         // If ALL channels failed (and not shutdown), all downstream nodes have finished
@@ -2276,10 +1776,7 @@ where
     input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
     _output_channels: std::collections::HashMap<String, TypeErasedSender>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
-    execution_mode: crate::graph::execution::ExecutionMode,
-    _batching_channels: Option<
-      std::collections::HashMap<String, std::sync::Arc<crate::graph::batching::BatchingChannel>>,
-    >,
+    _execution_mode: crate::graph::execution::ExecutionMode,
     _arc_pool: Option<std::sync::Arc<crate::graph::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::graph::execution::ExecutionError>>> {
     let consumer = Arc::clone(&self.consumer);
@@ -2288,26 +1785,16 @@ where
       // Create input stream from channels by deserializing
       // Support both single and multiple input channels (fan-in)
 
-      // Extract compression and batching info from execution mode
-      let (compression, batching) = match &execution_mode {
-        crate::graph::execution::ExecutionMode::Distributed {
-          compression: comp,
-          batching: batch,
-          ..
-        } => (*comp, batch.is_some()),
-        _ => (None, false),
-      };
-
       // Create StreamWrapper for consumer input (similar to transformer)
       let stream_wrapper: StreamWrapper<C> = if input_channels.is_empty() {
         StreamWrapper::empty()
       } else if input_channels.len() == 1 {
         // Single input: create stream from single receiver
         let (_port_name, receiver) = input_channels.into_iter().next().unwrap();
-        StreamWrapper::from_receiver(receiver, compression, batching)
+        StreamWrapper::from_receiver(receiver)
       } else {
         // Multiple inputs: merge streams from all receivers
-        StreamWrapper::from_multiple_receivers(input_channels.into_iter(), compression, batching)
+        StreamWrapper::from_multiple_receivers(input_channels.into_iter())
       };
 
       // Convert to C::InputStream using the StreamConverter trait
@@ -2519,174 +2006,94 @@ where
     input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
     output_channels: std::collections::HashMap<String, TypeErasedSender>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
-    execution_mode: crate::graph::execution::ExecutionMode,
-    _batching_channels: Option<
-      std::collections::HashMap<String, std::sync::Arc<crate::graph::batching::BatchingChannel>>,
-    >,
+    _execution_mode: crate::graph::execution::ExecutionMode,
     _arc_pool: Option<std::sync::Arc<crate::graph::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::graph::execution::ExecutionError>>> {
     let router = Arc::clone(&self.router);
     let node_name = self.name.clone();
 
     let handle = tokio::spawn(async move {
-      // Create input stream from channels
-      let (compression, _batching) = match &execution_mode {
-        crate::graph::execution::ExecutionMode::Distributed {
-          compression: comp,
-          batching: batch,
-          ..
-        } => (*comp, batch.is_some()),
-        _ => (None, false),
-      };
-
       // Create input stream from channels by unwrapping Message<I>
-      let compression_clone = compression;
-      let input_stream: Pin<Box<dyn futures::Stream<Item = I> + Send>> = if input_channels
-        .is_empty()
-      {
-        Box::pin(futures::stream::empty())
-      } else if input_channels.len() == 1 {
-        let (_port_name, mut receiver) = input_channels.into_iter().next().unwrap();
-        Box::pin(stream! {
-          while let Some(channel_item) = receiver.recv().await {
-            match channel_item {
-              crate::graph::channels::ChannelItem::Bytes(bytes) => {
-                // Distributed mode: decompress if needed, then deserialize Message<I>
-                let decompressed_bytes = if let Some(algorithm) = compression_clone {
-                  let decompressor: Box<dyn crate::graph::compression::Compression> = match algorithm {
-                    crate::graph::execution::CompressionAlgorithm::Gzip { level: _ } => {
-                      Box::new(crate::graph::compression::GzipCompression::new(1))
+      let input_stream: Pin<Box<dyn futures::Stream<Item = I> + Send>> =
+        if input_channels.is_empty() {
+          Box::pin(futures::stream::empty())
+        } else if input_channels.len() == 1 {
+          let (_port_name, mut receiver) = input_channels.into_iter().next().unwrap();
+          Box::pin(stream! {
+            while let Some(channel_item) = receiver.recv().await {
+              match channel_item {
+                crate::graph::channels::ChannelItem::Arc(arc) => {
+                  // In-process mode: try to downcast to Arc<Message<I>> first, then fall back to Arc<I>
+                  let channel_item = crate::graph::channels::ChannelItem::Arc(arc.clone());
+                  match channel_item.downcast_message_arc::<I>() {
+                    Ok(msg_arc) => {
+                      // Extract payload from Message
+                      let payload = (*msg_arc).payload().clone();
+                      yield payload;
                     }
-                    crate::graph::execution::CompressionAlgorithm::Zstd { level: _ } => {
-                      Box::new(crate::graph::compression::ZstdCompression::new(1))
-                    }
-                  };
-                  match tokio::task::spawn_blocking(move || decompressor.decompress(&bytes)).await {
-                    Ok(Ok(decompressed)) => decompressed,
-                    Ok(Err(_)) => continue, // Skip corrupted data
-                    Err(_) => continue,
-                  }
-                } else {
-                  bytes
-                };
-                // Deserialize to Message<I> and extract payload
-                let deserializer = crate::graph::serialization::ZeroCopyDeserializer::new(decompressed_bytes);
-                match deserializer.deserialize::<Message<I>>() {
-                  Ok(message) => {
-                    let payload = message.into_payload();
-                    yield payload;
-                  }
-                  Err(_) => continue, // Skip deserialization errors
-                }
-              }
-              crate::graph::channels::ChannelItem::Arc(arc) => {
-                // In-process mode: try to downcast to Arc<Message<I>> first, then fall back to Arc<I>
-                let channel_item = crate::graph::channels::ChannelItem::Arc(arc.clone());
-                match channel_item.downcast_message_arc::<I>() {
-                  Ok(msg_arc) => {
-                    // Extract payload from Message
-                    let payload = (*msg_arc).payload().clone();
-                    yield payload;
-                  }
-                  Err(_) => {
-                    // Fall back to direct I (for backward compatibility)
-                    match Arc::downcast::<I>(arc) {
-                      Ok(typed_arc) => {
-                        let item = Arc::try_unwrap(typed_arc)
-                          .unwrap_or_else(|arc| (*arc).clone());
-                        yield item;
-                      }
-                      Err(_) => continue,
-                    }
-                  }
-                }
-              }
-              _ => continue,
-            }
-          }
-        })
-      } else {
-        // Multiple inputs: merge streams
-        let receivers: Vec<_> = input_channels.into_values().collect();
-        let compression_clone2 = compression_clone;
-        Box::pin(stream! {
-          let mut receivers = receivers;
-          loop {
-            let mut all_done = true;
-            for receiver in &mut receivers {
-              if let Some(channel_item) = receiver.recv().await {
-                all_done = false;
-                match channel_item {
-                  crate::graph::channels::ChannelItem::Bytes(bytes) => {
-                    let decompressed_bytes = if let Some(algorithm) = compression_clone2 {
-                      let decompressor: Box<dyn crate::graph::compression::Compression> = match algorithm {
-                        crate::graph::execution::CompressionAlgorithm::Gzip { level: _ } => {
-                          Box::new(crate::graph::compression::GzipCompression::new(1))
+                    Err(_) => {
+                      // Fall back to direct I (for backward compatibility)
+                      match Arc::downcast::<I>(arc) {
+                        Ok(typed_arc) => {
+                          let item = Arc::try_unwrap(typed_arc)
+                            .unwrap_or_else(|arc| (*arc).clone());
+                          yield item;
                         }
-                        crate::graph::execution::CompressionAlgorithm::Zstd { level: _ } => {
-                          Box::new(crate::graph::compression::ZstdCompression::new(1))
-                        }
-                      };
-                      match tokio::task::spawn_blocking(move || decompressor.decompress(&bytes)).await {
-                        Ok(Ok(decompressed)) => decompressed,
-                        Ok(Err(_)) => continue,
                         Err(_) => continue,
                       }
-                    } else {
-                      bytes
-                    };
-                    // Deserialize to Message<I> and extract payload
-                    let deserializer = crate::graph::serialization::ZeroCopyDeserializer::new(decompressed_bytes);
-                    match deserializer.deserialize::<Message<I>>() {
-                      Ok(message) => {
-                        let payload = message.into_payload();
-                        yield payload;
-                      }
-                      Err(_) => continue,
                     }
                   }
-                  crate::graph::channels::ChannelItem::Arc(arc) => {
-                    // In-process mode: try to downcast to Arc<Message<I>> first, then fall back to Arc<I>
-                    let channel_item = crate::graph::channels::ChannelItem::Arc(arc.clone());
-                    match channel_item.downcast_message_arc::<I>() {
-                      Ok(msg_arc) => {
-                        let payload = (*msg_arc).payload().clone();
-                        yield payload;
-                      }
-                      Err(_) => {
-                        match Arc::downcast::<I>(arc) {
-                          Ok(typed_arc) => {
-                            let item = Arc::try_unwrap(typed_arc)
-                              .unwrap_or_else(|arc| (*arc).clone());
-                            yield item;
+                }
+                _ => continue,
+              }
+            }
+          })
+        } else {
+          // Multiple inputs: merge streams
+          let receivers: Vec<_> = input_channels.into_values().collect();
+          Box::pin(stream! {
+            let mut receivers = receivers;
+            loop {
+              let mut all_done = true;
+              for receiver in &mut receivers {
+                if let Some(channel_item) = receiver.recv().await {
+                  all_done = false;
+                  match channel_item {
+                    crate::graph::channels::ChannelItem::Arc(arc) => {
+                      // In-process mode: try to downcast to Arc<Message<I>> first, then fall back to Arc<I>
+                      let channel_item = crate::graph::channels::ChannelItem::Arc(arc.clone());
+                      match channel_item.downcast_message_arc::<I>() {
+                        Ok(msg_arc) => {
+                          let payload = (*msg_arc).payload().clone();
+                          yield payload;
+                        }
+                        Err(_) => {
+                          match Arc::downcast::<I>(arc) {
+                            Ok(typed_arc) => {
+                              let item = Arc::try_unwrap(typed_arc)
+                                .unwrap_or_else(|arc| (*arc).clone());
+                              yield item;
+                            }
+                            Err(_) => continue,
                           }
-                          Err(_) => continue,
                         }
                       }
                     }
+                    _ => continue,
                   }
-                  _ => continue,
                 }
               }
+              if all_done {
+                break;
+              }
             }
-            if all_done {
-              break;
-            }
-          }
-        })
-      };
+          })
+        };
 
       // Route the stream using the router
       let mut router_guard = router.lock().await;
       let output_streams = router_guard.route_stream(input_stream).await;
       drop(router_guard);
-
-      // Extract execution mode info before the loop
-      let execution_mode_clone = execution_mode.clone();
-      let is_in_process = matches!(
-        execution_mode_clone,
-        crate::graph::execution::ExecutionMode::InProcess { .. }
-      );
 
       // Send each output stream to the corresponding output channel
       for (port_name, mut output_stream) in output_streams {
@@ -2695,7 +2102,6 @@ where
           let pause_signal_clone = pause_signal.clone();
           let node_name_clone = node_name.clone();
           let port_name_clone = port_name.clone();
-          let is_in_process_clone = is_in_process;
           tokio::spawn(async move {
             while let Some(item) = output_stream.next().await {
               // Check pause signal
@@ -2705,45 +2111,22 @@ where
 
               // Wrap output in Message<I> before sending
               let message = wrap_message(item);
-
-              if is_in_process_clone {
-                // In-process zero-copy mode: wrap Message in Arc and send directly
-                let message_arc = Arc::new(message);
-                // Convert Arc<Message<I>> to Arc<dyn Any + Send + Sync> for type erasure
-                let arc_any: Arc<dyn Any + Send + Sync> = unsafe {
-                  Arc::from_raw(Arc::into_raw(message_arc) as *const (dyn Any + Send + Sync))
-                };
-                sender_clone
-                  .send(crate::graph::channels::ChannelItem::Arc(arc_any))
-                  .await
-                  .map_err(|_| crate::graph::execution::ExecutionError::ChannelError {
-                    node: node_name_clone.clone(),
-                    port: port_name_clone.clone(),
-                    is_input: false,
-                    reason: "Channel closed".to_string(),
-                    message_id: None,
-                  })?;
-              } else {
-                // Distributed mode: serialize Message<I> to Bytes
-                let bytes = serialize(&message).map_err(|e| {
-                  crate::graph::execution::ExecutionError::SerializationError {
-                    node: node_name_clone.clone(),
-                    is_deserialization: false,
-                    reason: e.to_string(),
-                    message_id: None,
-                  }
+              // In-process zero-copy mode: wrap Message in Arc and send directly
+              let message_arc = Arc::new(message);
+              // Convert Arc<Message<I>> to Arc<dyn Any + Send + Sync> for type erasure
+              let arc_any: Arc<dyn Any + Send + Sync> = unsafe {
+                Arc::from_raw(Arc::into_raw(message_arc) as *const (dyn Any + Send + Sync))
+              };
+              sender_clone
+                .send(crate::graph::channels::ChannelItem::Arc(arc_any))
+                .await
+                .map_err(|_| crate::graph::execution::ExecutionError::ChannelError {
+                  node: node_name_clone.clone(),
+                  port: port_name_clone.clone(),
+                  is_input: false,
+                  reason: "Channel closed".to_string(),
+                  message_id: None,
                 })?;
-                sender_clone
-                  .send(crate::graph::channels::ChannelItem::Bytes(bytes))
-                  .await
-                  .map_err(|_| crate::graph::execution::ExecutionError::ChannelError {
-                    node: node_name_clone.clone(),
-                    port: port_name_clone.clone(),
-                    is_input: false,
-                    reason: "Channel closed".to_string(),
-                    message_id: None,
-                  })?;
-              }
             }
             Ok(())
           });
@@ -2932,62 +2315,19 @@ where
     input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
     output_channels: std::collections::HashMap<String, TypeErasedSender>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
-    execution_mode: crate::graph::execution::ExecutionMode,
-    _batching_channels: Option<
-      std::collections::HashMap<String, std::sync::Arc<crate::graph::batching::BatchingChannel>>,
-    >,
+    _execution_mode: crate::graph::execution::ExecutionMode,
     _arc_pool: Option<std::sync::Arc<crate::graph::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::graph::execution::ExecutionError>>> {
     let router = Arc::clone(&self.router);
     let node_name = self.name.clone();
 
     let handle = tokio::spawn(async move {
-      // Create input streams from channels
-      let (compression, _batching) = match &execution_mode {
-        crate::graph::execution::ExecutionMode::Distributed {
-          compression: comp,
-          batching: batch,
-          ..
-        } => (*comp, batch.is_some()),
-        _ => (None, false),
-      };
-
       // Create input streams from channels by unwrapping Message<I>
       let mut input_streams = Vec::new();
       for (port_name, mut receiver) in input_channels {
-        let compression_clone = compression;
         let stream: Pin<Box<dyn futures::Stream<Item = I> + Send>> = Box::pin(stream! {
           while let Some(channel_item) = receiver.recv().await {
             match channel_item {
-              crate::graph::channels::ChannelItem::Bytes(bytes) => {
-                // Distributed mode: decompress if needed, then deserialize Message<I>
-                let decompressed_bytes = if let Some(algorithm) = compression_clone {
-                  let decompressor: Box<dyn crate::graph::compression::Compression> = match algorithm {
-                    crate::graph::execution::CompressionAlgorithm::Gzip { level: _ } => {
-                      Box::new(crate::graph::compression::GzipCompression::new(1))
-                    }
-                    crate::graph::execution::CompressionAlgorithm::Zstd { level: _ } => {
-                      Box::new(crate::graph::compression::ZstdCompression::new(1))
-                    }
-                  };
-                  match tokio::task::spawn_blocking(move || decompressor.decompress(&bytes)).await {
-                    Ok(Ok(decompressed)) => decompressed,
-                    Ok(Err(_)) => continue,
-                    Err(_) => continue,
-                  }
-                } else {
-                  bytes
-                };
-                // Deserialize to Message<I> and extract payload
-                let deserializer = crate::graph::serialization::ZeroCopyDeserializer::new(decompressed_bytes);
-                match deserializer.deserialize::<Message<I>>() {
-                  Ok(message) => {
-                    let payload = message.into_payload();
-                    yield payload;
-                  }
-                  Err(_) => continue,
-                }
-              }
               crate::graph::channels::ChannelItem::Arc(arc) => {
                 // In-process mode: try to downcast to Arc<Message<I>> first, then fall back to Arc<I>
                 let channel_item = crate::graph::channels::ChannelItem::Arc(arc.clone());
@@ -3022,13 +2362,6 @@ where
       let output_stream = router_guard.route_streams(input_streams).await;
       drop(router_guard);
 
-      // Extract execution mode info before using it
-      let execution_mode_clone = execution_mode.clone();
-      let is_in_process = matches!(
-        execution_mode_clone,
-        crate::graph::execution::ExecutionMode::InProcess { .. }
-      );
-
       // Send the output stream to the output channel
       // Get the first (and typically only) output port name
       if let Some(output_port_name) = output_channels.keys().next()
@@ -3043,45 +2376,21 @@ where
 
           // Wrap output in Message<I> before sending
           let message = wrap_message(item);
-
-          if is_in_process {
-            // In-process zero-copy mode: wrap Message in Arc and send directly
-            let message_arc = Arc::new(message);
-            // Convert Arc<Message<I>> to Arc<dyn Any + Send + Sync> for type erasure
-            let arc_any: Arc<dyn Any + Send + Sync> = unsafe {
-              Arc::from_raw(Arc::into_raw(message_arc) as *const (dyn Any + Send + Sync))
-            };
-            sender
-              .send(crate::graph::channels::ChannelItem::Arc(arc_any))
-              .await
-              .map_err(|_| crate::graph::execution::ExecutionError::ChannelError {
-                node: node_name.clone(),
-                port: output_port_name.clone(),
-                is_input: false,
-                reason: "Channel closed".to_string(),
-                message_id: None,
-              })?;
-          } else {
-            // Distributed mode: serialize Message<I> to Bytes
-            let bytes = serialize(&message).map_err(|e| {
-              crate::graph::execution::ExecutionError::SerializationError {
-                node: node_name.clone(),
-                is_deserialization: false,
-                reason: e.to_string(),
-                message_id: None,
-              }
+          // In-process zero-copy mode: wrap Message in Arc and send directly
+          let message_arc = Arc::new(message);
+          // Convert Arc<Message<I>> to Arc<dyn Any + Send + Sync> for type erasure
+          let arc_any: Arc<dyn Any + Send + Sync> =
+            unsafe { Arc::from_raw(Arc::into_raw(message_arc) as *const (dyn Any + Send + Sync)) };
+          sender
+            .send(crate::graph::channels::ChannelItem::Arc(arc_any))
+            .await
+            .map_err(|_| crate::graph::execution::ExecutionError::ChannelError {
+              node: node_name.clone(),
+              port: output_port_name.clone(),
+              is_input: false,
+              reason: "Channel closed".to_string(),
+              message_id: None,
             })?;
-            sender
-              .send(crate::graph::channels::ChannelItem::Bytes(bytes))
-              .await
-              .map_err(|_| crate::graph::execution::ExecutionError::ChannelError {
-                node: node_name.clone(),
-                port: output_port_name.clone(),
-                is_input: false,
-                reason: "Channel closed".to_string(),
-                message_id: None,
-              })?;
-          }
         }
       }
 

@@ -6,7 +6,7 @@ Achieving zero-copy in StreamWeave is **absolutely possible** and would indeed b
 
 **Industry Context:**
 - **Apache Kafka:** Achieves zero-copy via mmap and sendfile (Linux), processing millions of messages/second
-- **Apache Flink:** Uses zero-copy networking for distributed execution, achieving 10M+ events/second per node
+- **Apache Flink:** Uses zero-copy networking for high-performance execution, achieving 10M+ events/second per node
 - **ZeroMQ:** Zero-copy message passing via shared memory, achieving sub-microsecond latencies
 - **StreamWeave Target:** Match or exceed these systems while maintaining Rust's safety and ergonomics
 
@@ -264,33 +264,19 @@ pub trait MutateInPlace {
 
 ---
 
-### Phase 4: Dual-Mode Graph Execution
+### Phase 4: In-Process Zero-Copy Execution
 
-#### 4.1 In-Process vs Distributed Modes
+#### 4.1 Zero-Copy Execution Mode
 
-The key insight is that serialization is only needed for distributed execution. For single-process execution, we can pass data directly:
+StreamWeave uses in-process execution with zero-copy optimizations. Data is passed directly between nodes without serialization:
 
 ```rust
 pub enum ExecutionMode {
     /// In-process: zero-copy, direct stream passing
-    /// Performance: ~10-100x faster than distributed mode for same-machine execution
+    /// Performance: Optimized for single-process execution with zero-copy semantics
     InProcess {
         /// Optional: Use shared memory for even better performance in multi-threaded scenarios
         use_shared_memory: bool,
-    },
-    /// Distributed: requires serialization but optimized
-    Distributed {
-        serializer: Box<dyn Serializer>,
-        /// Optional: Use compression for large payloads (trade CPU for network bandwidth)
-        compression: Option<CompressionAlgorithm>,
-        /// Optional: Batch multiple items for network efficiency
-        batching: Option<BatchConfig>,
-    },
-    /// Hybrid: In-process with distributed fallback for overflow
-    /// Allows scaling beyond single machine while optimizing for local execution
-    Hybrid {
-        local_threshold: usize,  // Items/second before switching to distributed
-        serializer: Box<dyn Serializer>,
     },
 }
 
@@ -313,30 +299,6 @@ impl GraphExecutor {
         Self {
             mode: ExecutionMode::InProcess {
                 use_shared_memory: true,  // Use shared memory for maximum performance
-            },
-            // ...
-        }
-    }
-    
-    pub fn new_distributed(serializer: Box<dyn Serializer>) -> Self {
-        Self {
-            mode: ExecutionMode::Distributed { 
-                serializer,
-                compression: None,  // No compression by default (lowest latency)
-                batching: None,     // No batching by default (lowest latency)
-            },
-            // ...
-        }
-    }
-    
-    pub fn new_hybrid(
-        local_threshold: usize,
-        serializer: Box<dyn Serializer>
-    ) -> Self {
-        Self {
-            mode: ExecutionMode::Hybrid {
-                local_threshold,
-                serializer,
             },
             // ...
         }
@@ -524,16 +486,14 @@ impl ZeroCopyDeserializer {
 - Documentation
 - Migration examples
 
-### Phase 4: Dual-Mode Execution (Weeks 13-16)
-1. Implement `ExecutionMode` enum
+### Phase 4: In-Process Execution (Weeks 13-16)
+1. Implement `ExecutionMode` enum (in-process only)
 2. Add in-process execution path
-3. Add mode detection and selection
-4. Update graph builder API
-5. Comprehensive testing
+3. Update graph builder API
+4. Comprehensive testing
 
 **Deliverables:**
-- Dual-mode execution
-- Mode detection logic
+- In-process execution with zero-copy
 - Updated APIs
 - Test suite
 
@@ -661,14 +621,14 @@ impl ZeroCopyDeserializer {
 - Use feature flags for gradual adoption
 - Maintain deprecated APIs with warnings
 
-### Challenge 3: Distributed Execution
-**Problem:** Distributed execution requires serialization.
+### Challenge 3: Performance vs Flexibility
+**Problem:** Balancing performance with flexibility.
 
 **Solution:**
-- Dual-mode execution (in-process vs distributed)
-- Automatic mode detection
-- Clear documentation on when serialization occurs
-- Optimize serialization format (e.g., use bincode or MessagePack)
+- In-process execution with zero-copy optimizations
+- Clear documentation on performance characteristics
+- Optimize hot paths for maximum performance
+- Use profiling to identify bottlenecks
 
 ### Challenge 4: Type Constraints
 **Problem:** Not all types can be zero-copy (e.g., types with internal mutability, non-Send types).
@@ -815,20 +775,11 @@ impl Graph {
         }
     }
     
-    pub fn with_distributed_execution(mut self, serializer: Box<dyn Serializer>) -> Self {
-        self.mode = ExecutionMode::Distributed { serializer };
-        self
-    }
+    // Distributed execution mode has been removed - only in-process mode is supported
     
     pub async fn run(&self) -> Result<(), Error> {
-        match &self.mode {
-            ExecutionMode::InProcess => {
-                self.run_in_process().await  // Zero-copy path
-            }
-            ExecutionMode::Distributed { serializer } => {
-                self.run_distributed(serializer.as_ref()).await  // Serialized path
-            }
-        }
+        // Only in-process mode is supported
+        self.run_in_process().await  // Zero-copy path
     }
     
     async fn run_in_process(&self) -> Result<(), Error> {
@@ -877,7 +828,7 @@ impl Graph {
 ### Integration Tests
 - Test graph execution with zero-copy
 - Test fan-out scenarios
-- Test distributed execution (still needs serialization)
+- Test in-process execution with zero-copy
 - Test backward compatibility
 
 ### Benchmarks
@@ -899,7 +850,7 @@ impl Graph {
 - [ ] 50%+ reduction in memory usage for in-process execution
 - [ ] 30%+ reduction in CPU usage for in-process execution
 - [ ] 80%+ reduction in memory for fan-out scenarios
-- [ ] No performance regression in distributed execution
+- [ ] Maintain performance for in-process execution
 - [ ] 2x+ throughput improvement for in-process execution
 - [ ] Sub-microsecond latency for zero-copy paths
 
