@@ -812,6 +812,30 @@ fn test_offset_tracker_commit_entry_removed() {
 }
 
 #[test]
+fn test_offset_tracker_get_pending_for_test() {
+  // Test the test helper method to access the pending map
+  // This covers lines 516-517
+  let store = Box::new(InMemoryOffsetStore::new());
+  let tracker = OffsetTracker::with_strategy(store, CommitStrategy::Manual);
+
+  // Use the test helper to get the pending map
+  let pending = tracker.get_pending_for_test();
+
+  // Verify we can access it
+  let pending_read = pending.read().unwrap();
+  assert!(pending_read.is_empty());
+  drop(pending_read);
+
+  // Record an offset
+  tracker.record("source1", Offset::sequence(5)).unwrap();
+
+  // Verify we can see it in the pending map via the test helper
+  let pending_read = pending.read().unwrap();
+  assert_eq!(pending_read.len(), 1);
+  assert_eq!(pending_read.get("source1").unwrap().0, Offset::sequence(5));
+}
+
+#[test]
 fn test_offset_tracker_commit_all_empty() {
   // Commit all when there are no pending offsets should succeed
   let store = Box::new(InMemoryOffsetStore::new());
@@ -974,4 +998,38 @@ fn test_file_offset_store_new_with_valid_existing_file() {
   // Verify offsets were loaded
   assert_eq!(store.get("source1").unwrap(), Some(Offset::sequence(5)));
   assert_eq!(store.get("source2").unwrap(), Some(Offset::sequence(10)));
+}
+
+#[test]
+fn test_file_offset_store_path_parent_none() {
+  // Test FileOffsetStore::persist when path.parent() returns None
+  // This happens only for root paths like "/", which we can't write to in tests
+  // However, we can use a relative path that has no parent by using just a filename
+  // Actually, on Unix, any non-root path has a parent. The only paths without parents
+  // are "/" on Unix and "C:\" on Windows, which we can't write to.
+  // Since we can't test the None branch directly, we ensure the Some branch is well-covered
+  // by testing with paths that have parents (which is the common case).
+  // The None branch is defensive code for edge cases that are impractical to test.
+
+  // Test with a relative filename (though it still has a parent ".")
+  let temp_dir = TempDir::new().unwrap();
+  let file_path = temp_dir.path().join("offsets.json");
+  let store = FileOffsetStore::new(&file_path).unwrap();
+
+  // This should hit the Some branch and execute lines 268, 269, and 270
+  store.commit("source1", Offset::sequence(5)).unwrap();
+  assert!(file_path.exists());
+}
+
+#[test]
+fn test_file_offset_store_clone() {
+  // Test FileOffsetStore::Clone implementation
+  let temp_dir = TempDir::new().unwrap();
+  let path = temp_dir.path().join("offsets.json");
+  let store1 = FileOffsetStore::new(&path).unwrap();
+  store1.commit("source1", Offset::sequence(5)).unwrap();
+
+  let store2 = store1.clone();
+  assert_eq!(store2.get("source1").unwrap(), Some(Offset::sequence(5)));
+  assert_eq!(store2.path(), path);
 }
