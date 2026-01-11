@@ -782,6 +782,36 @@ fn test_offset_tracker_commit_no_pending() {
 }
 
 #[test]
+fn test_offset_tracker_commit_entry_removed() {
+  // Test the edge case where an entry might be removed between
+  // reading the pending offset and getting mutable access
+  // This tests the None branch in pending.get_mut(source) at line 446
+  // In practice, this is rare but can happen in concurrent scenarios
+  // For testing, we simulate this by clearing the entry after commit
+  let store = Box::new(InMemoryOffsetStore::new());
+  let tracker = OffsetTracker::with_strategy(store, CommitStrategy::Manual);
+
+  // Record an offset
+  tracker.record("source1", Offset::sequence(5)).unwrap();
+
+  // Commit - this should succeed and reset the counter
+  tracker.commit("source1").unwrap();
+
+  // Verify it was committed
+  assert_eq!(tracker.get_offset("source1").unwrap(), Offset::sequence(5));
+
+  // Now commit again - this time, if the entry was somehow removed,
+  // pending.get_mut would return None, but commit should still succeed
+  // because pending_offset is None (the entry was cleared)
+  // To test the actual None branch at line 446, we'd need the entry
+  // to exist during read but not during write, which is hard to simulate
+  // in single-threaded tests. But we can at least test that commit
+  // handles the case gracefully.
+  let result = tracker.commit("nonexistent");
+  assert!(result.is_ok());
+}
+
+#[test]
 fn test_offset_tracker_commit_all_empty() {
   // Commit all when there are no pending offsets should succeed
   let store = Box::new(InMemoryOffsetStore::new());

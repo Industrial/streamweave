@@ -510,4 +510,10 @@ impl OffsetTracker {
         .collect(),
     )
   }
+
+  /// Test-only method to access the pending map for testing.
+  #[cfg(test)]
+  pub fn get_pending_for_test(&self) -> Arc<RwLock<HashMap<String, (Offset, usize)>>> {
+    self.pending.clone()
+  }
 }
