@@ -1,6 +1,37 @@
-//! String predicate transformer for StreamWeave
+//! # String Predicate Transformer
 //!
-//! Filters strings based on predicates (starts_with, ends_with, contains).
+//! Transformer that filters strings based on predicate checks (starts_with, ends_with,
+//! or contains). Only strings matching the predicate are passed through.
+//!
+//! ## Overview
+//!
+//! The String Predicate Transformer provides:
+//!
+//! - **Predicate Filtering**: Filters strings based on substring checks
+//! - **Multiple Predicates**: Supports starts_with, ends_with, and contains checks
+//! - **Substring Matching**: Exact substring matching (case-sensitive)
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Strings to filter
+//! - **Output**: `Message<String>` - Strings that match the predicate
+//!
+//! ## Predicate Types
+//!
+//! - **StartsWith**: Checks if string starts with the substring
+//! - **EndsWith**: Checks if string ends with the substring
+//! - **Contains**: Checks if string contains the substring
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::{StringPredicateTransformer, PredicateType};
+//!
+//! let transformer = StringPredicateTransformer::new("hello", PredicateType::StartsWith);
+//! // Input: ["hello world", "hi there", "hello again"]
+//! // Output: ["hello world", "hello again"]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

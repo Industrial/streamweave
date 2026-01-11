@@ -1,7 +1,68 @@
-//! Drop transformer for StreamWeave
+//! Drop transformer for filtering items out of streams.
 //!
-//! Drops items from the stream based on a predicate function. This is the inverse
-//! of FilterTransformer - items where the predicate returns `true` are dropped.
+//! This module provides [`DropTransformer<F, T>`], a transformer that drops items
+//! from a stream based on a predicate function. Items where the predicate returns
+//! `true` are dropped (not passed through), while items where it returns `false`
+//! are kept. This is the inverse of `FilterTransformer`.
+//!
+//! # Overview
+//!
+//! [`DropTransformer`] filters items out of a stream using a predicate function.
+//! Unlike `FilterTransformer` which keeps items where the predicate is true,
+//! `DropTransformer` removes items where the predicate is true. This provides
+//! a more intuitive API for "exclude" operations.
+//!
+//! # Key Concepts
+//!
+//! - **Predicate-Based Filtering**: Uses a predicate function to determine which items to drop
+//! - **Inverse of Filter**: Drops items where predicate is true (opposite of FilterTransformer)
+//! - **Generic Predicate**: Accepts any function/closure that returns bool
+//! - **Type-Safe**: Generic over item type for type safety
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`DropTransformer<F, T>`]**: Transformer that drops items based on a predicate
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::DropTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that drops items greater than 10
+//! let transformer = DropTransformer::new(|x: &i32| *x > 10);
+//!
+//! // Input: [5, 15, 8, 20, 3]
+//! // Output: [5, 8, 3]  (15 and 20 are dropped)
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Complex Predicate
+//!
+//! ```rust
+//! use streamweave::transformers::DropTransformer;
+//!
+//! // Drop items that are empty strings or whitespace
+//! let transformer = DropTransformer::new(|s: &String| s.trim().is_empty());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Inverse Filter**: Provides intuitive "exclude" semantics (opposite of FilterTransformer)
+//! - **Predicate Function**: Uses a closure/function for flexible filtering logic
+//! - **Generic Type**: Generic over item type for maximum flexibility
+//! - **Cloneable Predicate**: Predicate must be cloneable for stream processing
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DropTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

@@ -1,6 +1,90 @@
-//! JSONPath transformer for StreamWeave
+//! JSONPath transformer for querying JSON objects using JSONPath expressions.
 //!
-//! Queries JSON objects using JSONPath expressions.
+//! This module provides [`JsonPathTransformer`] and [`JsonPathOperation`], types for
+//! querying JSON objects using JSONPath expressions in StreamWeave pipelines. It
+//! supports both Get (extract values) and Compare (compare values) operations,
+//! making it ideal for JSON data extraction and filtering. It implements the
+//! [`Transformer`] trait for use in StreamWeave pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`JsonPathTransformer`] is useful for querying and extracting data from JSON
+//! objects in StreamWeave pipelines. It processes JSON objects and applies JSONPath
+//! expressions to extract or compare values, making it ideal for flexible JSON data
+//! processing.
+//!
+//! # Key Concepts
+//!
+//! - **JSONPath Expressions**: Uses JSONPath expressions to query JSON objects
+//! - **Get Operation**: Extracts values from JSON objects based on JSONPath
+//! - **Compare Operation**: Compares values from JSON objects based on JSONPath
+//! - **Basic Implementation**: Provides basic JSONPath support for common use cases
+//!
+//! # Core Types
+//!
+//! - **[`JsonPathTransformer`]**: Transformer that queries JSON objects using JSONPath
+//! - **[`JsonPathOperation`]**: Enum representing different JSONPath operations
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage (Get Operation)
+//!
+//! ```rust
+//! use streamweave::transformers::{JsonPathTransformer, JsonPathOperation};
+//!
+//! // Extract a value using JSONPath
+//! let transformer = JsonPathTransformer::new(
+//!     "$.name",
+//!     JsonPathOperation::Get,
+//!     None
+//! );
+//! ```
+//!
+//! ## Compare Operation
+//!
+//! ```rust
+//! use streamweave::transformers::{JsonPathTransformer, JsonPathOperation};
+//! use serde_json::json;
+//!
+//! // Compare a value using JSONPath
+//! let transformer = JsonPathTransformer::new(
+//!     "$.status",
+//!     JsonPathOperation::Compare,
+//!     Some(json!("active"))
+//! );
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::{JsonPathTransformer, JsonPathOperation};
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a JSONPath transformer with error handling
+//! let transformer = JsonPathTransformer::new(
+//!     "$.name",
+//!     JsonPathOperation::Get,
+//!     None
+//! )
+//! .with_error_strategy(ErrorStrategy::Skip)
+//! .with_name("jsonpath-query".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSONPath Support**: Provides basic JSONPath expression evaluation
+//! - **Multiple Operations**: Supports both Get and Compare operations for
+//!   flexibility
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible
+//!   JSON handling
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   pipeline system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`JsonPathTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

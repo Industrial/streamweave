@@ -1,14 +1,43 @@
 //! # Throughput Monitoring Module
 //!
-//! This module provides throughput monitoring functionality for hybrid execution mode.
-//! It tracks items/second processed across the graph and calculates rolling averages
-//! to smooth out spikes.
+//! Module that provides throughput monitoring functionality for hybrid execution mode
+//! in StreamWeave graphs. It tracks items/second processed across the graph and
+//! calculates rolling averages to smooth out spikes and provide accurate performance
+//! metrics.
 //!
-//! ## Usage
+//! This module provides [`ThroughputMonitor`], a monitor that tracks throughput
+//! (items/second) with rolling average calculation. It uses atomic counters for
+//! thread-safe item counting and maintains a rolling window of samples to calculate
+//! smoothed throughput values.
+//!
+//! # Overview
+//!
+//! [`ThroughputMonitor`] is useful for monitoring performance in hybrid execution
+//! mode where graphs can execute both in-process and distributed. It provides
+//! accurate throughput measurements by tracking item counts over time and calculating
+//! rolling averages to smooth out short-term spikes and dips.
+//!
+//! # Key Concepts
+//!
+//! - **Throughput Tracking**: Tracks items/second processed across the graph
+//! - **Rolling Average**: Calculates rolling averages to smooth out spikes
+//! - **Thread-Safe**: Uses atomic counters for concurrent access
+//! - **Time Windows**: Supports configurable window sizes for averaging
+//! - **Performance Metrics**: Provides accurate performance measurements
+//!
+//! # Core Types
+//!
+//! - **[`ThroughputMonitor`]**: Monitor that tracks throughput with rolling averages
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
 //!
 //! ```rust
-//! use crate::graph::throughput::ThroughputMonitor;
+//! use streamweave::graph::throughput::ThroughputMonitor;
+//! use std::time::Duration;
 //!
+//! // Create a monitor with a 1-second window
 //! let monitor = ThroughputMonitor::new(Duration::from_secs(1));
 //!
 //! // Increment item count as items are processed
@@ -18,6 +47,61 @@
 //! let throughput = monitor.calculate_throughput();
 //! println!("Throughput: {} items/second", throughput);
 //! ```
+//!
+//! ## With Custom Window Size
+//!
+//! ```rust
+//! use streamweave::graph::throughput::ThroughputMonitor;
+//! use std::time::Duration;
+//!
+//! // Create a monitor with a 5-second rolling window
+//! let monitor = ThroughputMonitor::new(Duration::from_secs(5));
+//!
+//! // Monitor throughput over time
+//! for _ in 0..100 {
+//!     monitor.increment_item_count();
+//! }
+//!
+//! // Calculate throughput with smoothing
+//! let throughput = monitor.calculate_throughput();
+//! ```
+//!
+//! ## Resetting the Monitor
+//!
+//! ```rust
+//! use streamweave::graph::throughput::ThroughputMonitor;
+//! use std::time::Duration;
+//!
+//! let monitor = ThroughputMonitor::new(Duration::from_secs(1));
+//!
+//! // Process some items
+//! for _ in 0..50 {
+//!     monitor.increment_item_count();
+//! }
+//!
+//! // Reset and start fresh
+//! monitor.reset();
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Atomic Counters**: Uses `Arc<AtomicU64>` for thread-safe item counting
+//! - **Rolling Window**: Maintains a rolling window of samples for accurate averaging
+//! - **Instant Tracking**: Uses `Instant` for precise time measurements
+//! - **VecDeque Storage**: Uses `VecDeque` for efficient sample storage and removal
+//! - **Hybrid Execution**: Designed for hybrid execution mode monitoring
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ThroughputMonitor`] is used internally by StreamWeave's hybrid execution mode
+//! to track performance metrics. It provides accurate throughput measurements that
+//! help optimize graph execution and identify performance bottlenecks.
+//!
+//! # Performance Considerations
+//!
+//! The monitor uses atomic operations for thread-safe counting and maintains a
+//! rolling window of samples. The window size should be chosen based on the desired
+//! smoothing level and memory constraints.
 
 use std::collections::VecDeque;
 use std::sync::Arc;

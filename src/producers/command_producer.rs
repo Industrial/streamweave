@@ -1,3 +1,108 @@
+//! # Command Producer
+//!
+//! Producer for executing shell commands and streaming their output in StreamWeave pipelines.
+//!
+//! This module provides [`CommandProducer`], a producer that executes shell commands with
+//! specified arguments and emits each line of stdout as a separate item in the stream.
+//! Useful for integrating command-line tools into data processing pipelines.
+//!
+//! # Overview
+//!
+//! [`CommandProducer`] is useful for executing external commands and processing their output
+//! in streaming pipelines. It runs a command with specified arguments, reads stdout line by line,
+//! and emits each line as a separate stream item. Perfect for integrating command-line tools,
+//! scripts, and system utilities into StreamWeave pipelines.
+//!
+//! # Key Concepts
+//!
+//! - **Command Execution**: Executes shell commands with configurable arguments
+//! - **Line-by-Line Output**: Emits each line of stdout as a separate stream item
+//! - **Async Execution**: Uses Tokio for non-blocking command execution
+//! - **Error Handling**: Configurable error strategies for command failures
+//! - **Stream Processing**: Processes command output incrementally for memory efficiency
+//!
+//! # Core Types
+//!
+//! - **[`CommandProducer`]**: Producer that executes commands and streams their output
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::CommandProducer;
+//! use futures::StreamExt;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a producer that executes a command
+//! let mut producer = CommandProducer::new("echo", vec!["hello", "world"]);
+//!
+//! // Generate the stream
+//! let mut stream = producer.produce();
+//!
+//! // Process command output
+//! while let Some(line) = stream.next().await {
+//!     println!("Output: {}", line);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Executing Commands Without Arguments
+//!
+//! ```rust
+//! use streamweave::producers::CommandProducer;
+//!
+//! // Execute a command with no arguments
+//! let producer = CommandProducer::new("ls", vec![]);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::producers::CommandProducer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a producer with error handling strategy
+//! let producer = CommandProducer::new("some-command", vec!["arg1", "arg2"])
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("command-executor".to_string());
+//! ```
+//!
+//! ## Processing Command Output
+//!
+//! ```rust,no_run
+//! use streamweave::producers::CommandProducer;
+//! use streamweave::PipelineBuilder;
+//! use futures::StreamExt;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Execute grep and process results
+//! let producer = CommandProducer::new("grep", vec!["pattern", "file.txt"]);
+//!
+//! // Use in a pipeline
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(producer)
+//!     .transformer(/* ... */)
+//!     .consumer(/* ... */);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Line-by-Line Processing**: Reads stdout line by line for streaming efficiency
+//! - **Async Execution**: Uses Tokio's async process execution for non-blocking operation
+//! - **Simple API**: Command and arguments specified at construction time
+//! - **Error Handling**: Supports standard error strategies for robust processing
+//! - **String Output**: Emits command output as strings (one line per item)
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CommandProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use async_trait::async_trait;

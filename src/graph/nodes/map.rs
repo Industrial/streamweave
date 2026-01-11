@@ -1,7 +1,75 @@
-//! Map node for StreamWeave graphs
+//! Map node for transforming items in streams using a mapping function.
 //!
-//! Applies a transformation function to each item in the stream, creating a
-//! one-to-one mapping from input to output.
+//! This module provides [`Map`], a graph node that applies a transformation function
+//! to each item in the stream, creating a one-to-one mapping from input to output.
+//! It wraps [`MapTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Map`] is useful for transforming items in graph-based pipelines. It applies
+//! a function to each input item to transform it into an output item, making it
+//! one of the most fundamental and commonly used transformation operations.
+//!
+//! # Key Concepts
+//!
+//! - **One-to-One Mapping**: Applies a function to each item, producing one output
+//!   per input
+//! - **Transformation Function**: Uses a closure or function for flexible item
+//!   transformation
+//! - **Type Transformation**: Can transform items from one type to another
+//! - **Transformer Wrapper**: Wraps `MapTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Map<F, I, O>`]**: Node that maps items using a transformation function
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Map;
+//!
+//! // Double each number
+//! let map = Map::new(|x: i32| x * 2);
+//! ```
+//!
+//! ## Type Transformation
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Map;
+//!
+//! // Convert strings to integers
+//! let map = Map::new(|s: String| s.parse::<i32>().unwrap_or(0));
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Map;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Map with error handling
+//! let map = Map::new(|x: i32| x * 2)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("doubler".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Function-Based Transformation**: Uses a closure for flexible item
+//!   transformation
+//! - **Type Safety**: Supports type transformation while maintaining type safety
+//! - **One-to-One Mapping**: Produces one output per input for predictable
+//!   behavior
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Map`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::MapTransformer;

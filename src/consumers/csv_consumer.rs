@@ -1,3 +1,91 @@
+//! CSV consumer for writing stream data to CSV files.
+//!
+//! This module provides [`CsvConsumer`] and [`CsvWriteConfig`], a consumer that
+//! writes stream items to CSV files. Items must implement `Serialize` to be
+//! converted to CSV records, and the consumer supports configurable formatting
+//! options including headers, delimiters, and quoting.
+//!
+//! # Overview
+//!
+//! [`CsvConsumer`] is useful for exporting stream data to CSV format, making it
+//! easy to integrate StreamWeave pipelines with spreadsheet applications and
+//! data analysis tools. It uses the `csv` crate for robust CSV writing with
+//! proper escaping and formatting.
+//!
+//! # Key Concepts
+//!
+//! - **Serializable Items**: Items must implement `Serialize` to be written as CSV
+//! - **Configurable Formatting**: Supports custom delimiters, quotes, and headers
+//! - **File Output**: Writes to a file at the specified path
+//! - **Header Support**: Can optionally write a header row from field names
+//!
+//! # Core Types
+//!
+//! - **[`CsvConsumer<T>`]**: Consumer that writes items to a CSV file
+//! - **[`CsvWriteConfig`]**: Configuration for CSV writing behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::CsvConsumer;
+//! use futures::stream;
+//! use serde::Serialize;
+//!
+//! #[derive(Serialize, Clone, Debug)]
+//! struct Record {
+//!     name: String,
+//!     age: u32,
+//! }
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a consumer with a file path
+//! let mut consumer = CsvConsumer::<Record>::new("output.csv".into());
+//!
+//! // Create a stream of records
+//! let stream = stream::iter(vec![
+//!     Record { name: "Alice".to_string(), age: 30 },
+//!     Record { name: "Bob".to_string(), age: 25 },
+//! ]);
+//!
+//! // Consume the stream (records written to CSV)
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Custom Configuration
+//!
+//! ```rust
+//! use streamweave::consumers::{CsvConsumer, CsvWriteConfig};
+//!
+//! # use serde::Serialize;
+//! # #[derive(Serialize, Clone, Debug)]
+//! # struct Record { name: String, age: u32 }
+//! // Create CSV configuration
+//! let csv_config = CsvWriteConfig::default()
+//!     .with_headers(true)
+//!     .with_delimiter(b';')  // Semicolon delimiter
+//!     .with_flush_on_write(true);
+//!
+//! let consumer = CsvConsumer::<Record>::with_config("output.csv".into(), csv_config);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Serialize Requirement**: Items must implement `Serialize` for flexible
+//!   data structure support
+//! - **CSV Crate**: Uses the `csv` crate for robust, standards-compliant CSV writing
+//! - **Configurable Formatting**: Supports various CSV dialects through configuration
+//! - **File-Based**: Writes directly to files for simplicity and efficiency
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CsvConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

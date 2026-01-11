@@ -1,4 +1,62 @@
-//! Input router that synchronizes multiple input streams, waiting for all before proceeding.
+//! Synchronize router for synchronizing multiple input streams.
+//!
+//! This module provides [`Synchronize`], an input router that synchronizes multiple
+//! input streams, waiting for items from all input ports before proceeding. It
+//! implements [`InputRouter`] for use in StreamWeave graphs, enabling
+//! synchronization patterns where all inputs must be ready before processing.
+//!
+//! # Overview
+//!
+//! [`Synchronize`] is useful for synchronizing multiple input streams in
+//! graph-based pipelines. It collects items from all input ports and emits them
+//! together when all ports have items available, making it ideal for
+//! synchronization patterns and barrier synchronization.
+//!
+//! # Key Concepts
+//!
+//! - **Stream Synchronization**: Waits for items from all input ports before proceeding
+//! - **Barrier Pattern**: Implements barrier synchronization across multiple streams
+//! - **Input Router**: Implements `InputRouter` for graph integration
+//! - **Configurable Inputs**: Supports configurable number of expected inputs
+//!
+//! # Core Types
+//!
+//! - **[`Synchronize<T>`]**: Router that synchronizes multiple input streams
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Synchronize;
+//!
+//! // Create a synchronize router for 3 inputs
+//! let sync = Synchronize::<i32>::new(3);
+//! ```
+//!
+//! ## With Different Types
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Synchronize;
+//!
+//! // Synchronize string streams
+//! let sync = Synchronize::<String>::new(2);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Barrier Synchronization**: Waits for all inputs before proceeding for
+//!   predictable synchronization
+//! - **Input Router Trait**: Implements `InputRouter` for integration with
+//!   graph system
+//! - **Configurable Inputs**: Supports configurable number of expected inputs
+//!   for flexibility
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Synchronize`] implements the [`InputRouter`] trait and can be used in any
+//! StreamWeave graph. It synchronizes items from multiple input streams,
+//! enabling barrier synchronization patterns.
 
 use crate::graph::router::InputRouter;
 use async_trait::async_trait;
@@ -9,19 +67,36 @@ use std::pin::Pin;
 use std::time::Duration;
 use tokio::sync::mpsc;
 
-/// Input router that synchronizes multiple input streams, waiting for all before proceeding.
+/// Input router that synchronizes multiple input streams, waiting for all streams
+/// to have items available before proceeding.
 ///
-/// This is an `InputRouter` that collects items from all input ports and emits
-/// them together when all ports have items available.
+/// This router collects items from all input ports and emits them together when
+/// all ports have items available. It acts as a synchronization barrier, ensuring
+/// that processing only proceeds when all input streams are ready.
+///
+/// # Behavior
+///
+/// When all input streams have items available, the router emits one item (the first
+/// item from the first stream). If any stream doesn't have an item ready, the router
+/// waits and retries until all streams have items.
+///
+/// # Port Names
+///
+/// The router expects ports named `in`, `in_1`, `in_2`, etc., based on the number
+/// of expected inputs.
 ///
 /// # Example
 ///
 /// ```rust
-/// use crate::graph::control_flow::Synchronize;
-/// use crate::graph::router::InputRouter;
+/// use streamweave::graph::nodes::Synchronize;
+/// use streamweave::graph::router::InputRouter;
 ///
-/// let sync = Synchronize::new(3); // Wait for 3 inputs
-/// // Use with a node that has 3 input ports
+/// // Create a synchronize router that waits for 3 input streams
+/// let sync = Synchronize::<i32>::new(3);
+///
+/// // This router expects 3 input ports: "in", "in_1", "in_2"
+/// let port_names = sync.expected_port_names();
+/// assert_eq!(port_names, vec!["in", "in_1", "in_2"]);
 /// ```
 pub struct Synchronize<T> {
   /// Number of expected inputs

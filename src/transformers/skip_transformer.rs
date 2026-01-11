@@ -1,4 +1,71 @@
-//! Skip transformer for StreamWeave
+//! Skip transformer for skipping items from the beginning of streams.
+//!
+//! This module provides [`SkipTransformer<T>`], a transformer that skips a specified
+//! number of items from the beginning of a stream and then passes through all subsequent
+//! items. It's useful for pagination, offset-based processing, and skipping headers or
+//! initial data that should be ignored.
+//!
+//! # Overview
+//!
+//! [`SkipTransformer`] discards the first `skip` items from a stream and then passes
+//! through all remaining items. This is the inverse of `LimitTransformer`, which limits
+//! items at the beginning. Together, they enable offset and limit operations for
+//! pagination and selective processing.
+//!
+//! # Key Concepts
+//!
+//! - **Skip Count**: Specifies how many items to skip from the beginning
+//! - **Offset Operation**: Useful for pagination (skip first N items)
+//! - **Zero-Copy Support**: Supports zero-copy transformations via `ZeroCopyTransformer`
+//! - **Generic Type**: Works with any item type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`SkipTransformer<T>`]**: Transformer that skips items from the beginning
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::SkipTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that skips the first 10 items
+//! let transformer = SkipTransformer::new(10);
+//!
+//! // Input: [1, 2, 3, ..., 100]
+//! // Output: [11, 12, 13, ..., 100]  (first 10 items skipped)
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Pagination Pattern
+//!
+//! ```rust
+//! use streamweave::transformers::SkipTransformer;
+//!
+//! // Skip 50 items for page 2 (assuming 50 items per page)
+//! let transformer = SkipTransformer::new(50)
+//!     .with_name("page-2-skip".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Skip Operation**: Uses `StreamExt::skip` for efficient stream skipping
+//! - **Zero-Copy Support**: Implements `ZeroCopyTransformer` for efficient transformations
+//! - **Simple API**: Takes a skip count for straightforward configuration
+//! - **Generic Type**: Generic over item type for maximum flexibility
+//! - **Inverse of Limit**: Complements `LimitTransformer` for offset/limit patterns
+//!
+//! # Integration with StreamWeave
+//!
+//! [`SkipTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`]. It also implements
+//! [`ZeroCopyTransformer`] for efficient zero-copy transformations.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::graph::ZeroCopyTransformer;

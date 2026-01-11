@@ -1,7 +1,76 @@
-//! JSONL read node for StreamWeave graphs
+//! JSONL read node for reading JSON Lines files in graphs.
 //!
-//! Reads JSONL files from file paths. Takes file paths as input and outputs
-//! parsed JSONL objects, enabling processing of multiple JSONL files in a pipeline.
+//! This module provides [`JsonlRead`], a graph node that reads JSON Lines (JSONL)
+//! files from file paths. It takes file paths as input and outputs deserialized
+//! JSONL objects, enabling processing of multiple JSONL files in graph-based pipelines.
+//! It wraps [`JsonlReadTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`JsonlRead`] is useful for reading JSON Lines files in graph-based pipelines.
+//! JSON Lines is a text format where each line is a valid JSON value. This node
+//! reads each line from a file and deserializes it as the specified type, making
+//! it ideal for processing large JSON datasets that are stored line-by-line.
+//!
+//! # Key Concepts
+//!
+//! - **JSON Lines Format**: Reads files where each line is a valid JSON value
+//! - **Type-Safe Deserialization**: Deserializes JSONL lines into typed structures
+//! - **File Path Input**: Takes file paths as input for processing multiple files
+//! - **Transformer Wrapper**: Wraps `JsonlReadTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`JsonlRead<T>`]**: Node that reads JSONL files from file paths
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::JsonlRead;
+//! use serde::Deserialize;
+//!
+//! #[derive(Deserialize, Clone, Debug)]
+//! struct Event {
+//!     id: u32,
+//!     message: String,
+//! }
+//!
+//! // Create a JSONL read node
+//! let jsonl_read = JsonlRead::<Event>::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::JsonlRead;
+//! use streamweave::ErrorStrategy;
+//! use serde::Deserialize;
+//!
+//! # #[derive(Deserialize, Clone, Debug)]
+//! # struct Event { id: u32, message: String }
+//! // Create a JSONL read node with error handling
+//! let jsonl_read = JsonlRead::<Event>::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("jsonl-reader".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Lines Format**: Supports the JSON Lines format for efficient
+//!   processing of large JSON datasets
+//! - **Type-Safe Deserialization**: Uses Serde for type-safe deserialization
+//!   into typed structures
+//! - **File Path Input**: Takes file paths as input for batch processing
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`JsonlRead`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::JsonlReadTransformer;

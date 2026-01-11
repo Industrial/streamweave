@@ -1,6 +1,79 @@
-//! HTTP request node for StreamWeave graphs
+//! HTTP request node for making HTTP requests in graphs.
 //!
-//! Makes HTTP requests from stream items.
+//! This module provides [`HttpRequest`], a graph node that makes HTTP requests from
+//! stream items. It wraps [`HttpRequestTransformer`] for use in StreamWeave graphs.
+//! It supports configurable URLs, methods, headers, timeouts, and optional JSON parsing.
+//!
+//! # Overview
+//!
+//! [`HttpRequest`] is useful for making HTTP requests in graph-based pipelines.
+//! It takes stream items as request data and makes HTTP requests, optionally parsing
+//! responses as JSON. This makes it ideal for API integration and HTTP-based
+//! data processing workflows.
+//!
+//! # Key Concepts
+//!
+//! - **HTTP Requests**: Makes HTTP requests from stream items
+//! - **Configurable Options**: Supports custom URLs, methods, headers, and timeouts
+//! - **JSON Parsing**: Optionally parses responses as JSON
+//! - **Transformer Wrapper**: Wraps `HttpRequestTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`HttpRequest`]**: Node that makes HTTP requests from stream items
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::HttpRequest;
+//!
+//! // Create an HTTP request node
+//! let http_request = HttpRequest::new();
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::graph::nodes::HttpRequest;
+//!
+//! // Create an HTTP request node with configuration
+//! let http_request = HttpRequest::new()
+//!     .with_base_url("https://api.example.com")
+//!     .with_method("POST")
+//!     .with_header("Authorization", "Bearer token")
+//!     .with_timeout_secs(30)
+//!     .with_parse_json(true);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::HttpRequest;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create an HTTP request node with error handling
+//! let http_request = HttpRequest::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("api-client".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **HTTP Client Integration**: Uses reqwest or similar HTTP client for
+//!   async HTTP requests
+//! - **Configurable Options**: Supports extensive configuration for flexible
+//!   HTTP request handling
+//! - **JSON Support**: Optionally parses responses as JSON for convenience
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`HttpRequest`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::HttpRequestTransformer;

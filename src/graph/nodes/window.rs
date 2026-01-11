@@ -1,8 +1,77 @@
-//! Window node for StreamWeave graphs
+//! # Window Node
 //!
-//! Creates general windows of items (count-based). Groups consecutive items
-//! into windows of a specified size, producing vectors of items as the window
-//! slides over the input stream.
+//! Graph node that creates count-based windows of items. This module provides
+//! [`Window`], a graph node that groups consecutive items into windows of a
+//! specified size, producing vectors of items as the window slides over the
+//! input stream. It wraps [`WindowTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Window`] is useful for batching items in graph-based pipelines. It collects
+//! consecutive items into fixed-size windows and emits them as vectors, making
+//! it ideal for batch processing, aggregation, and windowing operations.
+//!
+//! # Key Concepts
+//!
+//! - **Count-Based Windowing**: Groups items into windows of a fixed size
+//! - **Sliding Window**: Creates windows that slide over the input stream
+//! - **Vector Output**: Produces `Vec<T>` instead of `T` (one vector per window)
+//! - **Batch Processing**: Useful for processing items in batches
+//! - **Transformer Wrapper**: Wraps `WindowTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Window<T>`]**: Node that creates count-based windows of items
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Window;
+//!
+//! // Create windows of size 10
+//! let window = Window::<i32>::new(10);
+//! ```
+//!
+//! ## Different Window Sizes
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Window;
+//!
+//! // Small windows for frequent processing
+//! let small_window = Window::<String>::new(5);
+//!
+//! // Large windows for batch processing
+//! let large_window = Window::<String>::new(1000);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Window;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a window node with error handling
+//! let window = Window::<i32>::new(50)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("batch-window".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Fixed Size Windows**: Uses a fixed size for simplicity and predictability
+//! - **Sliding Window**: Windows slide over the stream, not fixed time-based
+//! - **Vector Output**: Produces `Vec<T>` to represent batches
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Window`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`]. Note that the output
+//! type is `Vec<T>` rather than `T`, representing a batch of items.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::WindowTransformer;

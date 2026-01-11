@@ -1,7 +1,63 @@
-//! Transformer that times out items after a specified duration.
+//! Timeout transformer for timing out items after a specified duration.
 //!
-//! Wraps items in `Result<T, TimeoutError>`, returning `Ok(item)` if the item
-//! is processed within the timeout, or `Err(TimeoutError)` if it times out.
+//! This module provides [`Timeout`] and [`TimeoutError`], types for timing out
+//! items after a specified duration in graph-based pipelines. It wraps items in
+//! `Result<T, TimeoutError>`, returning `Ok(item)` if the item is processed
+//! within the timeout, or `Err(TimeoutError)` if it times out. It implements
+//! the [`Transformer`] trait for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Timeout`] is useful for adding timeout handling to items in graph-based
+//! pipelines. It processes items and applies a timeout, making it ideal for
+//! preventing long-running operations from blocking the pipeline indefinitely.
+//!
+//! # Key Concepts
+//!
+//! - **Timeout Handling**: Applies a timeout duration to items
+//! - **Result Wrapping**: Wraps items in `Result<T, TimeoutError>` for error handling
+//! - **Duration-Based**: Uses `Duration` for flexible timeout specification
+//! - **Transformer Trait**: Implements `Transformer` for graph integration
+//!
+//! # Core Types
+//!
+//! - **[`Timeout<T>`]**: Transformer that times out items after a specified duration
+//! - **[`TimeoutError`]**: Error type for timeout operations
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Timeout;
+//! use std::time::Duration;
+//!
+//! // Create a timeout transformer with 5 second timeout
+//! let timeout = Timeout::<i32>::new(Duration::from_secs(5));
+//! ```
+//!
+//! ## With Different Durations
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Timeout;
+//! use std::time::Duration;
+//!
+//! // Timeout with millisecond precision
+//! let timeout = Timeout::<String>::new(Duration::from_millis(100));
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Result Wrapping**: Wraps items in `Result` for explicit timeout error handling
+//! - **Duration-Based**: Uses `Duration` for flexible timeout specification
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   graph system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Timeout`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It applies timeouts to items, enabling timeout handling
+//! patterns.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

@@ -1,3 +1,65 @@
+//! # Error Handling System
+//!
+//! Comprehensive error handling system for StreamWeave pipelines and graphs,
+//! providing rich error context, configurable error strategies, and proper
+//! error propagation throughout the system.
+//!
+//! ## Overview
+//!
+//! The error handling system provides:
+//!
+//! - **Error Actions**: Stop, Skip, or Retry when errors occur
+//! - **Error Strategies**: Configurable error handling policies (Stop, Skip, Retry, Custom)
+//! - **Rich Error Context**: Timestamps, component info, item context, and retry tracking
+//! - **Error Types**: StreamError for component-level errors, PipelineError for pipeline-level errors
+//! - **Component Information**: Structured component identification for debugging
+//!
+//! ## Core Types
+//!
+//! - **ErrorAction**: The action to take when an error occurs (Stop, Skip, Retry)
+//! - **ErrorStrategy**: The strategy for handling errors, including custom handlers
+//! - **StreamError**: Rich error context with source, component info, and retry count
+//! - **PipelineError**: Pipeline-specific error wrapper with stage information
+//! - **ErrorContext**: Contextual information about when and where an error occurred
+//! - **ComponentInfo**: Component name and type information for error reporting
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::error::{ErrorStrategy, ErrorAction, StreamError, ErrorContext, ComponentInfo};
+//!
+//! // Configure error strategy
+//! let strategy = ErrorStrategy::Retry(3);
+//!
+//! // Create error context
+//! let context = ErrorContext {
+//!     timestamp: chrono::Utc::now(),
+//!     item: Some(42),
+//!     component_name: "my_transformer".to_string(),
+//!     component_type: "MapTransformer".to_string(),
+//! };
+//!
+//! // Create stream error
+//! let error = StreamError::new(
+//!     Box::new(std::io::Error::from(std::io::ErrorKind::NotFound)),
+//!     context,
+//!     ComponentInfo::new("transformer1".to_string(), "MapTransformer".to_string()),
+//! );
+//! ```
+//!
+//! ## Error Strategies
+//!
+//! - **Stop**: Immediately stop processing (default, ensures data integrity)
+//! - **Skip**: Skip the problematic item and continue
+//! - **Retry(n)**: Retry up to n times before stopping
+//! - **Custom**: User-defined handler function for fine-grained control
+//!
+//! ## Usage
+//!
+//! Error handling is configured at the component level (Producer, Transformer, Consumer)
+//! and can be overridden per-component. The system ensures errors are properly
+//! tracked, logged, and handled according to the configured strategy.
+
 use chrono;
 use std::error::Error;
 use std::fmt;

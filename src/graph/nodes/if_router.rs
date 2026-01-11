@@ -1,7 +1,65 @@
-//! Conditional router that routes items based on a predicate (if/else).
+//! If router for conditional routing based on predicates.
 //!
-//! Routes items to port 0 if the predicate returns `true`, otherwise to port 1.
-//! Uses zero-copy semantics by moving items directly to the appropriate port.
+//! This module provides [`If`], a router that routes items based on a predicate
+//! function (if/else pattern). It routes items to port 0 if the predicate returns
+//! `true`, otherwise to port 1. It uses zero-copy semantics by moving items directly
+//! to the appropriate port. It implements [`OutputRouter`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`If`] is useful for conditional routing in graph-based pipelines. It splits
+//! streams into two paths based on a condition, enabling different processing paths
+//! for items that meet or don't meet the condition. This is essential for conditional
+//! processing patterns.
+//!
+//! # Key Concepts
+//!
+//! - **Conditional Routing**: Routes items based on a predicate function
+//! - **Two Output Ports**: Has two output ports - port 0 for true, port 1 for false
+//! - **Zero-Copy Semantics**: Moves items directly without copying
+//! - **If/Else Pattern**: Implements the classic if/else branching pattern
+//!
+//! # Core Types
+//!
+//! - **[`If<O>`]**: Router that routes items based on a predicate
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::If;
+//!
+//! // Route items based on a condition
+//! let if_router = If::new(|x: &i32| *x % 2 == 0);
+//! ```
+//!
+//! ## In a Graph
+//!
+//! ```rust,no_run
+//! use streamweave::graph::{GraphBuilder, nodes::If};
+//!
+//! // Create a graph with conditional routing
+//! let graph = GraphBuilder::new()
+//!     .node(/* producer */)?
+//!     .node(If::new(|x: &i32| *x > 10))?
+//!     // Connect port 0 (true) to high-value processor
+//!     // Connect port 1 (false) to low-value processor
+//!     .build();
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Predicate Function**: Uses a closure for flexible condition evaluation
+//! - **Zero-Copy**: Moves items directly to appropriate ports for efficiency
+//! - **Two-Port Design**: Provides clear separation between true and false paths
+//! - **Router Trait**: Implements `OutputRouter` for integration with graph system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`If`] implements the [`OutputRouter`] trait and can be used in any StreamWeave
+//! graph. It routes items to different output ports based on predicate evaluation,
+//! enabling conditional processing patterns.
 
 use crate::graph::router::OutputRouter;
 use async_trait::async_trait;

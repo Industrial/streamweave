@@ -1,7 +1,77 @@
-//! CSV write transformer for StreamWeave
+//! CSV write transformer for writing data to CSV files while passing through.
 //!
-//! Writes data to CSV files while passing data through. Takes data as input, writes to CSV,
-//! and outputs the same data, enabling writing intermediate results while continuing processing.
+//! This module provides [`CsvWriteTransformer<T>`], a transformer that writes
+//! serializable data to CSV files while passing the same data through to the output
+//! stream. This enables persisting intermediate results to CSV format while continuing
+//! the main pipeline flow.
+//!
+//! # Overview
+//!
+//! [`CsvWriteTransformer`] writes items to a CSV file while also passing them through
+//! to the output stream. This is useful for logging intermediate results, creating
+//! backup copies, or debugging pipeline execution without interrupting the data flow.
+//!
+//! # Key Concepts
+//!
+//! - **CSV Writing**: Writes serializable data to CSV files
+//! - **Pass-Through**: Outputs the same data that was written (enables chaining)
+//! - **Header Support**: Optional CSV header row writing
+//! - **Configuration**: Configurable delimiter, quote character, and other CSV options
+//! - **File I/O**: Uses synchronous file I/O with mutex for thread-safe writes
+//!
+//! # Core Types
+//!
+//! - **[`CsvWriteTransformer<T>`]**: Transformer that writes data to CSV files
+//! - **[`CsvWriteTransformerConfig`]**: Configuration for CSV writing behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::CsvWriteTransformer;
+//! use serde::Serialize;
+//!
+//! #[derive(Serialize)]
+//! struct Record {
+//!     name: String,
+//!     age: u32,
+//! }
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that writes to output.csv
+//! let transformer = CsvWriteTransformer::<Record>::new("output.csv");
+//!
+//! // Input: [Record { name: "Alice", age: 30 }, ...]
+//! // Writes to CSV and outputs: [Record { name: "Alice", age: 30 }, ...]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::CsvWriteTransformer;
+//!
+//! // Create with custom delimiter and no headers
+//! let transformer = CsvWriteTransformer::<MyType>::new("output.csv")
+//!     .with_headers(false)
+//!     .with_delimiter(b';');
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Pass-Through Pattern**: Writes data and passes it through for pipeline chaining
+//! - **Synchronous I/O**: Uses synchronous file I/O with mutex for thread safety
+//! - **CSV Library**: Uses the `csv` crate for robust CSV writing
+//! - **Serialization**: Requires `Serialize` trait for CSV conversion
+//! - **Shared Writer**: Uses `Arc<Mutex<>>` for thread-safe shared writer state
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CsvWriteTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

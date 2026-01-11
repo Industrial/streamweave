@@ -1,6 +1,31 @@
-//! String repeat transformer for StreamWeave
+//! # String Repeat Transformer
 //!
-//! Repeats strings a specified number of times.
+//! Transformer that repeats input strings a specified number of times, producing
+//! concatenated repetitions of the input string.
+//!
+//! ## Overview
+//!
+//! The String Repeat Transformer provides:
+//!
+//! - **String Repetition**: Repeats strings a configurable number of times
+//! - **Concatenation**: Produces a single string with all repetitions concatenated
+//! - **Count Configuration**: Configurable repetition count
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Strings to repeat
+//! - **Output**: `Message<String>` - Repeated strings
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::StringRepeatTransformer;
+//!
+//! let transformer = StringRepeatTransformer::new(3);
+//! // Input: ["hi"]
+//! // Output: ["hihihi"]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

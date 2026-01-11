@@ -1,7 +1,43 @@
-//! Redis write transformer for StreamWeave
+//! # Redis Write Transformer
 //!
-//! Writes data to Redis Streams while passing data through. Takes serializable data as input,
-//! writes to Redis, and outputs the same data, enabling writing to Redis and continuing processing.
+//! Transformer that writes data to Redis Streams while passing the same data through
+//! to the output stream. This enables writing items to Redis for persistence or
+//! downstream consumption while continuing the main pipeline flow.
+//!
+//! ## Overview
+//!
+//! The Redis Write Transformer provides:
+//!
+//! - **Redis Streams Integration**: Writes items to Redis Streams using XADD
+//! - **Pass-Through**: Outputs the same items that were written to Redis
+//! - **Serialization**: Automatically serializes items to JSON for Redis
+//! - **Connection Management**: Manages Redis connection lifecycle
+//! - **Error Handling**: Configurable error strategies for write failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Serializable items to write to Redis
+//! - **Output**: `Message<T>` - The same items (pass-through)
+//!
+//! ## Use Cases
+//!
+//! - **Persistence**: Write items to Redis for later retrieval
+//! - **Fan-Out**: Distribute items to Redis consumers
+//! - **Monitoring**: Log items to Redis for monitoring/debugging
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::RedisWriteTransformer;
+//! use streamweave::producers::RedisProducerConfig;
+//!
+//! let config = RedisProducerConfig::default()
+//!   .with_connection_url("redis://localhost:6379")
+//!   .with_stream("events");
+//! let transformer = RedisWriteTransformer::<Event>::new(config);
+//! // Input: [Event, ...]
+//! // Writes to Redis and outputs: [Event, ...]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::producers::RedisProducerConfig;

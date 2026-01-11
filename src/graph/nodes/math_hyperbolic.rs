@@ -1,6 +1,69 @@
-//! Math hyperbolic node for StreamWeave graphs
+//! Math hyperbolic node for performing hyperbolic operations.
 //!
-//! Performs hyperbolic operations.
+//! This module provides [`MathHyperbolicNode`], a graph node that performs hyperbolic
+//! operations on numeric values. It wraps [`MathHyperbolicTransformer`] for use in
+//! StreamWeave graphs. It supports operations like Sinh, Cosh, Tanh, Asinh, Acosh,
+//! and Atanh.
+//!
+//! # Overview
+//!
+//! [`MathHyperbolicNode`] is useful for performing hyperbolic mathematical operations
+//! on numeric values in graph-based pipelines. It processes JSON numeric values and
+//! applies hyperbolic functions, making it ideal for mathematical computations.
+//!
+//! # Key Concepts
+//!
+//! - **Hyperbolic Functions**: Supports Sinh, Cosh, Tanh and their inverses
+//! - **JSON Value Support**: Works with `serde_json::Value` numeric types
+//! - **Function Enum**: Uses enum-based function selection for type safety
+//! - **Transformer Wrapper**: Wraps `MathHyperbolicTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`MathHyperbolicNode`]**: Node that performs hyperbolic operations
+//! - **[`HyperbolicFunction`]**: Enum representing different hyperbolic functions
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathHyperbolicNode;
+//! use streamweave::transformers::HyperbolicFunction;
+//!
+//! // Calculate hyperbolic sine
+//! let sinh = MathHyperbolicNode::new(HyperbolicFunction::Sinh);
+//!
+//! // Calculate hyperbolic cosine
+//! let cosh = MathHyperbolicNode::new(HyperbolicFunction::Cosh);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathHyperbolicNode;
+//! use streamweave::transformers::HyperbolicFunction;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a hyperbolic node with error handling
+//! let hyperbolic = MathHyperbolicNode::new(HyperbolicFunction::Sinh)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("sinh".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Function Enum**: Uses enum-based function selection for type safety
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathHyperbolicNode`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{HyperbolicFunction, MathHyperbolicTransformer};

@@ -1,6 +1,65 @@
-//! Object merge node for StreamWeave graphs
+//! Object merge node for merging multiple JSON objects into a single object.
 //!
-//! Merges multiple JSON objects into a single object.
+//! This module provides [`ObjectMerge`], a graph node that merges multiple JSON
+//! objects into a single object. It wraps [`ObjectMergeTransformer`] for use in
+//! StreamWeave graphs. It combines properties from multiple objects, with later
+//! objects overriding earlier ones for duplicate keys.
+//!
+//! # Overview
+//!
+//! [`ObjectMerge`] is useful for merging multiple JSON objects in graph-based
+//! pipelines. It processes multiple objects and outputs a single merged object,
+//! making it ideal for combining data from different sources or enriching objects
+//! with additional properties.
+//!
+//! # Key Concepts
+//!
+//! - **Object Merging**: Merges multiple JSON objects into a single object
+//! - **Property Override**: Later objects override earlier ones for duplicate keys
+//! - **JSON Value Support**: Works with `serde_json::Value` objects
+//! - **Transformer Wrapper**: Wraps `ObjectMergeTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`ObjectMerge`]**: Node that merges multiple JSON objects
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ObjectMerge;
+//!
+//! // Create an object merge node
+//! let object_merge = ObjectMerge::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ObjectMerge;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create an object merge node with error handling
+//! let object_merge = ObjectMerge::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("object-merger".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible JSON
+//!   object handling
+//! - **Property Override**: Later objects override earlier ones for predictable
+//!   merge behavior
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ObjectMerge`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::ObjectMergeTransformer;

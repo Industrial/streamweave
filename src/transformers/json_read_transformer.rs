@@ -1,6 +1,44 @@
-//! JSON read transformer for StreamWeave
+//! # JSON Read Transformer
 //!
-//! Reads JSON files from input paths and deserializes them.
+//! Transformer that reads JSON files from input file paths and deserializes them
+//! into strongly-typed Rust values. Supports JSON objects, arrays, and primitives.
+//!
+//! ## Overview
+//!
+//! The JSON Read Transformer provides:
+//!
+//! - **JSON File Reading**: Reads and parses JSON files from file system
+//! - **Type-Safe Deserialization**: Deserializes JSON into strongly-typed Rust types
+//! - **Array Handling**: Can yield array elements as separate items or as a single array
+//! - **Error Handling**: Configurable error strategies for parse failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - File paths to JSON files
+//! - **Output**: `Message<T>` - Deserialized JSON objects (type depends on T)
+//!
+//! ## Supported JSON Formats
+//!
+//! - **JSON Objects**: Yields the object as a single item
+//! - **JSON Arrays**: Can yield each element as a separate item (if `array_as_stream` is true)
+//! - **JSON Primitives**: Yields the value as a single item
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::JsonReadTransformer;
+//! use serde::Deserialize;
+//!
+//! #[derive(Debug, Deserialize, Clone)]
+//! struct Event {
+//!     id: u32,
+//!     message: String,
+//! }
+//!
+//! let transformer = JsonReadTransformer::<Event>::new();
+//! // Input: ["events1.json", "events2.json"]
+//! // Output: [Event { id: 1, message: "..." }, Event { id: 2, message: "..." }, ...]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::producers::JsonReadConfig;

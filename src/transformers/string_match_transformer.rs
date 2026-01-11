@@ -1,6 +1,31 @@
-//! String match transformer for StreamWeave
+//! # String Match Transformer
 //!
-//! Filters strings that match a regex pattern.
+//! Transformer that filters strings based on regex pattern matching. Only strings
+//! that match the specified regex pattern are passed through to the output.
+//!
+//! ## Overview
+//!
+//! The String Match Transformer provides:
+//!
+//! - **Regex Filtering**: Filters strings that match a regex pattern
+//! - **Pattern Compilation**: Compiles regex patterns at construction time
+//! - **Full Match**: Checks if the entire string matches the pattern
+//! - **Error Handling**: Configurable error strategies for invalid patterns
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Strings to filter
+//! - **Output**: `Message<String>` - Strings that match the regex pattern
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::StringMatchTransformer;
+//!
+//! let transformer = StringMatchTransformer::new(r"^\d+$").unwrap();
+//! // Input: ["123", "abc", "456"]
+//! // Output: ["123", "456"]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

@@ -1,7 +1,71 @@
-//! XOR node for StreamWeave graphs
+//! XOR node for performing exclusive OR (XOR) logic operations.
 //!
-//! Performs exclusive OR (XOR) logic operations on boolean values or bits.
-//! This node can work with boolean values or numeric values (bitwise XOR).
+//! This module provides [`Xor`], a graph node that performs exclusive OR (XOR)
+//! logic operations on boolean values or bitwise XOR on numeric values. It wraps
+//! [`XorTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Xor`] is useful for performing XOR operations in graph-based pipelines.
+//! It supports both boolean XOR (logical XOR) and bitwise XOR (numeric XOR),
+//! making it ideal for logical operations, bit manipulation, and data processing.
+//!
+//! # Key Concepts
+//!
+//! - **XOR Operations**: Performs exclusive OR operations on values
+//! - **Boolean Mode**: Logical XOR on boolean values
+//! - **Bitwise Mode**: Bitwise XOR on numeric values
+//! - **Transformer Wrapper**: Wraps `XorTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Xor<T>`]**: Node that performs XOR operations
+//! - **[`XorOps`]**: Enum representing different XOR operation types
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage (Boolean XOR)
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Xor;
+//!
+//! // Create an XOR node for boolean operations
+//! let xor = Xor::<bool>::new(true);
+//! ```
+//!
+//! ## Bitwise XOR
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Xor;
+//!
+//! // Create an XOR node for bitwise operations
+//! let xor = Xor::<u32>::new(0xFF);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Xor;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create an XOR node with error handling
+//! let xor = Xor::<bool>::new(true)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("xor".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Type Flexibility**: Supports both boolean and numeric types for XOR
+//! - **Operand-Based**: Uses an operand value for flexible XOR operations
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Xor`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{XorOps, XorTransformer};

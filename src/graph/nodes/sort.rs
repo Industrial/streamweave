@@ -1,7 +1,66 @@
-//! Sort node for StreamWeave graphs
+//! Sort node for sorting items in streams.
 //!
-//! Sorts items in a stream. Collects all items, sorts them, and emits them
-//! in sorted order.
+//! This module provides [`Sort`], a graph node that sorts items in a stream.
+//! It collects all items from the input stream, sorts them, and emits them
+//! in sorted order. It wraps [`SortTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Sort`] is useful for sorting items in graph-based pipelines. It collects
+//! all items, sorts them according to their natural ordering, and then emits
+//! them in sorted order. This is essential for ordered processing and data
+//! organization patterns.
+//!
+//! # Key Concepts
+//!
+//! - **Full Collection**: Collects all items before sorting (requires items to
+//!   be `Ord`)
+//! - **Natural Ordering**: Uses the type's natural ordering via `Ord` trait
+//! - **Sorted Output**: Emits items in sorted order after collection
+//! - **Transformer Wrapper**: Wraps `SortTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Sort<T>`]**: Node that sorts items in a stream (requires `T: Ord`)
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Sort;
+//!
+//! // Sort integers in ascending order
+//! let sort = Sort::<i32>::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Sort;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a sort node with error handling
+//! let sort = Sort::<String>::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("string-sorter".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Full Collection**: Collects all items before sorting, which requires
+//!   memory proportional to stream size
+//! - **Natural Ordering**: Uses `Ord` trait for type-safe sorting
+//! - **Stream-Based**: Works with async streams but requires full collection
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Sort`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`]. Note that items
+//! must implement `Ord` for sorting.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::SortTransformer;

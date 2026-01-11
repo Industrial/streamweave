@@ -1,7 +1,65 @@
-//! Command execute node for StreamWeave graphs
+//! Command execute node for executing shell commands in graphs.
 //!
-//! Executes shell commands from stream items. Takes command templates/parameters as input
-//! and outputs command results, enabling dynamic command execution in a pipeline.
+//! This module provides [`CommandExecute`], a graph node that executes shell commands
+//! from stream items. It takes command templates or parameters as input and outputs
+//! command results, enabling dynamic command execution in graph-based pipelines.
+//! It wraps [`CommandExecuteTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`CommandExecute`] is useful for integrating external command-line tools and scripts
+//! into StreamWeave graphs. It allows each stream item to trigger a command execution,
+//! making it ideal for dynamic command invocation based on stream data.
+//!
+//! # Key Concepts
+//!
+//! - **Command Execution**: Executes shell commands for each stream item
+//! - **Dynamic Commands**: Supports command templates and parameter substitution
+//! - **Result Output**: Outputs command execution results (stdout, stderr, exit codes)
+//! - **Transformer Wrapper**: Wraps `CommandExecuteTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`CommandExecute`]**: Node that executes shell commands from stream items
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::CommandExecute;
+//!
+//! // Create a command execute node
+//! let command_execute = CommandExecute::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::CommandExecute;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a command execute node with error handling
+//! let command_execute = CommandExecute::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("command-executor".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Shell Command Integration**: Enables integration with external command-line
+//!   tools and scripts
+//! - **Dynamic Execution**: Supports command templates and parameter substitution
+//!   for flexible command execution
+//! - **Result Capture**: Captures command output, errors, and exit codes
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CommandExecute`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::CommandExecuteTransformer;

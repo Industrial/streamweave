@@ -1,3 +1,31 @@
+//! # Pipeline Test Suite
+//!
+//! Comprehensive test suite for the pipeline builder and execution system.
+//! This module tests the type-safe state machine, error handling strategies,
+//! and end-to-end pipeline execution.
+//!
+//! ## Test Coverage
+//!
+//! This test suite covers:
+//!
+//! - **Builder State Machine**: Tests for Empty, HasProducer, HasTransformer, and Complete states
+//! - **Pipeline Execution**: End-to-end pipeline runs with various transformations
+//! - **Error Handling**: All error strategy variants (Stop, Skip, Retry, Custom)
+//! - **Type Safety**: Verification that the type system prevents invalid pipeline construction
+//! - **Edge Cases**: Empty inputs, single items, identity transformations, complex chains
+//! - **Error Paths**: Internal error handling and panic scenarios
+//!
+//! ## Test Organization
+//!
+//! Tests are organized by functionality:
+//!
+//! - Builder state tests
+//! - Transformer chaining tests
+//! - Consumer integration tests
+//! - Error strategy tests
+//! - Edge case tests
+//! - Panic path tests (for coverage)
+
 use crate::consumers::VecConsumer;
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::pipeline::{Empty, HasProducer, HasTransformer, Pipeline, PipelineBuilder};

@@ -1,6 +1,41 @@
-//! # Inference Transformer
+//! # ML Inference Transformer
 //!
-//! This module provides transformers that wrap inference backends for use in StreamWeave pipelines.
+//! Transformer that performs machine learning model inference on stream items using
+//! an inference backend. This transformer applies inference to each item individually,
+//! suitable for low-latency inference where items arrive one at a time.
+//!
+//! ## Overview
+//!
+//! The ML Inference Transformer provides:
+//!
+//! - **Single-Item Inference**: Applies ML model inference to each stream item
+//! - **Backend Abstraction**: Works with any `InferenceBackend` implementation
+//! - **Low Latency**: Optimized for per-item inference (not batching)
+//! - **Error Handling**: Configurable error strategies for inference failures
+//! - **Type Safety**: Generic over input/output types supported by the backend
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to run inference on (type depends on backend)
+//! - **Output**: `Message<U>` - Inference results (type depends on backend)
+//!
+//! ## Use Cases
+//!
+//! - Real-time inference on streaming data
+//! - Low-latency ML predictions
+//! - Per-item model evaluation
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave_ml_transformers::{InferenceTransformer, OnnxBackend};
+//!
+//! let mut backend = OnnxBackend::new()?;
+//! backend.load_from_path("model.onnx").await?;
+//! let transformer = InferenceTransformer::new(backend);
+//! // Input: [input_data, ...]
+//! // Output: [prediction, ...]
+//! ```
 //!
 //! ## Example
 //!

@@ -1,3 +1,74 @@
+//! File system file producer for reading stream data from files.
+//!
+//! This module provides [`FsFileProducer`], a producer that reads lines from a file
+//! and emits each line as a string item. The file is opened when the stream starts,
+//! and lines are read asynchronously using Tokio's async I/O.
+//!
+//! # Overview
+//!
+//! [`FsFileProducer`] is useful for reading data from files on disk and converting
+//! them into streams. It uses Tokio's async file I/O for efficient reads and supports
+//! configurable error handling. The file is opened when production begins.
+//!
+//! # Key Concepts
+//!
+//! - **Path-Based Reading**: Reads from a file at the specified path
+//! - **Line-Based Reading**: Reads the file line by line, emitting each line as a string
+//! - **Async I/O**: Uses Tokio's async file I/O for efficient reading
+//! - **Error Handling**: Configurable error strategies for I/O failures
+//!
+//! # Core Types
+//!
+//! - **[`FsFileProducer`]**: Producer that reads lines from a file
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::FsFileProducer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a producer that reads from a file
+//! let producer = FsFileProducer::new("/path/to/file.txt".to_string());
+//!
+//! // Use in a pipeline
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(producer)
+//!     .transformer(/* ... */)
+//!     .consumer(/* ... */);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::producers::FsFileProducer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a producer with error handling strategy
+//! let producer = FsFileProducer::new("/path/to/file.txt".to_string())
+//!     .with_error_strategy(ErrorStrategy::Skip)  // Skip errors and continue
+//!     .with_name("file-reader".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Line-Based**: Reads files line by line, which is the most common use case
+//!   for text file processing
+//! - **Async I/O**: Uses Tokio's async file I/O for efficient, non-blocking reads
+//! - **String Output**: Emits `String` items, one per line from the file
+//! - **Error Logging**: I/O errors are logged but don't stop production (empty stream
+//!   is returned if file cannot be opened)
+//!
+//! # Integration with StreamWeave
+//!
+//! [`FsFileProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use async_trait::async_trait;

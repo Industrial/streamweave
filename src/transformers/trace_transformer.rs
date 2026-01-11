@@ -1,7 +1,37 @@
-//! Trace transformer for StreamWeave
+//! # Trace Transformer
 //!
-//! Logs/debugs packet flow by tracing items as they pass through. Items are
-//! emitted unchanged but logged for debugging purposes.
+//! Transformer that traces and logs items as they pass through the pipeline
+//! without modifying them. This is useful for debugging and monitoring pipeline
+//! behavior, allowing you to see what data is flowing through at specific points.
+//!
+//! ## Overview
+//!
+//! The Trace Transformer provides:
+//!
+//! - **Debug Logging**: Logs each item that passes through at configurable log levels
+//! - **Pass-Through**: Items are emitted unchanged (no transformation)
+//! - **Log Level Control**: Configurable trace or debug logging levels
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Pipeline Debugging**: Essential tool for debugging complex pipelines
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to trace
+//! - **Output**: `Message<T>` - The same items (unchanged, but logged)
+//!
+//! ## Log Levels
+//!
+//! - **Trace**: Most verbose logging (trace level)
+//! - **Debug**: Standard debug logging (debug level, default)
+//!
+//! ## Example
+//!
+//! ```rust
+//! use streamweave::transformers::TraceTransformer;
+//!
+//! let transformer = TraceTransformer::new();
+//! // Items will be logged at debug level and passed through unchanged
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

@@ -1,7 +1,9 @@
 //! Transaction support for exactly-once processing.
 //!
 //! This module provides transactional processing capabilities for stream pipelines,
-//! ensuring all-or-nothing semantics for batches of operations.
+//! ensuring all-or-nothing semantics for batches of operations. The transaction system
+//! enables exactly-once processing by coordinating offset commits with pipeline operations,
+//! ensuring that offsets are only committed when all operations in a transaction succeed.
 //!
 //! # Overview
 //!
@@ -10,6 +12,27 @@
 //! - **Offset Integration**: Buffer offset commits within transactions
 //! - **Timeout Support**: Configurable transaction timeouts with auto-rollback
 //! - **Nested Transactions**: Savepoint-style nested transaction support
+//!
+//! # Key Concepts
+//!
+//! - **Transaction Lifecycle**: Transactions follow begin → operations → commit/rollback
+//! - **Offset Buffering**: Offset commits are buffered and only flushed on commit
+//! - **Timeout Management**: Transactions automatically timeout and rollback if not committed
+//! - **Savepoints**: Nested transaction support through savepoints
+//! - **Exactly-Once Processing**: Ensures offsets are only committed after successful operations
+//!
+//! # Core Types
+//!
+//! - **[`TransactionManager`]**: Manages transaction lifecycle and coordinates offset commits
+//! - **[`Transaction`]**: Represents a single transaction with buffered operations
+//! - **[`TransactionId`]**: Unique identifier for transactions
+//! - **[`TransactionConfig`]**: Configuration for transaction behavior
+//! - **[`TransactionalContext`]**: RAII-style scoped transaction management
+//! - **[`Savepoint`]**: Checkpoint within a transaction for nested transactions
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
 //!
 //! # Example
 //!

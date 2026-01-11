@@ -1,3 +1,86 @@
+//! Command execution consumer for streaming data to external commands.
+//!
+//! This module provides [`CommandConsumer`], a consumer that executes external commands
+//! for each item in a stream. Each item is converted to a string and passed as an argument
+//! to the configured command.
+//!
+//! # Overview
+//!
+//! [`CommandConsumer`] is useful for integrating StreamWeave pipelines with external tools
+//! and scripts. It takes each stream item, converts it to a string via the `Display` trait,
+//! and executes the configured command with the item as an argument.
+//!
+//! # Key Concepts
+//!
+//! - **Command Execution**: Each stream item triggers a separate command execution
+//! - **String Conversion**: Items must implement `Display` to be converted to command arguments
+//! - **Error Handling**: Configurable error strategies (stop, skip, retry, custom)
+//! - **Async Execution**: Uses Tokio's async command execution for non-blocking operations
+//!
+//! # Core Types
+//!
+//! - **[`CommandConsumer<T>`]**: Consumer that executes commands for each stream item
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::CommandConsumer;
+//! use streamweave::{Consumer, ErrorStrategy};
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a consumer that executes 'echo' for each item
+//! let mut consumer = CommandConsumer::new("echo".to_string(), vec![]);
+//!
+//! // Create a stream of items
+//! let stream = stream::iter(vec!["hello", "world", "rust"]);
+//!
+//! // Consume the stream
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::consumers::CommandConsumer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a consumer with custom error handling
+//! let consumer = CommandConsumer::new("my_command".to_string(), vec![])
+//!     .with_error_strategy(ErrorStrategy::Skip)  // Skip failed commands and continue
+//!     .with_name("my-command-consumer".to_string());
+//! ```
+//!
+//! ## With Command Arguments
+//!
+//! ```rust
+//! use streamweave::consumers::CommandConsumer;
+//!
+//! // Execute 'grep' with pattern, where each item is the file to search
+//! let consumer = CommandConsumer::new(
+//!     "grep".to_string(),
+//!     vec!["-r".to_string(), "pattern".to_string()]
+//! );
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Display Trait Requirement**: Items must implement `Display` to enable flexible
+//!   string conversion for command arguments
+//! - **Per-Item Execution**: Each item triggers a separate command execution, allowing
+//!   fine-grained control but potentially higher overhead
+//! - **Async Execution**: Uses Tokio's async `Command` for non-blocking command execution
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CommandConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

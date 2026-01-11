@@ -1,3 +1,77 @@
+//! Parent path extraction transformer for StreamWeave.
+//!
+//! This module provides [`FsParentPathTransformer`], a transformer that extracts
+//! the parent directory path from file path strings. It processes file paths and
+//! returns just the parent directory component, useful for path manipulation and
+//! file processing operations.
+//!
+//! # Overview
+//!
+//! [`FsParentPathTransformer`] is useful for extracting parent directory paths
+//! from full file paths in streaming pipelines. It takes path strings as input
+//! and produces the parent directory path, making it ideal for path manipulation
+//! and file-based processing workflows.
+//!
+//! # Key Concepts
+//!
+//! - **Parent Extraction**: Extracts the parent directory from file paths
+//! - **Cross-Platform**: Uses Rust's `Path` API for cross-platform path handling
+//! - **String Processing**: Works with path strings for compatibility
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`FsParentPathTransformer`]**: Transformer that extracts parent paths
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::FsParentPathTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that extracts parent paths
+//! let transformer = FsParentPathTransformer::new();
+//!
+//! // Input: ["/path/to/file.txt", "/another/path/data.json"]
+//! // Output: ["/path/to", "/another/path"]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::FsParentPathTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = FsParentPathTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("parent-path-extractor".to_string());
+//! ```
+//!
+//! # Behavior
+//!
+//! The transformer extracts the parent directory from each input path string.
+//! If a path doesn't have a parent (e.g., a root path), it returns an empty string.
+//!
+//! # Design Decisions
+//!
+//! - **Path API**: Uses Rust's standard `Path::parent()` method for cross-platform
+//!   compatibility
+//! - **String Input/Output**: Works with strings for compatibility with text-based streams
+//! - **Empty String Fallback**: Returns empty string for paths without parent
+//! - **Simple Extraction**: Focuses solely on parent path extraction for clarity
+//!
+//! # Integration with StreamWeave
+//!
+//! [`FsParentPathTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};
 use async_trait::async_trait;
@@ -8,6 +82,16 @@ use std::pin::Pin;
 /// A transformer that extracts the parent directory from path strings.
 ///
 /// Uses Rust's standard library `Path::parent()` method.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::transformers::FsParentPathTransformer;
+///
+/// let transformer = FsParentPathTransformer::new();
+/// // Input: ["/path/to/file.txt"]
+/// // Output: ["/path/to"]
+/// ```
 pub struct FsParentPathTransformer {
   pub config: TransformerConfig<String>,
 }

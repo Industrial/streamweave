@@ -1,6 +1,63 @@
-//! Object random member node for StreamWeave graphs
+//! Object random member node for getting a random member from an array.
 //!
-//! Gets a random member from an array.
+//! This module provides [`ObjectRandomMember`], a graph node that gets a random
+//! member from an array. It wraps [`ObjectRandomMemberTransformer`] for use in
+//! StreamWeave graphs. It selects a random element from arrays, making it ideal
+//! for sampling and randomization.
+//!
+//! # Overview
+//!
+//! [`ObjectRandomMember`] is useful for getting a random member from arrays in
+//! graph-based pipelines. It processes arrays and outputs a random element,
+//! making it ideal for sampling, randomization, and stochastic processing.
+//!
+//! # Key Concepts
+//!
+//! - **Random Selection**: Selects a random member from arrays
+//! - **Array Processing**: Works with JSON arrays
+//! - **JSON Value Support**: Works with `serde_json::Value` arrays
+//! - **Transformer Wrapper**: Wraps `ObjectRandomMemberTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`ObjectRandomMember`]**: Node that gets a random member from arrays
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ObjectRandomMember;
+//!
+//! // Create an object random member node
+//! let random_member = ObjectRandomMember::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ObjectRandomMember;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create an object random member node with error handling
+//! let random_member = ObjectRandomMember::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("random-selector".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible JSON
+//!   array handling
+//! - **Random Selection**: Uses a random number generator for random selection
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ObjectRandomMember`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::ObjectRandomMemberTransformer;

@@ -1,3 +1,43 @@
+//! # Transformer Trait Test Suite
+//!
+//! Comprehensive test suite for the `Transformer` trait, including configuration,
+//! error handling, component information, and transformation operations.
+//!
+//! ## Test Coverage
+//!
+//! This test suite covers:
+//!
+//! - **TransformerConfig**: Default values, error strategy, name configuration, and builder pattern
+//! - **Transformer Methods**: set_config, config, config_mut, with_name, with_config
+//! - **Error Handling**: All error strategy variants (Stop, Skip, Retry, Custom) and retry logic
+//! - **Component Info**: Component name and type information retrieval
+//! - **Error Context**: Creation of error contexts with item information
+//! - **Transformation**: Stream transformation operations and port type handling
+//! - **TransformerPorts**: Default input and output port type assignments
+//!
+//! ## Test Organization
+//!
+//! Tests are organized to cover:
+//!
+//! 1. **Configuration Tests**: Config creation, modification, and access
+//! 2. **Error Handling Tests**: All error strategy branches and retry logic
+//! 3. **Component Info Tests**: Name and type information retrieval
+//! 4. **Transformation Tests**: Stream transformation operations
+//! 5. **Port Tests**: Port type assignments and compatibility
+//! 6. **Internal Method Tests**: Verification of trait default implementations
+//!
+//! ## Key Concepts
+//!
+//! - **Transformer**: A component that transforms input streams into output streams
+//! - **TransformerConfig**: Configuration for transformers including error strategy and name
+//! - **Error Strategy**: How to handle errors during transformation (Stop, Skip, Retry, Custom)
+//! - **TransformerPorts**: Type-level port definitions for input and output
+//!
+//! ## Usage
+//!
+//! These tests ensure that transformers correctly transform streams, handle errors,
+//! and provide proper component information for debugging and error reporting.
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::MapTransformer;
 use crate::{Input, Output, Transformer, TransformerConfig};

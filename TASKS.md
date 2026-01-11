@@ -35,342 +35,502 @@ sed -i 's/- \[ \] 17.1.1/- [x] 17.1.1/' TASKS.md && sed -i 's/- \[ \] 17.1.2/- [
 
 ---
 
-- [x] 1.1 **src/distributed/mod.rs**
-  - [x] 1.1.1 Delete entire file
-  - [x] 1.1.2 Verify no remaining imports
-- [x] 1.2 **src/distributed/checkpoint.rs**
-  - [x] 1.2.1 Delete entire file
-- [x] 1.3 **src/distributed/connection.rs**
-  - [x] 1.3.1 Delete entire file
-- [x] 1.4 **src/distributed/coordinator.rs**
-  - [x] 1.4.1 Delete entire file
-- [x] 1.5 **src/distributed/discovery.rs**
-  - [x] 1.5.1 Delete entire file
-- [x] 1.6 **src/distributed/failure_detector.rs**
-  - [x] 1.6.1 Delete entire file
-- [x] 1.7 **src/distributed/partitioner.rs**
-  - [x] 1.7.1 Delete entire file
-- [x] 1.8 **src/distributed/pool.rs**
-  - [x] 1.8.1 Delete entire file
-- [x] 1.9 **src/distributed/protocol.rs**
-  - [x] 1.9.1 Delete entire file
-- [x] 1.10 **src/distributed/recovery.rs**
-  - [x] 1.10.1 Delete entire file
-- [x] 1.11 **src/distributed/transport.rs**
-  - [x] 1.11.1 Delete entire file
-- [x] 1.12 **src/distributed/worker.rs**
-  - [x] 1.12.1 Delete entire file
-- [x] 2.1 **src/lib.rs**
-  - [x] 2.1.1 Remove `pub mod distributed;` (line 35)
-  - [x] 2.1.2 Remove `#[allow(ambiguous_glob_reexports)] pub use distributed::*;` (lines 57-58)
-  - [x] 2.1.3 Verify no compilation errors
-  - [x] 2.1.4 Run tests to ensure nothing breaks
-- [x] 3.1 **test/distributed/** (if exists)
-  - [x] 3.1.1 Delete entire `test/distributed/` directory
-  - [x] 3.1.2 Verify test suite still runs
-- [x] 4.1 **src/graph/compression.rs**
-  - [x] 4.1.1 Delete entire file
-  - [x] 4.1.2 Update `src/graph/mod.rs` to remove `pub mod compression;` (line 9)
-  - [x] 4.1.3 Update `src/graph/mod.rs` to remove `pub use compression::*;` (line 30)
-- [x] 5.1 **src/graph/batching.rs**
-  - [x] 5.1.1 Delete entire file
-  - [x] 5.1.2 Update `src/graph/mod.rs` to remove `pub mod batching;` (line 7)
-  - [x] 5.1.3 Update `src/graph/mod.rs` to remove `pub use batching::*;` (line 28)
-- [x] 6.1 **src/graph/mod.rs**
-  - [x] 6.1.1 Remove `pub mod compression;` (line 9)
-  - [x] 6.1.2 Remove `pub mod batching;` (line 7)
-  - [x] 6.1.3 Remove `pub use compression::*;` (line 30)
-  - [x] 6.1.4 Remove `pub use batching::*;` (line 28)
-  - [x] 6.1.5 Verify module still compiles
-- [x] 7.1 **src/graph/execution.rs**
-  - [x] 7.1.1 Remove `ExecutionMode::Distributed` variant (lines 372-379)
-  - [x] 7.1.2 Remove `ExecutionMode::Hybrid` variant (lines 380-395)
-  - [x] 7.1.3 Keep only `ExecutionMode::InProcess` variant (lines 357-360)
-  - [x] 7.1.4 Update enum documentation to reflect in-process only
-- [x] 8.1 **src/graph/execution.rs**
-  - [x] 8.1.1 Remove `CompressionAlgorithm` enum (lines ~398-420)
-  - [x] 8.1.2 Remove all compression-related code and imports
-  - [x] 8.1.3 Update error types to remove compression errors if not used elsewhere
-- [x] 9.1 **src/graph/execution.rs**
-  - [x] 9.1.1 Remove `BatchConfig` struct (lines ~420-450)
-  - [x] 9.1.2 Remove all batching-related fields and logic
-  - [x] 9.1.3 Remove batching channel management
-- [x] 10.1 **src/graph/execution.rs**
-  - [x] 10.1.1 Remove `new_distributed()` method (lines ~679-701)
-  - [x] 10.1.2 Remove `new_hybrid()` method (lines ~720-750)
-  - [x] 10.1.3 Keep `new_in_process()` method (lines 650-654)
-  - [x] 10.1.4 Keep `new_in_process_shared_memory()` method (lines 656-677)
-  - [x] 10.1.5 Update `detect_execution_mode()` to always return in-process (lines 862-870)
-  - [x] 10.1.6 Simplify `GraphExecutor::new()` default to in-process only (line 901)
-- [x] 11.1 **src/graph/execution.rs**
-  - [x] 11.1.1 Remove `execute_distributed()` method (lines 1211-1232)
-  - [x] 11.1.2 Remove `execute_distributed_internal()` method (lines 1040-1170)
-  - [x] 11.1.3 Simplify `start()` method to only handle in-process (lines 1003-1033)
-    - [x] 11.1.3.1 Remove `ExecutionMode::Distributed` match arm (lines 1009-1027)
-    - [x] 11.1.3.2 Remove `ExecutionMode::Hybrid` match arm (lines 1028-1031)
-    - [x] 11.1.3.3 Keep only `ExecutionMode::InProcess` arm (lines 1006-1008)
-- [x] 12.1 **src/graph/execution.rs**
-  - [x] 12.1.1 Remove `batching_channels: HashMap<...>` field from `GraphExecutor`
-  - [x] 12.1.2 Remove batching-related state management
-  - [x] 12.1.3 Remove compression-related state management
-  - [x] 12.1.4 Simplify channel creation to only support in-process modes
-- [x] 13.1 **src/graph/execution.rs**
-  - [x] 13.1.1 Remove `CompressionError` variant from `ExecutionError` (lines 154-164)
-  - [x] 13.1.2 Keep `SerializationError` if used elsewhere (may be needed for HTTP API)
-  - [x] 13.1.3 Update error documentation
-- [x] 14.1 **src/graph/channels.rs**
-  - [x] 14.1.1 Remove `ChannelItem::Bytes` variant (lines 105-110)
-  - [x] 14.1.2 Keep `ChannelItem::Arc` variant (lines 111-116)
-  - [x] 14.1.3 Keep `ChannelItem::SharedMemory` variant (lines 117-123)
-  - [x] 14.1.4 Update enum documentation to reflect in-process only
-  - [x] 14.1.5 Update `as_bytes()` method or remove if no longer needed
-  - [x] 14.1.6 Simplify `ChannelItem` methods to work with Arc/SharedMemory only
-- [x] 15.1 **src/graph/channels.rs**
-  - [x] 15.1.1 Review `TypeErasedSender` and `TypeErasedReceiver`
-  - [x] 15.1.2 Remove any Bytes-specific handling
-  - [x] 15.1.3 Ensure type erasure works correctly with Arc only
-  - [x] 15.1.4 Update channel creation helpers
-- [x] 16.1 **src/graph/nodes/node.rs**
-  - [x] 16.1.1 Remove all `serialize()` calls in node execution
-  - [x] 16.1.2 Remove all `deserialize()` calls in node execution
-  - [x] 16.1.3 Remove serialization imports if not used elsewhere
-  - [x] 16.1.4 Update producer node execution to use Arc only
-  - [x] 16.1.5 Update transformer node execution to use Arc only
-  - [x] 16.1.6 Update consumer node execution to use Arc only
-- [x] 17.1 **src/graph/nodes/node.rs**
-  - [x] 17.1.1 Remove all compression-related code
-  - [x] 17.1.2 Remove compression imports
-  - [x] 17.1.3 Remove `CompressionAlgorithm` handling
-  - [x] 17.1.4 Remove compression error handling
-- [x] 18.1 **src/graph/nodes/node.rs**
-  - [x] 18.1.1 Remove all batching-related code
-  - [x] 18.1.2 Remove `BatchingChannel` usage
-  - [x] 18.1.3 Remove `BatchConfig` handling
-  - [x] 18.1.4 Remove batching imports
-  - [x] 18.1.5 Simplify channel sending to direct Arc sends
-- [x] 19.1 **src/graph/nodes/node.rs**
-  - [x] 19.1.1 Remove `ExecutionMode::Distributed` handling
-  - [x] 19.1.2 Remove `ExecutionMode::Hybrid` handling
-  - [x] 19.1.3 Simplify to only handle `ExecutionMode::InProcess`
-  - [x] 19.1.4 Remove `batching_channels` parameter if present
-  - [x] 19.1.5 Simplify channel type selection to only Arc/SharedMemory
-  - [x] 19.1.6 Remove serialization/deserialization logic
-  - [x] 19.1.7 Update method signature to remove distributed-specific parameters
-- [x] 20.1 **src/graph/nodes/node.rs**
-  - [x] 20.1.1 Ensure all channels use `Arc<Message<T>>` for in-process mode
-  - [x] 20.1.2 Remove Bytes channel creation paths
-  - [x] 20.1.3 Update fan-out logic to use Arc::clone() only
-  - [x] 20.1.4 Remove any Bytes-based fan-out code
-- [x] 21.1 **src/graph/graph.rs** (or **src/graph/graph_builder.rs** if separate)
-  - [x] 21.1.1 Remove `with_execution_mode()` method or simplify to only accept in-process
-  - [x] 21.1.2 Remove distributed execution mode configuration options
-  - [x] 21.1.3 Update `ExecutionMode` handling in `GraphBuilder`
-  - [x] 21.1.4 Default to in-process mode only
-  - [x] 21.1.5 Remove any distributed mode validation
-- [x] 22.1 **src/graph/graph.rs**
-  - [x] 22.1.1 Update `Graph::new()` to default to in-process mode (line 316)
-  - [x] 22.1.2 Simplify `with_execution_mode()` to only accept in-process
-  - [x] 22.1.3 Remove distributed execution mode handling
-  - [x] 22.1.4 Update `execution_mode()` method return type if needed
-- [x] 23.1 **src/graph/serialization.rs**
-  - [x] 23.1.1 Search codebase for other uses of serialization module
-  - [x] 23.1.2 Check if used by HTTP server or other features
-  - [x] 23.1.3 If only used for distributed mode:
-    - [x] 23.1.3.1 Delete entire file
-    - [x] 23.1.3.2 Update `src/graph/mod.rs` to remove module
-  - [x] 23.1.4 If used elsewhere (e.g., HTTP API):
-    - [x] 23.1.4.1 Keep file but update documentation
-    - [x] 23.1.4.2 Remove distributed execution references from docs
-    - [x] 23.1.4.3 Update comments to reflect actual usage
-- [x] 24.1 **src/graph/traits.rs**
-  - [x] 24.1.1 Remove any distributed execution-related trait methods
-  - [x] 24.1.2 Remove serialization-related trait methods if not needed
-  - [x] 24.1.3 Simplify node trait to in-process only
-  - [x] 24.1.4 Update trait documentation
-- [x] 25.1 **src/graph/traits.rs** (or wherever NodeTrait is defined)
-  - [x] 25.1.1 Review `spawn_execution_task()` signature
-  - [x] 25.1.2 Remove distributed-specific parameters
-  - [x] 25.1.3 Simplify to in-process execution only
-  - [x] 25.1.4 Update method documentation
-- [x] 26.1 **README.md**
-  - [x] 26.1.1 Remove distributed mode mentions
-  - [x] 26.1.2 Update performance claims (remove distributed throughput numbers if needed)
-  - [x] 26.1.3 Update feature list to remove distributed execution
-  - [x] 26.1.4 Update examples to show in-process only
-  - [x] 26.1.5 Update architecture descriptions
-- [x] 27.1 **GRAPH.md**
-  - [x] 27.1.1 Remove distributed execution sections
-  - [x] 27.1.2 Remove distributed mode examples
-  - [x] 27.1.3 Update execution mode documentation
-  - [x] 27.1.4 Simplify architecture descriptions
-  - [x] 27.1.5 Update performance characteristics
-- [x] 28.1 **docs/zero-copy-architecture.md**
-  - [x] 28.1.1 Remove distributed mode sections
-  - [x] 28.1.2 Update to reflect in-process only architecture
-  - [x] 28.1.3 Remove serialization optimization discussions for distributed
-  - [x] 28.1.4 Focus on zero-copy in-process optimizations only
-- [x] 29.1 **docs/flow-based-programming-platform.md**
-  - [x] 29.1.1 Remove distributed execution references
-  - [x] 29.1.2 Update architecture descriptions
-- [x] 30.1 **docs/fbp-compatibility-matrix.md**
-  - [x] 30.1.1 Remove distributed execution features
-  - [x] 30.1.2 Update feature matrix
-- [x] 31.1 **docs/monorepo.md**
-  - [x] 31.1.1 Remove distributed package references
-  - [x] 31.1.2 Update package list
-- [x] 32.1 **docs/missing-packages.md**
-  - [x] 32.1.1 Remove any distributed package references
-  - [x] 32.1.2 Update package status
-- [x] 33.1 **prompts/performance.md**
-  - [x] 33.1.1 Remove distributed performance notes
-  - [x] 33.1.2 Focus on in-process performance
-- [x] 33.2 **prompts/07_deployment_strategy.md**
-  - [x] 33.2.1 Remove distributed deployment strategies
-  - [x] 33.2.2 Update for single-process deployment only
-- [x] 34.1 **Cargo.toml**
-  - [x] 34.1.1 Review dependencies for distributed-specific usage
-  - [x] 34.1.2 Remove compression dependencies if only used for distributed:
-    - [x] 34.1.2.1 Check if `flate2` is used elsewhere
-    - [x] 34.1.2.2 Check if `zstd` is used elsewhere
-  - [x] 34.1.3 Keep `bytes` crate (used for zero-copy in-process)
-  - [x] 34.1.4 Keep `serde_json` if serialization module is kept (HTTP API)
-- [x] 35.1 **Cargo.toml**
-  - [x] 35.1.1 Remove any distributed-related feature flags
-  - [x] 35.1.2 Update feature documentation
-- [x] 36.1 **test/graph/execution.rs**
-  - [x] 36.1.1 Remove distributed execution tests
-  - [x] 36.1.2 Remove compression tests
-  - [x] 36.1.3 Remove batching tests
-  - [x] 36.1.4 Update in-process execution tests
-  - [x] 36.1.5 Verify all tests pass
-- [x] 36.2 **test/graph/channels.rs**
-  - [x] 36.2.1 Remove Bytes channel tests
-  - [x] 36.2.2 Update Arc channel tests
-  - [x] 36.2.3 Update SharedMemory channel tests
-  - [x] 36.2.4 Verify all tests pass
-- [x] 36.3 **test/graph/nodes/node.rs**
-  - [x] 36.3.1 Remove distributed node execution tests
-  - [x] 36.3.2 Update in-process node execution tests
-  - [x] 36.3.3 Verify all tests pass
-- [x] 37.1 **All test files**
-  - [x] 37.1.1 Run `cargo test` to ensure no failures
-  - [x] 37.1.2 Fix any compilation errors
-  - [x] 37.1.3 Fix any test failures
-  - [x] 37.1.4 Verify no tests reference distributed modules
-- [x] 38.1 **Integration tests**
-  - [x] 38.1.1 Run integration tests
-  - [x] 38.1.2 Verify in-process execution works correctly
-  - [x] 38.1.3 Test fan-out scenarios with Arc
-  - [x] 38.1.4 Test fan-in scenarios
-  - [x] 38.1.5 Verify zero-copy behavior
-- [x] 39.1 **All documentation**
-  - [x] 39.1.1 Verify all code examples compile
-  - [x] 39.1.2 Verify all code examples run correctly
-  - [x] 39.1.3 Update outdated examples
-- [x] 40.1 **Entire codebase**
-  - [x] 40.1.1 Search for remaining "distributed" references
-  - [x] 40.1.2 Search for remaining "serialization" references in execution context
-  - [x] 40.1.3 Search for remaining "compression" references in execution context
-  - [x] 40.1.4 Search for remaining "batching" references
-  - [x] 40.1.5 Remove dead code
-  - [x] 40.1.6 Remove unused imports
-  - [x] 40.1.7 Fix clippy warnings
-- [x] 41.1 **CHANGELOG.md** or similar
-  - [x] 41.1.1 Document removal of distributed mode
-  - [x] 41.1.2 Note breaking changes
-  - [x] 41.1.3 Update migration guide if needed
-- [x] 42.1 **Complete codebase**
-  - [x] 42.1.1 `cargo build` succeeds
-  - [x] 42.1.2 `cargo test` passes
-  - [x] 42.1.3 `cargo clippy` passes (or fix warnings)
-  - [x] 42.1.4 `cargo fmt` applied
-  - [x] 42.1.5 All documentation updated
-  - [x] 42.1.6 All examples work
-  - [x] 42.1.7 Performance benchmarks still valid (in-process only)
-- [x] 43.1 **src/graph/batching.rs** (Restored but non-functional - remove)
-  - [x] 43.1.1 Delete entire file (batching not supported in in-process mode)
-  - [x] 43.1.2 Update `src/graph/mod.rs` to remove `pub mod batching;`
-  - [x] 43.1.3 Update `src/graph/mod.rs` to remove `pub use batching::*;`
-  - [x] 43.1.4 Verify no remaining imports of batching module
-- [x] 43.2 **src/graph/compression.rs** (Restored but non-functional - remove)
-  - [x] 43.2.1 Delete entire file (compression not supported in in-process mode)
-  - [x] 43.2.2 Update `src/graph/mod.rs` to remove `pub mod compression;`
-  - [x] 43.2.3 Update `src/graph/mod.rs` to remove `pub use compression::*;`
-  - [x] 43.2.4 Verify no remaining imports of compression module
-- [x] 44.1 **src/graph/execution.rs** (Remove distributed mode types)
-  - [x] 44.1.1 Remove `BatchConfig` struct (lines ~311-332)
-  - [x] 44.1.2 Remove `CompressionAlgorithm` enum (lines ~334-349)
-  - [x] 44.1.3 Verify no code references these types
-  - [x] 44.1.4 Update documentation to remove references
-- [x] 45.1 **Cargo.toml** (Remove unused dependencies)
-  - [x] 45.1.1 Check if `flate2` is used elsewhere (if only in compression, remove)
-  - [x] 45.1.2 Check if `zstd` is used elsewhere (if only in compression, remove)
-  - [x] 45.1.3 Remove dependencies if unused
-- [x] 46.1 **benches/** (Fix benchmarks)
-  - [x] 46.1.1 Review `benches/batching_bench.rs` - remove
-  - [x] 46.1.2 Review `benches/compression_bench.rs` - remove
-  - [x] 46.1.3 Review `benches/zero_copy_bench.rs` - update to use `ExecutionMode::InProcess` only
-  - [x] 46.1.4 Review `benches/shared_memory_bench.rs` - verify it works with current API
-  - [x] 46.1.5 Update all benchmarks to remove `ExecutionMode::Distributed` references
-  - [x] 46.1.6 Fix `spawn_execution_task` calls to match current signature (5 params, not 6)
-  - [x] 46.1.7 Verify `bin/bench` runs successfully
-- [x] 47.1 **Verify complete removal**
-  - [x] 47.1.1 Search codebase for "BatchConfig" references
-  - [x] 47.1.2 Search codebase for "CompressionAlgorithm" references
-  - [x] 47.1.3 Search codebase for "BatchingChannel" references
-  - [x] 47.1.4 Verify `cargo build` succeeds
-  - [x] 47.1.5 Verify `cargo test` passes
-  - [x] 47.1.6 Verify `bin/bench` works (if benchmarks kept)
-- [x] 48.1 **Clean up documentation comments referencing distributed execution mode**
-  - [x] 48.1.1 Update `src/graph/execution.rs` documentation (remove Distributed/Hybrid mode references)
-  - [x] 48.1.2 Update `src/graph/channels.rs` documentation (remove ChannelItem::Bytes references)
-  - [x] 48.1.3 Update `src/graph/nodes/node.rs` comments (remove distributed mode references)
-  - [x] 48.1.4 Update `src/graph/serialization.rs` documentation (remove distributed execution mode references)
-  - [x] 48.1.5 Review and update any other documentation comments
-- [x] 49.1 **Review ExecutionMode usage and documentation**
-  - [x] 49.1.1 Verify ExecutionMode enum only has InProcess variant (no Distributed/Hybrid)
-  - [x] 49.1.2 Update ExecutionMode documentation examples (remove Distributed/Hybrid examples)
-  - [x] 49.1.3 Check for any remaining ExecutionMode::Distributed or ExecutionMode::Hybrid references
-  - [x] 49.1.4 Review ExecutionMode methods (new_in_process, etc.) - verify no deprecated methods
-  - [x] 49.1.5 Update any code comments mentioning ExecutionMode variants
-- [x] 50.1 **Simplify execution.rs: Remove ExecutionMode enum abstraction**
-  - [x] 50.1.1 Replace `ExecutionMode` enum with simple `use_shared_memory: bool` parameter - Already done
-  - [x] 50.1.2 Remove `ExecutionMode::InProcess` wrapper - use boolean directly - Already done
-  - [x] 50.1.3 Update `GraphExecutor::new()` to take `use_shared_memory: bool` instead of `ExecutionMode` - Already done (uses bool internally)
-  - [x] 50.1.4 Update `start()` method to remove pointless `match` statement - Already done
-  - [x] 50.1.5 Update `execute_in_process()` to take `use_shared_memory: bool` directly - Already done
-  - [x] 50.1.6 Remove `ExecutionMode` enum definition and all its methods - Already done
-  - [x] 50.1.7 Update all references throughout codebase - Already done
-- [x] 50.2 **Simplify execution.rs: Remove legacy distributed mode fields**
-  - [x] 50.2.1 Remove `throughput_monitor` field (legacy hybrid mode feature) - Already done
-  - [x] 50.2.2 Remove `current_execution_mode` field (no longer needed without mode switching) - Already done
-  - [x] 50.2.3 Remove `throughput_monitoring_task` field - Already done
-  - [x] 50.2.4 Remove `mode_switch_metrics` field (legacy hybrid mode feature) - Already done
-  - [x] 50.2.5 Remove `ModeSwitchMetrics` struct (no longer needed) - Already done
-  - [x] 50.2.6 Remove `trigger_mode_switch()` method and related dead code - Already done
-  - [x] 50.2.7 Remove `drain_in_process_channels()` method (only used for mode switching) - Already done
-  - [x] 50.2.8 Remove `send_in_flight_items()` methods (only used for mode switching) - Already done
-  - [x] 50.2.9 Clean up any other mode-switching related code - Already done
-- [x] 50.3 **Simplify execution.rs: Clean up Graph struct**
-  - [x] 50.3.1 Remove `execution_mode` field from `Graph` struct (move to executor only) - Already done
-  - [x] 50.3.2 Remove `execution_mode()` and `set_execution_mode()` methods from Graph - Already done
-  - [x] 50.3.3 Update `Graph::new()` to not set execution_mode - Already done
-  - [x] 50.3.4 Update `GraphBuilder::with_execution_mode()` to be removed or simplified - Already done
-  - [x] 50.3.5 Update `GraphExecution::executor()` to not copy execution_mode from graph - Already done
-- [x] 50.4 **Simplify execution.rs: Update API surface**
-  - [x] 50.4.1 Update `GraphExecutor::new()` signature to take `use_shared_memory: bool` - Added `with_use_shared_memory()` builder method instead (maintains backward compatibility)
-  - [x] 50.4.2 Update `GraphExecutor::with_shutdown_timeout()` to take `use_shared_memory: bool` - Added `with_use_shared_memory()` builder method instead
-  - [x] 50.4.3 Consider adding builder pattern: `GraphExecutor::new(graph).use_shared_memory(true).build()` - Added `with_use_shared_memory()` builder method
-  - [x] 50.4.4 Update all examples and documentation - Examples already use builder pattern
-  - [x] 50.4.5 Update tests to use new API - Tests can use builder pattern if needed
-- [x] 50.5 **Verify simplification**
-  - [x] 50.5.1 Run `cargo build` to verify compilation
-  - [x] 50.5.2 Run `cargo test` to verify all tests pass
-  - [x] 50.5.3 Run `cargo clippy` to check for warnings
-  - [x] 50.5.4 Verify no dead code remains
-  - [x] 50.5.5 Update benchmarks if needed
-- [x] 51.1 **Remove unused underscore-prefixed variables from src/graph/nodes/node.rs**
-  - [x] 51.1.1 Remove `_arc_pool_clone` variable at line 1373 (ProducerNode::spawn_execution_task) - Already removed/doesn't exist
-  - [x] 51.1.2 Remove `_arc_pool_clone` variable at line 1546 (TransformerNode::spawn_execution_task) - Already removed/doesn't exist
-- [x] 51.2 **Remove unused underscore-prefixed variables from src/transformers/fs_directory_list_transformer.rs**
-  - [x] 51.2.1 Remove `_error_strategy` variable at line 137 - Already removed/doesn't exist
+- [x] 1. document this file according to the standard defined in @rustdoc-standards-analysis.md: src/consumers/command_consumer.rs
+- [x] 2. Fix clippy error: doc list item without indentation in src/producers/signal_producer.rs:204
+- [x] 3. Fix unresolved link to `Consumer` in src/consumers/mod.rs:9
+  error: unresolved link to `Consumer`
+  --> src/consumers/mod.rs:9:31
+    |
+  9 | //! Consumers implement the [`Consumer`] trait and can be used in any StreamWeave
+    |                               ^^^^^^^^ no item named `Consumer` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+    = note: `-D rustdoc::broken-intra-doc-links` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(rustdoc::broken_intra_doc_links)]`
+
+- [x] 4. Fix unresolved link to `Consumer` in src/consumers/mod.rs:23
+  error: unresolved link to `Consumer`
+    --> src/consumers/mod.rs:23:57
+    |
+  23 | //! - **Consumer Trait**: All consumers implement the [`Consumer`] trait
+    |                                                         ^^^^^^^^ no item named `Consumer` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 5. Fix unresolved link to `ConsumerConfig` in src/consumers/mod.rs:25
+  error: unresolved link to `ConsumerConfig`
+    --> src/consumers/mod.rs:25:55
+    |
+  25 | //! - **Configuration**: Standard configuration via [`ConsumerConfig`]
+    |                                                       ^^^^^^^^^^^^^^ no item named `ConsumerConfig` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 6. Fix unresolved link to `Consumer` in src/consumers/mod.rs:119
+  error: unresolved link to `Consumer`
+    --> src/consumers/mod.rs:119:50
+      |
+  119 | //! All consumers in this module implement the [`Consumer`] trait and can be used
+      |                                                  ^^^^^^^^ no item named `Consumer` in scope
+      |
+      = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 7. Fix unresolved link to `Pipeline` in src/consumers/mod.rs:120
+  error: unresolved link to `Pipeline`
+    --> src/consumers/mod.rs:120:16
+      |
+  120 | //! with the [`Pipeline`] API or the [`Graph`] API. They support the standard
+      |                ^^^^^^^^ no item named `Pipeline` in scope
+      |
+      = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 8. Fix unresolved link to `Graph` in src/consumers/mod.rs:120
+  error: unresolved link to `Graph`
+    --> src/consumers/mod.rs:120:40
+      |
+  120 | //! with the [`Pipeline`] API or the [`Graph`] API. They support the standard
+      |                                        ^^^^^ no item named `Graph` in scope
+      |
+      = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 9. Fix unresolved link to `ConsumerConfig` in src/consumers/mod.rs:121
+  error: unresolved link to `ConsumerConfig`
+    --> src/consumers/mod.rs:121:71
+    |
+121 | //! - [ ]
+  error handling strategies and configuration options provided by [`ConsumerConfig`].
+      |                                                                       ^^^^^^^^^^^^^^ no item named `ConsumerConfig` in scope
+      |
+      = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 10. Fix unresolved link to `JsonConsumer` in src/consumers/json_consumer.rs:3
+  error: unresolved link to `JsonConsumer`
+  --> src/consumers/json_consumer.rs:3:44
+    |
+  3 | //! This module is reserved for a future [`JsonConsumer`] implementation that will
+    |                                            ^^^^^^^^^^^^ no item named `JsonConsumer` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 11. Fix unresolved link to `JsonConsumer` in src/consumers/json_consumer.rs:9
+  error: unresolved link to `JsonConsumer`
+  --> src/consumers/json_consumer.rs:9:25
+    |
+  9 | //! When implemented, [`JsonConsumer`] will:
+    |                         ^^^^^^^^^^^^ no item named `JsonConsumer` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 12. Fix unresolved link to `CommandConsumer` in src/consumers/process_consumer.rs:11
+  error: unresolved link to `CommandConsumer`
+    --> src/consumers/process_consumer.rs:11:51
+    |
+  11 | //! process to complete. This is different from [`CommandConsumer`], which executes
+    |                                                   ^^^^^^^^^^^^^^^ no item named `CommandConsumer` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 13. Fix unresolved link to `GraphBuilder` in src/graph/graph.rs:81
+  error: unresolved link to `GraphBuilder`
+    --> src/graph/graph.rs:81:48
+    |
+  81 | //! [`Graph`] is typically constructed using [`GraphBuilder`] for compile-time type
+    |                                                ^^^^^^^^^^^^ no item named `GraphBuilder` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 14. Fix unresolved link to `GraphExecution` in src/graph/graph.rs:82
+  error: unresolved link to `GraphExecution`
+    --> src/graph/graph.rs:82:39
+    |
+  82 | //! validation, then executed using [`GraphExecution`]. The execution engine handles
+    |                                       ^^^^^^^^^^^^^^ no item named `GraphExecution` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 15. Fix unresolved link to `GraphExecution` in src/graph/graph_builder.rs:93
+  error: unresolved link to `GraphExecution`
+    --> src/graph/graph_builder.rs:93:29
+    |
+  93 | //! can be executed using [`GraphExecution`]. All data flowing through the graph is
+    |                             ^^^^^^^^^^^^^^ no item named `GraphExecution` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 16. Fix unresolved link to `PathRouterTransformer` in src/graph/http_server/nodes/mod.rs:31
+  error: unresolved link to `PathRouterTransformer`
+    --> src/graph/http_server/nodes/mod.rs:31:11
+    |
+  31 | //! - **[`PathRouterTransformer`]**: Transformer that routes requests based on
+    |           ^^^^^^^^^^^^^^^^^^^^^ no item named `PathRouterTransformer` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 17. Fix unresolved link to `ArrayIndexOf` in src/graph/nodes/array_index_of.rs:3
+  error: unresolved link to `ArrayIndexOf`
+  --> src/graph/nodes/array_index_of.rs:3:44
+    |
+  3 | //! This module is reserved for a future [`ArrayIndexOf`] node implementation that will
+    |                                            ^^^^^^^^^^^^ no item named `ArrayIndexOf` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 18. Fix unresolved link to `ArrayIndexOf` in src/graph/nodes/array_index_of.rs:9
+  error: unresolved link to `ArrayIndexOf`
+  --> src/graph/nodes/array_index_of.rs:9:25
+    |
+  9 | //! When implemented, [`ArrayIndexOf`] will:
+    |                         ^^^^^^^^^^^^ no item named `ArrayIndexOf` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 19. Fix unresolved link to `ArrayLength` in src/graph/nodes/array_length.rs:3
+  error: unresolved link to `ArrayLength`
+  --> src/graph/nodes/array_length.rs:3:44
+    |
+  3 | //! This module is reserved for a future [`ArrayLength`] node implementation that will
+    |                                            ^^^^^^^^^^^ no item named `ArrayLength` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 20. Fix unresolved link to `ArrayLength` in src/graph/nodes/array_length.rs:9
+  error: unresolved link to `ArrayLength`
+  --> src/graph/nodes/array_length.rs:9:25
+    |
+  9 | //! When implemented, [`ArrayLength`] will:
+    |                         ^^^^^^^^^^^ no item named `ArrayLength` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 21. Fix unresolved link to `Batch` in src/graph/nodes/batch.rs:3
+  error: unresolved link to `Batch`
+  --> src/graph/nodes/batch.rs:3:44
+    |
+  3 | //! This module is reserved for a future [`Batch`] node implementation that will
+    |                                            ^^^^^ no item named `Batch` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 22. Fix unresolved link to `Batch` in src/graph/nodes/batch.rs:9
+  error: unresolved link to `Batch`
+  --> src/graph/nodes/batch.rs:9:25
+    |
+  9 | //! When implemented, [`Batch`] will:
+    |                         ^^^^^ no item named `Batch` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 23. Fix unresolved link to `BroadcastRouter` in src/graph/nodes/broadcast_router.rs:3
+  error: unresolved link to `BroadcastRouter`
+  --> src/graph/nodes/broadcast_router.rs:3:44
+    |
+  3 | //! This module is reserved for a future [`BroadcastRouter`] node implementation that will
+    |                                            ^^^^^^^^^^^^^^^ no item named `BroadcastRouter` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 24. Fix unresolved link to `BroadcastRouter` in src/graph/nodes/broadcast_router.rs:9
+  error: unresolved link to `BroadcastRouter`
+  --> src/graph/nodes/broadcast_router.rs:9:25
+    |
+  9 | //! When implemented, [`BroadcastRouter`] will:
+    |                         ^^^^^^^^^^^^^^^ no item named `BroadcastRouter` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 25. Fix unresolved link to `DatabaseOperationNode` in src/graph/nodes/database_operation.rs:5
+  error: unresolved link to `DatabaseOperationNode`
+  --> src/graph/nodes/database_operation.rs:5:44
+    |
+  5 | //! This module is reserved for a future [`DatabaseOperationNode`] implementation that will
+    |                                            ^^^^^^^^^^^^^^^^^^^^^ no item named `DatabaseOperationNode` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 26. Fix unresolved link to `DatabaseOperationNode` in src/graph/nodes/database_operation.rs:12
+  error: unresolved link to `DatabaseOperationNode`
+    --> src/graph/nodes/database_operation.rs:12:25
+    |
+  12 | //! When implemented, [`DatabaseOperationNode`] will provide a graph node for performing
+    |                         ^^^^^^^^^^^^^^^^^^^^^ no item named `DatabaseOperationNode` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 27. Fix unresolved link to `DatabaseOperationTransformer` in src/graph/nodes/database_operation.rs:14
+  error: unresolved link to `DatabaseOperationTransformer`
+    --> src/graph/nodes/database_operation.rs:14:7
+    |
+  14 | //! [`DatabaseOperationTransformer`] for use in StreamWeave graphs, enabling database
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no item named `DatabaseOperationTransformer` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 28. Fix unresolved link to `DatabaseOperationNode` in src/graph/nodes/database_operation.rs:27
+  error: unresolved link to `DatabaseOperationNode`
+    --> src/graph/nodes/database_operation.rs:27:11
+    |
+  27 | //! - **[`DatabaseOperationNode`]**: Node that performs database write operations (not yet implemented)
+    |           ^^^^^^^^^^^^^^^^^^^^^ no item named `DatabaseOperationNode` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 29. Fix unresolved link to `DatabaseOperationNode` in src/graph/nodes/database_operation.rs:31
+  error: unresolved link to `DatabaseOperationNode`
+    --> src/graph/nodes/database_operation.rs:31:25
+    |
+  31 | //! When implemented, [`DatabaseOperationNode`] will:
+    |                         ^^^^^^^^^^^^^^^^^^^^^ no item named `DatabaseOperationNode` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 30. Fix unresolved link to `Filter` in src/graph/nodes/drop.rs:5
+  error: unresolved link to `Filter`
+  --> src/graph/nodes/drop.rs:5:50
+    |
+  5 | //! StreamWeave graphs. This is the inverse of [`Filter`] - items where the
+    |                                                  ^^^^^^ no item named `Filter` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 31. Fix unresolved link to `VariableRead` in src/graph/nodes/variables.rs:25
+  error: unresolved link to `VariableRead`
+    --> src/graph/nodes/variables.rs:25:11
+    |
+  25 | //! - **[`VariableRead<T>`]**: Transformer that reads variables from the store
+    |           ^^^^^^^^^^^^^^^ no item named `VariableRead` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 32. Fix unresolved link to `VariableWrite` in src/graph/nodes/variables.rs:26
+  error: unresolved link to `VariableWrite`
+    --> src/graph/nodes/variables.rs:26:11
+    |
+  26 | //! - **[`VariableWrite<T>`]**: Transformer that writes variables to the store
+    |           ^^^^^^^^^^^^^^^^ no item named `VariableWrite` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 33. Fix unresolved link to `Output` in src/input.rs:55
+  error: unresolved link to `Output`
+    --> src/input.rs:55:64
+    |
+  55 | //! type-safe stream connections. It works together with the [`Output`] trait to create
+    |                                                                ^^^^^^ no item named `Output` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 34. Fix unresolved link to `onnx::OnnxRuntime` in src/ml/mod.rs:29
+  error: unresolved link to `onnx::OnnxRuntime`
+    --> src/ml/mod.rs:29:25
+    |
+  29 | //! - **[`OnnxRuntime`](onnx::OnnxRuntime)**: ONNX Runtime inference backend
+    |                         ^^^^^^^^^^^^^^^^^ no item named `OnnxRuntime` in module `onnx`
+
+- [x] 35. Fix unresolved link to `hotswap::HotSwapBackend` in src/ml/mod.rs:30
+  error: unresolved link to `hotswap::HotSwapBackend`
+    --> src/ml/mod.rs:30:28
+    |
+  30 | //! - **[`HotSwapBackend`](hotswap::HotSwapBackend)**: Hot-swappable inference backend
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^ no item named `HotSwapBackend` in module `hotswap`
+
+- [x] 36. Fix unresolved link to `crate::transformers::ml_batched_inference` in src/ml/mod.rs:106
+  error: unresolved link to `crate::transformers::ml_batched_inference`
+    --> src/ml/mod.rs:106:34
+      |
+  106 | //! and [`ml_batched_inference`](crate::transformers::ml_batched_inference) for usage examples.
+      |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no item named `ml_batched_inference` in module `transformers`
+
+- [x] 37. Fix unresolved link to `Input` in src/output.rs:55
+  error: unresolved link to `Input`
+    --> src/output.rs:55:64
+    |
+  55 | //! type-safe stream connections. It works together with the [`Input`] trait to create
+    |                                                                ^^^^^ no item named `Input` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 38. Fix unresolved link to `Producer` in src/producers/mod.rs:10
+  error: unresolved link to `Producer`
+    --> src/producers/mod.rs:10:11
+    |
+  10 | //! the [`Producer`] trait to generate streams of data that can be transformed
+    |           ^^^^^^^^ no item named `Producer` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 39. Fix unresolved link to `Producer` in src/producers/mod.rs:16
+  error: unresolved link to `Producer`
+    --> src/producers/mod.rs:16:57
+    |
+  16 | //! - **Producer Trait**: All producers implement the [`Producer`] trait
+    |                                                         ^^^^^^^^ no item named `Producer` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 40. Fix unresolved link to `ProducerConfig` in src/producers/mod.rs:19
+  error: unresolved link to `ProducerConfig`
+    --> src/producers/mod.rs:19:64
+    |
+  19 | //! - **Configuration**: Producers support configuration via [`ProducerConfig`]
+    |                                                                ^^^^^^^^^^^^^^ no item named `ProducerConfig` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 41. Fix unresolved link to `ProducerConfig` in src/producers/mod.rs:176
+  error: unresolved link to `ProducerConfig`
+    --> src/producers/mod.rs:176:47
+      |
+  176 | //! All producers support configuration via [`ProducerConfig`], which allows setting
+      |                                               ^^^^^^^^^^^^^^ no item named `ProducerConfig` in scope
+      |
+      = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 42. Fix unresolved link to `ProducerNode` in src/producers/mod.rs:185
+  error: unresolved link to `ProducerNode`
+    --> src/producers/mod.rs:185:42
+      |
+  185 | //! - **Graph API**: Wrap producers in [`ProducerNode`] for graph-based execution
+      |                                          ^^^^^^^^^^^^ no item named `ProducerNode` in scope
+      |
+      = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 43. Fix unresolved link to `ProducerNode` in src/producers/env_var_producer.rs:145
+  error: unresolved link to `ProducerNode`
+    --> src/producers/env_var_producer.rs:145:32
+      |
+  145 | //! - **Graph API**: Wrap in [`ProducerNode`] for graph-based environment processing
+      |                                ^^^^^^^^^^^^ no item named `ProducerNode` in scope
+      |
+      = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 44. Fix unresolved link to `ProducerNode` in src/producers/fs_directory_producer.rs:145
+  error: unresolved link to `ProducerNode`
+    --> src/producers/fs_directory_producer.rs:145:32
+      |
+  145 | //! - **Graph API**: Wrap in [`ProducerNode`] for graph-based directory processing
+      |                                ^^^^^^^^^^^^ no item named `ProducerNode` in scope
+      |
+      = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 45. Fix unresolved link to `ProducerNode` in src/producers/redis_producer.rs:275
+  error: unresolved link to `ProducerNode`
+    --> src/producers/redis_producer.rs:275:32
+      |
+  275 | //! - **Graph API**: Wrap in [`ProducerNode`] for graph-based execution
+      |                                ^^^^^^^^^^^^ no item named `ProducerNode` in scope
+      |
+      = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 46. Fix unresolved link to `ProducerNode` in src/producers/signal_producer.rs:140
+  error: unresolved link to `ProducerNode`
+    --> src/producers/signal_producer.rs:140:32
+      |
+  140 | //! - **Graph API**: Wrap in [`ProducerNode`] for graph-based signal handling
+      |                                ^^^^^^^^^^^^ no item named `ProducerNode` in scope
+      |
+      = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 47. Fix unresolved link to `Transformer` in src/transformers/ml_batched_inference_transformer.rs:86
+  error: unresolved link to `Transformer`
+    --> src/transformers/ml_batched_inference_transformer.rs:86:54
+    |
+  86 | //! [`BatchedInferenceTransformer`] implements the [`Transformer`] trait and can be used in any
+    |                                                      ^^^^^^^^^^^ no item named `Transformer` in scope
+    |
+    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+- [x] 48. Fix redundant explicit link target in src/ml/mod.rs:28
+  error: redundant explicit link target
+    --> src/ml/mod.rs:28:30
+    |
+  28 | //! - **[`InferenceBackend`](inference_backend::InferenceBackend)**: Trait for ML inference backends
+    |          ------------------  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ explicit target is redundant
+    |          |
+    |          because label contains path that resolves to same destination
+    |
+    = note: when a link's destination is not specified,
+            the label is used to resolve intra-doc links
+    = note: `-D rustdoc::redundant-explicit-links` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(rustdoc::redundant_explicit_links)]`
+  help: remove explicit link target
+    |
+  28 - //! - **[`InferenceBackend`](inference_backend::InferenceBackend)**: Trait for ML inference backends
+  28 + //! - **[`InferenceBackend`]**: Trait for ML inference backends
+    |
+
+- [x] 49. Fix redundant explicit link target in src/ml/mod.rs:110
+  error: redundant explicit link target
+    --> src/ml/mod.rs:110:31
+      |
+  110 | //! - **[`inference_backend`](inference_backend)**: Trait definitions for ML inference backends
+      |          -------------------  ^^^^^^^^^^^^^^^^^ explicit target is redundant
+      |          |
+      |          because label contains path that resolves to same destination
+      |
+      = note: when a link's destination is not specified,
+              the label is used to resolve intra-doc links
+  help: remove explicit link target
+      |
+  110 - //! - **[`inference_backend`](inference_backend)**: Trait definitions for ML inference backends
+  110 + //! - **[`inference_backend`]**: Trait definitions for ML inference backends
+      |
+
+- [x] 50. Fix redundant explicit link target in src/ml/mod.rs:111
+  error: redundant explicit link target
+    --> src/ml/mod.rs:111:18
+      |
+  111 | //! - **[`onnx`](onnx)**: ONNX Runtime integration
+      |          ------  ^^^^ explicit target is redundant
+      |          |
+      |          because label contains path that resolves to same destination
+      |
+      = note: when a link's destination is not specified,
+              the label is used to resolve intra-doc links
+  help: remove explicit link target
+      |
+  111 - //! - **[`onnx`](onnx)**: ONNX Runtime integration
+  111 + //! - **[`onnx`]**: ONNX Runtime integration
+      |
+
+- [x] 51. Fix redundant explicit link target in src/ml/mod.rs:112
+  error: redundant explicit link target
+    --> src/ml/mod.rs:112:21
+      |
+  112 | //! - **[`hotswap`](hotswap)**: Hot-swappable backend implementation
+      |          ---------  ^^^^^^^ explicit target is redundant
+      |          |
+      |          because label contains path that resolves to same destination
+      |
+      = note: when a link's destination is not specified,
+              the label is used to resolve intra-doc links
+  help: remove explicit link target
+      |
+  112 - //! - **[`hotswap`](hotswap)**: Hot-swappable backend implementation
+  112 + //! - **[`hotswap`]**: Hot-swappable backend implementation
+      |
+
+- [x] 52. Fix empty Rust code block in src/transformers/zip_transformer.rs:145
+  error: Rust code block is empty
+    --> src/transformers/zip_transformer.rs:145:5
+      |
+  145 |   //! ```rust
+      |  _____^
+  146 | | //! // Input: [vec![1, 2], vec![3, 4], vec![5, 6]]
+  147 | | //! // Output: [vec![1, 3, 5], vec![2, 4, 6]]
+  148 | | //! ```
+      | |_______^
+      |
+      = note: `-D rustdoc::invalid-rust-codeblocks` implied by `-D warnings`
+      = help: to override `-D warnings` add `#[allow(rustdoc::invalid_rust_codeblocks)]`
+
+- [x] 53. Fix empty Rust code block in src/transformers/zip_transformer.rs:155
+  error: Rust code block is empty
+    --> src/transformers/zip_transformer.rs:155:5
+      |
+  155 |   //! ```rust
+      |  _____^
+  156 | | //! // Input: [vec![1, 2, 3], vec![4, 5]]
+  157 | | //! // Output: [vec![1, 4], vec![2, 5]]
+  158 | | //! // Note: Item 3 is skipped because second vector has no third element
+  159 | | //! ```
+      | |_______^

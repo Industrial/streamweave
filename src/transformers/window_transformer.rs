@@ -1,3 +1,42 @@
+//! # Window Transformer
+//!
+//! Transformer that creates sliding windows of items from the input stream,
+//! grouping consecutive items into windows of a specified size. This enables
+//! window-based operations like moving averages, aggregations, and batch processing.
+//!
+//! ## Overview
+//!
+//! The Window Transformer provides:
+//!
+//! - **Sliding Windows**: Groups items into windows of a specified size
+//! - **Overlapping Windows**: Each window overlaps with the previous one (sliding)
+//! - **Batch Processing**: Enables window-based batching of stream items
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items from the stream
+//! - **Output**: `Message<Vec<T>>` - Vectors of items in sliding windows
+//!
+//! ## Window Behavior
+//!
+//! With a window size of 3, the transformer produces:
+//! - Window 1: [item1, item2, item3]
+//! - Window 2: [item2, item3, item4]
+//! - Window 3: [item3, item4, item5]
+//! - etc.
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::WindowTransformer;
+//!
+//! let transformer = WindowTransformer::new(3);
+//! // Input: [1, 2, 3, 4, 5]
+//! // Output: [vec![1, 2, 3], vec![2, 3, 4], vec![3, 4, 5]]
+//! ```
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};
 use async_trait::async_trait;

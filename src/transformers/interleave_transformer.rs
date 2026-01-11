@@ -1,4 +1,84 @@
-//! Interleave transformer for StreamWeave
+//! Interleave transformer for StreamWeave.
+//!
+//! This module provides [`InterleaveTransformer`], a transformer that interleaves
+//! items from two streams, alternating between items from the input stream and
+//! items from another stream to create a combined output stream.
+//!
+//! # Overview
+//!
+//! [`InterleaveTransformer`] is useful for combining two streams by alternating
+//! between their items. This creates an interleaved output where items from both
+//! streams are mixed together in an alternating pattern.
+//!
+//! # Key Concepts
+//!
+//! - **Stream Interleaving**: Alternates between items from two streams
+//! - **Non-Deterministic**: Uses `futures::stream::select` for async interleaving
+//! - **Stream Combination**: Combines two streams into one output stream
+//! - **Generic Type**: Works with any item type (both streams must have same type)
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`InterleaveTransformer<T>`]**: Transformer that interleaves two streams
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::InterleaveTransformer;
+//! use streamweave::PipelineBuilder;
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create another stream to interleave with
+//! let other_stream = Box::pin(stream::iter(vec![10, 20, 30]));
+//!
+//! // Create a transformer that interleaves with the other stream
+//! let transformer = InterleaveTransformer::new(other_stream);
+//!
+//! // Input: [1, 2, 3]
+//! // Other: [10, 20, 30]
+//! // Output: [1, 10, 2, 20, 3, 30] (interleaved, order may vary due to async)
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::InterleaveTransformer;
+//! use streamweave::ErrorStrategy;
+//! use futures::stream;
+//!
+//! // Create a transformer with error handling strategy
+//! let other_stream = Box::pin(stream::iter(vec![1, 2, 3]));
+//! let transformer = InterleaveTransformer::new(other_stream)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("interleaver".to_string());
+//! ```
+//!
+//! # Behavior
+//!
+//! The transformer uses `futures::stream::select` to interleave items from both
+//! streams. The exact interleaving pattern is non-deterministic and depends on
+//! which stream produces items first (async behavior). When one stream completes,
+//! remaining items from the other stream continue to be emitted.
+//!
+//! # Design Decisions
+//!
+//! - **Stream Select**: Uses `futures::stream::select` for async interleaving
+//! - **Non-Deterministic**: Interleaving order depends on async timing
+//! - **Type Matching**: Both streams must have the same item type
+//! - **Stream Ownership**: Takes ownership of the other stream
+//! - **Completion Handling**: Continues with remaining items when one stream completes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`InterleaveTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

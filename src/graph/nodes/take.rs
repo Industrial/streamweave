@@ -1,7 +1,63 @@
-//! Take node for StreamWeave graphs
+//! Take node for taking a limited number of items from streams.
 //!
-//! Takes a specified number of items from the beginning of a stream, then
-//! stops producing items.
+//! This module provides [`Take`], a graph node that takes a specified number
+//! of items from the beginning of a stream, then stops producing items. It
+//! wraps [`TakeTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Take`] is useful for limiting processing to a fixed number of items in
+//! graph-based pipelines. It passes through only the first N items and then
+//! stops producing items, making it ideal for testing, sampling, or processing
+//! a fixed number of items.
+//!
+//! # Key Concepts
+//!
+//! - **Item Taking**: Takes a specified number of items from the start
+//! - **Fixed Count**: Uses a fixed count to determine how many items to take
+//! - **Early Termination**: Stops producing items after the count is reached
+//! - **Transformer Wrapper**: Wraps `TakeTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Take<T>`]**: Node that takes a limited number of items from a stream
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Take;
+//!
+//! // Take only the first 100 items
+//! let take = Take::<i32>::new(100);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Take;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a take node with error handling
+//! let take = Take::<String>::new(50)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("sample-taker".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Fixed Count Take**: Uses a fixed count for simplicity and predictability
+//! - **Early Termination**: Stops processing after count is reached for efficiency
+//! - **Stream-Based**: Works with async streams for efficient processing
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Take`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::TakeTransformer;

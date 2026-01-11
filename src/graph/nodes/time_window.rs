@@ -1,7 +1,85 @@
-//! Time window node for StreamWeave graphs
+//! # Time Window Node
 //!
-//! Creates time-based windows of items. Groups consecutive items into windows
-//! based on time duration, producing vectors of items as windows are created.
+//! Graph node that creates time-based windows of items. This module provides
+//! [`TimeWindow`], a graph node that groups consecutive items into windows
+//! based on a time duration, producing vectors of items as windows are created.
+//! It wraps [`TimeWindowTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`TimeWindow`] is useful for creating time-based batches in graph-based
+//! pipelines. It collects items that arrive within a specified time duration
+//! and emits them as vectors when the time window expires, making it ideal
+//! for time-based aggregation and batch processing.
+//!
+//! # Key Concepts
+//!
+//! - **Time-Based Windowing**: Groups items based on time duration rather than count
+//! - **Duration Configuration**: Uses `Duration` for flexible time window specification
+//! - **Vector Output**: Produces `Vec<T>` instead of `T` (one vector per time window)
+//! - **Time-Based Batching**: Useful for processing items in time-based batches
+//! - **Transformer Wrapper**: Wraps `TimeWindowTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`TimeWindow<T>`]**: Node that creates time-based windows of items
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::TimeWindow;
+//! use std::time::Duration;
+//!
+//! // Create time windows of 5 seconds
+//! let time_window = TimeWindow::<i32>::new(Duration::from_secs(5));
+//! ```
+//!
+//! ## Different Durations
+//!
+//! ```rust
+//! use streamweave::graph::nodes::TimeWindow;
+//! use std::time::Duration;
+//!
+//! // Short windows for frequent processing (1 second)
+//! let short_window = TimeWindow::<String>::new(Duration::from_secs(1));
+//!
+//! // Long windows for batch processing (1 minute)
+//! let long_window = TimeWindow::<String>::new(Duration::from_secs(60));
+//!
+//! // Millisecond precision
+//! let ms_window = TimeWindow::<i32>::new(Duration::from_millis(500));
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::TimeWindow;
+//! use streamweave::ErrorStrategy;
+//! use std::time::Duration;
+//!
+//! // Create a time window node with error handling
+//! let time_window = TimeWindow::<i32>::new(Duration::from_secs(10))
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("time-batcher".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Duration-Based**: Uses `Duration` for flexible time window specification
+//! - **Time-Based Windowing**: Windows are based on elapsed time, not item count
+//! - **Vector Output**: Produces `Vec<T>` to represent time-based batches
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`TimeWindow`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`]. Note that the output
+//! type is `Vec<T>` rather than `T`, representing a batch of items collected
+//! within the time window.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::TimeWindowTransformer;

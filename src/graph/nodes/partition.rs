@@ -1,7 +1,66 @@
-//! Partition node for StreamWeave graphs
+//! Partition node for partitioning streams into two groups based on predicates.
 //!
-//! Partitions items by a key function. Splits the input stream into two output
-//! streams: one for items that match the predicate and one for items that don't.
+//! This module provides [`Partition`], a graph node that partitions items by a
+//! predicate function. It splits the input stream into two output streams: one
+//! for items that match the predicate and one for items that don't. It wraps
+//! [`PartitionTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Partition`] is useful for splitting streams into two groups in graph-based
+//! pipelines. It uses a predicate function to determine which partition each item
+//! belongs to, creating a tuple of two vectors: one for matching items and one
+//! for non-matching items.
+//!
+//! # Key Concepts
+//!
+//! - **Predicate-Based Partitioning**: Uses a predicate function to determine
+//!   which partition an item belongs to
+//! - **Two-Group Output**: Produces a tuple of two vectors (matching and non-matching)
+//! - **Binary Classification**: Splits items into exactly two groups based on predicate
+//! - **Transformer Wrapper**: Wraps `PartitionTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Partition<F, T>`]**: Node that partitions items based on a predicate function
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Partition;
+//!
+//! // Partition items into even and odd numbers
+//! let partition = Partition::new(|x: &i32| *x % 2 == 0);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Partition;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a partition node with error handling
+//! let partition = Partition::new(|s: &String| !s.is_empty())
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("non-empty-partitioner".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Predicate Function**: Uses a closure for flexible partitioning logic
+//! - **Binary Partitioning**: Splits into exactly two groups for simplicity
+//! - **Tuple Output**: Outputs `(Vec<T>, Vec<T>)` to represent the two partitions
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Partition`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`]. Note that the
+//! output type is `(Vec<T>, Vec<T>)` rather than `T`.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::PartitionTransformer;

@@ -1,6 +1,64 @@
-//! Object has property node for StreamWeave graphs
+//! Object has property node for filtering objects that have a specific property.
 //!
-//! Filters objects that have a specific property.
+//! This module provides [`ObjectHasProperty`], a graph node that filters JSON
+//! objects that have a specific property. It wraps [`ObjectHasPropertyTransformer`]
+//! for use in StreamWeave graphs. It filters out objects that don't have the
+//! specified property, making it ideal for data validation and filtering.
+//!
+//! # Overview
+//!
+//! [`ObjectHasProperty`] is useful for filtering JSON objects that have a specific
+//! property in graph-based pipelines. It processes JSON objects and outputs only
+//! those that contain the specified property, making it ideal for data validation
+//! and conditional processing.
+//!
+//! # Key Concepts
+//!
+//! - **Property Checking**: Checks if objects have a specific property
+//! - **Filtering**: Filters out objects that don't have the property
+//! - **JSON Value Support**: Works with `serde_json::Value` objects
+//! - **Transformer Wrapper**: Wraps `ObjectHasPropertyTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`ObjectHasProperty`]**: Node that filters objects with a specific property
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ObjectHasProperty;
+//!
+//! // Filter objects that have the "name" property
+//! let has_property = ObjectHasProperty::new("name");
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ObjectHasProperty;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create an object has property node with error handling
+//! let has_property = ObjectHasProperty::new("email")
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("email-filter".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible JSON
+//!   object handling
+//! - **Property-Based Filtering**: Filters based on property existence
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ObjectHasProperty`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::ObjectHasPropertyTransformer;

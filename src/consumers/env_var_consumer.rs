@@ -1,3 +1,89 @@
+//! Environment variable consumer for setting environment variables from stream data.
+//!
+//! This module provides [`EnvVarConsumer`], a consumer that sets environment variables
+//! from key-value pairs in a stream. Each stream item is a `(String, String)` tuple
+//! representing an environment variable name and value.
+//!
+//! # Overview
+//!
+//! [`EnvVarConsumer`] is useful for dynamically configuring the runtime environment
+//! based on stream data. It validates environment variable names according to standard
+//! conventions and handles errors gracefully using configurable error strategies.
+//!
+//! # Key Concepts
+//!
+//! - **Key-Value Pairs**: Input must be `(String, String)` tuples representing variable
+//!   name and value
+//! - **Name Validation**: Environment variable names are validated before setting
+//! - **Error Handling**: Configurable error strategies for invalid variable names
+//! - **Thread Safety**: Environment variables are set using `std::env::set_var`
+//!
+//! # Core Types
+//!
+//! - **[`EnvVarConsumer`]**: Consumer that sets environment variables from stream items
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::EnvVarConsumer;
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a consumer
+//! let mut consumer = EnvVarConsumer::new();
+//!
+//! // Create a stream of key-value pairs
+//! let stream = stream::iter(vec![
+//!     ("VAR1".to_string(), "value1".to_string()),
+//!     ("VAR2".to_string(), "value2".to_string()),
+//! ]);
+//!
+//! // Consume the stream to set environment variables
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::consumers::EnvVarConsumer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a consumer with error handling strategy
+//! let consumer = EnvVarConsumer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)  // Skip invalid names and continue
+//!     .with_name("env-config".to_string());
+//! ```
+//!
+//! # Environment Variable Name Validation
+//!
+//! Environment variable names are validated according to standard conventions:
+//!
+//! - Must not be empty
+//! - Must start with a letter or underscore
+//! - Can contain letters, digits, and underscores
+//! - Cannot contain special characters or spaces
+//!
+//! Invalid names trigger the configured error handling strategy (stop, skip, or retry).
+//!
+//! # Design Decisions
+//!
+//! - **Validation**: Environment variable names are validated to prevent invalid
+//!   assignments and provide clear error messages
+//! - **Error Handling**: Invalid names trigger configurable error strategies rather
+//!   than silently failing
+//! - **Type Safety**: Requires `(String, String)` tuples to ensure correct key-value
+//!   structure
+//!
+//! # Integration with StreamWeave
+//!
+//! [`EnvVarConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

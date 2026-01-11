@@ -1,8 +1,39 @@
-//! TCP send transformer for StreamWeave
+//! # TCP Send Transformer
 //!
-//! Sends data from stream items over TCP connections (fire-and-forget).
+//! Transformer that sends data from input items over TCP connections in a
+//! fire-and-forget manner, passing the same data through to the output stream.
+//! This is a simple send-only operation without waiting for responses.
 //!
-//! Note: For request/response patterns, use `TcpRequestTransformer` instead.
+//! ## Overview
+//!
+//! The TCP Send Transformer provides:
+//!
+//! - **TCP Sending**: Sends data over TCP connections for each input item
+//! - **Pass-Through**: Outputs the same items that were sent
+//! - **Fire-and-Forget**: Does not wait for responses (for request/response, use `TcpRequestTransformer`)
+//! - **Delimiter Support**: Optional newline or custom delimiter appending
+//! - **Error Handling**: Configurable error strategies for send failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Data to send over TCP
+//! - **Output**: `Message<String>` - The same data (pass-through)
+//!
+//! ## Use Cases
+//!
+//! - **Logging**: Send log messages to a TCP log server
+//! - **Event Streaming**: Stream events to a TCP endpoint
+//! - **Simple Communication**: Fire-and-forget TCP messaging
+//!
+//! ## Example
+//!
+//! ```rust
+//! use streamweave::transformers::TcpSendTransformer;
+//!
+//! let transformer = TcpSendTransformer::new("127.0.0.1:8080".to_string());
+//! // Input: ["hello", "world"]
+//! // Sends each string over TCP, outputs: ["hello", "world"]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

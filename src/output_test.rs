@@ -1,3 +1,40 @@
+//! # Output Trait Test Suite
+//!
+//! Comprehensive test suite for the `Output` trait, including trait implementation,
+//! type constraints, associated types, and stream compatibility.
+//!
+//! ## Test Coverage
+//!
+//! This test suite covers:
+//!
+//! - **Trait Implementation**: Verification that types correctly implement the `Output` trait
+//! - **Type Constraints**: Tests for `Send` bounds on `Output` and `OutputStream`
+//! - **Generic Output**: Tests with various payload types (i32, String, Vec<i32>)
+//! - **Associated Types**: Verification of `Output::Output` and `Output::OutputStream` types
+//! - **Stream Compatibility**: Integration with `futures::Stream` methods (map, filter, collect)
+//!
+//! ## Test Organization
+//!
+//! Tests are organized into the following sections:
+//!
+//! 1. **Trait Implementation Tests**: Basic trait implementation verification
+//! 2. **Type Constraints Tests**: `Send` trait bound validation
+//! 3. **Generic Output Tests**: Tests with different payload types
+//! 4. **Associated Type Tests**: Verification of associated type correctness
+//! 5. **Integration Tests**: End-to-end stream operations
+//! 6. **Stream Compatibility Tests**: Integration with futures stream combinators
+//!
+//! ## Key Concepts
+//!
+//! - **Output Trait**: Defines types that produce streams of `Message<T>`
+//! - **OutputStream**: A pinned, boxed stream that yields `Message<T>` items
+//! - **Type Safety**: All output types must be `Send` for cross-thread usage
+//!
+//! ## Usage
+//!
+//! These tests ensure that components implementing `Output` correctly produce
+//! streams that can be consumed by transformers and consumers in the pipeline.
+
 use crate::message::{Message, MessageId};
 use crate::output::Output;
 use futures::Stream;

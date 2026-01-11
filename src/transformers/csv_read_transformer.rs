@@ -1,7 +1,63 @@
-//! CSV read transformer for StreamWeave
+//! CSV read transformer for reading and deserializing CSV files from file paths.
 //!
-//! Takes file paths as input, outputs parsed CSV rows. Enables processing
-//! multiple CSV files in a pipeline.
+//! This module provides [`CsvReadTransformer<T>`], a transformer that reads CSV files
+//! from input file paths and deserializes them into strongly-typed Rust values.
+//! It supports processing multiple CSV files in a single pipeline.
+//!
+//! # Overview
+//!
+//! [`CsvReadTransformer`] takes file paths (String) as input and outputs deserialized
+//! CSV rows (T). It enables processing multiple CSV files in a pipeline, reading each
+//! file and streaming its rows. This is useful for batch processing, file aggregation,
+//! and multi-file data pipelines.
+//!
+//! # Key Concepts
+//!
+//! - **CSV File Reading**: Reads and parses CSV files from file system
+//! - **Type-Safe Deserialization**: Deserializes CSV rows into strongly-typed Rust types
+//! - **Multiple Files**: Processes multiple CSV files from a stream of file paths
+//! - **Configuration**: Configurable delimiter, headers, trimming, and other CSV options
+//! - **Error Handling**: Configurable error strategies for parse failures
+//!
+//! # Core Types
+//!
+//! - **[`CsvReadTransformer<T>`]**: Transformer that reads CSV files from file paths
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::CsvReadTransformer;
+//! use serde::Deserialize;
+//!
+//! #[derive(Deserialize, Clone, Debug)]
+//! struct Record {
+//!     name: String,
+//!     age: u32,
+//! }
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let transformer = CsvReadTransformer::<Record>::new();
+//! // Input: ["file1.csv", "file2.csv"]
+//! // Output: [Record { name: "Alice", age: 30 }, Record { name: "Bob", age: 25 }, ...]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Type-Safe**: Uses `DeserializeOwned` for type-safe CSV deserialization
+//! - **CSV Library**: Uses the `csv` crate for robust CSV parsing
+//! - **Blocking I/O**: Uses `spawn_blocking` for synchronous file I/O in async context
+//! - **Multiple Files**: Supports processing multiple CSV files from a stream
+//! - **Configuration**: Reuses `CsvReadConfig` from producers for consistency
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CsvReadTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::producers::CsvReadConfig;

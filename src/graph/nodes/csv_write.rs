@@ -1,7 +1,78 @@
-//! CSV write node for StreamWeave graphs
+//! CSV write node for writing data to CSV files while passing data through.
 //!
-//! Writes data to CSV files while passing data through. Takes data as input, writes to CSV,
-//! and outputs the same data, enabling writing intermediate results while continuing processing.
+//! This module provides [`CsvWrite`], a graph node that writes data to CSV files
+//! while passing the same data through to the output. It takes data as input,
+//! writes it to a CSV file, and outputs the same data, enabling writing intermediate
+//! results while continuing processing. It wraps [`CsvWriteTransformer`] for use in
+//! StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`CsvWrite`] is useful for writing intermediate results to CSV files while
+//! continuing processing in graph-based pipelines. Unlike consumers, it passes data
+//! through, making it ideal for debugging, logging, or checkpointing data at
+//! intermediate stages.
+//!
+//! # Key Concepts
+//!
+//! - **Pass-Through Operation**: Writes data to CSV while passing it through to output
+//! - **Intermediate Results**: Enables writing intermediate results without
+//!   interrupting the pipeline
+//! - **Serializable Data**: Data must implement `Serialize` for CSV conversion
+//! - **Transformer Wrapper**: Wraps `CsvWriteTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`CsvWrite<T>`]**: Node that writes data to CSV files while passing data through
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::CsvWrite;
+//! use serde::Serialize;
+//!
+//! #[derive(Serialize, Clone, Debug)]
+//! struct Record {
+//!     name: String,
+//!     age: u32,
+//! }
+//!
+//! // Create a CSV write node
+//! let csv_write = CsvWrite::<Record>::new("output.csv");
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::graph::nodes::CsvWrite;
+//! use serde::Serialize;
+//!
+//! # #[derive(Serialize, Clone, Debug)]
+//! # struct Record { name: String, age: u32 }
+//! // Create a CSV write node with custom configuration
+//! let csv_write = CsvWrite::<Record>::new("output.csv")
+//!     .with_headers(true)           // Include header row
+//!     .with_delimiter(b',')         // Comma delimiter
+//!     .with_flush_on_write(true);   // Flush after each write
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Pass-Through Pattern**: Writes data while passing it through for
+//!   intermediate result capture
+//! - **CSV Library Integration**: Uses the `csv` crate for robust CSV writing
+//! - **Serializable Data**: Requires `Serialize` trait for flexible data structure
+//!   support
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CsvWrite`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::CsvWriteTransformer;

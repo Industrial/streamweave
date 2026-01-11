@@ -1,3 +1,65 @@
+//! # Transformer Trait
+//!
+//! This module defines the `Transformer` trait for components that transform data streams
+//! in the StreamWeave framework. Transformers process items as they flow through pipelines,
+//! performing operations like filtering, mapping, aggregation, or any other transformation.
+//!
+//! ## Overview
+//!
+//! The Transformer trait provides:
+//!
+//! - **Stream Transformation**: Async transformation of input streams into output streams
+//! - **Error Handling**: Configurable error strategies per transformer
+//! - **Component Information**: Name and type information for debugging
+//! - **Configuration**: TransformerConfig for error strategy and naming
+//! - **Port System**: Type-safe input and output port definitions
+//!
+//! ## Universal Message Model
+//!
+//! **All transformers work with `Message<T>` where `T` is the payload type.**
+//! Both `Transformer::Input` and `Transformer::Output` are `Message<T>` types.
+//! This enables:
+//!
+//! - Message ID preservation through transformations
+//! - Metadata preservation and modification
+//! - End-to-end message tracking
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformer::Transformer;
+//! use crate::transformers::MapTransformer;
+//! use crate::message::Message;
+//! use futures::stream;
+//! use futures::StreamExt;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let mut transformer = MapTransformer::<_, i32, i32>::new(|x| x * 2);
+//! let input_stream = Box::pin(stream::iter(vec![1, 2, 3]));
+//!
+//! let mut output_stream = transformer.transform(input_stream).await;
+//! while let Some(msg) = output_stream.next().await {
+//!     // msg is Message<i32> with doubled value
+//!     println!("Transformed: {:?}", msg.payload());
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Key Concepts
+//!
+//! - **Transformer**: A component that transforms streams of `Message<T>`
+//! - **TransformerConfig**: Configuration including error strategy and component name
+//! - **Error Strategy**: How to handle errors during transformation (Stop, Skip, Retry, Custom)
+//! - **InputPorts/OutputPorts**: Type-level port definitions (default to single port each)
+//!
+//! ## Usage
+//!
+//! Transformers are the core processing components in StreamWeave. They can perform
+//! any transformation on message streams while preserving message IDs and allowing
+//! metadata modification. Common transformers include map, filter, aggregate, and
+//! custom business logic transformations.
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::port::PortList;
 use crate::{input::Input, output::Output};

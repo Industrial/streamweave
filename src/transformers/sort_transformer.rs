@@ -1,4 +1,39 @@
-//! Sort transformer for StreamWeave
+//! # Sort Transformer
+//!
+//! Transformer that sorts items in the input stream by collecting all items,
+//! sorting them, and then emitting them in sorted order. This enables ordering
+//! operations on stream data, though it requires buffering all items.
+//!
+//! ## Overview
+//!
+//! The Sort Transformer provides:
+//!
+//! - **Stream Sorting**: Sorts all items from the input stream
+//! - **Full Buffering**: Collects all items before sorting (requires memory for all items)
+//! - **Ord Requirement**: Items must implement `Ord` trait for comparison
+//! - **Type Generic**: Works with any `Send + Sync + Clone + Ord` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to sort
+//! - **Output**: `Message<T>` - Sorted items (in ascending order)
+//!
+//! ## Performance Considerations
+//!
+//! This transformer buffers all items in memory before sorting, so it's not
+//! suitable for very large streams. Consider using windowing or chunking for
+//! large datasets.
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::SortTransformer;
+//!
+//! let transformer = SortTransformer::new();
+//! // Input: [3, 1, 4, 1, 5]
+//! // Output: [1, 1, 3, 4, 5] (sorted)
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

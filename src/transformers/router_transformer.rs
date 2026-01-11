@@ -1,4 +1,44 @@
-//! Router transformer for StreamWeave
+//! # Router Transformer
+//!
+//! Transformer that routes elements based on content to specific destinations.
+//! This enables conditional routing, fan-out patterns, and dynamic destination
+//! selection based on item content or routing logic.
+//!
+//! ## Overview
+//!
+//! The Router Transformer provides:
+//!
+//! - **Content-Based Routing**: Routes items based on routing function decisions
+//! - **Multiple Destinations**: Supports named destinations, indices, default, and drop
+//! - **Dynamic Routing**: Routing decisions made per item based on content
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to route
+//! - **Output**: `Message<T>` - Routed items (may be filtered/dropped based on routing)
+//!
+//! ## Route Targets
+//!
+//! - **Named**: Route to a specific named destination
+//! - **Index**: Route to a numeric index destination
+//! - **Default**: Route to the default destination
+//! - **Drop**: Drop the item (don't route)
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::{RouterTransformer, RouteTarget};
+//!
+//! let transformer = RouterTransformer::new(|item: &i32| {
+//!     if *item > 10 {
+//!         RouteTarget::named("high")
+//!     } else {
+//!         RouteTarget::named("low")
+//!     }
+//! });
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

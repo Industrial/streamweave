@@ -1,4 +1,84 @@
-//! Limit transformer for StreamWeave
+//! Limit transformer for StreamWeave.
+//!
+//! This module provides [`LimitTransformer`], a transformer that limits the number
+//! of items passed through a stream. It stops producing items after a specified
+//! number of items have been processed, effectively truncating the stream.
+//!
+//! # Overview
+//!
+//! [`LimitTransformer`] is useful for truncating streams to a specific number of
+//! items. This is commonly used for testing, sampling, or processing only a subset
+//! of data from a larger stream.
+//!
+//! # Key Concepts
+//!
+//! - **Item Limiting**: Stops producing items after a specified count
+//! - **Stream Truncation**: Effectively truncates the stream at the limit
+//! - **Early Termination**: Stops processing once the limit is reached
+//! - **Generic Type**: Works with any item type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`LimitTransformer<T>`]**: Transformer that limits the number of items
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::LimitTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that limits to 10 items
+//! let transformer = LimitTransformer::new(10);
+//!
+//! // Input: [1, 2, 3, ..., 100]
+//! // Output: [1, 2, 3, ..., 10]  (only first 10 items)
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Sampling Data
+//!
+//! ```rust
+//! use streamweave::transformers::LimitTransformer;
+//!
+//! // Sample first 100 items from a large stream
+//! let transformer = LimitTransformer::new(100)
+//!     .with_name("sampler".to_string());
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::LimitTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = LimitTransformer::new(50)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("limit-50".to_string());
+//! ```
+//!
+//! # Behavior
+//!
+//! The transformer processes items sequentially and stops after emitting the
+//! specified number of items. Items beyond the limit are not processed or emitted.
+//!
+//! # Design Decisions
+//!
+//! - **Simple Limit**: Uses a `usize` for straightforward count-based limiting
+//! - **Early Termination**: Stops processing once limit is reached (efficient)
+//! - **Generic Type**: Works with any item type for maximum flexibility
+//! - **Stream Take**: Uses `StreamExt::take` for efficient stream truncation
+//!
+//! # Integration with StreamWeave
+//!
+//! [`LimitTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

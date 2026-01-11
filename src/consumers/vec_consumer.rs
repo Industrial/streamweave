@@ -1,3 +1,77 @@
+//! Vector consumer for collecting stream items into a Vec.
+//!
+//! This module provides [`VecConsumer`], a consumer that collects all stream items
+//! into an in-memory `Vec`. It's useful for testing, debugging, and scenarios where
+//! all items need to be collected before processing.
+//!
+//! # Overview
+//!
+//! [`VecConsumer`] is useful for collecting stream items into a vector for batch
+//! processing, testing, and debugging. It stores all items in memory in the order
+//! they are received, and provides methods to access and consume the collected items.
+//!
+//! # Key Concepts
+//!
+//! - **In-Memory Collection**: Collects all items into a `Vec` in memory
+//! - **Order Preservation**: Items are stored in the order they are received
+//! - **Consumption**: Provides methods to extract the collected vector
+//! - **Capacity Management**: Supports pre-allocated capacity for performance
+//!
+//! # Core Types
+//!
+//! - **[`VecConsumer<T>`]**: Consumer that collects items into a Vec
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::VecConsumer;
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a consumer
+//! let mut consumer = VecConsumer::<i32>::new();
+//!
+//! // Create a stream of items
+//! let stream = stream::iter(vec![1, 2, 3, 4, 5]);
+//!
+//! // Consume the stream (items collected in Vec)
+//! consumer.consume(Box::pin(stream)).await;
+//!
+//! // Access collected items
+//! assert_eq!(consumer.vec.len(), 5);
+//!
+//! // Extract the vector
+//! let items = consumer.into_vec();
+//! assert_eq!(items, vec![1, 2, 3, 4, 5]);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Pre-allocated Capacity
+//!
+//! ```rust
+//! use streamweave::consumers::VecConsumer;
+//!
+//! // Create a consumer with pre-allocated capacity
+//! let consumer = VecConsumer::<String>::with_capacity(1000)
+//!     .with_name("item-collector".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **In-Memory Storage**: Uses in-memory storage for simple, fast access
+//! - **Order Preservation**: Maintains item order for predictable behavior
+//! - **Capacity Management**: Supports pre-allocation to avoid reallocations
+//! - **Simple Interface**: Provides straightforward methods for accessing collected items
+//!
+//! # Integration with StreamWeave
+//!
+//! [`VecConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

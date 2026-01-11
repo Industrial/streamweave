@@ -1,6 +1,46 @@
-//! Database operation transformer for StreamWeave
+//! # Database Operation Transformer
 //!
-//! Performs INSERT/UPDATE/DELETE operations from stream items, useful for graph composition.
+//! Transformer that performs database operations (INSERT, UPDATE, DELETE) from stream items,
+//! passing the same data through to the output stream. This enables database write operations
+//! while continuing the main pipeline flow, useful for graph composition and intermediate
+//! persistence.
+//!
+//! ## Overview
+//!
+//! The Database Operation Transformer provides:
+//!
+//! - **Database Operations**: Performs INSERT, UPDATE, or DELETE operations on database tables
+//! - **Pass-Through**: Outputs the same items that were written to the database
+//! - **Multi-Database Support**: Works with PostgreSQL, MySQL, and SQLite
+//! - **Batch Operations**: Supports batch insertion for improved performance
+//! - **Error Handling**: Configurable error strategies for operation failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<DatabaseRow>` or `Message<serde_json::Value>` - Data to write to database
+//! - **Output**: `Message<DatabaseRow>` or `Message<serde_json::Value>` - The same data (pass-through)
+//!
+//! ## Operation Types
+//!
+//! - **Insert**: Inserts new rows into the database table
+//! - **Update**: Updates existing rows in the database table
+//! - **Delete**: Deletes rows from the database table
+//!
+//! ## Example
+//!
+//! ```rust
+//! use streamweave::transformers::{DatabaseOperationTransformer, DatabaseOperation};
+//! use streamweave::db::{DatabaseConsumerConfig, DatabaseType};
+//!
+//! let config = DatabaseConsumerConfig::default()
+//!   .with_connection_url("postgresql://user:pass@localhost/db")
+//!   .with_database_type(DatabaseType::Postgres)
+//!   .with_table_name("users");
+//!
+//! let transformer = DatabaseOperationTransformer::new(config, DatabaseOperation::Insert);
+//! // Input: [DatabaseRow, ...]
+//! // Output: [DatabaseRow, ...] (pass-through)
+//! ```
 
 use crate::db::{DatabaseConsumerConfig, DatabaseRow, DatabaseType};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

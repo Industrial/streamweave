@@ -1,6 +1,85 @@
-//! TCP consumer for StreamWeave
+//! TCP consumer for streaming data over TCP connections.
 //!
-//! Sends data to TCP connections.
+//! This module provides [`TcpConsumer`] and [`TcpConsumerConfig`], a consumer that
+//! sends stream data to a TCP server. Items are written over a TCP connection with
+//! configurable delimiters and connection timeouts.
+//!
+//! # Overview
+//!
+//! [`TcpConsumer`] is useful for streaming data to TCP servers, network services, and
+//! remote systems. It establishes a single TCP connection and sends all stream items
+//! over that connection, with configurable message formatting and connection settings.
+//!
+//! # Key Concepts
+//!
+//! - **TCP Connection**: Establishes a single TCP connection to the remote server
+//! - **Configurable Formatting**: Supports newline or custom delimiters between messages
+//! - **Connection Timeout**: Configurable timeout for connection establishment
+//! - **String Input**: Items must be strings for network transmission
+//!
+//! # Core Types
+//!
+//! - **[`TcpConsumer`]**: Consumer that sends stream items to a TCP server
+//! - **[`TcpConsumerConfig`]**: Configuration for TCP consumer behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::{TcpConsumer, TcpConsumerConfig};
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create TCP configuration
+//! let tcp_config = TcpConsumerConfig::default()
+//!     .with_address("127.0.0.1:8080")
+//!     .with_timeout_secs(10)
+//!     .with_append_newline(true);
+//!
+//! // Create a consumer
+//! let mut consumer = TcpConsumer::new(tcp_config);
+//!
+//! // Create a stream of messages
+//! let stream = stream::iter(vec![
+//!     "message1".to_string(),
+//!     "message2".to_string(),
+//!     "message3".to_string(),
+//! ]);
+//!
+//! // Consume the stream (messages sent over TCP)
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Custom Delimiter
+//!
+//! ```rust
+//! use streamweave::consumers::{TcpConsumer, TcpConsumerConfig};
+//!
+//! // Create TCP configuration with custom delimiter
+//! let tcp_config = TcpConsumerConfig::default()
+//!     .with_address("127.0.0.1:8080")
+//!     .with_append_newline(false)
+//!     .with_delimiter(Some(vec![0x00]));  // Null byte delimiter
+//!
+//! let consumer = TcpConsumer::new(tcp_config);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Single Connection**: Uses one TCP connection for all items, efficient for streaming
+//! - **Configurable Formatting**: Supports both newline and custom delimiters for
+//!   different network protocols
+//! - **Connection Timeout**: Prevents indefinite blocking on connection failures
+//! - **String Input**: Requires string input for network transmission
+//!
+//! # Integration with StreamWeave
+//!
+//! [`TcpConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};

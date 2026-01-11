@@ -1,4 +1,77 @@
-//! Merge transformer for StreamWeave
+//! Merge transformer for combining multiple streams into one.
+//!
+//! This module provides [`MergeTransformer<T>`], a transformer that merges multiple
+//! input streams into a single output stream. Items are interleaved as they become
+//! available, making it useful for combining data from multiple sources, parallel
+//! processing results, or aggregating streams from different producers.
+//!
+//! # Overview
+//!
+//! [`MergeTransformer`] combines items from multiple streams into a single stream.
+//! It uses fair interleaving (via `futures::stream::select_all`), meaning items are
+//! emitted as soon as they're available from any stream. This provides efficient
+//! merging without blocking on slower streams.
+//!
+//! # Key Concepts
+//!
+//! - **Stream Merging**: Combines multiple streams into one
+//! - **Fair Interleaving**: Items are interleaved as they become available
+//! - **Dynamic Streams**: Streams can be added using `add_stream`
+//! - **Non-Blocking**: Doesn't block on slower streams
+//! - **Generic Type**: Works with any item type
+//!
+//! # Core Types
+//!
+//! - **[`MergeTransformer<T>`]**: Transformer that merges multiple streams
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::MergeTransformer;
+//! use streamweave::PipelineBuilder;
+//! use futures::stream;
+//! use std::pin::Pin;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a merge transformer
+//! let mut merger = MergeTransformer::<i32>::new();
+//!
+//! // Add streams to merge
+//! merger.add_stream(Box::pin(stream::iter(vec![1, 2, 3])));
+//! merger.add_stream(Box::pin(stream::iter(vec![4, 5, 6])));
+//!
+//! // Output: Interleaved items from both streams (order depends on availability)
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::MergeTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a merger with error handling
+//! let merger = MergeTransformer::<String>::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("stream-merger".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Fair Interleaving**: Uses `select_all` for fair, non-blocking interleaving
+//! - **Dynamic Streams**: Supports adding streams dynamically via `add_stream`
+//! - **Stream Consumption**: Takes ownership of streams for efficient processing
+//! - **Generic Type**: Generic over item type for maximum flexibility
+//! - **Simple Merging**: Straightforward merge operation without complex ordering
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MergeTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

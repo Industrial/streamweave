@@ -1,3 +1,39 @@
+//! # Window Test Suite
+//!
+//! Comprehensive test suite for windowing operations, including time windows,
+//! count windows, session windows, triggers, assigners, and watermark generation.
+//!
+//! ## Test Coverage
+//!
+//! This test suite covers:
+//!
+//! - **Window Types**: TimeWindow, CountWindow, SessionWindow, and GlobalWindow
+//! - **Window Operations**: Window creation, merging, intersection, and containment checks
+//! - **Triggers**: EventTimeTrigger, CountTrigger, SessionTrigger, ProcessingTimeTrigger, NeverTrigger
+//! - **Window Assigners**: Tumbling, Sliding, Session, Count, and Global window assigners
+//! - **Watermark Generation**: Monotonic, BoundedOutOfOrderness, and Periodic watermark generators
+//! - **Late Data Handling**: Late data policies and evaluation
+//! - **Window State**: State management for windowed operations
+//! - **Window Configuration**: Late data policies and allowed lateness settings
+//!
+//! ## Test Organization
+//!
+//! Tests are organized by component:
+//!
+//! - Trigger result tests
+//! - Late data policy tests
+//! - Window error tests
+//! - Time window tests
+//! - Count window tests
+//! - Session window tests
+//! - Trigger tests (EventTime, Count, Session, ProcessingTime, Never)
+//! - Window assigner tests (Tumbling, Sliding, Session, Count, Global)
+//! - Window config tests
+//! - Watermark tests
+//! - Watermark generator tests
+//! - Late data handler tests
+//! - Window state tests
+
 use crate::window::*;
 use chrono::{DateTime, Utc};
 use std::time::Duration;

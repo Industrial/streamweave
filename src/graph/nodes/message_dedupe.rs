@@ -1,7 +1,67 @@
-//! Message deduplication node for StreamWeave graphs
+//! Message deduplication node for removing duplicate messages from streams.
 //!
-//! Deduplicates messages based on message IDs or content. Filters duplicate
-//! messages based on their unique identifiers.
+//! This module provides [`MessageDedupe`], a graph node that deduplicates messages
+//! based on message IDs or content. It filters duplicate messages based on their
+//! unique identifiers, maintaining a cache of recently seen message IDs. It wraps
+//! [`MessageDedupeTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`MessageDedupe`] is useful for removing duplicate messages from streams in
+//! graph-based pipelines. It maintains a cache of recently seen message IDs and
+//! filters out any messages whose ID has already been seen within the configured
+//! window, making it ideal for ensuring message uniqueness.
+//!
+//! # Key Concepts
+//!
+//! - **Message Deduplication**: Filters duplicate messages based on message IDs
+//! - **Deduplication Window**: Configurable window for determining what counts as a duplicate
+//! - **ID-Based Filtering**: Uses message IDs for efficient duplicate detection
+//! - **Transformer Wrapper**: Wraps `MessageDedupeTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`MessageDedupe<T>`]**: Node that deduplicates messages based on IDs
+//! - **[`DeduplicationWindow`]**: Enum representing different window types (Count, Time)
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MessageDedupe;
+//! use streamweave::transformers::DeduplicationWindow;
+//!
+//! // Create a message dedupe node with count-based window
+//! let dedupe = MessageDedupe::<i32>::new()
+//!     .with_window(DeduplicationWindow::Count(1000));
+//! ```
+//!
+//! ## With Time-Based Window
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MessageDedupe;
+//! use streamweave::transformers::DeduplicationWindow;
+//! use std::time::Duration;
+//!
+//! // Create a message dedupe node with time-based window
+//! let dedupe = MessageDedupe::<String>::new()
+//!     .with_window(DeduplicationWindow::Time(Duration::from_secs(60)));
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Message ID-Based**: Uses message IDs for efficient duplicate detection
+//! - **Configurable Window**: Supports both count-based and time-based windows
+//! - **Cache Management**: Maintains a cache of recently seen IDs for efficiency
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MessageDedupe`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::message::Message;

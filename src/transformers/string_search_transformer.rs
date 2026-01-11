@@ -1,6 +1,96 @@
-//! String search transformer for StreamWeave
+//! # String Search Transformer
 //!
-//! Searches for regex patterns in strings, producing match information.
+//! Transformer that searches for regex patterns in input strings, returning the
+//! first match found or None if no match exists. Useful for extracting specific
+//! patterns from text data. This module provides [`StringSearchTransformer`],
+//! a transformer that performs regex pattern searching on strings in streaming
+//! pipelines.
+//!
+//! # Overview
+//!
+//! [`StringSearchTransformer`] is useful for extracting patterns from strings in
+//! streaming data processing pipelines. It searches for the first occurrence of
+//! a regex pattern and returns the matched substring, making it ideal for data
+//! extraction and pattern matching operations.
+//!
+//! # Key Concepts
+//!
+//! - **Regex Matching**: Searches for the first match of a regex pattern
+//! - **Optional Results**: Returns `Option<String>` (Some if match found, None otherwise)
+//! - **Pattern Compilation**: Compiles regex patterns at construction time for efficiency
+//! - **Data Extraction**: Useful for extracting specific patterns from text
+//! - **Error Handling**: Configurable error strategies for invalid patterns
+//!
+//! # Core Types
+//!
+//! - **[`StringSearchTransformer`]**: Transformer that searches for regex patterns in strings
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::StringSearchTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that searches for digits
+//! let transformer = StringSearchTransformer::new(r"\d+")?;
+//!
+//! // Input: ["hello 123 world", "abc", "test 456"]
+//! // Output: [Some("123"), None, Some("456")]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Extracting Email Addresses
+//!
+//! ```rust
+//! use streamweave::transformers::StringSearchTransformer;
+//!
+//! // Search for email addresses
+//! let transformer = StringSearchTransformer::new(
+//!     r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+//! )?;
+//! // Input: ["Contact us at info@example.com"]
+//! // Output: [Some("info@example.com")]
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::StringSearchTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = StringSearchTransformer::new(r"\d+")?
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("number-extractor".to_string());
+//! ```
+//!
+//! # Pattern Matching
+//!
+//! The transformer uses Rust's `regex` crate for pattern matching. The pattern
+//! is compiled at construction time, making repeated searches efficient. It
+//! finds the first match in each input string and returns it as `Some(match)`,
+//! or `None` if no match is found.
+//!
+//! # Design Decisions
+//!
+//! - **First Match Only**: Returns only the first match for simplicity and efficiency
+//! - **Pattern Compilation**: Compiles regex patterns at construction time for
+//!   better performance in streaming scenarios
+//! - **Optional Output**: Returns `Option<String>` to handle cases where no match
+//!   is found without error
+//! - **Error Propagation**: Returns `Result` from constructor for invalid patterns
+//!
+//! # Integration with StreamWeave
+//!
+//! [`StringSearchTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`]. Note that the output
+//! type is `Option<String>`, so downstream transformers should handle `None` values
+//! appropriately.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

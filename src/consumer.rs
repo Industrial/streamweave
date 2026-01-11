@@ -1,3 +1,58 @@
+//! # Consumer Trait
+//!
+//! This module defines the `Consumer` trait for components that consume data streams
+//! in the StreamWeave framework. Consumers are the end point of pipelines, receiving
+//! processed items and typically writing them to destinations or performing final actions.
+//!
+//! ## Overview
+//!
+//! The Consumer trait provides:
+//!
+//! - **Stream Consumption**: Async consumption of input streams
+//! - **Error Handling**: Configurable error strategies per consumer
+//! - **Component Information**: Name and type information for debugging
+//! - **Configuration**: ConsumerConfig for error strategy and naming
+//! - **Port System**: Type-safe input port definitions
+//!
+//! ## Universal Message Model
+//!
+//! **All consumers receive `Message<T>` where `T` is the payload type.**
+//! This enables:
+//!
+//! - Access to message IDs for tracking and correlation
+//! - Access to metadata for logging, routing, or processing decisions
+//! - End-to-end message traceability
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::consumer::Consumer;
+//! use crate::consumers::VecConsumer;
+//! use crate::message::Message;
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let mut consumer = VecConsumer::<i32>::new();
+//! let input_stream = Box::pin(stream::iter(vec![1, 2, 3]));
+//!
+//! consumer.consume(input_stream).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Key Concepts
+//!
+//! - **Consumer**: A component that consumes streams of `Message<T>`
+//! - **ConsumerConfig**: Configuration including error strategy and component name
+//! - **Error Strategy**: How to handle errors during consumption (Stop, Skip, Retry, Custom)
+//! - **InputPorts**: Type-level port definitions for input (defaults to single port)
+//!
+//! ## Usage
+//!
+//! Consumers are typically used at the end of pipelines to write results to files,
+//! databases, or other destinations. They can also be used in graphs for complex
+//! topologies with multiple consumers.
+
 use crate::Input;
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::port::PortList;

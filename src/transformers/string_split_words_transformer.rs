@@ -1,6 +1,32 @@
-//! String split words transformer for StreamWeave
+//! # String Split Words Transformer
 //!
-//! Splits strings into words, producing a stream of words.
+//! Transformer that splits input strings into individual words by whitespace,
+//! producing a stream where each word is a separate output item.
+//!
+//! ## Overview
+//!
+//! The String Split Words Transformer provides:
+//!
+//! - **Word Splitting**: Splits strings into words by whitespace boundaries
+//! - **One-to-Many**: Each input string can produce multiple output words
+//! - **Whitespace Handling**: Handles multiple consecutive whitespace characters
+//! - **Error Handling**: Configurable error strategies for invalid inputs
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Strings to split into words
+//! - **Output**: `Message<String>` - Individual words from the input strings
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::StringSplitWordsTransformer;
+//! use crate::message::Message;
+//!
+//! let transformer = StringSplitWordsTransformer::new();
+//! // Input: ["hello world", "foo bar baz"]
+//! // Output: ["hello", "world", "foo", "bar", "baz"]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

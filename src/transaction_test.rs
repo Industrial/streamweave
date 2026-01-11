@@ -1,3 +1,38 @@
+//! # Transaction Test Suite
+//!
+//! Comprehensive test suite for transaction management, including transaction
+//! lifecycle, savepoints, offset buffering, and transaction coordination.
+//!
+//! ## Test Coverage
+//!
+//! This test suite covers:
+//!
+//! - **Transaction IDs**: Unique identifier generation and management
+//! - **Transaction States**: Active, Committed, RolledBack, and TimedOut states
+//! - **Transaction Lifecycle**: Begin, commit, rollback operations
+//! - **Savepoints**: Creating, rolling back to, and releasing savepoints
+//! - **Offset Buffering**: Buffering offsets within transactions before commit
+//! - **Transaction Manager**: High-level transaction coordination and management
+//! - **Transactional Context**: Convenient wrapper for transaction operations
+//! - **Timeout Handling**: Transaction timeout detection and handling
+//! - **Nesting Limits**: Nested transaction and savepoint limits
+//! - **Metadata Management**: Transaction metadata storage and retrieval
+//!
+//! ## Test Organization
+//!
+//! Tests are organized by component:
+//!
+//! - Transaction ID tests
+//! - Transaction state tests
+//! - Transaction error tests
+//! - Transaction config tests
+//! - Savepoint tests
+//! - Buffered offset tests
+//! - Transaction struct tests
+//! - Transaction manager tests
+//! - Transaction info tests
+//! - Transactional context tests
+
 use crate::offset::{InMemoryOffsetStore, Offset, OffsetError};
 use crate::transaction::*;
 use std::time::Duration;

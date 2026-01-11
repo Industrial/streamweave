@@ -1,7 +1,75 @@
-//! CSV read node for StreamWeave graphs
+//! CSV read node for reading CSV files in graphs.
 //!
-//! Reads CSV files from file paths. Takes file paths as input and outputs
-//! parsed CSV rows, enabling processing of multiple CSV files in a pipeline.
+//! This module provides [`CsvRead`], a graph node that reads CSV files from file paths.
+//! It takes file paths as input and outputs deserialized CSV rows, enabling processing
+//! of multiple CSV files in graph-based pipelines. It wraps [`CsvReadTransformer`]
+//! for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`CsvRead`] is useful for reading CSV files in graph-based pipelines. It supports
+//! configurable delimiters, headers, and flexible column handling, making it ideal
+//! for processing CSV data from various sources.
+//!
+//! # Key Concepts
+//!
+//! - **File Path Input**: Takes file paths (String) as input
+//! - **Type-Safe Deserialization**: Deserializes CSV rows into typed structures
+//! - **Configurable Parsing**: Supports custom delimiters, header detection, and
+//!   flexible column handling
+//! - **Transformer Wrapper**: Wraps `CsvReadTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`CsvRead<T>`]**: Node that reads CSV files from file paths
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::CsvRead;
+//! use serde::Deserialize;
+//!
+//! #[derive(Deserialize, Clone, Debug)]
+//! struct Record {
+//!     name: String,
+//!     age: u32,
+//! }
+//!
+//! // Create a CSV read node
+//! let csv_read = CsvRead::<Record>::new();
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::graph::nodes::CsvRead;
+//! use serde::Deserialize;
+//!
+//! # #[derive(Deserialize, Clone, Debug)]
+//! # struct Record { name: String, age: u32 }
+//! // Create a CSV read node with custom configuration
+//! let csv_read = CsvRead::<Record>::new()
+//!     .with_headers(true)           // First row is headers
+//!     .with_delimiter(b';')         // Semicolon delimiter
+//!     .with_flexible(true);         // Allow flexible column counts
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **CSV Library Integration**: Uses the `csv` crate for robust CSV parsing
+//! - **Type-Safe Deserialization**: Supports deserialization into typed structures
+//!   using Serde
+//! - **File Path Input**: Takes file paths as input for processing multiple files
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CsvRead`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::CsvReadTransformer;

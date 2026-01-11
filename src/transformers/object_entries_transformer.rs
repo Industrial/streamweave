@@ -1,6 +1,76 @@
-//! Object entries transformer for StreamWeave
+//! Object entries transformer for StreamWeave.
 //!
-//! Extracts key-value pairs from JSON objects, producing a stream of arrays of [key, value] pairs.
+//! This module provides [`ObjectEntriesTransformer`], a transformer that extracts
+//! key-value pairs from JSON objects, producing arrays of [key, value] pairs. It
+//! processes JSON objects and converts them into arrays of entry pairs, making it
+//! ideal for object iteration and key-value extraction operations.
+//!
+//! # Overview
+//!
+//! [`ObjectEntriesTransformer`] is useful for extracting key-value pairs from JSON
+//! objects in streaming pipelines. It processes JSON objects and converts them
+//! into arrays of [key, value] pairs, similar to JavaScript's `Object.entries()`
+//! function.
+//!
+//! # Key Concepts
+//!
+//! - **Entry Extraction**: Extracts key-value pairs from JSON objects
+//! - **Array Output**: Produces arrays of [key, value] pairs
+//! - **Object Processing**: Works with JSON objects only
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`ObjectEntriesTransformer`]**: Transformer that extracts object entries
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectEntriesTransformer;
+//! use streamweave::PipelineBuilder;
+//! use serde_json::json;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that extracts object entries
+//! let transformer = ObjectEntriesTransformer::new();
+//!
+//! // Input: [json!({"name": "John", "age": 30})]
+//! // Output: [json!([["name", "John"], ["age", 30]])]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectEntriesTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = ObjectEntriesTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("entries-extractor".to_string());
+//! ```
+//!
+//! # Behavior
+//!
+//! The transformer extracts all key-value pairs from each input JSON object and
+//! produces an array of [key, value] pairs. Non-object values produce empty arrays.
+//!
+//! # Design Decisions
+//!
+//! - **Object-Only**: Works with JSON objects, returns empty array for non-objects
+//! - **Entry Format**: Uses [key, value] array format for each entry
+//! - **Array Output**: Produces arrays of entries for easy iteration
+//! - **Simple Extraction**: Focuses solely on entry extraction for clarity
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ObjectEntriesTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};
@@ -17,10 +87,11 @@ use std::pin::Pin;
 ///
 /// ```rust
 /// use streamweave::transformers::ObjectEntriesTransformer;
+/// use serde_json::json;
 ///
 /// let transformer = ObjectEntriesTransformer::new();
-/// // Input: [{"name": "John", "age": 30}]
-/// // Output: [[["name", "John"], ["age", 30]]]
+/// // Input: [json!({"name": "John", "age": 30})]
+/// // Output: [json!([["name", "John"], ["age", 30]])]
 /// ```
 pub struct ObjectEntriesTransformer {
   /// Configuration for the transformer

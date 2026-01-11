@@ -1,7 +1,32 @@
-//! Directory create transformer for StreamWeave
+//! # File System Directory Create Transformer
 //!
-//! Creates directories from path strings while passing paths through. Takes path strings as input,
-//! creates directories, and outputs the same paths, enabling creating directories and continuing processing.
+//! Transformer that creates directories from input path strings while passing the same
+//! paths through to the output stream. This enables creating directory structures
+//! while continuing the main pipeline flow.
+//!
+//! ## Overview
+//!
+//! The File System Directory Create Transformer provides:
+//!
+//! - **Directory Creation**: Creates directories (with all parent directories) from paths
+//! - **Pass-Through**: Outputs the same paths that were used to create directories
+//! - **Recursive Creation**: Automatically creates parent directories as needed
+//! - **Error Handling**: Configurable error strategies for creation failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Directory paths to create
+//! - **Output**: `Message<String>` - The same paths (pass-through)
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::FsDirectoryCreateTransformer;
+//!
+//! let transformer = FsDirectoryCreateTransformer::new();
+//! // Input: ["/path/to/dir1", "/path/to/dir2", ...]
+//! // Creates directories and outputs: ["/path/to/dir1", "/path/to/dir2", ...]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

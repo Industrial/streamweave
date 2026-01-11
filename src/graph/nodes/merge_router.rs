@@ -1,7 +1,75 @@
-//! # Merge Router
+//! Merge router for merging multiple input streams into a single output stream.
 //!
-//! This module provides a MergeRouter that merges multiple input streams
-//! into a single output stream according to a merge strategy.
+//! This module provides [`MergeRouter`] and [`MergeStrategy`], types for merging
+//! multiple input streams into a single output stream according to a merge strategy
+//! in graph-based pipelines. It implements fan-in patterns, combining items from
+//! multiple input ports into a single stream. It implements [`InputRouter`] for
+//! use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`MergeRouter`] is useful for merging multiple streams in graph-based pipelines.
+//! It combines items from multiple input streams into a single output stream using
+//! various merge strategies, making it ideal for fan-in patterns and stream
+//! combination workflows.
+//!
+//! # Key Concepts
+//!
+//! - **Stream Merging**: Combines multiple input streams into a single output stream
+//! - **Merge Strategies**: Supports different merge strategies (Sequential, RoundRobin,
+//!   Priority, Interleave)
+//! - **Fan-In Pattern**: Implements fan-in patterns for combining multiple streams
+//! - **Router Trait**: Implements `InputRouter` for integration with graph system
+//!
+//! # Core Types
+//!
+//! - **[`MergeRouter<I>`]**: Router that merges multiple input streams
+//! - **[`MergeStrategy`]**: Enum representing different merge strategies
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::{MergeRouter, MergeStrategy};
+//!
+//! // Create a merge router with interleave strategy
+//! let router = MergeRouter::<i32>::new(
+//!     vec![0, 1, 2],              // Input ports
+//!     MergeStrategy::Interleave   // Merge strategy
+//! );
+//! ```
+//!
+//! ## Different Merge Strategies
+//!
+//! ```rust
+//! use streamweave::graph::nodes::{MergeRouter, MergeStrategy};
+//!
+//! // Sequential: Process streams in order
+//! let sequential = MergeRouter::<i32>::new(vec![0, 1], MergeStrategy::Sequential);
+//!
+//! // RoundRobin: Take one element from each stream in turn
+//! let round_robin = MergeRouter::<i32>::new(vec![0, 1], MergeStrategy::RoundRobin);
+//!
+//! // Priority: Process based on priority index
+//! let priority = MergeRouter::<i32>::new(vec![0, 1], MergeStrategy::Priority);
+//!
+//! // Interleave: Fair interleaving (default)
+//! let interleave = MergeRouter::<i32>::new(vec![0, 1], MergeStrategy::Interleave);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Multiple Strategies**: Supports various merge strategies for flexibility
+//! - **Fan-In Pattern**: Implements fan-in patterns for stream combination
+//! - **Strategy-Based**: Uses enum-based strategy selection for clear semantics
+//! - **Router Trait**: Implements `InputRouter` for integration with graph system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MergeRouter`] implements the [`InputRouter`] trait and can be used in any
+//! StreamWeave graph. It merges items from multiple input streams into a single
+//! output stream based on the specified merge strategy, enabling fan-in patterns.
 
 use crate::graph::router::InputRouter;
 use async_trait::async_trait;

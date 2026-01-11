@@ -1,6 +1,88 @@
-//! String replace transformer for StreamWeave
+//! String replacement transformer for StreamWeave.
 //!
-//! Replaces substrings in strings, supporting both single and all occurrences.
+//! This module provides [`StringReplaceTransformer`], a transformer that replaces
+//! substrings in input strings, supporting both single occurrence replacement and
+//! replace-all modes. Useful for text normalization, data cleaning, and string
+//! manipulation operations.
+//!
+//! # Overview
+//!
+//! [`StringReplaceTransformer`] is useful for performing substring replacements
+//! in streaming text data. It supports replacing either the first occurrence or
+//! all occurrences of a pattern within each input string.
+//!
+//! # Key Concepts
+//!
+//! - **Substring Replacement**: Replaces pattern substrings with replacement text
+//! - **Replace Modes**: Single occurrence or replace-all modes
+//! - **Pattern Matching**: Exact substring matching (not regex-based)
+//! - **Text Processing**: Useful for data cleaning and normalization
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`StringReplaceTransformer`]**: Transformer that replaces substrings in strings
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage - Replace All
+//!
+//! ```rust
+//! use streamweave::transformers::StringReplaceTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that replaces all occurrences
+//! let transformer = StringReplaceTransformer::new("old", "new", true);
+//!
+//! // Input: ["old old text"]
+//! // Output: ["new new text"]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Replace First Occurrence Only
+//!
+//! ```rust
+//! use streamweave::transformers::StringReplaceTransformer;
+//!
+//! // Create a transformer that replaces only the first occurrence
+//! let transformer = StringReplaceTransformer::new("old", "new", false);
+//!
+//! // Input: ["old old text"]
+//! // Output: ["new old text"]
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::StringReplaceTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = StringReplaceTransformer::new("pattern", "replacement", true)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("text-cleaner".to_string());
+//! ```
+//!
+//! # Replace Modes
+//!
+//! - **Replace All** (`replace_all = true`): Replaces all occurrences of the pattern
+//! - **Replace First** (`replace_all = false`): Replaces only the first occurrence
+//!
+//! # Design Decisions
+//!
+//! - **Exact Matching**: Uses exact substring matching, not regex (for performance)
+//! - **Simple API**: Pattern and replacement specified at construction time
+//! - **Mode Selection**: Boolean flag for simple replace-all vs replace-first choice
+//! - **String Type**: Works with `String` type for mutable string operations
+//! - **Performance**: Uses Rust's standard library string replacement methods
+//!
+//! # Integration with StreamWeave
+//!
+//! [`StringReplaceTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

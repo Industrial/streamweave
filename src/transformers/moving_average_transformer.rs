@@ -1,6 +1,84 @@
-//! Moving average transformer for StreamWeave
+//! Moving average transformer for StreamWeave.
 //!
-//! This transformer requires the `stateful` feature to be enabled.
+//! This module provides [`MovingAverageTransformer`] and [`MovingAverageState`],
+//! types for calculating moving averages over a sliding window of values in
+//! StreamWeave pipelines. It maintains state across stream items to compute
+//! running averages, making it ideal for time-series data analysis and smoothing.
+//!
+//! **Note**: This transformer requires the `stateful` feature to be enabled.
+//!
+//! # Overview
+//!
+//! [`MovingAverageTransformer`] is useful for calculating moving averages in
+//! StreamWeave pipelines. It maintains a sliding window of recent values and
+//! computes the average of values within that window, producing a smoothed
+//! output stream.
+//!
+//! # Key Concepts
+//!
+//! - **Sliding Window**: Maintains a fixed-size window of recent values
+//! - **Moving Average**: Calculates average of values in the window
+//! - **Stateful Processing**: Maintains state across stream items
+//! - **Window Size**: Configurable window size for averaging
+//! - **State Store**: Uses state store for maintaining window state
+//!
+//! # Core Types
+//!
+//! - **[`MovingAverageTransformer`]**: Transformer that calculates moving averages
+//! - **[`MovingAverageState`]**: State for maintaining the sliding window
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::MovingAverageTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer with a 3-item window
+//! let transformer = MovingAverageTransformer::new(3);
+//!
+//! // Input: [1.0, 2.0, 3.0, 4.0, 5.0]
+//! // Output: [1.0, 1.5, 2.0, 3.0, 4.0]
+//! // (Window: [1] -> 1.0, [1,2] -> 1.5, [1,2,3] -> 2.0, [2,3,4] -> 3.0, [3,4,5] -> 4.0)
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::MovingAverageTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling
+//! let transformer = MovingAverageTransformer::new(5)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("price-smoother".to_string());
+//! ```
+//!
+//! # Behavior
+//!
+//! The transformer maintains a sliding window of the most recent values. As new
+//! values arrive, the oldest value is removed from the window (if at capacity),
+//! and the new value is added. The average of all values in the window is then
+//! calculated and emitted.
+//!
+//! # Design Decisions
+//!
+//! - **Stateful Processing**: Uses state store for maintaining window across items
+//! - **VecDeque Window**: Uses VecDeque for efficient FIFO window management
+//! - **Fixed Window Size**: Uses fixed window size for predictable behavior
+//! - **State Store Integration**: Integrates with StreamWeave's stateful transformer
+//!   system
+//! - **Feature Gated**: Requires `stateful` feature for state management
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MovingAverageTransformer`] implements both [`Transformer`] and [`StatefulTransformer`]
+//! traits and can be used in any StreamWeave pipeline. It supports the standard error
+//! handling strategies and configuration options provided by [`TransformerConfig`].
 
 #![cfg(feature = "stateful")]
 

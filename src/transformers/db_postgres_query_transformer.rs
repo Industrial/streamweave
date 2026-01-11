@@ -1,7 +1,43 @@
-//! PostgreSQL query transformer for StreamWeave
+//! # PostgreSQL Query Transformer
 //!
-//! Executes PostgreSQL queries from input items. Takes query strings (or query parameters) as input
-//! and outputs query results, enabling dynamic PostgreSQL queries in a pipeline.
+//! Transformer that executes PostgreSQL database queries for each input item, running
+//! queries dynamically based on input data and producing query results as a stream.
+//!
+//! ## Overview
+//!
+//! The PostgreSQL Query Transformer provides:
+//!
+//! - **Dynamic Query Execution**: Executes PostgreSQL queries based on input items
+//! - **Flexible Input**: Accepts SQL query strings or JSON objects with query/parameters
+//! - **Parameterized Queries**: Supports parameterized queries ($1, $2, etc.) for security
+//! - **Result Streaming**: Produces `DatabaseRow` results as a stream
+//! - **Connection Pooling**: Manages PostgreSQL connection pool lifecycle
+//! - **Error Handling**: Configurable error strategies for query failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Query specification (SQL string or JSON with query/parameters)
+//! - **Output**: `Message<DatabaseRow>` - Query result rows
+//!
+//! ## Input Formats
+//!
+//! - **SQL String**: `"SELECT * FROM users WHERE id = $1"`
+//! - **JSON Object**: `{"query": "SELECT * FROM users WHERE id = $1", "parameters": [1]}`
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::DbPostgresQueryTransformer;
+//! use streamweave::db::{DatabaseProducerConfig, DatabaseType};
+//!
+//! let db_config = DatabaseProducerConfig::default()
+//!   .with_connection_url("postgresql://user:pass@localhost/db")
+//!   .with_database_type(DatabaseType::Postgres);
+//!
+//! let transformer = DbPostgresQueryTransformer::new(db_config);
+//! // Input: ["SELECT * FROM users WHERE id = $1", ...]
+//! // Output: [DatabaseRow, ...]
+//! ```
 
 use crate::db::{DatabaseProducerConfig, DatabaseRow, DatabaseType};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

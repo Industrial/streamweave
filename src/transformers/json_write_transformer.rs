@@ -1,7 +1,45 @@
-//! JSON write transformer for StreamWeave
+//! # JSON Write Transformer
 //!
-//! Writes data to JSON files while passing data through. Takes data as input, writes to JSON,
-//! and outputs the same data, enabling writing intermediate results while continuing processing.
+//! Transformer that writes serializable data to JSON files while passing the same
+//! data through to the output stream. This enables persisting intermediate results
+//! to JSON format while continuing the main pipeline flow.
+//!
+//! ## Overview
+//!
+//! The JSON Write Transformer provides:
+//!
+//! - **JSON Writing**: Writes serializable data to JSON files
+//! - **Pass-Through**: Outputs the same data that was written
+//! - **Array Mode**: Can write items as a JSON array or as separate JSON documents
+//! - **Pretty Printing**: Optional pretty-printed JSON output
+//! - **Error Handling**: Configurable error strategies for write failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Serializable items to write
+//! - **Output**: `Message<T>` - The same items (pass-through)
+//!
+//! ## Writing Modes
+//!
+//! - **Array Mode**: Writes items incrementally as a JSON array: `[item1, item2, ...]`
+//! - **Document Mode**: Writes each item as a separate JSON value (not valid for a single file)
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::JsonWriteTransformer;
+//! use serde::Serialize;
+//!
+//! #[derive(Serialize)]
+//! struct Event {
+//!     id: u32,
+//!     message: String,
+//! }
+//!
+//! let transformer = JsonWriteTransformer::<Event>::new("output.json");
+//! // Input: [Event, ...]
+//! // Writes to JSON and outputs: [Event, ...]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

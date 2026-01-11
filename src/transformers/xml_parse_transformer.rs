@@ -1,6 +1,52 @@
-//! XML parse transformer for StreamWeave
+//! # XML Parse Transformer
 //!
-//! Parses XML strings from stream items into JSON-like structures.
+//! Transformer that parses XML strings from stream items into JSON-like structures
+//! using `serde_json::Value`. This enables XML data to be processed in StreamWeave
+//! pipelines using standard JSON transformation operations.
+//!
+//! ## Overview
+//!
+//! The XML Parse Transformer provides:
+//!
+//! - **XML Parsing**: Converts XML strings to `serde_json::Value` structures
+//! - **Error Handling**: Configurable error strategies for malformed XML
+//! - **Type Safety**: Input is `Message<String>`, output is `Message<serde_json::Value>`
+//! - **Configuration**: Supports error strategy and component naming
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::XmlParseTransformer;
+//! use crate::message::Message;
+//! use futures::stream;
+//! use futures::StreamExt;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let mut transformer = XmlParseTransformer::new();
+//! let xml_string = "<root><name>Alice</name><age>30</age></root>";
+//! let input = Box::pin(stream::iter(vec![xml_string.to_string()]));
+//!
+//! let mut output = transformer.transform(input).await;
+//! if let Some(msg) = output.next().await {
+//!     // msg.payload() is serde_json::Value with parsed XML structure
+//!     println!("Parsed: {:?}", msg.payload());
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Key Concepts
+//!
+//! - **Input Type**: `Message<String>` containing XML strings
+//! - **Output Type**: `Message<serde_json::Value>` containing parsed XML as JSON
+//! - **Error Handling**: Malformed XML can be handled via error strategy (Stop, Skip, Retry)
+//! - **JSON Structure**: XML elements become JSON objects, attributes become object properties
+//!
+//! ## Usage
+//!
+//! This transformer is useful for processing XML data sources (files, APIs, databases)
+//! and converting them to JSON format for further processing in StreamWeave pipelines.
+//! The parsed JSON can then be processed using standard JSON transformers.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

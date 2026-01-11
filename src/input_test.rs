@@ -1,3 +1,39 @@
+//! # Input Trait Test Suite
+//!
+//! Comprehensive test suite for the `Input` trait, including trait implementation,
+//! type constraints, associated types, and stream consumption patterns.
+//!
+//! ## Test Coverage
+//!
+//! This test suite covers:
+//!
+//! - **Trait Implementation**: Verification that types correctly implement the `Input` trait
+//! - **Type Constraints**: Tests for `Send` bounds on `Input` and `InputStream`
+//! - **Generic Input**: Tests with various payload types (i32, String, Vec<i32>)
+//! - **Associated Types**: Verification of `Input::Input` and `Input::InputStream` types
+//! - **Stream Consumption**: Tests for consuming input streams and extracting items
+//!
+//! ## Test Organization
+//!
+//! Tests are organized into the following sections:
+//!
+//! 1. **Trait Implementation Tests**: Basic trait implementation verification
+//! 2. **Type Constraints Tests**: `Send` trait bound validation
+//! 3. **Generic Input Tests**: Tests with different payload types
+//! 4. **Associated Type Tests**: Verification of associated type correctness
+//! 5. **Integration Tests**: End-to-end stream consumption operations
+//!
+//! ## Key Concepts
+//!
+//! - **Input Trait**: Defines types that consume streams of `Message<T>`
+//! - **InputStream**: A pinned, boxed stream that yields `Message<T>` items
+//! - **Type Safety**: All input types must be `Send` for cross-thread usage
+//!
+//! ## Usage
+//!
+//! These tests ensure that components implementing `Input` correctly consume
+//! streams produced by producers and transformers in the pipeline.
+
 use crate::input::Input;
 use crate::message::{Message, MessageId};
 use futures::Stream;

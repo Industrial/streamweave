@@ -1,4 +1,78 @@
-//! Group by transformer for StreamWeave
+//! Group by transformer for grouping stream items by a key function.
+//!
+//! This module provides [`GroupByTransformer`], a transformer that groups stream
+//! items by a key extracted from each item using a key function. It groups items
+//! from the input stream based on the extracted key, producing groups of items
+//! with the same key. It implements the [`Transformer`] trait for use in StreamWeave
+//! pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`GroupByTransformer`] is useful for grouping items in StreamWeave pipelines.
+//! It processes items and groups them by a key extracted using a key function,
+//! producing groups of items with the same key. Groups are emitted as tuples
+//! `(key, Vec<item>)` in sorted order by key.
+//!
+//! # Key Concepts
+//!
+//! - **Key Extraction**: Uses a key function to extract grouping keys from items
+//! - **Grouping**: Groups items by their extracted keys
+//! - **Sorted Output**: Groups are emitted in sorted order by key for deterministic
+//!   output
+//! - **Transformer Trait**: Implements `Transformer` for pipeline integration
+//!
+//! # Core Types
+//!
+//! - **[`GroupByTransformer<F, T, K>`]**: Transformer that groups items by a key
+//!   function
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::GroupByTransformer;
+//!
+//! // Group items by a key extracted from each item
+//! let transformer = GroupByTransformer::new(|item: &MyStruct| item.category.clone());
+//! ```
+//!
+//! ## With Complex Key Function
+//!
+//! ```rust
+//! use streamweave::transformers::GroupByTransformer;
+//!
+//! // Group items by a composite key
+//! let transformer = GroupByTransformer::new(|item: &MyStruct| {
+//!     (item.category.clone(), item.status.clone())
+//! });
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::GroupByTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a group by transformer with error handling
+//! let transformer = GroupByTransformer::new(|item: &MyStruct| item.category.clone())
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("category-grouper".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Key Function**: Uses a closure for flexible key extraction
+//! - **Sorted Output**: Sorts groups by key for deterministic output
+//! - **HashMap-Based**: Uses HashMap for efficient grouping
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   pipeline system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`GroupByTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

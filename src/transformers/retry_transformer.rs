@@ -1,4 +1,53 @@
-//! Retry transformer for StreamWeave
+//! Retry transformer for resilient stream processing with automatic retries.
+//!
+//! This module provides [`RetryTransformer<T>`], a transformer that automatically
+//! retries failed operations with configurable backoff delays. This enables resilient
+//! stream processing by automatically handling transient failures.
+//!
+//! # Overview
+//!
+//! [`RetryTransformer`] is useful for building resilient stream processing pipelines
+//! that can recover from transient failures. It automatically retries failed operations
+//! up to a maximum number of times, with a configurable delay (backoff) between retry
+//! attempts. This is essential for handling network errors, temporary service
+//! unavailability, and other transient failures.
+//!
+//! # Key Concepts
+//!
+//! - **Automatic Retries**: Retries failed operations up to a maximum number of times
+//! - **Configurable Backoff**: Delay between retry attempts (fixed duration)
+//! - **Resilient Processing**: Handles transient failures automatically
+//! - **Generic Type**: Works with any item type that implements required traits
+//! - **Error Handling**: Configurable error strategies for retry exhaustion
+//!
+//! # Core Types
+//!
+//! - **[`RetryTransformer<T>`]**: Transformer that retries failed operations
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::RetryTransformer;
+//! use tokio::time::Duration;
+//!
+//! // Create a transformer that retries up to 3 times with 1 second delay
+//! let transformer = RetryTransformer::<i32>::new(3, Duration::from_secs(1));
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::RetryTransformer;
+//! use streamweave::ErrorStrategy;
+//! use tokio::time::Duration;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = RetryTransformer::<String>::new(5, Duration::from_millis(500))
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("api-retry".to_string());
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

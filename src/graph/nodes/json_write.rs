@@ -1,7 +1,70 @@
-//! JSON write node for StreamWeave graphs
+//! JSON write node for writing data to JSON files while passing data through.
 //!
-//! Writes data to JSON files while passing data through. Takes data as input, writes to JSON,
-//! and outputs the same data, enabling writing intermediate results while continuing processing.
+//! This module provides [`JsonWrite`], a graph node that writes data to JSON files
+//! while passing the same data through to the output. It takes data as input, writes
+//! it to a JSON file, and outputs the same data, enabling writing intermediate results
+//! while continuing processing. It wraps [`JsonWriteTransformer`] for use in
+//! StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`JsonWrite`] is useful for writing intermediate results to JSON files while
+//! continuing processing in graph-based pipelines. Unlike consumers, it passes data
+//! through, making it ideal for checkpointing data at intermediate stages or logging
+//! JSON writes.
+//!
+//! # Key Concepts
+//!
+//! - **Pass-Through Operation**: Writes data to JSON files while passing it through to output
+//! - **JSON Serialization**: Serializes data to JSON format before writing
+//! - **Intermediate Results**: Enables writing intermediate results without
+//!   interrupting the pipeline
+//! - **Transformer Wrapper**: Wraps `JsonWriteTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`JsonWrite<T>`]**: Node that writes data to JSON files while passing data through
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::JsonWrite;
+//! use serde_json::Value;
+//!
+//! // Create a JSON write node
+//! let json_write = JsonWrite::<Value>::new("output.json");
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::JsonWrite;
+//! use streamweave::ErrorStrategy;
+//! use serde_json::Value;
+//!
+//! // Create a JSON write node with error handling
+//! let json_write = JsonWrite::<Value>::new("output.json")
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("json-writer".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Pass-Through Pattern**: Writes data while passing it through for
+//!   intermediate result capture
+//! - **Async I/O**: Uses Tokio's async filesystem operations for non-blocking
+//!   file writing
+//! - **JSON Serialization**: Uses serde_json for robust JSON serialization
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`JsonWrite`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::JsonWriteTransformer;

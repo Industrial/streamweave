@@ -1,7 +1,42 @@
-//! SQLite database write transformer for StreamWeave
+//! # SQLite Write Transformer
 //!
-//! Writes DatabaseRow data to SQLite while passing data through. Takes DatabaseRow as input,
-//! writes to SQLite, and outputs the same data, enabling writing to database and continuing processing.
+//! Transformer that writes `DatabaseRow` data to SQLite tables while passing the same
+//! data through to the output stream. This enables persisting data to SQLite while
+//! continuing the main pipeline flow.
+//!
+//! ## Overview
+//!
+//! The SQLite Write Transformer provides:
+//!
+//! - **Database Writing**: Writes `DatabaseRow` data to SQLite tables
+//! - **Pass-Through**: Outputs the same rows that were written
+//! - **Batch Insertion**: Batches inserts for improved performance
+//! - **Connection Pooling**: Manages SQLite connection pool lifecycle
+//! - **Error Handling**: Configurable error strategies for write failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<DatabaseRow>` - Database rows to write
+//! - **Output**: `Message<DatabaseRow>` - The same rows (pass-through)
+//!
+//! ## Performance
+//!
+//! The transformer batches inserts for improved performance, flushing batches
+//! based on size and time thresholds.
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::DbSqliteWriteTransformer;
+//! use streamweave::db::{DatabaseConsumerConfig, DatabaseType};
+//!
+//! let config = DatabaseConsumerConfig::default()
+//!   .with_connection_url("sqlite:test.db")
+//!   .with_table_name("users");
+//! let transformer = DbSqliteWriteTransformer::new(config);
+//! // Input: [DatabaseRow, ...]
+//! // Writes to SQLite and outputs: [DatabaseRow, ...]
+//! ```
 
 use crate::db::{DatabaseConsumerConfig, DatabaseRow, DatabaseType};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

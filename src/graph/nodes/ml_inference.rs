@@ -1,7 +1,77 @@
-//! ML inference node for StreamWeave graphs
+//! ML inference node for performing single-item ML model inference.
 //!
-//! Single-item ML model inference operations. Wraps an InferenceBackend and
-//! applies inference to each item in the stream.
+//! This module provides [`MlInference`], a graph node that performs single-item
+//! ML model inference operations. It wraps an [`InferenceBackend`] and applies
+//! inference to each item in the stream. It wraps [`InferenceTransformer`] for
+//! use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`MlInference`] is useful for performing machine learning model inference in
+//! graph-based pipelines. It applies inference to each item individually, making
+//! it ideal for real-time inference scenarios where low latency is important.
+//!
+//! # Key Concepts
+//!
+//! - **Single-Item Inference**: Applies inference to each item individually
+//! - **Inference Backend**: Uses an `InferenceBackend` trait for flexible backend support
+//! - **Real-Time Processing**: Suitable for low-latency inference scenarios
+//! - **Transformer Wrapper**: Wraps `InferenceTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`MlInference<B>`]**: Node that performs single-item ML inference
+//! - **[`InferenceBackend`]**: Trait for ML inference backends
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust,no_run
+//! use streamweave::graph::nodes::MlInference;
+//! use streamweave_ml_transformers::OnnxBackend;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create and load a model backend
+//! let mut backend = OnnxBackend::new()?;
+//! backend.load_from_path("model.onnx").await?;
+//!
+//! // Create an ML inference node
+//! let inference = MlInference::new(backend);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust,no_run
+//! use streamweave::graph::nodes::MlInference;
+//! use streamweave::ErrorStrategy;
+//! use streamweave_ml_transformers::OnnxBackend;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! # let mut backend = OnnxBackend::new()?;
+//! // Create an ML inference node with error handling
+//! let inference = MlInference::new(backend)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("ml-inference".to_string());
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Backend Abstraction**: Uses `InferenceBackend` trait for flexible backend support
+//! - **Single-Item Processing**: Processes items individually for low-latency inference
+//! - **Generic Backend**: Supports various ML backends through the trait system
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MlInference`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::ml::InferenceBackend;

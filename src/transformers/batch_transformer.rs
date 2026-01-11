@@ -1,4 +1,70 @@
-//! Batch transformer for StreamWeave
+//! Batch transformer for grouping stream items into batches.
+//!
+//! This module provides [`BatchTransformer<T>`], a transformer that groups items
+//! from a stream into batches of a specified size. It collects incoming items until
+//! the batch size is reached, then emits them as a `Vec<T>`. This is useful for
+//! batch processing, batching API calls, or grouping items for bulk operations.
+//!
+//! # Overview
+//!
+//! [`BatchTransformer`] collects stream items into fixed-size batches. When a batch
+//! reaches the specified size, it is emitted as a `Vec<T>`. The final batch may be
+//! smaller than the batch size if the stream ends before the batch is full.
+//!
+//! # Key Concepts
+//!
+//! - **Fixed Batch Size**: Groups items into batches of a specified size
+//! - **Batch Emission**: Emits batches when size is reached or stream ends
+//! - **Final Batch**: The last batch may be smaller if stream ends before batch is full
+//! - **Type Transformation**: Changes output type from `T` to `Vec<T>`
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`BatchTransformer<T>`]**: Transformer that batches items into `Vec<T>`
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::BatchTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that batches items into groups of 10
+//! let transformer = BatchTransformer::<i32>::new(10)?;
+//!
+//! // Input: stream of individual items: 1, 2, 3, ..., 25
+//! // Output: batches of 10 items: [1..10], [11..20], [21..25]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::BatchTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = BatchTransformer::<String>::new(100)?
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("batch-processor".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Fixed Size Batches**: Uses fixed batch size for predictable batch sizes
+//! - **Partial Final Batch**: Emits final batch even if incomplete (useful for processing)
+//! - **Generic Type**: Generic over item type for maximum flexibility
+//! - **Validation**: Requires batch size > 0 to prevent invalid configurations
+//!
+//! # Integration with StreamWeave
+//!
+//! [`BatchTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

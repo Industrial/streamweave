@@ -1,4 +1,40 @@
-//! Reduce transformer for StreamWeave
+//! # Reduce Transformer
+//!
+//! Transformer that reduces a stream of items into a single accumulated value
+//! by applying a reducer function to each item along with an accumulator. This
+//! enables aggregation operations like sum, product, concatenation, etc.
+//!
+//! ## Overview
+//!
+//! The Reduce Transformer provides:
+//!
+//! - **Stream Reduction**: Reduces stream to a single accumulated value
+//! - **Custom Reducer**: Configurable reducer function for accumulation logic
+//! - **Initial Accumulator**: Configurable initial accumulator value
+//! - **Zero-Copy Support**: Implements `ZeroCopyTransformer` for efficient processing
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to reduce
+//! - **Output**: `Message<Acc>` - Final accumulated value (single item)
+//!
+//! ## Reduction Behavior
+//!
+//! The reducer function is called for each item: `reducer(accumulator, item)`.
+//! The result becomes the new accumulator, and the final accumulator is emitted
+//! as the output.
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::ReduceTransformer;
+//!
+//! let transformer = ReduceTransformer::new(0, |acc: i32, x: i32| acc + x);
+//! // Input: [1, 2, 3, 4]
+//! // Output: [10] (sum of all items)
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::graph::ZeroCopyTransformer;

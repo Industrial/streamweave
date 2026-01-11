@@ -1,6 +1,73 @@
-//! XML parse node for StreamWeave graphs
+//! XML parsing node for StreamWeave graphs.
 //!
-//! Parses XML strings from stream items.
+//! This module provides [`XmlParse`], a graph node that parses XML strings into
+//! JSON values. It wraps [`XmlParseTransformer`] for use in StreamWeave graph
+//! topologies.
+//!
+//! # Overview
+//!
+//! [`XmlParse`] is useful for converting XML-formatted strings into structured
+//! JSON values in graph-based processing pipelines. It enables XML data to be
+//! processed using StreamWeave's JSON-based transformation capabilities.
+//!
+//! # Key Concepts
+//!
+//! - **XML Parsing**: Converts XML strings to JSON `Value` structures
+//! - **Type Conversion**: Transforms `String` input to `serde_json::Value` output
+//! - **Graph Integration**: Wraps transformer for use in graph topologies
+//! - **Error Handling**: Configurable error strategies for malformed XML
+//!
+//! # Core Types
+//!
+//! - **[`XmlParse`]**: Graph node that parses XML strings to JSON values
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::XmlParse;
+//!
+//! // Create a node that parses XML strings
+//! let node = XmlParse::new()
+//!     .with_name("parse-xml".to_string());
+//!
+//! // Input: "<root><item>value</item></root>"
+//! // Output: json!({"root": {"item": "value"}})
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::XmlParse;
+//! use streamweave::ErrorStrategy;
+//! use serde_json::Value;
+//!
+//! // Create a node with error handling strategy
+//! let node = XmlParse::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("xml-parser".to_string());
+//! ```
+//!
+//! # Behavior
+//!
+//! The node takes XML-formatted strings as input and converts them to JSON
+//! values. Malformed XML will trigger error handling based on the configured
+//! error strategy.
+//!
+//! # Design Decisions
+//!
+//! - **Transformer Wrapper**: Wraps `XmlParseTransformer` to provide graph node interface
+//! - **JSON Output**: Uses `serde_json::Value` for flexible JSON structure handling
+//! - **String Input**: Accepts XML as strings for compatibility with text-based streams
+//! - **Error Handling**: Supports configurable error strategies for malformed XML
+//! - **Graph Integration**: Seamlessly integrates with StreamWeave graph execution
+//!
+//! # Integration with StreamWeave
+//!
+//! [`XmlParse`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::XmlParseTransformer;

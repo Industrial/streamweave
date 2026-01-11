@@ -1,6 +1,59 @@
-//! Array contains transformer for StreamWeave
+//! Array contains transformer for filtering arrays by value presence.
 //!
-//! Filters arrays that contain a specific value.
+//! This module provides [`ArrayContainsTransformer`], a transformer that filters arrays
+//! to only include those that contain a specific value. Arrays that don't contain the
+//! search value are filtered out, making it useful for conditional processing based on
+//! array contents.
+//!
+//! # Overview
+//!
+//! [`ArrayContainsTransformer`] acts as a filter transformer that checks if each input
+//! array contains a specified value. Only arrays containing the search value are passed
+//! through to the output stream. Non-array values are filtered out.
+//!
+//! # Key Concepts
+//!
+//! - **Value Matching**: Uses exact equality to check if arrays contain the search value
+//! - **Filtering**: Only arrays containing the value pass through
+//! - **JSON Processing**: Works with JSON Value arrays
+//! - **Non-Array Handling**: Non-array values are filtered out (return false)
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`ArrayContainsTransformer`]**: Transformer that filters arrays by value presence
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::ArrayContainsTransformer;
+//! use streamweave::PipelineBuilder;
+//! use serde_json::json;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that filters arrays containing the value 3
+//! let transformer = ArrayContainsTransformer::new(json!(3));
+//!
+//! // Input: [[1, 2, 3], [4, 5], [3, 6, 7]]
+//! // Output: [[1, 2, 3], [3, 6, 7]]  (only arrays containing 3)
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Exact Matching**: Uses exact value equality (via `Value::PartialEq`) for matching
+//! - **Filter Behavior**: Acts as a filter, removing arrays that don't match
+//! - **Type Safety**: Non-array values are filtered out rather than causing errors
+//! - **JSON Value Type**: Uses `serde_json::Value` for flexible JSON array handling
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ArrayContainsTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

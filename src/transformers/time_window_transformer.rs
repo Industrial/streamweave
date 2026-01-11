@@ -1,3 +1,35 @@
+//! # Time Window Transformer
+//!
+//! Transformer that groups consecutive items into time-based windows, producing
+//! vectors of items as windows are created based on time intervals. This enables
+//! time-based batching and aggregation operations.
+//!
+//! ## Overview
+//!
+//! The Time Window Transformer provides:
+//!
+//! - **Time-Based Windowing**: Groups items into windows based on time duration
+//! - **Sliding Windows**: Produces windows at regular time intervals
+//! - **Batch Processing**: Enables time-based batching of stream items
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items from the stream
+//! - **Output**: `Message<Vec<T>>` - Vectors of items grouped by time windows
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::TimeWindowTransformer;
+//! use std::time::Duration;
+//!
+//! let transformer = TimeWindowTransformer::new(Duration::from_secs(5));
+//! // Input: [item1, item2, item3, ...] (over 5 seconds)
+//! // Output: [vec![item1, item2, ...], vec![item3, ...], ...]
+//! ```
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};
 use async_trait::async_trait;

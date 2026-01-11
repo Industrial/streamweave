@@ -1,6 +1,76 @@
-//! JSON stringify transformer for StreamWeave
+//! JSON stringify transformer for converting JSON values into JSON strings.
 //!
-//! Converts JSON values from stream items into JSON strings.
+//! This module provides [`JsonStringifyTransformer`] and [`JsonStringifyConfig`],
+//! types for converting JSON values from stream items into JSON strings in
+//! StreamWeave pipelines. It serializes `serde_json::Value` structures into
+//! JSON-formatted strings, with optional pretty-printing. It implements the
+//! [`Transformer`] trait for use in StreamWeave pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`JsonStringifyTransformer`] is useful for serializing JSON data in StreamWeave
+//! pipelines. It processes JSON values and converts them into JSON-formatted strings,
+//! making it ideal for serializing JSON data for output or transmission.
+//!
+//! # Key Concepts
+//!
+//! - **JSON Serialization**: Converts `serde_json::Value` structures into JSON strings
+//! - **Pretty Printing**: Optional pretty-printing for human-readable JSON
+//! - **Value Input**: Takes JSON values as input
+//! - **String Output**: Produces JSON strings as output
+//!
+//! # Core Types
+//!
+//! - **[`JsonStringifyTransformer`]**: Transformer that converts JSON values to strings
+//! - **[`JsonStringifyConfig`]**: Configuration for JSON stringification behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::JsonStringifyTransformer;
+//!
+//! // Create a JSON stringify transformer
+//! let transformer = JsonStringifyTransformer::new();
+//! ```
+//!
+//! ## With Pretty Printing
+//!
+//! ```rust
+//! use streamweave::transformers::JsonStringifyTransformer;
+//!
+//! // Create a JSON stringify transformer with pretty-printing
+//! let transformer = JsonStringifyTransformer::new()
+//!     .with_pretty(true);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::JsonStringifyTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a JSON stringify transformer with error handling
+//! let transformer = JsonStringifyTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("json-stringifier".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Library Integration**: Uses `serde_json` for robust JSON serialization
+//! - **Pretty Printing**: Optional formatting for human-readable output
+//! - **Value Input**: Works with `serde_json::Value` for flexible JSON structure
+//!   handling
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   pipeline system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`JsonStringifyTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

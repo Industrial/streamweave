@@ -1,6 +1,37 @@
-//! String index of transformer for StreamWeave
+//! # String Index Of Transformer
 //!
-//! Finds the index of a substring in strings, producing a stream of `Option<usize>` values.
+//! Transformer that finds the index of a substring within input strings, producing
+//! `Option<usize>` values (Some(index) if found, None otherwise). Supports both
+//! first and last occurrence searches.
+//!
+//! ## Overview
+//!
+//! The String Index Of Transformer provides:
+//!
+//! - **Substring Search**: Finds the index of a substring within strings
+//! - **Search Modes**: Supports first or last occurrence searches
+//! - **Optional Results**: Returns `Option<usize>` (None if not found)
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Strings to search
+//! - **Output**: `Message<Option<usize>>` - Index of substring, or None
+//!
+//! ## Search Modes
+//!
+//! - **First**: Finds the first occurrence of the substring
+//! - **Last**: Finds the last occurrence of the substring
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::{StringIndexOfTransformer, IndexOfMode};
+//!
+//! let transformer = StringIndexOfTransformer::new("lo", IndexOfMode::First);
+//! // Input: ["hello world"]
+//! // Output: [Some(3)]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

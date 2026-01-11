@@ -1,3 +1,90 @@
+//! JSON Lines (JSONL) consumer for writing stream data to JSONL files.
+//!
+//! This module provides [`JsonlConsumer`] and [`JsonlWriteConfig`], a consumer
+//! that writes stream items to JSON Lines format. JSON Lines is a text format
+//! where each line is a valid JSON value, making it ideal for streaming large
+//! datasets and log processing.
+//!
+//! # Overview
+//!
+//! [`JsonlConsumer`] is useful for exporting stream data to JSON Lines format,
+//! which is commonly used in data processing pipelines, log aggregation, and
+//! machine learning workflows. Each stream item is serialized as JSON and written
+//! as a single line to the output file.
+//!
+//! # Key Concepts
+//!
+//! - **JSON Lines Format**: Each line is a complete, valid JSON value
+//! - **Serializable Items**: Items must implement `Serialize` for JSON conversion
+//! - **Line-Based Output**: One JSON object per line for easy streaming processing
+//! - **Configurable Buffering**: Supports configurable buffer sizes for performance
+//!
+//! # Core Types
+//!
+//! - **[`JsonlConsumer<T>`]**: Consumer that writes items to a JSONL file
+//! - **[`JsonlWriteConfig`]**: Configuration for JSONL writing behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::JsonlConsumer;
+//! use futures::stream;
+//! use serde::Serialize;
+//!
+//! #[derive(Serialize, Clone, Debug)]
+//! struct Event {
+//!     id: u32,
+//!     message: String,
+//! }
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a consumer with a file path
+//! let mut consumer = JsonlConsumer::<Event>::new("events.jsonl");
+//!
+//! // Create a stream of events
+//! let stream = stream::iter(vec![
+//!     Event { id: 1, message: "event1".to_string() },
+//!     Event { id: 2, message: "event2".to_string() },
+//! ]);
+//!
+//! // Consume the stream (events written to JSONL)
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::consumers::JsonlConsumer;
+//!
+//! # use serde::Serialize;
+//! # #[derive(Serialize, Clone, Debug)]
+//! # struct Event { id: u32, message: String }
+//! // Create a consumer with custom configuration
+//! let consumer = JsonlConsumer::<Event>::new("events.jsonl")
+//!     .with_append(true)  // Append to existing file
+//!     .with_buffer_size(16384)  // 16KB buffer
+//!     .with_name("event-logger".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Lines Format**: Uses line-delimited JSON for streaming and processing
+//!   efficiency
+//! - **Serialize Requirement**: Items must implement `Serialize` for flexible
+//!   data structure support
+//! - **Buffered Writing**: Uses buffered I/O for improved performance
+//! - **Lazy File Opening**: File is opened on first write
+//!
+//! # Integration with StreamWeave
+//!
+//! [`JsonlConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

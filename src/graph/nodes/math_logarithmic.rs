@@ -1,6 +1,69 @@
-//! Math logarithmic node for StreamWeave graphs
+//! Math logarithmic node for performing logarithmic and exponential operations.
 //!
-//! Performs logarithmic and exponential operations.
+//! This module provides [`MathLogarithmicNode`], a graph node that performs logarithmic
+//! and exponential operations on numeric values. It wraps [`MathLogarithmicTransformer`]
+//! for use in StreamWeave graphs. It supports operations like Log, Log2, Log10, Log1p,
+//! Exp, Exp2, and Expm1.
+//!
+//! # Overview
+//!
+//! [`MathLogarithmicNode`] is useful for performing logarithmic and exponential operations
+//! on numeric values in graph-based pipelines. It processes JSON numeric values and
+//! applies logarithmic/exponential functions, making it ideal for mathematical computations.
+//!
+//! # Key Concepts
+//!
+//! - **Logarithmic Functions**: Supports Log, Log2, Log10, Log1p
+//! - **Exponential Functions**: Supports Exp, Exp2, Expm1
+//! - **JSON Value Support**: Works with `serde_json::Value` numeric types
+//! - **Transformer Wrapper**: Wraps `MathLogarithmicTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`MathLogarithmicNode`]**: Node that performs logarithmic and exponential operations
+//! - **[`LogarithmicFunction`]**: Enum representing different logarithmic/exponential functions
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathLogarithmicNode;
+//! use streamweave::transformers::LogarithmicFunction;
+//!
+//! // Calculate natural logarithm
+//! let log = MathLogarithmicNode::new(LogarithmicFunction::Log);
+//!
+//! // Calculate exponential
+//! let exp = MathLogarithmicNode::new(LogarithmicFunction::Exp);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathLogarithmicNode;
+//! use streamweave::transformers::LogarithmicFunction;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a logarithmic node with error handling
+//! let logarithmic = MathLogarithmicNode::new(LogarithmicFunction::Log)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("log".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Function Enum**: Uses enum-based function selection for type safety
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathLogarithmicNode`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{LogarithmicFunction, MathLogarithmicTransformer};

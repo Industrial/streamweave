@@ -1,6 +1,75 @@
-//! Object keys transformer for StreamWeave
+//! Object keys transformer for StreamWeave.
 //!
-//! Extracts keys from JSON objects, producing a stream of arrays of keys.
+//! This module provides [`ObjectKeysTransformer`], a transformer that extracts
+//! keys from JSON objects, producing arrays of key strings. It processes JSON
+//! objects and extracts all property keys, making it ideal for object inspection,
+//! key enumeration, and key-based operations.
+//!
+//! # Overview
+//!
+//! [`ObjectKeysTransformer`] is useful for extracting keys from JSON objects in
+//! streaming pipelines. It processes JSON objects and produces arrays of their
+//! property keys, similar to JavaScript's `Object.keys()` function.
+//!
+//! # Key Concepts
+//!
+//! - **Key Extraction**: Extracts all keys from JSON objects
+//! - **Array Output**: Produces arrays of key strings
+//! - **Object Inspection**: Enables inspection of object structure
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`ObjectKeysTransformer`]**: Transformer that extracts object keys
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectKeysTransformer;
+//! use streamweave::PipelineBuilder;
+//! use serde_json::json;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that extracts object keys
+//! let transformer = ObjectKeysTransformer::new();
+//!
+//! // Input: [json!({"name": "John", "age": 30})]
+//! // Output: [json!(["name", "age"])]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectKeysTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = ObjectKeysTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("keys-extractor".to_string());
+//! ```
+//!
+//! # Behavior
+//!
+//! The transformer extracts all property keys from each input JSON object and
+//! produces an array of key strings. Non-object values produce empty arrays.
+//!
+//! # Design Decisions
+//!
+//! - **Object-Only**: Works with JSON objects, returns empty array for non-objects
+//! - **String Keys**: Produces string keys for compatibility with JSON semantics
+//! - **Array Output**: Produces arrays of keys for easy iteration
+//! - **Simple Extraction**: Focuses solely on key extraction for clarity
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ObjectKeysTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

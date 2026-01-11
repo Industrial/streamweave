@@ -1,3 +1,78 @@
+//! Timer interval producer for generating periodic timestamp events.
+//!
+//! This module provides [`TimerIntervalProducer`], a producer that emits timestamp
+//! events at regular intervals. It's useful for generating periodic events, heartbeats,
+//! or time-based triggers in streaming pipelines.
+//!
+//! # Overview
+//!
+//! [`TimerIntervalProducer`] generates a continuous stream of `SystemTime` timestamps
+//! at the specified interval. Each emitted item represents the current system time at
+//! the moment the interval elapses. The producer runs indefinitely until the stream
+//! is dropped or cancelled.
+//!
+//! # Key Concepts
+//!
+//! - **Periodic Events**: Emits events at fixed intervals
+//! - **Timestamp Output**: Each event is a `SystemTime` timestamp
+//! - **Infinite Stream**: Runs indefinitely until cancelled
+//! - **Async Timing**: Uses Tokio's async interval timer for precise timing
+//! - **Error Handling**: Configurable error strategies (though errors are rare)
+//!
+//! # Core Types
+//!
+//! - **[`TimerIntervalProducer`]**: Producer that emits timestamps at intervals
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::TimerIntervalProducer;
+//! use streamweave::PipelineBuilder;
+//! use std::time::Duration;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a producer that emits every second
+//! let producer = TimerIntervalProducer::new(Duration::from_secs(1));
+//!
+//! // Use in a pipeline
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(producer)
+//!     .transformer(/* ... */)
+//!     .consumer(/* ... */);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::producers::TimerIntervalProducer;
+//! use streamweave::ErrorStrategy;
+//! use std::time::Duration;
+//!
+//! // Create a producer with error handling strategy
+//! let producer = TimerIntervalProducer::new(Duration::from_millis(100))
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("heartbeat".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **SystemTime Output**: Emits `SystemTime` rather than a custom timestamp type
+//!   for maximum compatibility and standard time representation
+//! - **Infinite Stream**: Runs indefinitely to support long-running processes that
+//!   need continuous periodic events
+//! - **Async Interval**: Uses Tokio's `interval` for efficient, async-compatible timing
+//! - **Precise Timing**: Tokio's interval timer provides accurate timing even under load
+//!
+//! # Integration with StreamWeave
+//!
+//! [`TimerIntervalProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use futures::Stream;

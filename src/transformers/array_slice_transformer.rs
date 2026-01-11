@@ -1,6 +1,69 @@
-//! Array slice transformer for StreamWeave
+//! Array slice transformer for extracting array subranges.
 //!
-//! Extracts slices from arrays using start and end indices.
+//! This module provides [`ArraySliceTransformer`], a transformer that extracts
+//! slices (subranges) from arrays using start and optional end indices. It's similar
+//! to JavaScript's `Array.slice()` method, allowing you to extract portions of arrays.
+//!
+//! # Overview
+//!
+//! [`ArraySliceTransformer`] extracts a slice from each input array based on start
+//! and end indices. The start index is inclusive, and the end index is exclusive.
+//! If the end index is not specified, the slice extends to the end of the array.
+//!
+//! # Key Concepts
+//!
+//! - **Slice Extraction**: Extracts a contiguous subrange from arrays
+//! - **Inclusive Start**: Start index is included in the slice
+//! - **Exclusive End**: End index is not included in the slice
+//! - **Optional End**: If end is None, slice extends to array end
+//! - **JSON Processing**: Works with JSON Value arrays
+//!
+//! # Core Types
+//!
+//! - **[`ArraySliceTransformer`]**: Transformer that extracts array slices
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::ArraySliceTransformer;
+//! use serde_json::json;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that extracts elements from index 1 to 3
+//! let transformer = ArraySliceTransformer::new(1, Some(3));
+//!
+//! // Input: [[1, 2, 3, 4, 5]]
+//! // Output: [[2, 3]]  (elements at indices 1 and 2)
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Slice to End
+//!
+//! ```rust
+//! use streamweave::transformers::ArraySliceTransformer;
+//!
+//! // Create a transformer that extracts from index 2 to the end
+//! let transformer = ArraySliceTransformer::new(2, None);
+//!
+//! // Input: [[1, 2, 3, 4, 5]]
+//! // Output: [[3, 4, 5]]  (from index 2 to end)
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Inclusive/Exclusive**: Start inclusive, end exclusive (standard slice semantics)
+//! - **Optional End**: End parameter is optional for slice-to-end functionality
+//! - **Zero-Based Indices**: Uses zero-based indexing (standard for arrays)
+//! - **Similar to Array.slice**: Follows JavaScript Array.slice() semantics
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ArraySliceTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

@@ -1,6 +1,60 @@
-//! Array reverse transformer for StreamWeave
+//! Array reverse transformer for reversing array element order.
 //!
-//! Reverses arrays in-place.
+//! This module provides [`ArrayReverseTransformer`], a transformer that reverses
+//! the order of elements in arrays. It takes each input array and produces a new
+//! array with elements in reverse order.
+//!
+//! # Overview
+//!
+//! [`ArrayReverseTransformer`] reverses array element order, similar to JavaScript's
+//! `Array.reverse()`. The first element becomes the last, and the last becomes the first.
+//! This is useful for processing arrays in reverse order or reversing data sequences.
+//!
+//! # Key Concepts
+//!
+//! - **Element Reversal**: Reverses the order of all elements in arrays
+//! - **In-Place Style**: Conceptually modifies arrays (creates new reversed arrays)
+//! - **JSON Processing**: Works with JSON Value arrays
+//! - **Simple Operation**: Direct array reversal
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`ArrayReverseTransformer`]**: Transformer that reverses arrays
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::ArrayReverseTransformer;
+//! use serde_json::json;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer
+//! let transformer = ArrayReverseTransformer::new();
+//!
+//! // Input: [[1, 2, 3]]
+//! // Output: [[3, 2, 1]]
+//!
+//! // Input: [["a", "b", "c"]]
+//! // Output: [["c", "b", "a"]]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Complete Reversal**: Reverses all elements, not just a subset
+//! - **New Array Creation**: Creates new arrays (doesn't mutate input)
+//! - **Simple Operation**: Direct element reordering
+//! - **Similar to Array.reverse**: Follows JavaScript Array.reverse() semantics
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ArrayReverseTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

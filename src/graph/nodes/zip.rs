@@ -1,7 +1,82 @@
-//! Zip node for StreamWeave graphs
+//! # Zip Node
 //!
-//! Zips items from multiple input streams into tuples. Collects items from
-//! multiple input streams and combines them into vectors.
+//! Graph node that zips items from multiple input streams by transposing vectors
+//! of items. This module provides [`Zip`], a graph node that takes streams of
+//! vectors and transposes them, combining items at corresponding indices into
+//! output vectors. It wraps [`ZipTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Zip`] is useful for combining multiple vectors of items in graph-based
+//! pipelines. It transposes input vectors, taking the i-th element from each
+//! input vector and combining them into a new vector. This is useful for
+//! parallel processing scenarios where you need to combine corresponding items
+//! from multiple sources.
+//!
+//! # Key Concepts
+//!
+//! - **Vector Transposition**: Takes vectors of items and transposes them
+//! - **Index-Based Combination**: Combines items at corresponding indices
+//! - **Flexible Lengths**: Handles vectors of different lengths gracefully
+//! - **Transformer Wrapper**: Wraps `ZipTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Zip<T>`]**: Node that zips items from multiple input vectors
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Zip;
+//!
+//! // Create a zip node for zipping vectors of integers
+//! let zip = Zip::<i32>::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Zip;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a zip node with error handling strategy
+//! let zip = Zip::<String>::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("zip-vectors".to_string());
+//! ```
+//!
+//! ## Example Transformation
+//!
+//! ```text
+//! // Input stream contains vectors:
+//! // vec![vec![1, 2, 3], vec![10, 20, 30]]
+//!
+//! // Output will be transposed:
+//! // vec![vec![1, 10], vec![2, 20], vec![3, 30]]
+//! ```
+//!
+//! # How It Works
+//!
+//! The zip node takes a stream of vectors, collects all vectors, then transposes
+//! them by taking items at corresponding indices. For example, if you have vectors
+//! `[1, 2, 3]` and `[10, 20, 30]`, the zip operation produces `[vec![1, 10], vec![2, 20], vec![3, 30]]`.
+//!
+//! # Design Decisions
+//!
+//! - **Vector-Based Input**: Takes streams of vectors for flexible multi-item processing
+//! - **Transposition**: Uses transpose operation to combine corresponding items
+//! - **Length Handling**: Handles vectors of different lengths by only combining
+//!   available items at each index
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Zip`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::ZipTransformer;
@@ -10,22 +85,48 @@ use async_trait::async_trait;
 use futures::Stream;
 use std::pin::Pin;
 
-/// Node that zips items from multiple input streams into tuples.
+/// Node that zips items from multiple input streams by transposing vectors.
 ///
-/// This node wraps `ZipTransformer` for use in graphs. It collects items from
-/// multiple input streams and combines them into vectors, emitting one vector
-/// per combination of items from each stream.
+/// This node wraps `ZipTransformer` for use in graphs. It takes a stream of
+/// vectors and transposes them, combining items at corresponding indices into
+/// output vectors. This is useful for parallel processing scenarios where you
+/// need to combine corresponding items from multiple sources.
+///
+/// # Behavior
+///
+/// The node collects all input vectors, then transposes them by taking the i-th
+/// element from each vector and combining them into a new vector. Vectors of
+/// different lengths are handled by only including items that exist at each index.
+///
+/// # Input/Output
+///
+/// - **Input**: Stream of `Vec<T>` - Vectors of items to zip
+/// - **Output**: Stream of `Vec<T>` - Transposed vectors combining items at
+///   corresponding indices
 ///
 /// # Example
 ///
 /// ```rust
-/// use crate::graph::nodes::{Zip, TransformerNode};
+/// use streamweave::graph::nodes::{Zip, TransformerNode};
 ///
-/// let zip = Zip::new();
+/// // Create a zip node for zipping vectors of integers
+/// let zip = Zip::<i32>::new();
+///
+/// // Use in a graph
 /// let node = TransformerNode::from_transformer(
 ///     "zip".to_string(),
 ///     zip,
 /// );
+/// ```
+///
+/// ## Transformation Example
+///
+/// ```text
+/// // If input stream contains:
+/// // vec![vec![1, 2, 3], vec![10, 20, 30]]
+///
+/// // Output will be:
+/// // vec![vec![1, 10], vec![2, 20], vec![3, 30]]
 /// ```
 pub struct Zip<T>
 where

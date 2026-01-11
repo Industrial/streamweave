@@ -1,7 +1,88 @@
-//! Message deduplication transformer implementation.
+//! Message deduplication transformer for StreamWeave.
 //!
-//! Provides exactly-once processing semantics by filtering duplicate messages
-//! based on their unique identifiers.
+//! This module provides [`MessageDedupeTransformer`] and [`DeduplicationWindow`],
+//! types for filtering duplicate messages based on their unique identifiers in
+//! StreamWeave pipelines. It provides exactly-once processing semantics by
+//! maintaining a cache of recently seen message IDs and filtering out duplicates.
+//!
+//! # Overview
+//!
+//! [`MessageDedupeTransformer`] is useful for ensuring exactly-once processing
+//! semantics in StreamWeave pipelines. It maintains a cache of recently seen
+//! message IDs and filters out any messages whose ID has already been seen within
+//! the configured deduplication window.
+//!
+//! # Key Concepts
+//!
+//! - **Message Deduplication**: Filters duplicate messages based on unique IDs
+//! - **Exactly-Once Semantics**: Ensures each message is processed only once
+//! - **Deduplication Window**: Configurable window for tracking seen IDs
+//! - **Memory Management**: Supports bounded windows to control memory usage
+//! - **Statistics**: Tracks deduplication statistics
+//!
+//! # Core Types
+//!
+//! - **[`MessageDedupeTransformer<T>`]**: Transformer that filters duplicate messages
+//! - **[`DeduplicationWindow`]**: Configuration for deduplication window limits
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::{MessageDedupeTransformer, DeduplicationWindow};
+//! use streamweave::message::Message;
+//!
+//! // Create a deduplicator keeping the last 1000 message IDs
+//! let transformer = MessageDedupeTransformer::<i32>::new()
+//!     .with_window(DeduplicationWindow::Count(1000));
+//! ```
+//!
+//! ## Time-Based Window
+//!
+//! ```rust
+//! use streamweave::transformers::{MessageDedupeTransformer, DeduplicationWindow};
+//! use std::time::Duration;
+//!
+//! // Keep IDs seen within the last 5 minutes
+//! let transformer = MessageDedupeTransformer::<String>::new()
+//!     .with_window(DeduplicationWindow::Time(Duration::from_secs(300)));
+//! ```
+//!
+//! ## Combined Window
+//!
+//! ```rust
+//! use streamweave::transformers::{MessageDedupeTransformer, DeduplicationWindow};
+//! use std::time::Duration;
+//!
+//! // Keep last 1000 IDs or IDs within 5 minutes (whichever is stricter)
+//! let transformer = MessageDedupeTransformer::<i32>::new()
+//!     .with_window(DeduplicationWindow::CountAndTime {
+//!         max_count: 1000,
+//!         max_age: Duration::from_secs(300),
+//!     });
+//! ```
+//!
+//! # Window Strategies
+//!
+//! - **Unbounded**: Keep all IDs indefinitely (careful: memory grows without bound)
+//! - **Count(n)**: Keep the last n IDs (FIFO eviction)
+//! - **Time(d)**: Keep IDs seen within duration d
+//! - **CountAndTime**: Combine both limits (uses whichever is stricter)
+//!
+//! # Design Decisions
+//!
+//! - **HashSet-Based Lookup**: Uses HashSet for O(1) duplicate detection
+//! - **FIFO Eviction**: Uses VecDeque for FIFO eviction in count-based windows
+//! - **Time-Based Eviction**: Evicts entries based on time for time-based windows
+//! - **Statistics Tracking**: Tracks processed and filtered counts for monitoring
+//! - **Message ID Based**: Uses MessageId for efficient duplicate detection
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MessageDedupeTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::message::{Message, MessageId};

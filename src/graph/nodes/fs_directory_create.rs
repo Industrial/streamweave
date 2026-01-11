@@ -1,7 +1,67 @@
-//! Directory create node for StreamWeave graphs
+//! Directory create node for creating directories while passing paths through.
 //!
-//! Creates directories from path strings while passing paths through. Takes path strings as input,
-//! creates directories, and outputs the same paths, enabling creating directories and continuing processing.
+//! This module provides [`FsDirectoryCreate`], a graph node that creates directories
+//! from path strings while passing the same paths through to the output. It takes
+//! path strings as input, creates directories, and outputs the same paths, enabling
+//! creating directories and continuing processing. It wraps [`FsDirectoryCreateTransformer`]
+//! for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`FsDirectoryCreate`] is useful for creating directory structures while continuing
+//! processing in graph-based pipelines. Unlike consumers, it passes paths through,
+//! making it ideal for setting up directory structures at intermediate stages
+//! without interrupting the pipeline.
+//!
+//! # Key Concepts
+//!
+//! - **Pass-Through Operation**: Creates directories while passing paths through to output
+//! - **Path Input**: Takes directory path strings as input
+//! - **Recursive Creation**: Creates parent directories as needed
+//! - **Transformer Wrapper**: Wraps `FsDirectoryCreateTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`FsDirectoryCreate`]**: Node that creates directories while passing paths through
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::FsDirectoryCreate;
+//!
+//! // Create a directory create node
+//! let fs_directory_create = FsDirectoryCreate::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::FsDirectoryCreate;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a directory create node with error handling
+//! let fs_directory_create = FsDirectoryCreate::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("dir-creator".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Pass-Through Pattern**: Creates directories while passing paths through for
+//!   intermediate directory setup
+//! - **Async I/O**: Uses Tokio's async filesystem operations for non-blocking
+//!   directory creation
+//! - **Recursive Creation**: Creates parent directories automatically for convenience
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`FsDirectoryCreate`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::FsDirectoryCreateTransformer;

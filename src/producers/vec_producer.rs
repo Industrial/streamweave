@@ -1,3 +1,75 @@
+//! Vector producer for producing stream data from a Vec.
+//!
+//! This module provides [`VecProducer<T>`], a producer that yields items from a `Vec`
+//! in order. It's useful for converting in-memory collections into streams and for
+//! testing and development.
+//!
+//! # Overview
+//!
+//! [`VecProducer`] takes a `Vec<T>` and produces each item as a stream element.
+//! The items are produced in the order they appear in the vector, making it ideal
+//! for testing, prototyping, and converting existing data structures into streams.
+//!
+//! # Key Concepts
+//!
+//! - **In-Memory Data**: Produces items from an in-memory `Vec`
+//! - **Ordered Output**: Items are produced in the order they appear in the vector
+//! - **Generic Type**: Generic over the item type for maximum flexibility
+//! - **Cloning**: Clones the vector to avoid taking ownership (producer can be reused)
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`VecProducer<T>`]**: Producer that yields items from a `Vec<T>`
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::VecProducer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a producer from a vector
+//! let producer = VecProducer::new(vec![1, 2, 3, 4, 5]);
+//!
+//! // Use in a pipeline
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(producer)
+//!     .transformer(/* ... */)
+//!     .consumer(/* ... */);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::producers::VecProducer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a producer with error handling strategy
+//! let producer = VecProducer::new(vec!["item1", "item2", "item3"])
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("vec-reader".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Cloning**: Clones the vector data to allow the producer to be used multiple
+//!   times or stored without consuming the original data
+//! - **Generic Type**: Generic over `T` to support any type that can be cloned
+//! - **Simple Implementation**: Uses `stream::iter` for straightforward conversion
+//!   from iterator to stream
+//! - **Testing Tool**: Ideal for testing pipelines with known data
+//!
+//! # Integration with StreamWeave
+//!
+//! [`VecProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use futures::{Stream, stream};

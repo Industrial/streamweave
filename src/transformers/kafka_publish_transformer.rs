@@ -1,7 +1,50 @@
-//! Kafka publish transformer for StreamWeave
+//! # Kafka Publish Transformer
 //!
-//! Publishes data to Kafka while passing data through. Takes serializable data as input,
-//! publishes to Kafka, and outputs the same data, enabling publishing to Kafka and continuing processing.
+//! Transformer that publishes serializable data to Kafka topics while passing the
+//! same data through to the output stream. This enables publishing items to Kafka
+//! for downstream consumption while continuing the main pipeline flow.
+//!
+//! ## Overview
+//!
+//! The Kafka Publish Transformer provides:
+//!
+//! - **Kafka Publishing**: Publishes items to Kafka topics using rdkafka
+//! - **Pass-Through**: Outputs the same items that were published
+//! - **Serialization**: Automatically serializes items to JSON for Kafka
+//! - **Connection Management**: Manages Kafka producer connection lifecycle
+//! - **Error Handling**: Configurable error strategies for publish failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Serializable items to publish to Kafka
+//! - **Output**: `Message<T>` - The same items (pass-through)
+//!
+//! ## Use Cases
+//!
+//! - **Event Streaming**: Publish events to Kafka for real-time processing
+//! - **Fan-Out**: Distribute items to multiple Kafka consumers
+//! - **Data Pipeline**: Integrate with Kafka-based data pipelines
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::KafkaPublishTransformer;
+//! use streamweave::consumers::KafkaProducerConfig;
+//! use serde::Serialize;
+//!
+//! #[derive(Serialize)]
+//! struct Event {
+//!     id: u32,
+//!     message: String,
+//! }
+//!
+//! let config = KafkaProducerConfig::default()
+//!   .with_bootstrap_servers("localhost:9092")
+//!   .with_topic("events");
+//! let transformer = KafkaPublishTransformer::<Event>::new(config);
+//! // Input: [Event, ...]
+//! // Publishes to Kafka and outputs: [Event, ...]
+//! ```
 
 use crate::consumers::KafkaProducerConfig;
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

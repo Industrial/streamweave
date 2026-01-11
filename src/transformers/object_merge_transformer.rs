@@ -1,6 +1,78 @@
-//! Object merge transformer for StreamWeave
+//! Object merge transformer for StreamWeave.
 //!
-//! Merges multiple JSON objects into a single object.
+//! This module provides [`ObjectMergeTransformer`], a transformer that merges
+//! multiple JSON objects from an array into a single object. Later objects override
+//! earlier ones for duplicate keys, enabling object composition and property
+//! overriding operations.
+//!
+//! # Overview
+//!
+//! [`ObjectMergeTransformer`] is useful for merging JSON objects in streaming
+//! pipelines. It processes arrays of objects and merges them into a single object,
+//! with later objects taking precedence for duplicate keys.
+//!
+//! # Key Concepts
+//!
+//! - **Object Merging**: Merges arrays of objects into single objects
+//! - **Property Override**: Later objects override earlier ones for duplicate keys
+//! - **Shallow Merging**: Performs shallow merge (does not deep merge nested objects)
+//! - **Array Input**: Expects arrays of objects as input
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`ObjectMergeTransformer`]**: Transformer that merges objects
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectMergeTransformer;
+//! use streamweave::PipelineBuilder;
+//! use serde_json::json;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that merges objects
+//! let transformer = ObjectMergeTransformer::new();
+//!
+//! // Input: [json!([{"a": 1}, {"b": 2}, {"a": 3}])]
+//! // Output: [json!({"a": 3, "b": 2})]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectMergeTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = ObjectMergeTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("object-merger".to_string());
+//! ```
+//!
+//! # Merge Behavior
+//!
+//! Objects are merged left-to-right, with later objects taking precedence for
+//! duplicate keys. This enables property overriding and object composition.
+//! Non-object values in the array are skipped during merging.
+//!
+//! # Design Decisions
+//!
+//! - **Shallow Merge**: Performs shallow merge (does not recursively merge nested objects)
+//! - **Property Override**: Later objects override earlier ones for predictable behavior
+//! - **Array Input**: Expects arrays of objects for merging
+//! - **Non-Object Skip**: Skips non-object values in the array
+//! - **Simple Merging**: Focuses on straightforward object merging
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ObjectMergeTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

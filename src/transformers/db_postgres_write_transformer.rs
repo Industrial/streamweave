@@ -1,7 +1,42 @@
-//! PostgreSQL database write transformer for StreamWeave
+//! # PostgreSQL Write Transformer
 //!
-//! Writes DatabaseRow data to PostgreSQL while passing data through. Takes DatabaseRow as input,
-//! writes to PostgreSQL, and outputs the same data, enabling writing to database and continuing processing.
+//! Transformer that writes `DatabaseRow` data to PostgreSQL tables while passing the same
+//! data through to the output stream. This enables persisting data to PostgreSQL while
+//! continuing the main pipeline flow.
+//!
+//! ## Overview
+//!
+//! The PostgreSQL Write Transformer provides:
+//!
+//! - **Database Writing**: Writes `DatabaseRow` data to PostgreSQL tables
+//! - **Pass-Through**: Outputs the same rows that were written
+//! - **Batch Insertion**: Batches inserts for improved performance
+//! - **Connection Pooling**: Manages PostgreSQL connection pool lifecycle
+//! - **Error Handling**: Configurable error strategies for write failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<DatabaseRow>` - Database rows to write
+//! - **Output**: `Message<DatabaseRow>` - The same rows (pass-through)
+//!
+//! ## Performance
+//!
+//! The transformer batches inserts for improved performance, flushing batches
+//! based on size and time thresholds.
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::DbPostgresWriteTransformer;
+//! use streamweave::db::{DatabaseConsumerConfig, DatabaseType};
+//!
+//! let config = DatabaseConsumerConfig::default()
+//!   .with_connection_url("postgresql://user:pass@localhost/dbname")
+//!   .with_table_name("users");
+//! let transformer = DbPostgresWriteTransformer::new(config);
+//! // Input: [DatabaseRow, ...]
+//! // Writes to PostgreSQL and outputs: [DatabaseRow, ...]
+//! ```
 
 use crate::db::{DatabaseConsumerConfig, DatabaseRow, DatabaseType};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

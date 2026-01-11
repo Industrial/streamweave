@@ -1,4 +1,76 @@
-//! Circuit breaker transformer for StreamWeave
+//! Circuit breaker transformer for implementing resilience patterns.
+//!
+//! This module provides [`CircuitBreakerTransformer`], a transformer that implements
+//! the circuit breaker pattern for resilience in StreamWeave pipelines. It monitors
+//! failures and opens the circuit (stops processing) when the failure threshold is
+//! exceeded, automatically resetting after a timeout. It implements the [`Transformer`]
+//! trait for use in StreamWeave pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`CircuitBreakerTransformer`] is useful for protecting downstream services from
+//! cascading failures. It monitors the failure rate and automatically stops forwarding
+//! requests when failures exceed a threshold, allowing the downstream service to
+//! recover before retrying.
+//!
+//! # Key Concepts
+//!
+//! - **Circuit States**: The circuit can be in Closed (normal operation), Open
+//!   (stopping requests), or Half-Open (testing recovery) states
+//! - **Failure Threshold**: The number of failures that trigger circuit opening
+//! - **Reset Timeout**: The duration to wait before attempting to reset the circuit
+//! - **Resilience Pattern**: Prevents cascading failures by stopping requests when
+//!   downstream services are failing
+//!
+//! # Core Types
+//!
+//! - **[`CircuitBreakerTransformer<T>`]**: Transformer that implements the circuit
+//!   breaker pattern
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::CircuitBreakerTransformer;
+//! use tokio::time::Duration;
+//!
+//! // Create a circuit breaker that opens after 5 failures
+//! // and resets after 10 seconds
+//! let circuit_breaker = CircuitBreakerTransformer::<i32>::new(
+//!     5,                              // failure threshold
+//!     Duration::from_secs(10)        // reset timeout
+//! );
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::CircuitBreakerTransformer;
+//! use streamweave::ErrorStrategy;
+//! use tokio::time::Duration;
+//!
+//! // Create a circuit breaker with error handling
+//! let circuit_breaker = CircuitBreakerTransformer::<String>::new(3, Duration::from_secs(5))
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("api-circuit-breaker".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Circuit Breaker Pattern**: Implements the standard circuit breaker pattern
+//!   for resilience
+//! - **Failure Monitoring**: Tracks failure rates and automatically opens circuit
+//!   when threshold is exceeded
+//! - **Automatic Recovery**: Attempts to reset circuit after timeout period
+//! - **Thread-Safe**: Uses atomic operations and RwLock for thread-safe state
+//!   management
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CircuitBreakerTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline or graph. It supports the standard error handling
+//! strategies and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

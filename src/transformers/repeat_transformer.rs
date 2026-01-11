@@ -1,7 +1,33 @@
-//! Repeat transformer for StreamWeave
+//! # Repeat Transformer
 //!
-//! Repeats each incoming item N times in the output stream. Useful for testing,
-//! data amplification, and retry patterns.
+//! Transformer that repeats each input item a specified number of times in the
+//! output stream. This enables data amplification, testing scenarios, and creating
+//! retry patterns in pipelines.
+//!
+//! ## Overview
+//!
+//! The Repeat Transformer provides:
+//!
+//! - **Item Repetition**: Emits each input item N times consecutively
+//! - **One-to-Many**: Each input item produces multiple output items
+//! - **Data Amplification**: Useful for load testing and data generation
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to repeat
+//! - **Output**: `Message<T>` - Repeated items (each input item appears N times)
+//!
+//! ## Example
+//!
+//! ```rust
+//! use streamweave::transformers::RepeatTransformer;
+//!
+//! let transformer = RepeatTransformer::new(3);
+//! // Input: [1, 2, 3]
+//! // Output: [1, 1, 1, 2, 2, 2, 3, 3, 3]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

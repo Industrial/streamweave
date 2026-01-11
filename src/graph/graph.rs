@@ -1,11 +1,92 @@
 //! # Graph Structure
 //!
 //! This module provides the core `Graph` type for managing graph-based data processing pipelines.
+//! It defines the runtime structure that holds nodes and their connections, enabling complex
+//! data processing topologies with fan-in, fan-out, and multi-path data flows.
+//!
+//! # Overview
+//!
+//! The [`Graph`] type represents a complete data processing topology with nodes and connections.
+//! It provides runtime management of type-erased nodes, allowing graphs to be constructed
+//! dynamically and executed by the execution engine. All data flowing through the graph is
+//! automatically wrapped in `Message<T>` for traceability and metadata preservation.
+//!
+//! # Key Concepts
+//!
+//! - **Node Management**: Stores type-erased nodes in a map for runtime access
+//! - **Connection Tracking**: Maintains a list of connections between nodes
+//! - **Type Erasure**: Uses `Box<dyn NodeTrait>` to enable runtime graph construction
+//! - **Message-Based Flow**: All data flows as `Message<T>` with automatic wrapping/unwrapping
+//! - **Graph Execution**: Works with the execution engine to run the graph topology
+//!
+//! # Core Types
+//!
+//! - **[`Graph`]**: Runtime graph structure containing nodes and connections
+//! - **[`ConnectionInfo`]**: Runtime connection information between nodes
+//!
+//! # Quick Start
+//!
+//! ## Building a Graph
+//!
+//! ```rust,no_run
+//! use streamweave::graph::{GraphBuilder, GraphExecution};
+//! use streamweave::graph::nodes::{ProducerNode, TransformerNode, ConsumerNode};
+//! use streamweave_array::ArrayProducer;
+//! use streamweave::transformers::MapTransformer;
+//! use streamweave::consumers::VecConsumer;
+//!
+//! // Build a graph using GraphBuilder
+//! let graph = GraphBuilder::new()
+//!     .node(ProducerNode::from_producer(
+//!         "source".to_string(),
+//!         ArrayProducer::new([1, 2, 3]),
+//!     ))?
+//!     .node(TransformerNode::from_transformer(
+//!         "double".to_string(),
+//!         MapTransformer::new(|x: i32| x * 2),
+//!     ))?
+//!     .node(ConsumerNode::from_consumer(
+//!         "sink".to_string(),
+//!         VecConsumer::<i32>::new(),
+//!     ))?
+//!     .connect_by_name("source", "double")?
+//!     .connect_by_name("double", "sink")?
+//!     .build();
+//!
+//! // Execute the graph
+//! let mut executor = graph.executor();
+//! executor.start().await?;
+//! ```
 //!
 //! ## Graph Structure
 //!
-//! A `Graph` contains nodes and connections between them. Nodes can be producers,
-//! transformers, or consumers, and connections define how data flows between nodes.
+//! A [`Graph`] contains:
+//! - **Nodes**: Type-erased nodes stored by name in a `HashMap`
+//! - **Connections**: List of `ConnectionInfo` representing data flow between nodes
+//!
+//! Nodes can be producers, transformers, or consumers, and connections define how
+//! data flows between nodes. All data is automatically wrapped in `Message<T>`
+//! during execution.
+//!
+//! # Design Decisions
+//!
+//! - **Type Erasure**: Uses `Box<dyn NodeTrait>` to enable runtime graph construction
+//!   and dynamic topology management
+//! - **Name-Based Access**: Nodes are accessed by name for runtime flexibility
+//! - **Connection List**: Maintains a list of connections for execution engine setup
+//! - **Message-Based**: All data flows as `Message<T>` with automatic handling
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Graph`] is typically constructed using [`crate::graph::GraphBuilder`] for compile-time type
+//! validation, then executed using [`crate::graph::GraphExecution`]. The execution engine handles
+//! concurrent node execution and message routing through channels.
+
+// Import for rustdoc links
+#[allow(unused_imports)]
+use super::execution::GraphExecution;
+#[allow(unused_imports)]
+use super::graph_builder::GraphBuilder;
 
 use std::collections::HashMap;
 

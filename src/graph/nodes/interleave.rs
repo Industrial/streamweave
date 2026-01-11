@@ -1,7 +1,68 @@
-//! Interleave node for StreamWeave graphs
+//! Interleave node for interleaving items from multiple streams.
 //!
-//! Interleaves items from two streams. Alternates between items from the input
-//! stream and items from another stream, creating an interleaved output stream.
+//! This module provides [`Interleave`], a graph node that interleaves items from
+//! two streams. It alternates between items from the input stream and items from
+//! another stream, creating an interleaved output stream. It wraps
+//! [`InterleaveTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Interleave`] is useful for combining multiple streams by alternating between
+//! them in graph-based pipelines. It takes items from two streams and interleaves
+//! them, creating a single output stream that alternates between the two sources.
+//!
+//! # Key Concepts
+//!
+//! - **Stream Interleaving**: Alternates items from two input streams
+//! - **Dual Input**: Takes items from the main input stream and another stream
+//! - **Alternating Output**: Produces an output stream that alternates between
+//!   items from both sources
+//! - **Transformer Wrapper**: Wraps `InterleaveTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Interleave<T>`]**: Node that interleaves items from multiple streams
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Interleave;
+//! use futures::stream;
+//!
+//! // Create an interleave node with another stream
+//! let other_stream = Box::pin(stream::empty::<i32>());
+//! let interleave = Interleave::new(other_stream);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Interleave;
+//! use streamweave::ErrorStrategy;
+//! use futures::stream;
+//!
+//! # let other_stream = Box::pin(stream::empty::<i32>());
+//! // Create an interleave node with error handling
+//! let interleave = Interleave::new(other_stream)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("interleaver".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Alternating Pattern**: Alternates between two streams for interleaving
+//! - **Stream-Based**: Works with async streams for efficient processing
+//! - **Type-Safe**: Supports generic types for flexible item types
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Interleave`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::InterleaveTransformer;

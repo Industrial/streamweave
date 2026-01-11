@@ -1,7 +1,68 @@
-//! Router that routes `Result<T, E>` items to success/error ports.
+//! Error branch router for routing Result types to success/error ports.
 //!
-//! Routes `Ok(item)` to port 0 (success) and `Err(error)` to port 1 (error).
-//! Uses zero-copy semantics by moving items directly to the appropriate port.
+//! This module provides [`ErrorBranch`], a router that routes `Result<T, E>` items
+//! to different output ports based on success or error. It routes `Ok(item)` to
+//! port 0 (success) and `Err(error)` to port 1 (error). It uses zero-copy semantics
+//! by moving items directly to the appropriate port. It implements [`OutputRouter`]
+//! for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`ErrorBranch`] is useful for splitting error handling in graph-based pipelines.
+//! It separates successful results from errors, allowing different processing paths
+//! for each case. This is essential for robust error handling patterns.
+//!
+//! # Key Concepts
+//!
+//! - **Result Routing**: Routes `Result<T, E>` items based on success/error
+//! - **Dual Output Ports**: Has two output ports - one for success (0) and one
+//!   for errors (1)
+//! - **Zero-Copy Semantics**: Moves items directly without copying
+//! - **Error Handling Pattern**: Essential for separating error paths from
+//!   success paths
+//!
+//! # Core Types
+//!
+//! - **[`ErrorBranch<T, E>`]**: Router that routes Result items to success/error ports
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ErrorBranch;
+//!
+//! // Create an error branch router
+//! let error_router = ErrorBranch::<i32, String>::new();
+//! ```
+//!
+//! ## In a Graph
+//!
+//! ```rust,no_run
+//! use streamweave::graph::{GraphBuilder, nodes::ErrorBranch};
+//!
+//! // Create a graph with error branching
+//! let graph = GraphBuilder::new()
+//!     .node(/* producer */)?
+//!     .node(/* transformer that returns Result */)?
+//!     .node(ErrorBranch::<i32, String>::new())?
+//!     // Connect success port (0) to success handler
+//!     // Connect error port (1) to error handler (e.g., DeadLetterQueue)
+//!     .build();
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Result-Based Routing**: Uses Rust's `Result` type for type-safe error handling
+//! - **Zero-Copy**: Moves items directly to appropriate ports for efficiency
+//! - **Two-Port Design**: Provides clear separation between success and error paths
+//! - **Router Trait**: Implements `OutputRouter` for integration with graph system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ErrorBranch`] implements the [`OutputRouter`] trait and can be used in any
+//! StreamWeave graph. It routes items to different output ports based on their
+//! success or error status, enabling sophisticated error handling patterns.
 
 use crate::graph::router::OutputRouter;
 use async_trait::async_trait;

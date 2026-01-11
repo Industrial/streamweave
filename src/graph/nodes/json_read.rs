@@ -1,7 +1,64 @@
-//! JSON read node for StreamWeave graphs
+//! JSON read node for reading JSON files in graphs.
 //!
-//! Reads JSON files from file paths. Takes file paths as input and outputs
-//! parsed JSON objects, enabling processing of multiple JSON files in a pipeline.
+//! This module provides [`JsonRead`], a graph node that reads JSON files from file
+//! paths. It takes file paths as input and outputs parsed JSON objects, enabling
+//! processing of multiple JSON files in graph-based pipelines. It wraps
+//! [`JsonReadTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`JsonRead`] is useful for reading JSON files in graph-based pipelines. It
+//! supports reading multiple JSON files from file paths, making it ideal for
+//! batch processing of JSON data files.
+//!
+//! # Key Concepts
+//!
+//! - **File Reading**: Reads JSON files from file paths
+//! - **JSON Parsing**: Parses file contents as JSON
+//! - **Path Input**: Takes file path strings as input
+//! - **Transformer Wrapper**: Wraps `JsonReadTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`JsonRead`]**: Node that reads JSON files from file paths
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::JsonRead;
+//!
+//! // Create a JSON read node
+//! let json_read = JsonRead::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::JsonRead;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a JSON read node with error handling
+//! let json_read = JsonRead::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("json-reader".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Async I/O**: Uses Tokio's async filesystem operations for non-blocking
+//!   file reading
+//! - **JSON Parsing**: Uses serde_json for robust JSON parsing
+//! - **Path Input**: Takes file paths as input for processing multiple files
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`JsonRead`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::JsonReadTransformer;

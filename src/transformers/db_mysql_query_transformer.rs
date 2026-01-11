@@ -1,7 +1,62 @@
-//! MySQL query transformer for StreamWeave
+//! MySQL query transformer for executing MySQL database queries dynamically.
 //!
-//! Executes MySQL queries from input items. Takes query strings (or query parameters) as input
-//! and outputs query results, enabling dynamic MySQL queries in a pipeline.
+//! This module provides [`DbMysqlQueryTransformer`], a transformer that executes
+//! MySQL database queries for each input item, running queries dynamically based on
+//! input data and producing query results as a stream.
+//!
+//! # Overview
+//!
+//! [`DbMysqlQueryTransformer`] executes MySQL queries for each input item. It supports
+//! flexible input formats (SQL strings or JSON objects with query/parameters), uses
+//! parameterized queries for security, and streams query results as `DatabaseRow` items.
+//! This enables dynamic MySQL querying within stream processing pipelines.
+//!
+//! # Key Concepts
+//!
+//! - **Dynamic Query Execution**: Executes MySQL queries based on input items
+//! - **Flexible Input**: Accepts SQL query strings or JSON objects with query/parameters
+//! - **Parameterized Queries**: Supports parameterized queries (?) for security
+//! - **Result Streaming**: Produces `DatabaseRow` results as a stream
+//! - **Connection Pooling**: Manages MySQL connection pool lifecycle
+//! - **Error Handling**: Configurable error strategies for query failures
+//!
+//! # Core Types
+//!
+//! - **[`DbMysqlQueryTransformer`]**: Transformer that executes MySQL queries
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::DbMysqlQueryTransformer;
+//! use streamweave::db::{DatabaseProducerConfig, DatabaseType};
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let db_config = DatabaseProducerConfig::default()
+//!     .with_connection_url("mysql://user:pass@localhost/db")
+//!     .with_database_type(DatabaseType::Mysql);
+//!
+//! let transformer = DbMysqlQueryTransformer::new(db_config);
+//! // Input: ["SELECT * FROM users WHERE id = ?", ...]
+//! // Output: [DatabaseRow, ...]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **MySQL-Specific**: Uses MySQL-specific connection pools and query syntax
+//! - **Connection Pooling**: Creates MySQL connection pools for efficient connection reuse
+//! - **Flexible Input**: Supports both SQL strings and JSON objects with parameters
+//! - **Parameterized Queries**: Uses parameterized queries for SQL injection prevention
+//! - **Result Streaming**: Streams query results for efficient processing
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DbMysqlQueryTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline or graph. It supports the standard error handling
+//! strategies and configuration options provided by [`TransformerConfig`].
 
 use crate::db::{DatabaseProducerConfig, DatabaseRow, DatabaseType};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

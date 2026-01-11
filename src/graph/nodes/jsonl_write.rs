@@ -1,7 +1,79 @@
-//! JSONL write node for StreamWeave graphs
+//! JSONL write node for writing data to JSON Lines files while passing data through.
 //!
-//! Writes data to JSON Lines (JSONL) files while passing data through. Takes data as input, writes to JSONL,
-//! and outputs the same data, enabling writing intermediate results while continuing processing.
+//! This module provides [`JsonlWrite`], a graph node that writes data to JSON Lines
+//! (JSONL) files while passing the same data through to the output. It takes data as
+//! input, writes it to a JSONL file, and outputs the same data, enabling writing
+//! intermediate results while continuing processing. It wraps [`JsonlWriteTransformer`]
+//! for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`JsonlWrite`] is useful for writing intermediate results to JSON Lines files while
+//! continuing processing in graph-based pipelines. Unlike consumers, it passes data
+//! through, making it ideal for checkpointing data at intermediate stages or logging
+//! JSONL writes.
+//!
+//! # Key Concepts
+//!
+//! - **Pass-Through Operation**: Writes data to JSONL files while passing it through to output
+//! - **JSON Lines Format**: Writes data in JSON Lines format (one JSON object per line)
+//! - **Intermediate Results**: Enables writing intermediate results without
+//!   interrupting the pipeline
+//! - **Transformer Wrapper**: Wraps `JsonlWriteTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`JsonlWrite<T>`]**: Node that writes data to JSONL files while passing data through
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::JsonlWrite;
+//! use serde::Serialize;
+//!
+//! #[derive(Serialize, Clone, Debug)]
+//! struct Record {
+//!     name: String,
+//!     age: u32,
+//! }
+//!
+//! // Create a JSONL write node
+//! let jsonl_write = JsonlWrite::<Record>::new("output.jsonl");
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::JsonlWrite;
+//! use streamweave::ErrorStrategy;
+//! use serde::Serialize;
+//!
+//! # #[derive(Serialize, Clone, Debug)]
+//! # struct Record { name: String, age: u32 }
+//! // Create a JSONL write node with error handling
+//! let jsonl_write = JsonlWrite::<Record>::new("output.jsonl")
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("jsonl-writer".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Pass-Through Pattern**: Writes data while passing it through for
+//!   intermediate result capture
+//! - **JSON Lines Format**: Supports the JSON Lines format for efficient
+//!   storage of large JSON datasets
+//! - **Async I/O**: Uses Tokio's async filesystem operations for non-blocking
+//!   file writing
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`JsonlWrite`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::JsonlWriteTransformer;

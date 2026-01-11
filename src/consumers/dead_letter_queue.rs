@@ -1,3 +1,84 @@
+//! Dead letter queue consumer for collecting failed stream items.
+//!
+//! This module provides [`DeadLetterQueue`] and [`DeadLetterItem`], a consumer
+//! that collects failed items from streams into an in-memory queue. It's designed
+//! to work with error routing (e.g., `ErrorBranch`) to capture items that fail
+//! processing for later analysis, retry, or manual intervention.
+//!
+//! # Overview
+//!
+//! [`DeadLetterQueue`] is useful for error handling patterns where failed items
+//! need to be captured and processed separately. It stores items with timestamps
+//! for audit purposes and provides methods to inspect, drain, and retrieve the
+//! collected items.
+//!
+//! # Key Concepts
+//!
+//! - **Error Collection**: Collects items that have failed processing
+//! - **Metadata Preservation**: Stores timestamps with each item for audit trails
+//! - **In-Memory Storage**: Uses an in-memory queue for fast access
+//! - **Thread-Safe**: Uses `Arc<Mutex<>>` for concurrent access
+//!
+//! # Core Types
+//!
+//! - **[`DeadLetterQueue<T>`]**: Consumer that collects failed items into a queue
+//! - **[`DeadLetterItem<T>`]**: An item in the dead letter queue with metadata
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::DeadLetterQueue;
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a dead letter queue
+//! let mut dlq = DeadLetterQueue::<i32>::new();
+//!
+//! // Create a stream of failed items
+//! let error_stream = stream::iter(vec![1, 2, 3]);
+//!
+//! // Consume the stream (items collected in DLQ)
+//! dlq.consume(Box::pin(error_stream)).await;
+//!
+//! // Check queue size
+//! let count = dlq.len().await;
+//! assert_eq!(count, 3);
+//!
+//! // Retrieve all items
+//! let items = dlq.drain().await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Pre-allocated Capacity
+//!
+//! ```rust
+//! use streamweave::consumers::DeadLetterQueue;
+//!
+//! // Create a DLQ with pre-allocated capacity
+//! let dlq = DeadLetterQueue::<String>::with_capacity(1000)
+//!     .with_name("error-collector".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **In-Memory Storage**: Uses in-memory storage for fast access and simple
+//!   implementation
+//! - **Timestamp Metadata**: Stores timestamps to enable time-based analysis and
+//!   expiration policies
+//! - **Thread-Safe**: Uses `Arc<Mutex<>>` to support concurrent access patterns
+//! - **Error Branch Integration**: Designed to work with error routing for
+//!   automatic error collection
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DeadLetterQueue`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It's particularly useful with error branching routers
+//! to automatically capture failed items. It supports the standard error handling
+//! strategies and configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

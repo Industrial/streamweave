@@ -1,7 +1,39 @@
-//! Process transformer for StreamWeave
+//! # Process Transformer
 //!
-//! Executes external processes on stream items. Each item is passed to a process
-//! as input, and the process output is returned as the transformed item.
+//! Transformer that executes external processes on stream items, passing each
+//! item as input to the process and returning the process output as the transformed
+//! item. This enables integration with external tools and command-line utilities.
+//!
+//! ## Overview
+//!
+//! The Process Transformer provides:
+//!
+//! - **External Process Execution**: Executes external processes for each item
+//! - **Input/Output Integration**: Passes items as stdin or command arguments
+//! - **Output Capture**: Captures process stdout as transformed output
+//! - **Error Handling**: Configurable error strategies for process failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Data to pass to the process
+//! - **Output**: `Message<String>` - Process output (stdout)
+//!
+//! ## Use Cases
+//!
+//! - **Command-Line Tool Integration**: Integrate with external CLI tools
+//! - **Data Transformation**: Use external tools for data processing
+//! - **Script Execution**: Execute scripts on stream data
+//!
+//! ## Example
+//!
+//! ```rust
+//! use streamweave::transformers::ProcessTransformer;
+//!
+//! // Execute a command for each item
+//! let transformer = ProcessTransformer::new("echo".to_string(), vec![]);
+//! // Input: ["hello", "world"]
+//! // Output: ["hello\n", "world\n"]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

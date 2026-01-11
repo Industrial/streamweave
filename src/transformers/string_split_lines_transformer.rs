@@ -1,6 +1,32 @@
-//! String split lines transformer for StreamWeave
+//! # String Split Lines Transformer
 //!
-//! Splits strings by newlines, producing a stream of lines.
+//! Transformer that splits input strings by newline characters, producing a stream
+//! where each line becomes a separate output item. Useful for processing multi-line
+//! text data.
+//!
+//! ## Overview
+//!
+//! The String Split Lines Transformer provides:
+//!
+//! - **Line Splitting**: Splits strings by newline characters (\n)
+//! - **One-to-Many**: Each input string can produce multiple output lines
+//! - **Newline Handling**: Handles various newline formats
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Multi-line strings to split
+//! - **Output**: `Message<String>` - Individual lines from the input strings
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::StringSplitLinesTransformer;
+//!
+//! let transformer = StringSplitLinesTransformer::new();
+//! // Input: ["line1\nline2\nline3"]
+//! // Output: ["line1", "line2", "line3"]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

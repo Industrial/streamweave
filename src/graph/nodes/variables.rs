@@ -1,7 +1,72 @@
 //! Graph-level variable store and transformers for reading/writing variables.
 //!
-//! Provides thread-safe access to variables that can be shared between nodes
-//! in the graph.
+//! This module provides [`GraphVariables`], [`ReadVariable`], and [`WriteVariable`],
+//! types for managing graph-level variables in StreamWeave graphs. It provides
+//! thread-safe access to variables that can be shared between nodes in the graph,
+//! enabling stateful processing and coordination between nodes.
+//!
+//! # Overview
+//!
+//! [`GraphVariables`] is useful for sharing state between nodes in graph-based
+//! pipelines. It provides a thread-safe variable store that can be accessed by
+//! multiple nodes, making it ideal for stateful processing, counters, accumulators,
+//! and coordination patterns.
+//!
+//! # Key Concepts
+//!
+//! - **Variable Store**: Thread-safe variable storage for graph-level state
+//! - **Type-Erased Storage**: Stores variables as type-erased `Any` for flexibility
+//! - **Node Integration**: Provides transformers for reading/writing variables
+//! - **Thread-Safe**: Uses `Arc<RwLock<>>` for thread-safe access
+//!
+//! # Core Types
+//!
+//! - **[`GraphVariables`]**: Thread-safe variable store for graph-level state
+//! - **[`ReadVariable<T>`](crate::graph::nodes::ReadVariable)**: Transformer that reads variables from the store
+//! - **[`WriteVariable<T>`](crate::graph::nodes::WriteVariable)**: Transformer that writes variables to the store
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::GraphVariables;
+//!
+//! // Create a variable store
+//! let vars = GraphVariables::new();
+//!
+//! // Set a variable
+//! vars.set("counter", 42i32);
+//!
+//! // Get a variable
+//! let value: Option<i32> = vars.get("counter");
+//! assert_eq!(value, Some(42));
+//! ```
+//!
+//! ## With Default Value
+//!
+//! ```rust
+//! use streamweave::graph::nodes::GraphVariables;
+//!
+//! let vars = GraphVariables::new();
+//!
+//! // Get with default
+//! let value = vars.get_or_default("counter", 0i32);
+//! assert_eq!(value, 0);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Type-Erased Storage**: Uses `Box<dyn Any>` for flexible variable storage
+//! - **Thread-Safe**: Uses `Arc<RwLock<>>` for thread-safe concurrent access
+//! - **Downcasting**: Requires downcasting when retrieving variables for type safety
+//! - **Transformer Integration**: Provides transformers for seamless graph integration
+//!
+//! # Integration with StreamWeave
+//!
+//! [`GraphVariables`] can be shared between nodes in StreamWeave graphs. The
+//! [`ReadVariable`] and [`WriteVariable`] transformers implement the [`Transformer`]
+//! trait and can be used in any graph for variable access patterns.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};
@@ -385,3 +450,9 @@ where
     }
   }
 }
+
+// Type aliases for rustdoc links
+/// Alias for [`ReadVariable`] used in documentation.
+pub type VariableRead<T> = ReadVariable<T>;
+/// Alias for [`WriteVariable`] used in documentation.
+pub type VariableWrite<T> = WriteVariable<T>;

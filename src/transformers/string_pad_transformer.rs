@@ -1,6 +1,37 @@
-//! String pad transformer for StreamWeave
+//! # String Pad Transformer
 //!
-//! Pads strings to a specified length with a padding character.
+//! Transformer that pads input strings to a specified length using a padding
+//! character, supporting both left and right padding directions.
+//!
+//! ## Overview
+//!
+//! The String Pad Transformer provides:
+//!
+//! - **String Padding**: Pads strings to a target length with a padding character
+//! - **Direction Control**: Supports left or right padding
+//! - **Length Configuration**: Configurable target length
+//! - **Character Selection**: Configurable padding character
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Strings to pad
+//! - **Output**: `Message<String>` - Padded strings
+//!
+//! ## Padding Directions
+//!
+//! - **Left**: Pads on the left side (right-aligns text)
+//! - **Right**: Pads on the right side (left-aligns text)
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::{StringPadTransformer, PadDirection};
+//!
+//! let transformer = StringPadTransformer::new(10, ' ', PadDirection::Right);
+//! // Input: ["hello"]
+//! // Output: ["hello     "]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

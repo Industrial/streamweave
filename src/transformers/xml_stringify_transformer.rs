@@ -1,6 +1,210 @@
-//! XML stringify transformer for StreamWeave
+//! # XML Stringify Transformer
 //!
-//! Converts JSON values from stream items into XML strings.
+//! Transformer for converting JSON values to XML strings in StreamWeave pipelines.
+//!
+//! This module provides [`XmlStringifyTransformer`], a transformer that converts
+//! `serde_json::Value` objects into XML strings. It supports pretty-printing,
+//! configurable root element names, and proper handling of JSON structures
+//! including objects, arrays, and primitives.
+//!
+//! # Overview
+//!
+//! [`XmlStringifyTransformer`] converts JSON values (typically objects) into
+//! well-formed XML strings. It handles the conversion from JSON's tree structure
+//! to XML's element hierarchy, making it useful for generating XML output from
+//! JSON data in streaming pipelines.
+//!
+//! # Key Concepts
+//!
+//! - **JSON to XML Conversion**: Converts JSON objects, arrays, and primitives to XML
+//! - **Element Mapping**: JSON object keys become XML element names
+//! - **Array Handling**: JSON arrays can be serialized as repeated elements
+//! - **Pretty Printing**: Optional formatted XML output with indentation
+//! - **Root Element Configuration**: Customizable root element name for non-object values
+//! - **Attribute Support**: Supports XML attributes via special `@attributes` JSON key
+//!
+//! # Core Types
+//!
+//! - **[`XmlStringifyTransformer`]**: Transformer that converts JSON values to XML strings
+//! - **[`XmlStringifyConfig`]**: Configuration for XML stringification behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::XmlStringifyTransformer;
+//! use serde_json::json;
+//!
+//! // Create a transformer that converts JSON to XML
+//! let transformer = XmlStringifyTransformer::new();
+//!
+//! // Input: json!({"person": {"name": "Alice", "age": 30}})
+//! // Output: "<person><name>Alice</name><age>30</age></person>"
+//! ```
+//!
+//! ## Pretty-Printed XML
+//!
+//! ```rust
+//! use streamweave::transformers::XmlStringifyTransformer;
+//!
+//! // Create a transformer that pretty-prints XML
+//! let transformer = XmlStringifyTransformer::new()
+//!     .with_pretty(true);
+//! ```
+//!
+//! ## Custom Root Element
+//!
+//! ```rust
+//! use streamweave::transformers::XmlStringifyTransformer;
+//! use serde_json::json;
+//!
+//! // Create a transformer with custom root element name
+//! let transformer = XmlStringifyTransformer::new()
+//!     .with_root_element("document");
+//!
+//! // Input: json!({"name": "Alice"})
+//! // Output: "<document><name>Alice</name></document>"
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::XmlStringifyTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = XmlStringifyTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("json-to-xml".to_string());
+//! ```
+//!
+//! ## XML with Attributes
+//!
+//! ```rust
+//! use streamweave::transformers::XmlStringifyTransformer;
+//! use serde_json::json;
+//!
+//! // JSON with @attributes key for XML attributes
+//! let json = json!({
+//!     "person": {
+//!         "@attributes": {"id": "123", "active": "true"},
+//!         "name": "Alice",
+//!         "age": 30
+//!     }
+//! });
+//!
+//! // Output: <person id="123" active="true"><name>Alice</name><age>30</age></person>
+//! ```
+//!
+//! # Design Decisions
+//!
+//! ## JSON Structure Mapping
+//!
+//! - **Objects**: JSON objects map to XML elements (keys → element names)
+//! - **Arrays**: JSON arrays can serialize as repeated elements
+//! - **Strings/Numbers/Booleans**: Converted to XML text content
+//! - **Null**: Typically omitted or converted to empty elements
+//!
+//! ## Attribute Handling
+//!
+//! XML attributes are specified using a special `@attributes` key in JSON objects.
+//! This convention allows JSON to represent XML attributes while maintaining a
+//! JSON-compatible structure.
+//!
+//! ## Root Element Handling
+//!
+//! When the input JSON is an object, its keys are used as element names. For
+//! non-object values (primitives, arrays), a configurable root element name is
+//! used (default: "root").
+//!
+//! ## Error Handling
+//!
+//! Conversion errors (invalid JSON structures, encoding issues) result in items
+//! being filtered out of the stream. This prevents invalid XML from being produced
+//! while allowing the pipeline to continue processing.
+//!
+//! ## UTF-8 Encoding
+//!
+//! XML output is always UTF-8 encoded, with proper declaration in the XML output.
+//! This ensures compatibility with XML parsers and standards.
+//!
+//! # Integration with StreamWeave
+//!
+//! [`XmlStringifyTransformer`] integrates seamlessly with StreamWeave's pipeline
+//! and graph systems:
+//!
+//! - **Pipeline API**: Use in pipelines for JSON-to-XML conversion
+//! - **Graph API**: Wrap in graph nodes for graph-based XML generation
+//! - **Error Handling**: Supports standard error handling strategies
+//! - **Configuration**: Supports configuration via [`TransformerConfig`] and [`XmlStringifyConfig`]
+//! - **JSON Values**: Works with `serde_json::Value` for flexible JSON handling
+//!
+//! # Common Patterns
+//!
+//! ## Generating XML Documents
+//!
+//! Convert JSON data structures to XML documents:
+//!
+//! ```rust
+//! use streamweave::transformers::XmlStringifyTransformer;
+//! use serde_json::json;
+//!
+//! let transformer = XmlStringifyTransformer::new()
+//!     .with_pretty(true)
+//!     .with_root_element("document");
+//!
+//! // Process JSON objects and output formatted XML
+//! ```
+//!
+//! ## API Response Formatting
+//!
+//! Convert JSON API responses to XML format:
+//!
+//! ```rust
+//! use streamweave::transformers::XmlStringifyTransformer;
+//!
+//! let transformer = XmlStringifyTransformer::new()
+//!     .with_pretty(true);
+//!
+//! // Transform JSON responses to XML for XML-based APIs
+//! ```
+//!
+//! ## Data Serialization
+//!
+//! Serialize data structures as XML for storage or transmission:
+//!
+//! ```rust
+//! use streamweave::transformers::XmlStringifyTransformer;
+//!
+//! let transformer = XmlStringifyTransformer::new()
+//!     .with_root_element("data");
+//!
+//! // Serialize structured data as XML
+//! ```
+//!
+//! # XML Output Format
+//!
+//! ## Standard Output
+//!
+//! XML output includes:
+//! - XML declaration: `<?xml version="1.0" encoding="UTF-8"?>`
+//! - Proper element nesting based on JSON structure
+//! - Text content for primitive values
+//! - Attributes when `@attributes` key is present
+//!
+//! ## Pretty-Printed Output
+//!
+//! When pretty-printing is enabled, XML is formatted with:
+//! - Proper indentation
+//! - Line breaks between elements
+//! - Improved readability
+//!
+//! ## Special JSON Keys
+//!
+//! - **@attributes**: Maps to XML element attributes
+//! - **content**: Text content of an element (when mixed content is needed)
+//! - **children**: Array of child elements with the same name
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

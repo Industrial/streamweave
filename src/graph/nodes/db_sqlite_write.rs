@@ -1,7 +1,78 @@
-//! SQLite database write node for StreamWeave graphs
+//! SQLite write node for writing data to SQLite while passing data through.
 //!
-//! Writes DatabaseRow data to SQLite while passing data through. Takes DatabaseRow as input,
-//! writes to SQLite, and outputs the same data, enabling writing to database and continuing processing.
+//! This module provides [`DbSqliteWrite`], a graph node that writes `DatabaseRow` data
+//! to SQLite tables while passing the same data through to the output. It takes
+//! `DatabaseRow` as input, writes it to a SQLite table, and outputs the same data,
+//! enabling writing to database and continuing processing. It wraps
+//! [`DbSqliteWriteTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`DbSqliteWrite`] is useful for writing intermediate results to SQLite tables while
+//! continuing processing in graph-based pipelines. Unlike consumers, it passes data
+//! through, making it ideal for checkpointing data at intermediate stages or
+//! logging database writes.
+//!
+//! # Key Concepts
+//!
+//! - **Pass-Through Operation**: Writes data to SQLite while passing it through to output
+//! - **DatabaseRow Input**: Takes `DatabaseRow` structures as input
+//! - **Intermediate Results**: Enables writing intermediate results without
+//!   interrupting the pipeline
+//! - **Transformer Wrapper**: Wraps `DbSqliteWriteTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`DbSqliteWrite`]**: Node that writes data to SQLite while passing data through
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::DbSqliteWrite;
+//! use streamweave::db::{DatabaseConsumerConfig, DatabaseRow};
+//!
+//! // Create database configuration
+//! let config = DatabaseConsumerConfig::default()
+//!     .with_connection_url("sqlite:test.db")
+//!     .with_table_name("users");
+//!
+//! // Create a SQLite write node
+//! let db_sqlite_write = DbSqliteWrite::new(config);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::DbSqliteWrite;
+//! use streamweave::db::{DatabaseConsumerConfig, DatabaseRow};
+//! use streamweave::ErrorStrategy;
+//!
+//! # let config = DatabaseConsumerConfig::default()
+//! #     .with_connection_url("sqlite:test.db")
+//! #     .with_table_name("users");
+//! // Create a SQLite write node with error handling
+//! let db_sqlite_write = DbSqliteWrite::new(config)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("sqlite-writer".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Pass-Through Pattern**: Writes data while passing it through for
+//!   intermediate result capture
+//! - **SQLite Integration**: Uses sqlx for type-safe, async SQLite database access
+//! - **DatabaseRow Support**: Works with `DatabaseRow` structures for structured
+//!   database operations
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DbSqliteWrite`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::db::{DatabaseConsumerConfig, DatabaseRow};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

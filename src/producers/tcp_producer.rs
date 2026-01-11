@@ -1,6 +1,95 @@
-//! TCP producer for StreamWeave
+//! TCP producer for reading stream data from TCP connections.
 //!
-//! Receives data from TCP connections.
+//! This module provides [`TcpProducer`], a producer that connects to a TCP server
+//! and reads data from the connection. It supports both line-based and delimiter-based
+//! reading modes, making it flexible for various network protocols.
+//!
+//! # Overview
+//!
+//! [`TcpProducer`] is useful for reading data from TCP servers and converting it
+//! into streams. It uses Tokio's async networking for efficient I/O and supports
+//! configurable reading modes (lines or delimited data) and error handling.
+//!
+//! # Key Concepts
+//!
+//! - **TCP Connection**: Connects to a remote TCP server at a specified address
+//! - **Line-Based Reading**: Reads data line by line (newline-delimited)
+//! - **Delimiter-Based Reading**: Reads data using a custom delimiter byte
+//! - **Async Networking**: Uses Tokio's async TCP networking for efficient I/O
+//! - **Connection Timeout**: Configurable timeout for establishing connections
+//! - **Error Handling**: Configurable error strategies for connection and I/O failures
+//!
+//! # Core Types
+//!
+//! - **[`TcpProducer`]**: Producer that reads data from TCP connections
+//! - **[`TcpProducerConfig`]**: Configuration for TCP producer behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::TcpProducer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a producer that connects to a TCP server
+//! let producer = TcpProducer::new("127.0.0.1:8080".to_string());
+//!
+//! // Use in a pipeline
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(producer)
+//!     .transformer(/* ... */)
+//!     .consumer(/* ... */);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::producers::{TcpProducer, TcpProducerConfig};
+//!
+//! // Create a producer with custom configuration
+//! let config = TcpProducerConfig::default()
+//!     .with_address("192.168.1.100:9090")
+//!     .with_timeout_secs(60)
+//!     .with_buffer_size(16384)
+//!     .with_read_as_lines(false)  // Read as raw bytes
+//!     .with_delimiter(Some(0));  // Null-delimited
+//! let producer = TcpProducer::with_config(config);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::producers::TcpProducer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a producer with error handling strategy
+//! let producer = TcpProducer::new("127.0.0.1:8080".to_string())
+//!     .with_error_strategy(ErrorStrategy::Skip)  // Skip errors and continue
+//!     .with_name("tcp-reader".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Line-Based by Default**: Defaults to reading lines (newline-delimited),
+//!   which is the most common pattern for text-based network protocols
+//! - **Delimiter Support**: Supports custom delimiter bytes for binary or
+//!   custom text protocols
+//! - **Async Networking**: Uses Tokio's async TCP networking for efficient,
+//!   non-blocking I/O
+//! - **Connection Timeout**: Configurable timeout prevents hanging on connection
+//!   attempts
+//! - **Buffer Size**: Configurable buffer size allows tuning for different
+//!   data sizes and throughput requirements
+//!
+//! # Integration with StreamWeave
+//!
+//! [`TcpProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ProducerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};

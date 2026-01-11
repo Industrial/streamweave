@@ -1,4 +1,73 @@
-//! Filter transformer for StreamWeave
+//! Filter transformer for conditional stream filtering.
+//!
+//! This module provides [`FilterTransformer<F, T>`], a transformer that filters
+//! items from a stream based on a predicate function. Only items where the predicate
+//! returns `true` are passed through to the output stream.
+//!
+//! # Overview
+//!
+//! [`FilterTransformer`] is one of the most common transformers in streaming pipelines.
+//! It filters items based on a predicate function, keeping only items that match
+//! the condition. This is useful for conditional processing, data validation, and
+//! selective processing workflows.
+//!
+//! # Key Concepts
+//!
+//! - **Predicate-Based Filtering**: Uses a predicate function to determine which items to keep
+//! - **Keep True Items**: Items where predicate returns `true` are kept (opposite of DropTransformer)
+//! - **Generic Predicate**: Accepts any function/closure that returns bool
+//! - **Type-Safe**: Generic over item type for type safety
+//! - **Zero-Copy Support**: Supports zero-copy transformations via `ZeroCopyTransformer`
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`FilterTransformer<F, T>`]**: Transformer that filters items based on a predicate
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::FilterTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that keeps only items greater than 10
+//! let transformer = FilterTransformer::new(|x: &i32| *x > 10);
+//!
+//! // Input: [5, 15, 8, 20, 3]
+//! // Output: [15, 20]  (only items > 10 are kept)
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Complex Predicate
+//!
+//! ```rust
+//! use streamweave::transformers::FilterTransformer;
+//!
+//! // Keep only non-empty strings
+//! let transformer = FilterTransformer::new(|s: &String| !s.trim().is_empty());
+//!
+//! // Keep items that match a pattern
+//! let transformer = FilterTransformer::new(|s: &String| s.starts_with("prefix-"));
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Predicate Function**: Uses a closure/function for flexible filtering logic
+//! - **Keep True**: Keeps items where predicate is true (standard filter semantics)
+//! - **Generic Type**: Generic over item type for maximum flexibility
+//! - **Cloneable Predicate**: Predicate must be cloneable for stream processing
+//! - **Zero-Copy Support**: Supports zero-copy transformations for efficiency
+//!
+//! # Integration with StreamWeave
+//!
+//! [`FilterTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`]. It also implements
+//! [`ZeroCopyTransformer`] for efficient zero-copy transformations.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::graph::ZeroCopyTransformer;

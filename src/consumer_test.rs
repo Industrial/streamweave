@@ -1,3 +1,43 @@
+//! # Consumer Trait Test Suite
+//!
+//! Comprehensive test suite for the `Consumer` trait, including configuration,
+//! error handling, component information, and stream consumption operations.
+//!
+//! ## Test Coverage
+//!
+//! This test suite covers:
+//!
+//! - **ConsumerConfig**: Default values, error strategy, name configuration, and builder pattern
+//! - **Consumer Methods**: set_config, config, config_mut, with_name, with_config
+//! - **Error Handling**: All error strategy variants (Stop, Skip, Retry, Custom) and retry logic
+//! - **Component Info**: Component name and type information retrieval
+//! - **Error Context**: Creation of error contexts with item information
+//! - **Stream Consumption**: Stream consumption operations and input port handling
+//! - **ConsumerPorts**: Default input port type assignments
+//!
+//! ## Test Organization
+//!
+//! Tests are organized to cover:
+//!
+//! 1. **Configuration Tests**: Config creation, modification, and access
+//! 2. **Error Handling Tests**: All error strategy branches and retry logic
+//! 3. **Component Info Tests**: Name and type information retrieval
+//! 4. **Consumption Tests**: Stream consumption operations
+//! 5. **Port Tests**: Port type assignments and compatibility
+//! 6. **Internal Method Tests**: Verification of trait default implementations
+//!
+//! ## Key Concepts
+//!
+//! - **Consumer**: A component that consumes streams of data
+//! - **ConsumerConfig**: Configuration for consumers including error strategy and name
+//! - **Error Strategy**: How to handle errors during consumption (Stop, Skip, Retry, Custom)
+//! - **ConsumerPorts**: Type-level port definitions for input
+//!
+//! ## Usage
+//!
+//! These tests ensure that consumers correctly consume streams, handle errors,
+//! and provide proper component information for debugging and error reporting.
+
 use crate::consumers::VecConsumer;
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};

@@ -1,6 +1,75 @@
-//! Database query node for StreamWeave graphs
+//! Database query node for executing database queries in graphs.
 //!
-//! Executes database queries from stream items.
+//! This module provides [`DatabaseQuery`], a graph node that executes database queries
+//! from stream items. It takes SQL query strings as input and outputs database rows,
+//! enabling dynamic query execution in graph-based pipelines. It wraps
+//! [`DatabaseQueryTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`DatabaseQuery`] is useful for executing database queries in graph-based pipelines.
+//! It supports multiple database types and allows dynamic query execution based on
+//! stream data, making it ideal for data processing workflows that interact with
+//! databases.
+//!
+//! # Key Concepts
+//!
+//! - **SQL Query Execution**: Executes SQL queries from stream items
+//! - **Database Rows Output**: Outputs query results as `DatabaseRow` structures
+//! - **Configurable Database**: Supports multiple database types through configuration
+//! - **Transformer Wrapper**: Wraps `DatabaseQueryTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`DatabaseQuery`]**: Node that executes database queries from stream items
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::DatabaseQuery;
+//! use streamweave::db::DatabaseProducerConfig;
+//!
+//! // Create database configuration
+//! let db_config = DatabaseProducerConfig {
+//!     connection_string: "postgres://localhost/db".to_string(),
+//!     // ... other configuration
+//! };
+//!
+//! // Create a database query node
+//! let db_query = DatabaseQuery::new(db_config);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::DatabaseQuery;
+//! use streamweave::db::DatabaseProducerConfig;
+//! use streamweave::ErrorStrategy;
+//!
+//! # let db_config = DatabaseProducerConfig {
+//! #     connection_string: "postgres://localhost/db".to_string(),
+//! # };
+//! // Create a database query node with error handling
+//! let db_query = DatabaseQuery::new(db_config)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("db-query".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Database Integration**: Uses sqlx for type-safe, async database access
+//! - **Dynamic Queries**: Supports dynamic SQL query execution from stream items
+//! - **DatabaseRow Output**: Returns structured database rows for flexible processing
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DatabaseQuery`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::db::DatabaseProducerConfig;
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

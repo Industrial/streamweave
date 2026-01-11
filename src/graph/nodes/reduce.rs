@@ -1,7 +1,85 @@
-//! Reduce node for StreamWeave graphs
+//! Reduce node for reducing streams to a single accumulated value.
 //!
-//! Reduces items to a single value using an accumulator function. Applies a
-//! reducer function to each item in the stream along with an accumulator.
+//! This module provides [`Reduce`], a graph node that reduces items to a single
+//! value using an accumulator function. It applies a reducer function to each
+//! item in the stream along with an accumulator, producing a final accumulated
+//! value. It wraps [`ReduceTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Reduce`] is useful for aggregating items in graph-based pipelines. It
+//! applies a reducer function to each item along with an accumulator, producing
+//! a final accumulated value. This is essential for operations like summing,
+//! counting, finding maximum/minimum values, and other aggregation patterns.
+//!
+//! # Key Concepts
+//!
+//! - **Accumulation**: Uses an accumulator to build up a result from items
+//! - **Reducer Function**: Applies a function to combine accumulator with each item
+//! - **Single Output**: Produces a single accumulated value from the entire stream
+//! - **Initial Value**: Starts with an initial accumulator value
+//! - **Transformer Wrapper**: Wraps `ReduceTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Reduce<T, Acc, F>`]**: Node that reduces items to an accumulated value
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage (Sum)
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Reduce;
+//!
+//! // Sum all integers in the stream
+//! let reduce = Reduce::new(0, |acc: i32, x: i32| acc + x);
+//! ```
+//!
+//! ## Product
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Reduce;
+//!
+//! // Multiply all integers in the stream
+//! let reduce = Reduce::new(1, |acc: i32, x: i32| acc * x);
+//! ```
+//!
+//! ## Maximum Value
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Reduce;
+//!
+//! // Find the maximum value
+//! let reduce = Reduce::new(i32::MIN, |acc: i32, x: i32| acc.max(x));
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Reduce;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a reduce node with error handling
+//! let reduce = Reduce::new(0, |acc: i32, x: i32| acc + x)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("sum-reducer".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Accumulator Pattern**: Uses accumulator pattern for efficient reduction
+//! - **Generic Types**: Supports different input and accumulator types
+//! - **Reducer Function**: Uses closure for flexible reduction logic
+//! - **Stream-Based**: Works with async streams for efficient processing
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Reduce`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`]. Note that the
+//! output type is `Acc` (accumulator type) rather than `T` (input type).
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::ReduceTransformer;

@@ -1,3 +1,73 @@
+//! Standard error consumer for writing stream data to stderr.
+//!
+//! This module provides [`StdioStderrConsumer`], a consumer that writes stream items
+//! to standard error (stderr). Each item is written on a separate line, making it
+//! ideal for error output, diagnostics, and logging in command-line tools.
+//!
+//! # Overview
+//!
+//! [`StdioStderrConsumer`] is useful for building command-line tools that need to
+//! output errors or diagnostics to stderr while keeping stdout available for primary
+//! output. It uses Tokio's async I/O for efficient writing and supports any type that
+//! implements `Display`.
+//!
+//! # Key Concepts
+//!
+//! - **Standard Error Output**: Writes to stderr, separate from stdout
+//! - **Line-Based Output**: Each item is written on a separate line
+//! - **Display Trait**: Items must implement `Display` for string conversion
+//! - **Async I/O**: Uses Tokio's async stderr handle for non-blocking writes
+//!
+//! # Core Types
+//!
+//! - **[`StdioStderrConsumer<T>`]**: Consumer that writes items to stderr
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::StdioStderrConsumer;
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a consumer
+//! let mut consumer = StdioStderrConsumer::new();
+//!
+//! // Create a stream of error messages
+//! let stream = stream::iter(vec!["Warning: low memory", "Error: connection failed"]);
+//!
+//! // Consume the stream (items written to stderr)
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::consumers::StdioStderrConsumer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a consumer with error handling strategy
+//! let consumer = StdioStderrConsumer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("error-logger".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Stderr Separation**: Uses stderr to keep errors separate from primary output
+//! - **Line Formatting**: Each item is formatted with a trailing newline for readability
+//! - **Display Requirement**: Items must implement `Display` for flexible output formatting
+//! - **Flush on Completion**: Final flush ensures all output is written before completion
+//!
+//! # Integration with StreamWeave
+//!
+//! [`StdioStderrConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

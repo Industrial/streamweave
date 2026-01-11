@@ -1,6 +1,79 @@
-//! Math operation transformer for StreamWeave
+//! Math operation transformer for performing arithmetic operations.
 //!
-//! Performs arithmetic operations (Add, Subtract, Multiply, Divide, Modulo) on numeric values.
+//! This module provides [`MathOperationTransformer`] and [`MathOperation`], types for
+//! performing arithmetic operations on numeric values in StreamWeave pipelines.
+//! It supports Add, Subtract, Multiply, Divide, and Modulo operations, making it
+//! ideal for mathematical computations. It implements the [`Transformer`] trait for
+//! use in StreamWeave pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`MathOperationTransformer`] is useful for performing arithmetic operations on
+//! numeric values in StreamWeave pipelines. It processes JSON numeric values and
+//! applies arithmetic operations with a specified operand, making it ideal for
+//! mathematical computations.
+//!
+//! # Key Concepts
+//!
+//! - **Arithmetic Operations**: Supports Add, Subtract, Multiply, Divide, Modulo
+//! - **Binary Operations**: Performs binary operations with a specified operand
+//! - **JSON Value Support**: Works with `serde_json::Value` numeric types
+//! - **Transformer Trait**: Implements `Transformer` for pipeline integration
+//!
+//! # Core Types
+//!
+//! - **[`MathOperationTransformer`]**: Transformer that performs arithmetic operations
+//! - **[`MathOperation`]**: Enum representing different arithmetic operations
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::{MathOperationTransformer, MathOperation};
+//!
+//! // Add 10 to each number
+//! let transformer = MathOperationTransformer::new(MathOperation::Add, 10.0);
+//! ```
+//!
+//! ## Different Operations
+//!
+//! ```rust
+//! use streamweave::transformers::{MathOperationTransformer, MathOperation};
+//!
+//! // Multiply by 2
+//! let multiply = MathOperationTransformer::new(MathOperation::Multiply, 2.0);
+//!
+//! // Divide by 5
+//! let divide = MathOperationTransformer::new(MathOperation::Divide, 5.0);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::{MathOperationTransformer, MathOperation};
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a math operation transformer with error handling
+//! let transformer = MathOperationTransformer::new(MathOperation::Add, 5.0)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("adder".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Operation Enum**: Uses enum-based operation selection for type safety
+//! - **Operand Required**: Requires an operand value for binary operations
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   pipeline system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathOperationTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

@@ -1,7 +1,44 @@
-//! XOR transformer for StreamWeave
+//! # XOR Transformer
 //!
-//! Performs exclusive OR (XOR) logic operations on boolean values or bits.
-//! This transformer can work with boolean values or numeric values (bitwise XOR).
+//! Transformer that performs exclusive OR (XOR) operations on input values,
+//! supporting both boolean logic XOR and bitwise XOR for numeric types. This
+//! enables cryptographic operations, checksums, and logical transformations.
+//!
+//! ## Overview
+//!
+//! The XOR Transformer provides:
+//!
+//! - **Boolean XOR**: Logical XOR operation on boolean values
+//! - **Bitwise XOR**: Bitwise XOR operation on numeric values
+//! - **Configurable Operand**: XOR each input with a configurable operand value
+//! - **Type Generic**: Works with any type that supports XOR operations
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Values to XOR
+//! - **Output**: `Message<T>` - XORed values
+//!
+//! ## Operation Modes
+//!
+//! - **Boolean Mode**: `true XOR false = true`, `true XOR true = false`
+//! - **Bitwise Mode**: `5 XOR 3 = 6` (bitwise operation)
+//!
+//! ## Example
+//!
+//! ```rust
+//! use streamweave::transformers::XorTransformer;
+//!
+//! // Boolean XOR: true XOR false = true
+//! let transformer = XorTransformer::new(true);
+//! // Input: [false, true, false]
+//! // Output: [true, false, true]
+//!
+//! // Bitwise XOR: 5 XOR 3 = 6
+//! let transformer = XorTransformer::new(3u32);
+//! // Input: [5, 7, 2]
+//! // Output: [6, 4, 1]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

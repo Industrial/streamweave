@@ -1,4 +1,39 @@
-//! Split transformer for StreamWeave
+//! # Split Transformer
+//!
+//! Transformer that splits a stream of items into groups based on a predicate
+//! function. Items where the predicate returns `true` are grouped together, and
+//! the stream is split at points where the predicate returns `false`.
+//!
+//! ## Overview
+//!
+//! The Split Transformer provides:
+//!
+//! - **Predicate-Based Splitting**: Splits stream based on a predicate function
+//! - **Grouping**: Groups consecutive items where predicate is true
+//! - **Dynamic Splitting**: Split points determined by item content
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to split
+//! - **Output**: `Message<Vec<T>>` - Vectors of grouped items (split at predicate=false points)
+//!
+//! ## Split Behavior
+//!
+//! Items are grouped into vectors where the predicate returns `true`. When the
+//! predicate returns `false`, a new group starts. This effectively splits the
+//! stream at points where the predicate is false.
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::SplitTransformer;
+//!
+//! let transformer = SplitTransformer::new(|x: &i32| *x > 0);
+//! // Input: [1, 2, -1, 3, 4, -2, 5]
+//! // Output: [vec![1, 2], vec![3, 4], vec![5]] (split at negative values)
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

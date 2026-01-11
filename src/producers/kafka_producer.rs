@@ -1,3 +1,90 @@
+//! Kafka producer for reading messages from Apache Kafka topics.
+//!
+//! This module provides [`KafkaProducer`], a producer that reads messages from one or more
+//! Kafka topics and produces them as a stream. It supports consumer groups, partition assignment,
+//! offset management, and comprehensive Kafka configuration options.
+//!
+//! # Overview
+//!
+//! [`KafkaProducer`] connects to Apache Kafka brokers and reads messages from Kafka topics.
+//! It uses the `rdkafka` crate (Rust wrapper for librdkafka) for high-performance Kafka integration.
+//! Messages are yielded as [`KafkaMessage`] objects containing topic, partition, offset, key,
+//! payload, timestamp, and headers. Perfect for event streaming, log aggregation, and
+//! real-time data processing pipelines.
+//!
+//! # Key Concepts
+//!
+//! - **Kafka Integration**: Reads from Apache Kafka topics using rdkafka
+//! - **Consumer Groups**: Supports Kafka consumer groups for distributed processing
+//! - **Offset Management**: Automatic offset management and commit strategies
+//! - **Multiple Topics**: Can subscribe to and read from multiple topics
+//! - **Partition Assignment**: Automatic partition assignment in consumer groups
+//! - **Async Stream Consumer**: Uses async stream consumer for efficient message polling
+//! - **Error Handling**: Configurable error strategies for connection and read failures
+//!
+//! # Core Types
+//!
+//! - **[`KafkaProducer`]**: Producer that reads messages from Kafka topics
+//! - **[`KafkaConsumerConfig`]**: Configuration for Kafka consumer behavior
+//! - **[`KafkaMessage`]**: Message structure containing topic, partition, offset, key, payload, etc.
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::{KafkaProducer, KafkaConsumerConfig};
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a producer that reads from Kafka topics
+//! let config = KafkaConsumerConfig::default()
+//!     .with_bootstrap_servers("localhost:9092")
+//!     .with_group_id("my-consumer-group")
+//!     .with_topic("my-topic")
+//!     .with_auto_offset_reset("earliest");
+//! let producer = KafkaProducer::new(config);
+//!
+//! // Use in a pipeline
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(producer)
+//!     .transformer(/* ... */)
+//!     .consumer(/* ... */);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Multiple Topics
+//!
+//! ```rust
+//! use streamweave::producers::{KafkaProducer, KafkaConsumerConfig};
+//!
+//! // Create a producer that reads from multiple topics
+//! let config = KafkaConsumerConfig::default()
+//!     .with_bootstrap_servers("localhost:9092")
+//!     .with_group_id("my-consumer-group")
+//!     .with_topics(vec!["topic1".to_string(), "topic2".to_string()])
+//!     .with_auto_offset_reset("latest");
+//! let producer = KafkaProducer::new(config);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **rdkafka**: Uses rdkafka (Rust wrapper for librdkafka) for production-grade
+//!   Kafka integration with high performance
+//! - **Consumer Groups**: Supports consumer groups for scalable, distributed message
+//!   processing with automatic partition assignment
+//! - **Offset Management**: Automatic offset commit with configurable intervals
+//! - **Async Stream Consumer**: Uses async stream consumer for efficient, non-blocking
+//!   message polling
+//! - **Comprehensive Configuration**: Supports all major Kafka consumer configuration options
+//!
+//! # Integration with StreamWeave
+//!
+//! [`KafkaProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use async_stream::stream;

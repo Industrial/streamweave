@@ -1,7 +1,62 @@
-//! Transformer that implements a while loop with conditional iteration.
+//! While loop node for implementing conditional iteration in graphs.
 //!
-//! Repeats processing of items until a condition is met. Each iteration processes
-//! the item through the loop body (which should be a downstream transformer).
+//! This module provides [`While`], a graph node that implements a while loop with
+//! conditional iteration. It repeats processing of items until a condition is met.
+//! Each iteration processes the item through the loop body (which should be a
+//! downstream transformer). It implements the [`Transformer`] trait for use in
+//! StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`While`] is useful for implementing conditional iteration in graph-based
+//! pipelines. It processes items repeatedly until a condition is met, making it
+//! ideal for iterative processing, convergence algorithms, and conditional loops.
+//!
+//! # Key Concepts
+//!
+//! - **Conditional Iteration**: Repeats processing until a condition is met
+//! - **Condition Function**: Uses a predicate to determine if iteration should continue
+//! - **Loop Body**: Processes items through downstream transformers in each iteration
+//! - **Transformer Trait**: Implements `Transformer` for graph integration
+//!
+//! # Core Types
+//!
+//! - **[`While<T>`]**: Node that implements while loop with conditional iteration
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::While;
+//!
+//! // Create a while loop that continues while value is less than 100
+//! let while_loop = While::<i32>::new(|x| *x < 100);
+//! ```
+//!
+//! ## With Complex Conditions
+//!
+//! ```rust
+//! use streamweave::graph::nodes::While;
+//!
+//! // Create a while loop with complex condition
+//! let while_loop = While::<MyStruct>::new(|item| {
+//!     item.counter < 100 && item.status == "processing"
+//! });
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Condition Function**: Uses a closure for flexible condition specification
+//! - **Iterative Processing**: Processes items through loop body until condition is met
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   graph system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`While`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It processes items iteratively until the condition is met,
+//! enabling conditional loop patterns.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

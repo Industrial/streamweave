@@ -1,7 +1,41 @@
 //! # Graph Traits
 //!
 //! This module provides traits for type-erased node access in the graph structure.
-//! These traits are separated from the graph module to avoid circular dependencies.
+//! These traits enable runtime graph construction and execution by allowing nodes
+//! to be stored and accessed in a type-erased manner while maintaining type safety
+//! at compile time where possible.
+//!
+//! ## Overview
+//!
+//! The Graph Traits module provides:
+//!
+//! - **Type-Erased Access**: Enables storing nodes in type-erased collections
+//! - **Node Information**: Provides access to node metadata (name, kind, ports)
+//! - **Port System**: String-based port naming for clearer graph definitions
+//! - **Node Kind**: Classification of nodes (Producer, Transformer, Consumer)
+//!
+//! ## Core Types
+//!
+//! - **[`NodeTrait`]**: Trait for type-erased node access
+//! - **[`NodeKind`]**: Enumeration of node types (Producer, Transformer, Consumer)
+//!
+//! ## Port System
+//!
+//! All ports are identified by string names, not numeric indices. Nodes must
+//! explicitly specify their port names when created. This enables clearer,
+//! more maintainable graph definitions and better error messages.
+//!
+//! ## Example
+//!
+//! ```rust
+//! use streamweave::graph::traits::NodeTrait;
+//!
+//! // Access node information in a type-erased way
+//! let node_name = node.name();
+//! let node_kind = node.node_kind();
+//! let input_ports = node.input_port_names();
+//! let output_ports = node.output_port_names();
+//! ```
 
 use dyn_clone::DynClone;
 

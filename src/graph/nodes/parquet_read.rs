@@ -1,7 +1,102 @@
-//! Parquet read node for StreamWeave graphs
+//! # Parquet Read Node
 //!
-//! Reads Parquet files from file paths. Takes file paths as input and outputs
-//! Arrow RecordBatches, enabling processing of multiple Parquet files in a pipeline.
+//! Node that reads Parquet files from file paths in StreamWeave graphs, producing
+//! Arrow RecordBatches for further processing. Useful for reading columnar data
+//! from Parquet files in streaming pipelines.
+//!
+//! This module provides [`ParquetRead`], a graph node that reads Parquet files
+//! from file paths and outputs Arrow RecordBatches. It takes file paths as input
+//! and outputs Arrow RecordBatches, enabling processing of multiple Parquet files
+//! in a pipeline. It wraps [`ParquetReadTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`ParquetRead`] is useful for reading columnar data from Parquet files in
+//! graph-based pipelines. Parquet is a columnar storage format that's efficient
+//! for analytics workloads. This node reads data in batches and yields Arrow
+//! RecordBatch objects for efficient processing.
+//!
+//! # Key Concepts
+//!
+//! - **Parquet Reading**: Reads Parquet files from file paths
+//! - **Arrow RecordBatches**: Outputs Arrow RecordBatches for efficient processing
+//! - **Batch Processing**: Supports configurable batch sizes for memory efficiency
+//! - **Column Projection**: Supports reading only specified columns
+//! - **Row Group Selection**: Supports reading only specified row groups
+//! - **Transformer Wrapper**: Wraps `ParquetReadTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`ParquetRead`]**: Node that reads Parquet files from file paths
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ParquetRead;
+//!
+//! // Create a Parquet read node with default configuration
+//! let parquet_read = ParquetRead::new();
+//! ```
+//!
+//! ## With Batch Size
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ParquetRead;
+//!
+//! // Create a Parquet read node with custom batch size
+//! let parquet_read = ParquetRead::new()
+//!     .with_batch_size(1000);
+//! ```
+//!
+//! ## With Column Projection
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ParquetRead;
+//!
+//! // Read only specific columns (by index)
+//! let parquet_read = ParquetRead::new()
+//!     .with_projection(vec![0, 2, 4]); // Read columns 0, 2, and 4
+//! ```
+//!
+//! ## With Row Group Selection
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ParquetRead;
+//!
+//! // Read only specific row groups
+//! let parquet_read = ParquetRead::new()
+//!     .with_row_groups(vec![0, 2]); // Read row groups 0 and 2
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ParquetRead;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a Parquet read node with error handling
+//! let parquet_read = ParquetRead::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("parquet-reader".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Arrow Integration**: Uses Arrow RecordBatches for efficient columnar processing
+//! - **Batch Processing**: Supports configurable batch sizes for memory management
+//! - **Column Projection**: Allows reading only needed columns for efficiency
+//! - **Row Group Selection**: Enables parallel processing of different row groups
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ParquetRead`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`]. The input type is
+//! `String` (file paths), and the output type is `RecordBatch`.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::ParquetReadTransformer;

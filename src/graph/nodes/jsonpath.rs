@@ -1,6 +1,84 @@
-//! JSONPath node for StreamWeave graphs
+//! JSONPath node for querying JSON objects using JSONPath expressions.
 //!
-//! Queries JSON objects using JSONPath expressions.
+//! This module provides [`JsonPath`], a graph node that queries JSON objects using
+//! JSONPath expressions. It wraps [`JsonPathTransformer`] for use in StreamWeave graphs.
+//! It supports both Get and Compare operations for extracting and comparing values
+//! from JSON objects.
+//!
+//! # Overview
+//!
+//! [`JsonPath`] is useful for querying and extracting data from JSON objects in
+//! graph-based pipelines. It supports JSONPath expressions (similar to XPath for XML)
+//! for flexible JSON querying, making it ideal for processing structured JSON data.
+//!
+//! # Key Concepts
+//!
+//! - **JSONPath Expressions**: Uses JSONPath expressions to query JSON objects
+//! - **Get Operation**: Extracts values from JSON objects based on JSONPath
+//! - **Compare Operation**: Compares values from JSON objects based on JSONPath
+//! - **Transformer Wrapper**: Wraps `JsonPathTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`JsonPath`]**: Node that queries JSON objects using JSONPath expressions
+//! - **[`JsonPathOperation`]**: Enum representing JSONPath operations (Get, Compare)
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage (Get Operation)
+//!
+//! ```rust
+//! use streamweave::graph::nodes::JsonPath;
+//! use streamweave::transformers::JsonPathOperation;
+//!
+//! // Extract a value using JSONPath
+//! let jsonpath = JsonPath::new("$.name", JsonPathOperation::Get, None);
+//! ```
+//!
+//! ## Compare Operation
+//!
+//! ```rust
+//! use streamweave::graph::nodes::JsonPath;
+//! use streamweave::transformers::JsonPathOperation;
+//! use serde_json::json;
+//!
+//! // Compare a value using JSONPath
+//! let jsonpath = JsonPath::new(
+//!     "$.status",
+//!     JsonPathOperation::Compare,
+//!     Some(json!("active"))
+//! );
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::JsonPath;
+//! use streamweave::transformers::JsonPathOperation;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a JSONPath node with error handling
+//! let jsonpath = JsonPath::new("$.name", JsonPathOperation::Get, None)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("jsonpath-query".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSONPath Library Integration**: Uses a JSONPath library for robust
+//!   JSONPath expression evaluation
+//! - **Multiple Operations**: Supports both Get and Compare operations for
+//!   flexibility
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible
+//!   JSON handling
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`JsonPath`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{JsonPathOperation, JsonPathTransformer};

@@ -1,7 +1,180 @@
-//! Process execute transformer for StreamWeave
+//! # Process Execute Transformer
 //!
-//! Executes external processes from input items. Takes process parameters as input
-//! and outputs process results, enabling dynamic process execution in a pipeline.
+//! Transformer for executing external processes dynamically based on input data in StreamWeave pipelines.
+//!
+//! This module provides [`ProcessExecuteTransformer`], a transformer that executes external
+//! processes for each input item, running commands dynamically based on input data and producing
+//! process output as a stream. It enables integrating external command-line tools and scripts
+//! into streaming pipelines.
+//!
+//! # Overview
+//!
+//! [`ProcessExecuteTransformer`] is useful for executing external commands and scripts in
+//! streaming data processing pipelines. It accepts command specifications as input (either
+//! JSON objects or simple command strings) and produces lines from process stdout as output,
+//! making it ideal for integrating external tools into data processing workflows.
+//!
+//! # Key Concepts
+//!
+//! - **Dynamic Execution**: Executes different commands for each input item
+//! - **Flexible Input Formats**: Accepts JSON objects with command/args or simple command strings
+//! - **Output Streaming**: Produces process stdout as a stream of lines
+//! - **Async Process Execution**: Uses Tokio for async process execution
+//! - **Error Handling**: Configurable error strategies for process failures
+//!
+//! # Core Types
+//!
+//! - **[`ProcessExecuteTransformer`]**: Transformer that executes external processes
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage with JSON Input
+//!
+//! ```rust
+//! use streamweave::transformers::ProcessExecuteTransformer;
+//!
+//! // Create a transformer that executes processes
+//! let transformer = ProcessExecuteTransformer::new();
+//!
+//! // Input: ["{\"command\": \"echo\", \"args\": [\"hello\"]}"]
+//! // Output: ["hello"]
+//! ```
+//!
+//! ## Simple Command String
+//!
+//! ```rust
+//! use streamweave::transformers::ProcessExecuteTransformer;
+//!
+//! // Execute simple commands without arguments
+//! let transformer = ProcessExecuteTransformer::new();
+//!
+//! // Input: ["echo"]
+//! // Output: [""] (empty line from echo with no args)
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::ProcessExecuteTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = ProcessExecuteTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("command-executor".to_string());
+//! ```
+//!
+//! # Input Formats
+//!
+//! ## JSON Object Format
+//!
+//! Specify command and arguments as a JSON object:
+//!
+//! ```json
+//! {
+//!   "command": "grep",
+//!   "args": ["-i", "error", "logfile.txt"]
+//! }
+//! ```
+//!
+//! ## Simple Command String
+//!
+//! For commands without arguments, use a simple string:
+//!
+//! ```
+//! "date"
+//! ```
+//!
+//! # Design Decisions
+//!
+//! ## Dynamic Command Execution
+//!
+//! Executes different commands for each input item, allowing flexible command selection
+//! based on data content. This design enables data-driven command execution patterns.
+//!
+//! ## Input Format Flexibility
+//!
+//! Supports both JSON objects and simple strings for command specification. JSON format
+//! provides full control over command and arguments, while simple strings enable quick
+//! command execution without argument parsing.
+//!
+//! ## Line-Based Output
+//!
+//! Produces output as lines from process stdout, which is the most common pattern for
+//! command-line tool integration. Each line becomes a separate stream item.
+//!
+//! ## Async Execution
+//!
+//! Uses Tokio's async process execution for non-blocking command execution. This enables
+//! efficient concurrent execution of multiple processes in streaming scenarios.
+//!
+//! ## Error Handling
+//!
+//! Process execution failures are handled according to the configured error strategy.
+//! Failed processes can be skipped, retried, or stop the pipeline, depending on configuration.
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ProcessExecuteTransformer`] integrates seamlessly with StreamWeave's pipeline and graph systems:
+//!
+//! - **Pipeline API**: Use in pipelines for command execution operations
+//! - **Graph API**: Wrap in graph nodes for graph-based command execution
+//! - **Error Handling**: Supports standard error handling strategies
+//! - **Configuration**: Supports configuration via [`TransformerConfig`]
+//! - **Stream Processing**: Produces streams from process output
+//!
+//! # Common Patterns
+//!
+//! ## Data-Driven Command Execution
+//!
+//! Execute different commands based on input data:
+//!
+//! ```rust
+//! use streamweave::transformers::ProcessExecuteTransformer;
+//!
+//! // Execute commands based on input data
+//! let transformer = ProcessExecuteTransformer::new();
+//! ```
+//!
+//! ## Tool Integration
+//!
+//! Integrate external tools into processing pipelines:
+//!
+//! ```rust
+//! use streamweave::transformers::ProcessExecuteTransformer;
+//!
+//! // Integrate grep, awk, sed, etc. into pipelines
+//! let transformer = ProcessExecuteTransformer::new();
+//! ```
+//!
+//! ## Script Execution
+//!
+//! Execute scripts and shell commands:
+//!
+//! ```rust
+//! use streamweave::transformers::ProcessExecuteTransformer;
+//!
+//! // Execute shell scripts or commands
+//! let transformer = ProcessExecuteTransformer::new();
+//! ```
+//!
+//! # Process Execution Details
+//!
+//! ## Command Construction
+//!
+//! Commands are constructed from input:
+//! - JSON objects: `command` field specifies executable, `args` field specifies arguments
+//! - Simple strings: Used as executable with no arguments
+//!
+//! ## Output Processing
+//!
+//! Process stdout is captured and split into lines, with each line becoming an output item.
+//! Process stderr is logged but not included in the output stream.
+//!
+//! ## Process Lifecycle
+//!
+//! Each input item spawns a new process instance. Processes are executed asynchronously
+//! and their output is streamed as it becomes available.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

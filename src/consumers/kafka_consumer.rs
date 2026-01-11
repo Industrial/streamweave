@@ -1,3 +1,99 @@
+//! Kafka consumer for publishing stream data to Kafka topics.
+//!
+//! This module provides [`KafkaConsumer`] and [`KafkaProducerConfig`], a consumer
+//! that publishes stream items to Apache Kafka topics. It uses rdkafka for Kafka
+//! integration and supports configurable producer settings including batching,
+//! compression, retries, and custom properties.
+//!
+//! # Overview
+//!
+//! [`KafkaConsumer`] is useful for publishing stream data to Kafka topics for
+//! distributed message processing, event streaming, and data pipeline integration.
+//! It supports high-throughput scenarios through batching and compression, and
+//! provides configurable reliability guarantees through acks and retry settings.
+//!
+//! # Key Concepts
+//!
+//! - **Kafka Topics**: Publishes messages to configured Kafka topics
+//! - **Serializable Items**: Items must implement `Serialize` for message serialization
+//! - **Producer Configuration**: Supports batching, compression, retries, and more
+//! - **Async Publishing**: Uses rdkafka's async producer for non-blocking operation
+//!
+//! # Core Types
+//!
+//! - **[`KafkaConsumer<T>`]**: Consumer that publishes items to Kafka topics
+//! - **[`KafkaProducerConfig`]**: Configuration for Kafka producer behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::{KafkaConsumer, KafkaProducerConfig};
+//! use futures::stream;
+//! use serde::Serialize;
+//!
+//! #[derive(Serialize, Clone, Debug)]
+//! struct Event {
+//!     id: u32,
+//!     message: String,
+//! }
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create Kafka configuration
+//! let kafka_config = KafkaProducerConfig::default()
+//!     .with_bootstrap_servers("localhost:9092")
+//!     .with_topic("events")
+//!     .with_client_id("streamweave-producer");
+//!
+//! // Create a consumer
+//! let mut consumer = KafkaConsumer::<Event>::new(kafka_config);
+//!
+//! // Create a stream of events
+//! let stream = stream::iter(vec![
+//!     Event { id: 1, message: "event1".to_string() },
+//!     Event { id: 2, message: "event2".to_string() },
+//! ]);
+//!
+//! // Consume the stream (events published to Kafka)
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Advanced Configuration
+//!
+//! ```rust
+//! use streamweave::consumers::{KafkaConsumer, KafkaProducerConfig};
+//!
+//! # use serde::Serialize;
+//! # #[derive(Serialize, Clone, Debug)]
+//! # struct Event { id: u32, message: String }
+//! // Create Kafka configuration with compression and batching
+//! let kafka_config = KafkaProducerConfig::default()
+//!     .with_bootstrap_servers("localhost:9092")
+//!     .with_topic("events")
+//!     .with_compression_type("snappy")
+//!     .with_batch_size(32768)
+//!     .with_linger_ms(10)
+//!     .with_acks("all");
+//!
+//! let consumer = KafkaConsumer::<Event>::new(kafka_config);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **rdkafka Integration**: Uses rdkafka for robust, production-ready Kafka support
+//! - **Configurable Batching**: Supports batching for improved throughput
+//! - **Compression Support**: Supports multiple compression algorithms for efficiency
+//! - **Reliability Options**: Configurable acks and retries for different reliability needs
+//!
+//! # Integration with StreamWeave
+//!
+//! [`KafkaConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

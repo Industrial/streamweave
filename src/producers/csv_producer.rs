@@ -1,3 +1,91 @@
+//! CSV producer for reading and deserializing CSV files.
+//!
+//! This module provides [`CsvProducer<T>`], a producer that reads CSV files and
+//! deserializes rows into the specified type. It supports comprehensive CSV configuration
+//! including headers, custom delimiters, trimming, and comment handling.
+//!
+//! # Overview
+//!
+//! [`CsvProducer`] reads CSV files and deserializes each row into a type that implements
+//! `Deserialize`. It uses the `csv` crate for robust CSV parsing and supports various
+//! CSV dialects and configurations. Perfect for ETL pipelines and data processing workflows.
+//!
+//! # Key Concepts
+//!
+//! - **Type-Safe Deserialization**: Deserializes CSV rows into strongly-typed structs
+//! - **Flexible Configuration**: Supports headers, custom delimiters, trimming, comments
+//! - **Async File I/O**: Uses Tokio for efficient async file reading
+//! - **Error Handling**: Configurable error strategies for parsing failures
+//! - **CSV Standards**: Supports RFC 4180-compliant CSV as well as custom formats
+//!
+//! # Core Types
+//!
+//! - **[`CsvProducer<T>`]**: Producer that reads and deserializes CSV files
+//! - **[`CsvReadConfig`]**: Configuration for CSV reading behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::CsvProducer;
+//! use streamweave::PipelineBuilder;
+//! use serde::Deserialize;
+//!
+//! #[derive(Deserialize)]
+//! struct Record {
+//!     name: String,
+//!     age: u32,
+//! }
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a producer that reads CSV records
+//! let producer = CsvProducer::<Record>::new("data.csv");
+//!
+//! // Use in a pipeline
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(producer)
+//!     .transformer(/* ... */)
+//!     .consumer(/* ... */);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::producers::{CsvProducer, CsvReadConfig};
+//! use serde::Deserialize;
+//!
+//! #[derive(Deserialize)]
+//! struct Record {
+//!     name: String,
+//!     age: u32,
+//! }
+//!
+//! // Create a producer with custom CSV configuration
+//! let config = CsvReadConfig::default()
+//!     .with_headers(false)  // No header row
+//!     .with_delimiter(b'\t')  // Tab-delimited
+//!     .with_trim(true);  // Trim whitespace
+//! let producer = CsvProducer::<Record>::with_config("data.tsv", config);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Synchronous CSV Parsing**: Uses synchronous `csv` crate for CSV parsing
+//!   (CSV parsing is CPU-bound, async wouldn't help)
+//! - **Type Safety**: Leverages Serde for type-safe deserialization
+//! - **Flexible Configuration**: Comprehensive configuration options for various
+//!   CSV dialects and formats
+//! - **Header Support**: Handles CSV headers automatically when present
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CsvProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use async_trait::async_trait;

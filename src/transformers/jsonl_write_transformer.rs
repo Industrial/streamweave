@@ -1,7 +1,49 @@
-//! JSONL write transformer for StreamWeave
+//! # JSONL Write Transformer
 //!
-//! Writes data to JSON Lines (JSONL) files while passing data through. Takes data as input, writes to JSONL,
-//! and outputs the same data, enabling writing intermediate results while continuing processing.
+//! Transformer that writes serializable data to JSON Lines (JSONL) files while
+//! passing the same data through to the output stream. JSONL is ideal for
+//! streaming large datasets where each item is written as a separate line.
+//!
+//! ## Overview
+//!
+//! The JSONL Write Transformer provides:
+//!
+//! - **JSONL Writing**: Writes serializable data to JSONL files (one JSON value per line)
+//! - **Pass-Through**: Outputs the same data that was written
+//! - **Append Mode**: Configurable append vs. overwrite behavior
+//! - **Streaming Format**: Writes items incrementally, one line at a time
+//! - **Error Handling**: Configurable error strategies for write failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Serializable items to write
+//! - **Output**: `Message<T>` - The same items (pass-through)
+//!
+//! ## JSONL Format
+//!
+//! JSON Lines format writes each item as a separate line:
+//!
+//! ```jsonl
+//! {"id": 1, "message": "hello"}
+//! {"id": 2, "message": "world"}
+//! ```
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::JsonlWriteTransformer;
+//! use serde::Serialize;
+//!
+//! #[derive(Serialize)]
+//! struct Event {
+//!     id: u32,
+//!     message: String,
+//! }
+//!
+//! let transformer = JsonlWriteTransformer::<Event>::new("output.jsonl");
+//! // Input: [Event, ...]
+//! // Writes to JSONL and outputs: [Event, ...]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

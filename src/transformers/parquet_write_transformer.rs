@@ -1,7 +1,81 @@
-//! Parquet write transformer for StreamWeave
+//! Parquet write transformer for persisting Arrow RecordBatches to Parquet files.
 //!
-//! Writes data to Parquet files while passing data through. Takes RecordBatch as input, writes to Parquet,
-//! and outputs the same data, enabling writing intermediate results while continuing processing.
+//! This module provides [`ParquetWriteTransformer`], a transformer that writes
+//! Arrow RecordBatches to Parquet files while passing the same data through to
+//! the output stream. This enables persisting intermediate results to Parquet
+//! format while continuing the main pipeline flow.
+//!
+//! # Overview
+//!
+//! [`ParquetWriteTransformer`] is useful for persisting Arrow RecordBatches to
+//! Parquet files in StreamWeave pipelines. It writes data to Parquet format
+//! (a columnar storage format optimized for analytics) while passing through
+//! the same data to downstream components. This enables intermediate persistence,
+//! data archival, and checkpointing without disrupting the pipeline flow.
+//!
+//! # Key Concepts
+//!
+//! - **Parquet Writing**: Writes Arrow RecordBatches to Parquet files
+//! - **Pass-Through**: Outputs the same RecordBatches that were written
+//! - **Compression Support**: Configurable compression codecs (Snappy, LZ4, Zstd, Uncompressed)
+//! - **Columnar Storage**: Leverages Parquet's columnar format for efficient analytics workloads
+//! - **Error Handling**: Configurable error strategies for write failures
+//!
+//! # Core Types
+//!
+//! - **[`ParquetWriteTransformer`]**: Transformer that writes Arrow RecordBatches to Parquet files
+//! - **[`ParquetWriteTransformerConfig`]**: Configuration for Parquet writing behavior
+//! - **[`ParquetWriteTransformerCompression`]**: Enum for supported compression codecs
+//! - **[`ParquetWriteTransformerVersion`]**: Enum for Parquet writer versions
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::ParquetWriteTransformer;
+//!
+//! // Create a Parquet write transformer
+//! let transformer = ParquetWriteTransformer::new("output.parquet");
+//! ```
+//!
+//! ## With Compression
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::{ParquetWriteTransformer, ParquetWriteTransformerCompression};
+//!
+//! // Create a transformer with Zstd compression
+//! let transformer = ParquetWriteTransformer::new("output.parquet")
+//!     .with_compression(ParquetWriteTransformerCompression::Zstd);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::ParquetWriteTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = ParquetWriteTransformer::new("output.parquet")
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("parquet-writer".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Pass-Through Design**: Writes data while passing it through, enabling
+//!   persistence without disrupting pipeline flow
+//! - **Arrow Integration**: Uses Arrow RecordBatches for efficient columnar data processing
+//! - **Configurable Compression**: Supports multiple compression codecs for
+//!   different performance/compression trade-offs
+//! - **Columnar Format**: Leverages Parquet's columnar storage format optimized
+//!   for analytics workloads
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ParquetWriteTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

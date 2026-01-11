@@ -1,7 +1,38 @@
-//! Directory list transformer for StreamWeave
+//! # File System Directory List Transformer
 //!
-//! Lists directory entries from input paths. Takes directory paths as input and outputs
-//! file/directory paths, enabling processing of multiple directories in a pipeline.
+//! Transformer that lists directory entries from input directory paths, producing
+//! a stream of file and subdirectory paths. Supports both recursive and non-recursive
+//! directory traversal.
+//!
+//! ## Overview
+//!
+//! The File System Directory List Transformer provides:
+//!
+//! - **Directory Listing**: Lists files and subdirectories in input directories
+//! - **Recursive Traversal**: Optional recursive directory walking
+//! - **One-to-Many**: Each input directory can produce multiple output paths
+//! - **Error Handling**: Configurable error strategies for listing failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Directory paths to list
+//! - **Output**: `Message<String>` - File and subdirectory paths found
+//!
+//! ## Configuration
+//!
+//! - **Recursive**: When true, recursively walks through subdirectories
+//! - **Non-Recursive**: When false, only lists entries in the top-level directory
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::FsDirectoryListTransformer;
+//!
+//! // Non-recursive listing
+//! let transformer = FsDirectoryListTransformer::new();
+//! // Input: ["/path/to/dir1", "/path/to/dir2"]
+//! // Output: ["/path/to/dir1/file1.txt", "/path/to/dir1/file2.txt", ...]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

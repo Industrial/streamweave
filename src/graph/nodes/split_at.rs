@@ -1,7 +1,66 @@
-//! Split-at node for StreamWeave graphs
+//! Split-at node for splitting streams at a specified index.
 //!
-//! Splits items at a specified index. Collects items and splits them into
-//! two groups: items before the index and items at or after the index.
+//! This module provides [`SplitAt`], a graph node that splits items at a
+//! specified index. It collects items from the input stream and splits them
+//! into two groups: items before the index and items at or after the index.
+//! It wraps [`SplitAtTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`SplitAt`] is useful for splitting streams at a specific position in
+//! graph-based pipelines. It collects all items, splits them at the specified
+//! index, and outputs a tuple containing two vectors: items before the index
+//! and items at or after the index.
+//!
+//! # Key Concepts
+//!
+//! - **Index-Based Splitting**: Splits at a specific index position
+//! - **Two-Group Output**: Produces a tuple of two vectors (before and after)
+//! - **Full Collection**: Collects all items before splitting
+//! - **Transformer Wrapper**: Wraps `SplitAtTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`SplitAt<T>`]**: Node that splits items at a specified index
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::SplitAt;
+//!
+//! // Split stream at index 5 (first 5 items in first vector, rest in second)
+//! let split_at = SplitAt::<i32>::new(5);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::SplitAt;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a split-at node with error handling
+//! let split_at = SplitAt::<String>::new(10)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("index-splitter".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Index-Based**: Uses a fixed index for predictable splitting behavior
+//! - **Full Collection**: Collects all items before splitting, which requires
+//!   memory proportional to stream size
+//! - **Tuple Output**: Outputs `(Vec<T>, Vec<T>)` to represent the two groups
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`SplitAt`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`]. Note that the
+//! output type is `(Vec<T>, Vec<T>)` rather than `T`.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::SplitAtTransformer;

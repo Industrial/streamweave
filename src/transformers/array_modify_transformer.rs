@@ -1,6 +1,76 @@
-//! Array modify transformer for StreamWeave
+//! Array modify transformer for array manipulation operations.
 //!
-//! Modifies arrays using Push, Pop, Shift, or Unshift operations.
+//! This module provides [`ArrayModifyTransformer`], a transformer that modifies arrays
+//! using common array operations: Push, Pop, Shift, and Unshift. These operations allow
+//! you to add or remove elements from the beginning or end of arrays.
+//!
+//! # Overview
+//!
+//! [`ArrayModifyTransformer`] performs array modification operations similar to JavaScript's
+//! Array methods. It supports adding elements (Push, Unshift) and removing elements (Pop, Shift),
+//! making it useful for array manipulation in streaming pipelines.
+//!
+//! # Key Concepts
+//!
+//! - **Push**: Adds an element to the end of the array
+//! - **Pop**: Removes and returns the last element
+//! - **Shift**: Removes and returns the first element
+//! - **Unshift**: Adds an element to the beginning of the array
+//! - **Value Handling**: Push/Unshift require a value, Pop/Shift return the removed element
+//! - **JSON Processing**: Works with JSON Value arrays
+//!
+//! # Core Types
+//!
+//! - **[`ArrayModifyTransformer`]**: Transformer that modifies arrays
+//! - **[`ArrayModifyOperation`]**: Enum specifying the operation type
+//!
+//! # Quick Start
+//!
+//! ## Push Operation
+//!
+//! ```rust
+//! use streamweave::transformers::{ArrayModifyTransformer, ArrayModifyOperation};
+//! use serde_json::json;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that pushes an element
+//! let transformer = ArrayModifyTransformer::new(
+//!     ArrayModifyOperation::Push,
+//!     Some(json!(4))
+//! );
+//!
+//! // Input: [[1, 2, 3]]
+//! // Output: [[1, 2, 3, 4]]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Pop Operation
+//!
+//! ```rust
+//! use streamweave::transformers::{ArrayModifyTransformer, ArrayModifyOperation};
+//!
+//! // Create a transformer that pops the last element
+//! let transformer = ArrayModifyTransformer::new(
+//!     ArrayModifyOperation::Pop,
+//!     None
+//! );
+//! // Input: [[1, 2, 3]]
+//! // Output: [3]  (the popped element)
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JavaScript-like Operations**: Mirrors JavaScript Array methods for familiarity
+//! - **Optional Value**: Value parameter is optional (only needed for Push/Unshift)
+//! - **Returns Modified Array or Element**: Push/Unshift return modified array, Pop/Shift return element
+//! - **In-Place Style**: Operations modify arrays conceptually (though creates new arrays)
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ArrayModifyTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

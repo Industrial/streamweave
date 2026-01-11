@@ -1,7 +1,64 @@
-//! Trace node for StreamWeave graphs
+//! Trace node for logging and debugging item flow in streams.
 //!
-//! Logs/debugs packet flow by tracing items as they pass through. Items are
-//! emitted unchanged but logged for debugging purposes.
+//! This module provides [`Trace`], a graph node that logs and debugs item flow
+//! by tracing items as they pass through. Items are emitted unchanged but logged
+//! for debugging purposes. It wraps [`TraceTransformer`] for use in StreamWeave
+//! graphs.
+//!
+//! # Overview
+//!
+//! [`Trace`] is useful for logging and debugging item flow in graph-based
+//! pipelines. It processes items and logs them at configurable levels while
+//! passing them through unchanged, making it ideal for debugging and monitoring
+//! pipeline behavior.
+//!
+//! # Key Concepts
+//!
+//! - **Tracing**: Logs items as they pass through for debugging
+//! - **Pass-Through**: Items are emitted unchanged
+//! - **Configurable Logging**: Supports configurable log levels
+//! - **Transformer Wrapper**: Wraps `TraceTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Trace<T>`]**: Node that traces/logs items as they pass through
+//! - **[`TraceLevel`]**: Enum representing different trace levels
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Trace;
+//!
+//! // Create a trace node with default debug logging
+//! let trace = Trace::<i32>::new();
+//! ```
+//!
+//! ## With Custom Log Level
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Trace;
+//! use streamweave::transformers::TraceLevel;
+//!
+//! // Create a trace node with info-level logging
+//! let trace = Trace::<String>::with_log_level(TraceLevel::Info);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Pass-Through Pattern**: Items pass through unchanged for non-intrusive
+//!   debugging
+//! - **Configurable Logging**: Supports configurable log levels for flexible
+//!   debugging
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Trace`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{TraceLevel, TraceTransformer};

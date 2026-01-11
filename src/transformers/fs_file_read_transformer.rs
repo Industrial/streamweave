@@ -1,6 +1,37 @@
-//! File read transformer for StreamWeave
+//! # File System File Read Transformer
 //!
-//! Reads file contents from input paths. Can read as lines or bytes.
+//! Transformer that reads file contents from input file paths, producing file data
+//! as either lines (String) or bytes (Bytes) based on configuration.
+//!
+//! ## Overview
+//!
+//! The File System File Read Transformer provides:
+//!
+//! - **File Reading**: Reads file contents from file system paths
+//! - **Reading Modes**: Supports line-by-line reading or raw byte reading
+//! - **One-to-Many**: Each input file can produce multiple output items (lines or chunks)
+//! - **Buffer Configuration**: Configurable buffer sizes for efficient reading
+//! - **Error Handling**: Configurable error strategies for read failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - File paths to read
+//! - **Output**: `Message<FileContent>` - File content (Line or Bytes)
+//!
+//! ## Reading Modes
+//!
+//! - **Line Mode**: Reads files line-by-line, producing `FileContent::Line(String)`
+//! - **Byte Mode**: Reads files as raw bytes, producing `FileContent::Bytes(Bytes)`
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::FsFileReadTransformer;
+//!
+//! let transformer = FsFileReadTransformer::new();
+//! // Input: ["file1.txt", "file2.txt"]
+//! // Output: [FileContent::Line("line1"), FileContent::Line("line2"), ...]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

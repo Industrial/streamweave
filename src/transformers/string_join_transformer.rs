@@ -1,6 +1,31 @@
-//! String join transformer for StreamWeave
+//! # String Join Transformer
 //!
-//! Joins an array of strings into a single string using a delimiter.
+//! Transformer that joins arrays of strings into single strings using a configurable
+//! delimiter, producing a stream where each input array becomes one delimited output string.
+//!
+//! ## Overview
+//!
+//! The String Join Transformer provides:
+//!
+//! - **Delimited Joining**: Joins strings with a configurable delimiter
+//! - **Array Processing**: Takes arrays of strings as input
+//! - **One-to-One**: Each input array produces one output string
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<Vec<String>>` - Arrays of strings to join
+//! - **Output**: `Message<String>` - Delimited strings
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::StringJoinTransformer;
+//!
+//! let transformer = StringJoinTransformer::new(",");
+//! // Input: [vec!["a", "b", "c"], vec!["x", "y"]]
+//! // Output: ["a,b,c", "x,y"]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

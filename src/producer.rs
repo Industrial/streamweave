@@ -1,3 +1,60 @@
+//! # Producer Trait
+//!
+//! This module defines the `Producer` trait for components that produce data streams
+//! in the StreamWeave framework. Producers generate items that flow through pipelines
+//! and are the starting point of any StreamWeave processing pipeline.
+//!
+//! ## Overview
+//!
+//! The Producer trait provides:
+//!
+//! - **Stream Production**: Async production of output streams
+//! - **Error Handling**: Configurable error strategies per producer
+//! - **Component Information**: Name and type information for debugging
+//! - **Configuration**: ProducerConfig for error strategy and naming
+//! - **Port System**: Type-safe output port definitions
+//!
+//! ## Universal Message Model
+//!
+//! **All producers yield `Message<T>` where `T` is the payload type.**
+//! This universal message model ensures every item has:
+//!
+//! - A unique `MessageId` for tracking and correlation
+//! - `MessageMetadata` with timestamps, source, headers, and custom attributes
+//! - The actual payload data (`T`)
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::producer::Producer;
+//! use crate::producers::VecProducer;
+//! use futures::StreamExt;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let mut producer = VecProducer::<i32>::new(vec![1, 2, 3]);
+//! let mut stream = producer.produce();
+//!
+//! while let Some(item) = stream.next().await {
+//!     // item is Message<i32>
+//!     println!("Received: {:?}", item.payload());
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Key Concepts
+//!
+//! - **Producer**: A component that produces streams of `Message<T>`
+//! - **ProducerConfig**: Configuration including error strategy and component name
+//! - **Error Strategy**: How to handle errors during production (Stop, Skip, Retry, Custom)
+//! - **OutputPorts**: Type-level port definitions for output (defaults to single port)
+//!
+//! ## Usage
+//!
+//! Producers are the starting point of pipelines. They can read from files, databases,
+//! message queues, or generate data programmatically. All producers must wrap their
+//! output in `Message<T>` envelopes.
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::output::Output;
 use crate::port::PortList;

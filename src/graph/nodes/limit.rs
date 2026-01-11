@@ -1,7 +1,63 @@
-//! Limit node for StreamWeave graphs
+//! Limit node for limiting the number of items in streams.
 //!
-//! Limits the number of items passed through the stream. Stops producing items
-//! after a specified number have been processed.
+//! This module provides [`Limit`], a graph node that limits the number of items
+//! passed through the stream. It stops producing items after a specified number
+//! have been processed. It wraps [`LimitTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Limit`] is useful for limiting the number of items processed in graph-based
+//! pipelines. It allows only a specified number of items to pass through, making
+//! it ideal for testing, sampling, or limiting processing to a fixed number of
+//! items.
+//!
+//! # Key Concepts
+//!
+//! - **Item Limiting**: Limits the number of items that pass through
+//! - **Fixed Count**: Uses a fixed count to determine when to stop processing
+//! - **Early Termination**: Stops producing items after the limit is reached
+//! - **Transformer Wrapper**: Wraps `LimitTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Limit<T>`]**: Node that limits the number of items in a stream
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Limit;
+//!
+//! // Create a limit node that allows only 100 items
+//! let limit = Limit::<i32>::new(100);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Limit;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a limit node with error handling
+//! let limit = Limit::<String>::new(50)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("item-limiter".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Fixed Count Limit**: Uses a fixed count for simplicity and predictability
+//! - **Early Termination**: Stops processing after limit is reached for efficiency
+//! - **Stream-Based**: Works with async streams for efficient processing
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Limit`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::LimitTransformer;

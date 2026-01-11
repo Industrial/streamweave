@@ -1,6 +1,64 @@
-//! Object entries node for StreamWeave graphs
+//! Object entries node for extracting key-value pairs from JSON objects.
 //!
-//! Extracts key-value pairs from JSON objects.
+//! This module provides [`ObjectEntries`], a graph node that extracts key-value
+//! pairs from JSON objects. It wraps [`ObjectEntriesTransformer`] for use in
+//! StreamWeave graphs. It converts JSON objects into arrays of key-value pairs,
+//! making it ideal for object iteration and processing.
+//!
+//! # Overview
+//!
+//! [`ObjectEntries`] is useful for extracting key-value pairs from JSON objects
+//! in graph-based pipelines. It processes JSON objects and outputs arrays of
+//! [key, value] pairs, making it ideal for object iteration, transformation,
+//! and processing.
+//!
+//! # Key Concepts
+//!
+//! - **Key-Value Extraction**: Extracts key-value pairs from JSON objects
+//! - **Array Output**: Outputs arrays of [key, value] pairs from objects
+//! - **JSON Value Support**: Works with `serde_json::Value` objects
+//! - **Transformer Wrapper**: Wraps `ObjectEntriesTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`ObjectEntries`]**: Node that extracts key-value pairs from JSON objects
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ObjectEntries;
+//!
+//! // Create an object entries node
+//! let object_entries = ObjectEntries::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ObjectEntries;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create an object entries node with error handling
+//! let object_entries = ObjectEntries::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("entries-extractor".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible JSON
+//!   object handling
+//! - **Array Output**: Outputs arrays of [key, value] pairs for easy iteration
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ObjectEntries`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::ObjectEntriesTransformer;

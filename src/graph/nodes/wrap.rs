@@ -1,8 +1,78 @@
-//! Wrap node for StreamWeave graphs
+//! Wrap node for wrapping items with additional metadata or envelope structures.
 //!
-//! Wraps items with additional metadata or envelopes. While StreamWeave automatically
-//! wraps items in `Message<T>`, this node allows adding custom metadata or
-//! wrapping items in custom envelope structures.
+//! This module provides [`Wrap`], a graph node that wraps items with additional
+//! metadata or envelope structures. While StreamWeave automatically wraps items
+//! in `Message<T>`, this node allows adding custom metadata, headers, or wrapping
+//! items in custom envelope structures. It wraps [`WrapTransformer`] for use in
+//! StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Wrap`] is useful for adding metadata or envelope structures to items in
+//! graph-based pipelines. It processes items and wraps them with custom metadata
+//! or headers, making it ideal for adding context, tracing information, or
+//! preparing items for inter-system communication.
+//!
+//! # Key Concepts
+//!
+//! - **Item Wrapping**: Wraps items with additional metadata or envelope structures
+//! - **Custom Headers**: Supports custom headers for metadata
+//! - **Envelope Structures**: Supports custom envelope structures
+//! - **Transformer Wrapper**: Wraps `WrapTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Wrap<T>`]**: Node that wraps items with additional metadata
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Wrap;
+//!
+//! // Create a wrap node that adds no additional metadata
+//! let wrap = Wrap::<i32>::new();
+//! ```
+//!
+//! ## With Custom Headers
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Wrap;
+//! use std::collections::HashMap;
+//!
+//! // Create a wrap node with custom headers
+//! let mut headers = HashMap::new();
+//! headers.insert("source".to_string(), "pipeline".to_string());
+//! headers.insert("version".to_string(), "1.0".to_string());
+//! let wrap = Wrap::<String>::with_headers(headers);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Wrap;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a wrap node with error handling
+//! let wrap = Wrap::<i32>::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("wrapper".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Metadata Support**: Supports custom headers for flexible metadata addition
+//! - **Envelope Structures**: Supports custom envelope structures for inter-system
+//!   communication
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Wrap`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::WrapTransformer;

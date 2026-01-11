@@ -1,3 +1,78 @@
+//! Parquet producer for reading Apache Parquet files as Arrow RecordBatches.
+//!
+//! This module provides [`ParquetProducer`], a producer that reads Apache Parquet files
+//! and produces Arrow RecordBatch objects. Parquet is a columnar storage format optimized
+//! for analytics workloads, and this producer enables efficient processing of Parquet data.
+//!
+//! # Overview
+//!
+//! [`ParquetProducer`] reads Parquet files and produces Arrow RecordBatch objects, which
+//! are efficient columnar data structures. It supports batch processing, column projection,
+//! and row group selection for optimized data access. Perfect for analytics pipelines and
+//! data processing workflows.
+//!
+//! # Key Concepts
+//!
+//! - **Columnar Format**: Reads Parquet's columnar storage format efficiently
+//! - **Arrow RecordBatches**: Produces Arrow RecordBatch objects for efficient processing
+//! - **Batch Processing**: Reads data in configurable batch sizes
+//! - **Column Projection**: Supports reading only specific columns for efficiency
+//! - **Row Group Selection**: Can read specific row groups from Parquet files
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`ParquetProducer`]**: Producer that reads Parquet files and produces RecordBatches
+//! - **[`ParquetReadConfig`]**: Configuration for Parquet reading behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::ParquetProducer;
+//! use streamweave::PipelineBuilder;
+//! use arrow::record_batch::RecordBatch;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a producer that reads Parquet files
+//! let producer = ParquetProducer::new("data.parquet");
+//!
+//! // Use in a pipeline
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(producer)
+//!     .transformer(/* ... */)
+//!     .consumer(/* ... */);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::producers::{ParquetProducer, ParquetReadConfig};
+//!
+//! // Create a producer with custom configuration
+//! let config = ParquetReadConfig::default()
+//!     .with_batch_size(2048)  // Larger batches
+//!     .with_projection(vec![0, 2, 4]);  // Read only specific columns
+//! let producer = ParquetProducer::with_config("data.parquet", config);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Arrow Integration**: Uses Arrow RecordBatches for efficient columnar processing
+//! - **Batch Processing**: Reads data in batches to balance memory usage and performance
+//! - **Column Projection**: Supports reading only needed columns for efficiency
+//! - **Synchronous Reading**: Uses synchronous Parquet reading (Parquet I/O is typically
+//!   file-based and benefits from synchronous access patterns)
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ParquetProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use arrow::record_batch::RecordBatch;

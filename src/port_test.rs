@@ -1,3 +1,36 @@
+//! # Port System Test Suite
+//!
+//! Comprehensive test suite for the port system, including port list length
+//! calculations, type extraction via `GetPort`, and single port type aliases.
+//!
+//! ## Test Coverage
+//!
+//! This test suite covers:
+//!
+//! - **PortList Length**: Tests for empty, single, and multi-element port lists (up to 12 ports)
+//! - **GetPort Type Extraction**: Type-level extraction of specific port types from port lists
+//! - **SinglePort Type Alias**: Verification that `SinglePort<T>` is equivalent to `(T,)`
+//! - **Type Compatibility**: Tests with different payload types and repeated types
+//!
+//! ## Test Organization
+//!
+//! Tests are organized into three main sections:
+//!
+//! 1. **PortList LEN Tests**: Verify the `LEN` associated constant for various port list sizes
+//! 2. **GetPort Type Extraction Tests**: Verify type extraction at different indices
+//! 3. **SinglePort Type Alias Tests**: Verify the convenience type alias works correctly
+//!
+//! ## Key Concepts
+//!
+//! - **PortList**: A trait for tuples of `Message<T>` types representing multiple ports
+//! - **GetPort**: A trait for extracting a specific port type by index from a port list
+//! - **SinglePort**: A type alias for single-port scenarios: `type SinglePort<T> = (T,);`
+//!
+//! ## Usage
+//!
+//! These tests ensure that the port system's type-level operations work correctly,
+//! enabling compile-time validation of graph connections and port compatibility.
+
 use crate::message::Message;
 use crate::port::{GetPort, PortList, SinglePort};
 

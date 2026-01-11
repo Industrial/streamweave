@@ -1,7 +1,62 @@
-//! SQLite query transformer for StreamWeave
+//! SQLite query transformer for executing SQLite database queries dynamically.
 //!
-//! Executes SQLite queries from input items. Takes query strings (or query parameters) as input
-//! and outputs query results, enabling dynamic SQLite queries in a pipeline.
+//! This module provides [`DbSqliteQueryTransformer`], a transformer that executes
+//! SQLite database queries for each input item, running queries dynamically based on
+//! input data and producing query results as a stream.
+//!
+//! # Overview
+//!
+//! [`DbSqliteQueryTransformer`] executes SQLite queries for each input item. It supports
+//! flexible input formats (SQL strings or JSON objects with query/parameters), uses
+//! parameterized queries for security, and streams query results as `DatabaseRow` items.
+//! This enables dynamic SQLite querying within stream processing pipelines.
+//!
+//! # Key Concepts
+//!
+//! - **Dynamic Query Execution**: Executes SQLite queries based on input items
+//! - **Flexible Input**: Accepts SQL query strings or JSON objects with query/parameters
+//! - **Parameterized Queries**: Supports parameterized queries (?) for security
+//! - **Result Streaming**: Produces `DatabaseRow` results as a stream
+//! - **Connection Pooling**: Manages SQLite connection pool lifecycle
+//! - **Error Handling**: Configurable error strategies for query failures
+//!
+//! # Core Types
+//!
+//! - **[`DbSqliteQueryTransformer`]**: Transformer that executes SQLite queries
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::DbSqliteQueryTransformer;
+//! use streamweave::db::{DatabaseProducerConfig, DatabaseType};
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let db_config = DatabaseProducerConfig::default()
+//!     .with_connection_url("sqlite://path/to/database.db")
+//!     .with_database_type(DatabaseType::Sqlite);
+//!
+//! let transformer = DbSqliteQueryTransformer::new(db_config);
+//! // Input: ["SELECT * FROM users WHERE id = ?", ...]
+//! // Output: [DatabaseRow, ...]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **SQLite-Specific**: Uses SQLite-specific connection pools and query syntax
+//! - **Connection Pooling**: Creates SQLite connection pools for efficient connection reuse
+//! - **Flexible Input**: Supports both SQL strings and JSON objects with parameters
+//! - **Parameterized Queries**: Uses parameterized queries (?) for SQL injection prevention
+//! - **Result Streaming**: Streams query results for efficient processing
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DbSqliteQueryTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline or graph. It supports the standard error handling
+//! strategies and configuration options provided by [`TransformerConfig`].
 
 use crate::db::{DatabaseProducerConfig, DatabaseRow, DatabaseType};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

@@ -1,3 +1,80 @@
+//! Path normalization transformer for StreamWeave.
+//!
+//! This module provides [`FsNormalizePathTransformer`], a transformer that
+//! normalizes file path strings by removing redundant separators and resolving
+//! `.` and `..` components where possible. It uses Rust's standard library
+//! `Path` API for cross-platform path normalization.
+//!
+//! # Overview
+//!
+//! [`FsNormalizePathTransformer`] is useful for normalizing file paths in
+//! streaming pipelines. It processes path strings and normalizes them to their
+//! canonical form, making it ideal for path manipulation and file processing
+//! operations.
+//!
+//! # Key Concepts
+//!
+//! - **Path Normalization**: Normalizes paths by removing redundant separators
+//!   and resolving `.` and `..` components
+//! - **Cross-Platform**: Uses Rust's `Path` API for cross-platform compatibility
+//! - **String Processing**: Works with path strings for compatibility
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`FsNormalizePathTransformer`]**: Transformer that normalizes path strings
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::FsNormalizePathTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that normalizes paths
+//! let transformer = FsNormalizePathTransformer::new();
+//!
+//! // Input: ["/path/to/../file.txt", "./data/../config.json"]
+//! // Output: ["/path/file.txt", "config.json"]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::FsNormalizePathTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = FsNormalizePathTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("path-normalizer".to_string());
+//! ```
+//!
+//! # Behavior
+//!
+//! The transformer normalizes paths by:
+//! - Removing redundant path separators
+//! - Resolving `.` (current directory) components
+//! - Resolving `..` (parent directory) components where possible
+//! - Using platform-specific path handling
+//!
+//! # Design Decisions
+//!
+//! - **Path API**: Uses Rust's standard `Path` API for cross-platform compatibility
+//! - **Component Collection**: Collects path components to normalize the path
+//! - **String Input/Output**: Works with strings for compatibility with text-based streams
+//! - **Simple Normalization**: Focuses on basic path normalization
+//!
+//! # Integration with StreamWeave
+//!
+//! [`FsNormalizePathTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};
 use async_trait::async_trait;
@@ -10,6 +87,16 @@ use std::pin::Pin;
 /// This transformer normalizes paths by removing redundant separators
 /// and resolving `.` and `..` components where possible.
 /// Uses Rust's standard library Path normalization.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::transformers::FsNormalizePathTransformer;
+///
+/// let transformer = FsNormalizePathTransformer::new();
+/// // Input: ["/path/to/../file.txt"]
+/// // Output: ["/path/file.txt"]
+/// ```
 pub struct FsNormalizePathTransformer {
   /// Configuration for the transformer
   pub config: TransformerConfig<String>,

@@ -1,6 +1,77 @@
-//! Parquet read transformer for StreamWeave
+//! Parquet read transformer for reading Parquet files in StreamWeave pipelines.
 //!
-//! Reads Parquet files from input paths and outputs Arrow RecordBatches.
+//! This module provides [`ParquetReadTransformer`], a transformer that reads
+//! Parquet files from input file paths and produces Arrow RecordBatches as output.
+//! Parquet is a columnar storage format optimized for analytics workloads, and
+//! this transformer enables reading Parquet data in streaming pipelines.
+//!
+//! # Overview
+//!
+//! [`ParquetReadTransformer`] is useful for reading analytics data from Parquet
+//! files in StreamWeave pipelines. It reads Parquet files from file system paths
+//! and produces Arrow RecordBatches for efficient processing, supporting batch
+//! processing for memory efficiency.
+//!
+//! # Key Concepts
+//!
+//! - **Parquet File Reading**: Reads Parquet files from file system paths
+//! - **Arrow Integration**: Produces Arrow RecordBatches for efficient processing
+//! - **Batch Processing**: Reads data in batches for memory efficiency
+//! - **Columnar Storage**: Leverages Parquet's columnar format for analytics workloads
+//! - **Error Handling**: Configurable error strategies for file read failures
+//!
+//! # Core Types
+//!
+//! - **[`ParquetReadTransformer`]**: Transformer that reads Parquet files and outputs Arrow RecordBatches
+//! - **[`ParquetReadConfig`]**: Configuration for Parquet reading behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::ParquetReadTransformer;
+//!
+//! // Create a Parquet read transformer
+//! let transformer = ParquetReadTransformer::new();
+//! ```
+//!
+//! ## With Custom Batch Size
+//!
+//! ```rust
+//! use streamweave::transformers::ParquetReadTransformer;
+//!
+//! // Create a transformer with custom batch size
+//! let transformer = ParquetReadTransformer::new()
+//!     .with_batch_size(1000);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::ParquetReadTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = ParquetReadTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("parquet-reader".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Arrow Integration**: Uses Arrow RecordBatches for efficient columnar data
+//!   processing
+//! - **Batch Processing**: Reads data in configurable batches for memory efficiency
+//! - **Parquet Format**: Leverages Parquet's columnar storage format optimized for
+//!   analytics workloads
+//! - **File Path Input**: Takes file paths as input strings for flexible file access
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ParquetReadTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::producers::ParquetReadConfig;

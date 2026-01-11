@@ -1,3 +1,52 @@
+//! # Database Integration Types
+//!
+//! This module provides types and configurations for database integration in StreamWeave,
+//! supporting PostgreSQL, MySQL, and SQLite databases for both producers and consumers.
+//!
+//! ## Overview
+//!
+//! The database module provides:
+//!
+//! - **Database Types**: Support for PostgreSQL, MySQL, and SQLite
+//! - **Database Rows**: Type-safe representation of database query results
+//! - **Producer Configuration**: Configuration for database query producers
+//! - **Consumer Configuration**: Configuration for database insert consumers
+//! - **Connection Settings**: Connection pooling, timeouts, and SSL configuration
+//!
+//! ## Core Types
+//!
+//! - **DatabaseType**: Enumeration of supported database types (Postgres, Mysql, Sqlite)
+//! - **DatabaseRow**: A row result from a database query with column names and values
+//! - **DatabaseProducerConfig**: Configuration for database query producers
+//! - **DatabaseConsumerConfig**: Configuration for database insert consumers
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::db::{DatabaseType, DatabaseProducerConfig, DatabaseRow};
+//! use std::time::Duration;
+//!
+//! // Configure a PostgreSQL producer
+//! let config = DatabaseProducerConfig::default()
+//!     .with_connection_url("postgresql://user:pass@localhost/mydb")
+//!     .with_database_type(DatabaseType::Postgres)
+//!     .with_query("SELECT * FROM users WHERE active = $1")
+//!     .with_parameter(serde_json::json!(true))
+//!     .with_max_connections(20);
+//! ```
+//!
+//! ## Key Concepts
+//!
+//! - **DatabaseType**: The type of database being used (affects connection strings and SQL dialect)
+//! - **DatabaseRow**: A flexible row representation using HashMap for column access
+//! - **Connection Pooling**: Configurable connection pool settings for performance
+//! - **Parameterized Queries**: Support for safe parameterized queries to prevent SQL injection
+//!
+//! ## Usage
+//!
+//! Database types are used by database producers (for querying) and database consumers
+//! (for inserting). The module provides type-safe configurations for both use cases.
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;

@@ -1,6 +1,71 @@
-//! Array index of transformer for StreamWeave
+//! Array index of transformer for finding value positions in arrays.
 //!
-//! Finds the index of a value in arrays, producing a stream of `Option<usize>` values.
+//! This module provides [`ArrayIndexOfTransformer`], a transformer that finds the
+//! index of a value in arrays. It supports finding either the first or last occurrence
+//! of a value, returning the index as a number or `Null` if not found.
+//!
+//! # Overview
+//!
+//! [`ArrayIndexOfTransformer`] searches arrays for a specific value and returns its
+//! index position. It's similar to JavaScript's `Array.indexOf()` and `Array.lastIndexOf()`
+//! methods, making it useful for position-based array processing and validation.
+//!
+//! # Key Concepts
+//!
+//! - **First Occurrence**: Finds the first matching value's index (like Array.indexOf)
+//! - **Last Occurrence**: Finds the last matching value's index (like Array.lastIndexOf)
+//! - **Index as Number**: Returns index as a JSON number value
+//! - **Null for Not Found**: Returns `Value::Null` when value is not found
+//! - **JSON Processing**: Works with JSON Value arrays
+//!
+//! # Core Types
+//!
+//! - **[`ArrayIndexOfTransformer`]**: Transformer that finds value indices
+//! - **[`ArrayIndexOfMode`]**: Enum specifying first or last occurrence
+//!
+//! # Quick Start
+//!
+//! ## Finding First Occurrence
+//!
+//! ```rust
+//! use streamweave::transformers::{ArrayIndexOfTransformer, ArrayIndexOfMode};
+//! use serde_json::json;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that finds the first occurrence
+//! let transformer = ArrayIndexOfTransformer::new(json!(3), ArrayIndexOfMode::First);
+//!
+//! // Input: [[1, 2, 3, 3, 4]]
+//! // Output: [2]  (index of first occurrence of 3)
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Finding Last Occurrence
+//!
+//! ```rust
+//! use streamweave::transformers::{ArrayIndexOfTransformer, ArrayIndexOfMode};
+//! use serde_json::json;
+//!
+//! // Create a transformer that finds the last occurrence
+//! let transformer = ArrayIndexOfTransformer::new(json!(3), ArrayIndexOfMode::Last);
+//!
+//! // Input: [[1, 2, 3, 3, 4]]
+//! // Output: [3]  (index of last occurrence of 3)
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **First/Last Mode**: Supports both first and last occurrence for flexibility
+//! - **Zero-Based Indices**: Uses zero-based indexing (standard for arrays)
+//! - **Null for Not Found**: Returns `Value::Null` when value is not found
+//! - **Exact Matching**: Uses exact value equality for matching
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ArrayIndexOfTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

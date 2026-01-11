@@ -1,6 +1,73 @@
-//! Math function node for StreamWeave graphs
+//! Math function node for performing power and root operations.
 //!
-//! Performs power and root operations.
+//! This module provides [`MathFunctionNode`], a graph node that performs power and
+//! root operations on numeric values. It wraps [`MathFunctionTransformer`] for use
+//! in StreamWeave graphs. It supports operations like Power, Square, Cube, SquareRoot,
+//! CubeRoot, and Absolute.
+//!
+//! # Overview
+//!
+//! [`MathFunctionNode`] is useful for performing mathematical power and root operations
+//! on numeric values in graph-based pipelines. It processes JSON numeric values and
+//! applies power/root functions, making it ideal for mathematical computations.
+//!
+//! # Key Concepts
+//!
+//! - **Power Operations**: Supports Power, Square, and Cube operations
+//! - **Root Operations**: Supports SquareRoot, CubeRoot, and Nth root operations
+//! - **Absolute Value**: Supports absolute value computation
+//! - **Transformer Wrapper**: Wraps `MathFunctionTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`MathFunctionNode`]**: Node that performs power and root operations
+//! - **[`MathFunction`]**: Enum representing different math functions
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathFunctionNode;
+//! use streamweave::transformers::MathFunction;
+//!
+//! // Square a number
+//! let square = MathFunctionNode::new(MathFunction::Square, None);
+//!
+//! // Raise to a power
+//! let power = MathFunctionNode::new(MathFunction::Power, Some(3.0));
+//!
+//! // Square root
+//! let sqrt = MathFunctionNode::new(MathFunction::SquareRoot, None);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathFunctionNode;
+//! use streamweave::transformers::MathFunction;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a math function node with error handling
+//! let math_func = MathFunctionNode::new(MathFunction::Square, None)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("square".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Function Enum**: Uses enum-based function selection for type safety
+//! - **Optional Operand**: Supports optional operands for functions that need them
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathFunctionNode`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{MathFunction, MathFunctionTransformer};

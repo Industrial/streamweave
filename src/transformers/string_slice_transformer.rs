@@ -1,6 +1,31 @@
-//! String slice transformer for StreamWeave
+//! # String Slice Transformer
 //!
-//! Extracts substrings from strings using start and end indices.
+//! Transformer that extracts substrings from input strings using start and optional
+//! end indices, similar to Rust's string slicing operations.
+//!
+//! ## Overview
+//!
+//! The String Slice Transformer provides:
+//!
+//! - **Substring Extraction**: Extracts substrings using start and end indices
+//! - **Flexible End Index**: Optional end index (None extracts to end of string)
+//! - **Index Validation**: Handles out-of-bounds indices gracefully
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Strings to slice
+//! - **Output**: `Message<String>` - Extracted substrings
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::StringSliceTransformer;
+//!
+//! let transformer = StringSliceTransformer::new(0, Some(5));
+//! // Input: ["hello world"]
+//! // Output: ["hello"]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

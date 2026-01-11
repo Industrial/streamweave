@@ -1,6 +1,75 @@
-//! Database query transformer for StreamWeave
+//! Database query transformer for executing database queries dynamically.
 //!
-//! Executes database queries from stream items, useful for graph composition.
+//! This module provides [`DatabaseQueryTransformer`], a transformer that executes
+//! database queries from stream items. It supports multiple database types (Postgres,
+//! MySQL, SQLite) and provides flexible query input formats, making it useful for
+//! graph composition and dynamic query execution.
+//!
+//! # Overview
+//!
+//! [`DatabaseQueryTransformer`] executes database queries for each input item. It
+//! supports multiple database types via a unified interface, accepts queries as SQL
+//! strings or JSON objects with parameters, and streams query results as `DatabaseRow`
+//! items. This enables dynamic database querying within stream processing pipelines.
+//!
+//! # Key Concepts
+//!
+//! - **Multi-Database Support**: Supports Postgres, MySQL, and SQLite
+//! - **Dynamic Queries**: Executes queries dynamically based on input items
+//! - **Flexible Input**: Accepts SQL strings or JSON objects with query/parameters
+//! - **Parameterized Queries**: Supports parameterized queries for security
+//! - **Connection Pooling**: Manages database connection pool lifecycle
+//! - **Result Streaming**: Streams query results as `DatabaseRow` items
+//!
+//! # Core Types
+//!
+//! - **[`DatabaseQueryTransformer`]**: Transformer that executes database queries
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::DatabaseQueryTransformer;
+//! use streamweave::db::{DatabaseProducerConfig, DatabaseType};
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer with database configuration
+//! let config = DatabaseProducerConfig::default()
+//!     .with_connection_url("postgresql://user:pass@localhost/db")
+//!     .with_database_type(DatabaseType::Postgres);
+//!
+//! let transformer = DatabaseQueryTransformer::new(config);
+//!
+//! // Input: ["SELECT * FROM users WHERE id = $1", ...]
+//! // Output: [DatabaseRow, ...]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With JSON Input
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::DatabaseQueryTransformer;
+//! use streamweave::db::{DatabaseProducerConfig, DatabaseType};
+//!
+//! // Input can be JSON with query and parameters
+//! // Input: ["{\"query\": \"SELECT * FROM users WHERE id = $1\", \"parameters\": [1]}"]
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Multi-Database Support**: Uses `DatabaseType` enum for database type selection
+//! - **Connection Pooling**: Creates connection pools based on database type
+//! - **Flexible Input**: Supports both SQL strings and JSON objects with parameters
+//! - **Parameterized Queries**: Uses parameterized queries for SQL injection prevention
+//! - **Result Streaming**: Streams query results for efficient processing
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DatabaseQueryTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline or graph. It supports the standard error handling
+//! strategies and configuration options provided by [`TransformerConfig`].
 
 use crate::db::{DatabaseProducerConfig, DatabaseRow, DatabaseType};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

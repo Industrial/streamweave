@@ -1,3 +1,63 @@
+//! Array consumer for collecting stream items into fixed-size arrays.
+//!
+//! This module provides [`ArrayConsumer`], a consumer that collects stream items
+//! into a fixed-size array. This is useful for scenarios where you need to collect
+//! a known number of items from a stream into a statically-sized array.
+//!
+//! # Overview
+//!
+//! [`ArrayConsumer`] is useful for collecting a fixed number of items from a stream
+//! into a statically-sized array. Unlike `VecConsumer`, which uses dynamic allocation,
+//! `ArrayConsumer` uses a compile-time fixed-size array, making it suitable for
+//! scenarios where the number of items is known at compile time.
+//!
+//! # Key Concepts
+//!
+//! - **Fixed-Size Collection**: Collects items into a compile-time fixed-size array
+//! - **Static Allocation**: Uses stack-allocated arrays (for small sizes) or static arrays
+//! - **Index Tracking**: Maintains an index to track the current position in the array
+//! - **Generic Type**: Works with any item type that implements required traits
+//!
+//! # Core Types
+//!
+//! - **[`ArrayConsumer<T, N>`]**: Consumer that collects items into a fixed-size array of size `N`
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::ArrayConsumer;
+//!
+//! // Create an array consumer that collects 5 items
+//! let consumer = ArrayConsumer::<i32, 5>::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::consumers::ArrayConsumer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create an array consumer with error handling strategy
+//! let consumer = ArrayConsumer::<String, 10>::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("array-collector".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Fixed Size**: Uses compile-time constant `N` for array size, enabling static allocation
+//! - **Option Wrapper**: Uses `Option<T>` for array elements to track which positions are filled
+//! - **Index Tracking**: Maintains an index to know where to insert the next item
+//! - **Generic Type**: Works with any item type `T` that implements required traits
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ArrayConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

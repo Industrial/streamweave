@@ -1,6 +1,75 @@
-//! Math function transformer for StreamWeave
+//! Math function transformer for performing power and root operations.
 //!
-//! Performs power and root operations (Power, SquareRoot, Cbrt) on numeric values.
+//! This module provides [`MathFunctionTransformer`] and [`MathFunction`], types for
+//! performing power and root operations on numeric values in StreamWeave pipelines.
+//! It supports Power (x^y), SquareRoot, and CubeRoot (Cbrt) operations, making it
+//! ideal for mathematical computations. It implements the [`Transformer`] trait for
+//! use in StreamWeave pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`MathFunctionTransformer`] is useful for performing power and root operations
+//! on numeric values in StreamWeave pipelines. It processes JSON numeric values
+//! and applies power/root functions, making it ideal for mathematical computations.
+//!
+//! # Key Concepts
+//!
+//! - **Power Operations**: Supports Power (x^y) with configurable exponent
+//! - **Root Operations**: Supports SquareRoot and CubeRoot operations
+//! - **JSON Value Support**: Works with `serde_json::Value` numeric types
+//! - **Transformer Trait**: Implements `Transformer` for pipeline integration
+//!
+//! # Core Types
+//!
+//! - **[`MathFunctionTransformer`]**: Transformer that performs power and root operations
+//! - **[`MathFunction`]**: Enum representing different math functions (Power, SquareRoot, Cbrt)
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::{MathFunctionTransformer, MathFunction};
+//!
+//! // Square root
+//! let transformer = MathFunctionTransformer::new(MathFunction::SquareRoot, None);
+//! ```
+//!
+//! ## Power Operation
+//!
+//! ```rust
+//! use streamweave::transformers::{MathFunctionTransformer, MathFunction};
+//!
+//! // Raise to power of 3
+//! let transformer = MathFunctionTransformer::new(MathFunction::Power, Some(3.0));
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::{MathFunctionTransformer, MathFunction};
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a math function transformer with error handling
+//! let transformer = MathFunctionTransformer::new(MathFunction::SquareRoot, None)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("sqrt".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Function Enum**: Uses enum-based function selection for type safety
+//! - **Optional Operand**: Supports optional exponent for Power operation
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   pipeline system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathFunctionTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

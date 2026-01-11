@@ -1,3 +1,81 @@
+//! Process consumer for streaming data to external process stdin.
+//!
+//! This module provides [`ProcessConsumer`], a consumer that spawns an external process
+//! and sends stream items to its standard input (stdin). Items are written line by line,
+//! with newline separators between items.
+//!
+//! # Overview
+//!
+//! [`ProcessConsumer`] is useful for piping stream data to external commands and tools.
+//! It spawns a process once, writes all stream items to its stdin, and waits for the
+//! process to complete. This is different from [`crate::consumers::CommandConsumer`], which executes
+//! a command for each item.
+//!
+//! # Key Concepts
+//!
+//! - **Single Process**: Spawns one process for all stream items (more efficient than
+//!   per-item execution)
+//! - **Line-Based Input**: Items are written with newline separators
+//! - **Process Lifetime**: Process is spawned at stream start and waits for completion
+//! - **I/O Redirection**: Process stdout/stderr are redirected to null
+//!
+//! # Core Types
+//!
+//! - **[`ProcessConsumer`]**: Consumer that sends stream items to a process's stdin
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::ProcessConsumer;
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a consumer that pipes data to 'sort'
+//! let mut consumer = ProcessConsumer::new("sort".to_string())
+//!     .arg("-r".to_string());  // Reverse sort
+//!
+//! // Create a stream of items
+//! let stream = stream::iter(vec![
+//!     "zebra".to_string(),
+//!     "apple".to_string(),
+//!     "banana".to_string(),
+//! ]);
+//!
+//! // Consume the stream (items written to sort stdin)
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::consumers::ProcessConsumer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a consumer with error handling
+//! let consumer = ProcessConsumer::new("my_command".to_string())
+//!     .arg("arg1".to_string())
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("process-pipe".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Single Process Execution**: More efficient than per-item execution for large streams
+//! - **Line Separators**: Items are separated by newlines, standard for text-based tools
+//! - **I/O Redirection**: Process output is redirected to avoid interference with the
+//!   main application's I/O
+//! - **Process Waiting**: Waits for process completion to ensure all data is processed
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ProcessConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

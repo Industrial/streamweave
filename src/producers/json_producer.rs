@@ -1,3 +1,88 @@
+//! JSON producer for reading and deserializing JSON files.
+//!
+//! This module provides [`JsonProducer<T>`], a producer that reads JSON files and
+//! deserializes them into the specified type. Unlike JSONL (JSON Lines), this producer
+//! reads complete JSON documents and can handle objects, arrays, and primitives.
+//!
+//! # Overview
+//!
+//! [`JsonProducer`] reads JSON files and deserializes them into types that implement
+//! `Deserialize`. It can handle JSON objects, arrays (with optional streaming of elements),
+//! and primitive values. Perfect for reading structured JSON data files.
+//!
+//! # Key Concepts
+//!
+//! - **Complete JSON Documents**: Reads full JSON files (not line-by-line like JSONL)
+//! - **Array Streaming**: Can stream array elements individually or yield the entire array
+//! - **Type-Safe Deserialization**: Deserializes JSON into strongly-typed structs
+//! - **Async File I/O**: Uses Tokio for efficient async file reading
+//! - **Error Handling**: Configurable error strategies for parsing failures
+//!
+//! # Core Types
+//!
+//! - **[`JsonProducer<T>`]**: Producer that reads and deserializes JSON files
+//! - **[`JsonReadConfig`]**: Configuration for JSON reading behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::JsonProducer;
+//! use streamweave::PipelineBuilder;
+//! use serde::Deserialize;
+//!
+//! #[derive(Deserialize)]
+//! struct Event {
+//!     id: u32,
+//!     message: String,
+//! }
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Read a JSON array and stream each element
+//! let producer = JsonProducer::<Event>::new("events.json");
+//!
+//! // Use in a pipeline
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(producer)
+//!     .transformer(/* ... */)
+//!     .consumer(/* ... */);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Reading Entire Array
+//!
+//! ```rust
+//! use streamweave::producers::{JsonProducer, JsonReadConfig};
+//! use serde::Deserialize;
+//!
+//! #[derive(Deserialize)]
+//! struct Event {
+//!     id: u32,
+//!     message: String,
+//! }
+//!
+//! // Read the entire array as a single item
+//! let producer = JsonProducer::<Vec<Event>>::new("events.json")
+//!     .with_array_as_stream(false);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Array Streaming**: By default, streams array elements individually for
+//!   better integration with streaming pipelines
+//! - **Complete Document Reading**: Reads the entire file into memory for parsing
+//!   (JSON parsing requires the full document)
+//! - **Type Safety**: Leverages Serde for type-safe deserialization
+//! - **Flexible Output**: Supports objects, arrays, and primitives
+//!
+//! # Integration with StreamWeave
+//!
+//! [`JsonProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use async_trait::async_trait;

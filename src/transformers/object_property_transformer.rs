@@ -1,6 +1,95 @@
-//! Object property transformer for StreamWeave
+//! Object property transformer for StreamWeave.
 //!
-//! Gets, sets, or deletes properties from JSON objects.
+//! This module provides [`ObjectPropertyTransformer`] and [`PropertyOperation`],
+//! types for getting, setting, or deleting properties from JSON objects in
+//! StreamWeave pipelines. It supports property access, modification, and removal
+//! operations, making it ideal for object manipulation and property management.
+//!
+//! # Overview
+//!
+//! [`ObjectPropertyTransformer`] is useful for manipulating properties in JSON
+//! objects in streaming pipelines. It supports three operations: Get (extract
+//! property value), Set (add or update property), and Delete (remove property),
+//! making it versatile for object manipulation workflows.
+//!
+//! # Key Concepts
+//!
+//! - **Property Operations**: Supports Get, Set, and Delete operations
+//! - **Property Access**: Extracts property values from objects
+//! - **Property Modification**: Adds or updates properties in objects
+//! - **Property Removal**: Removes properties from objects
+//! - **Operation Enum**: Uses enum-based operation selection for type safety
+//!
+//! # Core Types
+//!
+//! - **[`ObjectPropertyTransformer`]**: Transformer that performs property operations
+//! - **[`PropertyOperation`]**: Enum representing Get, Set, or Delete operations
+//!
+//! # Quick Start
+//!
+//! ## Get Property
+//!
+//! ```rust
+//! use streamweave::transformers::{ObjectPropertyTransformer, PropertyOperation};
+//! use serde_json::json;
+//!
+//! // Get a property value
+//! let transformer = ObjectPropertyTransformer::new(
+//!     "name",
+//!     PropertyOperation::Get,
+//!     None
+//! );
+//!
+//! // Input: [json!({"name": "John", "age": 30})]
+//! // Output: [json!("John")]
+//! ```
+//!
+//! ## Set Property
+//!
+//! ```rust
+//! use streamweave::transformers::{ObjectPropertyTransformer, PropertyOperation};
+//! use serde_json::json;
+//!
+//! // Set a property value
+//! let transformer = ObjectPropertyTransformer::new(
+//!     "status",
+//!     PropertyOperation::Set,
+//!     Some(json!("active"))
+//! );
+//!
+//! // Input: [json!({"name": "John"})]
+//! // Output: [json!({"name": "John", "status": "active"})]
+//! ```
+//!
+//! ## Delete Property
+//!
+//! ```rust
+//! use streamweave::transformers::{ObjectPropertyTransformer, PropertyOperation};
+//!
+//! // Delete a property
+//! let transformer = ObjectPropertyTransformer::new(
+//!     "age",
+//!     PropertyOperation::Delete,
+//!     None
+//! );
+//!
+//! // Input: [json!({"name": "John", "age": 30})]
+//! // Output: [json!({"name": "John"})]
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Operation Enum**: Uses enum-based operation selection for type safety
+//! - **Optional Set Value**: Set value is optional and only used for Set operation
+//! - **In-Place Modification**: Modifies objects in-place for Set and Delete
+//! - **Null for Missing**: Returns `Value::Null` for Get when property doesn't exist
+//! - **Object-Only**: Works with JSON objects, non-objects pass through unchanged
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ObjectPropertyTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

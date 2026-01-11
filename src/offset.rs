@@ -1,7 +1,118 @@
-//! Offset tracking for resumable pipeline processing.
+//! # Offset Tracking for Resumable Pipeline Processing
 //!
-//! This module provides abstractions for tracking processing offsets,
-//! enabling pipelines to resume from where they left off after restarts.
+//! This module provides comprehensive abstractions for tracking processing offsets,
+//! enabling pipelines to resume from where they left off after restarts, crashes,
+//! or planned shutdowns. Offset tracking is essential for exactly-once processing
+//! semantics and reliable stream processing.
+//!
+//! # Key Concepts
+//!
+//! - **Offset**: A position marker in a data stream (sequence number, timestamp, or custom value)
+//! - **Offset Store**: Backend storage for persisting offsets (in-memory or file-based)
+//! - **Offset Tracker**: High-level interface for managing offsets with configurable commit strategies
+//! - **Commit Strategy**: Policy for when offsets are persisted (auto, periodic, or manual)
+//! - **Reset Policy**: Behavior when no committed offset is found (earliest, latest, or fail)
+//!
+//! # Core Types
+//!
+//! - **[`Offset`]**: Represents a processing offset (Sequence, Timestamp, Custom, Earliest, or Latest)
+//! - **[`OffsetStore`]**: Trait for offset storage backends
+//! - **[`OffsetTracker`]**: High-level offset management with commit strategies
+//! - **[`InMemoryOffsetStore`]**: In-memory offset storage (useful for testing)
+//! - **[`FileOffsetStore`]**: File-based offset storage (persists to JSON)
+//! - **[`OffsetResetPolicy`]**: Policy for handling missing offsets
+//! - **[`CommitStrategy`]**: Strategy for when to commit offsets
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage with In-Memory Store
+//!
+//! ```rust
+//! use crate::offset::{Offset, OffsetTracker, InMemoryOffsetStore, CommitStrategy};
+//!
+//! // Create an in-memory offset store
+//! let store = Box::new(InMemoryOffsetStore::new());
+//!
+//! // Create a tracker with auto-commit strategy
+//! let tracker = OffsetTracker::new(store);
+//!
+//! // Record that we've processed up to sequence 100
+//! tracker.record("my_source", Offset::sequence(100))?;
+//!
+//! // Retrieve the last committed offset
+//! let offset = tracker.get_offset("my_source")?;
+//! assert_eq!(offset, Offset::sequence(100));
+//! # Ok::<(), crate::offset::OffsetError>(())
+//! ```
+//!
+//! ## File-Based Persistence
+//!
+//! ```rust
+//! use crate::offset::{Offset, OffsetTracker, FileOffsetStore, CommitStrategy};
+//! use std::path::PathBuf;
+//!
+//! // Create a file-based offset store
+//! let store = Box::new(FileOffsetStore::new("/tmp/offsets.json")?);
+//!
+//! // Create a tracker with periodic commit (every 10 items)
+//! let tracker = OffsetTracker::with_strategy(
+//!     store,
+//!     CommitStrategy::Periodic(10)
+//! );
+//!
+//! // Record offsets (will commit after 10 records)
+//! for i in 0..15 {
+//!     tracker.record("source1", Offset::sequence(i))?;
+//! }
+//!
+//! // Manually commit pending offsets
+//! tracker.commit("source1")?;
+//! # Ok::<(), crate::offset::OffsetError>(())
+//! ```
+//!
+//! ## Offset Reset Policies
+//!
+//! ```rust
+//! use crate::offset::{Offset, OffsetTracker, InMemoryOffsetStore, OffsetResetPolicy};
+//!
+//! let store = Box::new(InMemoryOffsetStore::new());
+//!
+//! // Create tracker that starts from earliest if no offset found
+//! let tracker = OffsetTracker::new(store)
+//!     .with_reset_policy(OffsetResetPolicy::Earliest);
+//!
+//! // Get offset for new source (will return Earliest due to policy)
+//! let offset = tracker.get_offset("new_source")?;
+//! assert_eq!(offset, Offset::Earliest);
+//! # Ok::<(), crate::offset::OffsetError>(())
+//! ```
+//!
+//! # Commit Strategies
+//!
+//! The module supports three commit strategies:
+//!
+//! - **Auto**: Commits immediately after each `record()` call (safest, highest overhead)
+//! - **Periodic**: Commits after N records (balance between safety and performance)
+//! - **Manual**: Only commits when `commit()` is explicitly called (highest performance, requires careful management)
+//!
+//! # Offset Types
+//!
+//! Offsets can be represented in several ways:
+//!
+//! - **Sequence**: Monotonically increasing sequence number (e.g., Kafka partition offset)
+//! - **Timestamp**: UTC timestamp indicating when data was processed
+//! - **Custom**: User-defined string identifier (e.g., file path, database row ID)
+//! - **Earliest**: Represents the beginning of a stream
+//! - **Latest**: Represents the end of a stream (current position)
+//!
+//! # Integration with StreamWeave
+//!
+//! Offset tracking integrates seamlessly with StreamWeave's message model:
+//!
+//! - Offsets are typically stored per source/partition
+//! - Message IDs can be used as offsets for exactly-once processing
+//! - Offset tracking works with both in-process and distributed execution
+//! - File-based stores enable recovery after restarts
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

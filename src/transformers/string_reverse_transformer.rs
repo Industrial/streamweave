@@ -1,6 +1,79 @@
-//! String reverse transformer for StreamWeave
+//! # String Reverse Transformer
 //!
-//! Reverses strings character by character.
+//! Transformer that reverses input strings character by character, producing
+//! strings with characters in reverse order. This module provides
+//! [`StringReverseTransformer`], a transformer that performs character reversal
+//! on strings in streaming pipelines.
+//!
+//! # Overview
+//!
+//! [`StringReverseTransformer`] is useful for reversing the character order
+//! of strings in streaming data processing pipelines. It handles Unicode
+//! characters correctly, ensuring multi-byte characters are reversed properly
+//! rather than being broken apart.
+//!
+//! # Key Concepts
+//!
+//! - **Character Reversal**: Reverses strings character by character
+//! - **Unicode Support**: Handles multi-byte Unicode characters correctly
+//! - **Simple Operation**: One-to-one transformation (each input produces one output)
+//! - **Text Transformation**: Useful for string manipulation and transformations
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`StringReverseTransformer`]**: Transformer that reverses strings character by character
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::StringReverseTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that reverses strings
+//! let transformer = StringReverseTransformer::new();
+//!
+//! // Input: ["hello", "world"]
+//! // Output: ["olleh", "dlrow"]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::StringReverseTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = StringReverseTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("string-reverser".to_string());
+//! ```
+//!
+//! ## Unicode Handling
+//!
+//! ```text
+//! // Input: ["café"]
+//! // Output: ["éfac"]  (Unicode grapheme clusters handled correctly)
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Character-Based Reversal**: Uses `chars().rev().collect()` for Unicode-aware
+//!   character reversal
+//! - **No Configuration Needed**: Simple operation with no configuration options
+//! - **Performance**: Leverages Rust's efficient string operations
+//! - **Type Safety**: Works with `String` type for mutable string operations
+//!
+//! # Integration with StreamWeave
+//!
+//! [`StringReverseTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

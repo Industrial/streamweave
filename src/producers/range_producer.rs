@@ -1,3 +1,85 @@
+//! Range producer for generating numeric ranges as streams.
+//!
+//! This module provides [`RangeProducer`], a producer that generates a sequence of
+//! integers from a start value (inclusive) to an end value (exclusive) with a given
+//! step size. It's useful for generating test data, iterating over numeric ranges,
+//! or creating sequences for processing.
+//!
+//! # Overview
+//!
+//! [`RangeProducer`] generates a stream of `i32` values based on a start, end, and
+//! step configuration. It supports both ascending (positive step) and descending
+//! (negative step) ranges, making it flexible for various use cases.
+//!
+//! # Key Concepts
+//!
+//! - **Numeric Ranges**: Generates sequences of integers
+//! - **Configurable Step**: Supports positive (ascending) and negative (descending) steps
+//! - **Inclusive Start, Exclusive End**: Start is included, end is excluded (like Rust ranges)
+//! - **Type Conversion**: Converts from `i64` range parameters to `i32` output (clamps to i32 bounds)
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`RangeProducer`]**: Producer that generates integer ranges
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::RangeProducer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a producer that generates 1, 2, 3, 4, 5
+//! let producer = RangeProducer::new(1, 6, 1);
+//!
+//! // Use in a pipeline
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(producer)
+//!     .transformer(/* ... */)
+//!     .consumer(/* ... */);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Descending Range
+//!
+//! ```rust
+//! use streamweave::producers::RangeProducer;
+//!
+//! // Create a producer that generates 10, 9, 8, 7, 6 (descending)
+//! let producer = RangeProducer::new(10, 5, -1);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::producers::RangeProducer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a producer with error handling strategy
+//! let producer = RangeProducer::new(0, 100, 2)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("even-numbers".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **i32 Output**: Outputs `i32` values for compatibility with common integer types
+//! - **i64 Parameters**: Uses `i64` for range parameters to support larger ranges,
+//!   but clamps to `i32` bounds in the output
+//! - **Inclusive/Exclusive**: Follows Rust's range convention (start inclusive, end exclusive)
+//! - **Step Validation**: Panics on zero step to prevent infinite loops
+//! - **Pre-computation**: Generates the entire range upfront for simplicity
+//!
+//! # Integration with StreamWeave
+//!
+//! [`RangeProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use futures::{Stream, stream};

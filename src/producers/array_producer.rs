@@ -1,3 +1,74 @@
+//! Array producer for emitting items from compile-time-sized arrays.
+//!
+//! This module provides [`ArrayProducer<T, N>`], a producer that emits items from
+//! a fixed-size array. The array size is determined at compile time via the const
+//! generic parameter `N`, enabling efficient zero-allocation iteration over array
+//! elements.
+//!
+//! # Overview
+//!
+//! [`ArrayProducer`] is useful for producing streams from compile-time-known arrays.
+//! Unlike `VecProducer` which uses runtime-sized vectors, `ArrayProducer` uses
+//! compile-time-sized arrays, enabling compiler optimizations and zero-overhead
+//! iteration. This is ideal for small, fixed-size datasets that are known at
+//! compile time.
+//!
+//! # Key Concepts
+//!
+//! - **Compile-Time Size**: Array size `N` is determined at compile time
+//! - **Const Generics**: Uses const generics for type-safe array size
+//! - **Zero Allocation**: Efficient iteration without heap allocations
+//! - **Fixed Size**: Array size cannot change at runtime
+//! - **Simple Producer**: Direct array-to-stream conversion
+//!
+//! # Core Types
+//!
+//! - **[`ArrayProducer<T, N>`]**: Producer that emits items from an array of size `N`
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::ArrayProducer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a producer from a fixed-size array
+//! let array = [1, 2, 3, 4, 5];
+//! let producer = ArrayProducer::new(array);
+//!
+//! // Produces: 1, 2, 3, 4, 5
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## From Slice (at compile time)
+//!
+//! ```rust
+//! use streamweave::producers::ArrayProducer;
+//!
+//! // Create from a slice if length matches
+//! let slice = &[10, 20, 30];
+//! if let Some(producer) = ArrayProducer::<i32, 3>::from_slice(slice) {
+//!     // Producer created successfully
+//! }
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Const Generics**: Uses const generics for compile-time array size
+//! - **Fixed Size**: Array size must be known at compile time
+//! - **Efficiency**: Zero-allocation iteration over array elements
+//! - **Type Safety**: Compile-time guarantees about array size
+//! - **Simple API**: Direct array-to-stream conversion
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ArrayProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use async_trait::async_trait;

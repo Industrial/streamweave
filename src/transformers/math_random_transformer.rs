@@ -1,6 +1,74 @@
-//! Math random transformer for StreamWeave
+//! Math random transformer for generating random numbers.
 //!
-//! Generates random numbers.
+//! This module provides [`MathRandomTransformer`], a transformer that generates
+//! random numbers in StreamWeave pipelines. It generates random f64 values within
+//! a specified range [min, max) for each input item. It implements the [`Transformer`]
+//! trait for use in StreamWeave pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`MathRandomTransformer`] is useful for generating random numbers in StreamWeave
+//! pipelines. It processes input items and generates random numbers within a
+//! specified range, making it ideal for testing, sampling, or adding randomness
+//! to data processing.
+//!
+//! # Key Concepts
+//!
+//! - **Random Number Generation**: Generates random numbers within a specified range
+//! - **Range-Based**: Supports min (inclusive) and max (exclusive) values
+//! - **Per-Item Generation**: Generates a random number for each input item
+//! - **Transformer Trait**: Implements `Transformer` for pipeline integration
+//!
+//! # Core Types
+//!
+//! - **[`MathRandomTransformer`]**: Transformer that generates random numbers
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::MathRandomTransformer;
+//!
+//! // Generate random numbers between 0 and 100
+//! let transformer = MathRandomTransformer::new(0.0, 100.0);
+//! ```
+//!
+//! ## Different Ranges
+//!
+//! ```rust
+//! use streamweave::transformers::MathRandomTransformer;
+//!
+//! // Random numbers between -1 and 1
+//! let normalized = MathRandomTransformer::new(-1.0, 1.0);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::MathRandomTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a random transformer with error handling
+//! let transformer = MathRandomTransformer::new(0.0, 100.0)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("random-generator".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Range-Based**: Uses min (inclusive) and max (exclusive) for range specification
+//! - **Random Generation**: Uses `rand` crate for random value generation
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   pipeline system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathRandomTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

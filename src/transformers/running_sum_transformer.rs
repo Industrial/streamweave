@@ -1,6 +1,38 @@
-//! Running sum transformer for StreamWeave
+//! # Running Sum Transformer
 //!
-//! This transformer requires the `stateful` feature to be enabled.
+//! Stateful transformer that maintains a running sum of all processed items,
+//! outputting the cumulative sum after each item. This enables incremental
+//! aggregation and running total calculations in streaming pipelines.
+//!
+//! ## Overview
+//!
+//! The Running Sum Transformer provides:
+//!
+//! - **Stateful Processing**: Maintains state across items (requires `stateful` feature)
+//! - **Running Sum**: Computes cumulative sum of all processed items
+//! - **Incremental Updates**: Updates sum incrementally as items arrive
+//! - **Numeric Types**: Works with any numeric type that implements `Add`
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Numeric items to sum
+//! - **Output**: `Message<T>` - Running sum after each item
+//!
+//! ## State Management
+//!
+//! The transformer uses an `InMemoryStateStore` to maintain the running sum
+//! across items. The state persists for the lifetime of the transformer.
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::RunningSumTransformer;
+//!
+//! let transformer = RunningSumTransformer::<i32>::new();
+//! // Input: [1, 2, 3, 4]
+//! // Output: [1, 3, 6, 10] (running sum)
+//! ```
 
 #![cfg(feature = "stateful")]
 

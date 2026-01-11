@@ -1,7 +1,69 @@
-//! Split node for StreamWeave graphs
+//! Split node for splitting streams based on predicates.
 //!
-//! Splits items based on a splitting function. Groups consecutive items where
-//! the predicate returns `true` into separate vectors.
+//! This module provides [`Split`], a graph node that splits items based on a
+//! splitting function. It groups consecutive items where the predicate returns
+//! `true` into separate vectors, effectively splitting the stream at points
+//! where the predicate returns `false`. It wraps [`SplitTransformer`] for use
+//! in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Split`] is useful for splitting streams into groups in graph-based
+//! pipelines. It groups consecutive items that match a predicate into separate
+//! vectors, creating a stream of vectors where each vector contains a group of
+//! consecutive matching items.
+//!
+//! # Key Concepts
+//!
+//! - **Predicate-Based Splitting**: Uses a predicate function to determine
+//!   which items belong together
+//! - **Consecutive Grouping**: Groups consecutive items where predicate returns
+//!   `true` into separate vectors
+//! - **Vector Output**: Outputs `Vec<T>` instead of `T` (one vector per group)
+//! - **Transformer Wrapper**: Wraps `SplitTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Split<F, T>`]**: Node that splits items based on a predicate function
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Split;
+//!
+//! // Split stream at even numbers (group consecutive even numbers)
+//! let split = Split::new(|x: &i32| *x % 2 == 0);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Split;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a split node with error handling
+//! let split = Split::new(|s: &String| !s.is_empty())
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("non-empty-splitter".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Predicate Function**: Uses a closure for flexible splitting logic
+//! - **Consecutive Grouping**: Groups consecutive matching items for efficient
+//!   processing
+//! - **Vector Output**: Outputs vectors to represent groups of items
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Split`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`]. Note that the
+//! output type is `Vec<T>` rather than `T`.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::SplitTransformer;

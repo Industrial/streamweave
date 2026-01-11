@@ -1,6 +1,62 @@
-//! Array reverse node for StreamWeave graphs
+//! Array reverse node for reversing JSON arrays.
 //!
-//! Reverses arrays.
+//! This module provides [`ArrayReverse`], a graph node that reverses the order
+//! of elements in JSON arrays. It wraps [`ArrayReverseTransformer`] for use in
+//! StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`ArrayReverse`] is useful for reversing the order of elements in JSON arrays
+//! within graph-based pipelines. It performs in-place reversal, consuming arrays
+//! and producing reversed arrays.
+//!
+//! # Key Concepts
+//!
+//! - **Array Reversal**: Reverses the order of elements in arrays
+//! - **JSON Values**: Works with `serde_json::Value` array types
+//! - **In-Place Operation**: Consumes and produces reversed arrays
+//! - **Transformer Wrapper**: Wraps `ArrayReverseTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`ArrayReverse`]**: Node that reverses arrays
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ArrayReverse;
+//!
+//! // Create a node that reverses arrays
+//! let node = ArrayReverse::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ArrayReverse;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a node with error handling
+//! let node = ArrayReverse::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("reverse-arrays".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Uses `serde_json::Value` for flexible array handling
+//! - **Simple Interface**: Provides a simple, parameterless constructor for
+//!   straightforward array reversal
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ArrayReverse`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::ArrayReverseTransformer;

@@ -1,7 +1,36 @@
-//! TCP Graph Server
+//! # TCP Graph Server
 //!
-//! This module provides a high-level API for creating TCP servers that process
-//! incoming connections through StreamWeave graphs.
+//! High-level API for creating TCP servers that process incoming connections
+//! through StreamWeave graphs. This enables building network services that
+//! process TCP connections using graph-based data processing pipelines.
+//!
+//! ## Overview
+//!
+//! The TCP Graph Server provides:
+//!
+//! - **TCP Server**: Listens for incoming TCP connections
+//! - **Graph Processing**: Routes connection data through StreamWeave graphs
+//! - **Connection Management**: Handles connection lifecycle and timeouts
+//! - **Configurable Reading**: Supports line-based or delimiter-based data reading
+//! - **Error Handling**: Configurable error handling for connection failures
+//!
+//! ## Core Types
+//!
+//! - **[`TcpGraphServer`]**: TCP server that processes connections through graphs
+//! - **[`TcpGraphServerConfig`]**: Configuration for server behavior
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::graph::tcp_server::{TcpGraphServer, TcpGraphServerConfig};
+//! use streamweave::graph::Graph;
+//!
+//! let config = TcpGraphServerConfig::default()
+//!     .with_bind_address("127.0.0.1:8080")
+//!     .with_connection_timeout(Duration::from_secs(30));
+//! let server = TcpGraphServer::new(config, graph);
+//! server.start().await?;
+//! ```
 
 use crate::graph::{ExecutionError, Graph, GraphExecutor};
 use futures::future::Either;

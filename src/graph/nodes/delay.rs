@@ -1,7 +1,66 @@
-//! Delay node for StreamWeave graphs
+//! Delay node for adding delays between stream items.
 //!
-//! Adds a delay before emitting each item in the stream. Useful for rate limiting,
-//! scheduled processing, and retry logic with exponential backoff.
+//! This module provides [`Delay`], a graph node that adds a delay before emitting
+//! each item in the stream. It wraps [`DelayTransformer`] for use in StreamWeave graphs.
+//! This is useful for rate limiting, scheduled processing, and retry logic with
+//! exponential backoff.
+//!
+//! # Overview
+//!
+//! [`Delay`] is useful for controlling the rate of item emission in graph-based
+//! pipelines. It introduces a fixed delay before each item is passed through,
+//! making it ideal for rate limiting and time-based processing scenarios.
+//!
+//! # Key Concepts
+//!
+//! - **Fixed Delay**: Introduces a configurable delay before each item
+//! - **Rate Limiting**: Useful for controlling throughput and avoiding
+//!   overwhelming downstream systems
+//! - **Scheduled Processing**: Enables time-based processing patterns
+//! - **Transformer Wrapper**: Wraps `DelayTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Delay<T>`]**: Node that delays items by a specified duration
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Delay;
+//! use std::time::Duration;
+//!
+//! // Create a delay node that delays each item by 1 second
+//! let delay = Delay::<i32>::new(Duration::from_secs(1));
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Delay;
+//! use streamweave::ErrorStrategy;
+//! use std::time::Duration;
+//!
+//! // Create a delay node with error handling
+//! let delay = Delay::<String>::new(Duration::from_millis(100))
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("rate-limiter".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Fixed Duration**: Uses a fixed duration delay for simplicity and
+//!   predictability
+//! - **Async Sleep**: Uses Tokio's async sleep for non-blocking delays
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Delay`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::DelayTransformer;

@@ -1,7 +1,62 @@
-//! Skip node for StreamWeave graphs
+//! Skip node for skipping items at the beginning of streams.
 //!
-//! Skips a specified number of items from the beginning of a stream, then
-//! passes through all subsequent items.
+//! This module provides [`Skip`], a graph node that skips a specified number
+//! of items from the beginning of a stream, then passes through all subsequent
+//! items. It wraps [`SkipTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Skip`] is useful for skipping items at the beginning of graph-based
+//! pipelines. It discards the first N items and then passes through all
+//! subsequent items, making it ideal for skipping headers, metadata, or
+//! initial items that should be ignored.
+//!
+//! # Key Concepts
+//!
+//! - **Item Skipping**: Skips a specified number of items from the start
+//! - **Fixed Count**: Uses a fixed count to determine how many items to skip
+//! - **Pass-Through**: After skipping, all subsequent items pass through unchanged
+//! - **Transformer Wrapper**: Wraps `SkipTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Skip<T>`]**: Node that skips items from the beginning of a stream
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Skip;
+//!
+//! // Skip the first 10 items
+//! let skip = Skip::<i32>::new(10);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Skip;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a skip node with error handling
+//! let skip = Skip::<String>::new(5)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("header-skipper".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Fixed Count Skip**: Uses a fixed count for simplicity and predictability
+//! - **Stream-Based**: Works with async streams for efficient processing
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Skip`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::SkipTransformer;

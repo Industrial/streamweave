@@ -1,7 +1,73 @@
-//! MySQL query node for StreamWeave graphs
+//! MySQL query node for executing MySQL queries in graphs.
 //!
-//! Executes MySQL queries from stream items. Takes query strings (or query parameters) as input
-//! and outputs query results, enabling dynamic MySQL queries in a pipeline.
+//! This module provides [`DbMysqlQuery`], a graph node that executes MySQL queries
+//! from stream items. It takes query strings (or query parameters as JSON) as input
+//! and outputs `DatabaseRow` results, enabling dynamic MySQL queries in graph-based
+//! pipelines. It wraps [`DbMysqlQueryTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`DbMysqlQuery`] is useful for executing MySQL queries in graph-based pipelines.
+//! It supports dynamic query execution based on stream data, making it ideal for
+//! data processing workflows that interact with MySQL databases.
+//!
+//! # Key Concepts
+//!
+//! - **MySQL Query Execution**: Executes SQL queries against MySQL databases
+//! - **Dynamic Queries**: Supports query strings or query parameters from stream items
+//! - **Database Rows Output**: Outputs query results as `DatabaseRow` structures
+//! - **Transformer Wrapper**: Wraps `DbMysqlQueryTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`DbMysqlQuery`]**: Node that executes MySQL queries from stream items
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::DbMysqlQuery;
+//! use streamweave::db::{DatabaseProducerConfig, DatabaseType};
+//!
+//! // Create database configuration
+//! let db_config = DatabaseProducerConfig::default()
+//!     .with_connection_url("mysql://user:pass@localhost/db")
+//!     .with_database_type(DatabaseType::Mysql);
+//!
+//! // Create a MySQL query node
+//! let db_mysql_query = DbMysqlQuery::new(db_config);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::DbMysqlQuery;
+//! use streamweave::db::{DatabaseProducerConfig, DatabaseType};
+//! use streamweave::ErrorStrategy;
+//!
+//! # let db_config = DatabaseProducerConfig::default()
+//! #     .with_connection_url("mysql://user:pass@localhost/db")
+//! #     .with_database_type(DatabaseType::Mysql);
+//! // Create a MySQL query node with error handling
+//! let db_mysql_query = DbMysqlQuery::new(db_config)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("mysql-query".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **MySQL Integration**: Uses sqlx for type-safe, async MySQL database access
+//! - **Dynamic Queries**: Supports dynamic SQL query execution from stream items
+//! - **DatabaseRow Output**: Returns structured database rows for flexible processing
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DbMysqlQuery`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::db::DatabaseProducerConfig;
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

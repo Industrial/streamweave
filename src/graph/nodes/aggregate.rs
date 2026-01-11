@@ -1,6 +1,89 @@
-//! Transformer that aggregates items using an aggregator function.
+//! Aggregate node for aggregating items using aggregator functions.
 //!
-//! Includes common aggregator implementations (Sum, Count, Min, Max).
+//! This module provides [`Aggregate`] and the [`Aggregator`] trait for aggregating
+//! items in graph-based pipelines. It includes common aggregator implementations
+//! (Sum, Count, Min, Max) and supports windowed aggregation. It implements the
+//! [`Transformer`] trait for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Aggregate`] is useful for aggregating items in graph-based pipelines. It
+//! uses an aggregator function to combine items into a single accumulated value,
+//! supporting both windowed aggregation (aggregate N items) and full stream
+//! aggregation (aggregate all items until stream ends).
+//!
+//! # Key Concepts
+//!
+//! - **Aggregator Pattern**: Uses the `Aggregator` trait for flexible aggregation logic
+//! - **Windowed Aggregation**: Supports optional window size for batching aggregations
+//! - **Common Aggregators**: Includes Sum, Count, Min, Max implementations
+//! - **Custom Aggregators**: Supports custom aggregator implementations via trait
+//! - **Transformer Trait**: Implements `Transformer` for graph integration
+//!
+//! # Core Types
+//!
+//! - **[`Aggregate<T, A>`]**: Node that aggregates items using an aggregator
+//! - **[`Aggregator<T, A>`]**: Trait for aggregating items into accumulated values
+//! - **[`SumAggregator`]**: Aggregator that sums numeric values
+//! - **[`CountAggregator`]**: Aggregator that counts items
+//! - **[`MinAggregator`]**: Aggregator that finds minimum values
+//! - **[`MaxAggregator`]**: Aggregator that finds maximum values
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage (Sum)
+//!
+//! ```rust
+//! use streamweave::graph::nodes::{Aggregate, SumAggregator};
+//!
+//! // Sum all items in the stream
+//! let aggregate = Aggregate::new(SumAggregator, None);
+//! ```
+//!
+//! ## Windowed Aggregation
+//!
+//! ```rust
+//! use streamweave::graph::nodes::{Aggregate, SumAggregator};
+//!
+//! // Sum items in windows of 10
+//! let aggregate = Aggregate::new(SumAggregator, Some(10));
+//! ```
+//!
+//! ## Count Aggregation
+//!
+//! ```rust
+//! use streamweave::graph::nodes::{Aggregate, CountAggregator};
+//!
+//! // Count all items
+//! let aggregate = Aggregate::new(CountAggregator, None);
+//! ```
+//!
+//! ## Min/Max Aggregation
+//!
+//! ```rust
+//! use streamweave::graph::nodes::{Aggregate, MinAggregator, MaxAggregator};
+//!
+//! // Find minimum value
+//! let min_aggregate = Aggregate::new(MinAggregator, None);
+//!
+//! // Find maximum value
+//! let max_aggregate = Aggregate::new(MaxAggregator, None);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Aggregator Trait**: Uses trait-based design for flexible aggregation logic
+//! - **Windowed Support**: Supports both windowed and full-stream aggregation
+//! - **Common Implementations**: Provides common aggregators for convenience
+//! - **Type-Safe**: Supports generic types for items and accumulator values
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   graph system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Aggregate`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports windowed aggregation patterns and custom
+//! aggregator implementations via the `Aggregator` trait.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

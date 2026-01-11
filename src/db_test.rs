@@ -1,3 +1,30 @@
+//! # Database Test Suite
+//!
+//! Comprehensive test suite for database integration functionality, including
+//! database type handling, row operations, and producer/consumer configurations.
+//!
+//! ## Test Coverage
+//!
+//! This test suite covers:
+//!
+//! - **Database Types**: PostgreSQL, MySQL, and SQLite type handling
+//! - **Database Rows**: Row creation, field access, and column enumeration
+//! - **Producer Configuration**: Database query configuration and connection settings
+//! - **Consumer Configuration**: Database insert configuration, batching, and transactions
+//! - **Connection Settings**: Connection pooling, timeouts, and SSL configuration
+//! - **Query Parameters**: Parameterized query support
+//! - **Column Mapping**: Field-to-column name mapping
+//! - **Transaction Support**: Transaction-based batch operations
+//!
+//! ## Test Organization
+//!
+//! Tests are organized by component:
+//!
+//! - Database type tests
+//! - Database row tests
+//! - Database producer config tests
+//! - Database consumer config tests
+
 use crate::db::*;
 use std::collections::HashMap;
 use std::time::Duration;

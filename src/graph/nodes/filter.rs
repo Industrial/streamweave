@@ -1,7 +1,76 @@
-//! Filter node for StreamWeave graphs
+//! Filter node for filtering items in streams based on predicates.
 //!
-//! Filters items in a stream based on a predicate function. Only items for which
-//! the predicate returns `true` are passed through.
+//! This module provides [`Filter`], a graph node that filters items in a stream
+//! based on a predicate function. It wraps [`FilterTransformer`] for use in
+//! StreamWeave graphs. Only items for which the predicate returns `true` are
+//! passed through to the output.
+//!
+//! # Overview
+//!
+//! [`Filter`] is useful for selectively processing items in graph-based pipelines.
+//! It allows only items that match a condition to pass through, filtering out
+//! items that don't match. This is essential for data selection and conditional
+//! processing patterns.
+//!
+//! # Key Concepts
+//!
+//! - **Predicate-Based Filtering**: Uses a predicate function to determine which
+//!   items to keep
+//! - **Selective Processing**: Only items where predicate returns `true` pass through
+//! - **Data Selection**: Useful for selecting specific items based on conditions
+//! - **Transformer Wrapper**: Wraps `FilterTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Filter<F, T>`]**: Node that filters items based on a predicate function
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Filter;
+//!
+//! // Filter to keep only items greater than 10
+//! let filter = Filter::new(|x: &i32| *x > 10);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Filter;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Filter non-empty strings with error handling
+//! let filter = Filter::new(|s: &String| !s.is_empty())
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("non-empty-filter".to_string());
+//! ```
+//!
+//! ## Complex Predicates
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Filter;
+//!
+//! // Filter items based on complex conditions
+//! let filter = Filter::new(|item: &MyStruct| {
+//!     item.value > 0 && item.status == "active"
+//! });
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Predicate Function**: Uses a closure for flexible item filtering
+//! - **True/False Logic**: Keeps items where predicate returns `true` for
+//!   intuitive behavior
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Filter`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::FilterTransformer;

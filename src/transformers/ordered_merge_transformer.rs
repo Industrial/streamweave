@@ -1,4 +1,39 @@
-//! Ordered merge transformer for StreamWeave
+//! # Ordered Merge Transformer
+//!
+//! Transformer that merges multiple input streams into a single output stream
+//! using configurable ordering strategies. This enables controlled interleaving
+//! of items from multiple sources with various merge policies.
+//!
+//! ## Overview
+//!
+//! The Ordered Merge Transformer provides:
+//!
+//! - **Multi-Stream Merging**: Merges items from multiple input streams
+//! - **Ordering Strategies**: Configurable merge strategies (Sequential, RoundRobin, Priority, Interleave)
+//! - **Controlled Interleaving**: Deterministic or fair interleaving based on strategy
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: Multiple streams of `Message<T>`
+//! - **Output**: `Message<T>` - Merged items from all input streams
+//!
+//! ## Merge Strategies
+//!
+//! - **Sequential**: Process streams in order, exhaust one before moving to next
+//! - **RoundRobin**: Take one element from each stream in turn
+//! - **Priority**: Process streams based on priority index (lower = higher priority)
+//! - **Interleave**: Fair interleaving (whichever stream has an element ready)
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::{OrderedMergeTransformer, MergeStrategy};
+//!
+//! let transformer = OrderedMergeTransformer::new(MergeStrategy::RoundRobin);
+//! // Merges multiple streams in round-robin fashion
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

@@ -1,4 +1,38 @@
-//! Partition transformer for StreamWeave
+//! # Partition Transformer
+//!
+//! Transformer that partitions a stream into two streams based on a predicate
+//! function. Items that match the predicate go to one stream, items that don't
+//! go to another. This enables conditional routing and stream splitting.
+//!
+//! ## Overview
+//!
+//! The Partition Transformer provides:
+//!
+//! - **Predicate-Based Partitioning**: Splits stream based on a predicate function
+//! - **Two Output Streams**: Produces matching and non-matching items separately
+//! - **Conditional Routing**: Enables conditional routing based on item content
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to partition
+//! - **Output**: Two streams of `Message<T>` - Matching and non-matching items
+//!
+//! ## Partition Behavior
+//!
+//! Items are partitioned into two groups:
+//! - **Matching**: Items where predicate returns `true`
+//! - **Non-Matching**: Items where predicate returns `false`
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::PartitionTransformer;
+//!
+//! let transformer = PartitionTransformer::new(|x: &i32| *x > 0);
+//! // Partitions items into positive and non-positive groups
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

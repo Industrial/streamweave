@@ -1,6 +1,31 @@
-//! String concat transformer for StreamWeave
+//! # String Concat Transformer
 //!
-//! Concatenates multiple strings into a single string.
+//! Transformer that concatenates arrays of strings into single strings, producing
+//! a stream where each input array becomes one concatenated output string.
+//!
+//! ## Overview
+//!
+//! The String Concat Transformer provides:
+//!
+//! - **Array Concatenation**: Concatenates all strings in an input array
+//! - **No Delimiter**: Strings are concatenated directly without separators
+//! - **One-to-One**: Each input array produces one output string
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<Vec<String>>` - Arrays of strings to concatenate
+//! - **Output**: `Message<String>` - Concatenated strings
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::StringConcatTransformer;
+//!
+//! let transformer = StringConcatTransformer::new();
+//! // Input: [vec!["hello", " ", "world"]]
+//! // Output: ["hello world"]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

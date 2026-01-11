@@ -1,7 +1,69 @@
-//! Drop node for StreamWeave graphs
+//! Drop node for removing items from streams based on predicates.
 //!
-//! Drops items from the stream based on a predicate function. This is the inverse
-//! of FilterTransformer - items where the predicate returns `true` are dropped.
+//! This module provides [`Drop`], a graph node that drops items from the stream
+//! based on a predicate function. It wraps [`DropTransformer`] for use in
+//! StreamWeave graphs. This is the inverse of [`crate::graph::nodes::Filter`] - items where the
+//! predicate returns `true` are dropped (not passed through).
+//!
+//! # Overview
+//!
+//! [`Drop`] is useful for removing unwanted items from streams in graph-based
+//! pipelines. It filters out items that match a condition, allowing only items
+//! that don't match to pass through.
+//!
+//! # Key Concepts
+//!
+//! - **Predicate-Based Filtering**: Uses a predicate function to determine which
+//!   items to drop
+//! - **Inverse of Filter**: Drops items where predicate returns `true`, keeping
+//!   items where predicate returns `false`
+//! - **Selective Removal**: Useful for removing specific items based on conditions
+//! - **Transformer Wrapper**: Wraps `DropTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`Drop<F, T>`]**: Node that drops items based on a predicate function
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Drop;
+//!
+//! // Drop all items greater than 10
+//! let drop = Drop::new(|x: &i32| *x > 10);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::Drop;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Drop empty strings with error handling
+//! let drop = Drop::new(|s: &String| s.is_empty())
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("drop-empty".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Predicate Function**: Uses a closure for flexible item filtering
+//! - **Inverse Logic**: Provides an alternative to `Filter` for cases where
+//!   dropping is more intuitive than keeping
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Drop`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
+
+// Import for rustdoc links
+#[allow(unused_imports)]
+use super::filter::Filter;
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::DropTransformer;

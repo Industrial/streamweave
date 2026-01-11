@@ -1,3 +1,87 @@
+//! Tokio channel producer for reading stream data from Tokio channels.
+//!
+//! This module provides [`TokioChannelProducer`], a producer that reads items from
+//! a `tokio::sync::mpsc::Receiver` and converts them into a StreamWeave stream.
+//! It's useful for integrating StreamWeave with existing async Rust code that uses
+//! Tokio channels.
+//!
+//! # Overview
+//!
+//! [`TokioChannelProducer`] bridges Tokio's channel system with StreamWeave's streaming
+//! model. It takes ownership of a `Receiver` and produces items from the channel as
+//! a stream, making it easy to integrate StreamWeave into existing Tokio-based applications.
+//!
+//! # Key Concepts
+//!
+//! - **Channel Integration**: Reads from `tokio::sync::mpsc::Receiver`
+//! - **Stream Conversion**: Converts channel receiver into a StreamWeave stream
+//! - **Ownership Transfer**: Takes ownership of the receiver (single-use)
+//! - **Async Compatibility**: Fully compatible with Tokio's async runtime
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`TokioChannelProducer<T>`]**: Producer that reads from a Tokio channel receiver
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::TokioChannelProducer;
+//! use streamweave::PipelineBuilder;
+//! use tokio::sync::mpsc;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a Tokio channel
+//! let (tx, rx) = mpsc::channel(100);
+//!
+//! // Create a producer from the receiver
+//! let producer = TokioChannelProducer::new(rx);
+//!
+//! // Use in a pipeline
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(producer)
+//!     .transformer(/* ... */)
+//!     .consumer(/* ... */);
+//!
+//! // Send items to the channel
+//! tx.send("item1".to_string()).await?;
+//! tx.send("item2".to_string()).await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::producers::TokioChannelProducer;
+//! use streamweave::ErrorStrategy;
+//! use tokio::sync::mpsc;
+//!
+//! let (_, rx) = mpsc::channel(100);
+//! // Create a producer with error handling strategy
+//! let producer = TokioChannelProducer::new(rx)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("channel-reader".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Ownership Transfer**: Takes ownership of the receiver to ensure single-use
+//!   semantics and prevent multiple consumers from the same channel
+//! - **Stream Conversion**: Uses `tokio_stream::ReceiverStream` to convert the
+//!   channel receiver into a standard async stream
+//! - **Generic Type**: Generic over the item type for maximum flexibility
+//! - **Tokio Compatibility**: Designed specifically for Tokio channels to leverage
+//!   Tokio's efficient async I/O
+//!
+//! # Integration with StreamWeave
+//!
+//! [`TokioChannelProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use futures::Stream;

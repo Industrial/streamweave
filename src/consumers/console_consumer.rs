@@ -1,3 +1,72 @@
+//! Console consumer for printing stream data to the console.
+//!
+//! This module provides [`ConsoleConsumer`], a consumer that prints stream items
+//! to the console using `println!`. Each item is printed on a separate line, making
+//! it ideal for debugging, testing, and simple command-line output.
+//!
+//! # Overview
+//!
+//! [`ConsoleConsumer`] is useful for debugging and testing StreamWeave pipelines.
+//! It prints each stream item to stdout with automatic formatting, providing a
+//! simple way to inspect stream contents during development.
+//!
+//! # Key Concepts
+//!
+//! - **Console Output**: Prints items to stdout using `println!`
+//! - **Line-Based Output**: Each item is printed on a separate line
+//! - **Display Trait**: Items must implement `Display` for string conversion
+//! - **Debugging Tool**: Primarily intended for development and testing
+//!
+//! # Core Types
+//!
+//! - **[`ConsoleConsumer<T>`]**: Consumer that prints items to the console
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::ConsoleConsumer;
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a consumer
+//! let mut consumer = ConsoleConsumer::new();
+//!
+//! // Create a stream of items
+//! let stream = stream::iter(vec!["item1", "item2", "item3"]);
+//!
+//! // Consume the stream (items printed to console)
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::consumers::ConsoleConsumer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a consumer with error handling strategy
+//! let consumer = ConsoleConsumer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("console-debug".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Simple Output**: Uses `println!` for straightforward console output
+//! - **Line Formatting**: Each item is printed on a separate line for readability
+//! - **Display Requirement**: Items must implement `Display` for flexible formatting
+//! - **Development Tool**: Designed primarily for debugging and testing
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ConsoleConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

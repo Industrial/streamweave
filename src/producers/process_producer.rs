@@ -1,3 +1,67 @@
+//! Process producer for reading output from external processes.
+//!
+//! This module provides [`ProcessProducer`], a producer that spawns an external
+//! process and emits its stdout line by line as stream items. This enables
+//! integrating command-line tools and external programs into StreamWeave pipelines.
+//!
+//! # Overview
+//!
+//! [`ProcessProducer`] is useful for reading output from external processes in
+//! StreamWeave pipelines. It spawns a process with the specified command and
+//! arguments, then streams its stdout line by line, making it easy to integrate
+//! command-line tools and scripts into data processing pipelines.
+//!
+//! # Key Concepts
+//!
+//! - **Process Execution**: Spawns external processes using `tokio::process::Command`
+//! - **Line-by-Line Output**: Reads stdout line by line and emits each line as a stream item
+//! - **Command Configuration**: Supports command and arguments configuration
+//! - **Asynchronous I/O**: Uses async I/O for non-blocking process communication
+//! - **Error Handling**: Configurable error strategies for process failures
+//!
+//! # Core Types
+//!
+//! - **[`ProcessProducer`]**: Producer that reads output from external processes
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust,no_run
+//! use streamweave::producers::ProcessProducer;
+//!
+//! // Create a producer that executes `ls -la` and streams its output
+//! let producer = ProcessProducer::new("ls".to_string())
+//!     .arg("-la".to_string());
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust,no_run
+//! use streamweave::producers::ProcessProducer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a producer with error handling strategy
+//! let producer = ProcessProducer::new("grep".to_string())
+//!     .arg("pattern".to_string())
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("grep-process".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Asynchronous Execution**: Uses `tokio::process::Command` for async process execution
+//! - **Line-Based Reading**: Reads stdout line by line using `BufReader` for efficient I/O
+//! - **Builder Pattern**: Uses builder methods (`arg`) for configuring command arguments
+//! - **Stdio Configuration**: Uses `Stdio::piped()` to capture process output
+//! - **Error Handling**: Provides configurable error strategies for process failures
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ProcessProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use futures::Stream;

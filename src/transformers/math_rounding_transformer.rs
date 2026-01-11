@@ -1,6 +1,78 @@
-//! Math rounding transformer for StreamWeave
+//! Math rounding transformer for performing rounding and absolute value operations.
 //!
-//! Performs rounding and absolute value operations on numeric values.
+//! This module provides [`MathRoundingTransformer`] and [`RoundingOperation`], types
+//! for performing rounding and absolute value operations on numeric values in
+//! StreamWeave pipelines. It supports Round, Floor, Ceil, Trunc, and Abs operations,
+//! making it ideal for mathematical computations. It implements the [`Transformer`]
+//! trait for use in StreamWeave pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`MathRoundingTransformer`] is useful for performing rounding and absolute value
+//! operations on numeric values in StreamWeave pipelines. It processes JSON numeric
+//! values and applies rounding/absolute functions, making it ideal for mathematical
+//! computations.
+//!
+//! # Key Concepts
+//!
+//! - **Rounding Operations**: Supports Round, Floor, Ceil, Trunc
+//! - **Absolute Value**: Supports Abs operation
+//! - **JSON Value Support**: Works with `serde_json::Value` numeric types
+//! - **Transformer Trait**: Implements `Transformer` for pipeline integration
+//!
+//! # Core Types
+//!
+//! - **[`MathRoundingTransformer`]**: Transformer that performs rounding and absolute value operations
+//! - **[`RoundingOperation`]**: Enum representing different rounding operations
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::{MathRoundingTransformer, RoundingOperation};
+//!
+//! // Round to nearest integer
+//! let transformer = MathRoundingTransformer::new(RoundingOperation::Round);
+//! ```
+//!
+//! ## Different Operations
+//!
+//! ```rust
+//! use streamweave::transformers::{MathRoundingTransformer, RoundingOperation};
+//!
+//! // Floor (round down)
+//! let floor = MathRoundingTransformer::new(RoundingOperation::Floor);
+//!
+//! // Absolute value
+//! let abs = MathRoundingTransformer::new(RoundingOperation::Absolute);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::{MathRoundingTransformer, RoundingOperation};
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a rounding transformer with error handling
+//! let transformer = MathRoundingTransformer::new(RoundingOperation::Round)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("rounder".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Operation Enum**: Uses enum-based operation selection for type safety
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   pipeline system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathRoundingTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

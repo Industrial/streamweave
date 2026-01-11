@@ -1,6 +1,75 @@
-//! Array join transformer for StreamWeave
+//! Array join transformer for converting arrays to delimited strings.
 //!
-//! Joins array elements into a string using a delimiter.
+//! This module provides [`ArrayJoinTransformer`], a transformer that joins array
+//! elements into a single string using a specified delimiter. It's similar to
+//! JavaScript's `Array.join()` method, converting arrays to comma-separated or
+//! custom-delimited strings.
+//!
+//! # Overview
+//!
+//! [`ArrayJoinTransformer`] takes each input array and concatenates its elements
+//! into a string, inserting the delimiter between elements. This is useful for
+//! converting arrays to CSV-like formats, creating paths, or formatting data for
+//! display or storage.
+//!
+//! # Key Concepts
+//!
+//! - **String Concatenation**: Joins array elements into a single string
+//! - **Configurable Delimiter**: Supports any delimiter string (comma, space, pipe, etc.)
+//! - **Element Conversion**: Converts array elements to strings for joining
+//! - **JSON Processing**: Works with JSON Value arrays
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`ArrayJoinTransformer`]**: Transformer that joins arrays into strings
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::ArrayJoinTransformer;
+//! use serde_json::json;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer with comma delimiter
+//! let transformer = ArrayJoinTransformer::new(",");
+//!
+//! // Input: [[1, 2, 3]]
+//! // Output: ["1,2,3"]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Custom Delimiters
+//!
+//! ```rust
+//! use streamweave::transformers::ArrayJoinTransformer;
+//!
+//! // Use pipe delimiter
+//! let transformer = ArrayJoinTransformer::new("|");
+//! // Input: [["a", "b", "c"]]
+//! // Output: ["a|b|c"]
+//!
+//! // Use newline delimiter
+//! let transformer = ArrayJoinTransformer::new("\n");
+//! // Input: [["line1", "line2", "line3"]]
+//! // Output: ["line1\nline2\nline3"]
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Flexible Delimiter**: Accepts any string as delimiter for maximum flexibility
+//! - **String Conversion**: Converts array elements to strings for joining
+//! - **Simple Join**: Direct string concatenation with delimiter insertion
+//! - **Similar to Array.join**: Follows JavaScript Array.join() semantics
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ArrayJoinTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

@@ -1,6 +1,74 @@
-//! Math operation node for StreamWeave graphs
+//! Math operation node for performing arithmetic operations on numeric values.
 //!
-//! Performs arithmetic operations on numeric values.
+//! This module provides [`MathOperationNode`], a graph node that performs arithmetic
+//! operations on numeric values. It wraps [`MathOperationTransformer`] for use in
+//! StreamWeave graphs. It supports operations like Add, Subtract, Multiply, Divide,
+//! Modulo, and Pow.
+//!
+//! # Overview
+//!
+//! [`MathOperationNode`] is useful for performing arithmetic operations on numeric
+//! values in graph-based pipelines. It processes JSON numeric values and applies
+//! arithmetic operations with a specified operand, making it ideal for mathematical
+//! computations.
+//!
+//! # Key Concepts
+//!
+//! - **Arithmetic Operations**: Supports Add, Subtract, Multiply, Divide, Modulo, Pow
+//! - **Binary Operations**: Performs binary operations with a specified operand
+//! - **JSON Value Support**: Works with `serde_json::Value` numeric types
+//! - **Transformer Wrapper**: Wraps `MathOperationTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`MathOperationNode`]**: Node that performs arithmetic operations
+//! - **[`MathOperation`]**: Enum representing different arithmetic operations
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathOperationNode;
+//! use streamweave::transformers::MathOperation;
+//!
+//! // Add 10 to each number
+//! let add = MathOperationNode::new(MathOperation::Add, 10.0);
+//!
+//! // Multiply by 2
+//! let multiply = MathOperationNode::new(MathOperation::Multiply, 2.0);
+//!
+//! // Divide by 5
+//! let divide = MathOperationNode::new(MathOperation::Divide, 5.0);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathOperationNode;
+//! use streamweave::transformers::MathOperation;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a math operation node with error handling
+//! let math_op = MathOperationNode::new(MathOperation::Add, 5.0)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("adder".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Operation Enum**: Uses enum-based operation selection for type safety
+//! - **Operand Required**: Requires an operand value for binary operations
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathOperationNode`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{MathOperation, MathOperationTransformer};

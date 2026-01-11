@@ -1,3 +1,141 @@
+//! SQLite database producer for streaming query results.
+//!
+//! This module provides [`DbSqliteProducer`], a producer that executes SQLite queries
+//! and streams the results as `DatabaseRow` items. It uses connection pooling and
+//! provides cursor-based iteration for large result sets to keep memory usage bounded.
+//!
+//! # Overview
+//!
+//! [`DbSqliteProducer`] is useful for reading data from SQLite databases in StreamWeave
+//! pipelines. It executes SQL queries and streams the results row by row, making it
+//! suitable for processing large datasets without loading everything into memory.
+//!
+//! # Key Concepts
+//!
+//! - **Connection Pooling**: Uses `sqlx::SqlitePool` for efficient connection management
+//! - **Cursor-Based Iteration**: Processes results in batches to keep memory usage bounded
+//! - **Database Rows**: Outputs `DatabaseRow` items representing query results
+//! - **Lazy Initialization**: Connection pool is initialized on first use
+//! - **Error Handling**: Configurable error strategies for database errors
+//!
+//! # Core Types
+//!
+//! - **[`DbSqliteProducer`]**: Producer that executes SQLite queries and streams results
+//! - **[`DatabaseProducerConfig`]**: Configuration for database connection and query settings
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust,no_run
+//! use streamweave::producers::DbSqliteProducer;
+//! use streamweave::db::DatabaseProducerConfig;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create database configuration
+//! let db_config = DatabaseProducerConfig {
+//!     connection_string: "sqlite:database.db".to_string(),
+//!     query: "SELECT * FROM users".to_string(),
+//!     // ... other configuration
+//! };
+//!
+//! // Create a SQLite producer
+//! let producer = DbSqliteProducer::new(db_config);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust,no_run
+//! use streamweave::producers::DbSqliteProducer;
+//! use streamweave::db::DatabaseProducerConfig;
+//! use streamweave::ErrorStrategy;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let db_config = DatabaseProducerConfig {
+//!     connection_string: "sqlite:database.db".to_string(),
+//!     query: "SELECT * FROM users".to_string(),
+//!     // ... other configuration
+//! };
+//!
+//! // Create a producer with error handling strategy
+//! let producer = DbSqliteProducer::new(db_config)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("sqlite-reader".to_string());
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Connection Pooling**: Uses `sqlx` connection pooling for efficient database access
+//! - **Lazy Initialization**: Pool is created on first use to avoid unnecessary connections
+//! - **Cursor-Based Processing**: Processes results in batches to handle large datasets efficiently
+//! - **Base64 Encoding**: Binary data is base64-encoded for safe transport in JSON-like structures
+//! - **Generic Row Type**: Uses `DatabaseRow` for consistent database row representation
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DbSqliteProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`ProducerConfig`].
+
+//! # SQLite Database Producer
+//!
+//! Producer that executes SQLite queries and streams the results as `DatabaseRow` items.
+//! This enables reading data from SQLite databases in StreamWeave pipelines with efficient
+//! connection pooling and cursor-based iteration.
+//!
+//! ## Overview
+//!
+//! The SQLite Database Producer provides:
+//!
+//! - **Query Execution**: Executes SQL queries against SQLite databases
+//! - **Connection Pooling**: Uses `sqlx::SqlitePool` for efficient connection management
+//! - **Cursor-Based Iteration**: Processes results in batches to keep memory usage bounded
+//! - **Database Rows**: Outputs `DatabaseRow` items representing query results
+//! - **Lazy Initialization**: Connection pool is initialized on first use
+//! - **Error Handling**: Configurable error strategies for database errors
+//!
+//! ## Key Concepts
+//!
+//! - **Connection Pooling**: Efficient connection management for concurrent access
+//! - **Cursor-Based Iteration**: Processes large result sets without loading everything into memory
+//! - **Database Rows**: Type-safe representation of database query results
+//! - **Lazy Initialization**: Connection pool created on-demand for better resource management
+//!
+//! ## Core Types
+//!
+//! - **[`DbSqliteProducer`]**: Producer that executes SQLite queries and streams results
+//!
+//! ## Example
+//!
+//! ```rust
+//! use streamweave::producers::DbSqliteProducer;
+//! use streamweave::db::DatabaseProducerConfig;
+//!
+//! // Create database configuration
+//! let db_config = DatabaseProducerConfig {
+//!     connection_string: "sqlite:///path/to/database.db".to_string(),
+//!     query: "SELECT * FROM users".to_string(),
+//!     // ... other configuration
+//! };
+//!
+//! // Create a SQLite producer
+//! let producer = DbSqliteProducer::new(db_config)
+//!     .with_name("user-reader".to_string());
+//!
+//! // Output: Stream of DatabaseRow items from the query
+//! ```
+//!
+//! ## Design Decisions
+//!
+//! - **Connection Pooling**: Uses sqlx connection pooling for efficiency
+//! - **Lazy Pool Creation**: Pool created on first use, not at construction time
+//! - **Batch Processing**: Processes results in batches to manage memory
+//! - **Error Resilience**: Configurable error handling for database connection issues
+
 use crate::db::{DatabaseProducerConfig, DatabaseRow};
 use crate::error::ErrorStrategy;
 use crate::{Output, Producer, ProducerConfig};

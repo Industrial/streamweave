@@ -1,7 +1,69 @@
-//! Delay transformer for StreamWeave
+//! Delay transformer for adding delays between stream items.
 //!
-//! Adds a delay before emitting each item in the stream. Useful for rate limiting,
-//! scheduled processing, and retry logic with exponential backoff.
+//! This module provides [`DelayTransformer<T>`], a transformer that adds a delay
+//! before emitting each item in the stream. This is useful for rate limiting,
+//! scheduled processing, retry logic with backoff, and controlling throughput
+//! in streaming pipelines.
+//!
+//! # Overview
+//!
+//! [`DelayTransformer`] introduces a delay between items in a stream. Each item
+//! waits for the specified duration before being emitted, effectively slowing down
+//! the stream. This is useful for rate limiting, controlling API call frequency,
+//! or implementing backoff strategies.
+//!
+//! # Key Concepts
+//!
+//! - **Fixed Delay**: Adds a constant delay before each item
+//! - **Rate Limiting**: Useful for limiting throughput and API call rates
+//! - **Async Delay**: Uses Tokio's async sleep for efficient delay handling
+//! - **Stream Control**: Controls the rate of item emission
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`DelayTransformer<T>`]**: Transformer that delays items by a duration
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::DelayTransformer;
+//! use streamweave::PipelineBuilder;
+//! use std::time::Duration;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that delays each item by 1 second
+//! let transformer = DelayTransformer::new(Duration::from_secs(1));
+//!
+//! // Each item will be delayed by 1 second before being emitted
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Rate Limiting
+//!
+//! ```rust
+//! use streamweave::transformers::DelayTransformer;
+//! use std::time::Duration;
+//!
+//! // Create a transformer that limits to 10 items per second (100ms delay)
+//! let transformer = DelayTransformer::new(Duration::from_millis(100));
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Fixed Delay**: Uses a fixed delay duration (not configurable per item)
+//! - **Async Sleep**: Uses Tokio's async sleep for efficient, non-blocking delays
+//! - **Between Items**: Delay occurs before emitting each item
+//! - **Simple API**: Straightforward duration-based configuration
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DelayTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

@@ -1,6 +1,163 @@
-//! Object has property transformer for StreamWeave
+//! # Object Has Property Transformer
 //!
-//! Filters objects that have a specific property.
+//! Transformer for filtering JSON objects based on property existence in StreamWeave pipelines.
+//!
+//! This module provides [`ObjectHasPropertyTransformer`], a transformer that filters
+//! JSON objects based on whether they contain a specific property key. Only objects
+//! that have the specified property are passed through the stream.
+//!
+//! # Overview
+//!
+//! [`ObjectHasPropertyTransformer`] is useful for filtering objects in streams based
+//! on property existence. It checks if JSON objects contain a specific key and only
+//! yields objects that have that property. Non-objects and objects without the property
+//! are filtered out.
+//!
+//! # Key Concepts
+//!
+//! - **Property Filtering**: Filters objects based on property key existence
+//! - **Key Checking**: Uses `contains_key` to check for property presence
+//! - **Object-Only**: Only processes JSON objects (filters out non-objects)
+//! - **Exact Match**: Checks for exact key match (case-sensitive)
+//! - **Stream Filtering**: Uses stream filtering to remove non-matching objects
+//!
+//! # Core Types
+//!
+//! - **[`ObjectHasPropertyTransformer`]**: Transformer that filters objects by property existence
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectHasPropertyTransformer;
+//! use serde_json::json;
+//!
+//! // Create a transformer that filters objects with "name" property
+//! let transformer = ObjectHasPropertyTransformer::new("name");
+//!
+//! // Input: [json!({"name": "John", "age": 30}), json!({"age": 30})]
+//! // Output: [json!({"name": "John", "age": 30})]
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectHasPropertyTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = ObjectHasPropertyTransformer::new("email")
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("has-email-filter".to_string());
+//! ```
+//!
+//! ## Filtering Required Fields
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectHasPropertyTransformer;
+//!
+//! // Filter to only objects that have an "id" field
+//! let transformer = ObjectHasPropertyTransformer::new("id");
+//!
+//! // Only objects with "id" property will pass through
+//! ```
+//!
+//! # Design Decisions
+//!
+//! ## Property Existence Checking
+//!
+//! Uses `contains_key` to check for property existence, which is efficient and
+//! doesn't require reading the property value. This makes the transformer suitable
+//! for high-throughput filtering operations.
+//!
+//! ## Object-Only Processing
+//!
+//! Only JSON objects are processed. Non-object values (arrays, primitives, null) are
+//! filtered out. This design ensures type safety and prevents errors when checking
+//! for properties.
+//!
+//! ## Case-Sensitive Matching
+//!
+//! Property key matching is case-sensitive, matching JSON object key semantics.
+//! This ensures predictable behavior and matches common JSON processing expectations.
+//!
+//! ## Stream Filtering
+//!
+//! Uses stream filtering to remove non-matching objects, which is efficient and
+//! doesn't require buffering. This allows the transformer to handle large streams
+//! without memory issues.
+//!
+//! ## No Value Checking
+//!
+//! Only checks for property existence, not the property value. Objects with the
+//! property but `null` value will still pass through. For value-based filtering,
+//! combine with other transformers.
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ObjectHasPropertyTransformer`] integrates seamlessly with StreamWeave's pipeline
+//! and graph systems:
+//!
+//! - **Pipeline API**: Use in pipelines for object filtering
+//! - **Graph API**: Wrap in graph nodes for graph-based filtering
+//! - **Error Handling**: Supports standard error handling strategies
+//! - **Configuration**: Supports configuration via [`TransformerConfig`]
+//! - **JSON Values**: Works with `serde_json::Value` for flexible JSON handling
+//!
+//! # Common Patterns
+//!
+//! ## Required Field Validation
+//!
+//! Filter objects to ensure they have required fields:
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectHasPropertyTransformer;
+//!
+//! // Ensure all objects have an "id" field
+//! let transformer = ObjectHasPropertyTransformer::new("id");
+//! ```
+//!
+//! ## Optional Field Processing
+//!
+//! Process only objects that have optional fields:
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectHasPropertyTransformer;
+//!
+//! // Only process objects with "metadata" field
+//! let transformer = ObjectHasPropertyTransformer::new("metadata");
+//! ```
+//!
+//! ## Combining with Other Filters
+//!
+//! Chain multiple filters for complex filtering logic:
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectHasPropertyTransformer;
+//!
+//! // First filter: objects with "email"
+//! let has_email = ObjectHasPropertyTransformer::new("email");
+//! // Second filter: objects with "phone" (chain in pipeline)
+//! // let has_phone = ObjectHasPropertyTransformer::new("phone");
+//! ```
+//!
+//! # Filtering Behavior
+//!
+//! ## Matching Objects
+//!
+//! Objects that contain the specified property key (regardless of value) are
+//! passed through unchanged. The property value is not checked or modified.
+//!
+//! ## Non-Matching Objects
+//!
+//! Objects without the specified property are filtered out (not yielded).
+//! Non-object values (arrays, primitives, null) are also filtered out.
+//!
+//! ## Performance
+//!
+//! Property existence checking is O(1) for hash maps (JSON objects), making
+//! this transformer efficient for high-throughput filtering operations.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

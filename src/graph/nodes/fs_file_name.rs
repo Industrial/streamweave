@@ -1,7 +1,66 @@
-//! File name extraction node for StreamWeave graphs
+//! File name extraction node for extracting filenames from paths.
 //!
-//! Extracts the file name from file path strings. Useful for processing file paths
-//! and extracting just the filename component.
+//! This module provides [`FsFileName`], a graph node that extracts the file name
+//! component from file path strings. It wraps [`FsFileNameTransformer`] for use in
+//! StreamWeave graphs. This is useful for processing file paths and extracting just
+//! the filename component.
+//!
+//! # Overview
+//!
+//! [`FsFileName`] is useful for extracting filenames from full file paths in
+//! graph-based pipelines. It processes path strings and extracts the filename
+//! component, making it ideal for file processing workflows that need to work
+//! with just filenames.
+//!
+//! # Key Concepts
+//!
+//! - **Path Parsing**: Parses file paths and extracts the filename component
+//! - **String Transformation**: Converts full paths to filenames
+//! - **Path Handling**: Handles various path formats (Unix, Windows, relative, absolute)
+//! - **Transformer Wrapper**: Wraps `FsFileNameTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`FsFileName`]**: Node that extracts filenames from path strings
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::FsFileName;
+//!
+//! // Create a file name extraction node
+//! let fs_file_name = FsFileName::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::FsFileName;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a file name extraction node with error handling
+//! let fs_file_name = FsFileName::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("filename-extractor".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Path Library Integration**: Uses Rust's standard path handling for
+//!   cross-platform compatibility
+//! - **Filename Extraction**: Extracts just the filename component, not the
+//!   directory path
+//! - **String-Based**: Works with path strings for simplicity and compatibility
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`FsFileName`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::FsFileNameTransformer;

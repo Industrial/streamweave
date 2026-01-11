@@ -1,7 +1,76 @@
-//! File read node for StreamWeave graphs
+//! File read node for reading file contents in graphs.
 //!
-//! Reads file contents from file paths. Takes file paths as input and outputs
-//! file contents (lines or bytes), enabling processing of multiple files in a pipeline.
+//! This module provides [`FsFileRead`], a graph node that reads file contents from
+//! file paths. It takes file paths as input and outputs file contents (lines or bytes),
+//! enabling processing of multiple files in graph-based pipelines. It wraps
+//! [`FsFileReadTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`FsFileRead`] is useful for reading files in graph-based pipelines. It supports
+//! both line-by-line and byte-by-byte reading modes, making it ideal for processing
+//! text files, binary files, or large files that need to be processed incrementally.
+//!
+//! # Key Concepts
+//!
+//! - **File Reading**: Reads file contents from file paths
+//! - **Dual Modes**: Supports both line-by-line and byte-by-byte reading
+//! - **FileContent Output**: Outputs `FileContent` enum (Line or Bytes)
+//! - **Transformer Wrapper**: Wraps `FsFileReadTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`FsFileRead`]**: Node that reads file contents from file paths
+//! - **[`FileContent`]**: Enum representing file content (Line or Bytes)
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage (Line Mode)
+//!
+//! ```rust
+//! use streamweave::graph::nodes::FsFileRead;
+//!
+//! // Create a file read node (reads as lines by default)
+//! let fs_file_read = FsFileRead::new();
+//! ```
+//!
+//! ## Byte Mode
+//!
+//! ```rust
+//! use streamweave::graph::nodes::FsFileRead;
+//!
+//! // Create a file read node that reads as bytes
+//! let fs_file_read = FsFileRead::new()
+//!     .with_read_as_lines(false)
+//!     .with_buffer_size(8192);  // 8KB buffer
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::FsFileRead;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a file read node with error handling
+//! let fs_file_read = FsFileRead::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("file-reader".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Dual Reading Modes**: Supports both line and byte modes for flexibility
+//! - **Async I/O**: Uses Tokio's async filesystem operations for non-blocking
+//!   file reading
+//! - **Configurable Buffering**: Supports configurable buffer sizes for byte mode
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`FsFileRead`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{FileContent, FsFileReadTransformer};

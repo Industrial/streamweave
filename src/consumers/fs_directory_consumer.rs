@@ -1,3 +1,76 @@
+//! File system directory consumer for creating directories from stream paths.
+//!
+//! This module provides [`FsDirectoryConsumer`], a consumer that creates directories
+//! from path strings in a stream. Each stream item is a path string, and the consumer
+//! creates the directory (and any necessary parent directories) using `create_dir_all`.
+//!
+//! # Overview
+//!
+//! [`FsDirectoryConsumer`] is useful for creating directory structures dynamically
+//! based on stream data. It uses Tokio's async file system operations for efficient
+//! I/O and supports configurable error handling.
+//!
+//! # Key Concepts
+//!
+//! - **Path Input**: Input must be `String` values representing directory paths
+//! - **Recursive Creation**: Uses `create_dir_all` to create parent directories as needed
+//! - **Error Handling**: Configurable error strategies for I/O failures
+//! - **Async I/O**: Uses Tokio's async file system operations
+//!
+//! # Core Types
+//!
+//! - **[`FsDirectoryConsumer`]**: Consumer that creates directories from stream paths
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::FsDirectoryConsumer;
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a consumer
+//! let mut consumer = FsDirectoryConsumer::new();
+//!
+//! // Create a stream of directory paths
+//! let stream = stream::iter(vec![
+//!     "/tmp/dir1".to_string(),
+//!     "/tmp/dir2/subdir".to_string(),
+//!     "/tmp/dir3".to_string(),
+//! ]);
+//!
+//! // Consume the stream to create directories
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::consumers::FsDirectoryConsumer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a consumer with error handling strategy
+//! let consumer = FsDirectoryConsumer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)  // Skip failed creations and continue
+//!     .with_name("directory-creator".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Recursive Creation**: Uses `create_dir_all` to automatically create parent
+//!   directories, simplifying usage
+//! - **Error Logging**: I/O errors are logged but don't stop processing (by design)
+//! - **Type Safety**: Requires `String` input to ensure path format
+//!
+//! # Integration with StreamWeave
+//!
+//! [`FsDirectoryConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

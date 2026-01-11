@@ -1,6 +1,38 @@
-//! TCP receive transformer for StreamWeave
+//! # TCP Receive Transformer
 //!
-//! Receives data from TCP connections, useful for graph composition.
+//! Transformer that receives data from TCP connections, reading data from a remote
+//! TCP server and producing it as a stream. Useful for graph composition when TCP
+//! receiving needs to be integrated into a transformation pipeline.
+//!
+//! ## Overview
+//!
+//! The TCP Receive Transformer provides:
+//!
+//! - **TCP Connection**: Connects to a remote TCP server
+//! - **Data Reading**: Reads data as lines or raw bytes with delimiter support
+//! - **Timeout Handling**: Configurable connection and read timeouts
+//! - **Item Limiting**: Optional maximum number of items to receive
+//! - **Graph Composition**: Enables TCP receiving within graph pipelines
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Connection address (or ignored if address is pre-configured)
+//! - **Output**: `Message<String>` - Data received from the TCP connection
+//!
+//! ## Reading Modes
+//!
+//! - **Line Mode**: Reads data line-by-line (when `read_as_lines` is true)
+//! - **Delimiter Mode**: Reads data up to a delimiter byte (when delimiter is specified)
+//! - **Raw Mode**: Reads raw bytes up to buffer size
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::TcpReceiveTransformer;
+//!
+//! let transformer = TcpReceiveTransformer::new("127.0.0.1:8080".to_string());
+//! // Connects and reads data, outputs: ["line1", "line2", ...]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

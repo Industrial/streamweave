@@ -1,7 +1,100 @@
-//! Ordered merge node for StreamWeave graphs
+//! # Ordered Merge Node
 //!
-//! Merges multiple input streams in a specific order. Supports different
-//! ordering strategies: Sequential, RoundRobin, Priority, and Interleave.
+//! Graph node that merges multiple input streams in a specific order. This module
+//! provides [`OrderedMerge`], a graph node that combines multiple input streams
+//! according to a configurable merge strategy. It supports different ordering
+//! strategies: Sequential, RoundRobin, Priority, and Interleave. It wraps
+//! [`OrderedMergeTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`OrderedMerge`] is useful for combining multiple input streams into a single
+//! output stream in graph-based pipelines. It supports various merge strategies
+//! to control how items from different streams are interleaved, making it ideal
+//! for fan-in patterns and stream coordination.
+//!
+//! # Key Concepts
+//!
+//! - **Stream Merging**: Combines multiple input streams into a single output stream
+//! - **Merge Strategies**: Supports different ordering strategies (Sequential, RoundRobin, Priority, Interleave)
+//! - **Flexible Ordering**: Configurable merge strategy for different coordination needs
+//! - **Multi-Stream Input**: Accepts items from multiple input streams simultaneously
+//! - **Transformer Wrapper**: Wraps `OrderedMergeTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`OrderedMerge<T>`]**: Node that merges multiple input streams in a specific order
+//! - **[`MergeStrategy`]**: Enumeration of merge strategies (Sequential, RoundRobin, Priority, Interleave)
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage (Interleave)
+//!
+//! ```rust
+//! use streamweave::graph::nodes::OrderedMerge;
+//!
+//! // Create an ordered merge node with default (Interleave) strategy
+//! let ordered_merge = OrderedMerge::<i32>::new();
+//! ```
+//!
+//! ## Round-Robin Merge
+//!
+//! ```rust
+//! use streamweave::graph::nodes::OrderedMerge;
+//! use streamweave::transformers::MergeStrategy;
+//!
+//! // Create an ordered merge node with round-robin strategy
+//! let ordered_merge = OrderedMerge::<String>::new()
+//!     .with_strategy(MergeStrategy::RoundRobin);
+//! ```
+//!
+//! ## Sequential Merge
+//!
+//! ```rust
+//! use streamweave::graph::nodes::OrderedMerge;
+//! use streamweave::transformers::MergeStrategy;
+//!
+//! // Create an ordered merge node that processes streams sequentially
+//! let ordered_merge = OrderedMerge::<i32>::new()
+//!     .with_strategy(MergeStrategy::Sequential);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::OrderedMerge;
+//! use streamweave::transformers::MergeStrategy;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create an ordered merge node with error handling
+//! let ordered_merge = OrderedMerge::<String>::new()
+//!     .with_strategy(MergeStrategy::Interleave)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("stream-merger".to_string());
+//! ```
+//!
+//! # Merge Strategies
+//!
+//! - **Interleave**: Alternates between streams fairly (default strategy)
+//! - **Sequential**: Processes each stream completely before moving to the next
+//! - **RoundRobin**: Takes one item from each stream in turn
+//! - **Priority**: Processes streams in priority order
+//!
+//! # Design Decisions
+//!
+//! - **Strategy-Based**: Uses an enum for type-safe merge strategy selection
+//! - **Default Strategy**: Uses Interleave as the default for fair alternation
+//! - **Stream-Based**: Works with async streams for efficient processing
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`OrderedMerge`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`]. Multiple input streams
+//! can be added using the `add_stream` method, and the merge strategy controls
+//! how items from different streams are interleaved.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{MergeStrategy, OrderedMergeTransformer};

@@ -1,7 +1,89 @@
-//! Kafka publish node for StreamWeave graphs
+//! Kafka publish node for publishing data to Kafka while passing data through.
 //!
-//! Publishes data to Kafka while passing data through. Takes serializable data as input,
-//! publishes to Kafka, and outputs the same data, enabling publishing to Kafka and continuing processing.
+//! This module provides [`KafkaPublish`], a graph node that publishes data to Kafka
+//! topics while passing the same data through to the output. It takes serializable
+//! data as input, publishes it to a Kafka topic, and outputs the same data, enabling
+//! publishing to Kafka and continuing processing. It wraps [`KafkaPublishTransformer`]
+//! for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`KafkaPublish`] is useful for publishing intermediate results to Kafka topics
+//! while continuing processing in graph-based pipelines. Unlike consumers, it passes
+//! data through, making it ideal for checkpointing data at intermediate stages or
+//! logging Kafka publishes.
+//!
+//! # Key Concepts
+//!
+//! - **Pass-Through Operation**: Publishes data to Kafka while passing it through to output
+//! - **Kafka Integration**: Publishes messages to Kafka topics using Kafka producer
+//! - **Intermediate Results**: Enables publishing intermediate results without
+//!   interrupting the pipeline
+//! - **Transformer Wrapper**: Wraps `KafkaPublishTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`KafkaPublish<T>`]**: Node that publishes data to Kafka while passing data through
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::KafkaPublish;
+//! use streamweave::consumers::KafkaProducerConfig;
+//! use serde::Serialize;
+//!
+//! #[derive(Serialize, Clone, Debug)]
+//! struct Event {
+//!     id: u32,
+//!     message: String,
+//! }
+//!
+//! // Create Kafka configuration
+//! let config = KafkaProducerConfig::default()
+//!     .with_bootstrap_servers("localhost:9092")
+//!     .with_topic("events");
+//!
+//! // Create a Kafka publish node
+//! let kafka_publish = KafkaPublish::<Event>::new(config);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::KafkaPublish;
+//! use streamweave::consumers::KafkaProducerConfig;
+//! use streamweave::ErrorStrategy;
+//! use serde::Serialize;
+//!
+//! # #[derive(Serialize, Clone, Debug)]
+//! # struct Event { id: u32, message: String }
+//! # let config = KafkaProducerConfig::default()
+//! #     .with_bootstrap_servers("localhost:9092")
+//! #     .with_topic("events");
+//! // Create a Kafka publish node with error handling
+//! let kafka_publish = KafkaPublish::<Event>::new(config)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("kafka-publisher".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Pass-Through Pattern**: Publishes data while passing it through for
+//!   intermediate result capture
+//! - **Kafka Integration**: Uses rdkafka or similar Kafka client for async
+//!   Kafka publishing
+//! - **Serializable Data**: Requires `Serialize` trait for flexible data
+//!   structure support
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`KafkaPublish`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::consumers::KafkaProducerConfig;
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

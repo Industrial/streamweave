@@ -1,3 +1,84 @@
+//! Tokio channel consumer for forwarding stream data to Tokio channels.
+//!
+//! This module provides [`TokioChannelConsumer`], a consumer that forwards stream
+//! items to a `tokio::sync::mpsc::Sender`. This allows StreamWeave pipelines to
+//! integrate with existing async code that uses Tokio channels for communication.
+//!
+//! # Overview
+//!
+//! [`TokioChannelConsumer`] is useful for integrating StreamWeave pipelines with
+//! existing async codebases that use Tokio channels. It forwards all stream items
+//! to the provided channel sender, allowing StreamWeave to interoperate with other
+//! async components.
+//!
+//! # Key Concepts
+//!
+//! - **Channel Integration**: Forwards items to Tokio's mpsc channel sender
+//! - **Async Communication**: Uses async channel sends for non-blocking operation
+//! - **Type Preservation**: Preserves the item type through the channel
+//! - **Error Handling**: Configurable error strategies for channel send failures
+//!
+//! # Core Types
+//!
+//! - **[`TokioChannelConsumer<T>`]**: Consumer that forwards items to a Tokio channel
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::TokioChannelConsumer;
+//! use futures::stream;
+//! use tokio::sync::mpsc;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a Tokio channel
+//! let (sender, mut receiver) = mpsc::channel(100);
+//!
+//! // Create a consumer with the sender
+//! let mut consumer = TokioChannelConsumer::new(sender);
+//!
+//! // Create a stream of items
+//! let stream = stream::iter(vec![1, 2, 3, 4, 5]);
+//!
+//! // Consume the stream (items forwarded to channel)
+//! consumer.consume(Box::pin(stream)).await;
+//!
+//! // Items are now available in the receiver
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::consumers::TokioChannelConsumer;
+//! use streamweave::ErrorStrategy;
+//! use tokio::sync::mpsc;
+//!
+//! // Create a channel
+//! let (sender, _receiver) = mpsc::channel(10);
+//!
+//! // Create a consumer with error handling
+//! let consumer = TokioChannelConsumer::new(sender)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("channel-forwarder".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Tokio Integration**: Uses Tokio's standard mpsc channels for compatibility
+//!   with existing async code
+//! - **Channel Ownership**: Takes ownership of the sender, allowing flexible usage
+//! - **Async Sends**: Uses async channel sends to handle backpressure gracefully
+//! - **Type Preservation**: Preserves item types through the channel
+//!
+//! # Integration with StreamWeave
+//!
+//! [`TokioChannelConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

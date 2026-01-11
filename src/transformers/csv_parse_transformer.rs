@@ -1,6 +1,78 @@
-//! CSV parse transformer for StreamWeave
+//! CSV parse transformer for parsing CSV strings into structured records.
 //!
-//! Parses CSV strings from stream items into records.
+//! This module provides [`CsvParseTransformer`] and [`CsvParseConfig`], types for
+//! parsing CSV strings from stream items into structured records in StreamWeave
+//! pipelines. It converts CSV-formatted strings into JSON objects (one per row),
+//! making it ideal for processing CSV data in pipelines. It implements the
+//! [`Transformer`] trait for use in StreamWeave pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`CsvParseTransformer`] is useful for parsing CSV data in StreamWeave pipelines.
+//! It processes CSV-formatted strings and converts them into structured JSON objects,
+//! supporting configurable delimiters, headers, and trimming options.
+//!
+//! # Key Concepts
+//!
+//! - **CSV Parsing**: Parses CSV strings into structured JSON records
+//! - **Header Support**: Supports CSV files with or without header rows
+//! - **Configurable Delimiters**: Supports custom delimiter characters
+//! - **Trimming**: Optional whitespace trimming from fields
+//!
+//! # Core Types
+//!
+//! - **[`CsvParseTransformer`]**: Transformer that parses CSV strings into records
+//! - **[`CsvParseConfig`]**: Configuration for CSV parsing behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::CsvParseTransformer;
+//!
+//! // Create a CSV parse transformer with default settings
+//! let transformer = CsvParseTransformer::new();
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::transformers::CsvParseTransformer;
+//!
+//! // Create a CSV parse transformer with custom configuration
+//! let transformer = CsvParseTransformer::new()
+//!     .with_headers(true)
+//!     .with_delimiter(b';')  // Use semicolon delimiter
+//!     .with_trim(true);      // Trim whitespace
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::CsvParseTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a CSV parse transformer with error handling
+//! let transformer = CsvParseTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("csv-parser".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **CSV Library Integration**: Uses the `csv` crate for robust CSV parsing
+//! - **JSON Output**: Produces JSON objects for flexible data structure handling
+//! - **Configurable Options**: Supports headers, delimiters, and trimming for
+//!   flexibility
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   pipeline system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CsvParseTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

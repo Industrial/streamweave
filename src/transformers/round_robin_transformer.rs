@@ -1,4 +1,74 @@
-//! Round-robin transformer for StreamWeave
+//! Round-robin transformer for load balancing stream items.
+//!
+//! This module provides [`RoundRobinTransformer<T>`], a transformer that distributes
+//! stream items to multiple consumers in round-robin fashion. Each item is sent to
+//! exactly one consumer, cycling through consumers in order. This is useful for load
+//! balancing, work distribution, and parallel processing.
+//!
+//! # Overview
+//!
+//! [`RoundRobinTransformer`] implements a round-robin distribution pattern where items
+//! are distributed evenly across multiple consumers. Unlike broadcast transformers that
+//! clone items to all consumers, round-robin sends each item to exactly one consumer,
+//! cycling through consumers in order (0, 1, 2, ..., 0, 1, 2, ...).
+//!
+//! # Key Concepts
+//!
+//! - **Round-Robin Distribution**: Items are distributed evenly across consumers
+//! - **Single Destination**: Each item goes to exactly one consumer (no cloning)
+//! - **Load Balancing**: Distributes work evenly across multiple workers
+//! - **Consumer Indexing**: Output includes consumer index for routing
+//! - **Thread-Safe**: Uses atomic operations for thread-safe distribution
+//!
+//! # Core Types
+//!
+//! - **[`RoundRobinTransformer<T>`]**: Transformer that distributes items in round-robin fashion
+//! - **[`RoundRobinConfig`]**: Configuration for round-robin behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::RoundRobinTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that distributes to 3 consumers
+//! let transformer = RoundRobinTransformer::<i32>::new(3);
+//!
+//! // Input: [1, 2, 3, 4, 5, 6]
+//! // Output: [(0, 1), (1, 2), (2, 3), (0, 4), (1, 5), (2, 6)]
+//! //         ^consumer index, item
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::transformers::{RoundRobinTransformer, RoundRobinConfig};
+//!
+//! // Create a transformer with custom configuration
+//! let transformer = RoundRobinTransformer::with_config(
+//!     RoundRobinConfig::new(5)
+//!         .with_include_index(true)
+//! );
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Atomic Counter**: Uses atomic operations for thread-safe round-robin distribution
+//! - **Indexed Output**: Output includes consumer index for downstream routing
+//! - **No Cloning**: Unlike broadcast, items are not cloned (each item to one consumer)
+//! - **Even Distribution**: Ensures even load distribution across consumers
+//! - **Generic Type**: Generic over item type for maximum flexibility
+//!
+//! # Integration with StreamWeave
+//!
+//! [`RoundRobinTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline or graph. It supports the standard error handling
+//! strategies and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

@@ -1,6 +1,79 @@
-//! TCP request node for StreamWeave graphs
+//! TCP request node for making TCP requests from stream items.
 //!
-//! Makes TCP requests from stream items.
+//! This module provides [`TcpRequest`], a graph node that makes TCP requests from
+//! stream items. It wraps [`TcpRequestTransformer`] for use in StreamWeave graphs.
+//! It connects to a remote TCP address and sends/receives data, supporting both
+//! send-only and send-receive modes.
+//!
+//! # Overview
+//!
+//! [`TcpRequest`] is useful for making TCP requests in graph-based pipelines.
+//! It connects to a remote TCP address and sends data from stream items,
+//! optionally receiving responses. It supports configurable connection options,
+//! timeouts, delimiters, and reading modes.
+//!
+//! # Key Concepts
+//!
+//! - **TCP Requests**: Makes TCP requests to remote addresses
+//! - **Send-Only Mode**: Sends data without waiting for responses
+//! - **Send-Receive Mode**: Sends data and receives responses
+//! - **Transformer Wrapper**: Wraps `TcpRequestTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`TcpRequest`]**: Node that makes TCP requests
+//! - **[`TcpRequestMode`]**: Enum representing send-only or send-receive modes
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage (Send-Only)
+//!
+//! ```rust
+//! use streamweave::graph::nodes::TcpRequest;
+//! use streamweave::transformers::TcpRequestMode;
+//!
+//! // Create a TCP request node in send-only mode
+//! let tcp_request = TcpRequest::new("127.0.0.1:8080", TcpRequestMode::SendOnly);
+//! ```
+//!
+//! ## Send-Receive Mode
+//!
+//! ```rust
+//! use streamweave::graph::nodes::TcpRequest;
+//! use streamweave::transformers::TcpRequestMode;
+//!
+//! // Create a TCP request node in send-receive mode
+//! let tcp_request = TcpRequest::new("127.0.0.1:8080", TcpRequestMode::SendReceive)
+//!     .with_response_timeout_secs(5)
+//!     .with_read_response_as_lines(true);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::TcpRequest;
+//! use streamweave::transformers::TcpRequestMode;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a TCP request node with error handling
+//! let tcp_request = TcpRequest::new("127.0.0.1:8080", TcpRequestMode::SendReceive)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("tcp-request".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **TCP Connection**: Uses Tokio's async TCP for non-blocking network I/O
+//! - **Mode Support**: Supports both send-only and send-receive modes for flexibility
+//! - **Configurable Options**: Supports timeout, delimiter, newline appending
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`TcpRequest`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{TcpRequestMode, TcpRequestTransformer};

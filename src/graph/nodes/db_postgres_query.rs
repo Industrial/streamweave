@@ -1,7 +1,73 @@
-//! PostgreSQL query node for StreamWeave graphs
+//! PostgreSQL query node for executing PostgreSQL queries in graphs.
 //!
-//! Executes PostgreSQL queries from stream items. Takes query strings (or query parameters) as input
-//! and outputs query results, enabling dynamic PostgreSQL queries in a pipeline.
+//! This module provides [`DbPostgresQuery`], a graph node that executes PostgreSQL queries
+//! from stream items. It takes query strings (or query parameters as JSON) as input
+//! and outputs `DatabaseRow` results, enabling dynamic PostgreSQL queries in graph-based
+//! pipelines. It wraps [`DbPostgresQueryTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`DbPostgresQuery`] is useful for executing PostgreSQL queries in graph-based pipelines.
+//! It supports dynamic query execution based on stream data, making it ideal for
+//! data processing workflows that interact with PostgreSQL databases.
+//!
+//! # Key Concepts
+//!
+//! - **PostgreSQL Query Execution**: Executes SQL queries against PostgreSQL databases
+//! - **Dynamic Queries**: Supports query strings or query parameters from stream items
+//! - **Database Rows Output**: Outputs query results as `DatabaseRow` structures
+//! - **Transformer Wrapper**: Wraps `DbPostgresQueryTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`DbPostgresQuery`]**: Node that executes PostgreSQL queries from stream items
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::DbPostgresQuery;
+//! use streamweave::db::{DatabaseProducerConfig, DatabaseType};
+//!
+//! // Create database configuration
+//! let db_config = DatabaseProducerConfig::default()
+//!     .with_connection_url("postgresql://user:pass@localhost/db")
+//!     .with_database_type(DatabaseType::Postgres);
+//!
+//! // Create a PostgreSQL query node
+//! let db_postgres_query = DbPostgresQuery::new(db_config);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::DbPostgresQuery;
+//! use streamweave::db::{DatabaseProducerConfig, DatabaseType};
+//! use streamweave::ErrorStrategy;
+//!
+//! # let db_config = DatabaseProducerConfig::default()
+//! #     .with_connection_url("postgresql://user:pass@localhost/db")
+//! #     .with_database_type(DatabaseType::Postgres);
+//! // Create a PostgreSQL query node with error handling
+//! let db_postgres_query = DbPostgresQuery::new(db_config)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("postgres-query".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **PostgreSQL Integration**: Uses sqlx for type-safe, async PostgreSQL database access
+//! - **Dynamic Queries**: Supports dynamic SQL query execution from stream items
+//! - **DatabaseRow Output**: Returns structured database rows for flexible processing
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DbPostgresQuery`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::db::DatabaseProducerConfig;
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

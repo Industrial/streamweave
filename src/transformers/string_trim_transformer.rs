@@ -1,6 +1,103 @@
-//! String trim transformer for StreamWeave
+//! # String Trim Transformer
 //!
-//! Removes whitespace from strings (leading, trailing, or both).
+//! Transformer that removes whitespace from strings, supporting leading, trailing,
+//! or both-side trimming based on a configurable trim mode. This module provides
+//! [`StringTrimTransformer`], a transformer that performs whitespace removal on
+//! strings in streaming pipelines.
+//!
+//! # Overview
+//!
+//! [`StringTrimTransformer`] is useful for cleaning string data by removing
+//! whitespace in streaming data processing pipelines. It supports trimming from
+//! the leading edge, trailing edge, or both sides, making it ideal for data
+//! normalization and cleaning operations.
+//!
+//! # Key Concepts
+//!
+//! - **Whitespace Removal**: Removes Unicode whitespace characters from strings
+//! - **Flexible Trimming**: Supports trimming leading, trailing, or both sides
+//! - **Mode Configuration**: Configurable trim mode (Both, Left, Right)
+//! - **Text Normalization**: Useful for data cleaning and normalization
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`StringTrimTransformer`]**: Transformer that trims whitespace from strings
+//! - **[`TrimMode`]**: Enumeration of trim modes (Both, Left, Right)
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage - Trim Both Sides
+//!
+//! ```rust
+//! use streamweave::transformers::{StringTrimTransformer, TrimMode};
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that trims both leading and trailing whitespace
+//! let transformer = StringTrimTransformer::new(TrimMode::Both);
+//!
+//! // Input: ["  hello world  ", "  test  "]
+//! // Output: ["hello world", "test"]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Trim Leading Only
+//!
+//! ```rust
+//! use streamweave::transformers::{StringTrimTransformer, TrimMode};
+//!
+//! // Create a transformer that trims only leading whitespace
+//! let transformer = StringTrimTransformer::new(TrimMode::Left);
+//!
+//! // Input: ["  hello world  "]
+//! // Output: ["hello world  "]
+//! ```
+//!
+//! ## Trim Trailing Only
+//!
+//! ```rust
+//! use streamweave::transformers::{StringTrimTransformer, TrimMode};
+//!
+//! // Create a transformer that trims only trailing whitespace
+//! let transformer = StringTrimTransformer::new(TrimMode::Right);
+//!
+//! // Input: ["  hello world  "]
+//! // Output: ["  hello world"]
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::{StringTrimTransformer, TrimMode};
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = StringTrimTransformer::new(TrimMode::Both)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("text-trimmer".to_string());
+//! ```
+//!
+//! # Trim Modes
+//!
+//! - **Both** (`TrimMode::Both`): Removes whitespace from both leading and trailing edges
+//! - **Left** (`TrimMode::Left`): Removes whitespace only from the leading edge
+//! - **Right** (`TrimMode::Right`): Removes whitespace only from the trailing edge
+//!
+//! # Design Decisions
+//!
+//! - **Unicode-Aware**: Uses Rust's standard library trim functions which handle
+//!   Unicode whitespace correctly
+//! - **Mode Selection**: Uses an enum for type-safe mode selection
+//! - **Simple Operation**: One-to-one transformation (each input produces one output)
+//! - **Performance**: Leverages Rust's efficient string operations
+//!
+//! # Integration with StreamWeave
+//!
+//! [`StringTrimTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

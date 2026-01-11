@@ -1,6 +1,79 @@
-//! HTTP request transformer for StreamWeave
+//! HTTP request transformer for making HTTP requests from stream items.
 //!
-//! Makes HTTP requests from stream items, useful for graph composition.
+//! This module provides [`HttpRequestTransformer`] and [`HttpRequestConfig`], types
+//! for making HTTP requests from stream items in StreamWeave pipelines. It processes
+//! items (URLs, JSON objects, or HttpRequest objects) and makes HTTP requests,
+//! returning response bodies as strings or parsed JSON. It implements the [`Transformer`]
+//! trait for use in StreamWeave pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`HttpRequestTransformer`] is useful for making HTTP requests in StreamWeave
+//! pipelines. It processes items and makes HTTP requests, supporting various input
+//! formats (URLs, JSON objects, HttpRequest objects) and configurable request options
+//! (method, headers, body, timeout).
+//!
+//! # Key Concepts
+//!
+//! - **HTTP Requests**: Makes HTTP requests from stream items
+//! - **Flexible Input**: Supports URLs, JSON objects, or HttpRequest objects
+//! - **JSON Parsing**: Optional JSON parsing of response bodies
+//! - **Configurable Options**: Supports method, headers, body, timeout configuration
+//!
+//! # Core Types
+//!
+//! - **[`HttpRequestTransformer`]**: Transformer that makes HTTP requests
+//! - **[`HttpRequestConfig`]**: Configuration for HTTP request behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::HttpRequestTransformer;
+//!
+//! // Create an HTTP request transformer with default settings
+//! let transformer = HttpRequestTransformer::new();
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::transformers::HttpRequestTransformer;
+//!
+//! // Create an HTTP request transformer with custom configuration
+//! let transformer = HttpRequestTransformer::new()
+//!     .with_method("POST")
+//!     .with_base_url("https://api.example.com")
+//!     .with_timeout_secs(10)
+//!     .with_parse_json(true);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::HttpRequestTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create an HTTP request transformer with error handling
+//! let transformer = HttpRequestTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("api-requester".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **HTTP Client**: Uses reqwest for async HTTP requests with connection pooling
+//! - **Flexible Input**: Supports multiple input formats for convenience
+//! - **JSON Parsing**: Optional JSON parsing for structured response handling
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   pipeline system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`HttpRequestTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

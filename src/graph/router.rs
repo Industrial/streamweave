@@ -1,8 +1,32 @@
 //! # Router Traits
 //!
-//! This module provides router traits for handling fan-in and fan-out patterns
-//! in the graph. Routers manage the flow of data between nodes, supporting
-//! multiple input/output ports per node.
+//! Router traits for handling fan-in and fan-out patterns in StreamWeave graphs.
+//! This module provides [`InputRouter`] and [`OutputRouter`] traits that enable
+//! nodes to handle multiple input/output ports, supporting complex data flow
+//! topologies with fan-in (multiple inputs → single output) and fan-out
+//! (single input → multiple outputs) patterns.
+//!
+//! # Overview
+//!
+//! Routers are essential for building complex graph topologies beyond simple
+//! linear pipelines. They enable nodes to:
+//!
+//! - **Accept multiple input streams** (fan-in) via `InputRouter`
+//! - **Distribute output to multiple destinations** (fan-out) via `OutputRouter`
+//! - **Route data according to configurable strategies** (merge, round-robin, broadcast, etc.)
+//!
+//! # Key Concepts
+//!
+//! - **Fan-In Patterns**: Multiple input streams → single node (handled by `InputRouter`)
+//! - **Fan-Out Patterns**: Single node → multiple output streams (handled by `OutputRouter`)
+//! - **Routing Strategies**: Configurable routing logic (merge, round-robin, priority, etc.)
+//! - **Port-Based Routing**: Routes data between named ports on nodes
+//! - **Message Preservation**: All routers preserve `Message<T>` IDs and metadata
+//!
+//! # Core Types
+//!
+//! - **[`InputRouter<T>`]**: Trait for routing multiple input streams into one
+//! - **[`OutputRouter<T>`]**: Trait for routing one output stream to multiple destinations
 //!
 //! ## InputRouter
 //!

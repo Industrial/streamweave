@@ -1,6 +1,76 @@
-//! Math utility transformer for StreamWeave
+//! Math utility transformer for performing utility math operations.
 //!
-//! Performs utility math operations (Sign, Hypot, Clz32, Fround, Imul) on numeric values.
+//! This module provides [`MathUtilityTransformer`] and [`MathUtilityFunction`], types
+//! for performing utility math operations on numeric values in StreamWeave pipelines.
+//! It supports Hypot, Imul, Sign, Clz32, and Fround operations, making it ideal for
+//! mathematical computations and conversions. It implements the [`Transformer`] trait
+//! for use in StreamWeave pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`MathUtilityTransformer`] is useful for performing utility mathematical operations
+//! on numeric values in StreamWeave pipelines. It processes JSON numeric values and
+//! applies utility functions, making it ideal for mathematical computations and
+//! conversions.
+//!
+//! # Key Concepts
+//!
+//! - **Utility Operations**: Supports Hypot, Imul, Sign, Clz32, Fround
+//! - **Binary Operations**: Some operations (Hypot, Imul) support optional second operand
+//! - **JSON Value Support**: Works with `serde_json::Value` numeric types
+//! - **Transformer Trait**: Implements `Transformer` for pipeline integration
+//!
+//! # Core Types
+//!
+//! - **[`MathUtilityTransformer`]**: Transformer that performs utility math operations
+//! - **[`MathUtilityFunction`]**: Enum representing different utility functions
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::{MathUtilityTransformer, MathUtilityFunction};
+//!
+//! // Calculate sign
+//! let transformer = MathUtilityTransformer::new(MathUtilityFunction::Sign, None);
+//! ```
+//!
+//! ## Hypot Operation
+//!
+//! ```rust
+//! use streamweave::transformers::{MathUtilityTransformer, MathUtilityFunction};
+//!
+//! // Calculate hypotenuse
+//! let transformer = MathUtilityTransformer::new(MathUtilityFunction::Hypot, Some(3.0));
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::{MathUtilityTransformer, MathUtilityFunction};
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a utility transformer with error handling
+//! let transformer = MathUtilityTransformer::new(MathUtilityFunction::Sign, None)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("sign".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Function Enum**: Uses enum-based function selection for type safety
+//! - **Optional Second Operand**: Supports optional second operand for binary operations
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   pipeline system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathUtilityTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

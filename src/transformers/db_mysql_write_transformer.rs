@@ -1,7 +1,42 @@
-//! MySQL database write transformer for StreamWeave
+//! # MySQL Write Transformer
 //!
-//! Writes DatabaseRow data to MySQL while passing data through. Takes DatabaseRow as input,
-//! writes to MySQL, and outputs the same data, enabling writing to database and continuing processing.
+//! Transformer that writes `DatabaseRow` data to MySQL tables while passing the same
+//! data through to the output stream. This enables persisting data to MySQL while
+//! continuing the main pipeline flow.
+//!
+//! ## Overview
+//!
+//! The MySQL Write Transformer provides:
+//!
+//! - **Database Writing**: Writes `DatabaseRow` data to MySQL tables
+//! - **Pass-Through**: Outputs the same rows that were written
+//! - **Batch Insertion**: Batches inserts for improved performance
+//! - **Connection Pooling**: Manages MySQL connection pool lifecycle
+//! - **Error Handling**: Configurable error strategies for write failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<DatabaseRow>` - Database rows to write
+//! - **Output**: `Message<DatabaseRow>` - The same rows (pass-through)
+//!
+//! ## Performance
+//!
+//! The transformer batches inserts for improved performance, flushing batches
+//! based on size and time thresholds.
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::DbMysqlWriteTransformer;
+//! use streamweave::db::{DatabaseConsumerConfig, DatabaseType};
+//!
+//! let config = DatabaseConsumerConfig::default()
+//!   .with_connection_url("mysql://user:pass@localhost/dbname")
+//!   .with_table_name("users");
+//! let transformer = DbMysqlWriteTransformer::new(config);
+//! // Input: [DatabaseRow, ...]
+//! // Writes to MySQL and outputs: [DatabaseRow, ...]
+//! ```
 
 use crate::db::{DatabaseConsumerConfig, DatabaseRow, DatabaseType};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

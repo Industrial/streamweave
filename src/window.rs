@@ -1,7 +1,8 @@
 //! Windowing operations for stream processing.
 //!
 //! This module provides abstractions for grouping stream elements into
-//! bounded windows for aggregation and processing.
+//! bounded windows for aggregation and processing. Windowing is fundamental
+//! to stream processing, allowing bounded computations over unbounded streams.
 //!
 //! # Overview
 //!
@@ -12,28 +13,84 @@
 //! - **Count**: Group by number of elements
 //! - **Session**: Group by activity with gaps
 //!
-//! # Core Concepts
+//! # Key Concepts
 //!
-//! - `TimeWindow`: Represents a window boundary (start/end time)
-//! - `WindowAssigner`: Assigns elements to windows
-//! - `WindowTrigger`: Determines when to emit window results
-//! - `LateDataPolicy`: Handles elements arriving after window closes
+//! - **Window Assignment**: Elements are assigned to windows based on their timestamps
+//! - **Window Triggers**: Determine when to emit window results (element count, time, watermark)
+//! - **Late Data Handling**: Policies for handling elements arriving after window closes
+//! - **Watermarks**: Track event-time progress and determine when windows can be triggered
+//! - **Window State**: Maintains state for each active window (elements, counts, triggers)
 //!
-//! # Window Types
+//! # Core Types
 //!
-//! - `TumblingWindowAssigner`: Fixed-size, non-overlapping windows
-//! - `SlidingWindowAssigner`: Fixed-size, overlapping windows
-//! - `SessionWindow`: Gap-based dynamic windows
+//! - **[`Window`]**: Trait for window types (TimeWindow, SessionWindow, etc.)
+//! - **[`TimeWindow`]**: Time-based window with start and end timestamps
+//! - **[`SessionWindow`]**: Gap-based dynamic window
+//! - **[`CountWindow`]**: Count-based window
+//! - **[`WindowAssigner`]**: Trait for assigning elements to windows
+//! - **[`WindowTrigger`]**: Trait for determining when to emit window results
+//! - **[`Watermark`]**: Represents event-time progress
+//! - **[`WatermarkGenerator`]**: Trait for generating watermarks
+//! - **[`LateDataPolicy`]**: Policy for handling late-arriving elements
+//! - **[`WindowState`]**: State tracking for active windows
 //!
-//! # Example
+//! # Quick Start
+//!
+//! ## Tumbling Windows
 //!
 //! ```rust
-//! use crate::{TimeWindow, TumblingWindowAssigner, WindowConfig};
+//! use crate::window::{TumblingWindowAssigner, WindowConfig};
 //! use std::time::Duration;
 //!
-//! // Create a tumbling window of 5 seconds
+//! // Create a tumbling window assigner with 5-second windows
 //! let assigner = TumblingWindowAssigner::new(Duration::from_secs(5));
+//!
+//! // Configure window behavior
+//! let config = WindowConfig::default()
+//!     .with_late_data_policy(LateDataPolicy::Drop);
 //! ```
+//!
+//! ## Sliding Windows
+//!
+//! ```rust
+//! use crate::window::SlidingWindowAssigner;
+//! use std::time::Duration;
+//!
+//! // Create a sliding window: 10-second window, 2-second slide
+//! let assigner = SlidingWindowAssigner::new(
+//!     Duration::from_secs(10),
+//!     Duration::from_secs(2)
+//! );
+//! ```
+//!
+//! ## Session Windows
+//!
+//! ```rust
+//! use crate::window::SessionWindowAssigner;
+//! use std::time::Duration;
+//!
+//! // Create a session window with 30-second gap timeout
+//! let assigner = SessionWindowAssigner::new(Duration::from_secs(30));
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Trait-Based Design**: Uses traits for window types, assigners, and triggers for flexibility
+//! - **Time-Based Windows**: Uses `chrono::DateTime<Utc>` for precise timestamp handling
+//! - **Watermark Support**: Supports event-time processing with watermarks for progress tracking
+//! - **Late Data Handling**: Configurable policies for handling out-of-order data
+//! - **Window State Management**: Tracks state per window for efficient processing
+//! - **Trigger System**: Flexible trigger system for determining window emission timing
+//!
+//! # Integration with StreamWeave
+//!
+//! The windowing system integrates with StreamWeave's pipeline and graph systems:
+//!
+//! - **Pipeline API**: Use window transformers in pipelines for windowed processing
+//! - **Graph API**: Use window nodes in graphs for windowed operations
+//! - **Time-Based Processing**: Supports event-time and processing-time windowing
+//! - **State Management**: Maintains window state across stream processing
+//! - **Message Model**: Works with `Message<T>` types for end-to-end traceability
 
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use std::cmp::Ordering;

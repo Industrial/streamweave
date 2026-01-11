@@ -1,7 +1,78 @@
-//! PostgreSQL database write node for StreamWeave graphs
+//! PostgreSQL write node for writing data to PostgreSQL while passing data through.
 //!
-//! Writes DatabaseRow data to PostgreSQL while passing data through. Takes DatabaseRow as input,
-//! writes to PostgreSQL, and outputs the same data, enabling writing to database and continuing processing.
+//! This module provides [`DbPostgresWrite`], a graph node that writes `DatabaseRow` data
+//! to PostgreSQL tables while passing the same data through to the output. It takes
+//! `DatabaseRow` as input, writes it to a PostgreSQL table, and outputs the same data,
+//! enabling writing to database and continuing processing. It wraps
+//! [`DbPostgresWriteTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`DbPostgresWrite`] is useful for writing intermediate results to PostgreSQL tables while
+//! continuing processing in graph-based pipelines. Unlike consumers, it passes data
+//! through, making it ideal for checkpointing data at intermediate stages or
+//! logging database writes.
+//!
+//! # Key Concepts
+//!
+//! - **Pass-Through Operation**: Writes data to PostgreSQL while passing it through to output
+//! - **DatabaseRow Input**: Takes `DatabaseRow` structures as input
+//! - **Intermediate Results**: Enables writing intermediate results without
+//!   interrupting the pipeline
+//! - **Transformer Wrapper**: Wraps `DbPostgresWriteTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`DbPostgresWrite`]**: Node that writes data to PostgreSQL while passing data through
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::DbPostgresWrite;
+//! use streamweave::db::{DatabaseConsumerConfig, DatabaseRow};
+//!
+//! // Create database configuration
+//! let config = DatabaseConsumerConfig::default()
+//!     .with_connection_url("postgresql://user:pass@localhost/dbname")
+//!     .with_table_name("users");
+//!
+//! // Create a PostgreSQL write node
+//! let db_postgres_write = DbPostgresWrite::new(config);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::DbPostgresWrite;
+//! use streamweave::db::{DatabaseConsumerConfig, DatabaseRow};
+//! use streamweave::ErrorStrategy;
+//!
+//! # let config = DatabaseConsumerConfig::default()
+//! #     .with_connection_url("postgresql://user:pass@localhost/dbname")
+//! #     .with_table_name("users");
+//! // Create a PostgreSQL write node with error handling
+//! let db_postgres_write = DbPostgresWrite::new(config)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("postgres-writer".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Pass-Through Pattern**: Writes data while passing it through for
+//!   intermediate result capture
+//! - **PostgreSQL Integration**: Uses sqlx for type-safe, async PostgreSQL database access
+//! - **DatabaseRow Support**: Works with `DatabaseRow` structures for structured
+//!   database operations
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DbPostgresWrite`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::db::{DatabaseConsumerConfig, DatabaseRow};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

@@ -1,7 +1,73 @@
-//! SQLite query node for StreamWeave graphs
+//! SQLite query node for executing SQLite queries in graphs.
 //!
-//! Executes SQLite queries from stream items. Takes query strings (or query parameters) as input
-//! and outputs query results, enabling dynamic SQLite queries in a pipeline.
+//! This module provides [`DbSqliteQuery`], a graph node that executes SQLite queries
+//! from stream items. It takes query strings (or query parameters as JSON) as input
+//! and outputs `DatabaseRow` results, enabling dynamic SQLite queries in graph-based
+//! pipelines. It wraps [`DbSqliteQueryTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`DbSqliteQuery`] is useful for executing SQLite queries in graph-based pipelines.
+//! It supports dynamic query execution based on stream data, making it ideal for
+//! data processing workflows that interact with SQLite databases.
+//!
+//! # Key Concepts
+//!
+//! - **SQLite Query Execution**: Executes SQL queries against SQLite databases
+//! - **Dynamic Queries**: Supports query strings or query parameters from stream items
+//! - **Database Rows Output**: Outputs query results as `DatabaseRow` structures
+//! - **Transformer Wrapper**: Wraps `DbSqliteQueryTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`DbSqliteQuery`]**: Node that executes SQLite queries from stream items
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::DbSqliteQuery;
+//! use streamweave::db::{DatabaseProducerConfig, DatabaseType};
+//!
+//! // Create database configuration
+//! let db_config = DatabaseProducerConfig::default()
+//!     .with_connection_url("sqlite://path/to/database.db")
+//!     .with_database_type(DatabaseType::Sqlite);
+//!
+//! // Create a SQLite query node
+//! let db_sqlite_query = DbSqliteQuery::new(db_config);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::DbSqliteQuery;
+//! use streamweave::db::{DatabaseProducerConfig, DatabaseType};
+//! use streamweave::ErrorStrategy;
+//!
+//! # let db_config = DatabaseProducerConfig::default()
+//! #     .with_connection_url("sqlite://path/to/database.db")
+//! #     .with_database_type(DatabaseType::Sqlite);
+//! // Create a SQLite query node with error handling
+//! let db_sqlite_query = DbSqliteQuery::new(db_config)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("sqlite-query".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **SQLite Integration**: Uses sqlx for type-safe, async SQLite database access
+//! - **Dynamic Queries**: Supports dynamic SQL query execution from stream items
+//! - **DatabaseRow Output**: Returns structured database rows for flexible processing
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DbSqliteQuery`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::db::DatabaseProducerConfig;
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};

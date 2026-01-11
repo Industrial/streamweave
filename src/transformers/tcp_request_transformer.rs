@@ -1,6 +1,41 @@
-//! TCP request transformer for StreamWeave
+//! # TCP Request Transformer
 //!
-//! Makes TCP requests from stream items, sending data and optionally receiving responses.
+//! Transformer that makes TCP requests for each input item, sending data to a TCP
+//! server and optionally receiving responses. Useful for request-response patterns
+//! in stream processing pipelines.
+//!
+//! ## Overview
+//!
+//! The TCP Request Transformer provides:
+//!
+//! - **TCP Communication**: Connects to a remote TCP server for each item
+//! - **Request Modes**: Send-only (fire-and-forget) or send-and-receive
+//! - **Timeout Handling**: Configurable connection and response timeouts
+//! - **Error Handling**: Configurable error strategies for connection failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Data to send to the TCP server
+//! - **Output**: `Message<String>` - Response data (in SendReceive mode) or echo of input (in SendOnly mode)
+//!
+//! ## Request Modes
+//!
+//! - **SendOnly**: Sends data and immediately outputs the input (fire-and-forget)
+//! - **SendReceive**: Sends data, waits for response, and outputs the response
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::{TcpRequestTransformer, TcpRequestMode};
+//!
+//! // Send and receive
+//! let transformer = TcpRequestTransformer::new(
+//!   "127.0.0.1:8080".to_string(),
+//!   TcpRequestMode::SendReceive,
+//! );
+//! // Input: ["hello", "world"]
+//! // Sends each, receives responses, outputs: ["response1", "response2"]
+//! ```
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};
 use async_trait::async_trait;

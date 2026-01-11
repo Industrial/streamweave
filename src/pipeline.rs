@@ -1,3 +1,55 @@
+//! # Pipeline Builder and Execution
+//!
+//! This module provides a type-safe pipeline builder with compile-time validation
+//! using a state machine pattern. Pipelines are linear data flows: Producer →
+//! Transformer → Consumer.
+//!
+//! ## Overview
+//!
+//! The pipeline system provides:
+//!
+//! - **Type-Safe Builder**: Compile-time validation ensures all components are present
+//! - **State Machine**: Phantom types enforce correct component ordering
+//! - **Error Handling**: Configurable error strategies for each pipeline stage
+//! - **Stream Execution**: Async execution of complete pipelines
+//!
+//! ## Pipeline States
+//!
+//! The builder uses phantom types to track state:
+//!
+//! - `Empty`: No components added yet
+//! - `HasProducer<P>`: Producer added, ready for transformer
+//! - `HasTransformer<P, T>`: Producer and transformer added, ready for consumer
+//! - `Complete<P, T, C>`: All components present, ready to build
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::prelude::*;
+//!
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(VecProducer::new(vec![1, 2, 3]))
+//!     .transformer(MapTransformer::new(|x| x * 2))
+//!     .consumer(VecConsumer::new())
+//!     .error_strategy(ErrorStrategy::Skip)
+//!     .build();
+//!
+//! // Execute the pipeline
+//! pipeline.run().await;
+//! ```
+//!
+//! ## Key Concepts
+//!
+//! - **Pipeline**: A linear data flow from producer through transformer to consumer
+//! - **PipelineBuilder**: Type-safe builder with state machine validation
+//! - **Error Strategy**: How to handle errors at each stage (Stop, Skip, Retry, Custom)
+//! - **Stream Execution**: Async execution with proper error propagation
+//!
+//! ## Usage
+//!
+//! Pipelines are the simplest way to process streams in StreamWeave. For more
+//! complex topologies with fan-in/fan-out, use the Graph API instead.
+
 use crate::error::ErrorStrategy;
 use crate::{Consumer, Producer, Transformer};
 use std::marker::PhantomData;

@@ -1,6 +1,70 @@
-//! Math trigonometric node for StreamWeave graphs
+//! Math trigonometric node for performing trigonometric operations.
 //!
-//! Performs trigonometric operations.
+//! This module provides [`MathTrigonometricNode`], a graph node that performs trigonometric
+//! operations on numeric values. It wraps [`MathTrigonometricTransformer`] for use in
+//! StreamWeave graphs. It supports operations like Sin, Cos, Tan, Asin, Acos, Atan,
+//! and Atan2.
+//!
+//! # Overview
+//!
+//! [`MathTrigonometricNode`] is useful for performing trigonometric operations on numeric
+//! values in graph-based pipelines. It processes JSON numeric values and applies
+//! trigonometric functions, making it ideal for mathematical computations.
+//!
+//! # Key Concepts
+//!
+//! - **Trigonometric Functions**: Supports Sin, Cos, Tan and their inverses
+//! - **Atan2 Support**: Supports Atan2 with optional second operand
+//! - **JSON Value Support**: Works with `serde_json::Value` numeric types
+//! - **Transformer Wrapper**: Wraps `MathTrigonometricTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`MathTrigonometricNode`]**: Node that performs trigonometric operations
+//! - **[`TrigonometricFunction`]**: Enum representing different trigonometric functions
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathTrigonometricNode;
+//! use streamweave::transformers::TrigonometricFunction;
+//!
+//! // Calculate sine
+//! let sin = MathTrigonometricNode::new(TrigonometricFunction::Sin, None);
+//!
+//! // Calculate arctangent2
+//! let atan2 = MathTrigonometricNode::new(TrigonometricFunction::Atan2, Some(1.0));
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathTrigonometricNode;
+//! use streamweave::transformers::TrigonometricFunction;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a trigonometric node with error handling
+//! let trig = MathTrigonometricNode::new(TrigonometricFunction::Sin, None)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("sin".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Function Enum**: Uses enum-based function selection for type safety
+//! - **Optional Second Operand**: Supports optional second operand for Atan2
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathTrigonometricNode`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{MathTrigonometricTransformer, TrigonometricFunction};

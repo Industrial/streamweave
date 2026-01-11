@@ -1,7 +1,71 @@
-//! # Key-Based Router
+//! Key-based router for routing items based on key extraction.
 //!
-//! This module provides a KeyBasedRouter that routes items based on a key
-//! extraction function. Items with the same key go to the same port.
+//! This module provides [`KeyBasedRouter`], a router that routes items based on a key
+//! extraction function. Items with the same key go to the same port, making it ideal
+//! for partitioning data by key. It implements [`OutputRouter`] for use in
+//! StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`KeyBasedRouter`] is useful for partitioning data in graph-based pipelines.
+//! It extracts a key from each item and routes items with the same key to the
+//! same output port, ensuring deterministic routing and enabling parallel
+//! processing of different partitions.
+//!
+//! # Key Concepts
+//!
+//! - **Key Extraction**: Uses a key extraction function to determine routing
+//! - **Deterministic Routing**: Items with the same key always go to the same port
+//! - **Hash-Based Distribution**: Uses hash-based distribution for efficient routing
+//! - **Multiple Output Ports**: Supports multiple output ports for partitioning
+//!
+//! # Core Types
+//!
+//! - **[`KeyBasedRouter<O, K>`]**: Router that routes items based on a key
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::KeyBasedRouter;
+//!
+//! // Route items based on a key extracted from the item
+//! let router = KeyBasedRouter::new(
+//!     |x: &i32| *x % 3,  // Key extraction function
+//!     vec![0, 1, 2]      // Output ports
+//! );
+//! ```
+//!
+//! ## With Explicit Key-to-Port Mapping
+//!
+//! ```rust
+//! use streamweave::graph::nodes::KeyBasedRouter;
+//!
+//! // Create router with explicit key-to-port mapping
+//! let mut router = KeyBasedRouter::new_with_mapping(
+//!     |item: &MyStruct| item.category.clone(),
+//!     vec![0, 1, 2],
+//!     |key: &String| match key.as_str() {
+//!         "A" => 0,
+//!         "B" => 1,
+//!         _ => 2,
+//!     }
+//! );
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Hash-Based Routing**: Uses hash-based distribution for efficient routing
+//! - **Deterministic**: Items with the same key always route to the same port
+//! - **Key Function**: Uses a closure for flexible key extraction
+//! - **Router Trait**: Implements `OutputRouter` for integration with graph system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`KeyBasedRouter`] implements the [`OutputRouter`] trait and can be used in any
+//! StreamWeave graph. It routes items to different output ports based on their
+//! extracted keys, enabling partitioning and parallel processing patterns.
 
 use crate::graph::router::OutputRouter;
 use async_trait::async_trait;

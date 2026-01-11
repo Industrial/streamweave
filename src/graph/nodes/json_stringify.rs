@@ -1,6 +1,62 @@
-//! JSON stringify node for StreamWeave graphs
+//! JSON stringify node for converting JSON values to strings.
 //!
-//! Converts JSON values to strings.
+//! This module provides [`JsonStringify`], a graph node that converts JSON values
+//! to JSON strings. It wraps [`JsonStringifyTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`JsonStringify`] is useful for converting structured JSON values to JSON strings
+//! in graph-based pipelines. It serializes JSON values to strings, making it ideal
+//! for exporting JSON data as text.
+//!
+//! # Key Concepts
+//!
+//! - **JSON Serialization**: Converts JSON values to JSON strings
+//! - **JSON Value Input**: Works with `serde_json::Value` types
+//! - **String Output**: Produces JSON-formatted strings
+//! - **Transformer Wrapper**: Wraps `JsonStringifyTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`JsonStringify`]**: Node that converts JSON values to JSON strings
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::JsonStringify;
+//!
+//! // Create a JSON stringify node
+//! let json_stringify = JsonStringify::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::JsonStringify;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a JSON stringify node with error handling
+//! let json_stringify = JsonStringify::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("json-stringifier".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Library Integration**: Uses serde_json for robust JSON serialization
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible data
+//!   structure handling
+//! - **Pretty Printing**: Can optionally format JSON for readability
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`JsonStringify`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::JsonStringifyTransformer;

@@ -1,29 +1,95 @@
-//! # Batched Inference Transformer
+//! ML batched inference transformer for high-throughput ML model inference.
 //!
-//! This module provides a transformer that batches inference requests for efficient processing.
+//! This module provides [`BatchedInferenceTransformer`], a transformer that performs
+//! machine learning model inference on batched stream items using an inference backend.
+//! Batching improves throughput by processing multiple items together, especially
+//! important for GPU-accelerated inference where batch processing can significantly
+//! improve utilization.
 //!
-//! Batching improves throughput by processing multiple items together, especially important
-//! for GPU-accelerated inference where batch processing can significantly improve utilization.
+//! # Overview
 //!
-//! ## Example
+//! [`BatchedInferenceTransformer`] is useful for high-throughput ML inference scenarios
+//! where individual requests can be grouped and processed together. This reduces
+//! overhead and maximizes utilization of inference hardware (e.g., GPUs).
+//! It integrates with various [`InferenceBackend`] implementations (e.g., ONNX, TensorFlow Lite).
+//!
+//! # Key Concepts
+//!
+//! - **Batched Inference**: Groups multiple input items into a single batch for model inference.
+//! - **Inference Backend**: Pluggable backend (e.g., ONNX, TFLite) that performs the actual model execution.
+//! - **Batch Size**: Configurable maximum number of items per batch.
+//! - **Batch Timeout**: Configurable duration to wait for a batch to fill before processing.
+//! - **Performance Optimization**: Reduces overhead and improves throughput for ML models.
+//!
+//! # Core Types
+//!
+//! - **[`BatchedInferenceTransformer<B>`]**: The main struct for the batched ML inference transformer, generic over the [`InferenceBackend`] type `B`.
+//! - **[`BatchedInferenceConfig`]**: Configuration for batched inference behavior.
+//! - **[`InferenceBackend`]**: Trait defining the interface for ML inference backends.
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
 //!
 //! ```rust,no_run
-//! use crate::prelude::*;
-//! use streamweave_ml_transformers::{BatchedInferenceTransformer, OnnxBackend};
+//! use streamweave::transformers::BatchedInferenceTransformer;
+//! use streamweave::ml::InferenceBackend;
+//! use streamweave_ml_transformers::OnnxBackend; // Assuming `streamweave_ml_transformers` crate is available
+//! use std::time::Duration;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Initialize an ONNX backend (replace with your actual model path)
+//! let mut backend = OnnxBackend::new()?;
+//! backend.load_from_path("path/to/your/model.onnx").await?;
+//!
+//! // Create a batched inference transformer with a batch size of 32 and a 100ms timeout
+//! let transformer = BatchedInferenceTransformer::new(backend)
+//!     .with_batch_size(32)
+//!     .with_timeout(Duration::from_millis(100));
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::BatchedInferenceTransformer;
+//! use streamweave::ml::InferenceBackend;
+//! use streamweave::ErrorStrategy;
+//! use streamweave_ml_transformers::OnnxBackend;
 //! use std::time::Duration;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 //! let mut backend = OnnxBackend::new()?;
 //! backend.load_from_path("model.onnx").await?;
 //!
+//! // Create a batched inference transformer with error handling
 //! let transformer = BatchedInferenceTransformer::new(backend)
 //!     .with_batch_size(32)
-//!     .with_timeout(Duration::from_millis(100));
-//!
-//! // Use in pipeline...
+//!     .with_timeout(Duration::from_millis(100))
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("batched_onnx_inference".to_string());
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! # Design Decisions
+//!
+//! - **Pluggable Backends**: Decouples inference logic from the transformer via the `InferenceBackend` trait.
+//! - **Batching Logic**: Manages batch accumulation and dispatch based on size or time.
+//! - **Asynchronous Processing**: Leverages `async/await` for non-blocking batch processing.
+//! - **Performance Optimization**: Batches items to maximize utilization of inference hardware, especially GPUs.
+//! - **Error Handling**: Provides configurable error strategies for inference failures.
+//!
+//! # Integration with StreamWeave
+//!
+//! [`BatchedInferenceTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
+
+// Import for rustdoc links
+#[allow(unused_imports)]
+use crate::Transformer;
 
 use crate::TransformerConfig;
 use crate::error::ErrorStrategy;

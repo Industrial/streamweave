@@ -1,7 +1,62 @@
-//! Transformer that expands collections into individual items (for-each loop).
+//! ForEach node for expanding collections into individual items.
 //!
-//! Takes items that are collections (e.g., `Vec<T>`) and expands them into
-//! a stream of individual items. Uses zero-copy semantics where possible.
+//! This module provides [`ForEach`], a graph node that expands collections
+//! (e.g., `Vec<T>`) into individual items. It takes items that are collections
+//! and expands them into a stream of individual items, implementing a for-each
+//! loop pattern. It uses zero-copy semantics where possible.
+//!
+//! # Overview
+//!
+//! [`ForEach`] is useful for processing collections in graph-based pipelines.
+//! It allows each item in a collection to be processed individually, enabling
+//! batch processing patterns and nested data structure handling.
+//!
+//! # Key Concepts
+//!
+//! - **Collection Expansion**: Expands collections into individual items
+//! - **For-Each Pattern**: Implements a for-each loop over collection items
+//! - **Extract Function**: Uses a function to extract collections from items
+//! - **Zero-Copy Semantics**: Uses zero-copy semantics where possible
+//!
+//! # Core Types
+//!
+//! - **[`ForEach<T>`]**: Node that expands collections into individual items
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ForEach;
+//!
+//! // Expand vectors of integers into individual integers
+//! let for_each = ForEach::new(|item: &Vec<i32>| item.clone());
+//! ```
+//!
+//! ## With Nested Collections
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ForEach;
+//!
+//! // Extract and expand a nested collection
+//! let for_each = ForEach::new(|item: &MyStruct| item.items.clone());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Extract Function**: Uses a function to extract collections from items
+//!   for flexibility
+//! - **Flat Map Pattern**: Uses flat_map internally for efficient stream
+//!   expansion
+//! - **Zero-Copy**: Uses zero-copy semantics where possible for performance
+//! - **Collection Type**: Works with any collection that can be converted to
+//!   `Vec<T>`
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ForEach`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

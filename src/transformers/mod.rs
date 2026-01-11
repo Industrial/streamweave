@@ -1,4 +1,59 @@
-// Transformers module
+//! # Transformers Module
+//!
+//! Comprehensive collection of transformer implementations for the StreamWeave framework.
+//! Transformers are components that process data streams, transforming input items into
+//! output items as they flow through pipelines and graphs.
+//!
+//! ## Overview
+//!
+//! This module provides over 100 transformer implementations organized by category:
+//!
+//! - **Array Operations**: Array manipulation, searching, and transformation
+//! - **String Operations**: String manipulation, parsing, and formatting
+//! - **JSON Operations**: JSON parsing, stringification, reading, and writing
+//! - **CSV Operations**: CSV parsing, reading, writing, and stringification
+//! - **Database Operations**: Database queries and writes for PostgreSQL, MySQL, SQLite
+//! - **File System Operations**: File and directory operations, path manipulation
+//! - **Network Operations**: HTTP requests, TCP operations, Kafka publishing
+//! - **Mathematical Operations**: Math functions, operations, and utilities
+//! - **Object Operations**: Object manipulation, property access, merging
+//! - **Stream Operations**: Batching, filtering, mapping, merging, splitting
+//! - **Control Flow**: Circuit breakers, retries, rate limiting, delays
+//! - **Machine Learning**: ML inference and batched inference transformers
+//! - **Data Formats**: Parquet, JSONL, XML parsing and writing
+//!
+//! ## Universal Message Model
+//!
+//! **All transformers operate on `Message<T>` where `T` is the payload type.**
+//! This ensures message IDs, metadata, and error correlation are preserved throughout
+//! the transformation pipeline.
+//!
+//! ## Error Handling
+//!
+//! All transformers support configurable error strategies:
+//!
+//! - **Stop**: Stop processing on error
+//! - **Skip**: Skip items that cause errors
+//! - **Retry**: Retry failed items with configurable retry count
+//! - **Custom**: Custom error handling logic
+//!
+//! ## Configuration
+//!
+//! Transformers can be configured with:
+//!
+//! - Error handling strategies
+//! - Component names for debugging
+//! - Transformer-specific options
+//!
+//! ## Example Usage
+//!
+//! ```rust
+//! use crate::transformers::MapTransformer;
+//! use crate::message::Message;
+//!
+//! let transformer = MapTransformer::new(|x: i32| x * 2);
+//! // Transforms [1, 2, 3] into [2, 4, 6]
+//! ```
 pub mod array_concat_transformer;
 pub mod array_contains_transformer;
 pub mod array_find_transformer;

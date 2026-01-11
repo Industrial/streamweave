@@ -1,7 +1,38 @@
-//! File write transformer for StreamWeave
+//! # File System File Write Transformer
 //!
-//! Writes data to files while passing data through. Takes string data as input, writes to file,
-//! and outputs the same data, enabling writing intermediate results while continuing processing.
+//! Transformer that writes string data to files while passing the same data through
+//! to the output stream. This enables persisting intermediate results to files
+//! while continuing the main pipeline flow.
+//!
+//! ## Overview
+//!
+//! The File System File Write Transformer provides:
+//!
+//! - **File Writing**: Writes string data to file system files
+//! - **Pass-Through**: Outputs the same data that was written
+//! - **Append Mode**: Configurable append vs. overwrite behavior
+//! - **Buffer Configuration**: Configurable buffer sizes for efficient writing
+//! - **Error Handling**: Configurable error strategies for write failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - String data to write
+//! - **Output**: `Message<String>` - The same data (pass-through)
+//!
+//! ## Configuration
+//!
+//! - **Append**: When true, appends to existing file; when false, overwrites
+//! - **Buffer Size**: Buffer size for writing operations
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::FsFileWriteTransformer;
+//!
+//! let transformer = FsFileWriteTransformer::new("output.txt");
+//! // Input: ["line1", "line2", ...]
+//! // Writes to file and outputs: ["line1", "line2", ...]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

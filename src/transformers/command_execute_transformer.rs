@@ -1,7 +1,65 @@
-//! Command execute transformer for StreamWeave
+//! Command execute transformer for executing shell commands dynamically.
 //!
-//! Executes shell commands from input items. Takes command templates/parameters as input
-//! and outputs command results, enabling dynamic command execution in a pipeline.
+//! This module provides [`CommandExecuteTransformer`], a transformer that executes
+//! shell commands for each input item, running commands dynamically based on input
+//! data and producing command output as a stream.
+//!
+//! # Overview
+//!
+//! [`CommandExecuteTransformer`] executes shell commands for each input item. It
+//! supports flexible input formats (JSON objects with command/args or simple command
+//! strings) and streams command stdout line-by-line. This is useful for integrating
+//! external tools, scripts, and command-line utilities into stream processing pipelines.
+//!
+//! # Key Concepts
+//!
+//! - **Dynamic Command Execution**: Executes shell commands based on input items
+//! - **Flexible Input**: Accepts JSON objects with command/args or simple command strings
+//! - **Output Streaming**: Produces command stdout as a stream of lines
+//! - **Async Execution**: Uses Tokio's `Command` for asynchronous process execution
+//! - **Error Handling**: Configurable error strategies for command failures
+//!
+//! # Core Types
+//!
+//! - **[`CommandExecuteTransformer`]**: Transformer that executes shell commands
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::CommandExecuteTransformer;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that executes commands
+//! let transformer = CommandExecuteTransformer::new();
+//!
+//! // Input: ["{\"command\": \"echo\", \"args\": [\"hello\"]}", ...]
+//! // Output: ["hello", ...]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Input Formats
+//!
+//! The transformer accepts two input formats:
+//!
+//! - **JSON Object**: `{"command": "echo", "args": ["hello", "world"]}`
+//! - **Command String**: `"echo"` (executed with no arguments)
+//!
+//! # Design Decisions
+//!
+//! - **Dynamic Execution**: Commands are executed dynamically based on input data
+//! - **Async Process**: Uses Tokio's async process execution for non-blocking I/O
+//! - **Line-by-Line Output**: Streams stdout line-by-line for efficient processing
+//! - **Flexible Input**: Supports both structured (JSON) and simple (string) command specs
+//! - **Error Handling**: Configurable error strategies for command failures
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CommandExecuteTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline or graph. It supports the standard error handling
+//! strategies and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

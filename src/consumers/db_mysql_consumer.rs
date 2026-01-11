@@ -1,3 +1,88 @@
+//! MySQL database consumer for writing stream data to MySQL tables.
+//!
+//! This module provides [`DbMysqlConsumer`], a consumer that writes [`DatabaseRow`]
+//! items to MySQL database tables. It supports batch insertion for performance,
+//! connection pooling, and transaction management through sqlx.
+//!
+//! # Overview
+//!
+//! [`DbMysqlConsumer`] is useful for persisting stream data to MySQL databases.
+//! It uses sqlx for type-safe database access, connection pooling for efficiency,
+//! and batch insertion for high-throughput scenarios. The consumer handles
+//! connection management, error handling, and transaction boundaries automatically.
+//!
+//! # Key Concepts
+//!
+//! - **DatabaseRow Input**: Items must be [`DatabaseRow`] structures representing
+//!   database table rows
+//! - **Batch Insertion**: Groups multiple rows into batches for efficient insertion
+//! - **Connection Pooling**: Uses sqlx connection pools for efficient connection
+//!   management
+//! - **Transaction Management**: Supports configurable transaction handling
+//!
+//! # Core Types
+//!
+//! - **[`DbMysqlConsumer`]**: Consumer that writes rows to MySQL tables
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::DbMysqlConsumer;
+//! use streamweave::db::{DatabaseConsumerConfig, DatabaseRow};
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create database configuration
+//! let db_config = DatabaseConsumerConfig {
+//!     connection_string: "mysql://user:pass@localhost/db".to_string(),
+//!     table_name: "records".to_string(),
+//!     batch_size: 100,
+//!     // ... other configuration
+//! };
+//!
+//! // Create a consumer
+//! let mut consumer = DbMysqlConsumer::new(db_config);
+//!
+//! // Create a stream of database rows
+//! let stream = stream::iter(vec![
+//!     DatabaseRow::new(vec!["value1".into(), "value2".into()]),
+//!     // ... more rows
+//! ]);
+//!
+//! // Consume the stream (rows inserted into MySQL)
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::consumers::DbMysqlConsumer;
+//! use streamweave::db::DatabaseConsumerConfig;
+//! use streamweave::ErrorStrategy;
+//!
+//! let db_config = DatabaseConsumerConfig { /* ... */ };
+//! let consumer = DbMysqlConsumer::new(db_config)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("mysql-writer".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **sqlx Integration**: Uses sqlx for type-safe, async database access
+//! - **Batch Insertion**: Groups rows into batches for improved performance
+//! - **Connection Pooling**: Reuses connections efficiently through sqlx pools
+//! - **Lazy Pool Initialization**: Connection pool is created on first use
+//!
+//! # Integration with StreamWeave
+//!
+//! [`DbMysqlConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::db::{DatabaseConsumerConfig, DatabaseRow};
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};

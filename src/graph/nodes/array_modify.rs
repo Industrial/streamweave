@@ -1,6 +1,75 @@
-//! Array modify node for StreamWeave graphs
+//! Array modify node for modifying JSON arrays.
 //!
-//! Modifies arrays using Push, Pop, Shift, or Unshift operations.
+//! This module provides [`ArrayModify`], a graph node that modifies JSON arrays
+//! using operations like Push, Pop, Shift, and Unshift. It wraps
+//! [`ArrayModifyTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`ArrayModify`] is useful for manipulating JSON array values in graph-based
+//! pipelines. It supports common array modification operations that add or remove
+//! elements from arrays, making it ideal for data transformation workflows.
+//!
+//! # Key Concepts
+//!
+//! - **Array Operations**: Supports Push, Pop, Shift, and Unshift operations
+//! - **JSON Values**: Works with `serde_json::Value` array types
+//! - **In-Place Modification**: Modifies arrays in place (consumes and produces
+//!   modified arrays)
+//! - **Transformer Wrapper**: Wraps `ArrayModifyTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`ArrayModify`]**: Node that modifies arrays using specified operations
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ArrayModify;
+//! use streamweave::transformers::ArrayModifyOperation;
+//! use serde_json::json;
+//!
+//! // Create a node that pushes a value to arrays
+//! let node = ArrayModify::new(
+//!     ArrayModifyOperation::Push,
+//!     Some(json!("new_value"))
+//! );
+//! ```
+//!
+//! ## Different Operations
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ArrayModify;
+//! use streamweave::transformers::ArrayModifyOperation;
+//!
+//! // Push: Add element to end
+//! let push_node = ArrayModify::new(ArrayModifyOperation::Push, Some(json!(42)));
+//!
+//! // Pop: Remove element from end
+//! let pop_node = ArrayModify::new(ArrayModifyOperation::Pop, None);
+//!
+//! // Shift: Remove element from beginning
+//! let shift_node = ArrayModify::new(ArrayModifyOperation::Shift, None);
+//!
+//! // Unshift: Add element to beginning
+//! let unshift_node = ArrayModify::new(ArrayModifyOperation::Unshift, Some(json!(42)));
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Uses `serde_json::Value` for flexible array handling
+//! - **Operation Enum**: Uses `ArrayModifyOperation` enum for type-safe operation
+//!   specification
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ArrayModify`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{ArrayModifyOperation, ArrayModifyTransformer};

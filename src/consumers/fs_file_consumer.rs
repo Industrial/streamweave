@@ -1,3 +1,78 @@
+//! File system file consumer for writing stream data to files.
+//!
+//! This module provides [`FsFileConsumer`], a consumer that writes string items
+//! from a stream to a file. The file is opened lazily when the first item is consumed,
+//! and items are written sequentially with automatic flushing.
+//!
+//! # Overview
+//!
+//! [`FsFileConsumer`] is useful for writing stream data to files on disk. It uses
+//! Tokio's async file I/O for efficient writes and supports configurable error handling.
+//! The file handle is managed internally and opened on first write.
+//!
+//! # Key Concepts
+//!
+//! - **Path-Based Writing**: Creates or overwrites a file at the specified path
+//! - **Lazy File Opening**: File is opened when the first item is consumed
+//! - **Automatic Flushing**: Each write is flushed to ensure data persistence
+//! - **Error Handling**: Configurable error strategies for I/O failures
+//!
+//! # Core Types
+//!
+//! - **[`FsFileConsumer`]**: Consumer that writes stream items to a file
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::FsFileConsumer;
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a consumer with a file path
+//! let mut consumer = FsFileConsumer::new("/tmp/output.txt".to_string());
+//!
+//! // Create a stream of strings to write
+//! let stream = stream::iter(vec![
+//!     "line 1\n".to_string(),
+//!     "line 2\n".to_string(),
+//!     "line 3\n".to_string(),
+//! ]);
+//!
+//! // Consume the stream to write to file
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::consumers::FsFileConsumer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a consumer with error handling strategy
+//! let consumer = FsFileConsumer::new("/tmp/output.txt".to_string())
+//!     .with_error_strategy(ErrorStrategy::Skip)  // Skip failed writes and continue
+//!     .with_name("file-writer".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Lazy Opening**: File is opened on first write rather than at creation time,
+//!   allowing the consumer to be created before the stream is available
+//! - **Automatic Flushing**: Each write is flushed to ensure data is persisted
+//!   immediately, important for streaming scenarios
+//! - **File Overwrite**: Existing files are overwritten (via `File::create`)
+//! - **String Input**: Requires `String` input for file content
+//!
+//! # Integration with StreamWeave
+//!
+//! [`FsFileConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

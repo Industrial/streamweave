@@ -1,6 +1,75 @@
-//! Array concat transformer for StreamWeave
+//! Array concatenation transformer for combining arrays.
 //!
-//! Concatenates multiple arrays into a single array.
+//! This module provides [`ArrayConcatTransformer`], a transformer that concatenates
+//! multiple arrays into a single array. It takes an array of arrays as input and
+//! produces a single concatenated array as output.
+//!
+//! # Overview
+//!
+//! [`ArrayConcatTransformer`] is useful for combining arrays from multiple sources
+//! or flattening nested array structures. It processes JSON arrays and concatenates
+//! their elements into a single array.
+//!
+//! # Key Concepts
+//!
+//! - **Array Concatenation**: Combines multiple arrays into one
+//! - **JSON Processing**: Works with `serde_json::Value` arrays
+//! - **Nested Arrays**: Handles arrays of arrays
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`ArrayConcatTransformer`]**: Transformer that concatenates arrays
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::ArrayConcatTransformer;
+//! use streamweave::PipelineBuilder;
+//! use serde_json::json;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer
+//! let transformer = ArrayConcatTransformer::new();
+//!
+//! // Input: json!([[1, 2], [3, 4]])
+//! // Output: json!([1, 2, 3, 4])
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::ArrayConcatTransformer;
+//! use streamweave::ErrorStrategy;
+//! use serde_json::Value;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = ArrayConcatTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("concat-transformer".to_string());
+//! ```
+//!
+//! # Behavior
+//!
+//! The transformer takes an array of arrays as input and concatenates all sub-arrays
+//! into a single array. Non-array values are passed through unchanged.
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Type**: Uses `serde_json::Value` for flexible JSON array handling
+//! - **Simple Concatenation**: Directly concatenates array elements
+//! - **Type Safety**: Validates input is an array before processing
+//! - **Pass-Through**: Non-array values are passed through unchanged
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ArrayConcatTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

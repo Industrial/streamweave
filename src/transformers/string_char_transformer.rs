@@ -1,6 +1,40 @@
-//! String char transformer for StreamWeave
+//! # String Char Transformer
 //!
-//! Performs character operations on strings (char_at, char_code_at, from_char_code).
+//! Transformer that performs character-level operations on strings, including
+//! extracting characters at indices, getting character codes, and creating strings
+//! from character codes.
+//!
+//! ## Overview
+//!
+//! The String Char Transformer provides:
+//!
+//! - **Character Extraction**: Gets characters at specific indices
+//! - **Character Codes**: Gets Unicode character codes at indices
+//! - **String Creation**: Creates strings from character codes
+//! - **Unicode Support**: Handles multi-byte Unicode characters correctly
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **CharAt**: `Message<String>` → `Message<Option<char>>`
+//! - **CharCodeAt**: `Message<String>` → `Message<Option<u32>>`
+//! - **FromCharCode**: `Message<u32>` → `Message<String>`
+//!
+//! ## Operations
+//!
+//! - **CharAt(usize)**: Extracts character at the specified index
+//! - **CharCodeAt(usize)**: Gets the Unicode code point at the specified index
+//! - **FromCharCode**: Creates a string from a Unicode code point
+//!
+//! ## Example
+//!
+//! ```rust
+//! use streamweave::transformers::{StringCharTransformer, CharOperation};
+//!
+//! let transformer = StringCharTransformer::new(CharOperation::CharAt(0));
+//! // Input: ["hello"]
+//! // Output: [Some('h')]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

@@ -1,3 +1,72 @@
+//! Standard output consumer for writing stream data to stdout.
+//!
+//! This module provides [`StdioStdoutConsumer`], a consumer that writes stream items
+//! to standard output (stdout). Each item is written on a separate line, making it
+//! ideal for command-line tools that output results to stdout.
+//!
+//! # Overview
+//!
+//! [`StdioStdoutConsumer`] is useful for building command-line tools that output
+//! results to stdout. It uses Tokio's async I/O for efficient writing and supports
+//! any type that implements `Display`. This is the standard consumer for CLI output.
+//!
+//! # Key Concepts
+//!
+//! - **Standard Output**: Writes to stdout, the primary output stream for CLI tools
+//! - **Line-Based Output**: Each item is written on a separate line
+//! - **Display Trait**: Items must implement `Display` for string conversion
+//! - **Async I/O**: Uses Tokio's async stdout handle for non-blocking writes
+//!
+//! # Core Types
+//!
+//! - **[`StdioStdoutConsumer<T>`]**: Consumer that writes items to stdout
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::StdioStdoutConsumer;
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a consumer
+//! let mut consumer = StdioStdoutConsumer::new();
+//!
+//! // Create a stream of results
+//! let stream = stream::iter(vec!["result1", "result2", "result3"]);
+//!
+//! // Consume the stream (items written to stdout)
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::consumers::StdioStdoutConsumer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a consumer with error handling strategy
+//! let consumer = StdioStdoutConsumer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("output-writer".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Stdout Usage**: Uses stdout for primary output, following Unix conventions
+//! - **Line Formatting**: Each item is formatted with a trailing newline for readability
+//! - **Display Requirement**: Items must implement `Display` for flexible output formatting
+//! - **Flush on Completion**: Final flush ensures all output is written before completion
+//!
+//! # Integration with StreamWeave
+//!
+//! [`StdioStdoutConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Consumer, ConsumerConfig, Input};
 use async_trait::async_trait;

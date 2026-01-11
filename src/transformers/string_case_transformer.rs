@@ -1,6 +1,90 @@
-//! String case transformer for StreamWeave
+//! # String Case Transformer
 //!
-//! Converts strings to lowercase or uppercase.
+//! Transformer that converts input strings to lowercase or uppercase, supporting
+//! Unicode-aware case conversion for international text. This module provides
+//! [`StringCaseTransformer`], a transformer that performs case conversion on
+//! strings in streaming pipelines.
+//!
+//! # Overview
+//!
+//! [`StringCaseTransformer`] is useful for normalizing text case in streaming
+//! data processing pipelines. It supports converting strings to either lowercase
+//! or uppercase using Unicode-aware conversion, making it suitable for
+//! international text processing.
+//!
+//! # Key Concepts
+//!
+//! - **Case Conversion**: Converts strings to lowercase or uppercase
+//! - **Unicode Support**: Handles Unicode case conversion correctly
+//! - **Mode Selection**: Configurable conversion mode (Lowercase or Uppercase)
+//! - **Text Normalization**: Useful for text normalization and data cleaning
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`StringCaseTransformer`]**: Transformer that converts string case
+//! - **[`CaseMode`]**: Enumeration of case conversion modes (Lowercase, Uppercase)
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage - Lowercase
+//!
+//! ```rust
+//! use streamweave::transformers::{StringCaseTransformer, CaseMode};
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that converts to lowercase
+//! let transformer = StringCaseTransformer::new(CaseMode::Lowercase);
+//!
+//! // Input: ["Hello World", "HELLO"]
+//! // Output: ["hello world", "hello"]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Uppercase Conversion
+//!
+//! ```rust
+//! use streamweave::transformers::{StringCaseTransformer, CaseMode};
+//!
+//! // Create a transformer that converts to uppercase
+//! let transformer = StringCaseTransformer::new(CaseMode::Uppercase);
+//!
+//! // Input: ["Hello World", "hello"]
+//! // Output: ["HELLO WORLD", "HELLO"]
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::{StringCaseTransformer, CaseMode};
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = StringCaseTransformer::new(CaseMode::Lowercase)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("text-normalizer".to_string());
+//! ```
+//!
+//! # Conversion Modes
+//!
+//! - **Lowercase** (`CaseMode::Lowercase`): Converts all characters to lowercase
+//! - **Uppercase** (`CaseMode::Uppercase`): Converts all characters to uppercase
+//!
+//! # Design Decisions
+//!
+//! - **Unicode-Aware**: Uses Rust's standard library case conversion methods
+//!   which handle Unicode correctly
+//! - **Mode Selection**: Uses an enum for type-safe mode selection
+//! - **Simple Operation**: One-to-one transformation (each input produces one output)
+//! - **Performance**: Leverages Rust's efficient string operations
+//!
+//! # Integration with StreamWeave
+//!
+//! [`StringCaseTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

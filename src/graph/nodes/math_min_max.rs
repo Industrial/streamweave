@@ -1,6 +1,70 @@
-//! Math min/max node for StreamWeave graphs
+//! Math min/max node for finding minimum or maximum values.
 //!
-//! Finds minimum or maximum values.
+//! This module provides [`MathMinMaxNode`], a graph node that finds minimum or maximum
+//! values. It wraps [`MathMinMaxTransformer`] for use in StreamWeave graphs. It supports
+//! both Min and Max operations, optionally comparing against a reference value.
+//!
+//! # Overview
+//!
+//! [`MathMinMaxNode`] is useful for finding minimum or maximum values in graph-based
+//! pipelines. It processes JSON numeric values and finds the minimum or maximum,
+//! optionally comparing against a reference value, making it ideal for mathematical
+//! computations and filtering.
+//!
+//! # Key Concepts
+//!
+//! - **Min/Max Operations**: Supports finding minimum or maximum values
+//! - **Reference Comparison**: Optionally compares against a reference value
+//! - **JSON Value Support**: Works with `serde_json::Value` numeric types
+//! - **Transformer Wrapper**: Wraps `MathMinMaxTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`MathMinMaxNode`]**: Node that finds minimum or maximum values
+//! - **[`MinMaxOperation`]**: Enum representing Min or Max operations
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathMinMaxNode;
+//! use streamweave::transformers::MinMaxOperation;
+//!
+//! // Find maximum value
+//! let max = MathMinMaxNode::new(MinMaxOperation::Max, None);
+//!
+//! // Find minimum value compared to 10
+//! let min = MathMinMaxNode::new(MinMaxOperation::Min, Some(10.0));
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathMinMaxNode;
+//! use streamweave::transformers::MinMaxOperation;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a min/max node with error handling
+//! let min_max = MathMinMaxNode::new(MinMaxOperation::Max, None)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("max-finder".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Operation Enum**: Uses enum-based operation selection for type safety
+//! - **Optional Reference**: Supports optional reference value for comparison
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathMinMaxNode`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{MathMinMaxTransformer, MinMaxOperation};

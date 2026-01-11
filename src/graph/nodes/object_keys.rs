@@ -1,6 +1,63 @@
-//! Object keys node for StreamWeave graphs
+//! Object keys node for extracting keys from JSON objects.
 //!
-//! Extracts keys from JSON objects.
+//! This module provides [`ObjectKeys`], a graph node that extracts keys from JSON
+//! objects. It wraps [`ObjectKeysTransformer`] for use in StreamWeave graphs. It
+//! converts JSON objects into arrays of their keys, making it ideal for object
+//! introspection and processing.
+//!
+//! # Overview
+//!
+//! [`ObjectKeys`] is useful for extracting keys from JSON objects in graph-based
+//! pipelines. It processes JSON objects and outputs arrays of their keys, making
+//! it ideal for object introspection, validation, and processing.
+//!
+//! # Key Concepts
+//!
+//! - **Key Extraction**: Extracts keys from JSON objects
+//! - **Array Output**: Outputs arrays of keys from objects
+//! - **JSON Value Support**: Works with `serde_json::Value` objects
+//! - **Transformer Wrapper**: Wraps `ObjectKeysTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`ObjectKeys`]**: Node that extracts keys from JSON objects
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ObjectKeys;
+//!
+//! // Create an object keys node
+//! let object_keys = ObjectKeys::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::ObjectKeys;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create an object keys node with error handling
+//! let object_keys = ObjectKeys::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("keys-extractor".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible JSON
+//!   object handling
+//! - **Array Output**: Outputs arrays of keys for easy iteration
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ObjectKeys`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::ObjectKeysTransformer;

@@ -1,3 +1,47 @@
+//! # Message System Test Suite
+//!
+//! Comprehensive test suite for the message system, including message IDs, metadata,
+//! message wrapping, ID generation, shared messages, and stream extensions.
+//!
+//! ## Test Coverage
+//!
+//! This test suite covers:
+//!
+//! - **MessageId**: UUID, Sequence, Custom, and ContentHash ID variants with display and hashing
+//! - **MessageMetadata**: Timestamp, source, partition, offset, key, headers, and serialization
+//! - **Message**: Message creation, payload access, metadata access, mapping, and conversion
+//! - **IdGenerators**: UuidGenerator, SequenceGenerator, and ContentHashGenerator
+//! - **SharedMessage**: Arc-based message sharing with try_unwrap and conversion traits
+//! - **MessageStreamExt**: Stream extension methods for payload, ID, and metadata extraction
+//! - **Helper Functions**: wrap_message, unwrap_message, and various wrapping utilities
+//!
+//! ## Test Organization
+//!
+//! Tests are organized into the following sections:
+//!
+//! 1. **MessageId Tests**: All ID variants, type checkers, display, hashing, and equality
+//! 2. **MessageMetadata Tests**: Field access, builder pattern, serialization, and Arc sharing
+//! 3. **Message Tests**: Creation, accessors, mapping, conversion, and equality
+//! 4. **Helper Functions Tests**: Message wrapping and unwrapping utilities
+//! 5. **IdGenerator Tests**: All generator types, thread safety, and edge cases
+//! 6. **SharedMessage Tests**: Arc sharing, try_unwrap, conversion traits, and equality
+//! 7. **MessageStreamExt Tests**: Stream extension methods for message processing
+//! 8. **Integration Tests**: Serde roundtrip, end-to-end message flow
+//!
+//! ## Key Concepts
+//!
+//! - **Message<T>**: The core message type wrapping payload with ID and metadata
+//! - **MessageId**: Unique identifier for messages (UUID, Sequence, Custom, ContentHash)
+//! - **MessageMetadata**: Rich metadata including timestamps, source, headers, etc.
+//! - **SharedMessage**: Arc-based shared ownership for zero-copy fan-out scenarios
+//! - **IdGenerator**: Trait for generating unique message IDs
+//!
+//! ## Usage
+//!
+//! These tests ensure that the message system correctly handles message creation,
+//! ID generation, metadata management, and zero-copy sharing for high-performance
+//! stream processing.
+
 use crate::{
   ContentHashGenerator, IdGenerator, Message, MessageId, MessageMetadata, MessageStreamExt,
   SequenceGenerator, SharedMessage, UuidGenerator, sequence_generator, sequence_generator_from,

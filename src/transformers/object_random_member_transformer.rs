@@ -1,6 +1,78 @@
-//! Object random member transformer for StreamWeave
+//! Object random member transformer for StreamWeave.
 //!
-//! Gets a random member from an array.
+//! This module provides [`ObjectRandomMemberTransformer`], a transformer that
+//! extracts a random member from JSON arrays, producing a stream where each input
+//! array yields one randomly selected element. This enables random sampling and
+//! stochastic operations on array data.
+//!
+//! # Overview
+//!
+//! [`ObjectRandomMemberTransformer`] is useful for random sampling from arrays
+//! in streaming pipelines. It processes JSON arrays and selects a random element
+//! from each array, making it ideal for sampling, randomization, and stochastic
+//! processing workflows.
+//!
+//! # Key Concepts
+//!
+//! - **Random Selection**: Selects a random element from input arrays
+//! - **Uniform Distribution**: Uses uniform random distribution for fair selection
+//! - **Array Processing**: Works with JSON arrays of any type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`ObjectRandomMemberTransformer`]**: Transformer that selects random array members
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectRandomMemberTransformer;
+//! use streamweave::PipelineBuilder;
+//! use serde_json::json;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that selects random array members
+//! let transformer = ObjectRandomMemberTransformer::new();
+//!
+//! // Input: [json!([1, 2, 3, 4, 5])]
+//! // Output: [json!(3)] (random element, varies each run)
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::ObjectRandomMemberTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = ObjectRandomMemberTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("random-sampler".to_string());
+//! ```
+//!
+//! # Behavior
+//!
+//! The transformer selects a random element from each input array using uniform
+//! distribution. Empty arrays produce `Value::Null`. Non-array values also
+//! produce `Value::Null`.
+//!
+//! # Design Decisions
+//!
+//! - **Uniform Distribution**: Uses `rand::thread_rng()` for uniform random selection
+//! - **Array-Only**: Works with JSON arrays, returns `Value::Null` for non-arrays
+//! - **Empty Array Handling**: Returns `Value::Null` for empty arrays
+//! - **Random Selection**: Uses random number generation for each selection
+//! - **Simple Sampling**: Focuses on straightforward random selection
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ObjectRandomMemberTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

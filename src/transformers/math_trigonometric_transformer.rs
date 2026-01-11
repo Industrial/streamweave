@@ -1,6 +1,75 @@
-//! Math trigonometric transformer for StreamWeave
+//! Math trigonometric transformer for performing trigonometric operations.
 //!
-//! Performs trigonometric operations (Sin, Cos, Tan, Asin, Acos, Atan, Atan2) on numeric values.
+//! This module provides [`MathTrigonometricTransformer`] and [`TrigonometricFunction`],
+//! types for performing trigonometric operations on numeric values in StreamWeave
+//! pipelines. It supports Sin, Cos, Tan, Asin, Acos, Atan, and Atan2 operations,
+//! making it ideal for mathematical computations. It implements the [`Transformer`]
+//! trait for use in StreamWeave pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`MathTrigonometricTransformer`] is useful for performing trigonometric operations
+//! on numeric values in StreamWeave pipelines. It processes JSON numeric values and
+//! applies trigonometric functions, making it ideal for mathematical computations.
+//!
+//! # Key Concepts
+//!
+//! - **Trigonometric Functions**: Supports Sin, Cos, Tan and their inverses
+//! - **Atan2 Support**: Supports Atan2 with optional second operand
+//! - **JSON Value Support**: Works with `serde_json::Value` numeric types
+//! - **Transformer Trait**: Implements `Transformer` for pipeline integration
+//!
+//! # Core Types
+//!
+//! - **[`MathTrigonometricTransformer`]**: Transformer that performs trigonometric operations
+//! - **[`TrigonometricFunction`]**: Enum representing different trigonometric functions
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::{MathTrigonometricTransformer, TrigonometricFunction};
+//!
+//! // Calculate sine
+//! let transformer = MathTrigonometricTransformer::new(TrigonometricFunction::Sin, None);
+//! ```
+//!
+//! ## Atan2
+//!
+//! ```rust
+//! use streamweave::transformers::{MathTrigonometricTransformer, TrigonometricFunction};
+//!
+//! // Calculate arctangent2
+//! let transformer = MathTrigonometricTransformer::new(TrigonometricFunction::Atan2, Some(1.0));
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::{MathTrigonometricTransformer, TrigonometricFunction};
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a trigonometric transformer with error handling
+//! let transformer = MathTrigonometricTransformer::new(TrigonometricFunction::Sin, None)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("sin".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Function Enum**: Uses enum-based function selection for type safety
+//! - **Optional Second Operand**: Supports optional second operand for Atan2
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   pipeline system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathTrigonometricTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

@@ -1,6 +1,70 @@
-//! String trim node for StreamWeave graphs
+//! String trim node for StreamWeave graphs.
 //!
-//! Removes whitespace from strings (leading, trailing, or both).
+//! This module provides [`StringTrim`], a graph node that removes whitespace from
+//! strings based on a configurable trim mode. It wraps [`StringTrimTransformer`] for
+//! use in StreamWeave graph topologies.
+//!
+//! # Overview
+//!
+//! [`StringTrim`] is useful for cleaning string data in graph-based processing pipelines.
+//! It supports three trim modes: removing whitespace from both ends, only the leading
+//! edge, or only the trailing edge of strings.
+//!
+//! # Key Concepts
+//!
+//! - **Whitespace Removal**: Removes Unicode whitespace characters from strings
+//! - **Trim Modes**: Configurable trimming (Both, Left, Right)
+//! - **Graph Integration**: Wraps transformer for use in graph topologies
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`StringTrim`]**: Graph node that trims whitespace from strings
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::StringTrim;
+//! use streamweave::transformers::TrimMode;
+//!
+//! // Create a node that trims both leading and trailing whitespace
+//! let node = StringTrim::new(TrimMode::Both)
+//!     .with_name("trim-whitespace".to_string());
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::StringTrim;
+//! use streamweave::transformers::TrimMode;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a node with error handling strategy
+//! let node = StringTrim::new(TrimMode::Both)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("trim-node".to_string());
+//! ```
+//!
+//! # Trim Modes
+//!
+//! - **Both**: Removes whitespace from both leading and trailing edges
+//! - **Left**: Removes whitespace only from the leading edge
+//! - **Right**: Removes whitespace only from the trailing edge
+//!
+//! # Design Decisions
+//!
+//! - **Transformer Wrapper**: Wraps `StringTrimTransformer` to provide graph node interface
+//! - **Mode Configuration**: Trim mode specified at construction time
+//! - **Unicode Support**: Uses Rust's standard library trim functions for Unicode whitespace
+//! - **Graph Integration**: Seamlessly integrates with StreamWeave graph execution
+//!
+//! # Integration with StreamWeave
+//!
+//! [`StringTrim`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{StringTrimTransformer, TrimMode};

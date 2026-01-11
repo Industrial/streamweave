@@ -1,7 +1,84 @@
-//! ML batched inference node for StreamWeave graphs
+//! ML batched inference node for performing batched ML model inference.
 //!
-//! Batched ML model inference operations. Batches inference requests for
-//! efficient processing, especially important for GPU-accelerated inference.
+//! This module provides [`MlBatchedInference`], a graph node that performs batched
+//! ML model inference operations. It batches inference requests for efficient
+//! processing, especially important for GPU-accelerated inference. It wraps
+//! [`BatchedInferenceTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`MlBatchedInference`] is useful for performing batched machine learning model
+//! inference in graph-based pipelines. It batches multiple items together for
+//! efficient processing, making it ideal for high-throughput inference scenarios
+//! where GPU acceleration is available.
+//!
+//! # Key Concepts
+//!
+//! - **Batched Inference**: Batches multiple items together for efficient processing
+//! - **GPU Optimization**: Especially important for GPU-accelerated inference
+//! - **Configurable Batching**: Supports configurable batch size and timeout
+//! - **Transformer Wrapper**: Wraps `BatchedInferenceTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`MlBatchedInference<B>`]**: Node that performs batched ML inference
+//! - **[`InferenceBackend`]**: Trait for ML inference backends
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust,no_run
+//! use streamweave::graph::nodes::MlBatchedInference;
+//! use streamweave_ml_transformers::OnnxBackend;
+//! use std::time::Duration;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create and load a model backend
+//! let mut backend = OnnxBackend::new()?;
+//! backend.load_from_path("model.onnx").await?;
+//!
+//! // Create a batched inference node
+//! let inference = MlBatchedInference::new(backend)
+//!     .with_batch_size(32)
+//!     .with_timeout(Duration::from_millis(100));
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust,no_run
+//! use streamweave::graph::nodes::MlBatchedInference;
+//! use streamweave::ErrorStrategy;
+//! use streamweave_ml_transformers::OnnxBackend;
+//! use std::time::Duration;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! # let mut backend = OnnxBackend::new()?;
+//! // Create a batched inference node with error handling
+//! let inference = MlBatchedInference::new(backend)
+//!     .with_batch_size(64)
+//!     .with_timeout(Duration::from_millis(50))
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("batched-inference".to_string());
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Backend Abstraction**: Uses `InferenceBackend` trait for flexible backend support
+//! - **Batched Processing**: Processes items in batches for efficient GPU utilization
+//! - **Configurable Batching**: Supports batch size and timeout for flexible batching
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MlBatchedInference`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::ml::InferenceBackend;

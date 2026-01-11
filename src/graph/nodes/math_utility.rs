@@ -1,6 +1,71 @@
-//! Math utility node for StreamWeave graphs
+//! Math utility node for performing utility math operations.
 //!
-//! Performs utility math operations.
+//! This module provides [`MathUtilityNode`], a graph node that performs utility math
+//! operations on numeric values. It wraps [`MathUtilityTransformer`] for use in
+//! StreamWeave graphs. It supports utility operations like Hypot, Imul, Sign, Clz32,
+//! and Fround.
+//!
+//! # Overview
+//!
+//! [`MathUtilityNode`] is useful for performing utility mathematical operations on
+//! numeric values in graph-based pipelines. It processes JSON numeric values and
+//! applies utility functions, making it ideal for mathematical computations and
+//! conversions.
+//!
+//! # Key Concepts
+//!
+//! - **Utility Operations**: Supports Hypot, Imul, Sign, Clz32, Fround
+//! - **Binary Operations**: Some operations (Hypot, Imul) support optional second operand
+//! - **JSON Value Support**: Works with `serde_json::Value` numeric types
+//! - **Transformer Wrapper**: Wraps `MathUtilityTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`MathUtilityNode`]**: Node that performs utility math operations
+//! - **[`MathUtilityFunction`]**: Enum representing different utility functions
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathUtilityNode;
+//! use streamweave::transformers::MathUtilityFunction;
+//!
+//! // Calculate sign
+//! let sign = MathUtilityNode::new(MathUtilityFunction::Sign, None);
+//!
+//! // Calculate hypotenuse
+//! let hypot = MathUtilityNode::new(MathUtilityFunction::Hypot, Some(3.0));
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::MathUtilityNode;
+//! use streamweave::transformers::MathUtilityFunction;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a utility node with error handling
+//! let utility = MathUtilityNode::new(MathUtilityFunction::Sign, None)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("sign".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Function Enum**: Uses enum-based function selection for type safety
+//! - **Optional Second Operand**: Supports optional second operand for binary operations
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathUtilityNode`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::{MathUtilityFunction, MathUtilityTransformer};

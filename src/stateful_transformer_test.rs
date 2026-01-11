@@ -1,4 +1,35 @@
-//! Tests for stateful transformer module.
+//! # Stateful Transformer Test Suite
+//!
+//! Comprehensive test suite for stateful transformer functionality, including
+//! state management, checkpointing, and stateful transformation operations.
+//!
+//! ## Test Coverage
+//!
+//! This test suite covers:
+//!
+//! - **State Management**: Tests for `InMemoryStateStore` operations (get, set, update, reset)
+//! - **State Errors**: Error handling and error type validation
+//! - **Stateful Transformers**: Integration tests for transformers that maintain state
+//! - **Checkpointing**: File-based and in-memory checkpoint store operations
+//! - **State Serialization**: JSON serialization/deserialization of state
+//! - **Configuration**: Stateful transformer configuration options
+//! - **Checkpoint Management**: Checkpoint creation, saving, loading, and clearing
+//!
+//! ## Test Organization
+//!
+//! Tests are organized by component:
+//!
+//! - State error tests
+//! - In-memory state store tests
+//! - State store extension tests
+//! - State checkpoint tests
+//! - Stateful transformer config tests
+//! - Stateful transformer trait tests
+//! - Checkpoint error tests
+//! - Checkpoint config tests
+//! - File and in-memory checkpoint store tests
+//! - Checkpointable state store tests
+//! - Checkpoint manager tests
 
 use crate::error::ErrorStrategy;
 use crate::input::Input;

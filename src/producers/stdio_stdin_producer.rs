@@ -1,3 +1,75 @@
+//! Standard input (stdin) producer for reading stream data from stdin.
+//!
+//! This module provides [`StdioStdinProducer`], a producer that reads lines from
+//! standard input and emits each line as a string item. It's useful for building
+//! command-line tools that process input from stdin.
+//!
+//! # Overview
+//!
+//! [`StdioStdinProducer`] reads data from stdin line by line, making it ideal for
+//! command-line applications that need to process text input. It uses Tokio's async
+//! I/O for efficient reading and supports configurable error handling.
+//!
+//! # Key Concepts
+//!
+//! - **Stdin Reading**: Reads from standard input (stdin)
+//! - **Line-Based Reading**: Reads input line by line, emitting each line as a string
+//! - **Async I/O**: Uses Tokio's async I/O for efficient, non-blocking reads
+//! - **Error Handling**: Configurable error strategies for I/O failures
+//! - **Command-Line Tool Support**: Ideal for CLI applications that process stdin
+//!
+//! # Core Types
+//!
+//! - **[`StdioStdinProducer`]**: Producer that reads lines from stdin
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::StdioStdinProducer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a producer that reads from stdin
+//! let producer = StdioStdinProducer::new();
+//!
+//! // Use in a pipeline
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(producer)
+//!     .transformer(/* ... */)
+//!     .consumer(/* ... */);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::producers::StdioStdinProducer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a producer with error handling strategy
+//! let producer = StdioStdinProducer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)  // Skip errors and continue
+//!     .with_name("stdin-reader".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Line-Based**: Reads stdin line by line, which is the standard pattern for
+//!   text processing in command-line tools
+//! - **Async I/O**: Uses Tokio's async I/O for efficient, non-blocking reads
+//! - **String Output**: Emits `String` items, one per line from stdin
+//! - **EOF Handling**: Stops reading when EOF is reached (stdin closes)
+//! - **Error Logging**: I/O errors are logged and cause the stream to stop
+//!
+//! # Integration with StreamWeave
+//!
+//! [`StdioStdinProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use async_trait::async_trait;

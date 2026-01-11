@@ -1,6 +1,36 @@
-//! String length transformer for StreamWeave
+//! # String Length Transformer
 //!
-//! Gets the length of strings, producing a stream of usize values.
+//! Transformer that computes the length of input strings, producing a stream of
+//! `usize` values representing the number of bytes in each string.
+//!
+//! ## Overview
+//!
+//! The String Length Transformer provides:
+//!
+//! - **Length Calculation**: Computes byte length of strings
+//! - **Type Conversion**: Converts `String` to `usize`
+//! - **One-to-One**: Each input string produces one length value
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - Strings to measure
+//! - **Output**: `Message<usize>` - String lengths in bytes
+//!
+//! ## Note
+//!
+//! This transformer returns the byte length, not the character count. For Unicode
+//! strings, use character-aware operations if character count is needed.
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::StringLengthTransformer;
+//!
+//! let transformer = StringLengthTransformer::new();
+//! // Input: ["hello", "world"]
+//! // Output: [5, 5]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

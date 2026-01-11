@@ -1,6 +1,74 @@
-//! CSV stringify node for StreamWeave graphs
+//! CSV stringify node for converting JSON values to CSV strings.
 //!
-//! Converts JSON objects/arrays to CSV strings.
+//! This module provides [`CsvStringify`], a graph node that converts JSON objects
+//! and arrays to CSV strings. It wraps [`CsvStringifyTransformer`] for use in
+//! StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`CsvStringify`] is useful for converting structured JSON data to CSV format
+//! in graph-based pipelines. It supports configurable delimiters and header writing,
+//! making it ideal for exporting JSON data as CSV.
+//!
+//! # Key Concepts
+//!
+//! - **JSON to CSV Conversion**: Converts JSON values (objects, arrays) to CSV strings
+//! - **Configurable Formatting**: Supports custom delimiters and header writing
+//! - **JSON Value Input**: Works with `serde_json::Value` types
+//! - **Transformer Wrapper**: Wraps `CsvStringifyTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`CsvStringify`]**: Node that converts JSON values to CSV strings
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::CsvStringify;
+//!
+//! // Create a CSV stringify node
+//! let csv_stringify = CsvStringify::new();
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::graph::nodes::CsvStringify;
+//!
+//! // Create a CSV stringify node with custom configuration
+//! let csv_stringify = CsvStringify::new()
+//!     .with_headers(true)           // Include header row
+//!     .with_delimiter(b';');        // Semicolon delimiter
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::CsvStringify;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a CSV stringify node with error handling
+//! let csv_stringify = CsvStringify::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("csv-stringifier".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Uses `serde_json::Value` for flexible data structure
+//!   handling
+//! - **CSV Library Integration**: Uses the `csv` crate for robust CSV formatting
+//! - **Configurable Output**: Supports various CSV dialects through configuration
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CsvStringify`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::CsvStringifyTransformer;

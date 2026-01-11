@@ -1,27 +1,80 @@
-//! Stateful transformer trait for stream processing with persistent state.
+//! # Stateful Transformer
+//!
+//! Stateful transformer trait and state management infrastructure for stream processing
+//! with persistent state across stream items.
 //!
 //! This module provides the [`StatefulTransformer`] trait which extends the base
-//! [`Transformer`] trait with state management capabilities.
-//! State is thread-safe and persists across stream items, enabling use cases like:
+//! [`Transformer`] trait with state management capabilities. State is thread-safe,
+//! persists across stream items, and can be checkpointed for recovery and persistence.
 //!
-//! - Running aggregations (sum, average, count)
-//! - Session management
-//! - Pattern detection across items
-//! - Stateful windowing operations
+//! # Overview
 //!
-//! # Example
+//! Stateful transformers enable use cases that require maintaining state across
+//! multiple stream items, such as aggregations, session management, pattern detection,
+//! and stateful windowing operations. Unlike stateless transformers that process
+//! each item independently, stateful transformers can accumulate, update, and query
+//! state that persists throughout the stream processing lifecycle.
 //!
-//! ```rust,ignore
-//! use crate::stateful_transformer::{StatefulTransformer, InMemoryStateStore};
+//! # Key Concepts
 //!
-//! struct RunningSumTransformer {
-//!     state: InMemoryStateStore<i64>,
+//! ## State Management
+//!
+//! Stateful transformers maintain state through a **state store**, which provides
+//! thread-safe access to the current state. The state store abstraction allows
+//! for different implementations (in-memory, persistent, distributed, etc.).
+//!
+//! - **State Store**: Thread-safe storage backend for transformer state
+//! - **State Lifecycle**: Initialization → Access/Update → Reset/Cleanup
+//! - **Thread Safety**: All state operations are thread-safe for concurrent access
+//!
+//! ## State Checkpointing
+//!
+//! State can be checkpointed (serialized) and restored for recovery and persistence.
+//! Checkpointing enables:
+//!
+//! - **Recovery**: Restore state after failures or restarts
+//! - **Persistence**: Save state to disk or external storage
+//! - **Exactly-Once Processing**: Ensure state consistency across restarts
+//!
+//! ## Common Use Cases
+//!
+//! Stateful transformers are ideal for:
+//!
+//! - **Running Aggregations**: Sum, average, count, min, max across items
+//! - **Session Management**: Track sessions, timeouts, and stateful connections
+//! - **Pattern Detection**: Detect patterns across multiple items (e.g., sequences, anomalies)
+//! - **Stateful Windowing**: Maintain window state for tumbling, sliding, or session windows
+//! - **State Machines**: Implement state machines that transition based on input
+//! - **Caching**: Maintain caches or lookup tables that update over time
+//!
+//! # Core Types
+//!
+//! - **[`StatefulTransformer`]**: Trait for transformers that maintain state across items
+//! - **[`StateStore<S>`]**: Trait for state storage backends
+//! - **[`InMemoryStateStore<S>`]**: In-memory state store implementation
+//! - **[`StatefulTransformerConfig<T, S>`]**: Configuration for stateful transformers
+//! - **[`StatefulCheckpointStore`]**: Trait for checkpoint storage backends
+//! - **[`FileStatefulCheckpointStore`]**: File-based checkpoint store
+//! - **[`StatefulCheckpointManager<S>`]**: Helper for managing automatic checkpoints
+//! - **[`StateError`]**: Error type for state operations
+//! - **[`StatefulCheckpointError`]**: Error type for checkpoint operations
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use crate::stateful_transformer::{StatefulTransformer, InMemoryStateStore, StateStoreExt};
+//! use crate::{Transformer, TransformerConfig};
+//!
+//! struct CounterTransformer {
+//!     state: InMemoryStateStore<usize>,
 //!     config: TransformerConfig<i32>,
 //! }
 //!
-//! impl StatefulTransformer for RunningSumTransformer {
-//!     type State = i64;
-//!     type Store = InMemoryStateStore<i64>;
+//! impl StatefulTransformer for CounterTransformer {
+//!     type State = usize;
+//!     type Store = InMemoryStateStore<usize>;
 //!
 //!     fn state_store(&self) -> &Self::Store {
 //!         &self.state
@@ -31,6 +84,155 @@
 //!         &mut self.state
 //!     }
 //! }
+//!
+//! // Create transformer with initial state
+//! let store = InMemoryStateStore::new(0);
+//! let mut transformer = CounterTransformer {
+//!     state: store,
+//!     config: TransformerConfig::default(),
+//! };
+//!
+//! // Update state
+//! transformer.update_state(|count| count.unwrap_or(0) + 1).unwrap();
+//! assert_eq!(transformer.state().unwrap(), Some(1));
+//! ```
+//!
+//! ## State Store Usage
+//!
+//! ```rust
+//! use crate::stateful_transformer::{InMemoryStateStore, StateStore, StateStoreExt};
+//!
+//! // Create state store with initial value
+//! let store: InMemoryStateStore<i64> = InMemoryStateStore::new(0);
+//!
+//! // Get current state
+//! let current = store.get().unwrap();
+//! assert_eq!(current, Some(0));
+//!
+//! // Set state
+//! store.set(42).unwrap();
+//! assert_eq!(store.get().unwrap(), Some(42));
+//!
+//! // Update state with closure
+//! store.update(|current| current.unwrap_or(0) + 10).unwrap();
+//! assert_eq!(store.get().unwrap(), Some(52));
+//!
+//! // Reset to initial value
+//! store.reset().unwrap();
+//! assert_eq!(store.get().unwrap(), Some(0));
+//! ```
+//!
+//! ## Checkpointing
+//!
+//! ```rust
+//! use crate::stateful_transformer::{
+//!     InMemoryStateStore, StateStore, StateCheckpoint,
+//!     FileStatefulCheckpointStore, StatefulCheckpointStore,
+//! };
+//! use std::path::PathBuf;
+//!
+//! let store: InMemoryStateStore<i64> = InMemoryStateStore::new(42);
+//! store.set(100).unwrap();
+//!
+//! // Serialize state to bytes
+//! let checkpoint = store.serialize_state().unwrap();
+//!
+//! // Restore to a new store
+//! let store2: InMemoryStateStore<i64> = InMemoryStateStore::empty();
+//! store2.deserialize_and_set_state(&checkpoint).unwrap();
+//! assert_eq!(store2.get().unwrap(), Some(100));
+//!
+//! // File-based checkpointing
+//! let file_store = FileStatefulCheckpointStore::new(PathBuf::from("/tmp/checkpoint.json"));
+//! store.save_checkpoint(&file_store as &dyn StatefulCheckpointStore).unwrap();
+//! ```
+//!
+//! # Design Decisions
+//!
+//! ## Thread Safety
+//!
+//! All state operations are designed to be thread-safe. The default [`InMemoryStateStore`]
+//! uses `Arc<RwLock<Option<S>>>` to provide concurrent read access and exclusive write access.
+//! Custom state store implementations must ensure thread safety for concurrent access.
+//!
+//! ## State Store Abstraction
+//!
+//! The [`StateStore`] trait abstracts the storage mechanism, allowing for different
+//! implementations without changing transformer code. This enables:
+//!
+//! - In-memory state for single-process use cases
+//! - Persistent state for durability
+//! - Distributed state for multi-process scenarios
+//! - Custom state stores for specialized requirements
+//!
+//! ## Checkpointing Strategy
+//!
+//! Checkpointing is provided through extension traits to avoid forcing all state stores
+//! to implement serialization. This design allows:
+//!
+//! - State stores without serialization (for non-checkpointed use cases)
+//! - Different serialization formats (JSON, binary, etc.)
+//! - Custom checkpoint storage backends (file, database, cloud storage)
+//!
+//! ## Error Handling
+//!
+//! State operations return `StateResult<T>` which distinguishes between different
+//! error conditions (not initialized, lock poisoned, serialization failures, etc.).
+//! This allows transformers to handle errors appropriately based on the error type.
+//!
+//! # Integration with StreamWeave
+//!
+//! Stateful transformers integrate seamlessly with StreamWeave's transformer system:
+//!
+//! - **Transformer Trait**: [`StatefulTransformer`] extends [`Transformer`] with state management
+//! - **Error Handling**: Supports all standard error handling strategies
+//! - **Configuration**: Uses [`TransformerConfig`] with state-specific extensions
+//! - **Message Model**: Works with `Message<T>` for end-to-end traceability
+//! - **Graph API**: Can be used in graph-based execution with state preservation
+//!
+//! # Advanced Topics
+//!
+//! ## Custom State Stores
+//!
+//! Implement the [`StateStore`] trait to create custom state storage backends:
+//!
+//! ```rust
+//! use crate::stateful_transformer::{StateStore, StateResult, StateError};
+//!
+//! struct MyCustomStateStore {
+//!     // Your custom storage implementation
+//! }
+//!
+//! impl<S> StateStore<S> for MyCustomStateStore
+//! where
+//!     S: Clone + Send + Sync,
+//! {
+//!     fn get(&self) -> StateResult<Option<S>> {
+//!         // Implementation
+//!     }
+//!
+//!     // ... implement other methods
+//! }
+//! ```
+//!
+//! ## Automatic Checkpointing
+//!
+//! Use [`StatefulCheckpointManager`] to enable automatic checkpointing at intervals:
+//!
+//! ```rust
+//! use crate::stateful_transformer::{
+//!     StatefulCheckpointManager, StatefulCheckpointConfig,
+//!     FileStatefulCheckpointStore,
+//! };
+//! use std::path::PathBuf;
+//!
+//! let config = StatefulCheckpointConfig::with_interval(1000); // Checkpoint every 1000 items
+//! let manager = StatefulCheckpointManager::with_file(
+//!     PathBuf::from("/tmp/checkpoint.json"),
+//!     config,
+//! );
+//!
+//! // Use manager.maybe_checkpoint() after processing items
 //! ```
 
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};

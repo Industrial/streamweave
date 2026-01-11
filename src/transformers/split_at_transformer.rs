@@ -1,4 +1,38 @@
-//! Split-at transformer for StreamWeave
+//! # Split At Transformer
+//!
+//! Transformer that splits a stream of items at a specific index, producing
+//! two groups: items before the index and items at or after the index. This
+//! enables partitioning streams based on position.
+//!
+//! ## Overview
+//!
+//! The Split At Transformer provides:
+//!
+//! - **Index-Based Splitting**: Splits stream at a specific index position
+//! - **Two Groups**: Produces items before index and items at/after index
+//! - **Full Buffering**: Collects all items before splitting (requires memory for all items)
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to split
+//! - **Output**: `Message<Vec<T>>` - Two vectors: [items_before_index, items_at_or_after_index]
+//!
+//! ## Performance Considerations
+//!
+//! This transformer buffers all items in memory before splitting, so it's not
+//! suitable for very large streams.
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::SplitAtTransformer;
+//!
+//! let transformer = SplitAtTransformer::new(3);
+//! // Input: [1, 2, 3, 4, 5]
+//! // Output: [vec![1, 2, 3], vec![4, 5]] (split at index 3)
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

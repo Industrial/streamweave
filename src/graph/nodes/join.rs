@@ -1,8 +1,72 @@
-//! Strategy for joining multiple streams.
+//! Join node for joining multiple streams using various strategies.
 //!
-//! Note: Join would need special handling as it requires two input streams.
-//! This is a simplified version - a full implementation would need to be
-//! an InputRouter that takes two streams and produces a joined output stream.
+//! This module provides [`Join`] and [`JoinStrategy`], types for joining multiple
+//! streams in graph-based pipelines. It supports various join strategies including
+//! Inner, Outer, Left, and Right joins. Note: Join requires special handling as it
+//! needs two input streams. This is a simplified version - a full implementation
+//! would need to be an InputRouter that takes two streams and produces a joined
+//! output stream.
+//!
+//! # Overview
+//!
+//! [`Join`] is useful for combining multiple streams based on join strategies in
+//! graph-based pipelines. It supports various SQL-like join strategies, making it
+//! ideal for data integration and stream combination workflows.
+//!
+//! # Key Concepts
+//!
+//! - **Join Strategies**: Supports Inner, Outer, Left, and Right join strategies
+//! - **Dual Input**: Requires two input streams to join
+//! - **Stream Combination**: Combines items from multiple streams based on strategy
+//! - **SQL-Like Joins**: Implements SQL-like join semantics for streams
+//!
+//! # Core Types
+//!
+//! - **[`Join<T1, T2>`]**: Node that joins two streams using a specified strategy
+//! - **[`JoinStrategy`]**: Enum representing different join strategies
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::{Join, JoinStrategy};
+//!
+//! // Create a join node with Inner join strategy
+//! let join = Join::<i32, i32>::new(JoinStrategy::Inner);
+//! ```
+//!
+//! ## Different Join Strategies
+//!
+//! ```rust
+//! use streamweave::graph::nodes::{Join, JoinStrategy};
+//!
+//! // Inner join: Only emit when all streams have items
+//! let inner_join = Join::<i32, i32>::new(JoinStrategy::Inner);
+//!
+//! // Outer join: Emit when any stream has items
+//! let outer_join = Join::<i32, i32>::new(JoinStrategy::Outer);
+//!
+//! // Left join: Emit when left stream has items
+//! let left_join = Join::<i32, i32>::new(JoinStrategy::Left);
+//!
+//! // Right join: Emit when right stream has items
+//! let right_join = Join::<i32, i32>::new(JoinStrategy::Right);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Join Strategies**: Supports multiple join strategies for flexibility
+//! - **SQL-Like Semantics**: Implements familiar SQL-like join operations
+//! - **Type-Safe**: Supports generic types for different item types
+//! - **Simplified Implementation**: Current implementation is simplified and may
+//!   need enhancement for full InputRouter support
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Join`] implements the [`Transformer`] trait and can be used in any StreamWeave
+//! graph. Note that a full implementation would require InputRouter support for
+//! handling multiple input streams properly.
 
 use crate::{Input, Output, Transformer, TransformerConfig};
 use async_trait::async_trait;

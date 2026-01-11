@@ -1,6 +1,60 @@
-//! Array length transformer for StreamWeave
+//! Array length transformer for getting array sizes.
 //!
-//! Gets the length of arrays, producing a stream of number values.
+//! This module provides [`ArrayLengthTransformer`], a transformer that extracts the
+//! length (number of elements) from arrays. It converts each input array to its length
+//! as a number, useful for validation, filtering, and conditional processing.
+//!
+//! # Overview
+//!
+//! [`ArrayLengthTransformer`] takes each input array and outputs its length as a JSON
+//! number. This is useful for filtering arrays by size, validating array lengths, or
+//! computing statistics about array sizes in a stream.
+//!
+//! # Key Concepts
+//!
+//! - **Length Extraction**: Returns the number of elements in arrays
+//! - **Number Output**: Outputs length as a JSON number value
+//! - **JSON Processing**: Works with JSON Value arrays
+//! - **Simple Operation**: Direct length calculation
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`ArrayLengthTransformer`]**: Transformer that extracts array lengths
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::ArrayLengthTransformer;
+//! use serde_json::json;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer
+//! let transformer = ArrayLengthTransformer::new();
+//!
+//! // Input: [[1, 2, 3]]
+//! // Output: [3]  (length of the array)
+//!
+//! // Input: [[]]
+//! // Output: [0]  (empty array has length 0)
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Direct Length**: Uses array length directly (no validation needed)
+//! - **Number Type**: Returns length as JSON number for numeric operations
+//! - **Zero for Empty**: Empty arrays return length 0
+//! - **Simple Operation**: Minimal processing overhead
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ArrayLengthTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

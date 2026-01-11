@@ -1,6 +1,83 @@
-//! CSV stringify transformer for StreamWeave
+//! CSV stringify transformer for converting JSON data to CSV strings.
 //!
-//! Converts JSON objects/arrays from stream items into CSV strings.
+//! This module provides [`CsvStringifyTransformer`], a transformer that converts
+//! JSON objects or arrays of objects into CSV-formatted strings. It's the inverse
+//! of `CsvParseTransformer`, useful for exporting structured data to CSV format
+//! for storage, transmission, or further processing.
+//!
+//! # Overview
+//!
+//! [`CsvStringifyTransformer`] takes JSON objects or arrays of objects and converts
+//! them into CSV strings. It supports configurable delimiters, optional header rows,
+//! and handles various JSON value types (strings, numbers, booleans, null).
+//!
+//! # Key Concepts
+//!
+//! - **CSV Generation**: Converts JSON objects/arrays into CSV-formatted strings
+//! - **Header Support**: Optionally writes header row with field names
+//! - **Configurable Delimiters**: Supports custom delimiter characters (comma, semicolon, etc.)
+//! - **Type Handling**: Converts JSON values (strings, numbers, booleans, null) to CSV
+//! - **Array Processing**: Handles single objects or arrays of objects
+//!
+//! # Core Types
+//!
+//! - **[`CsvStringifyTransformer`]**: Transformer that converts JSON to CSV strings
+//! - **[`CsvStringifyConfig`]**: Configuration for CSV stringification behavior
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::CsvStringifyTransformer;
+//! use serde_json::json;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a CSV stringify transformer
+//! let transformer = CsvStringifyTransformer::new();
+//!
+//! // Input: [json!([{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}])]
+//! // Output: ["name,age\nAlice,30\nBob,25"]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::transformers::CsvStringifyTransformer;
+//!
+//! // Create a transformer with custom delimiter and no headers
+//! let transformer = CsvStringifyTransformer::new()
+//!     .with_headers(false)      // Don't write header row
+//!     .with_delimiter(b';');    // Use semicolon delimiter
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::CsvStringifyTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling
+//! let transformer = CsvStringifyTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("csv-exporter".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **CSV Library Integration**: Uses the `csv` crate for robust CSV generation
+//! - **JSON Input**: Accepts JSON Value types for flexible data structures
+//! - **Header Detection**: Automatically detects headers from first object's keys
+//! - **Type Conversion**: Converts JSON values to strings for CSV output
+//! - **Array Handling**: Supports both single objects and arrays of objects
+//!
+//! # Integration with StreamWeave
+//!
+//! [`CsvStringifyTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline or graph. It supports the standard error handling
+//! strategies and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

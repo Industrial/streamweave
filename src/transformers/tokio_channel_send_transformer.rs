@@ -1,7 +1,41 @@
-//! Tokio channel send transformer for StreamWeave
+//! # Tokio Channel Send Transformer
 //!
-//! Sends data to a tokio channel while passing data through. Takes data as input,
-//! sends to channel, and outputs the same data, enabling sending to channel and continuing processing.
+//! Transformer that sends data to a `tokio::sync::mpsc::Sender` while passing the
+//! same data through to the output stream. This enables sending items to a channel
+//! for parallel processing while continuing the main pipeline flow.
+//!
+//! ## Overview
+//!
+//! The Tokio Channel Send Transformer provides:
+//!
+//! - **Channel Integration**: Sends items to a tokio mpsc channel
+//! - **Pass-Through**: Outputs the same items that were sent to the channel
+//! - **Non-Blocking**: Channel sends are non-blocking (drops items if channel is full)
+//! - **Error Handling**: Configurable error strategies for send failures
+//! - **Type Safety**: Generic over any `Send + Sync + Clone` type
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to send to the channel
+//! - **Output**: `Message<T>` - The same items (pass-through)
+//!
+//! ## Use Cases
+//!
+//! - **Parallel Processing**: Send items to a separate processing pipeline
+//! - **Monitoring**: Send items to a monitoring/logging channel
+//! - **Fan-Out**: Distribute items to multiple consumers
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::TokioChannelSendTransformer;
+//! use tokio::sync::mpsc;
+//!
+//! let (tx, _rx) = mpsc::channel(100);
+//! let transformer = TokioChannelSendTransformer::new(tx);
+//! // Input: ["hello", "world"]
+//! // Sends to channel and outputs: ["hello", "world"]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

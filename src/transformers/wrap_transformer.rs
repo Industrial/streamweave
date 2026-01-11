@@ -1,8 +1,41 @@
-//! Wrap transformer for StreamWeave
+//! # Wrap Transformer
 //!
-//! Wraps items with additional metadata or envelopes. While StreamWeave automatically
-//! wraps items in `Message<T>`, this transformer allows adding custom metadata or
-//! wrapping items in custom envelope structures.
+//! Transformer that wraps items with additional metadata, headers, or envelope
+//! structures. While StreamWeave automatically wraps items in `Message<T>`, this
+//! transformer allows adding custom metadata for inter-system communication or
+//! enhanced message routing.
+//!
+//! ## Overview
+//!
+//! The Wrap Transformer provides:
+//!
+//! - **Metadata Addition**: Adds custom headers or metadata to messages
+//! - **Envelope Wrapping**: Wraps items in custom envelope structures
+//! - **Message Enhancement**: Enhances messages with additional context
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to wrap
+//! - **Output**: `Message<T>` - Items with added metadata/headers
+//!
+//! ## Use Cases
+//!
+//! - **Inter-System Communication**: Add headers for downstream systems
+//! - **Message Routing**: Add routing metadata to messages
+//! - **Context Propagation**: Propagate context through pipelines
+//!
+//! ## Example
+//!
+//! ```rust
+//! use streamweave::transformers::WrapTransformer;
+//! use std::collections::HashMap;
+//!
+//! let mut headers = HashMap::new();
+//! headers.insert("source".to_string(), "pipeline".to_string());
+//! let transformer = WrapTransformer::with_headers(headers);
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

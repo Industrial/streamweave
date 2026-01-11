@@ -1,6 +1,89 @@
-//! String split transformer for StreamWeave
+//! # String Split Transformer
 //!
-//! Splits strings by a delimiter, producing a stream of substrings.
+//! This module provides [`StringSplitTransformer`], a transformer that splits input
+//! strings by a specified delimiter, producing a stream where each substring becomes
+//! a separate output item. Useful for parsing delimited data formats, CSV-like data,
+//! and text processing operations.
+//!
+//! # Overview
+//!
+//! [`StringSplitTransformer`] is useful for splitting delimited strings into individual
+//! substrings in streaming data processing pipelines. Each input string is split by the
+//! specified delimiter, with each resulting substring becoming a separate output item.
+//! This enables one-to-many transformations where a single input item can produce
+//! multiple output items.
+//!
+//! # Key Concepts
+//!
+//! - **Delimiter Splitting**: Splits strings by a configurable delimiter string
+//! - **One-to-Many Transformation**: Each input string can produce multiple output substrings
+//! - **Flexible Delimiters**: Supports any string delimiter (not just single characters)
+//! - **Stream Processing**: Processes strings in a streaming fashion
+//! - **Error Handling**: Configurable error strategies for handling failures
+//!
+//! # Core Types
+//!
+//! - **[`StringSplitTransformer`]**: Transformer that splits strings by a delimiter
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::StringSplitTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that splits by comma
+//! let transformer = StringSplitTransformer::new(",");
+//!
+//! // Input: ["a,b,c", "x,y"]
+//! // Output: ["a", "b", "c", "x", "y"]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Different Delimiters
+//!
+//! ```rust
+//! use streamweave::transformers::StringSplitTransformer;
+//!
+//! // Split by semicolon
+//! let transformer = StringSplitTransformer::new(";");
+//! // Input: ["a;b;c"]
+//! // Output: ["a", "b", "c"]
+//!
+//! // Split by multi-character delimiter
+//! let transformer = StringSplitTransformer::new("::");
+//! // Input: ["a::b::c"]
+//! // Output: ["a", "b", "c"]
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::StringSplitTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = StringSplitTransformer::new(",")
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("csv-splitter".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **String Delimiter**: Uses string-based delimiter matching, not regex (for simplicity and performance)
+//! - **One-to-Many**: Uses `flat_map` to enable one input string producing multiple output items
+//! - **Simple API**: Delimiter specified at construction time for clarity
+//! - **Stream Processing**: Processes items in a streaming fashion for efficiency
+//! - **Performance**: Uses Rust's standard library string splitting methods
+//!
+//! # Integration with StreamWeave
+//!
+//! [`StringSplitTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

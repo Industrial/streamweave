@@ -1,4 +1,38 @@
-//! Timeout transformer for StreamWeave
+//! # Timeout Transformer
+//!
+//! Transformer that applies a timeout to stream processing, ensuring that items
+//! are processed within a specified time limit. Items that exceed the timeout
+//! will trigger the configured error strategy.
+//!
+//! ## Overview
+//!
+//! The Timeout Transformer provides:
+//!
+//! - **Timeout Enforcement**: Ensures items are processed within a time limit
+//! - **Error Handling**: Configurable error strategies for timeout failures
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Stream Safety**: Prevents items from blocking the stream indefinitely
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to process with timeout
+//! - **Output**: `Message<T>` - Items that completed within the timeout
+//!
+//! ## Use Cases
+//!
+//! - **SLA Enforcement**: Ensure processing completes within service level agreements
+//! - **Resource Protection**: Prevent slow operations from blocking the stream
+//! - **Timeout Wrapping**: Add timeout behavior to existing transformers
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::TimeoutTransformer;
+//! use tokio::time::Duration;
+//!
+//! let transformer = TimeoutTransformer::new(Duration::from_secs(5));
+//! // Items must complete within 5 seconds or trigger error strategy
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

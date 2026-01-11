@@ -1,4 +1,38 @@
-//! Rate limit transformer for StreamWeave
+//! # Rate Limit Transformer
+//!
+//! Transformer that rate limits items in a stream, ensuring only a specified
+//! number of items are processed within a given time window. This prevents
+//! overload and ensures fair resource usage.
+//!
+//! ## Overview
+//!
+//! The Rate Limit Transformer provides:
+//!
+//! - **Rate Limiting**: Limits items processed per time window
+//! - **Time Window**: Configurable time window for rate limiting
+//! - **Thread-Safe**: Uses atomic counters and locks for concurrent access
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to rate limit
+//! - **Output**: `Message<T>` - Rate-limited items (throttled to limit)
+//!
+//! ## Rate Limiting Behavior
+//!
+//! The transformer enforces a maximum number of items per time window. When the
+//! limit is reached, items are delayed until the next window starts.
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::RateLimitTransformer;
+//! use tokio::time::Duration;
+//!
+//! let transformer = RateLimitTransformer::new(10, Duration::from_secs(1));
+//! // Limits to 10 items per second
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

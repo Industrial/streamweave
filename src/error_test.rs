@@ -1,3 +1,47 @@
+//! # Error Handling Test Suite
+//!
+//! Comprehensive test suite for the error handling system, including error actions,
+//! error strategies, stream errors, pipeline errors, and error context management.
+//!
+//! ## Test Coverage
+//!
+//! This test suite covers:
+//!
+//! - **ErrorAction**: Stop, Skip, and Retry action variants with equality and cloning
+//! - **ErrorStrategy**: Stop, Skip, Retry(n), and Custom strategy variants with handler execution
+//! - **StreamError**: Error creation, display formatting, source access, and cloning
+//! - **PipelineError**: Pipeline-specific error wrapping, context access, and display
+//! - **ErrorContext**: Timestamp, item, component information, and default values
+//! - **ComponentInfo**: Component name and type information management
+//! - **PipelineStage**: Producer, Transformer, and Consumer stage variants
+//! - **StringError**: Simple string-based error type for testing
+//!
+//! ## Test Organization
+//!
+//! Tests are organized to cover:
+//!
+//! 1. **ErrorAction Tests**: All variants, equality, cloning, and matching
+//! 2. **ErrorStrategy Tests**: All variants, custom handlers, cloning, and equality
+//! 3. **StreamError Tests**: Creation, display, source access, cloning, and retry tracking
+//! 4. **PipelineError Tests**: Creation, context access, display, and source access
+//! 5. **ErrorContext Tests**: Field access, default values, cloning, and equality
+//! 6. **ComponentInfo Tests**: Default values, creation, cloning, and equality
+//! 7. **PipelineStage Tests**: All variants, cloning, and equality
+//!
+//! ## Key Concepts
+//!
+//! - **ErrorAction**: The action to take when an error occurs (Stop, Skip, Retry)
+//! - **ErrorStrategy**: The strategy for handling errors, including custom handlers
+//! - **StreamError**: Rich error context with source, component info, and retry count
+//! - **PipelineError**: Pipeline-specific error wrapper with stage information
+//! - **ErrorContext**: Contextual information about when and where an error occurred
+//!
+//! ## Usage
+//!
+//! These tests ensure that the error handling system correctly manages errors
+//! throughout the pipeline, providing rich context for debugging and proper
+//! error propagation.
+
 use crate::error::{
   ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, PipelineError, PipelineErrorContext,
   PipelineStage, StreamError, StringError,

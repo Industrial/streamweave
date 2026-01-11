@@ -1,6 +1,78 @@
-//! TCP receive node for StreamWeave graphs
+//! TCP receive node for receiving data from TCP connections in graphs.
 //!
-//! Receives data from TCP connections.
+//! This module provides [`TcpReceive`], a graph node that receives data from
+//! TCP connections. It wraps [`TcpReceiveTransformer`] for use in StreamWeave
+//! graphs. It connects to a remote TCP address and receives data, making it
+//! ideal for network-based data ingestion in graph-based pipelines.
+//!
+//! # Overview
+//!
+//! [`TcpReceive`] is useful for receiving data from TCP connections in
+//! graph-based pipelines. It connects to a remote TCP address and receives
+//! data, supporting configurable connection options, buffer sizes, and reading
+//! modes (lines or delimiter-based).
+//!
+//! # Key Concepts
+//!
+//! - **TCP Reception**: Receives data from TCP connections
+//! - **Configurable Options**: Supports timeout, buffer size, reading modes
+//! - **Line-Based or Delimiter-Based**: Supports reading as lines or with custom delimiters
+//! - **Transformer Wrapper**: Wraps `TcpReceiveTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`TcpReceive`]**: Node that receives data from TCP connections
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::TcpReceive;
+//!
+//! // Create a TCP receive node
+//! let tcp_receive = TcpReceive::new("127.0.0.1:8080");
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::graph::nodes::TcpReceive;
+//!
+//! // Create a TCP receive node with configuration
+//! let tcp_receive = TcpReceive::new("127.0.0.1:8080")
+//!     .with_timeout_secs(10)
+//!     .with_buffer_size(8192)
+//!     .with_read_as_lines(true)
+//!     .with_max_items(Some(1000));
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::TcpReceive;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a TCP receive node with error handling
+//! let tcp_receive = TcpReceive::new("127.0.0.1:8080")
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("tcp-receiver".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **TCP Connection**: Uses Tokio's async TCP for non-blocking network I/O
+//! - **Configurable Options**: Supports timeout, buffer size, reading modes for
+//!   flexibility
+//! - **Line/Delimiter-Based**: Supports both line-based and delimiter-based reading
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`TcpReceive`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::TcpReceiveTransformer;

@@ -1,4 +1,85 @@
-//! Map transformer for StreamWeave
+//! Map transformer for StreamWeave.
+//!
+//! This module provides [`MapTransformer`], a transformer that applies a function
+//! to each item in a stream, creating a one-to-one mapping between input and output
+//! items. It's one of the most fundamental and commonly used transformers in
+//! StreamWeave pipelines.
+//!
+//! # Overview
+//!
+//! [`MapTransformer`] is the core transformation primitive in StreamWeave. It takes
+//! each input item, applies a user-defined function to it, and produces a transformed
+//! output item. This enables arbitrary data transformations while maintaining the
+//! stream's structure.
+//!
+//! # Key Concepts
+//!
+//! - **One-to-One Mapping**: Each input item produces exactly one output item
+//! - **Function Application**: Applies a user-defined function to each item
+//! - **Type Transformation**: Can transform items from one type to another
+//! - **Zero-Copy Support**: Implements `ZeroCopyTransformer` for performance
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`MapTransformer<F, I, O>`]**: Transformer that applies a function to each item
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::MapTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that doubles each number
+//! let transformer = MapTransformer::new(|x: i32| x * 2);
+//!
+//! // Input: [1, 2, 3]
+//! // Output: [2, 4, 6]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Type Transformation
+//!
+//! ```rust
+//! use streamweave::transformers::MapTransformer;
+//!
+//! // Transform strings to their lengths
+//! let transformer = MapTransformer::new(|s: String| s.len());
+//!
+//! // Input: ["hello", "world"]
+//! // Output: [5, 5]
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::MapTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = MapTransformer::new(|x: i32| x * 2)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("double-values".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Generic Function Type**: Accepts any function that implements `FnMut(I) -> O`
+//! - **Clone Support**: Function must be `Clone` for use in async contexts
+//! - **Zero-Copy Support**: Implements `ZeroCopyTransformer` for performance optimization
+//! - **Type Safety**: Strongly typed input and output types
+//! - **Flexibility**: Can transform between any compatible types
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MapTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline. It also implements [`ZeroCopyTransformer`] for performance
+//! optimization in zero-copy execution modes. It supports the standard error handling
+//! strategies and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::graph::ZeroCopyTransformer;

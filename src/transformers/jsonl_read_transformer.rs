@@ -1,6 +1,48 @@
-//! JSONL read transformer for StreamWeave
+//! # JSONL Read Transformer
 //!
-//! Reads JSONL files from input paths and deserializes them line by line.
+//! Transformer that reads JSON Lines (JSONL) files from input file paths and
+//! deserializes them line by line. JSONL is a text format where each line is
+//! a valid JSON value, making it ideal for streaming large datasets.
+//!
+//! ## Overview
+//!
+//! The JSONL Read Transformer provides:
+//!
+//! - **JSONL File Reading**: Reads and parses JSONL files line by line
+//! - **Type-Safe Deserialization**: Deserializes each line into strongly-typed Rust types
+//! - **Streaming Format**: Processes one line at a time for memory efficiency
+//! - **Error Handling**: Configurable error strategies for parse failures
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<String>` - File paths to JSONL files
+//! - **Output**: `Message<T>` - Deserialized JSONL objects (type depends on T)
+//!
+//! ## JSONL Format
+//!
+//! JSON Lines is a text format where each line is a valid JSON value:
+//!
+//! ```jsonl
+//! {"id": 1, "message": "hello"}
+//! {"id": 2, "message": "world"}
+//! ```
+//!
+//! ## Example
+//!
+//! ```rust,no_run
+//! use streamweave::transformers::JsonlReadTransformer;
+//! use serde::Deserialize;
+//!
+//! #[derive(Debug, Deserialize, Clone)]
+//! struct Event {
+//!     id: u32,
+//!     message: String,
+//! }
+//!
+//! let transformer = JsonlReadTransformer::<Event>::new();
+//! // Input: ["events1.jsonl", "events2.jsonl"]
+//! // Output: [Event { id: 1, message: "..." }, Event { id: 2, message: "..." }, ...]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

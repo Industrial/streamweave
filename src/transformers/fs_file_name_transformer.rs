@@ -1,3 +1,77 @@
+//! File name extraction transformer for StreamWeave.
+//!
+//! This module provides [`FsFileNameTransformer`], a transformer that extracts
+//! the file name from path strings. It processes file paths and extracts just
+//! the filename component, useful for path manipulation and file processing
+//! operations.
+//!
+//! # Overview
+//!
+//! [`FsFileNameTransformer`] is useful for extracting filenames from full file
+//! paths in streaming pipelines. It takes path strings as input and produces
+//! just the filename component, making it ideal for path manipulation and
+//! file-based processing workflows.
+//!
+//! # Key Concepts
+//!
+//! - **Path Extraction**: Extracts the filename component from full paths
+//! - **Cross-Platform**: Uses Rust's `Path` API for cross-platform path handling
+//! - **String Processing**: Works with path strings for compatibility
+//! - **Error Handling**: Configurable error strategies
+//!
+//! # Core Types
+//!
+//! - **[`FsFileNameTransformer`]**: Transformer that extracts filenames from paths
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::FsFileNameTransformer;
+//! use streamweave::PipelineBuilder;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a transformer that extracts filenames
+//! let transformer = FsFileNameTransformer::new();
+//!
+//! // Input: ["/path/to/file.txt", "/another/path/data.json"]
+//! // Output: ["file.txt", "data.json"]
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::FsFileNameTransformer;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a transformer with error handling strategy
+//! let transformer = FsFileNameTransformer::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("filename-extractor".to_string());
+//! ```
+//!
+//! # Behavior
+//!
+//! The transformer extracts the filename component from each input path string.
+//! If a path doesn't have a filename component (e.g., a directory path ending
+//! with a separator), it returns an empty string.
+//!
+//! # Design Decisions
+//!
+//! - **Path API**: Uses Rust's standard `Path` API for cross-platform compatibility
+//! - **String Input/Output**: Works with strings for compatibility with text-based streams
+//! - **Empty String Fallback**: Returns empty string for paths without filename component
+//! - **Simple Extraction**: Focuses solely on filename extraction for clarity
+//!
+//! # Integration with StreamWeave
+//!
+//! [`FsFileNameTransformer`] implements the [`Transformer`] trait and can be used
+//! in any StreamWeave pipeline. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};
 use async_trait::async_trait;
@@ -6,6 +80,19 @@ use std::path::Path;
 use std::pin::Pin;
 
 /// A transformer that extracts the file name from path strings.
+///
+/// Takes file path strings as input and extracts just the filename component,
+/// returning the filename without the directory path.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::transformers::FsFileNameTransformer;
+///
+/// let transformer = FsFileNameTransformer::new();
+/// // Input: ["/path/to/file.txt"]
+/// // Output: ["file.txt"]
+/// ```
 pub struct FsFileNameTransformer {
   pub config: TransformerConfig<String>,
 }

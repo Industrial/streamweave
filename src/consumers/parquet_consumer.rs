@@ -1,3 +1,81 @@
+//! Parquet consumer for writing stream data to Parquet files.
+//!
+//! This module provides [`ParquetConsumer`], [`ParquetWriteConfig`], and related
+//! types for writing Arrow record batches to Parquet format. Parquet is a columnar
+//! storage format optimized for analytics workloads and supports efficient compression
+//! and predicate pushdown.
+//!
+//! # Overview
+//!
+//! [`ParquetConsumer`] is useful for exporting stream data to Parquet format for
+//! analytics, data warehousing, and big data processing. It writes Arrow record batches
+//! to Parquet files with configurable compression, row group sizes, and writer versions.
+//!
+//! # Key Concepts
+//!
+//! - **Arrow Record Batches**: Input must be Arrow `RecordBatch` structures
+//! - **Columnar Format**: Parquet stores data in columnar format for analytics efficiency
+//! - **Compression**: Supports multiple compression algorithms (Snappy, LZ4, Zstd, etc.)
+//! - **Row Groups**: Configurable row group sizes for query optimization
+//!
+//! # Core Types
+//!
+//! - **[`ParquetConsumer`]**: Consumer that writes record batches to Parquet files
+//! - **[`ParquetWriteConfig`]**: Configuration for Parquet writing behavior
+//! - **[`ParquetCompression`]**: Available compression algorithms
+//! - **[`ParquetWriterVersion`]**: Parquet file format version
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::consumers::ParquetConsumer;
+//! use arrow::record_batch::RecordBatch;
+//! use futures::stream;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a consumer with a file path
+//! let mut consumer = ParquetConsumer::new("output.parquet".into());
+//!
+//! // Create a stream of record batches
+//! let stream = stream::iter(vec![
+//!     // ... RecordBatch instances
+//! ]);
+//!
+//! // Consume the stream (batches written to Parquet)
+//! consumer.consume(Box::pin(stream)).await;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Configuration
+//!
+//! ```rust
+//! use streamweave::consumers::{ParquetConsumer, ParquetWriteConfig, ParquetCompression};
+//!
+//! // Create Parquet configuration
+//! let parquet_config = ParquetWriteConfig::default()
+//!     .with_compression(ParquetCompression::Snappy)
+//!     .with_max_row_group_size(1024 * 1024 * 10);  // 10MB row groups
+//!
+//! let consumer = ParquetConsumer::with_config("output.parquet".into(), parquet_config);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Arrow Integration**: Uses Arrow for type-safe, efficient columnar data handling
+//! - **Parquet Crate**: Uses the parquet crate for standards-compliant Parquet writing
+//! - **Configurable Compression**: Supports multiple compression algorithms for
+//!   different trade-offs between size and speed
+//! - **Row Group Optimization**: Configurable row group sizes for query performance
+//!
+//! # Integration with StreamWeave
+//!
+//! [`ParquetConsumer`] implements the [`Consumer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ConsumerConfig`].
+
 use arrow::record_batch::RecordBatch;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};

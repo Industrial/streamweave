@@ -1,6 +1,56 @@
-//! Database operation node for StreamWeave graphs
+//! # Database Operation Node
 //!
-//! Performs database operations (INSERT/UPDATE/DELETE) from stream items.
+//! **Status: Not Yet Implemented**
+//!
+//! This module is reserved for a future DatabaseOperationNode implementation that will
+//! perform database operations (INSERT/UPDATE/DELETE) from stream items. Currently, the
+//! module only contains placeholder documentation and commented-out tests as the node is
+//! not yet implemented.
+//!
+//! # Overview
+//!
+//! When implemented, DatabaseOperationNode will provide a graph node for performing
+//! database write operations (INSERT, UPDATE, DELETE) from stream items. It will wrap
+//! DatabaseOperationTransformer for use in StreamWeave graphs, enabling database
+//! operations as part of graph-based data processing pipelines.
+//!
+//! # Key Concepts (Planned)
+//!
+//! - **Database Operations**: INSERT, UPDATE, and DELETE operations on database tables
+//! - **Multi-Database Support**: Support for MySQL, PostgreSQL, and SQLite
+//! - **Stream Processing**: Execute operations from stream items
+//! - **Graph Integration**: Integrate with StreamWeave's graph node system
+//! - **Transaction Support**: Support for transactional operations (planned)
+//!
+//! # Core Types (Planned)
+//!
+//! - **DatabaseOperationNode**: Node that performs database write operations (not yet implemented)
+//!
+//! # Future Implementation
+//!
+//! When implemented, DatabaseOperationNode will:
+//!
+//! - Perform INSERT, UPDATE, and DELETE operations on database tables
+//! - Support multiple database types (MySQL, PostgreSQL, SQLite)
+//! - Execute operations from stream items
+//! - Integrate with StreamWeave's graph node system
+//! - Support configurable error handling strategies
+//!
+//! # Related Modules
+//!
+//! - **[`DatabaseQuery`](crate::graph::nodes::DatabaseQuery)**: Currently available node for
+//!   executing database queries (SELECT operations)
+//! - **[`DbMysqlWrite`](crate::graph::nodes::DbMysqlWrite)**: MySQL write operations node
+//! - **[`DbPostgresWrite`](crate::graph::nodes::DbPostgresWrite)**: PostgreSQL write operations node
+//! - **[`DbSqliteWrite`](crate::graph::nodes::DbSqliteWrite)**: SQLite write operations node
+//! - **DatabaseOperationTransformer**:
+//!   Transformer implementation that will be wrapped by this node
+//!
+//! # Note
+//!
+//! The current file contains `CsvWrite` code which appears to be a placeholder.
+//! This will be replaced with the actual `DatabaseOperationNode` implementation when
+//! the feature is implemented.
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::CsvWriteTransformer;

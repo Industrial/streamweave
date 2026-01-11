@@ -1,6 +1,65 @@
-//! Parent path extraction node for StreamWeave graphs
+//! Parent path extraction node for extracting parent directories from paths.
 //!
-//! Extracts the parent directory path from file path strings.
+//! This module provides [`FsParentPath`], a graph node that extracts the parent
+//! directory path from file path strings. It wraps [`FsParentPathTransformer`] for
+//! use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`FsParentPath`] is useful for extracting parent directory paths from file paths
+//! in graph-based pipelines. It processes path strings and extracts the parent
+//! directory component, making it ideal for file processing workflows that need
+//! to work with directory paths.
+//!
+//! # Key Concepts
+//!
+//! - **Parent Extraction**: Extracts the parent directory from file paths
+//! - **Path Parsing**: Parses file paths and extracts the directory component
+//! - **String Transformation**: Converts full paths to parent directory paths
+//! - **Transformer Wrapper**: Wraps `FsParentPathTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`FsParentPath`]**: Node that extracts parent directory paths from file paths
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::FsParentPath;
+//!
+//! // Create a parent path extraction node
+//! let parent_path = FsParentPath::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::FsParentPath;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a parent path extraction node with error handling
+//! let parent_path = FsParentPath::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("parent-extractor".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Path Library Integration**: Uses Rust's standard path handling for
+//!   cross-platform compatibility
+//! - **Parent Extraction**: Extracts just the parent directory component,
+//!   not the filename
+//! - **String-Based**: Works with path strings for simplicity and compatibility
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`FsParentPath`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::FsParentPathTransformer;

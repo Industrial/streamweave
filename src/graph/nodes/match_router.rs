@@ -1,7 +1,76 @@
-//! Router that routes items based on pattern matching (match/switch).
+//! Match router for routing items based on pattern matching.
 //!
-//! Supports multiple patterns and an optional default port. Includes helper
-//! pattern implementations for common use cases.
+//! This module provides [`Match`] and [`Pattern`], types for routing items based on
+//! pattern matching (match/switch pattern) in graph-based pipelines. It supports
+//! multiple patterns and an optional default port, making it ideal for conditional
+//! routing based on complex matching conditions. It implements [`OutputRouter`]
+//! for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`Match`] is useful for routing items based on pattern matching in graph-based
+//! pipelines. It supports multiple patterns with an optional default port, allowing
+//! complex conditional routing scenarios similar to switch/match statements in
+//! programming languages.
+//!
+//! # Key Concepts
+//!
+//! - **Pattern Matching**: Routes items based on pattern matching against multiple
+//!   patterns
+//! - **Multiple Patterns**: Supports multiple patterns with first-match semantics
+//! - **Default Port**: Optional default port for items that don't match any pattern
+//! - **Pattern Trait**: Uses the `Pattern` trait for flexible pattern matching
+//!
+//! # Core Types
+//!
+//! - **[`Match<O>`]**: Router that routes items based on pattern matching
+//! - **[`Pattern<T>`]**: Trait for pattern matching implementations
+//! - **[`PredicatePattern`]**: Pattern that matches items based on a predicate
+//! - **[`RangePattern`]**: Pattern that matches items within a range
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::{Match, Pattern, RangePattern};
+//!
+//! // Create patterns for routing
+//! let patterns: Vec<Box<dyn Pattern<i32>>> = vec![
+//!     Box::new(RangePattern::new(0..50, 0)),    // Route 0-49 to port 0
+//!     Box::new(RangePattern::new(50..100, 1)),  // Route 50-99 to port 1
+//! ];
+//!
+//! // Create match router with default port
+//! let match_router = Match::new(patterns, Some(2));  // Default to port 2
+//! ```
+//!
+//! ## With Predicate Patterns
+//!
+//! ```rust
+//! use streamweave::graph::nodes::{Match, Pattern, PredicatePattern};
+//!
+//! // Create predicate patterns
+//! let patterns: Vec<Box<dyn Pattern<String>>> = vec![
+//!     Box::new(PredicatePattern::new(|s: &String| s.starts_with("A"), 0)),
+//!     Box::new(PredicatePattern::new(|s: &String| s.starts_with("B"), 1)),
+//! ];
+//!
+//! let match_router = Match::new(patterns, None);
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Pattern Trait**: Uses a trait-based approach for flexible pattern matching
+//! - **First-Match Semantics**: Patterns are checked in order, first match wins
+//! - **Default Port**: Optional default port for unmatched items
+//! - **Router Trait**: Implements `OutputRouter` for integration with graph system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`Match`] implements the [`OutputRouter`] trait and can be used in any StreamWeave
+//! graph. It routes items to different output ports based on pattern matching,
+//! enabling complex conditional routing patterns.
 
 use crate::graph::router::OutputRouter;
 use async_trait::async_trait;

@@ -1,6 +1,75 @@
-//! Math logarithmic transformer for StreamWeave
+//! Math logarithmic transformer for performing logarithmic and exponential operations.
 //!
-//! Performs logarithmic and exponential operations on numeric values.
+//! This module provides [`MathLogarithmicTransformer`] and [`LogarithmicFunction`],
+//! types for performing logarithmic and exponential operations on numeric values in
+//! StreamWeave pipelines. It supports Log, Log2, Log10, Log1p, Exp, Exp2, and Expm1
+//! operations, making it ideal for mathematical computations. It implements the
+//! [`Transformer`] trait for use in StreamWeave pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`MathLogarithmicTransformer`] is useful for performing logarithmic and exponential
+//! operations on numeric values in StreamWeave pipelines. It processes JSON numeric
+//! values and applies logarithmic/exponential functions, making it ideal for
+//! mathematical computations.
+//!
+//! # Key Concepts
+//!
+//! - **Logarithmic Functions**: Supports Log, Log2, Log10, Log1p
+//! - **Exponential Functions**: Supports Exp, Exp2, Expm1
+//! - **JSON Value Support**: Works with `serde_json::Value` numeric types
+//! - **Transformer Trait**: Implements `Transformer` for pipeline integration
+//!
+//! # Core Types
+//!
+//! - **[`MathLogarithmicTransformer`]**: Transformer that performs logarithmic and exponential operations
+//! - **[`LogarithmicFunction`]**: Enum representing different logarithmic/exponential functions
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::transformers::{MathLogarithmicTransformer, LogarithmicFunction};
+//!
+//! // Natural logarithm
+//! let transformer = MathLogarithmicTransformer::new(LogarithmicFunction::Log);
+//! ```
+//!
+//! ## Exponential
+//!
+//! ```rust
+//! use streamweave::transformers::{MathLogarithmicTransformer, LogarithmicFunction};
+//!
+//! // Exponential
+//! let transformer = MathLogarithmicTransformer::new(LogarithmicFunction::Exp);
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::{MathLogarithmicTransformer, LogarithmicFunction};
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a logarithmic transformer with error handling
+//! let transformer = MathLogarithmicTransformer::new(LogarithmicFunction::Log)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("log".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Function Enum**: Uses enum-based function selection for type safety
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   pipeline system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathLogarithmicTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

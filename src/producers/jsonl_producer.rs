@@ -1,3 +1,89 @@
+//! JSON Lines (JSONL) producer for reading and deserializing JSONL files.
+//!
+//! This module provides [`JsonlProducer<T>`], a producer that reads JSON Lines files
+//! and deserializes each line as a JSON value. JSONL is a text format where each line
+//! is a valid JSON value, making it ideal for streaming large datasets.
+//!
+//! # Overview
+//!
+//! [`JsonlProducer`] reads JSONL files line by line, deserializing each line into the
+//! specified type. Unlike regular JSON files, JSONL files are processed incrementally,
+//! making them memory-efficient for large datasets. Perfect for log files, event streams,
+//! and large-scale data processing.
+//!
+//! # Key Concepts
+//!
+//! - **Line-by-Line Processing**: Each line is a complete JSON value
+//! - **Streaming-Friendly**: Processes lines incrementally, memory-efficient for large files
+//! - **Type-Safe Deserialization**: Deserializes each line into strongly-typed structs
+//! - **Async File I/O**: Uses Tokio for efficient async file reading
+//! - **Error Handling**: Configurable error strategies for parsing failures
+//!
+//! # Core Types
+//!
+//! - **[`JsonlProducer<T>`]**: Producer that reads and deserializes JSONL files
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::producers::JsonlProducer;
+//! use streamweave::PipelineBuilder;
+//! use serde::Deserialize;
+//!
+//! #[derive(Deserialize)]
+//! struct Event {
+//!     id: u32,
+//!     message: String,
+//! }
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create a producer that reads JSONL records
+//! let producer = JsonlProducer::<Event>::new("events.jsonl");
+//!
+//! // Use in a pipeline
+//! let pipeline = PipelineBuilder::new()
+//!     .producer(producer)
+//!     .transformer(/* ... */)
+//!     .consumer(/* ... */);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::producers::JsonlProducer;
+//! use streamweave::ErrorStrategy;
+//! use serde::Deserialize;
+//!
+//! #[derive(Deserialize)]
+//! struct Event {
+//!     id: u32,
+//!     message: String,
+//! }
+//!
+//! // Create a producer with error handling strategy
+//! let producer = JsonlProducer::<Event>::new("events.jsonl")
+//!     .with_error_strategy(ErrorStrategy::Skip)  // Skip invalid lines
+//!     .with_name("jsonl-reader".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Line-by-Line**: Processes one line at a time for memory efficiency
+//! - **Incremental Processing**: Doesn't require loading the entire file into memory
+//! - **Type Safety**: Leverages Serde for type-safe deserialization
+//! - **Async I/O**: Uses Tokio's async file I/O for efficient reading
+//! - **Error Tolerance**: Can skip invalid lines and continue processing
+//!
+//! # Integration with StreamWeave
+//!
+//! [`JsonlProducer`] implements the [`Producer`] trait and can be used in any
+//! StreamWeave pipeline. It supports the standard error handling strategies and
+//! configuration options provided by [`ProducerConfig`].
+
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Output, Producer, ProducerConfig};
 use async_trait::async_trait;

@@ -1,6 +1,75 @@
-//! Math min/max transformer for StreamWeave
+//! Math min/max transformer for finding minimum or maximum values.
 //!
-//! Finds minimum or maximum values from arrays or pairs of numbers.
+//! This module provides [`MathMinMaxTransformer`] and [`MinMaxOperation`], types for
+//! finding minimum or maximum values in StreamWeave pipelines. It supports both Min
+//! and Max operations, optionally comparing against a reference value. It implements
+//! the [`Transformer`] trait for use in StreamWeave pipelines and graphs.
+//!
+//! # Overview
+//!
+//! [`MathMinMaxTransformer`] is useful for finding minimum or maximum values in
+//! StreamWeave pipelines. It processes JSON numeric values (arrays or single numbers)
+//! and finds the minimum or maximum, optionally comparing against a reference value,
+//! making it ideal for mathematical computations and filtering.
+//!
+//! # Key Concepts
+//!
+//! - **Min/Max Operations**: Supports finding minimum or maximum values
+//! - **Array Mode**: Finds min/max in arrays when no reference is provided
+//! - **Comparison Mode**: Compares against a reference value when provided
+//! - **JSON Value Support**: Works with `serde_json::Value` numeric types
+//!
+//! # Core Types
+//!
+//! - **[`MathMinMaxTransformer`]**: Transformer that finds minimum or maximum values
+//! - **[`MinMaxOperation`]**: Enum representing Min or Max operations
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage (Array Mode)
+//!
+//! ```rust
+//! use streamweave::transformers::{MathMinMaxTransformer, MinMaxOperation};
+//!
+//! // Find maximum value in arrays
+//! let transformer = MathMinMaxTransformer::new(MinMaxOperation::Max, None);
+//! ```
+//!
+//! ## Comparison Mode
+//!
+//! ```rust
+//! use streamweave::transformers::{MathMinMaxTransformer, MinMaxOperation};
+//!
+//! // Find minimum compared to 10
+//! let transformer = MathMinMaxTransformer::new(MinMaxOperation::Min, Some(10.0));
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::transformers::{MathMinMaxTransformer, MinMaxOperation};
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a min/max transformer with error handling
+//! let transformer = MathMinMaxTransformer::new(MinMaxOperation::Max, None)
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("max-finder".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **JSON Value Support**: Works with `serde_json::Value` for flexible numeric
+//!   value handling
+//! - **Operation Enum**: Uses enum-based operation selection for type safety
+//! - **Optional Reference**: Supports optional reference value for comparison
+//! - **Transformer Trait**: Implements `Transformer` for integration with
+//!   pipeline system
+//!
+//! # Integration with StreamWeave
+//!
+//! [`MathMinMaxTransformer`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave pipeline or graph. It supports the standard error handling strategies
+//! and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

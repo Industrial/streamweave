@@ -1,4 +1,41 @@
-//! Sample transformer for StreamWeave
+//! # Sample Transformer
+//!
+//! Transformer that randomly samples items from the input stream based on a
+//! configurable probability, effectively creating a random subset of the input data.
+//!
+//! ## Overview
+//!
+//! The Sample Transformer provides:
+//!
+//! - **Random Sampling**: Passes items through with a configurable probability
+//! - **Probability Control**: Configurable sampling rate (0.0 to 1.0)
+//! - **Stream Filtering**: Filters items probabilistically
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items to sample
+//! - **Output**: `Message<T>` - Sampled items (subset of input)
+//!
+//! ## Probability
+//!
+//! The `probability` parameter (0.0 to 1.0) determines the likelihood that each
+//! item will be passed through:
+//!
+//! - `0.0`: No items pass through
+//! - `1.0`: All items pass through
+//! - `0.5`: Approximately 50% of items pass through
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::SampleTransformer;
+//!
+//! let transformer = SampleTransformer::new(0.1); // 10% sample rate
+//! // Input: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+//! // Output: [random subset, ~10% of items]
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::{Input, Output, Transformer, TransformerConfig};

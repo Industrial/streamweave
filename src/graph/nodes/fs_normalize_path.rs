@@ -1,7 +1,64 @@
-//! Path normalization node for StreamWeave graphs
+//! Path normalization node for normalizing file paths in graphs.
 //!
-//! Normalizes file path strings by removing redundant separators and resolving
-//! `.` and `..` components where possible.
+//! This module provides [`FsNormalizePath`], a graph node that normalizes file path
+//! strings by removing redundant separators and resolving `.` and `..` components where
+//! possible. It wraps [`FsNormalizePathTransformer`] for use in StreamWeave graphs.
+//!
+//! # Overview
+//!
+//! [`FsNormalizePath`] is useful for cleaning and normalizing file paths in graph-based
+//! pipelines. It converts paths to canonical form, making them more consistent and
+//! easier to work with in file processing workflows.
+//!
+//! # Key Concepts
+//!
+//! - **Path Normalization**: Removes redundant separators and resolves `.` and `..`
+//! - **Canonical Form**: Converts paths to a standard, normalized format
+//! - **String Transformation**: Transforms path strings in place
+//! - **Transformer Wrapper**: Wraps `FsNormalizePathTransformer` for graph usage
+//!
+//! # Core Types
+//!
+//! - **[`FsNormalizePath`]**: Node that normalizes file path strings
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::FsNormalizePath;
+//!
+//! // Create a path normalization node
+//! let normalize = FsNormalizePath::new();
+//! ```
+//!
+//! ## With Error Handling
+//!
+//! ```rust
+//! use streamweave::graph::nodes::FsNormalizePath;
+//! use streamweave::ErrorStrategy;
+//!
+//! // Create a path normalization node with error handling
+//! let normalize = FsNormalizePath::new()
+//!     .with_error_strategy(ErrorStrategy::Skip)
+//!     .with_name("path-normalizer".to_string());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Path Library Integration**: Uses Rust's standard path handling for
+//!   cross-platform compatibility
+//! - **Normalization**: Removes redundant separators and resolves relative
+//!   components for clean paths
+//! - **String-Based**: Works with path strings for simplicity and compatibility
+//! - **Transformer Wrapper**: Wraps existing transformer for consistency with
+//!   other graph nodes
+//!
+//! # Integration with StreamWeave
+//!
+//! [`FsNormalizePath`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::transformers::FsNormalizePathTransformer;

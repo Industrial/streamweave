@@ -1,3 +1,46 @@
+//! # Offset System Test Suite
+//!
+//! Comprehensive test suite for the offset system, including offset types, offset stores,
+//! offset tracking, commit strategies, and reset policies. This module provides tests
+//! for all offset-related functionality in StreamWeave.
+//!
+//! ## Test Coverage
+//!
+//! This test suite covers:
+//!
+//! - **Offset Enum**: Earliest, Latest, Sequence, Timestamp, Custom offset variants
+//! - **OffsetStore**: InMemoryOffsetStore and FileOffsetStore implementations
+//! - **OffsetTracker**: Offset tracking, committing, and state management
+//! - **CommitStrategy**: Manual, Automatic, and Batch commit strategies
+//! - **OffsetResetPolicy**: Earliest, Latest, and Custom reset policies
+//! - **OffsetError**: All error variants and error handling
+//!
+//! ## Test Organization
+//!
+//! Tests are organized into the following sections:
+//!
+//! 1. **Offset Enum Tests**: All offset variants, creation, comparison, and conversion
+//! 2. **OffsetStore Tests**: InMemoryOffsetStore and FileOffsetStore operations
+//! 3. **OffsetTracker Tests**: Tracking, committing, reset, and state management
+//! 4. **CommitStrategy Tests**: All commit strategy variants and behavior
+//! 5. **OffsetResetPolicy Tests**: All reset policy variants and behavior
+//! 6. **OffsetError Tests**: All error variants and error handling
+//! 7. **Integration Tests**: End-to-end offset management workflows
+//!
+//! ## Key Concepts
+//!
+//! - **Offset**: Represents a position in a data stream (earliest, latest, sequence, timestamp, custom)
+//! - **OffsetStore**: Persistence layer for storing and retrieving offsets
+//! - **OffsetTracker**: Tracks current offset and manages commit operations
+//! - **CommitStrategy**: Determines when offsets are persisted (manual, automatic, batch)
+//! - **OffsetResetPolicy**: Determines behavior when no offset is available (earliest, latest, custom)
+//!
+//! ## Usage
+//!
+//! These tests verify that the offset system correctly manages stream positions,
+//! persists offsets across restarts, and handles edge cases like reset policies
+//! and commit strategies.
+
 use crate::offset::{
   CommitStrategy, FileOffsetStore, InMemoryOffsetStore, Offset, OffsetError, OffsetResetPolicy,
   OffsetStore, OffsetTracker,

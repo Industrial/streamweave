@@ -1,7 +1,51 @@
-//! Transformer that groups items by a key function.
+//! GroupBy node for grouping items by a key function.
 //!
-//! This module wraps `GroupByTransformer` to provide a graph node implementation.
-//! The transformer provides deterministic sorted output.
+//! This module provides [`GroupBy`], a graph node that groups items by a key function.
+//! It wraps `GroupByTransformer` to provide a graph node implementation. The transformer
+//! provides deterministic sorted output by key, making it ideal for aggregation and
+//! grouping operations in graph-based pipelines.
+//!
+//! # Overview
+//!
+//! [`GroupBy`] is useful for grouping items in graph-based pipelines based on a
+//! computed key. It processes items and groups them by their key values, outputting
+//! groups in sorted order for deterministic processing.
+//!
+//! # Key Concepts
+//!
+//! - **Key Extraction**: Uses a key function to extract grouping keys from items
+//! - **Deterministic Output**: Outputs groups in sorted order by key
+//! - **Grouping**: Groups items with the same key together
+//! - **Hash-Based**: Uses hash maps internally for efficient grouping
+//!
+//! # Core Types
+//!
+//! - **[`GroupBy<T, K>`]**: Node that groups items by a key function
+//!
+//! # Quick Start
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use streamweave::graph::nodes::GroupBy;
+//!
+//! // Group items by a key extracted from the item
+//! let group_by = GroupBy::new(|item: &(String, i32)| item.0.clone());
+//! ```
+//!
+//! # Design Decisions
+//!
+//! - **Key Function**: Uses a closure for flexible key extraction from items
+//! - **Sorted Output**: Provides deterministic sorted output by key for
+//!   reproducible results
+//! - **Hash-Based Grouping**: Uses hash maps for efficient grouping operations
+//! - **Type-Safe**: Supports generic types for items and keys
+//!
+//! # Integration with StreamWeave
+//!
+//! [`GroupBy`] implements the [`Transformer`] trait and can be used in any
+//! StreamWeave graph. It supports the standard error handling strategies and
+//! configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, StreamError};
 use crate::transformers::GroupByTransformer;

@@ -1,4 +1,33 @@
-//! Take transformer for StreamWeave
+//! # Take Transformer
+//!
+//! Transformer that takes a specified number of items from the input stream and
+//! then stops producing items. This is useful for limiting stream processing
+//! to a specific number of items, such as for testing or sampling.
+//!
+//! ## Overview
+//!
+//! The Take Transformer provides:
+//!
+//! - **Item Limiting**: Passes through only the first N items from the stream
+//! - **Stream Termination**: Stops producing items after the limit is reached
+//! - **Zero-Copy Support**: Implements `ZeroCopyTransformer` for efficient processing
+//! - **Type Generic**: Works with any `Send + Sync + Clone` type
+//! - **Error Handling**: Configurable error strategies
+//!
+//! ## Input/Output
+//!
+//! - **Input**: `Message<T>` - Items from the stream
+//! - **Output**: `Message<T>` - First N items (then stream ends)
+//!
+//! ## Example
+//!
+//! ```rust
+//! use crate::transformers::TakeTransformer;
+//!
+//! let transformer = TakeTransformer::new(5);
+//! // Input: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+//! // Output: [1, 2, 3, 4, 5] (stream ends)
+//! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
 use crate::graph::ZeroCopyTransformer;
