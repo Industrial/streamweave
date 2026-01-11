@@ -44,7 +44,7 @@
 //! 3. **Execution**: Nodes run concurrently, with `Message<T>` flowing through channels
 //! 4. **Shutdown**: Gracefully stop all nodes and clean up resources
 
-use super::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
+use super::channels::{TypeErasedReceiver, TypeErasedSender};
 use super::graph::Graph;
 use super::shared_memory_channel::SharedMemoryChannel;
 use super::zero_copy::ArcPool;
@@ -352,9 +352,6 @@ pub struct GraphExecutor {
   shared_memory_channels: HashMap<(String, String), SharedMemoryChannel>,
 }
 
-// Type alias for in-flight items during mode switching (deprecated, kept for API compatibility)
-type InFlightItems = Vec<((String, String), (String, String), ChannelItem)>;
-
 impl GraphExecutor {
   /// Creates a new graph executor for the given graph.
   ///
@@ -443,6 +440,34 @@ impl GraphExecutor {
   #[must_use]
   pub fn with_arc_pool(mut self, pool: ArcPool<Bytes>) -> Self {
     self.arc_pool = Some(pool);
+    self
+  }
+
+  /// Sets whether to use shared memory for ultra-high performance mode.
+  ///
+  /// When enabled, the executor will use shared memory channels for data
+  /// transfer between nodes, which can provide better performance for
+  /// high-throughput scenarios.
+  ///
+  /// # Arguments
+  ///
+  /// * `use_shared_memory` - Whether to use shared memory channels
+  ///
+  /// # Returns
+  ///
+  /// `Self` for method chaining
+  ///
+  /// # Example
+  ///
+  /// ```rust,no_run
+  /// use crate::graph::{Graph, GraphExecution};
+  ///
+  /// let graph = Graph::new();
+  /// let executor = graph.executor().with_use_shared_memory(true);
+  /// ```
+  #[must_use]
+  pub fn with_use_shared_memory(mut self, use_shared_memory: bool) -> Self {
+    self.use_shared_memory = use_shared_memory;
     self
   }
 
@@ -1143,270 +1168,6 @@ impl GraphExecutor {
 
     self.state = ExecutionState::Running;
     Ok(())
-  }
-
-  /// Trigger a mode switch from in-process to distributed mode.
-  ///
-  /// This method is no longer supported as distributed mode has been removed.
-  /// This function is kept for API compatibility but always returns an error.
-  ///
-  /// # Returns
-  ///
-  /// Always returns an error indicating that mode switching is not supported.
-  #[deprecated(note = "Mode switching is no longer supported. Use in-process mode only.")]
-  pub async fn trigger_mode_switch(&mut self) -> Result<(), ExecutionError> {
-    Err(ExecutionError::ExecutionFailed(
-      "Mode switching is no longer supported. StreamWeave now only supports in-process execution."
-        .to_string(),
-    ))
-  }
-
-  #[allow(dead_code)]
-  async fn _trigger_mode_switch_old_implementation(&mut self) -> Result<(), ExecutionError> {
-    // Old implementation removed - ExecutionMode::Hybrid no longer exists
-    Err(ExecutionError::ExecutionFailed(
-      "Mode switching is no longer supported".to_string(),
-    ))
-
-    // The following code is commented out as ExecutionMode::Hybrid no longer exists
-    /*
-    let (local_threshold, serializer) = match &self.execution_mode {
-      ExecutionMode::Hybrid {
-        local_threshold,
-        serializer,
-      } => (*local_threshold, serializer.clone()),
-      _ => {
-        return Err(ExecutionError::ExecutionFailed(
-          "Mode switch can only be triggered in hybrid mode".to_string(),
-        ));
-      }
-    };
-
-    if !matches!(
-      self.current_execution_mode,
-      Some(ExecutionMode::InProcess { .. })
-    ) {
-      // Already in distributed mode or not initialized
-      return Ok(());
-    }
-
-    // Get current throughput for metrics
-    let current_throughput = if let Some(monitor) = &self.throughput_monitor {
-      monitor.calculate_throughput().await
-    } else {
-      0.0
-    };
-
-    tracing::info!(
-      throughput = current_throughput,
-      threshold = local_threshold,
-      "Starting mode switch from in-process to distributed (throughput {} > threshold {})",
-      current_throughput,
-      local_threshold
-    );
-
-    // Record mode switch in metrics
-    if let Some(metrics) = &self.mode_switch_metrics {
-      metrics
-        .write()
-        .await
-        .record_switch(current_throughput, "InProcess", "Distributed");
-    }
-
-    // Step 1: Pause all nodes
-    *self.pause_signal.write().await = true;
-
-    // Step 2: Wait for nodes to finish current items (with timeout)
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    // Step 3: Drain in-process channels and collect in-flight items with connection info
-    let in_flight_items = self.drain_in_process_channels().await;
-
-    // Step 4: Stop current node tasks
-    for handle in self.node_handles.values() {
-      handle.abort();
-    }
-    self.node_handles.clear();
-
-    // Step 5: Create distributed channels
-    self.channel_senders.clear();
-    self.channel_receivers.clear();
-    self.create_channels()?;
-
-    // Step 6: Spawn nodes with distributed mode
-    for node_name in self.graph.node_names() {
-      if let Some(node) = self.graph.get_node(&node_name) {
-        // Collect input channels
-        let mut input_channels = HashMap::new();
-        let parents = self.graph.get_parents(&node_name);
-        for (parent_name, parent_port_name) in parents {
-          for conn in self.graph.get_connections() {
-            if conn.source.0 == parent_name
-              && conn.source.1 == parent_port_name
-              && conn.target.0 == node_name
-            {
-              // ConnectionInfo now stores port names directly
-              let target_port_name = conn.target.1.clone();
-              let source_port_name = conn.source.1.clone();
-
-              let key = (parent_name.to_string(), source_port_name);
-              if let Some(receiver) = self.channel_receivers.remove(&key) {
-                input_channels.insert(target_port_name, receiver);
-              }
-              break;
-            }
-          }
-        }
-
-        // Collect output channels
-        let mut output_channels = HashMap::new();
-        let children = self.graph.get_children(&node_name);
-        for (child_name, child_port_name) in children {
-          for conn in self.graph.get_connections() {
-            if conn.source.0 == node_name
-              && conn.target.0 == child_name
-              && conn.target.1 == child_port_name
-            {
-              // ConnectionInfo now stores port names directly
-              let source_port_name = conn.source.1.clone();
-
-              let key = (node_name.to_string(), source_port_name.clone());
-              if let Some(sender) = self.channel_senders.get(&key).cloned() {
-                output_channels.insert(source_port_name, sender);
-              }
-              break;
-            }
-          }
-        }
-
-        // Spawn with in-process mode (distributed mode no longer exists)
-        let distributed_mode = ExecutionMode::InProcess {
-          use_shared_memory: false,
-        };
-
-        // Clone arc_pool if available (wrap in Arc for sharing across tasks)
-        let arc_pool_clone = self.arc_pool.as_ref().map(|p| Arc::new(p.clone()));
-
-        if let Some(handle) = node.spawn_execution_task(
-          input_channels,
-          output_channels,
-          self.pause_signal.clone(),
-          distributed_mode,
-          arc_pool_clone,
-        ) {
-          self.node_handles.insert(node_name.to_string(), handle);
-        }
-      }
-    }
-
-    // Step 7: Send in-flight items to new distributed channels
-    let in_flight_count = in_flight_items.len();
-    self.send_in_flight_items(in_flight_items).await?;
-
-    // Step 8: Update current execution mode (always in-process now)
-    self.current_execution_mode = Some(ExecutionMode::InProcess {
-      use_shared_memory: false,
-    });
-
-    // Step 9: Resume processing
-    *self.pause_signal.write().await = false;
-
-    tracing::info!(
-      in_flight_migrated = in_flight_count,
-      "Mode switch completed: now in distributed mode (migrated {} in-flight items)",
-      in_flight_count
-    );
-
-    // Log metrics summary
-    if let Some(metrics) = &self.mode_switch_metrics {
-      let metrics_guard = metrics.read().await;
-      tracing::info!("Mode switch metrics: {}", metrics_guard.summary());
-    }
-
-    Ok(())
-    */
-    // Note: This function always returns early, so code below is unreachable
-    // The unreachable!() is removed to avoid warnings
-  }
-
-  /// Drain in-process channels and collect in-flight items with connection information.
-  ///
-  /// # Returns
-  ///
-  /// Vector of tuples containing (connection_info, item) for routing items correctly.
-  #[allow(dead_code)]
-  async fn drain_in_process_channels(&mut self) -> InFlightItems {
-    let mut in_flight_items = Vec::new();
-
-    // Collect items from all receivers, tracking which connection they belong to
-    // The key in channel_receivers is (target_node, target_port_name)
-    // We need to find the corresponding source node and port from connections
-    for (target_key, receiver) in &mut self.channel_receivers {
-      // Find the source node and port for this receiver
-      // ConnectionInfo now stores port names directly
-      let source_info = self.graph.get_connections().iter().find_map(|conn| {
-        // Match by target node name and port name
-        if conn.target.0 == target_key.0 && conn.target.1 == target_key.1 {
-          // ConnectionInfo stores port names directly
-          Some((conn.source.0.clone(), conn.source.1.clone()))
-        } else {
-          None
-        }
-      });
-
-      if let Some(source_info) = source_info {
-        // Try to receive remaining items (non-blocking)
-        while let Ok(item) = receiver.try_recv() {
-          in_flight_items.push((source_info.clone(), target_key.clone(), item));
-        }
-      }
-    }
-
-    in_flight_items
-  }
-
-  /// Send in-flight items to distributed channels.
-  ///
-  /// This method is no longer supported as distributed mode has been removed.
-  #[allow(dead_code, clippy::type_complexity)]
-  async fn _send_in_flight_items_old(
-    &self,
-    _items: Vec<((String, String), (String, String), ChannelItem)>,
-  ) -> Result<(), ExecutionError> {
-    Err(ExecutionError::ExecutionFailed(
-      "send_in_flight_items is no longer supported. StreamWeave now only supports in-process execution.".to_string(),
-    ))
-  }
-
-  #[allow(dead_code, clippy::type_complexity)]
-  async fn send_in_flight_items(
-    &self,
-    _items: Vec<((String, String), (String, String), ChannelItem)>,
-  ) -> Result<(), ExecutionError> {
-    Err(ExecutionError::ExecutionFailed(
-      "send_in_flight_items is no longer supported. StreamWeave now only supports in-process execution.".to_string(),
-    ))
-  }
-
-  #[allow(dead_code)]
-  async fn _send_in_flight_items_implementation(
-    &self,
-    _items: InFlightItems,
-  ) -> Result<(), ExecutionError> {
-    // This function is deprecated - mode switching is no longer supported
-    // Old implementation removed - ExecutionMode::Hybrid no longer exists
-    Err(ExecutionError::ExecutionFailed(
-      "send_in_flight_items is no longer supported. StreamWeave now only supports in-process execution.".to_string(),
-    ))
-  }
-
-  #[allow(dead_code, clippy::type_complexity)]
-  async fn _send_in_flight_items_old_implementation(
-    &self,
-    _items: Vec<((String, String), (String, String), ChannelItem)>,
-  ) -> Result<(), ExecutionError> {
-    // Old implementation removed - distributed mode no longer exists
-    unreachable!()
   }
 
   /// Returns a reference to the channel sender for a given node and port.
