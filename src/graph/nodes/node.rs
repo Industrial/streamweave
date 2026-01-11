@@ -219,13 +219,11 @@ impl<T: Input> StreamWrapper<T>
 where
   <T as Input>::Input: DeserializeOwned + Send + Sync + Clone + 'static,
 {
-  /// Creates a new `StreamWrapper` from a type-erased channel receiver in distributed mode.
+  /// Creates a new `StreamWrapper` from a type-erased channel receiver.
   ///
   /// # Arguments
   ///
-  /// * `receiver` - Channel receiver that yields `ChannelItem::Bytes`
-  /// * `compression` - Optional compression algorithm if compression is enabled
-  /// * `batching` - Whether batching is enabled (batches need to be deserialized)
+  /// * `receiver` - Channel receiver that yields `ChannelItem::Arc` or `ChannelItem::SharedMemory`
   ///
   /// # Returns
   ///
@@ -1355,8 +1353,8 @@ where
     _input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
     output_channels: std::collections::HashMap<String, TypeErasedSender>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
-    _execution_mode: crate::graph::execution::ExecutionMode,
-    arc_pool: Option<std::sync::Arc<crate::graph::zero_copy::ArcPool<bytes::Bytes>>>,
+    _use_shared_memory: bool,
+    _arc_pool: Option<std::sync::Arc<crate::graph::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::graph::execution::ExecutionError>>> {
     // Implementation requires P::Output: Serialize (added to trait bounds above)
     // This implementation:
@@ -1372,8 +1370,6 @@ where
 
     let node_name = self.name.clone();
     let producer = Arc::clone(&self.producer);
-    let _execution_mode_clone = _execution_mode.clone();
-    let _arc_pool_clone = arc_pool.clone();
 
     let handle = tokio::spawn(async move {
       // Get the stream from the producer and pin it
@@ -1539,17 +1535,13 @@ where
     input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
     output_channels: std::collections::HashMap<String, TypeErasedSender>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
-    _execution_mode: crate::graph::execution::ExecutionMode,
-    arc_pool: Option<std::sync::Arc<crate::graph::zero_copy::ArcPool<bytes::Bytes>>>,
+    _use_shared_memory: bool,
+    _arc_pool: Option<std::sync::Arc<crate::graph::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::graph::execution::ExecutionError>>> {
-    // NOTE: Serialization is handled via the serialize() function from the
-    // serialization module. When ExecutionMode::Distributed is used, nodes
-    // serialize data using this function. Future optimization: pass Serializer
-    // trait directly to nodes for pluggable serialization formats.
+    // NOTE: In-process execution mode uses zero-copy Arc<Message<T>> sharing.
+    // Serialization is not used in the current in-process-only architecture.
     let node_name = self.name.clone();
     let transformer = Arc::clone(&self.transformer);
-    let execution_mode_clone = _execution_mode.clone();
-    let _arc_pool_clone = arc_pool.clone();
 
     let handle = tokio::spawn(async move {
       // Create input stream from channels by deserializing
@@ -1652,11 +1644,8 @@ where
           return Ok(());
         }
 
-        // Check execution mode for zero-copy optimization
-        let is_in_process = matches!(
-          execution_mode_clone,
-          crate::graph::execution::ExecutionMode::InProcess { .. }
-        );
+        // In-process execution is always used (distributed mode removed)
+        let is_in_process = true;
         let is_fan_out = output_channels.len() > 1;
 
         // Wrap the transformer output in Message<T> before sending through channels
@@ -1664,7 +1653,7 @@ where
         let message = wrap_message(item);
 
         // In in-process mode: use Arc<Message<T>> for true zero-copy (no serialization)
-        // In distributed mode: serialize Message<T> to Bytes
+        // In-process mode: use zero-copy Arc<Message<T>>
         let mut send_succeeded = 0;
         let mut send_failed_count = 0;
 
@@ -1776,7 +1765,7 @@ where
     input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
     _output_channels: std::collections::HashMap<String, TypeErasedSender>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
-    _execution_mode: crate::graph::execution::ExecutionMode,
+    _use_shared_memory: bool,
     _arc_pool: Option<std::sync::Arc<crate::graph::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::graph::execution::ExecutionError>>> {
     let consumer = Arc::clone(&self.consumer);
@@ -2006,7 +1995,7 @@ where
     input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
     output_channels: std::collections::HashMap<String, TypeErasedSender>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
-    _execution_mode: crate::graph::execution::ExecutionMode,
+    _use_shared_memory: bool,
     _arc_pool: Option<std::sync::Arc<crate::graph::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::graph::execution::ExecutionError>>> {
     let router = Arc::clone(&self.router);
@@ -2315,7 +2304,7 @@ where
     input_channels: std::collections::HashMap<String, TypeErasedReceiver>,
     output_channels: std::collections::HashMap<String, TypeErasedSender>,
     pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
-    _execution_mode: crate::graph::execution::ExecutionMode,
+    _use_shared_memory: bool,
     _arc_pool: Option<std::sync::Arc<crate::graph::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), crate::graph::execution::ExecutionError>>> {
     let router = Arc::clone(&self.router);

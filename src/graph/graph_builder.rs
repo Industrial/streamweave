@@ -20,7 +20,6 @@
 //!     .build();
 //! ```
 
-use super::execution::ExecutionMode;
 use super::graph::Graph;
 use super::traits::NodeTrait;
 
@@ -114,39 +113,6 @@ impl GraphBuilder {
       .graph
       .connect(source_name, source_port, target_name, target_port)?;
     Ok(self)
-  }
-
-  /// Sets the execution mode for the graph.
-  ///
-  /// # Arguments
-  ///
-  /// * `mode` - The execution mode to set
-  ///
-  /// # Returns
-  ///
-  /// `Self` for method chaining.
-  /// Sets the execution mode for the graph.
-  ///
-  /// # Arguments
-  ///
-  /// * `mode` - The execution mode (must be in-process)
-  ///
-  /// # Panics
-  ///
-  /// Panics if a non-in-process execution mode is provided, as distributed mode is no longer supported.
-  pub fn with_execution_mode(mut self, mode: ExecutionMode) -> Self {
-    #[allow(unreachable_patterns)]
-    match mode {
-      ExecutionMode::InProcess { .. } => {
-        self.graph.set_execution_mode(mode);
-      }
-      _ => {
-        panic!(
-          "Only in-process execution mode is supported. Distributed and hybrid modes have been removed."
-        );
-      }
-    }
-    self
   }
 
   /// Builds the graph.

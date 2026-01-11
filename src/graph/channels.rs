@@ -1,7 +1,7 @@
 //! # Type-Erased Zero-Copy Channels for `Message<T>`
 //!
-//! This module provides type-erased channel types that support both serialized
-//! `Bytes` (for distributed execution) and zero-copy `Arc<Message<T>>` (for in-process execution).
+//! This module provides type-erased channel types that support zero-copy
+//! `Arc<Message<T>>` (for in-process execution) and shared memory references.
 //! All data flowing through graph channels is wrapped in `Message<T>` to enable
 //! end-to-end traceability and metadata preservation.
 //!
@@ -24,11 +24,6 @@
 //! let (sender, mut receiver): (TypeErasedSender, TypeErasedReceiver) =
 //!     tokio::sync::mpsc::channel(1024);
 //!
-//! // Send Bytes containing serialized Message<T> (distributed mode)
-//! let msg = wrap_message(42i32);
-//! // Message will be serialized to Bytes before sending
-//! sender.send(ChannelItem::Bytes(/* serialized Message<i32> */)).await?;
-//!
 //! // Send Arc<Message<T>> (in-process mode)
 //! let msg = wrap_message(42i32);
 //! let msg_arc = Arc::new(msg);
@@ -37,15 +32,14 @@
 //! // Receive and extract Message<T>
 //! if let Some(item) = receiver.recv().await {
 //!     match item {
-//!         ChannelItem::Bytes(bytes) => {
-//!             // Deserialize to Message<T>
-//!             // let msg: Message<i32> = deserialize(bytes)?;
-//!         }
 //!         ChannelItem::Arc(arc) => {
 //!             // Downcast to Arc<Message<T>>
-//!             if let Ok(msg_arc) = Arc::downcast::<Message<i32>>(arc) {
+//!             if let Ok(msg_arc) = arc.downcast_message_arc::<i32>() {
 //!                 // Use msg_arc
 //!             }
+//!         }
+//!         ChannelItem::SharedMemory(_ref) => {
+//!             // Access shared memory reference
 //!         }
 //!     }
 //! }
@@ -56,8 +50,8 @@ use std::any::Any;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
-/// Type-erased channel item that can hold either serialized `Message<T>` (distributed)
-/// or `Arc<Message<T>>` (in-process).
+/// Type-erased channel item that can hold `Arc<Message<T>>` (in-process)
+/// or shared memory references.
 ///
 /// This enum enables type erasure at the executor level while allowing type-safe
 /// extraction at the node level. The executor stores channels as `TypeErasedSender`/`TypeErasedReceiver`,
@@ -66,7 +60,6 @@ use tokio::sync::mpsc;
 ///
 /// # Variants
 ///
-/// - `Bytes`: Serialized `Message<T>` for distributed execution
 /// - `Arc`: Type-erased `Arc<Message<T>>` for zero-copy in-process execution
 /// - `SharedMemory`: Reference to `Message<T>` in shared memory segment (ultra-high performance)
 ///
@@ -78,19 +71,9 @@ use tokio::sync::mpsc;
 /// use bytes::Bytes;
 /// use std::sync::Arc;
 ///
-/// // Create Bytes variant (contains serialized Message<T>)
-/// // In practice, Message<T> would be serialized to Bytes
-/// let bytes_item = ChannelItem::Bytes(Bytes::from("serialized Message<T>"));
-///
 /// // Create Arc variant (contains Arc<Message<T>>)
 /// let msg = wrap_message(42i32);
 /// let arc_item = ChannelItem::Arc(Arc::new(msg));
-///
-/// // Extract Bytes (will need deserialization to Message<T>)
-/// if let ChannelItem::Bytes(b) = bytes_item {
-///     // Deserialize to Message<T>
-///     // let msg: Message<i32> = deserialize(b)?;
-/// }
 ///
 /// // Extract and downcast Arc to Arc<Message<T>>
 /// if let ChannelItem::Arc(arc) = arc_item {
@@ -215,10 +198,12 @@ impl ChannelItem {
 ///
 /// ```rust
 /// use crate::graph::channels::{TypeErasedSender, ChannelItem};
-/// use bytes::Bytes;
+/// use crate::message::wrap_message;
+/// use std::sync::Arc;
 ///
 /// let (sender, _receiver): (TypeErasedSender, _) = tokio::sync::mpsc::channel(1024);
-/// sender.send(ChannelItem::Bytes(Bytes::from("hello"))).await?;
+/// let msg = wrap_message(42i32);
+/// sender.send(ChannelItem::Arc(Arc::new(msg))).await?;
 /// ```
 pub type TypeErasedSender = mpsc::Sender<ChannelItem>;
 
@@ -235,11 +220,14 @@ pub type TypeErasedSender = mpsc::Sender<ChannelItem>;
 /// let (_sender, mut receiver): (_, TypeErasedReceiver) = tokio::sync::mpsc::channel(1024);
 /// if let Some(item) = receiver.recv().await {
 ///     match item {
-///         ChannelItem::Bytes(bytes) => {
-///             // Handle serialized data
-///         }
 ///         ChannelItem::Arc(arc) => {
-///             // Downcast to specific type
+///             // Downcast to Arc<Message<T>>
+///             if let Ok(msg_arc) = arc.downcast_message_arc::<i32>() {
+///                 // Use msg_arc
+///             }
+///         }
+///         ChannelItem::SharedMemory(_ref) => {
+///             // Access shared memory reference
 ///         }
 ///     }
 /// }

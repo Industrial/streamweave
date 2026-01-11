@@ -17,22 +17,13 @@ cargo build --release --benches || {
     exit 0
 }
 
-# Get list of available benchmarks
-# cargo bench --list outputs benchmark names, try to extract them
-BENCHES=$(cargo bench --list 2>/dev/null | grep -E "^[a-z_]+:" | cut -d: -f1 | sort -u || true)
-
-if [ -z "$BENCHES" ]; then
-    echo "> bench > no benchmarks found"
-    echo "> bench > done"
+# Run all benchmarks using cargo bench
+# This will automatically discover and run all benchmarks in the benches/ directory
+# cargo bench always runs in release mode by default
+echo "> bench > running all benchmarks"
+cargo bench || {
+    echo "> bench > warning: failed to run benchmarks"
     exit 0
-fi
-
-# Run each available benchmark
-for bench in $BENCHES; do
-    echo "> bench > running $bench"
-    cargo bench --bench "$bench" || {
-        echo "> bench > warning: failed to run $bench"
-    }
-done
+}
 
 echo "> bench > done"

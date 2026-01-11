@@ -9,7 +9,6 @@
 
 use std::collections::HashMap;
 
-use super::execution::ExecutionMode;
 use super::traits::NodeTrait;
 
 /// Runtime connection information for graph execution.
@@ -34,8 +33,6 @@ pub struct Graph {
   nodes: HashMap<String, Box<dyn NodeTrait + Send + Sync>>,
   /// List of connections between nodes
   connections: Vec<ConnectionInfo>,
-  /// Execution mode for this graph
-  execution_mode: ExecutionMode,
 }
 
 impl Graph {
@@ -48,9 +45,6 @@ impl Graph {
     Self {
       nodes: HashMap::new(),
       connections: Vec::new(),
-      execution_mode: ExecutionMode::InProcess {
-        use_shared_memory: false,
-      },
     }
   }
 
@@ -166,24 +160,6 @@ impl Graph {
       .filter(|conn| conn.source.0 == node_name)
       .map(|conn| (conn.target.0.clone(), conn.target.1.clone()))
       .collect()
-  }
-
-  /// Gets the execution mode for this graph.
-  ///
-  /// # Returns
-  ///
-  /// A reference to the execution mode.
-  pub fn execution_mode(&self) -> &ExecutionMode {
-    &self.execution_mode
-  }
-
-  /// Sets the execution mode for this graph.
-  ///
-  /// # Arguments
-  ///
-  /// * `mode` - The execution mode to set
-  pub fn set_execution_mode(&mut self, mode: ExecutionMode) {
-    self.execution_mode = mode;
   }
 
   /// Adds a node to the graph.
@@ -323,7 +299,6 @@ impl Clone for Graph {
     Self {
       nodes: HashMap::new(), // Nodes must be re-added after cloning
       connections: self.connections.clone(),
-      execution_mode: self.execution_mode.clone(),
     }
   }
 }

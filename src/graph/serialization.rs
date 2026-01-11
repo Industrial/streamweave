@@ -9,7 +9,7 @@
 //! All data flowing through the graph is wrapped in `Message<T>`, and this module
 //! fully supports serializing and deserializing `Message<T>` instances. Message IDs
 //! and metadata are preserved during serialization/deserialization, enabling
-//! end-to-end traceability in distributed execution modes.
+//! end-to-end traceability and message persistence.
 //!
 //! ## Usage with `Message<T>`
 //!
@@ -134,7 +134,7 @@ impl From<serde_json::Error> for SerializationError {
 ///
 /// This function fully supports `Message<T>` serialization. When serializing
 /// a `Message<T>`, the message ID and metadata are preserved in the serialized
-/// output, enabling end-to-end traceability in distributed execution modes.
+/// output, enabling end-to-end traceability and message persistence.
 ///
 /// # Arguments
 ///

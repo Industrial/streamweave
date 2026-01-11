@@ -134,7 +134,6 @@ impl Transformer for FsDirectoryListTransformer {
       .name
       .clone()
       .unwrap_or_else(|| "fs_directory_list_transformer".to_string());
-    let _error_strategy = shared_self.config.error_strategy.clone();
     let recursive = shared_self.dir_config.recursive;
     let shared_self_clone = shared_self.clone();
     let component_name_clone = component_name.clone();

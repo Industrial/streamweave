@@ -68,7 +68,7 @@ pub trait NodeTrait: Send + Sync + std::any::Any + DynClone {
   /// * `input_channels` - Map of (port_name, receiver) for input ports
   /// * `output_channels` - Map of (port_name, sender) for output ports
   /// * `pause_signal` - Shared signal for pausing execution
-  /// * `execution_mode` - The execution mode (InProcess only)
+  /// * `use_shared_memory` - Whether to use shared memory for ultra-high performance
   /// * `arc_pool` - Optional Arc pool for zero-copy memory management
   ///
   /// # Returns
@@ -87,7 +87,7 @@ pub trait NodeTrait: Send + Sync + std::any::Any + DynClone {
     _input_channels: std::collections::HashMap<String, super::channels::TypeErasedReceiver>,
     _output_channels: std::collections::HashMap<String, super::channels::TypeErasedSender>,
     _pause_signal: std::sync::Arc<tokio::sync::RwLock<bool>>,
-    _execution_mode: super::execution::ExecutionMode,
+    _use_shared_memory: bool,
     _arc_pool: Option<std::sync::Arc<super::zero_copy::ArcPool<bytes::Bytes>>>,
   ) -> Option<tokio::task::JoinHandle<Result<(), super::execution::ExecutionError>>> {
     None

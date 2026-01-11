@@ -26,7 +26,7 @@
 //! end-to-end traceability and metadata preservation. The execution engine
 //! creates type-erased channels (`TypeErasedSender`/`TypeErasedReceiver`)
 //! that carry `ChannelItem` instances, which can contain:
-//! - `ChannelItem::Bytes`: Serialized `Message<T>` for distributed execution
+//! - `ChannelItem::Arc`: Zero-copy `Arc<Message<T>>` for in-process execution
 //! - `ChannelItem::Arc`: `Arc<Message<T>>` for zero-copy in-process execution
 //!
 //! Nodes automatically wrap/unwrap `Message<T>` as needed:
@@ -47,7 +47,6 @@
 use super::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
 use super::graph::Graph;
 use super::shared_memory_channel::SharedMemoryChannel;
-use super::throughput::ThroughputMonitor;
 use super::zero_copy::ArcPool;
 use bytes::Bytes;
 use std::collections::HashMap;
@@ -281,166 +280,6 @@ impl std::fmt::Display for ExecutionError {
 
 impl std::error::Error for ExecutionError {}
 
-/// Execution mode for graph execution.
-///
-/// This enum defines how a graph should be executed, supporting both
-/// in-process zero-copy execution and distributed serialized execution.
-///
-/// # Variants
-///
-/// - `InProcess`: Zero-copy in-process execution with optional shared memory
-/// - `Distributed`: Serialized execution for distributed scenarios
-/// - `Hybrid`: Adaptive execution that switches between modes based on load
-///
-/// # Example
-///
-/// ```rust
-/// use crate::graph::execution::ExecutionMode;
-///
-/// // In-process zero-copy execution
-/// let mode = ExecutionMode::InProcess { use_shared_memory: false };
-///
-/// // Distributed execution with a serializer
-/// let serializer: Box<dyn Serializer> = /* your serializer implementation */;
-/// let mode = ExecutionMode::Distributed {
-///     serializer,
-///     compression: None,
-///     batching: None,
-/// };
-/// ```
-#[derive(Debug, Clone)]
-pub enum ExecutionMode {
-  /// In-process zero-copy execution mode.
-  ///
-  /// This mode eliminates serialization overhead by passing data directly
-  /// between nodes in the same process. For fan-out scenarios, data is
-  /// shared using `Arc` to avoid copying.
-  ///
-  /// # Fields
-  ///
-  /// * `use_shared_memory` - Whether to use shared memory for ultra-high
-  ///   performance scenarios (future optimization)
-  InProcess {
-    /// Whether to use shared memory for data sharing
-    use_shared_memory: bool,
-  },
-}
-
-/// Metrics for tracking mode switches in hybrid execution mode.
-///
-/// This structure tracks when and why the execution mode switches between
-/// in-process and distributed modes in hybrid execution.
-#[derive(Debug, Clone)]
-pub struct ModeSwitchMetrics {
-  /// Number of mode switches that have occurred
-  pub switch_count: usize,
-  /// Throughput values that triggered mode switches
-  pub switch_reasons: Vec<f64>,
-  /// Current execution mode name
-  pub current_mode: Option<String>,
-}
-
-impl ModeSwitchMetrics {
-  /// Create a new `ModeSwitchMetrics` instance.
-  ///
-  /// # Returns
-  ///
-  /// A new `ModeSwitchMetrics` with no switches recorded.
-  #[must_use]
-  pub fn new() -> Self {
-    Self {
-      switch_count: 0,
-      switch_reasons: Vec::new(),
-      current_mode: None,
-    }
-  }
-
-  /// Record a mode switch event.
-  ///
-  /// # Arguments
-  ///
-  /// * `throughput` - The throughput value that triggered the switch
-  /// * `from` - The mode we're switching from
-  /// * `to` - The mode we're switching to
-  pub fn record_switch(&mut self, throughput: f64, _from: &str, to: &str) {
-    self.switch_count += 1;
-    self.switch_reasons.push(throughput);
-    self.current_mode = Some(to.to_string());
-  }
-
-  /// Get a summary string of the mode switch metrics.
-  ///
-  /// # Returns
-  ///
-  /// A formatted string summarizing the mode switch metrics.
-  pub fn summary(&self) -> String {
-    format!(
-      "switches: {}, current_mode: {:?}, avg_throughput: {:.2}",
-      self.switch_count,
-      self.current_mode,
-      if self.switch_reasons.is_empty() {
-        0.0
-      } else {
-        self.switch_reasons.iter().sum::<f64>() / self.switch_reasons.len() as f64
-      }
-    )
-  }
-}
-
-impl Default for ModeSwitchMetrics {
-  fn default() -> Self {
-    Self::new()
-  }
-}
-
-impl ExecutionMode {
-  /// Create a new `InProcess` execution mode without shared memory.
-  ///
-  /// This is the default in-process mode that uses zero-copy execution
-  /// with `Arc` for fan-out scenarios, but doesn't use shared memory.
-  ///
-  /// # Returns
-  ///
-  /// An `ExecutionMode::InProcess` variant with `use_shared_memory = false`
-  ///
-  /// # Example
-  ///
-  /// ```rust
-  /// use crate::graph::execution::ExecutionMode;
-  ///
-  /// let mode = ExecutionMode::new_in_process();
-  /// ```
-  #[must_use]
-  pub fn new_in_process() -> Self {
-    Self::InProcess {
-      use_shared_memory: false,
-    }
-  }
-
-  /// Create a new `InProcess` execution mode with shared memory enabled.
-  ///
-  /// This mode uses shared memory for ultra-high performance scenarios.
-  /// Shared memory allows for even more efficient data sharing between nodes.
-  ///
-  /// # Returns
-  ///
-  /// An `ExecutionMode::InProcess` variant with `use_shared_memory = true`
-  ///
-  /// # Example
-  ///
-  /// ```rust
-  /// use crate::graph::execution::ExecutionMode;
-  ///
-  /// let mode = ExecutionMode::new_in_process_shared_memory();
-  /// ```
-  #[must_use]
-  pub fn new_in_process_shared_memory() -> Self {
-    Self::InProcess {
-      use_shared_memory: true,
-    }
-  }
-}
-
 /// Execution state for the graph executor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExecutionState {
@@ -505,73 +344,18 @@ pub struct GraphExecutor {
   /// When provided, this pool will be used to reduce allocation overhead
   /// in fan-out operations where multiple nodes receive the same data.
   arc_pool: Option<ArcPool<Bytes>>,
-  /// Execution mode for this executor
-  execution_mode: ExecutionMode,
+  /// Whether to use shared memory for ultra-high performance mode
+  use_shared_memory: bool,
   /// Shared memory channels for ultra-high performance mode
   /// Key: (node_name, port_name) for source nodes
   /// Value: Shared memory channel for that connection
   shared_memory_channels: HashMap<(String, String), SharedMemoryChannel>,
-  /// Batching channels for distributed execution with batching enabled
-  /// Key: (node_name, port_name) for source nodes
-  /// Value: Batching channel wrapper for that connection
-  /// Throughput monitor for hybrid execution mode
-  /// Tracks items/second processed across the graph
-  throughput_monitor: Option<Arc<ThroughputMonitor>>,
-  /// Current actual execution mode (may differ from execution_mode during transitions)
-  /// In hybrid mode, this tracks whether we're currently in-process or distributed
-  #[allow(dead_code)]
-  current_execution_mode: Option<ExecutionMode>,
-  /// Background task handle for throughput monitoring in hybrid mode
-  #[allow(dead_code)]
-  throughput_monitoring_task: Option<tokio::task::JoinHandle<Result<(), ExecutionError>>>,
-  /// Metrics for mode switching in hybrid mode
-  mode_switch_metrics: Option<Arc<RwLock<ModeSwitchMetrics>>>,
 }
 
 // Type alias for in-flight items during mode switching (deprecated, kept for API compatibility)
 type InFlightItems = Vec<((String, String), (String, String), ChannelItem)>;
 
 impl GraphExecutor {
-  /// Detects the optimal execution mode for the graph.
-  ///
-  /// This method analyzes the graph topology and configuration to determine
-  /// the best execution mode. Factors considered include:
-  /// - Whether all nodes are in the same process (in-process mode)
-  /// - Whether network boundaries exist (distributed mode)
-  /// - Graph complexity and size (hybrid mode)
-  ///
-  /// # Returns
-  ///
-  /// The recommended `ExecutionMode` for this graph.
-  ///
-  /// # Current Implementation
-  ///
-  /// Currently defaults to `InProcess` mode for zero-copy execution.
-  /// Future enhancements will:
-  /// - Detect network boundaries from node metadata
-  /// - Analyze graph complexity to suggest hybrid mode
-  /// - Consider node distribution across processes/machines
-  ///
-  /// # Example
-  ///
-  /// ```rust,no_run
-  /// use crate::graph::{Graph, GraphExecution};
-  ///
-  /// let graph = Graph::new();
-  /// let executor = graph.executor();
-  /// let recommended_mode = executor.detect_execution_mode();
-  /// ```
-  #[must_use]
-  pub fn detect_execution_mode(&self) -> ExecutionMode {
-    // For now, default to in-process mode for zero-copy execution
-    // Future: Analyze graph topology to determine optimal mode
-    // - Check if nodes have network metadata indicating distributed execution
-    // - Analyze graph size and complexity
-    // - Consider user preferences and configuration
-
-    ExecutionMode::new_in_process()
-  }
-
   /// Creates a new graph executor for the given graph.
   ///
   /// # Arguments
@@ -601,12 +385,8 @@ impl GraphExecutor {
       execution_errors: Vec::new(),
       shutdown_timeout: Duration::from_secs(30), // Default 30 second timeout
       arc_pool: None,
-      execution_mode: ExecutionMode::new_in_process(), // Default to in-process for zero-copy
+      use_shared_memory: false, // Default to not using shared memory
       shared_memory_channels: HashMap::new(),
-      throughput_monitor: None,
-      current_execution_mode: None,
-      throughput_monitoring_task: None,
-      mode_switch_metrics: None,
     }
   }
 
@@ -631,12 +411,8 @@ impl GraphExecutor {
       execution_errors: Vec::new(),
       shutdown_timeout,
       arc_pool: None,
-      execution_mode: ExecutionMode::new_in_process(), // Default to in-process for zero-copy
+      use_shared_memory: false, // Default to not using shared memory
       shared_memory_channels: HashMap::new(),
-      throughput_monitor: None,
-      current_execution_mode: None,
-      throughput_monitoring_task: None,
-      mode_switch_metrics: None,
     }
   }
 
@@ -702,12 +478,7 @@ impl GraphExecutor {
   /// # }
   /// ```
   pub async fn start(&mut self) -> Result<(), ExecutionError> {
-    // Only in-process execution is supported
-    match &self.execution_mode {
-      ExecutionMode::InProcess { use_shared_memory } => {
-        self.execute_in_process(*use_shared_memory).await
-      }
-    }
+    self.execute_in_process(self.use_shared_memory).await
   }
 
   /// Stops graph execution with graceful shutdown.
@@ -1125,7 +896,7 @@ impl GraphExecutor {
   ///
   /// All data flowing through channels is wrapped in `Message<T>`:
   /// - In-process mode: `ChannelItem::Arc` contains `Arc<Message<T>>`
-  /// - Distributed mode: `ChannelItem::Bytes` contains serialized `Message<T>`
+  /// - Shared memory mode: `ChannelItem::SharedMemory` contains a reference to `Message<T>` in shared memory
   ///
   /// Bounded channels provide automatic backpressure: when the buffer is full,
   /// senders will block until space is available, preventing memory issues.
@@ -1157,12 +928,7 @@ impl GraphExecutor {
     &mut self,
     buffer_size: usize,
   ) -> Result<(), ExecutionError> {
-    let use_shared_memory = matches!(
-      self.execution_mode,
-      ExecutionMode::InProcess {
-        use_shared_memory: true
-      }
-    );
+    let use_shared_memory = self.use_shared_memory;
 
     for conn in self.graph.get_connections() {
       // ConnectionInfo now stores port names directly
@@ -1288,8 +1054,8 @@ impl GraphExecutor {
       ));
     }
 
-    // Set execution mode to InProcess
-    self.execution_mode = ExecutionMode::InProcess { use_shared_memory };
+    // Set shared memory flag
+    self.use_shared_memory = use_shared_memory;
 
     // Validate graph topology
     self.validate_topology()?;
@@ -1349,11 +1115,6 @@ impl GraphExecutor {
           }
         }
 
-        // Increment throughput monitor if available (for hybrid mode)
-        let throughput_monitor = self.throughput_monitor.clone();
-        let node_name_for_monitor = node_name.to_string();
-        let node_name_for_insert = node_name_for_monitor.clone();
-
         // Spawn execution task
         // In in-process mode, nodes will use Arc<Message<T>> channels and direct stream passing
         // The node execution code checks ExecutionMode and uses appropriate channel types
@@ -1365,34 +1126,11 @@ impl GraphExecutor {
           input_channels,
           output_channels,
           self.pause_signal.clone(),
-          ExecutionMode::InProcess { use_shared_memory },
+          use_shared_memory,
           arc_pool_clone,
         ) {
-          // Wrap handle to track throughput
-          if let Some(monitor) = throughput_monitor {
-            let monitor_clone = Arc::clone(&monitor);
-            let wrapped_handle = tokio::spawn(async move {
-              match handle.await {
-                Ok(Ok(())) => {
-                  // Increment throughput when task completes (simplified - actual tracking
-                  // should be per-item, which will be added in node execution)
-                  monitor_clone.increment_item_count();
-                  Ok(())
-                }
-                Ok(Err(e)) => Err(e),
-                Err(e) => Err(ExecutionError::NodeExecutionFailed {
-                  node: node_name_for_monitor,
-                  reason: format!("Task join error: {}", e),
-                  message_id: None,
-                }),
-              }
-            });
-            self
-              .node_handles
-              .insert(node_name_for_insert, wrapped_handle);
-          } else {
-            self.node_handles.insert(node_name.to_string(), handle);
-          }
+          // Insert handle directly
+          self.node_handles.insert(node_name.to_string(), handle);
         } else {
           return Err(ExecutionError::NodeExecutionFailed {
             node: node_name.to_string(),
@@ -1591,15 +1329,6 @@ impl GraphExecutor {
     // The unreachable!() is removed to avoid warnings
   }
 
-  /// Get mode switch metrics (if available).
-  ///
-  /// # Returns
-  ///
-  /// `Some(&Arc<RwLock<ModeSwitchMetrics>>)` if metrics are being tracked, `None` otherwise.
-  pub fn mode_switch_metrics(&self) -> Option<&Arc<RwLock<ModeSwitchMetrics>>> {
-    self.mode_switch_metrics.as_ref()
-  }
-
   /// Drain in-process channels and collect in-flight items with connection information.
   ///
   /// # Returns
@@ -1680,15 +1409,6 @@ impl GraphExecutor {
     unreachable!()
   }
 
-  /// Get the throughput monitor (if available).
-  ///
-  /// # Returns
-  ///
-  /// `Some(&Arc<ThroughputMonitor>)` if monitoring is active, `None` otherwise.
-  pub fn throughput_monitor(&self) -> Option<&Arc<ThroughputMonitor>> {
-    self.throughput_monitor.as_ref()
-  }
-
   /// Returns a reference to the channel sender for a given node and port.
   ///
   /// # Arguments
@@ -1705,8 +1425,8 @@ impl GraphExecutor {
   /// This method is used by node tasks to send data to downstream nodes.
   /// The sender will block when the channel buffer is full, providing
   /// automatic backpressure. Nodes should wrap items in `Message<T>` and then
-  /// send as `ChannelItem::Bytes` (serialized `Message<T>`) or `ChannelItem::Arc`
-  /// (`Arc<Message<T>>`) based on `ExecutionMode`.
+  /// send as `ChannelItem::Arc` (`Arc<Message<T>>`) or `ChannelItem::SharedMemory`
+  /// (shared memory reference) based on `ExecutionMode`.
   pub fn get_channel_sender(&self, node_name: &str, port_name: &str) -> Option<&TypeErasedSender> {
     self
       .channel_senders
@@ -1727,9 +1447,9 @@ impl GraphExecutor {
   /// # Note
   ///
   /// This method is used by node tasks to receive data from upstream nodes.
-  /// Nodes should extract `ChannelItem::Bytes` (deserialize to `Message<T>`) or
-  /// `ChannelItem::Arc` (downcast to `Arc<Message<T>>`) based on `ExecutionMode`,
-  /// then unwrap the `Message<T>` to get the payload.
+  /// Nodes should extract `ChannelItem::Arc` (downcast to `Arc<Message<T>>`) or
+  /// `ChannelItem::SharedMemory` (access shared memory reference) based on `ExecutionMode`,
+  /// then access the `Message<T>` to get the payload.
   pub fn get_channel_receiver(
     &mut self,
     node_name: &str,
@@ -1818,9 +1538,6 @@ pub trait GraphExecution {
 
 impl GraphExecution for Graph {
   fn executor(self) -> GraphExecutor {
-    let mut executor = GraphExecutor::new(self);
-    // Set execution mode from graph
-    executor.execution_mode = executor.graph.execution_mode().clone();
-    executor
+    GraphExecutor::new(self)
   }
 }

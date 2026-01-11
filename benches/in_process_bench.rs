@@ -3,7 +3,6 @@ use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_m
 use std::collections::HashMap;
 use std::sync::Arc;
 use streamweave::graph::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-use streamweave::graph::execution::ExecutionMode;
 use streamweave::graph::nodes::ProducerNode;
 use streamweave::graph::traits::NodeTrait;
 use streamweave::producers::VecProducer;
@@ -33,16 +32,14 @@ async fn producer_in_process(items: Vec<i32>) {
   let mut output_channels = HashMap::new();
   output_channels.insert("out".to_string(), tx);
   let pause_signal = Arc::new(RwLock::new(false));
-  let execution_mode = ExecutionMode::InProcess {
-    use_shared_memory: false,
-  };
+  let use_shared_memory = false;
 
   let handle = node
     .spawn_execution_task(
       HashMap::new(),
       output_channels,
       pause_signal,
-      execution_mode,
+      use_shared_memory,
       None,
     )
     .unwrap();
@@ -69,19 +66,16 @@ async fn producer_in_process(items: Vec<i32>) {
 
 fn producer_benchmark(c: &mut Criterion) {
   let mut group = c.benchmark_group("producer_in_process");
-  
+
   for size in [100, 1000, 10000].iter() {
     let items: Vec<i32> = (0..*size).collect();
     group.throughput(Throughput::Elements(*size as u64));
-    group.bench_with_input(
-      BenchmarkId::from_parameter(size),
-      &items,
-      |b, items| {
-        b.to_async(TokioExecutor).iter(|| producer_in_process(items.clone()));
-      },
-    );
+    group.bench_with_input(BenchmarkId::from_parameter(size), &items, |b, items| {
+      b.to_async(TokioExecutor)
+        .iter(|| producer_in_process(items.clone()));
+    });
   }
-  
+
   group.finish();
 }
 
