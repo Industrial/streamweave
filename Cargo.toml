@@ -44,7 +44,7 @@ parquet = { version = "54", default-features = false, features = [
   "arrow",
   "snap",
 ] }
-arrow = { version = "54", default-features = false }
+arrow = { version = "57", default-features = false }
 rdkafka = "0.36"
 sqlx = { version = "0.8", features = [
   "mysql",
