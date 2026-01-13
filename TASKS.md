@@ -379,7 +379,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 2.1.4 Implement DivideNode - Division
+- [x] 2.1.4 Implement DivideNode - Division
   - **File:** `src/graph/nodes/arithmetic/divide_node.rs`
   - **Ports:** `configuration`, `in1`, `in2` → `out`, `error`
   - **Acceptance Criteria:**
@@ -390,7 +390,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 2.1.5 Implement ModuloNode - Modulo operation
+- [o] 2.1.5 Implement ModuloNode - Modulo operation
   - **File:** `src/graph/nodes/arithmetic/modulo_node.rs`
   - **Ports:** `configuration`, `in1`, `in2` → `out`, `error`
   - **Acceptance Criteria:**
