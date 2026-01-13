@@ -532,7 +532,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 2.3.4 Implement RoundNode - Rounding
+- [x] 2.3.4 Implement RoundNode - Rounding
   - **File:** `src/graph/nodes/math/round_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
@@ -542,7 +542,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 2.3.5 Implement FloorNode - Floor
+- [o] 2.3.5 Implement FloorNode - Floor
   - **File:** `src/graph/nodes/math/floor_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**

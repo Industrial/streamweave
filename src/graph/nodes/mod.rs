@@ -75,7 +75,7 @@ pub use map_node::{MapConfig, MapFunction, MapNode, map_config};
 pub use match_node::{
   MatchConfig, MatchFunction, MatchNode, match_config, match_exact_string, match_regex,
 };
-pub use math::{AbsNode, MaxNode, MinNode, RoundNode};
+pub use math::{AbsNode, FloorNode, MaxNode, MinNode, RoundNode};
 pub use range_node::{RangeConfig, RangeNode};
 pub use read_variable_node::{ReadVariableConfig, ReadVariableNode};
 pub use sync_node::{SyncConfig, SyncNode};
