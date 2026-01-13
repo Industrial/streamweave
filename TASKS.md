@@ -674,7 +674,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 3.1.6 Implement StringJoinNode - Join array into string
+- [x] 3.1.6 Implement StringJoinNode - Join array into string
   - **File:** `src/graph/nodes/string/join_node.rs`
   - **Ports:** `configuration`, `in`, `delimiter` → `out`, `error`
   - **Acceptance Criteria:**

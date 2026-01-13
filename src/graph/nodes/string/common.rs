@@ -239,3 +239,52 @@ pub fn string_split(
 
   Ok(Arc::new(parts) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Joins an array of strings with a delimiter.
+///
+/// This function attempts to downcast the array and delimiter to their
+/// expected types and performs joining. It supports:
+/// - Joining Vec<Arc<dyn Any + Send + Sync>> where each element is a String
+/// - Returns a single joined string
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` or an error string.
+pub fn string_join(
+  v: &Arc<dyn Any + Send + Sync>,
+  delimiter: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast array
+  let arc_vec = v
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for string join input: {} (input must be Vec<Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Try to downcast delimiter
+  let arc_delimiter = delimiter.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for delimiter: {} (delimiter must be String)",
+      std::any::type_name_of_val(&**delimiter)
+    )
+  })?;
+
+  // Convert each element to String and join
+  let mut parts = Vec::new();
+  for (idx, item) in arc_vec.iter().enumerate() {
+    let arc_str = item.clone().downcast::<String>().map_err(|_| {
+      format!(
+        "Unsupported type for array element at index {}: {} (all elements must be String)",
+        idx,
+        std::any::type_name_of_val(&**item)
+      )
+    })?;
+    parts.push((*arc_str).clone());
+  }
+
+  // Join with delimiter
+  let result = parts.join(&*arc_delimiter);
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}

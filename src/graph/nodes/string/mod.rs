@@ -10,6 +10,7 @@
 
 pub mod common;
 pub mod concat_node;
+pub mod join_node;
 pub mod length_node;
 pub mod replace_node;
 pub mod slice_node;
@@ -17,6 +18,8 @@ pub mod split_node;
 
 #[cfg(test)]
 mod concat_node_test;
+#[cfg(test)]
+mod join_node_test;
 #[cfg(test)]
 mod length_node_test;
 #[cfg(test)]
@@ -27,6 +30,7 @@ mod slice_node_test;
 mod split_node_test;
 
 pub use concat_node::StringConcatNode;
+pub use join_node::StringJoinNode;
 pub use length_node::StringLengthNode;
 pub use replace_node::StringReplaceNode;
 pub use slice_node::StringSliceNode;
