@@ -490,7 +490,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 2.2.7 Add comparison node tests
+- [x] 2.2.7 Add comparison node tests
   - **File:** `src/graph/nodes/comparison/*_test.rs`
   - **Acceptance Criteria:**
     - Tests for each comparison
@@ -502,7 +502,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 2.3 Math Functions
 
-- [ ] 2.3.1 Implement AbsNode - Absolute value
+- [o] 2.3.1 Implement AbsNode - Absolute value
   - **File:** `src/graph/nodes/math/abs_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
@@ -595,7 +595,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 2.3.10 Implement SinNode, CosNode, TanNode - Trigonometric functions
+- [o] 2.3.10 Implement SinNode, CosNode, TanNode - Trigonometric functions
   - **File:** `src/graph/nodes/math/trigonometric_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
@@ -605,7 +605,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 2.3.11 Add math function node tests
+- [o] 2.3.11 Add math function node tests
   - **File:** `src/graph/nodes/math/*_test.rs`
   - **Acceptance Criteria:**
     - Tests for each function
