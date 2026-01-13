@@ -1100,7 +1100,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 6.1 Aggregation
 
-- [ ] 6.1.1 Implement SumNode - Sum values
+- [x] 6.1.1 Implement SumNode - Sum values
   - **File:** `src/graph/nodes/aggregation/sum_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**

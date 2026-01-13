@@ -11,6 +11,7 @@
 //! - **Sink Nodes**: Consume data (1+ inputs, 0 outputs)
 //! - **Router Nodes**: Route data (1+ inputs, 1+ outputs with routing logic)
 
+pub mod aggregation;
 pub mod arithmetic;
 pub mod array;
 pub mod boolean_logic;
@@ -60,6 +61,7 @@ mod while_loop_node_test;
 #[cfg(test)]
 mod write_variable_node_test;
 
+pub use aggregation::SumNode;
 pub use arithmetic::{AddNode, DivideNode, ModuloNode, MultiplyNode, PowerNode, SubtractNode};
 pub use array::{
   ArrayConcatNode, ArrayContainsNode, ArrayFilterNode, ArrayFlattenNode, ArrayIndexNode,
