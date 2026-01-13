@@ -230,7 +230,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 1.3 Error Handling
 
-- [o] 1.3.1 Implement ErrorBranchNode - Route Result<T, E> to success/error paths
+- [x] 1.3.1 Implement ErrorBranchNode - Route Result<T, E> to success/error paths
   - **File:** `src/graph/nodes/error_branch_node.rs`
   - **Ports:** `configuration`, `in` → `success`, `error`
   - **Context:** Splits `Result` streams
@@ -243,7 +243,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 1.3.2 Add ErrorBranchNode tests
+- [o] 1.3.2 Add ErrorBranchNode tests
   - **File:** `src/graph/nodes/error_branch_node_test.rs`
   - **Acceptance Criteria:**
     - Tests for success routing
