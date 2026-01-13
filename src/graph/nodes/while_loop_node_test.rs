@@ -280,3 +280,55 @@ async fn test_while_loop_node_error_on_no_config() {
   assert_eq!(errors.len(), 1);
   assert!(errors[0].contains("No configuration set"));
 }
+
+#[tokio::test]
+async fn test_while_loop_node_condition_error() {
+  let node = WhileLoopNode::new("test_while_loop".to_string());
+
+  // Create a config that returns an error
+  let config: WhileLoopConfig = while_loop_config(
+    |_value| async move { Err("Condition evaluation failed".to_string()) },
+    100,
+  );
+
+  let (config_tx, data_tx, _break_tx, inputs) = create_input_streams();
+  let outputs_future = node.execute(inputs);
+  let mut outputs = outputs_future.await.unwrap();
+
+  // Send configuration
+  let _ = config_tx
+    .send(Arc::new(Arc::new(config)) as Arc<dyn Any + Send + Sync>)
+    .await;
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+  // Send data
+  let _ = data_tx
+    .send(Arc::new(42i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+
+  // Collect error
+  let error_stream = outputs.remove("error").unwrap();
+  let mut errors = Vec::new();
+  let mut stream = error_stream;
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  tokio::pin!(timeout);
+
+  loop {
+    tokio::select! {
+      result = stream.next() => {
+        if let Some(item) = result {
+          if let Ok(arc_string) = item.downcast::<String>() {
+            errors.push(arc_string.clone());
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+      _ = &mut timeout => break,
+    }
+  }
+
+  assert_eq!(errors.len(), 1);
+  assert!(errors[0].contains("Condition evaluation failed"));
+}
