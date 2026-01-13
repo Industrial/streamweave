@@ -10,6 +10,7 @@ pub mod map_node;
 pub mod reverse_node;
 pub mod slice_node;
 pub mod sort_node;
+pub mod split_node;
 
 #[cfg(test)]
 mod concat_node_test;
@@ -33,6 +34,8 @@ mod reverse_node_test;
 mod slice_node_test;
 #[cfg(test)]
 mod sort_node_test;
+#[cfg(test)]
+mod split_node_test;
 
 pub use concat_node::ArrayConcatNode;
 pub use contains_node::ArrayContainsNode;
@@ -45,3 +48,4 @@ pub use map_node::ArrayMapNode;
 pub use reverse_node::ArrayReverseNode;
 pub use slice_node::ArraySliceNode;
 pub use sort_node::ArraySortNode;
+pub use split_node::ArraySplitNode;

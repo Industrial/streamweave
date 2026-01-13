@@ -569,3 +569,76 @@ pub fn array_join(
   let result = parts.join(&*arc_delimiter);
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Splits an array into chunks of a specified size.
+///
+/// This function attempts to downcast the array to its expected type
+/// and splits it into chunks. It supports:
+/// - Splitting Vec<Arc<dyn Any + Send + Sync>> arrays
+/// - Configurable chunk size
+/// - Preserving element references (clones Arc references)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (Vec<Vec<Arc<dyn Any + Send + Sync>>>) or an error string.
+pub fn array_split(
+  v: &Arc<dyn Any + Send + Sync>,
+  chunk_size: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast array
+  let arc_vec = v
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for array split input: {} (input must be Vec<Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Helper to convert chunk_size to usize
+  let get_usize = |val: &Arc<dyn Any + Send + Sync>, name: &str| -> Result<usize, String> {
+    if let Ok(arc_i32) = val.clone().downcast::<i32>() {
+      let i = *arc_i32;
+      if i < 0 {
+        return Err(format!("{} must be non-negative, got {}", name, i));
+      }
+      Ok(i as usize)
+    } else if let Ok(arc_i64) = val.clone().downcast::<i64>() {
+      let i = *arc_i64;
+      if i < 0 {
+        return Err(format!("{} must be non-negative, got {}", name, i));
+      }
+      if i > usize::MAX as i64 {
+        return Err(format!("{} overflow: {} exceeds usize::MAX", name, i));
+      }
+      Ok(i as usize)
+    } else if let Ok(arc_u32) = val.clone().downcast::<u32>() {
+      Ok(*arc_u32 as usize)
+    } else if let Ok(arc_u64) = val.clone().downcast::<u64>() {
+      let u = *arc_u64;
+      if u > usize::MAX as u64 {
+        return Err(format!("{} overflow: {} exceeds usize::MAX", name, u));
+      }
+      Ok(u as usize)
+    } else {
+      Err(format!(
+        "Unsupported type for {}: {} (must be i32, i64, u32, or u64)",
+        name,
+        std::any::type_name_of_val(&**val)
+      ))
+    }
+  };
+
+  let size = get_usize(chunk_size, "chunk_size")?;
+  if size == 0 {
+    return Err("chunk_size must be greater than 0".to_string());
+  }
+
+  // Split into chunks
+  let mut result: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  for chunk in arc_vec.chunks(size) {
+    let chunk_vec: Vec<Arc<dyn Any + Send + Sync>> = chunk.to_vec();
+    result.push(Arc::new(chunk_vec) as Arc<dyn Any + Send + Sync>);
+  }
+
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}

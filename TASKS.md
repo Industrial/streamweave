@@ -951,7 +951,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 4.3.2 Implement ArraySplitNode - Split into chunks
+- [x] 4.3.2 Implement ArraySplitNode - Split into chunks
   - **File:** `src/graph/nodes/array/split_node.rs`
   - **Ports:** `configuration`, `in`, `chunk_size` → `out`, `error`
   - **Acceptance Criteria:**
