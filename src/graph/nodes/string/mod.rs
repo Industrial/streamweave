@@ -14,6 +14,7 @@ pub mod contains_node;
 pub mod ends_with_node;
 pub mod join_node;
 pub mod length_node;
+pub mod match_node;
 pub mod replace_node;
 pub mod slice_node;
 pub mod split_node;
@@ -30,6 +31,8 @@ mod join_node_test;
 #[cfg(test)]
 mod length_node_test;
 #[cfg(test)]
+mod match_node_test;
+#[cfg(test)]
 mod replace_node_test;
 #[cfg(test)]
 mod slice_node_test;
@@ -43,6 +46,7 @@ pub use contains_node::StringContainsNode;
 pub use ends_with_node::StringEndsWithNode;
 pub use join_node::StringJoinNode;
 pub use length_node::StringLengthNode;
+pub use match_node::StringMatchNode;
 pub use replace_node::StringReplaceNode;
 pub use slice_node::StringSliceNode;
 pub use split_node::StringSplitNode;

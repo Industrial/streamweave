@@ -728,7 +728,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 3.2.4 Implement StringMatchNode - Regex matching
+- [x] 3.2.4 Implement StringMatchNode - Regex matching
   - **File:** `src/graph/nodes/string/match_node.rs`
   - **Ports:** `configuration`, `in`, `pattern` → `out`, `error`
   - **Acceptance Criteria:**

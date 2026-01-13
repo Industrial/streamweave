@@ -384,3 +384,40 @@ pub fn string_ends_with(
   let result = arc_str.ends_with(&*arc_suffix);
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Checks if a string matches a regex pattern.
+///
+/// This function attempts to downcast the string and pattern to their
+/// expected types and performs regex matching. It supports:
+/// - Regex pattern matching (compiled at runtime)
+/// - Returns boolean (true if matches, false otherwise)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (bool) or an error string.
+pub fn string_match(
+  v: &Arc<dyn Any + Send + Sync>,
+  pattern: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast string
+  let arc_str = v.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string match input: {} (input must be String)",
+      std::any::type_name_of_val(&**v)
+    )
+  })?;
+
+  // Try to downcast pattern
+  let arc_pattern_str = pattern.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for pattern: {} (pattern must be String)",
+      std::any::type_name_of_val(&**pattern)
+    )
+  })?;
+
+  // Compile regex pattern
+  let regex_pattern =
+    regex::Regex::new(&arc_pattern_str).map_err(|e| format!("Invalid regex pattern: {}", e))?;
+
+  // Perform regex match
+  let result = regex_pattern.is_match(&arc_str);
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
