@@ -60,3 +60,40 @@ pub fn object_values(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Sen
 
   Ok(Arc::new(values) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Extracts key-value pairs (entries) from an object (HashMap).
+///
+/// This function attempts to downcast the object to its expected type
+/// and extracts its entries. It supports:
+/// - Extracting entries from HashMap<String, Arc<dyn Any + Send + Sync>> objects
+/// - Returns array of [key, value] pairs (each pair is an array with two elements)
+/// - Preserving entry order (HashMap iteration order)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (Vec<Arc<dyn Any + Send + Sync>>) or an error string.
+pub fn object_entries(
+  v: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast object to HashMap
+  let arc_map = v
+    .clone()
+    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for object entries input: {} (input must be HashMap<String, Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Extract entries and convert to array of [key, value] pairs
+  let entries: Vec<Arc<dyn Any + Send + Sync>> = arc_map
+    .iter()
+    .map(|(k, v)| {
+      // Each entry is an array [key, value]
+      let pair: Vec<Arc<dyn Any + Send + Sync>> =
+        vec![Arc::new(k.clone()) as Arc<dyn Any + Send + Sync>, v.clone()];
+      Arc::new(pair) as Arc<dyn Any + Send + Sync>
+    })
+    .collect();
+
+  Ok(Arc::new(entries) as Arc<dyn Any + Send + Sync>)
+}
