@@ -642,3 +642,40 @@ pub fn array_split(
 
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Flattens a nested array one level.
+///
+/// This function attempts to downcast the array to its expected type
+/// and flattens nested arrays one level. It supports:
+/// - Flattening Vec<Arc<dyn Any + Send + Sync>> arrays where elements are also arrays
+/// - Flattening one level only (not recursive)
+/// - Preserving element references (clones Arc references)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (Vec<Arc<dyn Any + Send + Sync>>) or an error string.
+pub fn array_flatten(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast array
+  let arc_vec = v
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for array flatten input: {} (input must be Vec<Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Flatten one level: iterate through elements and if an element is an array, add its elements
+  let mut result: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  for item in arc_vec.iter() {
+    // Try to downcast element to array
+    if let Ok(nested_array) = item.clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
+      // Element is an array - flatten it by adding its elements
+      result.extend(nested_array.iter().cloned());
+    } else {
+      // Element is not an array - add it as-is
+      result.push(item.clone());
+    }
+  }
+
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}

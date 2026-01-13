@@ -2,6 +2,7 @@ pub mod common;
 pub mod concat_node;
 pub mod contains_node;
 pub mod filter_node;
+pub mod flatten_node;
 pub mod index_node;
 pub mod index_of_node;
 pub mod join_node;
@@ -18,6 +19,8 @@ mod concat_node_test;
 mod contains_node_test;
 #[cfg(test)]
 mod filter_node_test;
+#[cfg(test)]
+mod flatten_node_test;
 #[cfg(test)]
 mod index_node_test;
 #[cfg(test)]
@@ -40,6 +43,7 @@ mod split_node_test;
 pub use concat_node::ArrayConcatNode;
 pub use contains_node::ArrayContainsNode;
 pub use filter_node::ArrayFilterNode;
+pub use flatten_node::ArrayFlattenNode;
 pub use index_node::ArrayIndexNode;
 pub use index_of_node::ArrayIndexOfNode;
 pub use join_node::ArrayJoinNode;
