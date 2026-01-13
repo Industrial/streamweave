@@ -479,7 +479,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 2.2.6 Implement LessThanOrEqualNode - Less than or equal
+- [x] 2.2.6 Implement LessThanOrEqualNode - Less than or equal
   - **File:** `src/graph/nodes/comparison/less_than_or_equal_node.rs`
   - **Ports:** `configuration`, `in1`, `in2` → `out`, `error`
   - **Acceptance Criteria:**
@@ -490,7 +490,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 2.2.7 Add comparison node tests
+- [o] 2.2.7 Add comparison node tests
   - **File:** `src/graph/nodes/comparison/*_test.rs`
   - **Acceptance Criteria:**
     - Tests for each comparison
