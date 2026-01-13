@@ -97,3 +97,42 @@ pub fn object_entries(
 
   Ok(Arc::new(entries) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Gets a property value from an object (HashMap) by key.
+///
+/// This function attempts to downcast the object to its expected type
+/// and gets the value for the specified key. It supports:
+/// - Getting values from HashMap<String, Arc<dyn Any + Send + Sync>> objects
+/// - Key must be a String
+/// - Returns the value if key exists, or an error if key is missing
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (the property value) or an error string.
+pub fn object_property(
+  v: &Arc<dyn Any + Send + Sync>,
+  key: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast object to HashMap
+  let arc_map = v
+    .clone()
+    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for object property input: {} (input must be HashMap<String, Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Try to downcast key to String
+  let arc_key = key.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for object property key: {} (key must be String)",
+      std::any::type_name_of_val(&**key)
+    )
+  })?;
+
+  // Get the value for the key
+  arc_map
+    .get(&*arc_key)
+    .cloned()
+    .ok_or_else(|| format!("Property '{}' not found in object", *arc_key))
+}
