@@ -1132,7 +1132,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 6.1.4 Implement MinAggregateNode - Minimum value
+- [x] 6.1.4 Implement MinAggregateNode - Minimum value
   - **File:** `src/graph/nodes/aggregation/min_aggregate_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
