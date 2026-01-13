@@ -534,3 +534,114 @@ pub fn string_trim(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send 
   let result = arc_str.trim().to_string();
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Pads a string to a specified length with a padding character.
+///
+/// This function attempts to downcast the string, length, padding character, and side
+/// to their expected types and performs padding. It supports:
+/// - Left padding: Pads on the left side
+/// - Right padding: Pads on the right side
+/// - Center padding: Pads on both sides (preferring left if odd)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` or an error string.
+pub fn string_pad(
+  v: &Arc<dyn Any + Send + Sync>,
+  length: &Arc<dyn Any + Send + Sync>,
+  padding: &Arc<dyn Any + Send + Sync>,
+  side: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast string
+  let arc_str = v.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string pad input: {} (input must be String)",
+      std::any::type_name_of_val(&**v)
+    )
+  })?;
+
+  // Helper to convert Arc<dyn Any> to usize, handling various numeric types
+  let get_usize = |val: &Arc<dyn Any + Send + Sync>, name: &str| -> Result<usize, String> {
+    if let Ok(arc_usize) = val.clone().downcast::<usize>() {
+      Ok(*arc_usize)
+    } else if let Ok(arc_i32) = val.clone().downcast::<i32>() {
+      if *arc_i32 < 0 {
+        return Err(format!("{} cannot be negative", name));
+      }
+      (*arc_i32)
+        .try_into()
+        .map_err(|_| format!("{} too large", name))
+    } else if let Ok(arc_i64) = val.clone().downcast::<i64>() {
+      if *arc_i64 < 0 {
+        return Err(format!("{} cannot be negative", name));
+      }
+      (*arc_i64)
+        .try_into()
+        .map_err(|_| format!("{} too large", name))
+    } else if let Ok(arc_u32) = val.clone().downcast::<u32>() {
+      (*arc_u32)
+        .try_into()
+        .map_err(|_| format!("{} too large", name))
+    } else if let Ok(arc_u64) = val.clone().downcast::<u64>() {
+      (*arc_u64)
+        .try_into()
+        .map_err(|_| format!("{} too large", name))
+    } else {
+      Err(format!(
+        "Unsupported type for {}: {} (must be numeric)",
+        name,
+        std::any::type_name_of_val(&**val)
+      ))
+    }
+  };
+
+  let target_length = get_usize(length, "length")?;
+
+  // Try to downcast padding character (default to space if not provided or empty)
+  let padding_char = if let Ok(arc_pad_str) = padding.clone().downcast::<String>() {
+    let pad_str = &*arc_pad_str;
+    if pad_str.is_empty() {
+      ' '
+    } else {
+      pad_str.chars().next().unwrap_or(' ')
+    }
+  } else if let Ok(arc_char) = padding.clone().downcast::<char>() {
+    *arc_char
+  } else {
+    ' ' // Default to space
+  };
+
+  // Try to downcast side (default to "right" if not provided)
+  let side_str = if let Ok(arc_side) = side.clone().downcast::<String>() {
+    arc_side.to_lowercase()
+  } else {
+    "right".to_string() // Default to right padding
+  };
+
+  let current_len = arc_str.chars().count();
+  if current_len >= target_length {
+    // String is already long enough, return as-is
+    return Ok(arc_str.clone());
+  }
+
+  let pad_count = target_length - current_len;
+  let pad_str: String = std::iter::repeat_n(padding_char, pad_count).collect();
+
+  let result = match side_str.as_str() {
+    "left" => format!("{}{}", pad_str, arc_str),
+    "right" => format!("{}{}", arc_str, pad_str),
+    "center" => {
+      let left_pad = pad_count / 2;
+      let right_pad = pad_count - left_pad;
+      let left_str: String = std::iter::repeat_n(padding_char, left_pad).collect();
+      let right_str: String = std::iter::repeat_n(padding_char, right_pad).collect();
+      format!("{}{}{}", left_str, arc_str, right_str)
+    }
+    _ => {
+      return Err(format!(
+        "Unsupported padding side: {} (must be 'left', 'right', or 'center')",
+        side_str
+      ));
+    }
+  };
+
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}

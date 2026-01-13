@@ -781,7 +781,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 3.3.3 Implement StringPadNode - Pad strings
+- [x] 3.3.3 Implement StringPadNode - Pad strings
   - **File:** `src/graph/nodes/string/pad_node.rs`
   - **Ports:** `configuration`, `in`, `length`, `padding` → `out`, `error`
   - **Acceptance Criteria:**
