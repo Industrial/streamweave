@@ -15,9 +15,11 @@
 //! - **AddNode**: Addition operation (`configuration`, `in1`, `in2` → `out`, `error`)
 //! - **SubtractNode**: Subtraction operation (`configuration`, `in1`, `in2` → `out`, `error`)
 //! - **MultiplyNode**: Multiplication operation (`configuration`, `in1`, `in2` → `out`, `error`)
+//! - **DivideNode**: Division operation (`configuration`, `in1`, `in2` → `out`, `error`)
 
 pub mod add_node;
 pub mod common;
+pub mod divide_node;
 pub mod multiply_node;
 pub mod subtract_node;
 
@@ -26,10 +28,13 @@ mod add_node_test;
 #[cfg(test)]
 mod common_test;
 #[cfg(test)]
+mod divide_node_test;
+#[cfg(test)]
 mod multiply_node_test;
 #[cfg(test)]
 mod subtract_node_test;
 
 pub use add_node::AddNode;
+pub use divide_node::DivideNode;
 pub use multiply_node::MultiplyNode;
 pub use subtract_node::SubtractNode;
