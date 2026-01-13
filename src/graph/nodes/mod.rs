@@ -88,7 +88,7 @@ pub use math::{
 };
 pub use object::{
   ObjectEntriesNode, ObjectHasPropertyNode, ObjectKeysNode, ObjectMergeNode, ObjectPropertyNode,
-  ObjectValuesNode,
+  ObjectSetPropertyNode, ObjectValuesNode,
 };
 pub use range_node::{RangeConfig, RangeNode};
 pub use read_variable_node::{ReadVariableConfig, ReadVariableNode};

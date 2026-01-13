@@ -217,3 +217,44 @@ pub fn object_merge(
 
   Ok(Arc::new(merged) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Sets a property value in an object (HashMap).
+///
+/// This function attempts to downcast the object to its expected type
+/// and sets the property value. It supports:
+/// - Setting values in HashMap<String, Arc<dyn Any + Send + Sync>> objects
+/// - Key must be a String
+/// - Creates a new object with the property set (does not modify the original)
+/// - If the key already exists, it is overwritten
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (HashMap<String, Arc<dyn Any + Send + Sync>>) or an error string.
+pub fn object_set_property(
+  v: &Arc<dyn Any + Send + Sync>,
+  key: &Arc<dyn Any + Send + Sync>,
+  value: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast object to HashMap
+  let arc_map = v
+    .clone()
+    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for object set_property input: {} (input must be HashMap<String, Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Try to downcast key to String
+  let arc_key = key.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for object set_property key: {} (key must be String)",
+      std::any::type_name_of_val(&**key)
+    )
+  })?;
+
+  // Create a new map with the property set
+  let mut new_map: HashMap<String, Arc<dyn Any + Send + Sync>> = (*arc_map).clone();
+  new_map.insert((*arc_key).clone(), value.clone());
+
+  Ok(Arc::new(new_map) as Arc<dyn Any + Send + Sync>)
+}

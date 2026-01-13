@@ -1067,7 +1067,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 5.2.2 Implement ObjectSetPropertyNode - Set property
+- [x] 5.2.2 Implement ObjectSetPropertyNode - Set property
   - **File:** `src/graph/nodes/object/set_property_node.rs`
   - **Ports:** `configuration`, `in`, `key`, `value` → `out`, `error`
   - **Acceptance Criteria:**
