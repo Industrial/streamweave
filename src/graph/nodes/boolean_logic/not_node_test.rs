@@ -9,9 +9,14 @@ use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 fn create_single_input_stream() -> (mpsc::Sender<Arc<dyn Any + Send + Sync>>, InputStreams) {
+  let (_config_tx, config_rx) = mpsc::channel(10);
   let (in_tx, in_rx) = mpsc::channel(10);
 
   let mut inputs = HashMap::new();
+  inputs.insert(
+    "configuration".to_string(),
+    Box::pin(ReceiverStream::new(config_rx)) as crate::graph::node::InputStream,
+  );
   inputs.insert(
     "in".to_string(),
     Box::pin(ReceiverStream::new(in_rx)) as crate::graph::node::InputStream,
@@ -24,8 +29,10 @@ fn create_single_input_stream() -> (mpsc::Sender<Arc<dyn Any + Send + Sync>>, In
 async fn test_not_node_creation() {
   let node = NotNode::new("test_not".to_string());
   assert_eq!(node.name(), "test_not");
+  assert!(node.has_input_port("configuration"));
   assert!(node.has_input_port("in"));
   assert!(node.has_output_port("out"));
+  assert!(node.has_output_port("error"));
 }
 
 #[tokio::test]

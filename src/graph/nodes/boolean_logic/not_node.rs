@@ -4,6 +4,7 @@
 //!
 //! ## Ports
 //!
+//! - **Input**: `"configuration"` - Receives configuration (currently unused, for consistency)
 //! - **Input**: `"in"` - Receives boolean value
 //! - **Output**: `"out"` - Sends the result of (NOT in)
 //! - **Output**: `"error"` - Sends errors that occur during processing
@@ -32,7 +33,7 @@ impl NotNode {
     Self {
       base: BaseNode::new(
         name,
-        vec!["in".to_string()],
+        vec!["configuration".to_string(), "in".to_string()],
         vec!["out".to_string(), "error".to_string()],
       ),
     }
@@ -72,7 +73,8 @@ impl Node for NotNode {
     Box<dyn std::future::Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>,
   > {
     Box::pin(async move {
-      // Extract input stream
+      // Extract input stream (configuration port is present but unused for now)
+      let _config_stream = inputs.remove("configuration");
       let input_stream = inputs.remove("in").ok_or("Missing 'in' input")?;
 
       // Create output streams
