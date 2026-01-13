@@ -522,7 +522,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 2.3.3 Implement MaxNode - Maximum of two values
+- [x] 2.3.3 Implement MaxNode - Maximum of two values
   - **File:** `src/graph/nodes/math/max_node.rs`
   - **Ports:** `configuration`, `in1`, `in2` → `out`, `error`
   - **Acceptance Criteria:**
@@ -532,7 +532,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 2.3.4 Implement RoundNode - Rounding
+- [o] 2.3.4 Implement RoundNode - Rounding
   - **File:** `src/graph/nodes/math/round_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
