@@ -173,3 +173,47 @@ pub fn object_has_property(
   let has_property = arc_map.contains_key(&*arc_key);
   Ok(Arc::new(has_property) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Merges two objects (HashMaps).
+///
+/// This function attempts to downcast both objects to their expected types
+/// and merges them. It supports:
+/// - Merging HashMap<String, Arc<dyn Any + Send + Sync>> objects
+/// - Key conflicts: values from the second object overwrite values from the first
+/// - Returns a new merged object
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (HashMap<String, Arc<dyn Any + Send + Sync>>) or an error string.
+pub fn object_merge(
+  v1: &Arc<dyn Any + Send + Sync>,
+  v2: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast first object to HashMap
+  let arc_map1 = v1
+    .clone()
+    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for object merge input 1: {} (input must be HashMap<String, Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v1)
+      )
+    })?;
+
+  // Try to downcast second object to HashMap
+  let arc_map2 = v2
+    .clone()
+    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for object merge input 2: {} (input must be HashMap<String, Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v2)
+      )
+    })?;
+
+  // Merge: start with first map, then insert/overwrite with second map
+  let mut merged: HashMap<String, Arc<dyn Any + Send + Sync>> = (*arc_map1).clone();
+  for (k, v) in arc_map2.iter() {
+    merged.insert(k.clone(), v.clone());
+  }
+
+  Ok(Arc::new(merged) as Arc<dyn Any + Send + Sync>)
+}

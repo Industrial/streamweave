@@ -1056,7 +1056,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 5.2 Object Transformations
 
-- [ ] 5.2.1 Implement ObjectMergeNode - Merge objects
+- [x] 5.2.1 Implement ObjectMergeNode - Merge objects
   - **File:** `src/graph/nodes/object/merge_node.rs`
   - **Ports:** `configuration`, `in1`, `in2` → `out`, `error`
   - **Acceptance Criteria:**
