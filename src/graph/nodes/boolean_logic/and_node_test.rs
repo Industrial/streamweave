@@ -14,10 +14,15 @@ type ConfigSender = mpsc::Sender<Arc<dyn Any + Send + Sync>>;
 
 /// Helper to create input streams from channels
 fn create_dual_input_streams() -> (ConfigSender, ConfigSender, InputStreams) {
+  let (_config_tx, config_rx) = mpsc::channel(10);
   let (in1_tx, in1_rx) = mpsc::channel(10);
   let (in2_tx, in2_rx) = mpsc::channel(10);
 
   let mut inputs = HashMap::new();
+  inputs.insert(
+    "configuration".to_string(),
+    Box::pin(ReceiverStream::new(config_rx)) as crate::graph::node::InputStream,
+  );
   inputs.insert(
     "in1".to_string(),
     Box::pin(ReceiverStream::new(in1_rx)) as crate::graph::node::InputStream,
@@ -34,6 +39,7 @@ fn create_dual_input_streams() -> (ConfigSender, ConfigSender, InputStreams) {
 async fn test_and_node_creation() {
   let node = AndNode::new("test_and".to_string());
   assert_eq!(node.name(), "test_and");
+  assert!(node.has_input_port("configuration"));
   assert!(node.has_input_port("in1"));
   assert!(node.has_input_port("in2"));
   assert!(node.has_output_port("out"));
