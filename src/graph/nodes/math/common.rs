@@ -511,3 +511,43 @@ pub fn log_values(
   let result = value_f64.ln() / base_f64.ln();
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Computes the exponential (e^x) of a numeric value.
+///
+/// This function attempts to downcast the value to a numeric type and computes
+/// e raised to the power of the value. It handles:
+/// - Integer types: i32, i64, u32, u64 (converted to f64)
+/// - Floating point types: f32, f64
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (f64) or an error string.
+pub fn exp_value(value: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Convert value to f64
+  let value_f64 = match value.clone().downcast::<i32>() {
+    Ok(arc) => *arc as f64,
+    Err(_) => match value.clone().downcast::<i64>() {
+      Ok(arc) => *arc as f64,
+      Err(_) => match value.clone().downcast::<u32>() {
+        Ok(arc) => *arc as f64,
+        Err(_) => match value.clone().downcast::<u64>() {
+          Ok(arc) => *arc as f64,
+          Err(_) => match value.clone().downcast::<f32>() {
+            Ok(arc) => *arc as f64,
+            Err(_) => match value.clone().downcast::<f64>() {
+              Ok(arc) => *arc,
+              Err(_) => {
+                return Err(format!(
+                  "Unsupported type for exponential: {}",
+                  std::any::type_name_of_val(&**value)
+                ));
+              }
+            },
+          },
+        },
+      },
+    },
+  };
+
+  // Compute e^value
+  let result = value_f64.exp();
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}

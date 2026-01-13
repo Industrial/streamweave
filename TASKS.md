@@ -573,7 +573,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 2.3.8 Implement LogNode - Logarithm
+- [x] 2.3.8 Implement LogNode - Logarithm
   - **File:** `src/graph/nodes/math/log_node.rs`
   - **Ports:** `configuration`, `in`, `base` → `out`, `error`
   - **Acceptance Criteria:**
@@ -584,7 +584,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 2.3.9 Implement ExpNode - Exponential
+- [o] 2.3.9 Implement ExpNode - Exponential
   - **File:** `src/graph/nodes/math/exp_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
