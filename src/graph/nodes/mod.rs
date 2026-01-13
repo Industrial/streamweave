@@ -23,6 +23,7 @@ pub mod range_node;
 pub mod read_variable_node;
 pub mod variable_node;
 pub mod while_loop_node;
+pub mod write_variable_node;
 
 #[cfg(test)]
 mod condition_node_test;
@@ -44,6 +45,8 @@ mod read_variable_node_test;
 mod variable_node_test;
 #[cfg(test)]
 mod while_loop_node_test;
+#[cfg(test)]
+mod write_variable_node_test;
 
 pub use boolean_logic::{AndNode, NandNode, NorNode, NotNode, OrNode, XorNode};
 pub use common::BaseNode;
@@ -61,3 +64,4 @@ pub use variable_node::{VariableConfig, VariableNode};
 pub use while_loop_node::{
   WhileLoopConditionFunction, WhileLoopConfig, WhileLoopNode, while_loop_config,
 };
+pub use write_variable_node::{WriteVariableConfig, WriteVariableNode};
