@@ -31,3 +31,22 @@ pub fn concat_strings(
     std::any::type_name_of_val(&**v2)
   ))
 }
+
+/// Gets the length of a string value.
+///
+/// This function attempts to downcast the value to String and returns
+/// its character count as a usize.
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` or an error string.
+pub fn string_length(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try String
+  if let Ok(arc_str) = v.clone().downcast::<String>() {
+    let length = arc_str.len();
+    return Ok(Arc::new(length) as Arc<dyn Any + Send + Sync>);
+  }
+
+  Err(format!(
+    "Unsupported type for string length: {} (input must be String)",
+    std::any::type_name_of_val(&**v)
+  ))
+}
