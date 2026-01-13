@@ -192,7 +192,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 1.2.2 Implement WhileLoopNode - While loop with condition
+- [x] 1.2.2 Implement WhileLoopNode - While loop with condition
   - **File:** `src/graph/nodes/while_loop_node.rs`
   - **Ports:** `configuration`, `in`, `condition` → `out`, `break`, `error`
   - **Context:** Repeats processing until condition is false
@@ -205,7 +205,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 1.2.3 Implement RangeNode - Generate number ranges
+- [o] 1.2.3 Implement RangeNode - Generate number ranges
   - **File:** `src/graph/nodes/range_node.rs`
   - **Ports:** `configuration`, `start`, `end`, `step` → `out`, `error`
   - **Context:** Produces ranges for iteration
