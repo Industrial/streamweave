@@ -412,7 +412,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 2.1.7 Add arithmetic node tests
+- [x] 2.1.7 Add arithmetic node tests
   - **File:** `src/graph/nodes/arithmetic/*_test.rs`
   - **Acceptance Criteria:**
     - Tests for each operation
@@ -424,7 +424,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 2.2 Comparison Operations
 
-- [ ] 2.2.1 Implement EqualNode - Equality comparison
+- [o] 2.2.1 Implement EqualNode - Equality comparison
   - **File:** `src/graph/nodes/comparison/equal_node.rs`
   - **Ports:** `configuration`, `in1`, `in2` → `out`, `error`
   - **Acceptance Criteria:**

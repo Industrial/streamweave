@@ -14,6 +14,7 @@
 pub mod arithmetic;
 pub mod boolean_logic;
 pub mod common;
+pub mod comparison;
 pub mod condition_node;
 pub mod error_branch_node;
 pub mod filter_node;
@@ -58,6 +59,7 @@ mod write_variable_node_test;
 pub use arithmetic::{AddNode, DivideNode, ModuloNode, MultiplyNode, PowerNode, SubtractNode};
 pub use boolean_logic::{AndNode, NandNode, NorNode, NotNode, OrNode, XorNode};
 pub use common::BaseNode;
+pub use comparison::EqualNode;
 pub use condition_node::{ConditionConfig, ConditionFunction, ConditionNode, condition_config};
 pub use error_branch_node::{ErrorBranchConfig, ErrorBranchNode};
 pub use filter_node::{FilterConfig, FilterFunction, FilterNode, filter_config};
