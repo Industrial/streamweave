@@ -164,6 +164,9 @@ impl Clone for HttpPathRouterNode {
 // DynClone is automatically satisfied by Clone + dyn_clone blanket impls
 
 impl NodeTrait for HttpPathRouterNode {
+  // TODO: This will be refined in task 1.2.x to match actual port configuration
+  const INPUT_PORTS: &'static [&'static str] = &["in"];
+
   fn name(&self) -> &str {
     &self.name
   }

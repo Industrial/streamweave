@@ -142,7 +142,7 @@
 //! [`FsDirectoryProducer`] integrates seamlessly with StreamWeave's pipeline and graph systems:
 //!
 //! - **Pipeline API**: Use in pipelines for directory traversal and file processing
-//! - **Graph API**: Wrap in [`crate::graph::nodes::ProducerNode`] for graph-based directory processing
+//! - **Graph API**: Wrap in graph nodes for graph-based directory processing
 //! - **Error Handling**: Supports standard error handling strategies
 //! - **Configuration**: Supports configuration via [`ProducerConfig`]
 //! - **Transformers**: Paths can be transformed, filtered, or processed by transformers

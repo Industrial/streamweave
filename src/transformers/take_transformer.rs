@@ -30,11 +30,10 @@
 //! ```
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::graph::ZeroCopyTransformer;
+// use crate::graph::ZeroCopyTransformer;
 use crate::{Input, Output, Transformer, TransformerConfig};
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
-use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::pin::Pin;
 
@@ -169,33 +168,33 @@ where
   }
 }
 
-impl<T> ZeroCopyTransformer for TakeTransformer<T>
-where
-  T: std::fmt::Debug + Clone + Send + Sync + 'static,
-{
-  /// Transforms an item using zero-copy semantics with `Cow`.
-  ///
-  /// For `TakeTransformer`, this method handles both `Cow::Borrowed` and `Cow::Owned`
-  /// inputs. Since taking doesn't modify items, we can return the same Cow variant
-  /// when an item should pass through (within the take count), achieving true zero-copy.
-  ///
-  /// # Zero-Copy Behavior
-  ///
-  /// - `Cow::Borrowed`: Returns `Cow::Borrowed` when item should pass (zero-copy)
-  /// - `Cow::Owned`: Returns `Cow::Owned` when item should pass (no additional clone)
-  ///
-  /// Both cases preserve the original Cow variant when the item should pass through,
-  /// enabling zero-copy take operations.
-  ///
-  /// # Note
-  ///
-  /// This method always returns the input Cow variant. The actual taking logic
-  /// (limiting to first N items) is handled at the stream level in the `transform`
-  /// method. This zero-copy method is used for per-item transformations when the item
-  /// is known to pass through (within take count).
-  fn transform_zero_copy<'a>(&mut self, input: Cow<'a, T>) -> Cow<'a, T> {
-    // Return the same Cow variant (zero-copy pass-through)
-    // The actual taking happens at stream level in transform method
-    input
-  }
-}
+// impl<T> ZeroCopyTransformer for TakeTransformer<T>
+// where
+//   T: std::fmt::Debug + Clone + Send + Sync + 'static,
+// {
+//   /// Transforms an item using zero-copy semantics with `Cow`.
+//   ///
+//   /// For `TakeTransformer`, this method handles both `Cow::Borrowed` and `Cow::Owned`
+//   /// inputs. Since taking doesn't modify items, we can return the same Cow variant
+//   /// when an item should pass through (within the take count), achieving true zero-copy.
+//   ///
+//   /// # Zero-Copy Behavior
+//   ///
+//   /// - `Cow::Borrowed`: Returns `Cow::Borrowed` when item should pass (zero-copy)
+//   /// - `Cow::Owned`: Returns `Cow::Owned` when item should pass (no additional clone)
+//   ///
+//   /// Both cases preserve the original Cow variant when the item should pass through,
+//   /// enabling zero-copy take operations.
+//   ///
+//   /// # Note
+//   ///
+//   /// This method always returns the input Cow variant. The actual taking logic
+//   /// (limiting to first N items) is handled at the stream level in the `transform`
+//   /// method. This zero-copy method is used for per-item transformations when the item
+//   /// is known to pass through (within take count).
+//   fn transform_zero_copy<'a>(&mut self, input: Cow<'a, T>) -> Cow<'a, T> {
+//     // Return the same Cow variant (zero-copy pass-through)
+//     // The actual taking happens at stream level in transform method
+//     input
+//   }
+// }

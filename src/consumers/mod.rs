@@ -22,7 +22,7 @@
 //!
 //! - **Consumer Trait**: All consumers implement the [`crate::Consumer`] trait
 //! - **Error Handling**: Configurable error strategies (stop, skip, retry, custom)
-//! - **Configuration**: Standard configuration via [`ConsumerConfig`]
+//! - **Configuration**: Standard configuration via `ConsumerConfig`
 //! - **Type Safety**: Generic type parameters ensure type safety throughout pipelines
 //!
 //! # Quick Start
@@ -117,16 +117,8 @@
 //! # Integration with StreamWeave
 //!
 //! All consumers in this module implement the [`crate::Consumer`] trait and can be used
-//! with the [`crate::Pipeline`] API or the [`crate::Graph`] API. They support the standard
+//! with the `crate::Pipeline` API or the `crate::Graph` API. They support the standard
 //! error handling strategies and configuration options provided by [`crate::ConsumerConfig`].
-
-// Import types for rustdoc intra-doc links
-#[allow(unused_imports)]
-use crate::consumer::{Consumer, ConsumerConfig};
-#[allow(unused_imports)]
-use crate::graph::Graph;
-#[allow(unused_imports)]
-use crate::pipeline::Pipeline;
 
 pub mod array_consumer;
 pub mod command_consumer;

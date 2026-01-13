@@ -182,7 +182,7 @@
 //! Producers integrate seamlessly with StreamWeave's pipeline and graph systems:
 //!
 //! - **Pipeline API**: Use producers directly in pipelines
-//! - **Graph API**: Wrap producers in [`crate::graph::nodes::ProducerNode`] for graph-based execution
+//! - **Graph API**: Wrap producers in graph nodes for graph-based execution
 //! - **Message Model**: Producer output can be wrapped in `Message<T>` for traceability
 //! - **Transformers**: Producer output can be transformed using transformers
 //! - **Consumers**: Producer output can be consumed by consumers
@@ -278,9 +278,3 @@ pub use tcp_producer::*;
 pub use timer_interval_producer::*;
 pub use tokio_channel_producer::*;
 pub use vec_producer::*;
-
-// Import types for rustdoc links
-#[allow(unused_imports)]
-use crate::graph::nodes::ProducerNode;
-#[allow(unused_imports)]
-use crate::producer::{Producer, ProducerConfig};

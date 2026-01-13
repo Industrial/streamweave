@@ -142,7 +142,7 @@
 //! [`EnvVarProducer`] integrates seamlessly with StreamWeave's pipeline and graph systems:
 //!
 //! - **Pipeline API**: Use in pipelines for environment-based configuration
-//! - **Graph API**: Wrap in [`crate::graph::nodes::ProducerNode`] for graph-based environment processing
+//! - **Graph API**: Wrap in graph nodes for graph-based environment processing
 //! - **Error Handling**: Supports standard error handling strategies
 //! - **Configuration**: Supports configuration via [`ProducerConfig`]
 //! - **Transformers**: Environment variables can be transformed, filtered, or processed

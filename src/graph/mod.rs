@@ -49,39 +49,15 @@
 //!     .build();
 //! ```
 
-pub mod channels;
-pub mod connection;
-pub mod execution;
+#[cfg(test)]
+mod edge_test;
+#[cfg(test)]
+mod graph_test;
+#[cfg(test)]
+mod node_test;
+
+pub mod edge;
 #[allow(clippy::module_inception)]
 pub mod graph;
-pub mod graph_builder;
-pub mod http_server;
+pub mod node;
 pub mod nodes;
-pub mod router;
-pub mod serialization;
-pub mod shared_memory_channel;
-pub mod stateful;
-pub mod subgraph;
-pub mod tcp_server;
-pub mod throughput;
-pub mod traits;
-pub mod windowing;
-pub mod zero_copy;
-
-pub use channels::*;
-pub use connection::*;
-pub use execution::*;
-pub use graph::*;
-pub use graph_builder::*;
-#[allow(ambiguous_glob_reexports)]
-pub use http_server::*;
-pub use nodes::*;
-pub use router::*;
-pub use serialization::*;
-pub use shared_memory_channel::*;
-pub use subgraph::*;
-#[allow(ambiguous_glob_reexports)]
-pub use tcp_server::*;
-pub use throughput::*;
-pub use traits::*;
-pub use zero_copy::*;

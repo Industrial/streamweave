@@ -1,3 +1,19 @@
+//! # Shared Memory Benchmark
+//!
+//! **DISABLED**: This benchmark references old modules that have been removed:
+//! - `streamweave::graph::channels`
+//! - `streamweave::graph::nodes::ProducerNode`
+//! - `streamweave::graph::traits`
+//! - `streamweave::graph::serialization`
+//! - `streamweave::graph::shared_memory_channel`
+//!
+//! This benchmark needs to be rewritten to use the new stream-based architecture.
+
+fn main() {
+  // Benchmark disabled - see comment above
+}
+
+/*
 use criterion::async_executor::AsyncExecutor;
 
 /// Tokio executor for criterion benchmarks
@@ -185,3 +201,4 @@ criterion_group!(
   producer_comparison_benchmark
 );
 criterion_main!(benches);
+*/

@@ -1,434 +1,353 @@
-//! # Graph Structure
+//! # Graph Trait - Pure Stream Implementation
 //!
-//! This module provides the core `Graph` type for managing graph-based data processing pipelines.
-//! It defines the runtime structure that holds nodes and their connections, enabling complex
-//! data processing topologies with fan-in, fan-out, and multi-path data flows.
+//! This module defines the `Graph` trait for managing graph structures and executing
+//! async node graphs. Graphs contain nodes and edges, and provide methods for both
+//! structure management (sync) and execution (async).
 //!
-//! # Overview
+//! ## Stream-Based Execution
 //!
-//! The [`Graph`] type represents a complete data processing topology with nodes and connections.
-//! It provides runtime management of type-erased nodes, allowing graphs to be constructed
-//! dynamically and executed by the execution engine. All data flowing through the graph is
-//! automatically wrapped in `Message<T>` for traceability and metadata preservation.
+//! The graph execution engine works purely with streams:
 //!
-//! # Key Concepts
+//! 1. Collects input streams for each node from connected upstream nodes
+//! 2. Calls `node.execute(inputs)` which returns output streams
+//! 3. Connects output streams to downstream nodes' input streams
+//! 4. Drives all streams to completion
 //!
-//! - **Node Management**: Stores type-erased nodes in a map for runtime access
-//! - **Connection Tracking**: Maintains a list of connections between nodes
-//! - **Type Erasure**: Uses `Box<dyn NodeTrait>` to enable runtime graph construction
-//! - **Message-Based Flow**: All data flows as `Message<T>` with automatic wrapping/unwrapping
-//! - **Graph Execution**: Works with the execution engine to run the graph topology
-//!
-//! # Core Types
-//!
-//! - **[`Graph`]**: Runtime graph structure containing nodes and connections
-//! - **[`ConnectionInfo`]**: Runtime connection information between nodes
-//!
-//! # Quick Start
-//!
-//! ## Building a Graph
-//!
-//! ```rust,no_run
-//! use streamweave::graph::{GraphBuilder, GraphExecution};
-//! use streamweave::graph::nodes::{ProducerNode, TransformerNode, ConsumerNode};
-//! use streamweave_array::ArrayProducer;
-//! use streamweave::transformers::MapTransformer;
-//! use streamweave::consumers::VecConsumer;
-//!
-//! // Build a graph using GraphBuilder
-//! let graph = GraphBuilder::new()
-//!     .node(ProducerNode::from_producer(
-//!         "source".to_string(),
-//!         ArrayProducer::new([1, 2, 3]),
-//!     ))?
-//!     .node(TransformerNode::from_transformer(
-//!         "double".to_string(),
-//!         MapTransformer::new(|x: i32| x * 2),
-//!     ))?
-//!     .node(ConsumerNode::from_consumer(
-//!         "sink".to_string(),
-//!         VecConsumer::<i32>::new(),
-//!     ))?
-//!     .connect_by_name("source", "double")?
-//!     .connect_by_name("double", "sink")?
-//!     .build();
-//!
-//! // Execute the graph
-//! let mut executor = graph.executor();
-//! executor.start().await?;
-//! ```
-//!
-//! ## Graph Structure
-//!
-//! A [`Graph`] contains:
-//! - **Nodes**: Type-erased nodes stored by name in a `HashMap`
-//! - **Connections**: List of `ConnectionInfo` representing data flow between nodes
-//!
-//! Nodes can be producers, transformers, or consumers, and connections define how
-//! data flows between nodes. All data is automatically wrapped in `Message<T>`
-//! during execution.
-//!
-//! # Design Decisions
-//!
-//! - **Type Erasure**: Uses `Box<dyn NodeTrait>` to enable runtime graph construction
-//!   and dynamic topology management
-//! - **Name-Based Access**: Nodes are accessed by name for runtime flexibility
-//! - **Connection List**: Maintains a list of connections for execution engine setup
-//! - **Message-Based**: All data flows as `Message<T>` with automatic handling
-//!
-//! # Integration with StreamWeave
-//!
-//! [`Graph`] is typically constructed using [`crate::graph::GraphBuilder`] for compile-time type
-//! validation, then executed using [`crate::graph::GraphExecution`]. The execution engine handles
-//! concurrent node execution and message routing through channels.
+//! Channels are used internally for backpressure, but are never exposed to nodes.
+//! Nodes only see and work with streams.
 
-// Import for rustdoc links
-#[allow(unused_imports)]
-use super::execution::GraphExecution;
-#[allow(unused_imports)]
-use super::graph_builder::GraphBuilder;
+use crate::graph::edge::Edge;
+use crate::graph::node::Node;
+use std::collections::{HashMap, VecDeque};
 
-use std::collections::HashMap;
+/// Error type for graph execution operations.
+pub type GraphExecutionError = Box<dyn std::error::Error + Send + Sync>;
 
-use super::traits::NodeTrait;
-use tracing::{debug, trace};
-
-/// Runtime connection information for graph execution.
+/// A graph containing nodes and edges.
 ///
-/// This structure represents a connection between two nodes at runtime,
-/// using node names and port names (not compile-time types).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ConnectionInfo {
-  /// Source node name and output port name
-  pub source: (String, String),
-  /// Target node name and input port name
-  pub target: (String, String),
-}
-
-/// A graph structure containing nodes and their connections.
+/// Graphs represent the structure of a data processing pipeline, with nodes
+/// representing processing components and edges representing data flow between them.
 ///
-/// The graph manages type-erased nodes and their runtime connections.
-/// All data flowing through the graph is wrapped in `Message<T>` for
-/// traceability and metadata preservation.
-pub struct Graph {
-  /// Map of node names to type-erased nodes
-  nodes: HashMap<String, Box<dyn NodeTrait + Send + Sync>>,
-  /// List of connections between nodes
-  connections: Vec<ConnectionInfo>,
-}
+/// # Graph Structure
+///
+/// A graph consists of:
+///
+/// - **Nodes**: Processing components that implement the `Node` trait
+/// - **Edges**: Connections between node ports (stream connections)
+///
+/// # Structure Management (Synchronous)
+///
+/// The graph provides synchronous methods for managing its structure:
+///
+/// - Adding and removing nodes
+/// - Adding and removing edges
+/// - Querying nodes and edges
+///
+/// These operations are synchronous because they only modify data structures.
+///
+/// # Execution (Asynchronous)
+///
+/// The graph provides asynchronous methods for executing the graph:
+///
+/// - `execute()` - Starts graph execution by connecting streams between nodes
+/// - `stop()` - Gracefully stops graph execution
+/// - `wait_for_completion()` - Waits for all nodes to complete execution
+///
+/// Execution is asynchronous and uses pure stream composition - no channels exposed.
+///
+/// # Object Safety
+///
+/// This trait is designed to be object-safe, allowing different graph
+/// implementations to be used polymorphically.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use streamweave::graph::graph::Graph;
+/// use streamweave::graph::node::Node;
+/// use streamweave::graph::edge::Edge;
+///
+/// // Build graph structure (sync)
+/// graph.add_node("source".to_string(), Box::new(source_node))?;
+/// graph.add_node("sink".to_string(), Box::new(sink_node))?;
+/// graph.add_edge(Edge {
+///     source_node: "source".to_string(),
+///     source_port: "out".to_string(),
+///     target_node: "sink".to_string(),
+///     target_port: "in".to_string(),
+/// })?;
+///
+/// // Execute graph (async)
+/// graph.execute().await?;
+/// graph.wait_for_completion().await?;
+/// ```
+use async_trait::async_trait;
 
-impl Graph {
-  /// Creates a new empty graph.
+#[async_trait]
+pub trait Graph {
+  /// Returns the name of the graph.
   ///
   /// # Returns
   ///
-  /// A new `Graph` instance with no nodes or connections.
-  pub fn new() -> Self {
-    trace!("Graph::new()");
-    Self {
-      nodes: HashMap::new(),
-      connections: Vec::new(),
-    }
-  }
+  /// A string slice containing the graph's name.
+  fn name(&self) -> &str;
 
-  /// Returns the number of nodes in the graph.
+  /// Sets the name of the graph.
+  ///
+  /// # Arguments
+  ///
+  /// * `name` - The new name for the graph
+  fn set_name(&mut self, name: &str);
+
+  /// Returns all nodes in the graph.
   ///
   /// # Returns
   ///
-  /// The number of nodes in the graph.
-  pub fn node_count(&self) -> usize {
-    trace!("Graph::node_count()");
-    self.nodes.len()
-  }
-
-  /// Checks if the graph is empty (has no nodes).
-  ///
-  /// # Returns
-  ///
-  /// `true` if the graph has no nodes, `false` otherwise.
-  pub fn is_empty(&self) -> bool {
-    trace!("Graph::is_empty()");
-    self.nodes.is_empty()
-  }
+  /// A vector of references to boxed nodes in the graph.
+  fn get_nodes(&self) -> Vec<&dyn Node>;
 
   /// Gets a node by name.
   ///
   /// # Arguments
   ///
-  /// * `name` - The name of the node to retrieve
+  /// * `name` - The name of the node to find
   ///
   /// # Returns
   ///
-  /// `Some(&dyn NodeTrait)` if the node exists, `None` otherwise.
-  pub fn get_node(&self, name: &str) -> Option<&dyn NodeTrait> {
-    trace!("Graph::get_node(name = {})", name);
-    // Return as &dyn NodeTrait (without Send + Sync bounds in return type)
-    // The stored nodes have Send + Sync bounds, but we can safely return them as &dyn NodeTrait
-    let result = self.nodes.get(name).map(|n| n.as_ref() as &dyn NodeTrait);
-    if result.is_none() {
-      debug!(node = %name, "Graph: Node not found");
-    }
-    result
-  }
-
-  /// Gets a mutable reference to a node by name.
-  ///
-  /// # Arguments
-  ///
-  /// * `name` - The name of the node to retrieve
-  ///
-  /// # Returns
-  ///
-  /// `Some(&mut dyn NodeTrait)` if the node exists, `None` otherwise.
-  pub fn get_node_mut(&mut self, name: &str) -> Option<&mut dyn NodeTrait> {
-    trace!("Graph::get_node_mut(name = {})", name);
-    // Return as &mut dyn NodeTrait (without Send + Sync bounds in return type)
-    // The stored nodes have Send + Sync bounds, but we can safely return them as &mut dyn NodeTrait
-    self
-      .nodes
-      .get_mut(name)
-      .map(|n| n.as_mut() as &mut dyn NodeTrait)
-  }
-
-  /// Returns a vector of all node names in the graph.
-  ///
-  /// # Returns
-  ///
-  /// A vector of node names, in no particular order.
-  pub fn node_names(&self) -> Vec<String> {
-    trace!("Graph::node_names()");
-    self.nodes.keys().cloned().collect()
-  }
-
-  /// Gets all connections in the graph.
-  ///
-  /// # Returns
-  ///
-  /// A reference to the list of connections.
-  pub fn get_connections(&self) -> &[ConnectionInfo] {
-    trace!("Graph::get_connections()");
-    &self.connections
-  }
-
-  /// Gets all connections in the graph (mutable).
-  ///
-  /// # Returns
-  ///
-  /// A mutable reference to the list of connections.
-  pub fn get_connections_mut(&mut self) -> &mut Vec<ConnectionInfo> {
-    trace!("Graph::get_connections_mut()");
-    &mut self.connections
-  }
-
-  /// Gets the parent nodes and their output ports for a given node.
-  ///
-  /// # Arguments
-  ///
-  /// * `node_name` - The name of the node
-  ///
-  /// # Returns
-  ///
-  /// A vector of `(parent_node_name, parent_output_port_name)` tuples.
-  pub fn get_parents(&self, node_name: &str) -> Vec<(String, String)> {
-    trace!("Graph::get_parents(node_name = {})", node_name);
-    self
-      .connections
-      .iter()
-      .filter(|conn| conn.target.0 == node_name)
-      .map(|conn| (conn.source.0.clone(), conn.source.1.clone()))
-      .collect()
-  }
-
-  /// Gets the child nodes and their input ports for a given node.
-  ///
-  /// # Arguments
-  ///
-  /// * `node_name` - The name of the node
-  ///
-  /// # Returns
-  ///
-  /// A vector of `(child_node_name, child_input_port_name)` tuples.
-  pub fn get_children(&self, node_name: &str) -> Vec<(String, String)> {
-    trace!("Graph::get_children(node_name = {})", node_name);
-    self
-      .connections
-      .iter()
-      .filter(|conn| conn.source.0 == node_name)
-      .map(|conn| (conn.target.0.clone(), conn.target.1.clone()))
-      .collect()
-  }
+  /// `Some(&Box<dyn Node>)` if a node with the given name exists, `None` otherwise.
+  fn find_node_by_name(&self, name: &str) -> Option<&dyn Node>;
 
   /// Adds a node to the graph.
   ///
   /// # Arguments
   ///
-  /// * `node` - A boxed node trait object
+  /// * `name` - The name to assign to the node (should match `node.name()`)
+  /// * `node` - The node to add to the graph
   ///
   /// # Returns
   ///
   /// `Ok(())` if the node was added successfully, or an error if a node with
   /// the same name already exists.
-  pub fn add_node(&mut self, node: Box<dyn NodeTrait + Send + Sync>) -> Result<(), String> {
-    trace!("Graph::add_node()");
-    let name = node.name().to_string();
-    if self.nodes.contains_key(&name) {
-      return Err(format!("Node with name '{}' already exists", name));
-    }
-    debug!(node = %name, "Graph: Adding node");
-    self.nodes.insert(name, node);
-    Ok(())
-  }
+  ///
+  /// # Errors
+  ///
+  /// Returns an error string if a node with the given name already exists in the graph.
+  fn add_node(&mut self, name: String, node: Box<dyn Node>) -> Result<(), String>;
 
-  /// Connects two nodes by name using their default ports.
+  /// Removes a node from the graph.
   ///
   /// # Arguments
   ///
-  /// * `source_name` - The name of the source node
-  /// * `target_name` - The name of the target node
+  /// * `name` - The name of the node to remove
   ///
   /// # Returns
   ///
-  /// `Ok(())` if the connection was created successfully, or an error if
-  /// the nodes don't exist or don't have the required ports.
-  pub fn connect_by_name(&mut self, source_name: &str, target_name: &str) -> Result<(), String> {
-    trace!(
-      "Graph::connect_by_name(source_name = {}, target_name = {})",
-      source_name, target_name
-    );
+  /// `Ok(())` if the node was removed successfully, or an error if the node
+  /// doesn't exist or has connected edges.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error string if the node doesn't exist or cannot be removed
+  /// (e.g., it has connected edges).
+  fn remove_node(&mut self, name: &str) -> Result<(), String>;
 
-    // Get source and target nodes
-    let source_node = self
-      .get_node(source_name)
-      .ok_or_else(|| format!("Source node '{}' not found", source_name))?;
-    let target_node = self
-      .get_node(target_name)
-      .ok_or_else(|| format!("Target node '{}' not found", target_name))?;
+  /// Returns all edges in the graph.
+  ///
+  /// # Returns
+  ///
+  /// A vector of references to all edges in the graph.
+  fn get_edges(&self) -> Vec<&Edge>;
 
-    // Get default ports (first output port of source, first input port of target)
-    let source_ports = source_node.output_port_names();
-    let target_ports = target_node.input_port_names();
-
-    if source_ports.is_empty() {
-      return Err(format!("Source node '{}' has no output ports", source_name));
-    }
-    if target_ports.is_empty() {
-      return Err(format!("Target node '{}' has no input ports", target_name));
-    }
-
-    let source_port = source_ports[0].clone();
-    let target_port = target_ports[0].clone();
-
-    // Verify ports exist
-    if !source_node.has_output_port(&source_port) {
-      return Err(format!(
-        "Source node '{}' does not have output port '{}'",
-        source_name, source_port
-      ));
-    }
-    if !target_node.has_input_port(&target_port) {
-      return Err(format!(
-        "Target node '{}' does not have input port '{}'",
-        target_name, target_port
-      ));
-    }
-
-    // Create connection
-    self.connections.push(ConnectionInfo {
-      source: (source_name.to_string(), source_port.clone()),
-      target: (target_name.to_string(), target_port.clone()),
-    });
-    debug!(
-      source = %source_name,
-      source_port = %source_port,
-      target = %target_name,
-      target_port = %target_port,
-      "Graph: Connected nodes"
-    );
-
-    Ok(())
-  }
-
-  /// Connects two nodes by name and port names.
+  /// Gets an edge by source and target node and port.
   ///
   /// # Arguments
   ///
-  /// * `source_name` - The name of the source node
+  /// * `source_node` - The name of the source node
   /// * `source_port` - The name of the source output port
-  /// * `target_name` - The name of the target node
+  /// * `target_node` - The name of the target node
   /// * `target_port` - The name of the target input port
   ///
   /// # Returns
   ///
-  /// `Ok(())` if the connection was created successfully, or an error if
-  /// the nodes don't exist or don't have the required ports.
-  pub fn connect(
-    &mut self,
-    source_name: &str,
+  /// `Some(&Edge)` if an edge matching the given parameters exists, `None` otherwise.
+  fn find_edge_by_nodes_and_ports(
+    &self,
+    source_node: &str,
     source_port: &str,
-    target_name: &str,
+    target_node: &str,
     target_port: &str,
-  ) -> Result<(), String> {
-    trace!(
-      "Graph::connect(source_name = {}, source_port = {}, target_name = {}, target_port = {})",
-      source_name, source_port, target_name, target_port
-    );
+  ) -> Option<&Edge>;
 
-    // Get source and target nodes
-    let source_node = self
-      .get_node(source_name)
-      .ok_or_else(|| format!("Source node '{}' not found", source_name))?;
-    let target_node = self
-      .get_node(target_name)
-      .ok_or_else(|| format!("Target node '{}' not found", target_name))?;
+  /// Adds an edge to the graph.
+  ///
+  /// # Arguments
+  ///
+  /// * `edge` - The edge to add to the graph
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if the edge was added successfully, or an error if the edge is invalid
+  /// (e.g., nodes don't exist or ports don't exist).
+  ///
+  /// # Errors
+  ///
+  /// Returns an error string if:
+  /// - The source or target node doesn't exist
+  /// - The source or target port doesn't exist on the respective node
+  /// - The edge would create a duplicate connection
+  fn add_edge(&mut self, edge: Edge) -> Result<(), String>;
 
-    // Verify ports exist
-    if !source_node.has_output_port(source_port) {
-      return Err(format!(
-        "Source node '{}' does not have output port '{}'",
-        source_name, source_port
-      ));
-    }
-    if !target_node.has_input_port(target_port) {
-      return Err(format!(
-        "Target node '{}' does not have input port '{}'",
-        target_name, target_port
-      ));
-    }
+  /// Removes an edge from the graph.
+  ///
+  /// # Arguments
+  ///
+  /// * `source_node` - The name of the source node
+  /// * `source_port` - The name of the source output port
+  /// * `target_node` - The name of the target node
+  /// * `target_port` - The name of the target input port
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if the edge was removed successfully, or an error if the edge
+  /// doesn't exist.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error string if no edge matching the given parameters exists.
+  fn remove_edge(
+    &mut self,
+    source_node: &str,
+    source_port: &str,
+    target_node: &str,
+    target_port: &str,
+  ) -> Result<(), String>;
 
-    // Create connection
-    self.connections.push(ConnectionInfo {
-      source: (source_name.to_string(), source_port.to_string()),
-      target: (target_name.to_string(), target_port.to_string()),
-    });
-    debug!(
-      source = %source_name,
-      source_port = %source_port,
-      target = %target_name,
-      target_port = %target_port,
-      "Graph: Connected nodes (with ports)"
-    );
+  // ============================================================================
+  // Async Execution Methods
+  // ============================================================================
 
-    Ok(())
-  }
+  /// Executes the graph by connecting streams between nodes.
+  ///
+  /// This method:
+  /// 1. Performs topological sort to determine execution order
+  /// 2. For each node, collects input streams from upstream nodes
+  /// 3. Calls `node.execute(inputs)` which returns output streams
+  /// 4. Connects output streams to downstream nodes' input streams
+  /// 5. Drives all streams to completion
+  ///
+  /// Channels are used internally for backpressure, but are never exposed to nodes.
+  /// Nodes only see and work with streams.
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if execution was started successfully, or an error if:
+  /// - Nodes have invalid port configurations
+  /// - Streams cannot be created or connected
+  /// - Tasks cannot be spawned
+  ///
+  /// # Errors
+  ///
+  /// Returns `GraphExecutionError` if execution cannot be started.
+  ///
+  /// # Example
+  ///
+  /// ```rust,no_run
+  /// // Build graph structure
+  /// graph.add_node("source".to_string(), Box::new(source_node))?;
+  /// graph.add_node("sink".to_string(), Box::new(sink_node))?;
+  /// graph.add_edge(Edge { ... })?;
+  ///
+  /// // Start execution
+  /// graph.execute().await?;
+  ///
+  /// // Wait for completion
+  /// graph.wait_for_completion().await?;
+  /// ```
+  async fn execute(&self) -> Result<(), GraphExecutionError>;
+
+  /// Gracefully stops graph execution.
+  ///
+  /// This method signals all nodes to stop processing and waits for them to complete
+  /// their current operations. Nodes should check for stop signals and exit cleanly.
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if execution was stopped successfully, or an error if stopping failed.
+  ///
+  /// # Errors
+  ///
+  /// Returns `GraphExecutionError` if execution cannot be stopped gracefully.
+  async fn stop(&self) -> Result<(), GraphExecutionError>;
+
+  /// Waits for all nodes in the graph to complete execution.
+  ///
+  /// This method blocks until all node tasks have finished. Use this after calling
+  /// `execute()` to wait for the graph to finish processing.
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if all nodes completed successfully, or an error if any node failed.
+  ///
+  /// # Errors
+  ///
+  /// Returns `GraphExecutionError` if any node execution failed or if waiting timed out.
+  async fn wait_for_completion(&self) -> Result<(), GraphExecutionError>;
 }
 
-impl Clone for Graph {
-  fn clone(&self) -> Self {
-    trace!("Graph::clone()");
-    // Note: We cannot clone Box<dyn NodeTrait> directly since Clone is not object-safe
-    // For now, we create a new graph with the same structure.
-    // In practice, nodes should be cloned before adding to the graph if needed.
-    // This is a limitation of Rust's trait object system.
-    Self {
-      nodes: HashMap::new(), // Nodes must be re-added after cloning
-      connections: self.connections.clone(),
+/// Helper function to perform topological sort of nodes in a graph.
+///
+/// Returns nodes in execution order (sources first, sinks last).
+/// This ensures that when we execute nodes, all upstream nodes have already
+/// produced their output streams.
+pub fn topological_sort(
+  nodes: &[&dyn Node],
+  edges: &[&Edge],
+) -> Result<Vec<String>, GraphExecutionError> {
+  let mut in_degree: HashMap<String, usize> = HashMap::new();
+  let mut adjacency: HashMap<String, Vec<String>> = HashMap::new();
+
+  // Initialize in-degree for all nodes
+  for node in nodes {
+    in_degree.insert(node.name().to_string(), 0);
+    adjacency.insert(node.name().to_string(), Vec::new());
+  }
+
+  // Build adjacency list and calculate in-degrees
+  for edge in edges {
+    let source = edge.source_node().to_string();
+    let target = edge.target_node().to_string();
+
+    adjacency.get_mut(&source).unwrap().push(target.clone());
+    *in_degree.get_mut(&target).unwrap() += 1;
+  }
+
+  // Kahn's algorithm for topological sort
+  let mut queue: VecDeque<String> = VecDeque::new();
+  for (node_name, &degree) in &in_degree {
+    if degree == 0 {
+      queue.push_back(node_name.clone());
     }
   }
-}
 
-impl Default for Graph {
-  fn default() -> Self {
-    trace!("Graph::default()");
-    Self::new()
+  let mut result = Vec::new();
+  while let Some(node_name) = queue.pop_front() {
+    result.push(node_name.clone());
+
+    if let Some(neighbors) = adjacency.get(&node_name) {
+      for neighbor in neighbors {
+        let degree = in_degree.get_mut(neighbor).unwrap();
+        *degree -= 1;
+        if *degree == 0 {
+          queue.push_back(neighbor.clone());
+        }
+      }
+    }
   }
+
+  // Check for cycles
+  if result.len() != nodes.len() {
+    return Err("Graph contains cycles".into());
+  }
+
+  Ok(result)
 }

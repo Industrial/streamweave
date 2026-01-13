@@ -125,6 +125,9 @@ impl Clone for HttpServerProducerNode {
 // DynClone is automatically satisfied by Clone + dyn_clone blanket impls
 
 impl NodeTrait for HttpServerProducerNode {
+  // Producers have no input ports
+  const INPUT_PORTS: &'static [&'static str] = &[];
+
   fn name(&self) -> &str {
     &self.name
   }

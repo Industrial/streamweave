@@ -272,7 +272,7 @@
 //! [`RedisProducer`] integrates seamlessly with StreamWeave's pipeline and graph systems:
 //!
 //! - **Pipeline API**: Use in pipelines for Redis Streams integration
-//! - **Graph API**: Wrap in [`crate::graph::nodes::ProducerNode`] for graph-based execution
+//! - **Graph API**: Wrap in graph nodes for graph-based execution
 //! - **Error Handling**: Supports standard error handling strategies
 //! - **Configuration**: Supports configuration via [`ProducerConfig`] and [`RedisConsumerConfig`]
 //! - **Message Model**: Messages can be wrapped in `Message<T>` for traceability

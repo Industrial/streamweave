@@ -77,16 +77,15 @@
 //! # Integration with StreamWeave
 //!
 //! [`MapTransformer`] implements the [`Transformer`] trait and can be used in any
-//! StreamWeave pipeline. It also implements [`ZeroCopyTransformer`] for performance
+//! StreamWeave pipeline. It also implements `ZeroCopyTransformer` for performance
 //! optimization in zero-copy execution modes. It supports the standard error handling
 //! strategies and configuration options provided by [`TransformerConfig`].
 
 use crate::error::{ComponentInfo, ErrorAction, ErrorContext, ErrorStrategy, StreamError};
-use crate::graph::ZeroCopyTransformer;
+// use crate::graph::ZeroCopyTransformer;
 use crate::{Input, Output, Transformer, TransformerConfig};
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
-use std::borrow::Cow;
 use std::pin::Pin;
 
 /// A transformer that applies a function to each item in the stream.
@@ -243,34 +242,34 @@ where
   }
 }
 
-impl<F, I, O> ZeroCopyTransformer for MapTransformer<F, I, O>
-where
-  F: FnMut(I) -> O + Send + Clone + 'static,
-  I: std::fmt::Debug + Clone + Send + Sync + 'static,
-  O: std::fmt::Debug + Clone + Send + Sync + 'static,
-{
-  /// Transforms an item using zero-copy semantics with `Cow`.
-  ///
-  /// For `MapTransformer`, this method handles both `Cow::Borrowed` and `Cow::Owned`
-  /// inputs. Since mapping produces a new value, we always return `Cow::Owned`.
-  ///
-  /// # Zero-Copy Behavior
-  ///
-  /// - `Cow::Borrowed`: Clones the input before applying the transformation function
-  /// - `Cow::Owned`: Uses the owned value directly (no additional clone)
-  ///
-  /// Both cases return `Cow::Owned` since the transformation produces a new value.
-  fn transform_zero_copy<'a>(&mut self, input: Cow<'a, I>) -> Cow<'a, O> {
-    // Extract the value from Cow (clone if Borrowed, move if Owned)
-    let value = match input {
-      Cow::Borrowed(borrowed) => borrowed.clone(), // Clone borrowed value
-      Cow::Owned(owned) => owned,                  // Use owned value directly
-    };
+// impl<F, I, O> ZeroCopyTransformer for MapTransformer<F, I, O>
+// where
+//   F: FnMut(I) -> O + Send + Clone + 'static,
+//   I: std::fmt::Debug + Clone + Send + Sync + 'static,
+//   O: std::fmt::Debug + Clone + Send + Sync + 'static,
+// {
+//   /// Transforms an item using zero-copy semantics with `Cow`.
+//   ///
+//   /// For `MapTransformer`, this method handles both `Cow::Borrowed` and `Cow::Owned`
+//   /// inputs. Since mapping produces a new value, we always return `Cow::Owned`.
+//   ///
+//   /// # Zero-Copy Behavior
+//   ///
+//   /// - `Cow::Borrowed`: Clones the input before applying the transformation function
+//   /// - `Cow::Owned`: Uses the owned value directly (no additional clone)
+//   ///
+//   /// Both cases return `Cow::Owned` since the transformation produces a new value.
+//   fn transform_zero_copy<'a>(&mut self, input: Cow<'a, I>) -> Cow<'a, O> {
+//     // Extract the value from Cow (clone if Borrowed, move if Owned)
+//     let value = match input {
+//       Cow::Borrowed(borrowed) => borrowed.clone(), // Clone borrowed value
+//       Cow::Owned(owned) => owned,                  // Use owned value directly
+//     };
 
-    // Apply the transformation function
-    let transformed = (self.f)(value);
+//     // Apply the transformation function
+//     let transformed = (self.f)(value);
 
-    // Always return Owned since transformation produces a new value
-    Cow::Owned(transformed)
-  }
-}
+//     // Always return Owned since transformation produces a new value
+//     Cow::Owned(transformed)
+//   }
+// }
