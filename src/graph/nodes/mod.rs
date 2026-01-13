@@ -61,7 +61,7 @@ mod while_loop_node_test;
 #[cfg(test)]
 mod write_variable_node_test;
 
-pub use aggregation::{AverageNode, CountNode, MinAggregateNode, SumNode};
+pub use aggregation::{AverageNode, CountNode, MaxAggregateNode, MinAggregateNode, SumNode};
 pub use arithmetic::{AddNode, DivideNode, ModuloNode, MultiplyNode, PowerNode, SubtractNode};
 pub use array::{
   ArrayConcatNode, ArrayContainsNode, ArrayFilterNode, ArrayFlattenNode, ArrayIndexNode,

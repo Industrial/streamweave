@@ -1143,7 +1143,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 6.1.5 Implement MaxAggregateNode - Maximum value
+- [x] 6.1.5 Implement MaxAggregateNode - Maximum value
   - **File:** `src/graph/nodes/aggregation/max_aggregate_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
