@@ -889,7 +889,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 4.2.2 Implement ArrayReverseNode - Reverse array
+- [x] 4.2.2 Implement ArrayReverseNode - Reverse array
   - **File:** `src/graph/nodes/array/reverse_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**

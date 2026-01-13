@@ -320,3 +320,30 @@ pub fn array_concat(
 
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Reverses the order of elements in an array.
+///
+/// This function attempts to downcast the array to its expected type
+/// and reverses the element order. It supports:
+/// - Reversing Vec<Arc<dyn Any + Send + Sync>> arrays
+/// - Preserving element references (clones Arc references)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (Vec<Arc<dyn Any + Send + Sync>>) or an error string.
+pub fn array_reverse(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast array
+  let arc_vec = v
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for array reverse input: {} (input must be Vec<Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Reverse the array (clone the Arc references)
+  let mut result: Vec<Arc<dyn Any + Send + Sync>> = arc_vec.iter().cloned().collect();
+  result.reverse();
+
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
