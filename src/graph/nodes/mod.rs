@@ -63,7 +63,7 @@ pub use arithmetic::{AddNode, DivideNode, ModuloNode, MultiplyNode, PowerNode, S
 pub use array::{
   ArrayConcatNode, ArrayContainsNode, ArrayFilterNode, ArrayFlattenNode, ArrayIndexNode,
   ArrayIndexOfNode, ArrayJoinNode, ArrayLengthNode, ArrayMapNode, ArrayReverseNode, ArraySliceNode,
-  ArraySortNode, ArraySplitNode,
+  ArraySortNode, ArraySplitNode, ArrayUniqueNode,
 };
 pub use boolean_logic::{AndNode, NandNode, NorNode, NotNode, OrNode, XorNode};
 pub use common::BaseNode;

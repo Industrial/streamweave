@@ -679,3 +679,57 @@ pub fn array_flatten(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Sen
 
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Removes duplicate elements from an array, keeping the first occurrence of each unique element.
+///
+/// This function attempts to downcast the array to its expected type
+/// and removes duplicates. It supports:
+/// - Removing duplicates from Vec<Arc<dyn Any + Send + Sync>> arrays
+/// - Type-aware comparison using compare_equal (supports type promotion)
+/// - Preserving element order (keeps first occurrence)
+/// - Preserving element references (clones Arc references)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (Vec<Arc<dyn Any + Send + Sync>>) or an error string.
+pub fn array_unique(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast array
+  let arc_vec = v
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for array unique input: {} (input must be Vec<Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Build result by keeping only first occurrence of each unique element
+  let mut result: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+
+  for element in arc_vec.iter() {
+    // Check if this element is already in the result
+    let mut is_duplicate = false;
+    for existing in result.iter() {
+      match compare_equal(element, existing) {
+        Ok(result_arc) => {
+          if let Ok(arc_bool) = result_arc.downcast::<bool>()
+            && *arc_bool
+          {
+            is_duplicate = true;
+            break;
+          }
+        }
+        Err(_) => {
+          // If comparison fails, consider them different (incompatible types)
+          continue;
+        }
+      }
+    }
+
+    // Only add if not a duplicate
+    if !is_duplicate {
+      result.push(element.clone());
+    }
+  }
+
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
