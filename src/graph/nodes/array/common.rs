@@ -230,3 +230,50 @@ pub fn array_contains(
   // No match found
   Ok(Arc::new(false) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Finds the index of a value in an array.
+///
+/// This function attempts to downcast the array to its expected type
+/// and finds the index of the specified value. It supports:
+/// - Finding index for any value type (uses compare_equal for type-aware comparison)
+/// - Type promotion (e.g., i32 matches i64)
+/// - Returns -1 if value is not found (similar to JavaScript's indexOf)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (i32 index, or -1 if not found) or an error string.
+pub fn array_index_of(
+  v: &Arc<dyn Any + Send + Sync>,
+  value: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast array
+  let arc_vec = v
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for array index_of input: {} (input must be Vec<Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Iterate through array elements and find the index
+  for (index, element) in arc_vec.iter().enumerate() {
+    match compare_equal(element, value) {
+      Ok(result_arc) => {
+        // Downcast the boolean result
+        if let Ok(arc_bool) = result_arc.downcast::<bool>()
+          && *arc_bool
+        {
+          // Found the value, return the index as i32
+          return Ok(Arc::new(index as i32) as Arc<dyn Any + Send + Sync>);
+        }
+      }
+      Err(_) => {
+        // If comparison fails, continue to next element
+        continue;
+      }
+    }
+  }
+
+  // No match found, return -1
+  Ok(Arc::new(-1i32) as Arc<dyn Any + Send + Sync>)
+}

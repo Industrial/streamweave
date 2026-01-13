@@ -858,7 +858,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 4.1.5 Implement ArrayIndexOfNode - Find index of value
+- [x] 4.1.5 Implement ArrayIndexOfNode - Find index of value
   - **File:** `src/graph/nodes/array/index_of_node.rs`
   - **Ports:** `configuration`, `in`, `value` → `out`, `error`
   - **Acceptance Criteria:**
