@@ -401,7 +401,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 2.1.6 Implement PowerNode - Exponentiation
+- [x] 2.1.6 Implement PowerNode - Exponentiation
   - **File:** `src/graph/nodes/arithmetic/power_node.rs`
   - **Ports:** `configuration`, `base`, `exponent` → `out`, `error`
   - **Acceptance Criteria:**
@@ -412,7 +412,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 2.1.7 Add arithmetic node tests
+- [o] 2.1.7 Add arithmetic node tests
   - **File:** `src/graph/nodes/arithmetic/*_test.rs`
   - **Acceptance Criteria:**
     - Tests for each operation
