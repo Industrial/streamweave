@@ -11,11 +11,15 @@
 pub mod common;
 pub mod concat_node;
 pub mod length_node;
+pub mod slice_node;
 
 #[cfg(test)]
 mod concat_node_test;
 #[cfg(test)]
 mod length_node_test;
+#[cfg(test)]
+mod slice_node_test;
 
 pub use concat_node::StringConcatNode;
 pub use length_node::StringLengthNode;
+pub use slice_node::StringSliceNode;
