@@ -750,7 +750,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 3.2.6 Add string predicate tests
+- [x] 3.2.6 Add string predicate tests
   - **File:** `src/graph/nodes/string/*_test.rs`
   - **Acceptance Criteria:**
     - Tests for each predicate
