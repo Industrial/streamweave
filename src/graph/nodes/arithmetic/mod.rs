@@ -17,12 +17,14 @@
 //! - **MultiplyNode**: Multiplication operation (`configuration`, `in1`, `in2` → `out`, `error`)
 //! - **DivideNode**: Division operation (`configuration`, `in1`, `in2` → `out`, `error`)
 //! - **ModuloNode**: Modulo operation (`configuration`, `in1`, `in2` → `out`, `error`)
+//! - **PowerNode**: Exponentiation operation (`configuration`, `base`, `exponent` → `out`, `error`)
 
 pub mod add_node;
 pub mod common;
 pub mod divide_node;
 pub mod modulo_node;
 pub mod multiply_node;
+pub mod power_node;
 pub mod subtract_node;
 
 #[cfg(test)]
@@ -36,10 +38,13 @@ mod modulo_node_test;
 #[cfg(test)]
 mod multiply_node_test;
 #[cfg(test)]
+mod power_node_test;
+#[cfg(test)]
 mod subtract_node_test;
 
 pub use add_node::AddNode;
 pub use divide_node::DivideNode;
 pub use modulo_node::ModuloNode;
 pub use multiply_node::MultiplyNode;
+pub use power_node::PowerNode;
 pub use subtract_node::SubtractNode;

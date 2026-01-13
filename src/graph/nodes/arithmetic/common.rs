@@ -720,3 +720,173 @@ pub fn modulo_values(
     std::any::type_name_of_val(&**v2)
   ))
 }
+
+/// Performs exponentiation (power) operation on two numeric values, handling type promotion.
+///
+/// This function attempts to downcast both values to numeric types and performs
+/// exponentiation with appropriate type promotion. It handles:
+/// - Integer types: i32, i64, u32, u64 (base and exponent)
+/// - Floating point types: f32, f64 (base and exponent)
+/// - Type promotion: smaller types are promoted to larger types when needed
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` or an error string.
+///
+/// Note: For integer exponentiation, the exponent must be non-negative for unsigned types,
+/// and the result may overflow. For floating point, any exponent is allowed.
+pub fn power_values(
+  base: &Arc<dyn Any + Send + Sync>,
+  exponent: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try i32 ^ i32 -> i64 (to handle overflow better)
+  if let (Ok(arc_i32_base), Ok(arc_i32_exp)) = (
+    base.clone().downcast::<i32>(),
+    exponent.clone().downcast::<i32>(),
+  ) {
+    if *arc_i32_exp < 0 {
+      return Err("Negative exponent not supported for integer power operation".to_string());
+    }
+    let base_i64 = *arc_i32_base as i64;
+    let exp_u32 = *arc_i32_exp as u32;
+    match base_i64.checked_pow(exp_u32) {
+      Some(result) => return Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>),
+      None => return Err("Integer overflow in i32 power operation".to_string()),
+    }
+  }
+
+  // Try i64 ^ i32 -> i64
+  if let (Ok(arc_i64_base), Ok(arc_i32_exp)) = (
+    base.clone().downcast::<i64>(),
+    exponent.clone().downcast::<i32>(),
+  ) {
+    if *arc_i32_exp < 0 {
+      return Err("Negative exponent not supported for integer power operation".to_string());
+    }
+    let exp_u32 = *arc_i32_exp as u32;
+    match arc_i64_base.checked_pow(exp_u32) {
+      Some(result) => return Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>),
+      None => return Err("Integer overflow in i64 power operation".to_string()),
+    }
+  }
+
+  // Try i32 ^ i64 -> i64
+  if let (Ok(arc_i32_base), Ok(arc_i64_exp)) = (
+    base.clone().downcast::<i32>(),
+    exponent.clone().downcast::<i64>(),
+  ) {
+    if *arc_i64_exp < 0 {
+      return Err("Negative exponent not supported for integer power operation".to_string());
+    }
+    if *arc_i64_exp > u32::MAX as i64 {
+      return Err("Exponent too large for i32 power operation".to_string());
+    }
+    let base_i64 = *arc_i32_base as i64;
+    let exp_u32 = *arc_i64_exp as u32;
+    match base_i64.checked_pow(exp_u32) {
+      Some(result) => return Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>),
+      None => return Err("Integer overflow in i32 power operation".to_string()),
+    }
+  }
+
+  // Try i64 ^ i64 -> i64
+  if let (Ok(arc_i64_base), Ok(arc_i64_exp)) = (
+    base.clone().downcast::<i64>(),
+    exponent.clone().downcast::<i64>(),
+  ) {
+    if *arc_i64_exp < 0 {
+      return Err("Negative exponent not supported for integer power operation".to_string());
+    }
+    if *arc_i64_exp > u32::MAX as i64 {
+      return Err("Exponent too large for i64 power operation".to_string());
+    }
+    let exp_u32 = *arc_i64_exp as u32;
+    match arc_i64_base.checked_pow(exp_u32) {
+      Some(result) => return Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>),
+      None => return Err("Integer overflow in i64 power operation".to_string()),
+    }
+  }
+
+  // Try u32 ^ u32 -> u64 (to handle overflow better)
+  if let (Ok(arc_u32_base), Ok(arc_u32_exp)) = (
+    base.clone().downcast::<u32>(),
+    exponent.clone().downcast::<u32>(),
+  ) {
+    let base_u64 = *arc_u32_base as u64;
+    match base_u64.checked_pow(*arc_u32_exp) {
+      Some(result) => return Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>),
+      None => return Err("Integer overflow in u32 power operation".to_string()),
+    }
+  }
+
+  // Try u64 ^ u32 -> u64
+  if let (Ok(arc_u64_base), Ok(arc_u32_exp)) = (
+    base.clone().downcast::<u64>(),
+    exponent.clone().downcast::<u32>(),
+  ) {
+    match arc_u64_base.checked_pow(*arc_u32_exp) {
+      Some(result) => return Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>),
+      None => return Err("Integer overflow in u64 power operation".to_string()),
+    }
+  }
+
+  // Try f32 ^ f32 -> f32
+  if let (Ok(arc_f32_base), Ok(arc_f32_exp)) = (
+    base.clone().downcast::<f32>(),
+    exponent.clone().downcast::<f32>(),
+  ) {
+    return Ok(Arc::new(arc_f32_base.powf(*arc_f32_exp)) as Arc<dyn Any + Send + Sync>);
+  }
+
+  // Try f64 ^ f64 -> f64
+  if let (Ok(arc_f64_base), Ok(arc_f64_exp)) = (
+    base.clone().downcast::<f64>(),
+    exponent.clone().downcast::<f64>(),
+  ) {
+    return Ok(Arc::new(arc_f64_base.powf(*arc_f64_exp)) as Arc<dyn Any + Send + Sync>);
+  }
+
+  // Try type promotion: integer ^ float -> float
+  if let (Ok(arc_i32), Ok(arc_f32)) = (
+    base.clone().downcast::<i32>(),
+    exponent.clone().downcast::<f32>(),
+  ) {
+    return Ok(Arc::new((*arc_i32 as f32).powf(*arc_f32)) as Arc<dyn Any + Send + Sync>);
+  }
+  if let (Ok(arc_f32), Ok(arc_i32)) = (
+    base.clone().downcast::<f32>(),
+    exponent.clone().downcast::<i32>(),
+  ) {
+    return Ok(Arc::new(arc_f32.powf(*arc_i32 as f32)) as Arc<dyn Any + Send + Sync>);
+  }
+
+  if let (Ok(arc_i64), Ok(arc_f64)) = (
+    base.clone().downcast::<i64>(),
+    exponent.clone().downcast::<f64>(),
+  ) {
+    return Ok(Arc::new((*arc_i64 as f64).powf(*arc_f64)) as Arc<dyn Any + Send + Sync>);
+  }
+  if let (Ok(arc_f64), Ok(arc_i64)) = (
+    base.clone().downcast::<f64>(),
+    exponent.clone().downcast::<i64>(),
+  ) {
+    return Ok(Arc::new(arc_f64.powf(*arc_i64 as f64)) as Arc<dyn Any + Send + Sync>);
+  }
+
+  if let (Ok(arc_f32), Ok(arc_f64)) = (
+    base.clone().downcast::<f32>(),
+    exponent.clone().downcast::<f64>(),
+  ) {
+    return Ok(Arc::new((*arc_f32 as f64).powf(*arc_f64)) as Arc<dyn Any + Send + Sync>);
+  }
+  if let (Ok(arc_f64), Ok(arc_f32)) = (
+    base.clone().downcast::<f64>(),
+    exponent.clone().downcast::<f32>(),
+  ) {
+    return Ok(Arc::new(arc_f64.powf(*arc_f32 as f64)) as Arc<dyn Any + Send + Sync>);
+  }
+
+  Err(format!(
+    "Unsupported types for power operation: {} ^ {}",
+    std::any::type_name_of_val(&**base),
+    std::any::type_name_of_val(&**exponent)
+  ))
+}
