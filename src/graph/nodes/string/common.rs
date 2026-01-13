@@ -202,3 +202,40 @@ pub fn string_replace(
   let result = arc_str.replace(&*arc_pattern, &arc_replacement);
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Splits a string by a delimiter and returns a vector of strings.
+///
+/// This function attempts to downcast the string and delimiter to their
+/// expected types and performs splitting. It supports:
+/// - String splitting by literal delimiter
+/// - Returns Vec<Arc<dyn Any + Send + Sync>> where each element is a String
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (wrapping Vec) or an error string.
+pub fn string_split(
+  v: &Arc<dyn Any + Send + Sync>,
+  delimiter: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast string
+  let arc_str = v.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string split input: {} (input must be String)",
+      std::any::type_name_of_val(&**v)
+    )
+  })?;
+
+  // Try to downcast delimiter
+  let arc_delimiter = delimiter.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for delimiter: {} (delimiter must be String)",
+      std::any::type_name_of_val(&**delimiter)
+    )
+  })?;
+
+  // Perform split
+  let parts: Vec<Arc<dyn Any + Send + Sync>> = arc_str
+    .split(&*arc_delimiter)
+    .map(|s| Arc::new(s.to_string()) as Arc<dyn Any + Send + Sync>)
+    .collect();
+
+  Ok(Arc::new(parts) as Arc<dyn Any + Send + Sync>)
+}
