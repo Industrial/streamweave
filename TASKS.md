@@ -357,7 +357,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 2.1.2 Implement SubtractNode - Subtraction
+- [x] 2.1.2 Implement SubtractNode - Subtraction
   - **File:** `src/graph/nodes/arithmetic/subtract_node.rs`
   - **Ports:** `configuration`, `in1`, `in2` → `out`, `error`
   - **Acceptance Criteria:**
@@ -368,7 +368,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 2.1.3 Implement MultiplyNode - Multiplication
+- [o] 2.1.3 Implement MultiplyNode - Multiplication
   - **File:** `src/graph/nodes/arithmetic/multiply_node.rs`
   - **Ports:** `configuration`, `in1`, `in2` → `out`, `error`
   - **Acceptance Criteria:**
