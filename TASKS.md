@@ -87,7 +87,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 0.1.4 Add `configuration` port to XorNode
+- [x] 0.1.4 Add `configuration` port to XorNode
   - **File:** `src/graph/nodes/boolean_logic/xor_node.rs`
   - **Context:** Add `configuration` input port for consistency
   - **Current Ports:** `in1`, `in2` → `out`, `error`
@@ -100,7 +100,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 0.1.5 Add `configuration` port to NandNode
+- [o] 0.1.5 Add `configuration` port to NandNode
   - **File:** `src/graph/nodes/boolean_logic/nand_node.rs`
   - **Context:** Add `configuration` input port for consistency
   - **Current Ports:** `in1`, `in2` → `out`, `error`

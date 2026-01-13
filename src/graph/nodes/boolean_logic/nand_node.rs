@@ -4,6 +4,7 @@
 //!
 //! ## Ports
 //!
+//! - **Input**: `"configuration"` - Receives configuration (currently unused, for consistency)
 //! - **Input**: `"in1"` - Receives first boolean value
 //! - **Input**: `"in2"` - Receives second boolean value
 //! - **Output**: `"out"` - Sends the result of (NOT (in1 AND in2))
@@ -34,7 +35,11 @@ impl NandNode {
     Self {
       base: BaseNode::new(
         name,
-        vec!["in1".to_string(), "in2".to_string()],
+        vec![
+          "configuration".to_string(),
+          "in1".to_string(),
+          "in2".to_string(),
+        ],
         vec!["out".to_string(), "error".to_string()],
       ),
     }
@@ -74,7 +79,8 @@ impl Node for NandNode {
     Box<dyn std::future::Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>,
   > {
     Box::pin(async move {
-      // Extract input streams
+      // Extract input streams (configuration port is present but unused for now)
+      let _config_stream = inputs.remove("configuration");
       let in1_stream = inputs.remove("in1").ok_or("Missing 'in1' input")?;
       let in2_stream = inputs.remove("in2").ok_or("Missing 'in2' input")?;
 
