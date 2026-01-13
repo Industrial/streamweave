@@ -203,6 +203,45 @@ where
   })
 }
 
+/// Helper function to create a MatchConfig for exact string matching.
+///
+/// This is a convenience function that works with String values and &str patterns.
+/// It's more ergonomic than using `match_exact` with String values directly.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use streamweave::graph::nodes::{MatchConfig, match_exact_string};
+///
+/// // Route "error" to branch 0, "warning" to branch 1, others to default
+/// let patterns = vec![("error", 0), ("warning", 1)];
+/// let config: MatchConfig = match_exact_string(patterns);
+/// ```
+pub fn match_exact_string(patterns: Vec<(&str, usize)>) -> MatchConfig {
+  // Convert &str patterns to String to avoid lifetime issues
+  let patterns: Vec<(String, usize)> = patterns
+    .into_iter()
+    .map(|(s, idx)| (s.to_string(), idx))
+    .collect();
+  match_config(move |value| {
+    let patterns = patterns.clone();
+    async move {
+      // Try to downcast to String
+      if let Ok(arc_string) = value.downcast::<String>() {
+        let s = arc_string.as_str();
+        for (pattern, branch_index) in &patterns {
+          if s == pattern {
+            return Ok(Some(*branch_index));
+          }
+        }
+        Ok(None) // No match - route to default
+      } else {
+        Err("Expected String for exact string matching".to_string())
+      }
+    }
+  })
+}
+
 /// Helper function to create a MatchConfig for numeric range matching.
 ///
 /// This helper allows matching numeric values against ranges and routing them to branches.

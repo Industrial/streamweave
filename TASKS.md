@@ -155,7 +155,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 1.1.2 Create MatchConfig trait for pattern definitions
+- [x] 1.1.2 Create MatchConfig trait for pattern definitions
   - **File:** `src/graph/nodes/match_node.rs`
   - **Context:** Define trait for pattern matching functions
   - **Acceptance Criteria:**
@@ -166,7 +166,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 1.1.3 Add MatchNode tests
+- [x] 1.1.3 Add MatchNode tests
   - **File:** `src/graph/nodes/match_node_test.rs`
   - **Acceptance Criteria:**
     - Tests for enum variant matching
@@ -179,7 +179,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 1.2 Loops & Iteration
 
-- [ ] 1.2.1 Implement ForEachNode - Iterate over collections
+- [o] 1.2.1 Implement ForEachNode - Iterate over collections
   - **File:** `src/graph/nodes/for_each_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Context:** Expands collections into streams
