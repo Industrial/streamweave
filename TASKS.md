@@ -994,7 +994,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 5.1 Object Access
 
-- [ ] 5.1.1 Implement ObjectKeysNode - Get object keys
+- [x] 5.1.1 Implement ObjectKeysNode - Get object keys
   - **File:** `src/graph/nodes/object/keys_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**

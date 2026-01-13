@@ -24,6 +24,7 @@ pub mod join_node;
 pub mod map_node;
 pub mod match_node;
 pub mod math;
+pub mod object;
 pub mod range_node;
 pub mod read_variable_node;
 pub mod string;
@@ -85,6 +86,7 @@ pub use match_node::{
 pub use math::{
   AbsNode, CeilNode, ExpNode, FloorNode, LogNode, MaxNode, MinNode, RoundNode, SqrtNode,
 };
+pub use object::ObjectKeysNode;
 pub use range_node::{RangeConfig, RangeNode};
 pub use read_variable_node::{ReadVariableConfig, ReadVariableNode};
 pub use string::{
