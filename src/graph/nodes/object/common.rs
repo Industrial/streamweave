@@ -136,3 +136,40 @@ pub fn object_property(
     .cloned()
     .ok_or_else(|| format!("Property '{}' not found in object", *arc_key))
 }
+
+/// Checks if an object (HashMap) has a property with the specified key.
+///
+/// This function attempts to downcast the object to its expected type
+/// and checks if it contains the specified key. It supports:
+/// - Checking keys in HashMap<String, Arc<dyn Any + Send + Sync>> objects
+/// - Key must be a String
+/// - Returns true if key exists, false otherwise
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (boolean) or an error string.
+pub fn object_has_property(
+  v: &Arc<dyn Any + Send + Sync>,
+  key: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast object to HashMap
+  let arc_map = v
+    .clone()
+    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for object has_property input: {} (input must be HashMap<String, Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Try to downcast key to String
+  let arc_key = key.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for object has_property key: {} (key must be String)",
+      std::any::type_name_of_val(&**key)
+    )
+  })?;
+
+  // Check if the key exists
+  let has_property = arc_map.contains_key(&*arc_key);
+  Ok(Arc::new(has_property) as Arc<dyn Any + Send + Sync>)
+}

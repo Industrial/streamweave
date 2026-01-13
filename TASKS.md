@@ -1035,7 +1035,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 5.1.5 Implement ObjectHasPropertyNode - Check if property exists
+- [x] 5.1.5 Implement ObjectHasPropertyNode - Check if property exists
   - **File:** `src/graph/nodes/object/has_property_node.rs`
   - **Ports:** `configuration`, `in`, `key` → `out`, `error`
   - **Acceptance Criteria:**
