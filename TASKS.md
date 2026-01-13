@@ -306,7 +306,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 1.5 Synchronization
 
-- [o] 1.5.1 Implement SyncNode - Wait for all inputs before proceeding
+- [x] 1.5.1 Implement SyncNode - Wait for all inputs before proceeding
   - **File:** `src/graph/nodes/sync_node.rs`
   - **Ports:** `configuration`, `in_0`, `in_1`, ..., `in_n` → `out`, `error`
   - **Context:** Barrier synchronization
@@ -319,7 +319,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 1.5.2 Implement JoinNode - Join two streams on keys
+- [o] 1.5.2 Implement JoinNode - Join two streams on keys
   - **File:** `src/graph/nodes/join_node.rs`
   - **Ports:** `configuration`, `left`, `right` → `out`, `error`
   - **Context:** Inner/outer/left/right joins

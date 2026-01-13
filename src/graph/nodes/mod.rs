@@ -17,6 +17,7 @@ pub mod condition_node;
 pub mod error_branch_node;
 pub mod filter_node;
 pub mod for_each_node;
+pub mod join_node;
 pub mod map_node;
 pub mod match_node;
 pub mod range_node;
@@ -34,6 +35,8 @@ mod error_branch_node_test;
 mod filter_node_test;
 #[cfg(test)]
 mod for_each_node_test;
+#[cfg(test)]
+mod join_node_test;
 #[cfg(test)]
 mod map_node_test;
 #[cfg(test)]
@@ -57,6 +60,9 @@ pub use condition_node::{ConditionConfig, ConditionFunction, ConditionNode, cond
 pub use error_branch_node::{ErrorBranchConfig, ErrorBranchNode};
 pub use filter_node::{FilterConfig, FilterFunction, FilterNode, filter_config};
 pub use for_each_node::{ForEachConfig, ForEachFunction, ForEachNode, for_each_config};
+pub use join_node::{
+  JoinCombineFunction, JoinConfig, JoinKeyFunction, JoinNode, JoinStrategy, join_config,
+};
 pub use map_node::{MapConfig, MapFunction, MapNode, map_config};
 pub use match_node::{
   MatchConfig, MatchFunction, MatchNode, match_config, match_exact_string, match_regex,
