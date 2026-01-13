@@ -281,7 +281,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 1.4.3 Implement WriteVariableNode - Write variable value
+- [x] 1.4.3 Implement WriteVariableNode - Write variable value
   - **File:** `src/graph/nodes/write_variable_node.rs`
   - **Ports:** `configuration`, `name`, `value` → `out`, `error`
   - **Context:** Write variable to graph state
@@ -294,7 +294,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 1.4.4 Add variable node tests
+- [o] 1.4.4 Add variable node tests
   - **File:** `src/graph/nodes/variable_node_test.rs`, `src/graph/nodes/read_variable_node_test.rs`, `src/graph/nodes/write_variable_node_test.rs`
   - **Acceptance Criteria:**
     - Tests for each variable operation
