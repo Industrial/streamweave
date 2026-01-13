@@ -1004,7 +1004,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 5.1.2 Implement ObjectValuesNode - Get object values
+- [x] 5.1.2 Implement ObjectValuesNode - Get object values
   - **File:** `src/graph/nodes/object/values_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**

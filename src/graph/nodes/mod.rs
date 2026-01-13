@@ -86,7 +86,7 @@ pub use match_node::{
 pub use math::{
   AbsNode, CeilNode, ExpNode, FloorNode, LogNode, MaxNode, MinNode, RoundNode, SqrtNode,
 };
-pub use object::ObjectKeysNode;
+pub use object::{ObjectKeysNode, ObjectValuesNode};
 pub use range_node::{RangeConfig, RangeNode};
 pub use read_variable_node::{ReadVariableConfig, ReadVariableNode};
 pub use string::{
