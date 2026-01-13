@@ -47,7 +47,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 0.1 Fix Boolean Logic Nodes
 
-- [o] 0.1.1 Add `configuration` port to AndNode
+- [x] 0.1.1 Add `configuration` port to AndNode
   - **File:** `src/graph/nodes/boolean_logic/and_node.rs`
   - **Context:** Add `configuration` input port for consistency (even if unused)
   - **Current Ports:** `in1`, `in2` → `out`, `error`
@@ -61,7 +61,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 0.1.2 Add `configuration` port to OrNode
+- [o] 0.1.2 Add `configuration` port to OrNode
   - **File:** `src/graph/nodes/boolean_logic/or_node.rs`
   - **Context:** Add `configuration` input port for consistency
   - **Current Ports:** `in1`, `in2` → `out`, `error`
