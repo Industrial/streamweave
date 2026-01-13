@@ -332,7 +332,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 1.5.3 Add synchronization node tests
+- [x] 1.5.3 Add synchronization node tests
   - **File:** `src/graph/nodes/sync_node_test.rs`, `src/graph/nodes/join_node_test.rs`
   - **Acceptance Criteria:**
     - Tests for each synchronization type
@@ -346,7 +346,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 2.1 Basic Arithmetic Operations
 
-- [ ] 2.1.1 Implement AddNode - Addition
+- [o] 2.1.1 Implement AddNode - Addition
   - **File:** `src/graph/nodes/arithmetic/add_node.rs`
   - **Ports:** `configuration`, `in1`, `in2` → `out`, `error`
   - **Acceptance Criteria:**

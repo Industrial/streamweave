@@ -11,6 +11,7 @@
 //! - **Sink Nodes**: Consume data (1+ inputs, 0 outputs)
 //! - **Router Nodes**: Route data (1+ inputs, 1+ outputs with routing logic)
 
+pub mod arithmetic;
 pub mod boolean_logic;
 pub mod common;
 pub mod condition_node;
@@ -54,6 +55,7 @@ mod while_loop_node_test;
 #[cfg(test)]
 mod write_variable_node_test;
 
+pub use arithmetic::AddNode;
 pub use boolean_logic::{AndNode, NandNode, NorNode, NotNode, OrNode, XorNode};
 pub use common::BaseNode;
 pub use condition_node::{ConditionConfig, ConditionFunction, ConditionNode, condition_config};
