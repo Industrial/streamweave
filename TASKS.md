@@ -792,7 +792,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 3.3.4 Implement StringReverseNode - Reverse string
+- [x] 3.3.4 Implement StringReverseNode - Reverse string
   - **File:** `src/graph/nodes/string/reverse_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**

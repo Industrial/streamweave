@@ -645,3 +645,26 @@ pub fn string_pad(
 
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Reverses the character order of a string.
+///
+/// This function attempts to downcast the string to its expected type
+/// and performs character reversal. It supports:
+/// - Reversing the character order of a string
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` or an error string.
+pub fn string_reverse(
+  v: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast string
+  let arc_str = v.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string reverse input: {} (input must be String)",
+      std::any::type_name_of_val(&**v)
+    )
+  })?;
+
+  // Reverse the string by collecting chars in reverse order
+  let result: String = arc_str.chars().rev().collect();
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
