@@ -373,3 +373,60 @@ pub fn ceil_value(
     std::any::type_name_of_val(&**value)
   ))
 }
+
+/// Computes the square root of a numeric value.
+///
+/// This function attempts to downcast the value to a numeric type and computes
+/// its square root. It handles:
+/// - Integer types: i32, i64, u32, u64 (converted to f64, then sqrt)
+/// - Floating point types: f32, f64 (computes sqrt)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (f64) or an error string.
+pub fn sqrt_value(
+  value: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Handle integer types by converting to f64 first
+  if let Ok(arc_i32) = value.clone().downcast::<i32>() {
+    let val = *arc_i32 as f64;
+    if val < 0.0 {
+      return Err(format!("Square root of negative number: {}", val));
+    }
+    return Ok(Arc::new(val.sqrt()) as Arc<dyn Any + Send + Sync>);
+  }
+  if let Ok(arc_i64) = value.clone().downcast::<i64>() {
+    let val = *arc_i64 as f64;
+    if val < 0.0 {
+      return Err(format!("Square root of negative number: {}", val));
+    }
+    return Ok(Arc::new(val.sqrt()) as Arc<dyn Any + Send + Sync>);
+  }
+  if let Ok(arc_u32) = value.clone().downcast::<u32>() {
+    let val = *arc_u32 as f64;
+    return Ok(Arc::new(val.sqrt()) as Arc<dyn Any + Send + Sync>);
+  }
+  if let Ok(arc_u64) = value.clone().downcast::<u64>() {
+    let val = *arc_u64 as f64;
+    return Ok(Arc::new(val.sqrt()) as Arc<dyn Any + Send + Sync>);
+  }
+
+  // Handle floating point types
+  if let Ok(arc_f32) = value.clone().downcast::<f32>() {
+    let val = *arc_f32;
+    if val < 0.0 {
+      return Err(format!("Square root of negative number: {}", val));
+    }
+    return Ok(Arc::new(val.sqrt() as f64) as Arc<dyn Any + Send + Sync>);
+  }
+  if let Ok(arc_f64) = value.clone().downcast::<f64>() {
+    let val = *arc_f64;
+    if val < 0.0 {
+      return Err(format!("Square root of negative number: {}", val));
+    }
+    return Ok(Arc::new(val.sqrt()) as Arc<dyn Any + Send + Sync>);
+  }
+
+  Err(format!(
+    "Unsupported type for square root: {}",
+    std::any::type_name_of_val(&**value)
+  ))
+}

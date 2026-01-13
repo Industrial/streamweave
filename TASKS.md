@@ -552,7 +552,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 2.3.6 Implement CeilNode - Ceiling
+- [x] 2.3.6 Implement CeilNode - Ceiling
   - **File:** `src/graph/nodes/math/ceil_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
@@ -562,7 +562,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 2.3.7 Implement SqrtNode - Square root
+- [o] 2.3.7 Implement SqrtNode - Square root
   - **File:** `src/graph/nodes/math/sqrt_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
