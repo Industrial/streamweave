@@ -82,8 +82,9 @@ pub use math::{
 pub use range_node::{RangeConfig, RangeNode};
 pub use read_variable_node::{ReadVariableConfig, ReadVariableNode};
 pub use string::{
-  StringConcatNode, StringContainsNode, StringEndsWithNode, StringJoinNode, StringLengthNode,
-  StringMatchNode, StringReplaceNode, StringSliceNode, StringSplitNode, StringStartsWithNode,
+  StringConcatNode, StringContainsNode, StringEndsWithNode, StringEqualNode, StringJoinNode,
+  StringLengthNode, StringMatchNode, StringReplaceNode, StringSliceNode, StringSplitNode,
+  StringStartsWithNode,
 };
 pub use sync_node::{SyncConfig, SyncNode};
 pub use variable_node::{VariableConfig, VariableNode};

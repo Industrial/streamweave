@@ -421,3 +421,35 @@ pub fn string_match(
   let result = regex_pattern.is_match(&arc_str);
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Checks if two strings are equal.
+///
+/// This function attempts to downcast both strings to their
+/// expected types and performs equality comparison. It supports:
+/// - Case-sensitive string equality
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (bool) or an error string.
+pub fn string_equal(
+  v1: &Arc<dyn Any + Send + Sync>,
+  v2: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast first string
+  let arc_str1 = v1.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string equal input 1: {} (input must be String)",
+      std::any::type_name_of_val(&**v1)
+    )
+  })?;
+
+  // Try to downcast second string
+  let arc_str2 = v2.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string equal input 2: {} (input must be String)",
+      std::any::type_name_of_val(&**v2)
+    )
+  })?;
+
+  // Perform equality check (case-sensitive)
+  let result = *arc_str1 == *arc_str2;
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
