@@ -771,7 +771,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 3.3.2 Implement StringTrimNode - Trim whitespace
+- [x] 3.3.2 Implement StringTrimNode - Trim whitespace
   - **File:** `src/graph/nodes/string/trim_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**

@@ -84,7 +84,7 @@ pub use read_variable_node::{ReadVariableConfig, ReadVariableNode};
 pub use string::{
   StringCaseNode, StringConcatNode, StringContainsNode, StringEndsWithNode, StringEqualNode,
   StringJoinNode, StringLengthNode, StringMatchNode, StringReplaceNode, StringSliceNode,
-  StringSplitNode, StringStartsWithNode,
+  StringSplitNode, StringStartsWithNode, StringTrimNode,
 };
 pub use sync_node::{SyncConfig, SyncNode};
 pub use variable_node::{VariableConfig, VariableNode};

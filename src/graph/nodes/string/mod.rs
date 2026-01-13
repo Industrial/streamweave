@@ -21,6 +21,7 @@ pub mod replace_node;
 pub mod slice_node;
 pub mod split_node;
 pub mod starts_with_node;
+pub mod trim_node;
 
 #[cfg(test)]
 mod case_node_test;
@@ -46,6 +47,8 @@ mod slice_node_test;
 mod split_node_test;
 #[cfg(test)]
 mod starts_with_node_test;
+#[cfg(test)]
+mod trim_node_test;
 
 pub use case_node::StringCaseNode;
 pub use concat_node::StringConcatNode;
@@ -59,3 +62,4 @@ pub use replace_node::StringReplaceNode;
 pub use slice_node::StringSliceNode;
 pub use split_node::StringSplitNode;
 pub use starts_with_node::StringStartsWithNode;
+pub use trim_node::StringTrimNode;
