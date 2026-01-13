@@ -288,3 +288,35 @@ pub fn string_join(
   let result = parts.join(&*arc_delimiter);
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Checks if a string contains a substring.
+///
+/// This function attempts to downcast the string and substring to their
+/// expected types and performs the contains check. It supports:
+/// - Case-sensitive substring matching
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (bool) or an error string.
+pub fn string_contains(
+  v: &Arc<dyn Any + Send + Sync>,
+  substring: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast string
+  let arc_str = v.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string contains input: {} (input must be String)",
+      std::any::type_name_of_val(&**v)
+    )
+  })?;
+
+  // Try to downcast substring
+  let arc_substring = substring.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for substring: {} (substring must be String)",
+      std::any::type_name_of_val(&**substring)
+    )
+  })?;
+
+  // Perform contains check (case-sensitive)
+  let result = arc_str.contains(&*arc_substring);
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}

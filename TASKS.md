@@ -697,7 +697,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 3.2 String Predicates
 
-- [ ] 3.2.1 Implement StringContainsNode - Check if contains substring
+- [x] 3.2.1 Implement StringContainsNode - Check if contains substring
   - **File:** `src/graph/nodes/string/contains_node.rs`
   - **Ports:** `configuration`, `in`, `substring` → `out`, `error`
   - **Acceptance Criteria:**
