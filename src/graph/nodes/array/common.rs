@@ -277,3 +277,46 @@ pub fn array_index_of(
   // No match found, return -1
   Ok(Arc::new(-1i32) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Concatenates two arrays.
+///
+/// This function attempts to downcast both arrays to their expected types
+/// and concatenates them. It supports:
+/// - Concatenating two Vec<Arc<dyn Any + Send + Sync>> arrays
+/// - Preserving element order (first array, then second array)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (Vec<Arc<dyn Any + Send + Sync>>) or an error string.
+pub fn array_concat(
+  v1: &Arc<dyn Any + Send + Sync>,
+  v2: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast first array
+  let arc_vec1 = v1
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for array concat first input: {} (input must be Vec<Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v1)
+      )
+    })?;
+
+  // Try to downcast second array
+  let arc_vec2 = v2
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for array concat second input: {} (input must be Vec<Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v2)
+      )
+    })?;
+
+  // Concatenate arrays (clone the Arc references)
+  let mut result: Vec<Arc<dyn Any + Send + Sync>> =
+    Vec::with_capacity(arc_vec1.len() + arc_vec2.len());
+  result.extend(arc_vec1.iter().cloned());
+  result.extend(arc_vec2.iter().cloned());
+
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
