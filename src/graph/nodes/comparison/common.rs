@@ -397,3 +397,29 @@ pub fn compare_less_than(
   // This allows comparison nodes to work with any types, returning false for incompatible types
   Ok(Arc::new(false) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Compares two values for less than or equal, handling type promotion.
+///
+/// This function attempts to downcast both values to numeric types and performs
+/// less than or equal comparison. It handles:
+/// - Integer types: i32, i64, u32, u64
+/// - Floating point types: f32, f64
+/// - Type promotion: smaller types are promoted to larger types when needed
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (boolean) or an error string.
+/// For incompatible types, returns false (no error).
+pub fn compare_less_than_or_equal(
+  v1: &Arc<dyn Any + Send + Sync>,
+  v2: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Use compare_less_than and compare_equal, then combine with OR
+  let lt_result = compare_less_than(v1, v2)?;
+  let eq_result = compare_equal(v1, v2)?;
+
+  if let (Ok(arc_lt), Ok(arc_eq)) = (lt_result.downcast::<bool>(), eq_result.downcast::<bool>()) {
+    return Ok(Arc::new(*arc_lt || *arc_eq) as Arc<dyn Any + Send + Sync>);
+  }
+
+  // Should not happen, but handle gracefully
+  Ok(Arc::new(false) as Arc<dyn Any + Send + Sync>)
+}

@@ -60,7 +60,8 @@ pub use arithmetic::{AddNode, DivideNode, ModuloNode, MultiplyNode, PowerNode, S
 pub use boolean_logic::{AndNode, NandNode, NorNode, NotNode, OrNode, XorNode};
 pub use common::BaseNode;
 pub use comparison::{
-  EqualNode, GreaterThanNode, GreaterThanOrEqualNode, LessThanNode, NotEqualNode,
+  EqualNode, GreaterThanNode, GreaterThanOrEqualNode, LessThanNode, LessThanOrEqualNode,
+  NotEqualNode,
 };
 pub use condition_node::{ConditionConfig, ConditionFunction, ConditionNode, condition_config};
 pub use error_branch_node::{ErrorBranchConfig, ErrorBranchNode};
