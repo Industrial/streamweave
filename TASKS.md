@@ -837,7 +837,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 4.1.3 Implement ArraySliceNode - Extract slice
+- [x] 4.1.3 Implement ArraySliceNode - Extract slice
   - **File:** `src/graph/nodes/array/slice_node.rs`
   - **Ports:** `configuration`, `in`, `start`, `end` → `out`, `error`
   - **Acceptance Criteria:**
