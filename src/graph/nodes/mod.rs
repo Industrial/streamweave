@@ -62,7 +62,7 @@ mod write_variable_node_test;
 pub use arithmetic::{AddNode, DivideNode, ModuloNode, MultiplyNode, PowerNode, SubtractNode};
 pub use array::{
   ArrayConcatNode, ArrayContainsNode, ArrayFilterNode, ArrayIndexNode, ArrayIndexOfNode,
-  ArrayLengthNode, ArrayReverseNode, ArraySliceNode, ArraySortNode,
+  ArrayLengthNode, ArrayMapNode, ArrayReverseNode, ArraySliceNode, ArraySortNode,
 };
 pub use boolean_logic::{AndNode, NandNode, NorNode, NotNode, OrNode, XorNode};
 pub use common::BaseNode;

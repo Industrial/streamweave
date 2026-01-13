@@ -461,3 +461,44 @@ pub async fn array_filter(
 
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Maps an array by applying a transformation function to each element.
+///
+/// This function attempts to downcast the array to its expected type
+/// and applies the transformation to each element. It supports:
+/// - Mapping Vec<Arc<dyn Any + Send + Sync>> arrays
+/// - Transformation function that transforms each element
+/// - Preserving element order
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (Vec<Arc<dyn Any + Send + Sync>>) or an error string.
+pub async fn array_map(
+  v: &Arc<dyn Any + Send + Sync>,
+  map_fn: &crate::graph::nodes::MapConfig,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast array
+  let arc_vec = v
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for array map input: {} (input must be Vec<Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Map elements using the transformation function
+  let mut result: Vec<Arc<dyn Any + Send + Sync>> = Vec::with_capacity(arc_vec.len());
+  for element in arc_vec.iter() {
+    match map_fn.apply(element.clone()).await {
+      Ok(transformed) => {
+        // Element transformed successfully - add to result
+        result.push(transformed);
+      }
+      Err(e) => {
+        return Err(format!("Map function error: {}", e));
+      }
+    }
+  }
+
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
