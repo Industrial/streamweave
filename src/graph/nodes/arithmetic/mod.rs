@@ -13,13 +13,18 @@
 //! ## Available Nodes
 //!
 //! - **AddNode**: Addition operation (`configuration`, `in1`, `in2` → `out`, `error`)
+//! - **SubtractNode**: Subtraction operation (`configuration`, `in1`, `in2` → `out`, `error`)
 
 pub mod add_node;
 pub mod common;
+pub mod subtract_node;
 
 #[cfg(test)]
 mod add_node_test;
 #[cfg(test)]
 mod common_test;
+#[cfg(test)]
+mod subtract_node_test;
 
 pub use add_node::AddNode;
+pub use subtract_node::SubtractNode;

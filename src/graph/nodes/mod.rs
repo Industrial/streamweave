@@ -55,7 +55,7 @@ mod while_loop_node_test;
 #[cfg(test)]
 mod write_variable_node_test;
 
-pub use arithmetic::AddNode;
+pub use arithmetic::{AddNode, SubtractNode};
 pub use boolean_logic::{AndNode, NandNode, NorNode, NotNode, OrNode, XorNode};
 pub use common::BaseNode;
 pub use condition_node::{ConditionConfig, ConditionFunction, ConditionNode, condition_config};
