@@ -815,7 +815,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 4.1 Array Access
 
-- [ ] 4.1.1 Implement ArrayLengthNode - Get array length
+- [x] 4.1.1 Implement ArrayLengthNode - Get array length
   - **File:** `src/graph/nodes/array/length_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**

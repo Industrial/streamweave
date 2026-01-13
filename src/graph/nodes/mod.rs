@@ -12,6 +12,7 @@
 //! - **Router Nodes**: Route data (1+ inputs, 1+ outputs with routing logic)
 
 pub mod arithmetic;
+pub mod array;
 pub mod boolean_logic;
 pub mod common;
 pub mod comparison;
@@ -59,6 +60,7 @@ mod while_loop_node_test;
 mod write_variable_node_test;
 
 pub use arithmetic::{AddNode, DivideNode, ModuloNode, MultiplyNode, PowerNode, SubtractNode};
+pub use array::ArrayLengthNode;
 pub use boolean_logic::{AndNode, NandNode, NorNode, NotNode, OrNode, XorNode};
 pub use common::BaseNode;
 pub use comparison::{
