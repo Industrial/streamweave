@@ -3,14 +3,37 @@
 //! This module provides boolean logic operation nodes for processing boolean values
 //! or values that can be evaluated as booleans.
 //!
+//! ## Standard Port Pattern
+//!
+//! All boolean logic nodes follow the standard port pattern for consistency:
+//!
+//! - **Input Ports**: `configuration` (currently unused, reserved for future use), plus data input ports
+//! - **Output Ports**: Data output ports (`out`), plus `error`
+//!
 //! ## Available Nodes
 //!
-//! - **AndNode**: Logical AND operation
-//! - **OrNode**: Logical OR operation
-//! - **NotNode**: Logical NOT operation
-//! - **XorNode**: Logical XOR (exclusive OR) operation
-//! - **NandNode**: Logical NAND (NOT AND) operation
-//! - **NorNode**: Logical NOR (NOT OR) operation
+//! - **AndNode**: Logical AND operation (`configuration`, `in1`, `in2` → `out`, `error`)
+//! - **OrNode**: Logical OR operation (`configuration`, `in1`, `in2` → `out`, `error`)
+//! - **NotNode**: Logical NOT operation (`configuration`, `in` → `out`, `error`)
+//! - **XorNode**: Logical XOR (exclusive OR) operation (`configuration`, `in1`, `in2` → `out`, `error`)
+//! - **NandNode**: Logical NAND (NOT AND) operation (`configuration`, `in1`, `in2` → `out`, `error`)
+//! - **NorNode**: Logical NOR (NOT OR) operation (`configuration`, `in1`, `in2` → `out`, `error`)
+//!
+//! ## Example Usage
+//!
+//! ```rust,no_run
+//! use streamweave::graph::nodes::boolean_logic::AndNode;
+//! use streamweave::graph::node::Node;
+//!
+//! // Create an AND node
+//! let node = AndNode::new("and_gate".to_string());
+//!
+//! // All boolean logic nodes have the configuration port
+//! assert!(node.has_input_port("configuration"));
+//! assert!(node.has_input_port("in1"));  // or "in" for NotNode
+//! assert!(node.has_output_port("out"));
+//! assert!(node.has_output_port("error"));
+//! ```
 
 pub mod and_node;
 pub mod common;

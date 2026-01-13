@@ -113,7 +113,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 0.1.6 Add `configuration` port to NorNode
+- [x] 0.1.6 Add `configuration` port to NorNode
   - **File:** `src/graph/nodes/boolean_logic/nor_node.rs`
   - **Context:** Add `configuration` input port for consistency
   - **Current Ports:** `in1`, `in2` → `out`, `error`
@@ -126,7 +126,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 0.1.7 Update boolean logic module documentation
+- [o] 0.1.7 Update boolean logic module documentation
   - **File:** `src/graph/nodes/boolean_logic/mod.rs`
   - **Context:** Document the standard port pattern
   - **Acceptance Criteria:**
