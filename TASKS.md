@@ -243,7 +243,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 1.3.2 Add ErrorBranchNode tests
+- [x] 1.3.2 Add ErrorBranchNode tests
   - **File:** `src/graph/nodes/error_branch_node_test.rs`
   - **Acceptance Criteria:**
     - Tests for success routing
@@ -255,7 +255,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 1.4 Variables & State
 
-- [ ] 1.4.1 Implement VariableNode - Graph-level variable storage
+- [o] 1.4.1 Implement VariableNode - Graph-level variable storage
   - **File:** `src/graph/nodes/variable_node.rs`
   - **Ports:** `configuration`, `read`, `write`, `value` → `error`
   - **Context:** Shared state between nodes
