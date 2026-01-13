@@ -16,6 +16,7 @@ pub mod common;
 pub mod condition_node;
 pub mod filter_node;
 pub mod map_node;
+pub mod match_node;
 
 #[cfg(test)]
 mod condition_node_test;
@@ -23,9 +24,11 @@ mod condition_node_test;
 mod filter_node_test;
 #[cfg(test)]
 mod map_node_test;
+// match_node_test will be added in task 1.1.3
 
 pub use boolean_logic::{AndNode, NandNode, NorNode, NotNode, OrNode, XorNode};
 pub use common::BaseNode;
 pub use condition_node::{ConditionConfig, ConditionFunction, ConditionNode, condition_config};
 pub use filter_node::{FilterConfig, FilterFunction, FilterNode, filter_config};
 pub use map_node::{MapConfig, MapFunction, MapNode, map_config};
+pub use match_node::{MatchConfig, MatchFunction, MatchNode, match_config};

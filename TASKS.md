@@ -47,6 +47,8 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 0.1 Fix Boolean Logic Nodes
 
+- [x] 0.1 All boolean logic nodes standardized
+
 - [x] 0.1.1 Add `configuration` port to AndNode
   - **File:** `src/graph/nodes/boolean_logic/and_node.rs`
   - **Context:** Add `configuration` input port for consistency (even if unused)
@@ -126,7 +128,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 0.1.7 Update boolean logic module documentation
+- [x] 0.1.7 Update boolean logic module documentation
   - **File:** `src/graph/nodes/boolean_logic/mod.rs`
   - **Context:** Document the standard port pattern
   - **Acceptance Criteria:**
@@ -140,7 +142,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 1.1 Pattern Matching & Conditional Routing
 
-- [ ] 1.1.1 Implement MatchNode - Pattern matching with multiple branches
+- [o] 1.1.1 Implement MatchNode - Pattern matching with multiple branches
   - **File:** `src/graph/nodes/match_node.rs`
   - **Ports:** `configuration`, `in` → `out_0`, `out_1`, ..., `out_n`, `default`, `error`
   - **Context:** Routes items based on pattern matching (enum variants, ranges, regex, etc.)
