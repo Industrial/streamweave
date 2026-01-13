@@ -430,3 +430,84 @@ pub fn sqrt_value(
     std::any::type_name_of_val(&**value)
   ))
 }
+
+/// Computes the logarithm of a value with a given base.
+///
+/// This function attempts to downcast both values to numeric types and computes
+/// log_base(value). It handles:
+/// - Integer types: i32, i64, u32, u64 (converted to f64)
+/// - Floating point types: f32, f64
+/// - Type promotion: smaller types are promoted to larger types when needed
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (f64) or an error string.
+pub fn log_values(
+  value: &Arc<dyn Any + Send + Sync>,
+  base: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Convert value to f64
+  let value_f64 = match value.clone().downcast::<i32>() {
+    Ok(arc) => *arc as f64,
+    Err(_) => match value.clone().downcast::<i64>() {
+      Ok(arc) => *arc as f64,
+      Err(_) => match value.clone().downcast::<u32>() {
+        Ok(arc) => *arc as f64,
+        Err(_) => match value.clone().downcast::<u64>() {
+          Ok(arc) => *arc as f64,
+          Err(_) => match value.clone().downcast::<f32>() {
+            Ok(arc) => *arc as f64,
+            Err(_) => match value.clone().downcast::<f64>() {
+              Ok(arc) => *arc,
+              Err(_) => {
+                return Err(format!(
+                  "Unsupported type for logarithm value: {}",
+                  std::any::type_name_of_val(&**value)
+                ));
+              }
+            },
+          },
+        },
+      },
+    },
+  };
+
+  // Convert base to f64
+  let base_f64 = match base.clone().downcast::<i32>() {
+    Ok(arc) => *arc as f64,
+    Err(_) => match base.clone().downcast::<i64>() {
+      Ok(arc) => *arc as f64,
+      Err(_) => match base.clone().downcast::<u32>() {
+        Ok(arc) => *arc as f64,
+        Err(_) => match base.clone().downcast::<u64>() {
+          Ok(arc) => *arc as f64,
+          Err(_) => match base.clone().downcast::<f32>() {
+            Ok(arc) => *arc as f64,
+            Err(_) => match base.clone().downcast::<f64>() {
+              Ok(arc) => *arc,
+              Err(_) => {
+                return Err(format!(
+                  "Unsupported type for logarithm base: {}",
+                  std::any::type_name_of_val(&**base)
+                ));
+              }
+            },
+          },
+        },
+      },
+    },
+  };
+
+  // Validate inputs
+  if value_f64 <= 0.0 {
+    return Err(format!("Logarithm value must be positive: {}", value_f64));
+  }
+  if base_f64 <= 0.0 || base_f64 == 1.0 {
+    return Err(format!(
+      "Logarithm base must be positive and not equal to 1: {}",
+      base_f64
+    ));
+  }
+
+  // Compute log_base(value) = ln(value) / ln(base)
+  let result = value_f64.ln() / base_f64.ln();
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}

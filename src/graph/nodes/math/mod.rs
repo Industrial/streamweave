@@ -18,11 +18,13 @@
 //! - **FloorNode**: Floor to largest integer <= value (`configuration`, `in` → `out`, `error`)
 //! - **CeilNode**: Ceil to smallest integer >= value (`configuration`, `in` → `out`, `error`)
 //! - **SqrtNode**: Square root (`configuration`, `in` → `out`, `error`)
+//! - **LogNode**: Logarithm (`configuration`, `in`, `base` → `out`, `error`)
 
 pub mod abs_node;
 pub mod ceil_node;
 pub mod common;
 pub mod floor_node;
+pub mod log_node;
 pub mod max_node;
 pub mod min_node;
 pub mod round_node;
@@ -37,6 +39,8 @@ mod common_test;
 #[cfg(test)]
 mod floor_node_test;
 #[cfg(test)]
+mod log_node_test;
+#[cfg(test)]
 mod max_node_test;
 #[cfg(test)]
 mod min_node_test;
@@ -48,6 +52,7 @@ mod sqrt_node_test;
 pub use abs_node::AbsNode;
 pub use ceil_node::CeilNode;
 pub use floor_node::FloorNode;
+pub use log_node::LogNode;
 pub use max_node::MaxNode;
 pub use min_node::MinNode;
 pub use round_node::RoundNode;
