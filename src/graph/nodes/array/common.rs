@@ -502,3 +502,70 @@ pub async fn array_map(
 
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Joins an array of elements into a string using a delimiter.
+///
+/// This function attempts to downcast the array to its expected type
+/// and joins elements with a delimiter. It supports:
+/// - Joining Vec<Arc<dyn Any + Send + Sync>> arrays
+/// - Converting each element to string representation
+/// - Custom delimiter string
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (String) or an error string.
+pub fn array_join(
+  v: &Arc<dyn Any + Send + Sync>,
+  delimiter: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast array
+  let arc_vec = v
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for array join input: {} (input must be Vec<Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Try to downcast delimiter
+  let arc_delimiter = delimiter.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for delimiter: {} (delimiter must be String)",
+      std::any::type_name_of_val(&**delimiter)
+    )
+  })?;
+
+  // Convert each element to String and join
+  let mut parts = Vec::new();
+  for (idx, item) in arc_vec.iter().enumerate() {
+    // Try to convert element to string
+    let str_repr = if let Ok(arc_str) = item.clone().downcast::<String>() {
+      (*arc_str).clone()
+    } else if let Ok(arc_i32) = item.clone().downcast::<i32>() {
+      arc_i32.to_string()
+    } else if let Ok(arc_i64) = item.clone().downcast::<i64>() {
+      arc_i64.to_string()
+    } else if let Ok(arc_u32) = item.clone().downcast::<u32>() {
+      arc_u32.to_string()
+    } else if let Ok(arc_u64) = item.clone().downcast::<u64>() {
+      arc_u64.to_string()
+    } else if let Ok(arc_f32) = item.clone().downcast::<f32>() {
+      arc_f32.to_string()
+    } else if let Ok(arc_f64) = item.clone().downcast::<f64>() {
+      arc_f64.to_string()
+    } else if let Ok(arc_bool) = item.clone().downcast::<bool>() {
+      arc_bool.to_string()
+    } else {
+      return Err(format!(
+        "Unsupported type for array element at index {}: {} (element must be convertible to string)",
+        idx,
+        std::any::type_name_of_val(&**item)
+      ));
+    };
+    parts.push(str_repr);
+  }
+
+  // Join with delimiter
+  let result = parts.join(&*arc_delimiter);
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}

@@ -941,7 +941,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 4.3 Array Operations
 
-- [ ] 4.3.1 Implement ArrayJoinNode - Join array elements
+- [x] 4.3.1 Implement ArrayJoinNode - Join array elements
   - **File:** `src/graph/nodes/array/join_node.rs`
   - **Ports:** `configuration`, `in`, `delimiter` → `out`, `error`
   - **Acceptance Criteria:**
