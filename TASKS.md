@@ -10,10 +10,10 @@ Use `sed` to mark tasks as in-progress or completed:
 
 ```bash
 # Mark a task as in-progress
-sed -i 's/- \[ \] 1.1.1/- [o] 1.1.1/' TASKS.md
+sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md
 
 # Mark a task as completed
-sed -i 's/- [o] 1.1.1/- [x] 1.1.1/' TASKS.md
+sed -i 's/- [x] 1.1.1/- [x] 1.1.1/' TASKS.md
 
 # Mark multiple tasks at once
 sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 1.1.2/' TASKS.md
@@ -142,7 +142,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 1.1 Pattern Matching & Conditional Routing
 
-- [o] 1.1.1 Implement MatchNode - Pattern matching with multiple branches
+- [x] 1.1.1 Implement MatchNode - Pattern matching with multiple branches
   - **File:** `src/graph/nodes/match_node.rs`
   - **Ports:** `configuration`, `in` → `out_0`, `out_1`, ..., `out_n`, `default`, `error`
   - **Context:** Routes items based on pattern matching (enum variants, ranges, regex, etc.)
@@ -155,7 +155,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 1.1.2 Create MatchConfig trait for pattern definitions
+- [o] 1.1.2 Create MatchConfig trait for pattern definitions
   - **File:** `src/graph/nodes/match_node.rs`
   - **Context:** Define trait for pattern matching functions
   - **Acceptance Criteria:**

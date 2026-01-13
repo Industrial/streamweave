@@ -20,6 +20,7 @@ use crate::graph::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::graph::nodes::common::{BaseNode, MessageType};
 use async_trait::async_trait;
 use futures::stream;
+use regex::Regex;
 use std::any::Any;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -108,6 +109,150 @@ where
           Box<dyn std::future::Future<Output = Result<Option<usize>, String>> + Send>,
         >
     },
+  })
+}
+
+/// Helper function to create a MatchConfig for regex pattern matching on strings.
+///
+/// This helper allows matching string values against regex patterns and routing them to branches.
+/// Patterns are matched in order, and the first match determines the branch.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use streamweave::graph::nodes::{MatchConfig, match_regex};
+/// use regex::Regex;
+///
+/// // Route email addresses to branch 0, URLs to branch 1, others to default
+/// let patterns = vec![
+///     (Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap(), 0),
+///     (Regex::new(r"^https?://").unwrap(), 1),
+/// ];
+///
+/// let config: MatchConfig = match_regex(patterns);
+/// ```
+pub fn match_regex(patterns: Vec<(Regex, usize)>) -> MatchConfig {
+  match_config(move |value| {
+    let patterns = patterns.clone();
+    async move {
+      // Try to downcast to String
+      if let Ok(arc_str) = value.clone().downcast::<String>() {
+        let s = arc_str.as_str();
+        for (pattern, branch_index) in &patterns {
+          if pattern.is_match(s) {
+            return Ok(Some(*branch_index));
+          }
+        }
+        Ok(None) // No match - route to default
+      } else if let Ok(arc_str) = value.downcast::<&str>() {
+        let s = *arc_str;
+        for (pattern, branch_index) in &patterns {
+          if pattern.is_match(s) {
+            return Ok(Some(*branch_index));
+          }
+        }
+        Ok(None) // No match - route to default
+      } else {
+        Err("Expected String or &str for regex matching".to_string())
+      }
+    }
+  })
+}
+
+/// Helper function to create a MatchConfig for exact value matching.
+///
+/// This helper allows matching exact values against a list and routing them to branches.
+/// Works with any type that implements `Clone`, `PartialEq`, `Send`, and `Sync`.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use streamweave::graph::nodes::{MatchConfig, match_exact};
+///
+/// // Route "error" to branch 0, "warning" to branch 1, others to default
+/// let values: Vec<(&str, usize)> = vec![
+///     ("error", 0),
+///     ("warning", 1),
+/// ];
+///
+/// let config: MatchConfig = match_exact(values);
+/// ```
+pub fn match_exact<T>(values: Vec<(T, usize)>) -> MatchConfig
+where
+  T: Send + Sync + Clone + PartialEq + 'static,
+{
+  match_config(move |value| {
+    let values = values.clone();
+    async move {
+      // Try to downcast to T
+      if let Ok(arc_t) = value.downcast::<T>() {
+        let val = (*arc_t).clone();
+        for (pattern_val, branch_index) in &values {
+          if &val == pattern_val {
+            return Ok(Some(*branch_index));
+          }
+        }
+        Ok(None) // No match - route to default
+      } else {
+        Err(format!(
+          "Expected {} for exact matching",
+          std::any::type_name::<T>()
+        ))
+      }
+    }
+  })
+}
+
+/// Helper function to create a MatchConfig for numeric range matching.
+///
+/// This helper allows matching numeric values against ranges and routing them to branches.
+/// The matcher function receives the numeric value and returns the branch index.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use streamweave::graph::nodes::{MatchConfig, match_numeric_range};
+///
+/// // Route negative numbers to branch 0, 0-10 to branch 1, 10+ to default
+/// let config: MatchConfig = match_numeric_range(|n: i32| async move {
+///     if n < 0 {
+///         Ok(Some(0))
+///     } else if n < 10 {
+///         Ok(Some(1))
+///     } else {
+///         Ok(None) // Route to default
+///     }
+/// });
+/// ```
+pub fn match_numeric_range<F, Fut>(matcher: F) -> MatchConfig
+where
+  F: Fn(i32) -> Fut + Send + Sync + Clone + 'static,
+  Fut: std::future::Future<Output = Result<Option<usize>, String>> + Send + 'static,
+{
+  match_config(move |value| {
+    let matcher = matcher.clone();
+    async move {
+      // Try common numeric types and convert to i32
+      if let Ok(arc_i32) = value.clone().downcast::<i32>() {
+        return matcher(*arc_i32).await;
+      }
+      if let Ok(arc_i64) = value.clone().downcast::<i64>() {
+        return matcher(*arc_i64 as i32).await;
+      }
+      if let Ok(arc_u32) = value.clone().downcast::<u32>() {
+        return matcher(*arc_u32 as i32).await;
+      }
+      if let Ok(arc_u64) = value.clone().downcast::<u64>() {
+        return matcher(*arc_u64 as i32).await;
+      }
+      if let Ok(arc_f32) = value.clone().downcast::<f32>() {
+        return matcher(*arc_f32 as i32).await;
+      }
+      if let Ok(arc_f64) = value.clone().downcast::<f64>() {
+        return matcher(*arc_f64 as i32).await;
+      }
+      Err("Expected numeric type (i32, i64, u32, u64, f32, f64) for range matching".to_string())
+    }
   })
 }
 
