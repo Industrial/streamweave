@@ -584,7 +584,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 2.3.9 Implement ExpNode - Exponential
+- [x] 2.3.9 Implement ExpNode - Exponential
   - **File:** `src/graph/nodes/math/exp_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
@@ -619,7 +619,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 3.1 Basic String Operations
 
-- [ ] 3.1.1 Implement StringConcatNode - Concatenate strings
+- [x] 3.1.1 Implement StringConcatNode - Concatenate strings
   - **File:** `src/graph/nodes/string/concat_node.rs`
   - **Ports:** `configuration`, `in1`, `in2` → `out`, `error`
   - **Acceptance Criteria:**

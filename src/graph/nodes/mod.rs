@@ -25,6 +25,7 @@ pub mod match_node;
 pub mod math;
 pub mod range_node;
 pub mod read_variable_node;
+pub mod string;
 pub mod sync_node;
 pub mod variable_node;
 pub mod while_loop_node;
@@ -80,6 +81,7 @@ pub use math::{
 };
 pub use range_node::{RangeConfig, RangeNode};
 pub use read_variable_node::{ReadVariableConfig, ReadVariableNode};
+pub use string::StringConcatNode;
 pub use sync_node::{SyncConfig, SyncNode};
 pub use variable_node::{VariableConfig, VariableNode};
 pub use while_loop_node::{
