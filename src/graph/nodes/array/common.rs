@@ -417,3 +417,47 @@ pub fn array_sort(
 
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Filters an array based on a predicate function.
+///
+/// This function attempts to downcast the array to its expected type
+/// and filters elements based on the predicate. It supports:
+/// - Filtering Vec<Arc<dyn Any + Send + Sync>> arrays
+/// - Predicate function that evaluates each element to a boolean
+/// - Preserving element references (clones Arc references for kept elements)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (Vec<Arc<dyn Any + Send + Sync>>) or an error string.
+pub async fn array_filter(
+  v: &Arc<dyn Any + Send + Sync>,
+  predicate: &crate::graph::nodes::FilterConfig,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast array
+  let arc_vec = v
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for array filter input: {} (input must be Vec<Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Filter elements using the predicate
+  let mut result: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  for element in arc_vec.iter() {
+    match predicate.apply(element.clone()).await {
+      Ok(true) => {
+        // Element passes filter - keep it (zero-copy: clone Arc reference)
+        result.push(element.clone());
+      }
+      Ok(false) => {
+        // Element filtered out - skip it
+      }
+      Err(e) => {
+        return Err(format!("Predicate error: {}", e));
+      }
+    }
+  }
+
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}

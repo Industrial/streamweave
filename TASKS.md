@@ -910,7 +910,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 4.2.4 Implement ArrayFilterNode - Filter array elements
+- [x] 4.2.4 Implement ArrayFilterNode - Filter array elements
   - **File:** `src/graph/nodes/array/filter_node.rs`
   - **Ports:** `configuration`, `in`, `predicate` → `out`, `error`
   - **Acceptance Criteria:**
