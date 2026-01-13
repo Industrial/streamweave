@@ -1,6 +1,6 @@
 //! Common utility functions for array operations.
 
-use crate::graph::nodes::comparison::common::compare_equal;
+use crate::graph::nodes::comparison::common::{compare_equal, compare_less_than};
 use std::any::Any;
 use std::sync::Arc;
 
@@ -344,6 +344,76 @@ pub fn array_reverse(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Sen
   // Reverse the array (clone the Arc references)
   let mut result: Vec<Arc<dyn Any + Send + Sync>> = arc_vec.iter().cloned().collect();
   result.reverse();
+
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
+
+/// Sorts an array of elements.
+///
+/// This function attempts to downcast the array to its expected type
+/// and sorts the elements. It supports:
+/// - Sorting Vec<Arc<dyn Any + Send + Sync>> arrays
+/// - Ascending or descending order
+/// - Type-aware comparison (uses compare_less_than for type promotion)
+/// - Incompatible types are placed at the end (via compare_less_than returning false)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (Vec<Arc<dyn Any + Send + Sync>>) or an error string.
+pub fn array_sort(
+  v: &Arc<dyn Any + Send + Sync>,
+  ascending: bool,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast array
+  let arc_vec = v
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for array sort input: {} (input must be Vec<Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Create a mutable copy for sorting
+  let mut result: Vec<Arc<dyn Any + Send + Sync>> = arc_vec.iter().cloned().collect();
+
+  // Sort using compare_less_than (for numeric types) and direct comparison (for strings)
+  result.sort_by(|a, b| {
+    // Try string comparison first
+    if let (Ok(arc_str1), Ok(arc_str2)) = (
+      a.clone().downcast::<String>(),
+      b.clone().downcast::<String>(),
+    ) {
+      return arc_str1.as_str().cmp(arc_str2.as_str());
+    }
+
+    // Try numeric comparison using compare_less_than
+    match compare_less_than(a, b) {
+      Ok(result_arc) => {
+        if let Ok(arc_bool) = result_arc.downcast::<bool>()
+          && *arc_bool
+        {
+          return std::cmp::Ordering::Less;
+        }
+        // Check if equal (if not less, check if greater)
+        if let Ok(result_arc2) = compare_less_than(b, a)
+          && let Ok(arc_bool2) = result_arc2.downcast::<bool>()
+          && *arc_bool2
+        {
+          return std::cmp::Ordering::Greater;
+        }
+        std::cmp::Ordering::Equal
+      }
+      Err(_) => {
+        // If comparison fails, consider them equal (incompatible types)
+        std::cmp::Ordering::Equal
+      }
+    }
+  });
+
+  // Reverse if descending
+  if !ascending {
+    result.reverse();
+  }
 
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
