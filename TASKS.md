@@ -718,7 +718,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 3.2.3 Implement StringEndsWithNode - Check if ends with
+- [x] 3.2.3 Implement StringEndsWithNode - Check if ends with
   - **File:** `src/graph/nodes/string/ends_with_node.rs`
   - **Ports:** `configuration`, `in`, `suffix` → `out`, `error`
   - **Acceptance Criteria:**

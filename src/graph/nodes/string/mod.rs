@@ -11,6 +11,7 @@
 pub mod common;
 pub mod concat_node;
 pub mod contains_node;
+pub mod ends_with_node;
 pub mod join_node;
 pub mod length_node;
 pub mod replace_node;
@@ -22,6 +23,8 @@ pub mod starts_with_node;
 mod concat_node_test;
 #[cfg(test)]
 mod contains_node_test;
+#[cfg(test)]
+mod ends_with_node_test;
 #[cfg(test)]
 mod join_node_test;
 #[cfg(test)]
@@ -37,6 +40,7 @@ mod starts_with_node_test;
 
 pub use concat_node::StringConcatNode;
 pub use contains_node::StringContainsNode;
+pub use ends_with_node::StringEndsWithNode;
 pub use join_node::StringJoinNode;
 pub use length_node::StringLengthNode;
 pub use replace_node::StringReplaceNode;

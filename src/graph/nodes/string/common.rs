@@ -352,3 +352,35 @@ pub fn string_starts_with(
   let result = arc_str.starts_with(&*arc_prefix);
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Checks if a string ends with a suffix.
+///
+/// This function attempts to downcast the string and suffix to their
+/// expected types and performs the ends_with check. It supports:
+/// - Case-sensitive suffix matching
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (bool) or an error string.
+pub fn string_ends_with(
+  v: &Arc<dyn Any + Send + Sync>,
+  suffix: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast string
+  let arc_str = v.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string ends_with input: {} (input must be String)",
+      std::any::type_name_of_val(&**v)
+    )
+  })?;
+
+  // Try to downcast suffix
+  let arc_suffix = suffix.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for suffix: {} (suffix must be String)",
+      std::any::type_name_of_val(&**suffix)
+    )
+  })?;
+
+  // Perform ends_with check (case-sensitive)
+  let result = arc_str.ends_with(&*arc_suffix);
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
