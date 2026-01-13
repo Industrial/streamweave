@@ -1,4 +1,5 @@
 pub mod common;
+pub mod delete_property_node;
 pub mod entries_node;
 pub mod has_property_node;
 pub mod keys_node;
@@ -7,6 +8,8 @@ pub mod property_node;
 pub mod set_property_node;
 pub mod values_node;
 
+#[cfg(test)]
+mod delete_property_node_test;
 #[cfg(test)]
 mod entries_node_test;
 #[cfg(test)]
@@ -22,6 +25,7 @@ mod set_property_node_test;
 #[cfg(test)]
 mod values_node_test;
 
+pub use delete_property_node::ObjectDeletePropertyNode;
 pub use entries_node::ObjectEntriesNode;
 pub use has_property_node::ObjectHasPropertyNode;
 pub use keys_node::ObjectKeysNode;
