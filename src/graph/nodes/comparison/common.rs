@@ -139,3 +139,31 @@ pub fn compare_equal(
   // This allows comparison nodes to work with any types, returning false for incompatible types
   Ok(Arc::new(false) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Compares two values for inequality, handling type promotion.
+///
+/// This function attempts to downcast both values to the same type and performs
+/// inequality comparison. It handles:
+/// - Integer types: i32, i64, u32, u64
+/// - Floating point types: f32, f64
+/// - String types
+/// - Boolean types
+/// - Type promotion: smaller types are promoted to larger types when needed
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (boolean) or an error string.
+pub fn compare_not_equal(
+  v1: &Arc<dyn Any + Send + Sync>,
+  v2: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Use compare_equal and negate the result
+  match compare_equal(v1, v2) {
+    Ok(result) => {
+      if let Ok(arc_bool) = result.downcast::<bool>() {
+        return Ok(Arc::new(!*arc_bool) as Arc<dyn Any + Send + Sync>);
+      }
+      // Should not happen, but handle gracefully
+      Ok(Arc::new(true) as Arc<dyn Any + Send + Sync>)
+    }
+    Err(e) => Err(e),
+  }
+}
