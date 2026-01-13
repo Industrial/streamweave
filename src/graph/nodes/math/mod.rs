@@ -16,8 +16,10 @@
 //! - **MaxNode**: Maximum of two values (`configuration`, `in1`, `in2` → `out`, `error`)
 //! - **RoundNode**: Round to nearest integer (`configuration`, `in` → `out`, `error`)
 //! - **FloorNode**: Floor to largest integer <= value (`configuration`, `in` → `out`, `error`)
+//! - **CeilNode**: Ceil to smallest integer >= value (`configuration`, `in` → `out`, `error`)
 
 pub mod abs_node;
+pub mod ceil_node;
 pub mod common;
 pub mod floor_node;
 pub mod max_node;
@@ -26,6 +28,8 @@ pub mod round_node;
 
 #[cfg(test)]
 mod abs_node_test;
+#[cfg(test)]
+mod ceil_node_test;
 #[cfg(test)]
 mod common_test;
 #[cfg(test)]
@@ -38,6 +42,7 @@ mod min_node_test;
 mod round_node_test;
 
 pub use abs_node::AbsNode;
+pub use ceil_node::CeilNode;
 pub use floor_node::FloorNode;
 pub use max_node::MaxNode;
 pub use min_node::MinNode;
