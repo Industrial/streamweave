@@ -320,3 +320,35 @@ pub fn string_contains(
   let result = arc_str.contains(&*arc_substring);
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Checks if a string starts with a prefix.
+///
+/// This function attempts to downcast the string and prefix to their
+/// expected types and performs the starts_with check. It supports:
+/// - Case-sensitive prefix matching
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (bool) or an error string.
+pub fn string_starts_with(
+  v: &Arc<dyn Any + Send + Sync>,
+  prefix: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast string
+  let arc_str = v.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string starts_with input: {} (input must be String)",
+      std::any::type_name_of_val(&**v)
+    )
+  })?;
+
+  // Try to downcast prefix
+  let arc_prefix = prefix.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for prefix: {} (prefix must be String)",
+      std::any::type_name_of_val(&**prefix)
+    )
+  })?;
+
+  // Perform starts_with check (case-sensitive)
+  let result = arc_str.starts_with(&*arc_prefix);
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}

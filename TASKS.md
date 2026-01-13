@@ -708,7 +708,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 3.2.2 Implement StringStartsWithNode - Check if starts with
+- [x] 3.2.2 Implement StringStartsWithNode - Check if starts with
   - **File:** `src/graph/nodes/string/starts_with_node.rs`
   - **Ports:** `configuration`, `in`, `prefix` → `out`, `error`
   - **Acceptance Criteria:**
