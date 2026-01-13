@@ -761,7 +761,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 3.3 String Transformations
 
-- [ ] 3.3.1 Implement StringCaseNode - Case conversion (upper/lower/title)
+- [x] 3.3.1 Implement StringCaseNode - Case conversion (upper/lower/title)
   - **File:** `src/graph/nodes/string/case_node.rs`
   - **Ports:** `configuration`, `in`, `case_type` → `out`, `error`
   - **Acceptance Criteria:**

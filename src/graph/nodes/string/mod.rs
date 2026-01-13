@@ -8,6 +8,7 @@
 //! - **Input Ports:** `configuration` (optional but should exist), plus data input ports (`in`, `in1`, `in2`, etc.)
 //! - **Output Ports:** Data output ports (`out`, `true`, `false`, etc.), plus `error`
 
+pub mod case_node;
 pub mod common;
 pub mod concat_node;
 pub mod contains_node;
@@ -21,6 +22,8 @@ pub mod slice_node;
 pub mod split_node;
 pub mod starts_with_node;
 
+#[cfg(test)]
+mod case_node_test;
 #[cfg(test)]
 mod concat_node_test;
 #[cfg(test)]
@@ -44,6 +47,7 @@ mod split_node_test;
 #[cfg(test)]
 mod starts_with_node_test;
 
+pub use case_node::StringCaseNode;
 pub use concat_node::StringConcatNode;
 pub use contains_node::StringContainsNode;
 pub use ends_with_node::StringEndsWithNode;

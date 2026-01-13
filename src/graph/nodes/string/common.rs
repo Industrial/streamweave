@@ -453,3 +453,63 @@ pub fn string_equal(
   let result = *arc_str1 == *arc_str2;
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Converts a string to a different case (upper, lower, or title).
+///
+/// This function attempts to downcast the string and case type to their
+/// expected types and performs case conversion. It supports:
+/// - "upper" or "uppercase": Converts to uppercase
+/// - "lower" or "lowercase": Converts to lowercase
+/// - "title" or "titlecase": Converts to title case (first letter of each word uppercase)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` or an error string.
+pub fn string_case(
+  v: &Arc<dyn Any + Send + Sync>,
+  case_type: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast string
+  let arc_str = v.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string case input: {} (input must be String)",
+      std::any::type_name_of_val(&**v)
+    )
+  })?;
+
+  // Try to downcast case type
+  let arc_case_type = case_type.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for case type: {} (case type must be String)",
+      std::any::type_name_of_val(&**case_type)
+    )
+  })?;
+
+  // Perform case conversion
+  let result = match arc_case_type.to_lowercase().as_str() {
+    "upper" | "uppercase" => arc_str.to_uppercase(),
+    "lower" | "lowercase" => arc_str.to_lowercase(),
+    "title" | "titlecase" => {
+      // Title case: first letter of each word uppercase, rest lowercase
+      arc_str
+        .split_whitespace()
+        .map(|word| {
+          let mut chars = word.chars();
+          match chars.next() {
+            None => String::new(),
+            Some(first) => {
+              first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase()
+            }
+          }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+    }
+    _ => {
+      return Err(format!(
+        "Unsupported case type: {} (must be 'upper', 'lower', or 'title')",
+        *arc_case_type
+      ));
+    }
+  };
+
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
