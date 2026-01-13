@@ -294,7 +294,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 1.4.4 Add variable node tests
+- [x] 1.4.4 Add variable node tests
   - **File:** `src/graph/nodes/variable_node_test.rs`, `src/graph/nodes/read_variable_node_test.rs`, `src/graph/nodes/write_variable_node_test.rs`
   - **Acceptance Criteria:**
     - Tests for each variable operation
@@ -306,7 +306,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 1.5 Synchronization
 
-- [ ] 1.5.1 Implement SyncNode - Wait for all inputs before proceeding
+- [o] 1.5.1 Implement SyncNode - Wait for all inputs before proceeding
   - **File:** `src/graph/nodes/sync_node.rs`
   - **Ports:** `configuration`, `in_0`, `in_1`, ..., `in_n` → `out`, `error`
   - **Context:** Barrier synchronization
