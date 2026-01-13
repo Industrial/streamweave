@@ -435,7 +435,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [o] 2.2.2 Implement NotEqualNode - Inequality comparison
+- [x] 2.2.2 Implement NotEqualNode - Inequality comparison
   - **File:** `src/graph/nodes/comparison/not_equal_node.rs`
   - **Ports:** `configuration`, `in1`, `in2` → `out`, `error`
   - **Acceptance Criteria:**
@@ -446,7 +446,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 2.2.3 Implement GreaterThanNode - Greater than
+- [o] 2.2.3 Implement GreaterThanNode - Greater than
   - **File:** `src/graph/nodes/comparison/greater_than_node.rs`
   - **Ports:** `configuration`, `in1`, `in2` → `out`, `error`
   - **Acceptance Criteria:**

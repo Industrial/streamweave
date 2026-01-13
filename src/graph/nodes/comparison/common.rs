@@ -167,3 +167,105 @@ pub fn compare_not_equal(
     Err(e) => Err(e),
   }
 }
+
+/// Compares two values for greater than, handling type promotion.
+///
+/// This function attempts to downcast both values to numeric types and performs
+/// greater than comparison. It handles:
+/// - Integer types: i32, i64, u32, u64
+/// - Floating point types: f32, f64
+/// - Type promotion: smaller types are promoted to larger types when needed
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (boolean) or an error string.
+/// For incompatible types, returns false (no error).
+pub fn compare_greater_than(
+  v1: &Arc<dyn Any + Send + Sync>,
+  v2: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try same type comparisons first
+  if let (Ok(arc_i32_1), Ok(arc_i32_2)) =
+    (v1.clone().downcast::<i32>(), v2.clone().downcast::<i32>())
+  {
+    return Ok(Arc::new(*arc_i32_1 > *arc_i32_2) as Arc<dyn Any + Send + Sync>);
+  }
+
+  if let (Ok(arc_i64_1), Ok(arc_i64_2)) =
+    (v1.clone().downcast::<i64>(), v2.clone().downcast::<i64>())
+  {
+    return Ok(Arc::new(*arc_i64_1 > *arc_i64_2) as Arc<dyn Any + Send + Sync>);
+  }
+
+  if let (Ok(arc_u32_1), Ok(arc_u32_2)) =
+    (v1.clone().downcast::<u32>(), v2.clone().downcast::<u32>())
+  {
+    return Ok(Arc::new(*arc_u32_1 > *arc_u32_2) as Arc<dyn Any + Send + Sync>);
+  }
+
+  if let (Ok(arc_u64_1), Ok(arc_u64_2)) =
+    (v1.clone().downcast::<u64>(), v2.clone().downcast::<u64>())
+  {
+    return Ok(Arc::new(*arc_u64_1 > *arc_u64_2) as Arc<dyn Any + Send + Sync>);
+  }
+
+  if let (Ok(arc_f32_1), Ok(arc_f32_2)) =
+    (v1.clone().downcast::<f32>(), v2.clone().downcast::<f32>())
+  {
+    return Ok(Arc::new(*arc_f32_1 > *arc_f32_2) as Arc<dyn Any + Send + Sync>);
+  }
+
+  if let (Ok(arc_f64_1), Ok(arc_f64_2)) =
+    (v1.clone().downcast::<f64>(), v2.clone().downcast::<f64>())
+  {
+    return Ok(Arc::new(*arc_f64_1 > *arc_f64_2) as Arc<dyn Any + Send + Sync>);
+  }
+
+  // Try type promotion: i32 > i64
+  if let (Ok(arc_i32), Ok(arc_i64)) = (v1.clone().downcast::<i32>(), v2.clone().downcast::<i64>()) {
+    return Ok(Arc::new((*arc_i32 as i64) > *arc_i64) as Arc<dyn Any + Send + Sync>);
+  }
+  if let (Ok(arc_i64), Ok(arc_i32)) = (v1.clone().downcast::<i64>(), v2.clone().downcast::<i32>()) {
+    return Ok(Arc::new(*arc_i64 > (*arc_i32 as i64)) as Arc<dyn Any + Send + Sync>);
+  }
+
+  // Try type promotion: u32 > u64
+  if let (Ok(arc_u32), Ok(arc_u64)) = (v1.clone().downcast::<u32>(), v2.clone().downcast::<u64>()) {
+    return Ok(Arc::new((*arc_u32 as u64) > *arc_u64) as Arc<dyn Any + Send + Sync>);
+  }
+  if let (Ok(arc_u64), Ok(arc_u32)) = (v1.clone().downcast::<u64>(), v2.clone().downcast::<u32>()) {
+    return Ok(Arc::new(*arc_u64 > (*arc_u32 as u64)) as Arc<dyn Any + Send + Sync>);
+  }
+
+  // Try type promotion: integer > float
+  if let (Ok(arc_i32), Ok(arc_f32)) = (v1.clone().downcast::<i32>(), v2.clone().downcast::<f32>()) {
+    return Ok(Arc::new((*arc_i32 as f32) > *arc_f32) as Arc<dyn Any + Send + Sync>);
+  }
+  if let (Ok(arc_f32), Ok(arc_i32)) = (v1.clone().downcast::<f32>(), v2.clone().downcast::<i32>()) {
+    return Ok(Arc::new(*arc_f32 > (*arc_i32 as f32)) as Arc<dyn Any + Send + Sync>);
+  }
+
+  // Try type promotion: i32 > f64
+  if let (Ok(arc_i32), Ok(arc_f64)) = (v1.clone().downcast::<i32>(), v2.clone().downcast::<f64>()) {
+    return Ok(Arc::new((*arc_i32 as f64) > *arc_f64) as Arc<dyn Any + Send + Sync>);
+  }
+  if let (Ok(arc_f64), Ok(arc_i32)) = (v1.clone().downcast::<f64>(), v2.clone().downcast::<i32>()) {
+    return Ok(Arc::new(*arc_f64 > (*arc_i32 as f64)) as Arc<dyn Any + Send + Sync>);
+  }
+
+  if let (Ok(arc_i64), Ok(arc_f64)) = (v1.clone().downcast::<i64>(), v2.clone().downcast::<f64>()) {
+    return Ok(Arc::new((*arc_i64 as f64) > *arc_f64) as Arc<dyn Any + Send + Sync>);
+  }
+  if let (Ok(arc_f64), Ok(arc_i64)) = (v1.clone().downcast::<f64>(), v2.clone().downcast::<i64>()) {
+    return Ok(Arc::new(*arc_f64 > (*arc_i64 as f64)) as Arc<dyn Any + Send + Sync>);
+  }
+
+  if let (Ok(arc_f32), Ok(arc_f64)) = (v1.clone().downcast::<f32>(), v2.clone().downcast::<f64>()) {
+    return Ok(Arc::new((*arc_f32 as f64) > *arc_f64) as Arc<dyn Any + Send + Sync>);
+  }
+  if let (Ok(arc_f64), Ok(arc_f32)) = (v1.clone().downcast::<f64>(), v2.clone().downcast::<f32>()) {
+    return Ok(Arc::new(*arc_f64 > (*arc_f32 as f64)) as Arc<dyn Any + Send + Sync>);
+  }
+
+  // If types are completely incompatible, return false
+  // This allows comparison nodes to work with any types, returning false for incompatible types
+  Ok(Arc::new(false) as Arc<dyn Any + Send + Sync>)
+}
