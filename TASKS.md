@@ -652,7 +652,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 3.1.4 Implement StringReplaceNode - Replace substrings
+- [x] 3.1.4 Implement StringReplaceNode - Replace substrings
   - **File:** `src/graph/nodes/string/replace_node.rs`
   - **Ports:** `configuration`, `in`, `pattern`, `replacement` → `out`, `error`
   - **Acceptance Criteria:**

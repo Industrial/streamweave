@@ -160,3 +160,45 @@ pub fn string_slice(
   let result = arc_str[start_idx..end_idx].to_string();
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Replaces all occurrences of a pattern in a string with a replacement string.
+///
+/// This function attempts to downcast the string, pattern, and replacement to their
+/// expected types and performs replacement. It supports:
+/// - String replacement with literal patterns
+/// - All occurrences replacement
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` or an error string.
+pub fn string_replace(
+  v: &Arc<dyn Any + Send + Sync>,
+  pattern: &Arc<dyn Any + Send + Sync>,
+  replacement: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast string
+  let arc_str = v.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string replace input: {} (input must be String)",
+      std::any::type_name_of_val(&**v)
+    )
+  })?;
+
+  // Try to downcast pattern
+  let arc_pattern = pattern.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for pattern: {} (pattern must be String)",
+      std::any::type_name_of_val(&**pattern)
+    )
+  })?;
+
+  // Try to downcast replacement
+  let arc_replacement = replacement.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for replacement: {} (replacement must be String)",
+      std::any::type_name_of_val(&**replacement)
+    )
+  })?;
+
+  // Perform replacement (replace all occurrences)
+  let result = arc_str.replace(&*arc_pattern, &arc_replacement);
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}

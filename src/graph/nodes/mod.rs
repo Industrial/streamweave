@@ -81,7 +81,7 @@ pub use math::{
 };
 pub use range_node::{RangeConfig, RangeNode};
 pub use read_variable_node::{ReadVariableConfig, ReadVariableNode};
-pub use string::{StringConcatNode, StringLengthNode, StringSliceNode};
+pub use string::{StringConcatNode, StringLengthNode, StringReplaceNode, StringSliceNode};
 pub use sync_node::{SyncConfig, SyncNode};
 pub use variable_node::{VariableConfig, VariableNode};
 pub use while_loop_node::{
