@@ -20,6 +20,7 @@ pub mod for_each_node;
 pub mod map_node;
 pub mod match_node;
 pub mod range_node;
+pub mod read_variable_node;
 pub mod variable_node;
 pub mod while_loop_node;
 
@@ -38,6 +39,8 @@ mod match_node_test;
 #[cfg(test)]
 mod range_node_test;
 #[cfg(test)]
+mod read_variable_node_test;
+#[cfg(test)]
 mod variable_node_test;
 #[cfg(test)]
 mod while_loop_node_test;
@@ -53,6 +56,7 @@ pub use match_node::{
   MatchConfig, MatchFunction, MatchNode, match_config, match_exact_string, match_regex,
 };
 pub use range_node::{RangeConfig, RangeNode};
+pub use read_variable_node::{ReadVariableConfig, ReadVariableNode};
 pub use variable_node::{VariableConfig, VariableNode};
 pub use while_loop_node::{
   WhileLoopConditionFunction, WhileLoopConfig, WhileLoopNode, while_loop_config,

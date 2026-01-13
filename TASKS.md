@@ -255,7 +255,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 1.4 Variables & State
 
-- [o] 1.4.1 Implement VariableNode - Graph-level variable storage
+- [x] 1.4.1 Implement VariableNode - Graph-level variable storage
   - **File:** `src/graph/nodes/variable_node.rs`
   - **Ports:** `configuration`, `read`, `write`, `value` → `error`
   - **Context:** Shared state between nodes
@@ -268,7 +268,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 1.4.2 Implement ReadVariableNode - Read variable value
+- [o] 1.4.2 Implement ReadVariableNode - Read variable value
   - **File:** `src/graph/nodes/read_variable_node.rs`
   - **Ports:** `configuration`, `name` → `out`, `error`
   - **Context:** Read variable from graph state
