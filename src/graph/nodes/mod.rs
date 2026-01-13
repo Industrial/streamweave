@@ -59,7 +59,9 @@ mod write_variable_node_test;
 pub use arithmetic::{AddNode, DivideNode, ModuloNode, MultiplyNode, PowerNode, SubtractNode};
 pub use boolean_logic::{AndNode, NandNode, NorNode, NotNode, OrNode, XorNode};
 pub use common::BaseNode;
-pub use comparison::{EqualNode, GreaterThanNode, GreaterThanOrEqualNode, NotEqualNode};
+pub use comparison::{
+  EqualNode, GreaterThanNode, GreaterThanOrEqualNode, LessThanNode, NotEqualNode,
+};
 pub use condition_node::{ConditionConfig, ConditionFunction, ConditionNode, condition_config};
 pub use error_branch_node::{ErrorBranchConfig, ErrorBranchNode};
 pub use filter_node::{FilterConfig, FilterFunction, FilterNode, filter_config};
