@@ -18,6 +18,7 @@ pub mod filter_node;
 pub mod for_each_node;
 pub mod map_node;
 pub mod match_node;
+pub mod while_loop_node;
 
 #[cfg(test)]
 mod condition_node_test;
@@ -29,6 +30,8 @@ mod for_each_node_test;
 mod map_node_test;
 #[cfg(test)]
 mod match_node_test;
+#[cfg(test)]
+mod while_loop_node_test;
 
 pub use boolean_logic::{AndNode, NandNode, NorNode, NotNode, OrNode, XorNode};
 pub use common::BaseNode;
@@ -36,4 +39,9 @@ pub use condition_node::{ConditionConfig, ConditionFunction, ConditionNode, cond
 pub use filter_node::{FilterConfig, FilterFunction, FilterNode, filter_config};
 pub use for_each_node::{ForEachConfig, ForEachFunction, ForEachNode, for_each_config};
 pub use map_node::{MapConfig, MapFunction, MapNode, map_config};
-pub use match_node::{MatchConfig, MatchFunction, MatchNode, match_config};
+pub use match_node::{
+  MatchConfig, MatchFunction, MatchNode, match_config, match_exact_string, match_regex,
+};
+pub use while_loop_node::{
+  WhileLoopConditionFunction, WhileLoopConfig, WhileLoopNode, while_loop_config,
+};

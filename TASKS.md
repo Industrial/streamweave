@@ -179,7 +179,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 1.2 Loops & Iteration
 
-- [o] 1.2.1 Implement ForEachNode - Iterate over collections
+- [x] 1.2.1 Implement ForEachNode - Iterate over collections
   - **File:** `src/graph/nodes/for_each_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Context:** Expands collections into streams
@@ -192,7 +192,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 1.2.2 Implement WhileLoopNode - While loop with condition
+- [o] 1.2.2 Implement WhileLoopNode - While loop with condition
   - **File:** `src/graph/nodes/while_loop_node.rs`
   - **Ports:** `configuration`, `in`, `condition` → `out`, `break`, `error`
   - **Context:** Repeats processing until condition is false
