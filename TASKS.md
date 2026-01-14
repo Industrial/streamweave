@@ -1642,7 +1642,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 11.2.2 Add node-level documentation
+- [x] 11.2.2 Add node-level documentation
   - **Context:** Document each node implementation
   - **Acceptance Criteria:**
     - Each node has rustdoc
