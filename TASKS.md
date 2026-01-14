@@ -1210,7 +1210,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 7.1 Time Operations
 
-- [ ] 7.1.1 Implement DelayNode - Delay items by duration
+- [x] 7.1.1 Implement DelayNode - Delay items by duration
   - **File:** `src/graph/nodes/time/delay_node.rs`
   - **Ports:** `configuration`, `in`, `duration` → `out`, `error`
   - **Acceptance Criteria:**

@@ -31,6 +31,7 @@ pub mod read_variable_node;
 pub mod reduction;
 pub mod string;
 pub mod sync_node;
+pub mod time;
 pub mod variable_node;
 pub mod while_loop_node;
 pub mod write_variable_node;
@@ -106,6 +107,7 @@ pub use string::{
   StringReverseNode, StringSliceNode, StringSplitNode, StringStartsWithNode, StringTrimNode,
 };
 pub use sync_node::{SyncConfig, SyncNode};
+pub use time::DelayNode;
 pub use variable_node::{VariableConfig, VariableNode};
 pub use while_loop_node::{
   WhileLoopConditionFunction, WhileLoopConfig, WhileLoopNode, while_loop_config,
