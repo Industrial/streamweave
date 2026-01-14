@@ -100,7 +100,7 @@ impl Node for DropNode {
       let in_stream = inputs.remove("in").ok_or("Missing 'in' input")?;
 
       // Create output channels
-      let (out_tx, out_rx) = tokio::sync::mpsc::channel(10);
+      let (_out_tx, out_rx) = tokio::sync::mpsc::channel(10);
       let (error_tx, error_rx) = tokio::sync::mpsc::channel(10);
 
       // Process the input stream and drop all items
