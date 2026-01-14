@@ -107,7 +107,7 @@ pub use string::{
   StringReverseNode, StringSliceNode, StringSplitNode, StringStartsWithNode, StringTrimNode,
 };
 pub use sync_node::{SyncConfig, SyncNode};
-pub use time::DelayNode;
+pub use time::{DelayNode, TimeoutNode};
 pub use variable_node::{VariableConfig, VariableNode};
 pub use while_loop_node::{
   WhileLoopConditionFunction, WhileLoopConfig, WhileLoopNode, while_loop_config,
