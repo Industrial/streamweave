@@ -1,3 +1,30 @@
+//! # Type Operation Nodes
+//!
+//! This module provides nodes for type checking and type conversion operations.
+//!
+//! ## Standard Port Pattern
+//!
+//! All type operation nodes follow the standard port pattern:
+//! - **Input Ports:** `configuration` (optional but should exist), plus `in` (value to check/convert)
+//! - **Output Ports:** Data output ports (`out` - result), plus `error`
+//!
+//! ## Available Nodes
+//!
+//! ### Type Checking
+//! - **TypeOfNode**: Get type name of value (`configuration`, `in` → `out`, `error`)
+//! - **IsNumberNode**: Check if value is a number (`configuration`, `in` → `out`, `error`)
+//! - **IsStringNode**: Check if value is a string (`configuration`, `in` → `out`, `error`)
+//! - **IsBooleanNode**: Check if value is a boolean (`configuration`, `in` → `out`, `error`)
+//! - **IsArrayNode**: Check if value is an array (`configuration`, `in` → `out`, `error`)
+//! - **IsObjectNode**: Check if value is an object (`configuration`, `in` → `out`, `error`)
+//! - **IsNullNode**: Check if value is null (`configuration`, `in` → `out`, `error`)
+//!
+//! ### Type Conversion
+//! - **ToStringNode**: Convert value to string (`configuration`, `in` → `out`, `error`)
+//! - **ToNumberNode**: Convert value to number (`configuration`, `in` → `out`, `error`)
+//! - **ToBooleanNode**: Convert value to boolean (`configuration`, `in` → `out`, `error`)
+//! - **ToArrayNode**: Convert value to array (`configuration`, `in` → `out`, `error`)
+
 pub mod is_array_node;
 pub mod is_array_node_test;
 pub mod is_boolean_node;

@@ -1,3 +1,24 @@
+//! # Reduction Nodes
+//!
+//! This module provides nodes for reducing and grouping data from streams.
+//!
+//! ## Standard Port Pattern
+//!
+//! All reduction nodes follow the standard port pattern:
+//! - **Input Ports:** `configuration` (required for function configuration), plus `in` (data stream)
+//! - **Output Ports:** `out` (reduced/grouped result), plus `error`
+//!
+//! ## Behavior
+//!
+//! Reduction nodes process the entire input stream and apply configurable functions
+//! to reduce, group, or aggregate data. They emit results when the stream ends.
+//!
+//! ## Available Nodes
+//!
+//! - **ReduceNode**: Apply reduction function with initial value (`configuration`, `in` → `out`, `error`)
+//! - **GroupByNode**: Group items by key (`configuration`, `in` → `out`, `error`)
+//! - **AggregateNode**: Apply aggregator function (`configuration`, `in` → `out`, `error`)
+
 pub mod aggregate_node;
 pub mod aggregate_node_test;
 pub mod group_by_node;

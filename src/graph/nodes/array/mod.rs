@@ -1,3 +1,30 @@
+//! # Array Operation Nodes
+//!
+//! This module provides nodes for array manipulation operations.
+//!
+//! ## Standard Port Pattern
+//!
+//! All array nodes follow the standard port pattern:
+//! - **Input Ports:** `configuration` (optional but should exist), plus data input ports (`in`, `in1`, `in2`, etc.)
+//! - **Output Ports:** Data output ports (`out`, etc.), plus `error`
+//!
+//! ## Available Nodes
+//!
+//! - **ArrayLengthNode**: Get array length (`configuration`, `in` → `out`, `error`)
+//! - **ArrayIndexNode**: Get element at index (`configuration`, `in`, `index` → `out`, `error`)
+//! - **ArraySliceNode**: Get array slice (`configuration`, `in`, `start`, `end` → `out`, `error`)
+//! - **ArrayContainsNode**: Check if array contains value (`configuration`, `in`, `value` → `out`, `error`)
+//! - **ArrayIndexOfNode**: Get index of value (`configuration`, `in`, `value` → `out`, `error`)
+//! - **ArrayConcatNode**: Concatenate arrays (`configuration`, `in1`, `in2` → `out`, `error`)
+//! - **ArrayReverseNode**: Reverse array (`configuration`, `in` → `out`, `error`)
+//! - **ArraySortNode**: Sort array (`configuration`, `in` → `out`, `error`)
+//! - **ArrayFilterNode**: Filter array elements (`configuration`, `in` → `out`, `error`)
+//! - **ArrayMapNode**: Map array elements (`configuration`, `in` → `out`, `error`)
+//! - **ArrayJoinNode**: Join array elements (`configuration`, `in`, `separator` → `out`, `error`)
+//! - **ArraySplitNode**: Split array into chunks (`configuration`, `in`, `size` → `out`, `error`)
+//! - **ArrayFlattenNode**: Flatten nested arrays (`configuration`, `in` → `out`, `error`)
+//! - **ArrayUniqueNode**: Get unique elements (`configuration`, `in` → `out`, `error`)
+
 pub mod common;
 pub mod concat_node;
 pub mod contains_node;

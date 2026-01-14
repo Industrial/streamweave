@@ -1632,7 +1632,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 11.2 Documentation
 
-- [ ] 11.2.1 Add module-level documentation
+- [x] 11.2.1 Add module-level documentation
   - **Context:** Document each node category
   - **Acceptance Criteria:**
     - Each module has documentation

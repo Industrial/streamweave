@@ -1,3 +1,27 @@
+//! # Stream Control and Combination Nodes
+//!
+//! This module provides nodes for controlling stream flow and combining multiple streams.
+//!
+//! ## Standard Port Pattern
+//!
+//! All stream nodes follow the standard port pattern:
+//! - **Input Ports:** `configuration` (optional but should exist), plus data input ports
+//! - **Output Ports:** Data output ports (`out`, etc.), plus `error`
+//!
+//! ## Available Nodes
+//!
+//! ### Stream Control
+//! - **TakeNode**: Take first N items (`configuration`, `in`, `count` → `out`, `error`)
+//! - **SkipNode**: Skip first N items (`configuration`, `in`, `count` → `out`, `error`)
+//! - **LimitNode**: Limit total items (`configuration`, `in`, `limit` → `out`, `error`)
+//! - **DropNode**: Discard all items (`configuration`, `in` → `out`, `error`)
+//! - **SampleNode**: Sample items at rate (`configuration`, `in`, `rate` → `out`, `error`)
+//!
+//! ### Stream Combination
+//! - **ZipNode**: Combine multiple streams (`configuration`, `in1`, `in2`, ... → `out`, `error`)
+//! - **InterleaveNode**: Interleave multiple streams (`configuration`, `in1`, `in2`, ... → `out`, `error`)
+//! - **MergeNode**: Merge multiple streams (`configuration`, `in1`, `in2`, ... → `out`, `error`)
+
 pub mod drop_node;
 pub mod drop_node_test;
 pub mod interleave_node;
