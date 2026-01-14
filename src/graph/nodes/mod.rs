@@ -33,6 +33,7 @@ pub mod stream;
 pub mod string;
 pub mod sync_node;
 pub mod time;
+pub mod type_ops;
 pub mod variable_node;
 pub mod while_loop_node;
 pub mod write_variable_node;

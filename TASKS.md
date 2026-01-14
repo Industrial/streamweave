@@ -1371,7 +1371,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 9.1 Type Checking
 
-- [ ] 9.1.1 Implement TypeOfNode - Get type of value
+- [x] 9.1.1 Implement TypeOfNode - Get type of value
   - **File:** `src/graph/nodes/type_ops/type_of_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
