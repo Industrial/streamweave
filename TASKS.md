@@ -1165,7 +1165,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 6.2 Reduction
 
-- [ ] 6.2.1 Implement ReduceNode - General reduction
+- [x] 6.2.1 Implement ReduceNode - General reduction
   - **File:** `src/graph/nodes/reduction/reduce_node.rs`
   - **Ports:** `configuration`, `in`, `initial`, `function` → `out`, `error`
   - **Acceptance Criteria:**

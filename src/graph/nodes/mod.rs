@@ -28,6 +28,7 @@ pub mod math;
 pub mod object;
 pub mod range_node;
 pub mod read_variable_node;
+pub mod reduction;
 pub mod string;
 pub mod sync_node;
 pub mod variable_node;
@@ -94,6 +95,7 @@ pub use object::{
 };
 pub use range_node::{RangeConfig, RangeNode};
 pub use read_variable_node::{ReadVariableConfig, ReadVariableNode};
+pub use reduction::{ReduceConfig, ReduceConfigWrapper, ReduceFunction, ReduceNode, reduce_config};
 pub use string::{
   StringCaseNode, StringConcatNode, StringContainsNode, StringEndsWithNode, StringEqualNode,
   StringJoinNode, StringLengthNode, StringMatchNode, StringPadNode, StringReplaceNode,
