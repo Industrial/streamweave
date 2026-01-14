@@ -96,8 +96,9 @@ pub use object::{
 pub use range_node::{RangeConfig, RangeNode};
 pub use read_variable_node::{ReadVariableConfig, ReadVariableNode};
 pub use reduction::{
-  GroupByConfig, GroupByConfigWrapper, GroupByKeyFunction, GroupByNode, ReduceConfig,
-  ReduceConfigWrapper, ReduceFunction, ReduceNode, group_by_config, reduce_config,
+  AggregateConfig, AggregateConfigWrapper, AggregateNode, AggregatorFunction, GroupByConfig,
+  GroupByConfigWrapper, GroupByKeyFunction, GroupByNode, ReduceConfig, ReduceConfigWrapper,
+  ReduceFunction, ReduceNode, aggregate_config, group_by_config, reduce_config,
 };
 pub use string::{
   StringCaseNode, StringConcatNode, StringContainsNode, StringEndsWithNode, StringEqualNode,

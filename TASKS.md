@@ -1187,7 +1187,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 6.2.3 Implement AggregateNode - General aggregation
+- [x] 6.2.3 Implement AggregateNode - General aggregation
   - **File:** `src/graph/nodes/reduction/aggregate_node.rs`
   - **Ports:** `configuration`, `in`, `aggregator` → `out`, `error`
   - **Acceptance Criteria:**
