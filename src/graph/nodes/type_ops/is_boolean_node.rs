@@ -141,4 +141,3 @@ impl Node for IsBooleanNode {
     })
   }
 }
-

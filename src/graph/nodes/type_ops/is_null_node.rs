@@ -147,4 +147,3 @@ impl Node for IsNullNode {
     })
   }
 }
-

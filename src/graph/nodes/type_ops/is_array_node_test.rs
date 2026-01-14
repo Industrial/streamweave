@@ -318,9 +318,7 @@ async fn test_is_array_multiple_types() {
   let mut outputs = outputs_future.await.unwrap();
 
   // Send multiple items of different types
-  let array: Vec<Arc<dyn Any + Send + Sync>> = vec![
-    Arc::new(1i32) as Arc<dyn Any + Send + Sync>,
-  ];
+  let array: Vec<Arc<dyn Any + Send + Sync>> = vec![Arc::new(1i32) as Arc<dyn Any + Send + Sync>];
   let _ = in_tx
     .send(Arc::new(array) as Arc<dyn Any + Send + Sync>)
     .await;
@@ -377,4 +375,3 @@ async fn test_is_array_multiple_types() {
     panic!("Third result is not a bool");
   }
 }
-

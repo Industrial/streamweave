@@ -148,4 +148,3 @@ impl Node for IsNumberNode {
     })
   }
 }
-

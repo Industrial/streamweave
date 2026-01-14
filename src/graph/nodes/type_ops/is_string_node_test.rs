@@ -179,9 +179,8 @@ async fn test_is_string_array() {
   let mut outputs = outputs_future.await.unwrap();
 
   // Send an array
-  let array: Vec<Arc<dyn Any + Send + Sync>> = vec![
-    Arc::new("hello".to_string()) as Arc<dyn Any + Send + Sync>,
-  ];
+  let array: Vec<Arc<dyn Any + Send + Sync>> =
+    vec![Arc::new("hello".to_string()) as Arc<dyn Any + Send + Sync>];
   let _ = in_tx
     .send(Arc::new(array) as Arc<dyn Any + Send + Sync>)
     .await;
@@ -329,4 +328,3 @@ async fn test_is_string_multiple_types() {
     panic!("Third result is not a bool");
   }
 }
-

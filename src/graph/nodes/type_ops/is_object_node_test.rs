@@ -227,9 +227,7 @@ async fn test_is_object_array() {
   let mut outputs = outputs_future.await.unwrap();
 
   // Send an array
-  let array: Vec<Arc<dyn Any + Send + Sync>> = vec![
-    Arc::new(1i32) as Arc<dyn Any + Send + Sync>,
-  ];
+  let array: Vec<Arc<dyn Any + Send + Sync>> = vec![Arc::new(1i32) as Arc<dyn Any + Send + Sync>];
   let _ = in_tx
     .send(Arc::new(array) as Arc<dyn Any + Send + Sync>)
     .await;
@@ -378,4 +376,3 @@ async fn test_is_object_multiple_types() {
     panic!("Third result is not a bool");
   }
 }
-

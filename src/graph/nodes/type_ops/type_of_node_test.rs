@@ -84,6 +84,7 @@ async fn test_type_of_i32() {
 
 #[tokio::test]
 async fn test_type_of_string() {
+  use crate::graph::nodes::type_ops::TypeOfNode;
   let node = TypeOfNode::new("test_type_of".to_string());
 
   let (_config_tx, in_tx, inputs) = create_input_streams();
@@ -127,6 +128,7 @@ async fn test_type_of_string() {
 
 #[tokio::test]
 async fn test_type_of_bool() {
+  use crate::graph::nodes::type_ops::TypeOfNode;
   let node = TypeOfNode::new("test_type_of".to_string());
 
   let (_config_tx, in_tx, inputs) = create_input_streams();
@@ -170,6 +172,7 @@ async fn test_type_of_bool() {
 
 #[tokio::test]
 async fn test_type_of_array() {
+  use crate::graph::nodes::type_ops::TypeOfNode;
   let node = TypeOfNode::new("test_type_of".to_string());
 
   let (_config_tx, in_tx, inputs) = create_input_streams();
@@ -217,6 +220,7 @@ async fn test_type_of_array() {
 
 #[tokio::test]
 async fn test_type_of_object() {
+  use crate::graph::nodes::type_ops::TypeOfNode;
   let node = TypeOfNode::new("test_type_of".to_string());
 
   let (_config_tx, in_tx, inputs) = create_input_streams();
@@ -265,6 +269,7 @@ async fn test_type_of_object() {
 
 #[tokio::test]
 async fn test_type_of_multiple_items() {
+  use crate::graph::nodes::type_ops::TypeOfNode;
   let node = TypeOfNode::new("test_type_of".to_string());
 
   let (_config_tx, in_tx, inputs) = create_input_streams();
