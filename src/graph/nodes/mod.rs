@@ -107,7 +107,7 @@ pub use string::{
   StringJoinNode, StringLengthNode, StringMatchNode, StringPadNode, StringReplaceNode,
   StringReverseNode, StringSliceNode, StringSplitNode, StringStartsWithNode, StringTrimNode,
 };
-pub use stream::{DropNode, InterleaveNode, LimitNode, SampleNode, SkipNode, TakeNode, ZipNode};
+pub use stream::{DropNode, InterleaveNode, LimitNode, MergeNode, SampleNode, SkipNode, TakeNode, ZipNode};
 pub use sync_node::{SyncConfig, SyncNode};
 pub use time::{DelayNode, TimeoutNode, TimerNode, TimestampNode};
 pub use variable_node::{VariableConfig, VariableNode};

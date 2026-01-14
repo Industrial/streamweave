@@ -1348,7 +1348,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 8.2.3 Implement MergeNode - Merge streams
+- [x] 8.2.3 Implement MergeNode - Merge streams
   - **File:** `src/graph/nodes/stream/merge_node.rs`
   - **Ports:** `configuration`, `in_0`, `in_1`, ..., `in_n` → `out`, `error`
   - **Acceptance Criteria:**
