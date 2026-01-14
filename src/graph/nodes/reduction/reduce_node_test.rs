@@ -241,3 +241,139 @@ async fn test_reduce_single_value() {
     panic!("Result is not an i32");
   }
 }
+
+#[tokio::test]
+async fn test_reduce_function_error() {
+  let node = ReduceNode::new("test_reduce".to_string());
+
+  let (_config_tx, in_tx, initial_tx, function_tx, inputs) = create_input_streams();
+  let outputs_future = node.execute(inputs);
+  let mut outputs = outputs_future.await.unwrap();
+
+  // Create a function that returns an error for certain values
+  let error_function: ReduceConfig = reduce_config(|acc, value| async move {
+    if let (Ok(acc_i32), Ok(val_i32)) = (acc.downcast::<i32>(), value.downcast::<i32>()) {
+      if *val_i32 < 0 {
+        Err("Negative values not allowed".to_string())
+      } else {
+        Ok(Arc::new(*acc_i32 + *val_i32) as Arc<dyn Any + Send + Sync>)
+      }
+    } else {
+      Err("Expected i32".to_string())
+    }
+  });
+
+  // Send initial value
+  let _ = initial_tx
+    .send(Arc::new(0i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+
+  // Send function
+  let _ = function_tx
+    .send(Arc::new(ReduceConfigWrapper::new(error_function)) as Arc<dyn Any + Send + Sync>)
+    .await;
+
+  // Send values: 1, -2, 3 → should error on -2
+  let _ = in_tx
+    .send(Arc::new(1i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = in_tx
+    .send(Arc::new(-2i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  drop(in_tx);
+  drop(initial_tx);
+  drop(function_tx);
+
+  // Check error output
+  let error_stream = outputs.remove("error").unwrap();
+  let mut errors: Vec<String> = Vec::new();
+  let mut stream = error_stream;
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  tokio::pin!(timeout);
+
+  loop {
+    tokio::select! {
+      result = stream.next() => {
+        if let Some(item) = result {
+          if let Ok(arc_str) = item.downcast::<String>() {
+            errors.push((*arc_str).clone());
+          }
+        } else {
+          break;
+        }
+      }
+      _ = &mut timeout => break,
+    }
+  }
+
+  assert_eq!(errors.len(), 1);
+  assert_eq!(&*errors[0], "Negative values not allowed");
+}
+
+#[tokio::test]
+async fn test_reduce_f64() {
+  let node = ReduceNode::new("test_reduce".to_string());
+
+  let (_config_tx, in_tx, initial_tx, function_tx, inputs) = create_input_streams();
+  let outputs_future = node.execute(inputs);
+  let mut outputs = outputs_future.await.unwrap();
+
+  // Create a sum reduction function for f64
+  let sum_function: ReduceConfig = reduce_config(|acc, value| async move {
+    if let (Ok(acc_f64), Ok(val_f64)) = (acc.downcast::<f64>(), value.downcast::<f64>()) {
+      Ok(Arc::new(*acc_f64 + *val_f64) as Arc<dyn Any + Send + Sync>)
+    } else {
+      Err("Expected f64".to_string())
+    }
+  });
+
+  // Send initial value
+  let _ = initial_tx
+    .send(Arc::new(0.0f64) as Arc<dyn Any + Send + Sync>)
+    .await;
+
+  // Send function
+  let _ = function_tx
+    .send(Arc::new(ReduceConfigWrapper::new(sum_function)) as Arc<dyn Any + Send + Sync>)
+    .await;
+
+  // Send values: 1.5, 2.5, 3.5 → sum = 7.5
+  let _ = in_tx
+    .send(Arc::new(1.5f64) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = in_tx
+    .send(Arc::new(2.5f64) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = in_tx
+    .send(Arc::new(3.5f64) as Arc<dyn Any + Send + Sync>)
+    .await;
+  drop(in_tx);
+  drop(initial_tx);
+  drop(function_tx);
+
+  let out_stream = outputs.remove("out").unwrap();
+  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  let mut stream = out_stream;
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  tokio::pin!(timeout);
+
+  loop {
+    tokio::select! {
+      result = stream.next() => {
+        if let Some(item) = result {
+          results.push(item);
+        } else {
+          break;
+        }
+      }
+      _ = &mut timeout => break,
+    }
+  }
+
+  assert_eq!(results.len(), 1);
+  if let Ok(sum) = results[0].clone().downcast::<f64>() {
+    assert!((*sum - 7.5).abs() < 0.0001);
+  } else {
+    panic!("Result is not an f64");
+  }
+}

@@ -225,3 +225,172 @@ async fn test_group_by_empty_stream() {
     panic!("Result is not a HashMap<String, Arc<dyn Any + Send + Sync>>");
   }
 }
+
+#[tokio::test]
+async fn test_group_by_key_function_error() {
+  let node = GroupByNode::new("test_group_by".to_string());
+
+  let (_config_tx, in_tx, key_function_tx, inputs) = create_input_streams();
+  let outputs_future = node.execute(inputs);
+  let mut outputs = outputs_future.await.unwrap();
+
+  // Create a key function that returns an error for negative values
+  let key_function: GroupByConfig = group_by_config(|value| async move {
+    if let Ok(arc_i32) = value.downcast::<i32>() {
+      if *arc_i32 < 0 {
+        Err("Negative values not allowed".to_string())
+      } else {
+        Ok(arc_i32.to_string())
+      }
+    } else {
+      Err("Expected i32".to_string())
+    }
+  });
+
+  // Send key function
+  let _ = key_function_tx
+    .send(Arc::new(GroupByConfigWrapper::new(key_function)) as Arc<dyn Any + Send + Sync>)
+    .await;
+
+  // Send values: 1, -2, 3 → should error on -2
+  let _ = in_tx
+    .send(Arc::new(1i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = in_tx
+    .send(Arc::new(-2i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = in_tx
+    .send(Arc::new(3i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  drop(in_tx);
+  drop(key_function_tx);
+
+  // Check error output
+  let error_stream = outputs.remove("error").unwrap();
+  let mut errors: Vec<String> = Vec::new();
+  let mut stream = error_stream;
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  tokio::pin!(timeout);
+
+  loop {
+    tokio::select! {
+      result = stream.next() => {
+        if let Some(item) = result {
+          if let Ok(arc_str) = item.downcast::<String>() {
+            errors.push((*arc_str).clone());
+          }
+        } else {
+          break;
+        }
+      }
+      _ = &mut timeout => break,
+    }
+  }
+
+  assert_eq!(errors.len(), 1);
+  assert_eq!(&*errors[0], "Negative values not allowed");
+
+  // Check that valid items are still grouped
+  let out_stream = outputs.remove("out").unwrap();
+  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  let mut stream = out_stream;
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  tokio::pin!(timeout);
+
+  loop {
+    tokio::select! {
+      result = stream.next() => {
+        if let Some(item) = result {
+          results.push(item);
+        } else {
+          break;
+        }
+      }
+      _ = &mut timeout => break,
+    }
+  }
+
+  assert_eq!(results.len(), 1);
+  if let Ok(grouped) = results[0]
+    .clone()
+    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+  {
+    // Should have groups for "1" and "3" (valid values)
+    assert!(grouped.contains_key("1"));
+    assert!(grouped.contains_key("3"));
+    assert!(!grouped.contains_key("-2")); // Error value not grouped
+  } else {
+    panic!("Result is not a HashMap<String, Arc<dyn Any + Send + Sync>>");
+  }
+}
+
+#[tokio::test]
+async fn test_group_by_string_values() {
+  let node = GroupByNode::new("test_group_by".to_string());
+
+  let (_config_tx, in_tx, key_function_tx, inputs) = create_input_streams();
+  let outputs_future = node.execute(inputs);
+  let mut outputs = outputs_future.await.unwrap();
+
+  // Create a key function that extracts first character
+  let key_function: GroupByConfig = group_by_config(|value| async move {
+    if let Ok(arc_str) = value.downcast::<String>() {
+      if let Some(first_char) = arc_str.chars().next() {
+        Ok(first_char.to_string())
+      } else {
+        Err("Empty string".to_string())
+      }
+    } else {
+      Err("Expected String".to_string())
+    }
+  });
+
+  // Send key function
+  let _ = key_function_tx
+    .send(Arc::new(GroupByConfigWrapper::new(key_function)) as Arc<dyn Any + Send + Sync>)
+    .await;
+
+  // Send values: "apple", "banana", "apricot" → groups: {"a": ["apple", "apricot"], "b": ["banana"]}
+  let _ = in_tx
+    .send(Arc::new("apple".to_string()) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = in_tx
+    .send(Arc::new("banana".to_string()) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = in_tx
+    .send(Arc::new("apricot".to_string()) as Arc<dyn Any + Send + Sync>)
+    .await;
+  drop(in_tx);
+  drop(key_function_tx);
+
+  let out_stream = outputs.remove("out").unwrap();
+  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  let mut stream = out_stream;
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  tokio::pin!(timeout);
+
+  loop {
+    tokio::select! {
+      result = stream.next() => {
+        if let Some(item) = result {
+          results.push(item);
+        } else {
+          break;
+        }
+      }
+      _ = &mut timeout => break,
+    }
+  }
+
+  assert_eq!(results.len(), 1);
+  if let Ok(grouped) = results[0]
+    .clone()
+    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+  {
+    assert_eq!(grouped.len(), 2);
+    assert!(grouped.contains_key("a"));
+    assert!(grouped.contains_key("b"));
+  } else {
+    panic!("Result is not a HashMap<String, Arc<dyn Any + Send + Sync>>");
+  }
+}
