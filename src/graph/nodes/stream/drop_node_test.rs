@@ -1,12 +1,11 @@
 //! Tests for DropNode
 
-use crate::graph::node::{InputStreams, Node};
-use crate::graph::nodes::stream::DropNode;
+use crate::graph::node::InputStreams;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
@@ -50,9 +49,7 @@ async fn test_drop_all_items() {
 
   // Send 5 items
   for i in 1..=5 {
-    let _ = in_tx
-      .send(Arc::new(i) as Arc<dyn Any + Send + Sync>)
-      .await;
+    let _ = in_tx.send(Arc::new(i) as Arc<dyn Any + Send + Sync>).await;
   }
   drop(in_tx);
 
@@ -123,9 +120,7 @@ async fn test_drop_many_items() {
 
   // Send many items
   for i in 1..=100 {
-    let _ = in_tx
-      .send(Arc::new(i) as Arc<dyn Any + Send + Sync>)
-      .await;
+    let _ = in_tx.send(Arc::new(i) as Arc<dyn Any + Send + Sync>).await;
   }
   drop(in_tx);
 
@@ -194,4 +189,3 @@ async fn test_drop_different_types() {
   // Should have dropped all items regardless of type
   assert_eq!(results.len(), 0);
 }
-

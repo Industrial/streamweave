@@ -1,12 +1,11 @@
 //! Tests for MergeNode
 
-use crate::graph::node::{InputStreams, Node};
-use crate::graph::nodes::stream::MergeNode;
+use crate::graph::node::InputStreams;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
 
 /// Helper to create input streams from channels for MergeNode
 fn create_merge_input_streams(
@@ -264,7 +263,7 @@ async fn test_merge_empty_streams() {
 async fn test_merge_one_empty_stream() {
   let node = MergeNode::new("test_merge".to_string(), 2);
 
-  let (_config_tx, mut input_txs, inputs) = create_merge_input_streams(2);
+  let (_config_tx, input_txs, inputs) = create_merge_input_streams(2);
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
 
@@ -277,8 +276,8 @@ async fn test_merge_one_empty_stream() {
     .await;
 
   // Don't send anything to second stream (empty)
-  drop(input_txs[1]);
-  drop(input_txs[0]);
+  // Drop all senders by dropping the Vec
+  drop(input_txs);
 
   let out_stream = outputs.remove("out").unwrap();
   let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
@@ -356,13 +355,10 @@ async fn test_merge_different_types() {
   assert_eq!(results.len(), 2);
 
   // Verify both types are present
-  let has_i32 = results
-    .iter()
-    .any(|r| r.clone().downcast::<i32>().is_ok());
+  let has_i32 = results.iter().any(|r| r.clone().downcast::<i32>().is_ok());
   let has_string = results
     .iter()
     .any(|r| r.clone().downcast::<String>().is_ok());
   assert!(has_i32);
   assert!(has_string);
 }
-

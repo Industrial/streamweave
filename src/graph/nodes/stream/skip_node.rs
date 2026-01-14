@@ -154,9 +154,7 @@ impl Node for SkipNode {
       // Extract input streams
       let _config_stream = inputs.remove("configuration");
       let in_stream = inputs.remove("in").ok_or("Missing 'in' input")?;
-      let count_stream = inputs
-        .remove("count")
-        .ok_or("Missing 'count' input")?;
+      let count_stream = inputs.remove("count").ok_or("Missing 'count' input")?;
 
       // Tag streams to distinguish inputs
       let in_stream = in_stream.map(|item| (InputPort::In, item));
@@ -238,4 +236,3 @@ impl Node for SkipNode {
     })
   }
 }
-

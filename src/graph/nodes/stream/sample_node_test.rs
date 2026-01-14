@@ -1,12 +1,11 @@
 //! Tests for SampleNode
 
-use crate::graph::node::{InputStreams, Node};
-use crate::graph::nodes::stream::SampleNode;
+use crate::graph::node::InputStreams;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
@@ -62,9 +61,7 @@ async fn test_sample_rate_one() {
 
   // Send 5 items
   for i in 1..=5 {
-    let _ = in_tx
-      .send(Arc::new(i) as Arc<dyn Any + Send + Sync>)
-      .await;
+    let _ = in_tx.send(Arc::new(i) as Arc<dyn Any + Send + Sync>).await;
   }
   drop(in_tx);
   drop(rate_tx);
@@ -117,9 +114,7 @@ async fn test_sample_rate_two() {
 
   // Send 6 items
   for i in 1..=6 {
-    let _ = in_tx
-      .send(Arc::new(i) as Arc<dyn Any + Send + Sync>)
-      .await;
+    let _ = in_tx.send(Arc::new(i) as Arc<dyn Any + Send + Sync>).await;
   }
   drop(in_tx);
   drop(rate_tx);
@@ -176,9 +171,7 @@ async fn test_sample_rate_three() {
 
   // Send 9 items
   for i in 1..=9 {
-    let _ = in_tx
-      .send(Arc::new(i) as Arc<dyn Any + Send + Sync>)
-      .await;
+    let _ = in_tx.send(Arc::new(i) as Arc<dyn Any + Send + Sync>).await;
   }
   drop(in_tx);
   drop(rate_tx);
@@ -235,9 +228,7 @@ async fn test_sample_i32_rate() {
 
   // Send 6 items
   for i in 1..=6 {
-    let _ = in_tx
-      .send(Arc::new(i) as Arc<dyn Any + Send + Sync>)
-      .await;
+    let _ = in_tx.send(Arc::new(i) as Arc<dyn Any + Send + Sync>).await;
   }
   drop(in_tx);
   drop(rate_tx);
@@ -389,4 +380,3 @@ async fn test_sample_invalid_rate_type() {
   assert_eq!(errors.len(), 1);
   assert!(errors[0].contains("numeric") || errors[0].contains("Unsupported"));
 }
-

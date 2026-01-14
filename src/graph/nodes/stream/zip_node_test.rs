@@ -1,12 +1,11 @@
 //! Tests for ZipNode
 
-use crate::graph::node::{InputStreams, Node};
-use crate::graph::nodes::stream::ZipNode;
+use crate::graph::node::InputStreams;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
 
 /// Helper to create input streams from channels for ZipNode
 fn create_zip_input_streams(
@@ -108,7 +107,10 @@ async fn test_zip_two_streams() {
   assert_eq!(results.len(), 3);
 
   // Verify first zipped item: [1, "a"]
-  if let Ok(zipped_array) = results[0].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
+  if let Ok(zipped_array) = results[0]
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+  {
     assert_eq!(zipped_array.len(), 2);
     if let Ok(val1) = zipped_array[0].clone().downcast::<i32>() {
       assert_eq!(*val1, 1);
@@ -125,7 +127,10 @@ async fn test_zip_two_streams() {
   }
 
   // Verify second zipped item: [2, "b"]
-  if let Ok(zipped_array) = results[1].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
+  if let Ok(zipped_array) = results[1]
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+  {
     assert_eq!(zipped_array.len(), 2);
     if let Ok(val1) = zipped_array[0].clone().downcast::<i32>() {
       assert_eq!(*val1, 2);
@@ -136,7 +141,10 @@ async fn test_zip_two_streams() {
   }
 
   // Verify third zipped item: [3, "c"]
-  if let Ok(zipped_array) = results[2].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
+  if let Ok(zipped_array) = results[2]
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+  {
     assert_eq!(zipped_array.len(), 2);
     if let Ok(val1) = zipped_array[0].clone().downcast::<i32>() {
       assert_eq!(*val1, 3);
@@ -190,7 +198,10 @@ async fn test_zip_three_streams() {
   assert_eq!(results.len(), 1);
 
   // Verify zipped item: [0, 1, 2]
-  if let Ok(zipped_array) = results[0].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
+  if let Ok(zipped_array) = results[0]
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+  {
     assert_eq!(zipped_array.len(), 3);
     for (i, item) in zipped_array.iter().enumerate() {
       if let Ok(val) = item.clone().downcast::<i32>() {
@@ -295,7 +306,7 @@ async fn test_zip_empty_streams() {
 async fn test_zip_one_empty_stream() {
   let node = ZipNode::new("test_zip".to_string(), 2);
 
-  let (_config_tx, mut input_txs, inputs) = create_zip_input_streams(2);
+  let (_config_tx, input_txs, inputs) = create_zip_input_streams(2);
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
 
@@ -308,8 +319,8 @@ async fn test_zip_one_empty_stream() {
     .await;
 
   // Don't send anything to second stream (empty)
-  drop(input_txs[1]);
-  drop(input_txs[0]);
+  // Drop all senders by dropping the Vec
+  drop(input_txs);
 
   let out_stream = outputs.remove("out").unwrap();
   let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
@@ -333,4 +344,3 @@ async fn test_zip_one_empty_stream() {
   // Should have no zipped items (one stream is empty)
   assert_eq!(results.len(), 0);
 }
-

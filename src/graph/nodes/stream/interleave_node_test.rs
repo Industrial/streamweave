@@ -1,12 +1,11 @@
 //! Tests for InterleaveNode
 
-use crate::graph::node::{InputStreams, Node};
-use crate::graph::nodes::stream::InterleaveNode;
+use crate::graph::node::InputStreams;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
 
 /// Helper to create input streams from channels for InterleaveNode
 fn create_interleave_input_streams(
@@ -275,7 +274,7 @@ async fn test_interleave_empty_streams() {
 async fn test_interleave_one_empty_stream() {
   let node = InterleaveNode::new("test_interleave".to_string(), 2);
 
-  let (_config_tx, mut input_txs, inputs) = create_interleave_input_streams(2);
+  let (_config_tx, input_txs, inputs) = create_interleave_input_streams(2);
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
 
@@ -288,8 +287,8 @@ async fn test_interleave_one_empty_stream() {
     .await;
 
   // Don't send anything to second stream (empty)
-  drop(input_txs[1]);
-  drop(input_txs[0]);
+  // Drop all senders by dropping the Vec
+  drop(input_txs);
 
   let out_stream = outputs.remove("out").unwrap();
   let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
@@ -322,4 +321,3 @@ async fn test_interleave_one_empty_stream() {
     panic!("Results are not i32");
   }
 }
-

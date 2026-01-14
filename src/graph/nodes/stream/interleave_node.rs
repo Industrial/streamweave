@@ -134,11 +134,15 @@ impl Node for InterleaveNode {
 
       tokio::spawn(async move {
         // Convert streams to a vector of pinned streams
-        let mut streams: Vec<Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>> =
-          input_streams
-            .into_iter()
-            .map(|(_, stream)| Box::pin(stream) as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>)
-            .collect();
+        let mut streams: Vec<
+          Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
+        > = input_streams
+          .into_iter()
+          .map(|(_, stream)| {
+            Box::pin(stream)
+              as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>
+          })
+          .collect();
 
         // Track which streams are still active
         let mut active_streams: Vec<bool> = vec![true; streams.len()];
@@ -183,4 +187,3 @@ impl Node for InterleaveNode {
     })
   }
 }
-

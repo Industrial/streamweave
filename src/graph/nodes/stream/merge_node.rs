@@ -115,7 +115,9 @@ impl Node for MergeNode {
         if port_name.starts_with("in_") {
           let tagged = stream.map(move |item| item);
           tagged_streams.push(Box::pin(tagged)
-            as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>);
+            as Pin<
+              Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>,
+            >);
         }
       }
 
@@ -159,4 +161,3 @@ impl Node for MergeNode {
     })
   }
 }
-

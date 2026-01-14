@@ -167,9 +167,7 @@ impl Node for SampleNode {
       // Extract input streams
       let _config_stream = inputs.remove("configuration");
       let in_stream = inputs.remove("in").ok_or("Missing 'in' input")?;
-      let rate_stream = inputs
-        .remove("rate")
-        .ok_or("Missing 'rate' input")?;
+      let rate_stream = inputs.remove("rate").ok_or("Missing 'rate' input")?;
 
       // Tag streams to distinguish inputs
       let in_stream = in_stream.map(|item| (InputPort::In, item));
@@ -249,4 +247,3 @@ impl Node for SampleNode {
     })
   }
 }
-

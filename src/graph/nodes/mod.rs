@@ -102,12 +102,14 @@ pub use reduction::{
   GroupByConfigWrapper, GroupByKeyFunction, GroupByNode, ReduceConfig, ReduceConfigWrapper,
   ReduceFunction, ReduceNode, aggregate_config, group_by_config, reduce_config,
 };
+pub use stream::{
+  DropNode, InterleaveNode, LimitNode, MergeNode, SampleNode, SkipNode, TakeNode, ZipNode,
+};
 pub use string::{
   StringCaseNode, StringConcatNode, StringContainsNode, StringEndsWithNode, StringEqualNode,
   StringJoinNode, StringLengthNode, StringMatchNode, StringPadNode, StringReplaceNode,
   StringReverseNode, StringSliceNode, StringSplitNode, StringStartsWithNode, StringTrimNode,
 };
-pub use stream::{DropNode, InterleaveNode, LimitNode, MergeNode, SampleNode, SkipNode, TakeNode, ZipNode};
 pub use sync_node::{SyncConfig, SyncNode};
 pub use time::{DelayNode, TimeoutNode, TimerNode, TimestampNode};
 pub use variable_node::{VariableConfig, VariableNode};

@@ -1,12 +1,11 @@
 //! Tests for TakeNode
 
-use crate::graph::node::{InputStreams, Node};
-use crate::graph::nodes::stream::TakeNode;
+use crate::graph::node::InputStreams;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
@@ -62,9 +61,7 @@ async fn test_take_first_n_items() {
 
   // Send 5 items
   for i in 1..=5 {
-    let _ = in_tx
-      .send(Arc::new(i) as Arc<dyn Any + Send + Sync>)
-      .await;
+    let _ = in_tx.send(Arc::new(i) as Arc<dyn Any + Send + Sync>).await;
   }
   drop(in_tx);
   drop(count_tx);
@@ -121,9 +118,7 @@ async fn test_take_zero_items() {
 
   // Send 3 items
   for i in 1..=3 {
-    let _ = in_tx
-      .send(Arc::new(i) as Arc<dyn Any + Send + Sync>)
-      .await;
+    let _ = in_tx.send(Arc::new(i) as Arc<dyn Any + Send + Sync>).await;
   }
   drop(in_tx);
   drop(count_tx);
@@ -166,9 +161,7 @@ async fn test_take_more_than_available() {
 
   // Send only 3 items
   for i in 1..=3 {
-    let _ = in_tx
-      .send(Arc::new(i) as Arc<dyn Any + Send + Sync>)
-      .await;
+    let _ = in_tx.send(Arc::new(i) as Arc<dyn Any + Send + Sync>).await;
   }
   drop(in_tx);
   drop(count_tx);
@@ -211,9 +204,7 @@ async fn test_take_i32_count() {
 
   // Send 5 items
   for i in 1..=5 {
-    let _ = in_tx
-      .send(Arc::new(i) as Arc<dyn Any + Send + Sync>)
-      .await;
+    let _ = in_tx.send(Arc::new(i) as Arc<dyn Any + Send + Sync>).await;
   }
   drop(in_tx);
   drop(count_tx);
@@ -324,4 +315,3 @@ async fn test_take_invalid_count_type() {
   assert_eq!(errors.len(), 1);
   assert!(errors[0].contains("numeric") || errors[0].contains("Unsupported"));
 }
-
