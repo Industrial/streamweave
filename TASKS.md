@@ -1473,7 +1473,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 9.2.3 Implement ToBooleanNode - Convert to boolean
+- [x] 9.2.3 Implement ToBooleanNode - Convert to boolean
   - **File:** `src/graph/nodes/type_ops/to_boolean_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
