@@ -1154,7 +1154,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 6.1.6 Add aggregation tests
+- [x] 6.1.6 Add aggregation tests
   - **File:** `src/graph/nodes/aggregation/*_test.rs`
   - **Acceptance Criteria:**
     - Tests for each aggregation
