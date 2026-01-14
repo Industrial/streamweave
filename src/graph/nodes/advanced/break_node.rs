@@ -140,7 +140,7 @@ impl Node for BreakNode {
 
       // Process the merged stream
       let out_tx_clone = out_tx.clone();
-      let _error_tx_clone = error_tx.clone();
+      let _error_tx_clone = error_tx.clone(); // Unused for now, but kept for consistency
 
       tokio::spawn(async move {
         let mut merged_stream = merged_stream;
