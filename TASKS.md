@@ -1547,7 +1547,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 10.2 Advanced Control
 
-- [ ] 10.2.1 Implement SwitchNode - Multi-way switch
+- [x] 10.2.1 Implement SwitchNode - Multi-way switch
   - **File:** `src/graph/nodes/advanced/switch_node.rs`
   - **Ports:** `configuration`, `in`, `value` → `out_0`, `out_1`, ..., `out_n`, `default`, `error`
   - **Acceptance Criteria:**

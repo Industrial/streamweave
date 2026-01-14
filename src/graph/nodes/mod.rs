@@ -66,7 +66,7 @@ mod while_loop_node_test;
 #[cfg(test)]
 mod write_variable_node_test;
 
-pub use advanced::{BreakNode, ContinueNode, RepeatNode};
+pub use advanced::{BreakNode, ContinueNode, RepeatNode, SwitchNode};
 pub use aggregation::{AverageNode, CountNode, MaxAggregateNode, MinAggregateNode, SumNode};
 pub use arithmetic::{AddNode, DivideNode, ModuloNode, MultiplyNode, PowerNode, SubtractNode};
 pub use array::{
