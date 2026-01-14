@@ -8,10 +8,13 @@ pub mod skip_node;
 pub mod skip_node_test;
 pub mod take_node;
 pub mod take_node_test;
+pub mod zip_node;
+pub mod zip_node_test;
 
 pub use drop_node::DropNode;
 pub use limit_node::LimitNode;
 pub use sample_node::SampleNode;
 pub use skip_node::SkipNode;
 pub use take_node::TakeNode;
+pub use zip_node::ZipNode;
 
