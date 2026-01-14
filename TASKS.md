@@ -1462,7 +1462,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 9.2.2 Implement ToNumberNode - Convert to number
+- [x] 9.2.2 Implement ToNumberNode - Convert to number
   - **File:** `src/graph/nodes/type_ops/to_number_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
