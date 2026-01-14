@@ -65,15 +65,10 @@ struct SwitchFunctionWrapper<F> {
 }
 
 #[async_trait::async_trait]
-impl<F> SwitchFunction for SwitchFunctionWrapper<F>
+impl<F, Fut> SwitchFunction for SwitchFunctionWrapper<F>
 where
-  F: Fn(
-      Arc<dyn Any + Send + Sync>,
-      Arc<dyn Any + Send + Sync>,
-    )
-      -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Option<usize>, String>> + Send>>
-    + Send
-    + Sync,
+  F: Fn(Arc<dyn Any + Send + Sync>, Arc<dyn Any + Send + Sync>) -> Fut + Send + Sync,
+  Fut: std::future::Future<Output = Result<Option<usize>, String>> + Send,
 {
   async fn apply(
     &self,
@@ -283,14 +278,20 @@ impl Node for SwitchNode {
         while let Some((port, item)) = merged_stream.next().await {
           match port {
             InputPort::Config => {
-              // Update configuration
-              if let Ok(arc_config) = item.downcast::<SwitchConfig>() {
+              // Update configuration - handle both Arc<Arc<dyn SwitchFunction>> and Arc<dyn SwitchFunction>
+              if let Ok(arc_arc_fn) = item.clone().downcast::<Arc<Arc<dyn SwitchFunction>>>() {
+                let cfg = Arc::clone(&**arc_arc_fn);
                 let mut config = config_state.lock().await;
-                *config = Some(arc_config);
+                *config = Some(cfg);
+              } else if let Ok(arc_function) = item.clone().downcast::<Arc<dyn SwitchFunction>>() {
+                let cfg = Arc::clone(&*arc_function);
+                let mut config = config_state.lock().await;
+                *config = Some(cfg);
               }
             }
             InputPort::Data => {
               // Store data item and try to route if we have both data and value
+              let item_clone = item.clone();
               pending_data = Some(item);
               if let (Some(data), Some(value)) = (pending_data.take(), pending_value.take()) {
                 // We have both data and value, try to route
@@ -324,11 +325,12 @@ impl Node for SwitchNode {
                 }
               } else {
                 // Still waiting for value, restore data
-                pending_data = Some(item);
+                pending_data = Some(item_clone);
               }
             }
             InputPort::Value => {
               // Store value and try to route if we have both data and value
+              let item_clone = item.clone();
               pending_value = Some(item);
               if let (Some(data), Some(value)) = (pending_data.take(), pending_value.take()) {
                 // We have both data and value, try to route
@@ -362,7 +364,7 @@ impl Node for SwitchNode {
                 }
               } else {
                 // Still waiting for data, restore value
-                pending_value = Some(item);
+                pending_value = Some(item_clone);
               }
             }
           }
