@@ -1569,7 +1569,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 10.2.3 Implement RetryNode - Retry on failure
+- [x] 10.2.3 Implement RetryNode - Retry on failure
   - **File:** `src/graph/nodes/advanced/retry_node.rs`
   - **Ports:** `configuration`, `in`, `max_retries` → `out`, `error`
   - **Acceptance Criteria:**
