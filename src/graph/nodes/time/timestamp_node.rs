@@ -39,7 +39,10 @@ fn add_timestamp(item: Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send 
   let timestamp_arc = Arc::new(timestamp) as Arc<dyn Any + Send + Sync>;
 
   // Try to downcast to HashMap (object)
-  if let Ok(arc_map) = item.clone().downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>() {
+  if let Ok(arc_map) = item
+    .clone()
+    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+  {
     // Item is an object - add timestamp property
     let mut new_map = (*arc_map).clone();
     new_map.insert("timestamp".to_string(), timestamp_arc);
@@ -162,4 +165,3 @@ impl Node for TimestampNode {
     })
   }
 }
-

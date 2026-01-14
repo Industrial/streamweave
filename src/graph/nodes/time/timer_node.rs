@@ -178,7 +178,8 @@ impl Node for TimerNode {
             }
           } else {
             // Interval stream ended without providing interval
-            let error_arc = Arc::new("Interval duration not provided".to_string()) as Arc<dyn Any + Send + Sync>;
+            let error_arc =
+              Arc::new("Interval duration not provided".to_string()) as Arc<dyn Any + Send + Sync>;
             let _ = error_tx_clone.send(error_arc).await;
             return;
           }
@@ -224,4 +225,3 @@ impl Node for TimerNode {
     })
   }
 }
-

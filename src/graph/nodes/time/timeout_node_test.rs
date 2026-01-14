@@ -1,13 +1,11 @@
 //! Tests for TimeoutNode
 
-use crate::graph::node::{InputStreams, Node};
-use crate::graph::nodes::time::TimeoutNode;
+use crate::graph::node::InputStreams;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
@@ -245,4 +243,3 @@ async fn test_timeout_invalid_duration() {
   assert_eq!(errors.len(), 1);
   assert!(errors[0].contains("negative"));
 }
-

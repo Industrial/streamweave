@@ -1,13 +1,11 @@
 //! Tests for TimerNode
 
-use crate::graph::node::{InputStreams, Node};
-use crate::graph::nodes::time::TimerNode;
+use crate::graph::node::InputStreams;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
@@ -83,7 +81,7 @@ async fn test_timer_generates_events() {
 
   // Should have generated at least 2-3 events in 150ms with 50ms interval
   assert!(results.len() >= 2);
-  
+
   // Verify events are timestamps (i64)
   for result in results {
     if let Ok(timestamp) = result.downcast::<i64>() {
@@ -219,4 +217,3 @@ async fn test_timer_invalid_interval() {
   assert_eq!(errors.len(), 1);
   assert!(errors[0].contains("negative"));
 }
-

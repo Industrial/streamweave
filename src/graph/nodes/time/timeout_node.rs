@@ -81,7 +81,6 @@ fn extract_duration(value: &Arc<dyn Any + Send + Sync>) -> Result<Duration, Stri
   ))
 }
 
-
 /// A node that applies a timeout to each item from the input stream.
 ///
 /// The timeout is received on the "timeout" port and can be:
@@ -156,9 +155,7 @@ impl Node for TimeoutNode {
       // Extract input streams
       let _config_stream = inputs.remove("configuration");
       let in_stream = inputs.remove("in").ok_or("Missing 'in' input")?;
-      let timeout_stream = inputs
-        .remove("timeout")
-        .ok_or("Missing 'timeout' input")?;
+      let timeout_stream = inputs.remove("timeout").ok_or("Missing 'timeout' input")?;
 
       // Create output channels
       let (out_tx, out_rx) = tokio::sync::mpsc::channel(10);
@@ -189,7 +186,8 @@ impl Node for TimeoutNode {
             }
           } else {
             // Timeout stream ended without providing timeout
-            let error_arc = Arc::new("Timeout duration not provided".to_string()) as Arc<dyn Any + Send + Sync>;
+            let error_arc =
+              Arc::new("Timeout duration not provided".to_string()) as Arc<dyn Any + Send + Sync>;
             let _ = error_tx_clone.send(error_arc).await;
             return;
           }
@@ -209,7 +207,8 @@ impl Node for TimeoutNode {
               }
               Err(_) => {
                 // Timeout occurred waiting for next item
-                let error_arc = Arc::new(format!("Timeout after {:?}", timeout_dur)) as Arc<dyn Any + Send + Sync>;
+                let error_arc = Arc::new(format!("Timeout after {:?}", timeout_dur))
+                  as Arc<dyn Any + Send + Sync>;
                 let _ = error_tx_clone.send(error_arc).await;
                 break;
               }
@@ -235,4 +234,3 @@ impl Node for TimeoutNode {
     })
   }
 }
-

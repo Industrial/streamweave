@@ -1,12 +1,11 @@
 //! Tests for TimestampNode
 
-use crate::graph::node::{InputStreams, Node};
-use crate::graph::nodes::time::TimestampNode;
+use crate::graph::node::InputStreams;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
@@ -75,7 +74,9 @@ async fn test_timestamp_wraps_primitive() {
   }
 
   assert_eq!(results.len(), 1);
-  if let Ok(wrapped) = results[0].clone().downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+  if let Ok(wrapped) = results[0]
+    .clone()
+    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
   {
     // Should have "value" and "timestamp" properties
     assert!(wrapped.contains_key("value"));
@@ -117,8 +118,14 @@ async fn test_timestamp_adds_to_object() {
 
   // Send an object
   let mut obj = HashMap::new();
-  obj.insert("name".to_string(), Arc::new("test".to_string()) as Arc<dyn Any + Send + Sync>);
-  obj.insert("count".to_string(), Arc::new(10i32) as Arc<dyn Any + Send + Sync>);
+  obj.insert(
+    "name".to_string(),
+    Arc::new("test".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
+  obj.insert(
+    "count".to_string(),
+    Arc::new(10i32) as Arc<dyn Any + Send + Sync>,
+  );
   let _ = in_tx
     .send(Arc::new(obj) as Arc<dyn Any + Send + Sync>)
     .await;
@@ -220,14 +227,94 @@ async fn test_timestamp_multiple_items() {
 
   assert_eq!(results.len(), 3);
 
-  // Verify each item has a timestamp
+  // Verify each item has a timestamp and timestamps are monotonically increasing
+  let mut prev_timestamp: Option<i64> = None;
   for result in results {
     if let Ok(wrapped) = result.downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>() {
       assert!(wrapped.contains_key("value"));
       assert!(wrapped.contains_key("timestamp"));
+
+      // Verify timestamp is monotonically increasing
+      if let Some(timestamp_arc) = wrapped.get("timestamp") {
+        if let Ok(timestamp) = timestamp_arc.clone().downcast::<i64>() {
+          if let Some(prev) = prev_timestamp {
+            assert!(
+              *timestamp >= prev,
+              "Timestamps should be monotonically increasing"
+            );
+          }
+          prev_timestamp = Some(*timestamp);
+        }
+      }
     } else {
       panic!("Result is not a HashMap");
     }
   }
 }
 
+#[tokio::test]
+async fn test_timestamp_timing_accuracy() {
+  let node = TimestampNode::new("test_timestamp".to_string());
+
+  let (_config_tx, in_tx, inputs) = create_input_streams();
+  let outputs_future = node.execute(inputs);
+  let mut outputs = outputs_future.await.unwrap();
+
+  // Record time before sending
+  let before_time = std::time::SystemTime::now()
+    .duration_since(std::time::UNIX_EPOCH)
+    .unwrap()
+    .as_millis() as i64;
+
+  // Send an item
+  let _ = in_tx
+    .send(Arc::new(42i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  drop(in_tx);
+
+  let out_stream = outputs.remove("out").unwrap();
+  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  let mut stream = out_stream;
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  tokio::pin!(timeout);
+
+  loop {
+    tokio::select! {
+      result = stream.next() => {
+        if let Some(item) = result {
+          results.push(item);
+          break;
+        } else {
+          break;
+        }
+      }
+      _ = &mut timeout => break,
+    }
+  }
+
+  // Record time after receiving
+  let after_time = std::time::SystemTime::now()
+    .duration_since(std::time::UNIX_EPOCH)
+    .unwrap()
+    .as_millis() as i64;
+
+  assert_eq!(results.len(), 1);
+  if let Ok(wrapped) = results[0]
+    .clone()
+    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+  {
+    if let Some(timestamp_arc) = wrapped.get("timestamp") {
+      if let Ok(timestamp) = timestamp_arc.clone().downcast::<i64>() {
+        // Timestamp should be between before_time and after_time (with some tolerance)
+        assert!(
+          *timestamp >= before_time,
+          "Timestamp should be >= before time"
+        );
+        assert!(
+          *timestamp <= after_time + 100,
+          "Timestamp should be <= after time (with tolerance)"
+        );
+      }
+    }
+  }
+}
