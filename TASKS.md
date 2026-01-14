@@ -1516,7 +1516,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 10.1.2 Implement BreakNode - Break from loop
+- [x] 10.1.2 Implement BreakNode - Break from loop
   - **File:** `src/graph/nodes/advanced/break_node.rs`
   - **Ports:** `configuration`, `in`, `signal` → `out`, `error`
   - **Acceptance Criteria:**
