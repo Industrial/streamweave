@@ -1276,7 +1276,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 8.1.2 Implement SkipNode - Skip first N items
+- [x] 8.1.2 Implement SkipNode - Skip first N items
   - **File:** `src/graph/nodes/stream/skip_node.rs`
   - **Ports:** `configuration`, `in`, `count` → `out`, `error`
   - **Acceptance Criteria:**
