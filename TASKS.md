@@ -1506,7 +1506,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 10.1 Advanced Loops
 
-- [ ] 10.1.1 Implement RepeatNode - Repeat N times
+- [x] 10.1.1 Implement RepeatNode - Repeat N times
   - **File:** `src/graph/nodes/advanced/repeat_node.rs`
   - **Ports:** `configuration`, `in`, `count` → `out`, `error`
   - **Acceptance Criteria:**

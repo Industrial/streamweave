@@ -11,6 +11,7 @@
 //! - **Sink Nodes**: Consume data (1+ inputs, 0 outputs)
 //! - **Router Nodes**: Route data (1+ inputs, 1+ outputs with routing logic)
 
+pub mod advanced;
 pub mod aggregation;
 pub mod arithmetic;
 pub mod array;
