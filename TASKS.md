@@ -1593,7 +1593,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 11.1 Module Structure
 
-- [ ] 11.1.1 Create module directories for node categories
+- [x] 11.1.1 Create module directories for node categories
   - **Context:** Organize nodes into logical modules
   - **Acceptance Criteria:**
     - `src/graph/nodes/arithmetic/` exists
