@@ -1266,7 +1266,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 8.1 Stream Control
 
-- [ ] 8.1.1 Implement TakeNode - Take first N items
+- [x] 8.1.1 Implement TakeNode - Take first N items
   - **File:** `src/graph/nodes/stream/take_node.rs`
   - **Ports:** `configuration`, `in`, `count` → `out`, `error`
   - **Acceptance Criteria:**

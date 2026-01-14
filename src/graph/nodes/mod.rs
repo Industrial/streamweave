@@ -29,6 +29,7 @@ pub mod object;
 pub mod range_node;
 pub mod read_variable_node;
 pub mod reduction;
+pub mod stream;
 pub mod string;
 pub mod sync_node;
 pub mod time;
@@ -106,6 +107,7 @@ pub use string::{
   StringJoinNode, StringLengthNode, StringMatchNode, StringPadNode, StringReplaceNode,
   StringReverseNode, StringSliceNode, StringSplitNode, StringStartsWithNode, StringTrimNode,
 };
+pub use stream::TakeNode;
 pub use sync_node::{SyncConfig, SyncNode};
 pub use time::{DelayNode, TimeoutNode, TimerNode, TimestampNode};
 pub use variable_node::{VariableConfig, VariableNode};
