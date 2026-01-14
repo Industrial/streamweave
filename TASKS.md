@@ -1286,7 +1286,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 8.1.3 Implement LimitNode - Limit stream size
+- [x] 8.1.3 Implement LimitNode - Limit stream size
   - **File:** `src/graph/nodes/stream/limit_node.rs`
   - **Ports:** `configuration`, `in`, `max_size` → `out`, `error`
   - **Acceptance Criteria:**
