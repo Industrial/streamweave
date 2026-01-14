@@ -1232,7 +1232,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 7.1.3 Implement TimerNode - Generate periodic events
+- [x] 7.1.3 Implement TimerNode - Generate periodic events
   - **File:** `src/graph/nodes/time/timer_node.rs`
   - **Ports:** `configuration`, `interval` → `out`, `error`
   - **Acceptance Criteria:**
