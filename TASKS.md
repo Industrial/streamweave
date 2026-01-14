@@ -1176,7 +1176,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 6.2.2 Implement GroupByNode - Group by key
+- [x] 6.2.2 Implement GroupByNode - Group by key
   - **File:** `src/graph/nodes/reduction/group_by_node.rs`
   - **Ports:** `configuration`, `in`, `key_function` → `out`, `error`
   - **Acceptance Criteria:**

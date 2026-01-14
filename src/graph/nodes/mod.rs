@@ -95,7 +95,10 @@ pub use object::{
 };
 pub use range_node::{RangeConfig, RangeNode};
 pub use read_variable_node::{ReadVariableConfig, ReadVariableNode};
-pub use reduction::{ReduceConfig, ReduceConfigWrapper, ReduceFunction, ReduceNode, reduce_config};
+pub use reduction::{
+  GroupByConfig, GroupByConfigWrapper, GroupByKeyFunction, GroupByNode, ReduceConfig,
+  ReduceConfigWrapper, ReduceFunction, ReduceNode, group_by_config, reduce_config,
+};
 pub use string::{
   StringCaseNode, StringConcatNode, StringContainsNode, StringEndsWithNode, StringEqualNode,
   StringJoinNode, StringLengthNode, StringMatchNode, StringPadNode, StringReplaceNode,

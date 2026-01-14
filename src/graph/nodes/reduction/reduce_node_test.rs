@@ -1,14 +1,11 @@
 //! Tests for ReduceNode
 
-use crate::graph::node::{InputStreams, Node};
-use crate::graph::nodes::reduction::{
-  reduce_config, ReduceConfig, ReduceConfigWrapper, ReduceNode,
-};
+use crate::graph::node::InputStreams;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
