@@ -1452,7 +1452,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ### 9.2 Type Conversion
 
-- [ ] 9.2.1 Implement ToStringNode - Convert to string
+- [x] 9.2.1 Implement ToStringNode - Convert to string
   - **File:** `src/graph/nodes/type_ops/to_string_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**

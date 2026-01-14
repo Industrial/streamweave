@@ -10,6 +10,8 @@ pub mod is_object_node;
 pub mod is_object_node_test;
 pub mod is_string_node;
 pub mod is_string_node_test;
+pub mod to_string_node;
+pub mod to_string_node_test;
 pub mod type_of_node;
 pub mod type_of_node_test;
 
@@ -19,4 +21,5 @@ pub use is_null_node::IsNullNode;
 pub use is_number_node::IsNumberNode;
 pub use is_object_node::IsObjectNode;
 pub use is_string_node::IsStringNode;
+pub use to_string_node::ToStringNode;
 pub use type_of_node::TypeOfNode;
