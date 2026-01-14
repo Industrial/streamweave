@@ -1483,7 +1483,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 9.2.4 Implement ToArrayNode - Convert to array
+- [x] 9.2.4 Implement ToArrayNode - Convert to array
   - **File:** `src/graph/nodes/type_ops/to_array_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
