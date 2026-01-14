@@ -1610,7 +1610,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 11.1.2 Update mod.rs files for each module
+- [x] 11.1.2 Update mod.rs files for each module
   - **Context:** Export all nodes from modules
   - **Acceptance Criteria:**
     - Each module has mod.rs
