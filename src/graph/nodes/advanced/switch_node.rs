@@ -18,7 +18,7 @@
 //! `Some(branch_index)` to route to `out_{branch_index}`, or `None` to route to the `default` port.
 
 use crate::graph::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
-use crate::graph::nodes::common::{BaseNode, MessageType};
+use crate::graph::nodes::common::BaseNode;
 use async_trait::async_trait;
 use futures::stream;
 use std::any::Any;
@@ -324,7 +324,7 @@ impl Node for SwitchNode {
                 }
               } else {
                 // Still waiting for value, restore data
-                pending_data = Some(data);
+                pending_data = Some(item);
               }
             }
             InputPort::Value => {
@@ -362,7 +362,7 @@ impl Node for SwitchNode {
                 }
               } else {
                 // Still waiting for data, restore value
-                pending_value = Some(value);
+                pending_value = Some(item);
               }
             }
           }
