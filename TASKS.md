@@ -1306,7 +1306,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 8.1.5 Implement SampleNode - Sample items
+- [x] 8.1.5 Implement SampleNode - Sample items
   - **File:** `src/graph/nodes/stream/sample_node.rs`
   - **Ports:** `configuration`, `in`, `rate` → `out`, `error`
   - **Acceptance Criteria:**
