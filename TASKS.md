@@ -1296,7 +1296,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 8.1.4 Implement DropNode - Drop items
+- [x] 8.1.4 Implement DropNode - Drop items
   - **File:** `src/graph/nodes/stream/drop_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
