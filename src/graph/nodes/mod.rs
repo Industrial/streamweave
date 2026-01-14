@@ -113,7 +113,7 @@ pub use string::{
 };
 pub use sync_node::{SyncConfig, SyncNode};
 pub use time::{DelayNode, TimeoutNode, TimerNode, TimestampNode};
-pub use type_ops::{IsNumberNode, TypeOfNode};
+pub use type_ops::{IsNumberNode, IsStringNode, TypeOfNode};
 pub use variable_node::{VariableConfig, VariableNode};
 pub use while_loop_node::{
   WhileLoopConditionFunction, WhileLoopConfig, WhileLoopNode, while_loop_config,
