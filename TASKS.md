@@ -1421,7 +1421,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 9.1.6 Implement IsObjectNode - Check if object
+- [x] 9.1.6 Implement IsObjectNode - Check if object
   - **File:** `src/graph/nodes/type_ops/is_object_node.rs`
   - **Ports:** `configuration`, `in` → `out`, `error`
   - **Acceptance Criteria:**
