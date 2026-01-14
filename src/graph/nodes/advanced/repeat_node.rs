@@ -152,7 +152,7 @@ impl Node for RepeatNode {
   > {
     Box::pin(async move {
       // Extract input streams
-      let config_stream = inputs.remove("configuration");
+      let _config_stream = inputs.remove("configuration");
       let in_stream = inputs.remove("in").ok_or("Missing 'in' input")?;
       let count_stream = inputs.remove("count").ok_or("Missing 'count' input")?;
 
@@ -160,19 +160,19 @@ impl Node for RepeatNode {
       let (out_tx, out_rx) = mpsc::channel(10);
       let (error_tx, error_rx) = mpsc::channel(10);
 
-      // Merge input streams with port tags
-      let config_tagged = config_stream.map(|item| (InputPort::Config, item));
-      let in_tagged = in_stream.map(|item| (InputPort::In, item));
-      let count_tagged = count_stream.map(|item| (InputPort::Count, item));
+      // Tag streams to distinguish inputs
+      let in_stream = in_stream.map(|item| (InputPort::In, item));
+      let count_stream = count_stream.map(|item| (InputPort::Count, item));
 
-      let merged_stream = stream::select_all(vec![
-        Box::pin(config_tagged)
+      // Merge streams
+      let merged_stream: Pin<
+        Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>,
+      > = Box::pin(stream::select_all(vec![
+        Box::pin(in_stream)
           as Pin<Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>>,
-        Box::pin(in_tagged)
+        Box::pin(count_stream)
           as Pin<Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>>,
-        Box::pin(count_tagged)
-          as Pin<Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>>,
-      ]);
+      ]));
 
       // Process the merged stream
       let out_tx_clone = out_tx.clone();
@@ -185,9 +185,6 @@ impl Node for RepeatNode {
 
         while let Some((port, item)) = merged_stream.next().await {
           match port {
-            InputPort::Config => {
-              // Configuration port is unused for now
-            }
             InputPort::Count => {
               // Update count
               match get_usize(&item) {

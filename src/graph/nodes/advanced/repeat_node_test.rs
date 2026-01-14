@@ -5,7 +5,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
@@ -73,6 +73,7 @@ async fn test_repeat_basic() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
+  use tokio_stream::StreamExt;
   loop {
     tokio::select! {
       result = stream.next() => {
@@ -128,6 +129,7 @@ async fn test_repeat_multiple_items() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
+  use tokio_stream::StreamExt;
   loop {
     tokio::select! {
       result = stream.next() => {
@@ -194,6 +196,7 @@ async fn test_repeat_zero_count() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
+  use tokio_stream::StreamExt;
   loop {
     tokio::select! {
       result = stream.next() => {
@@ -240,6 +243,7 @@ async fn test_repeat_buffered_items() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
+  use tokio_stream::StreamExt;
   loop {
     tokio::select! {
       result = stream.next() => {
@@ -301,6 +305,7 @@ async fn test_repeat_invalid_count_type() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
+  use tokio_stream::StreamExt;
   loop {
     tokio::select! {
       result = stream.next() => {
@@ -344,6 +349,7 @@ async fn test_repeat_negative_count() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
+  use tokio_stream::StreamExt;
   loop {
     tokio::select! {
       result = stream.next() => {
