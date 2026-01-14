@@ -1,5 +1,7 @@
 pub mod drop_node;
 pub mod drop_node_test;
+pub mod interleave_node;
+pub mod interleave_node_test;
 pub mod limit_node;
 pub mod limit_node_test;
 pub mod sample_node;
@@ -12,6 +14,7 @@ pub mod zip_node;
 pub mod zip_node_test;
 
 pub use drop_node::DropNode;
+pub use interleave_node::InterleaveNode;
 pub use limit_node::LimitNode;
 pub use sample_node::SampleNode;
 pub use skip_node::SkipNode;

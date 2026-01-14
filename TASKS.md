@@ -1338,7 +1338,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 8.2.2 Implement InterleaveNode - Interleave streams
+- [x] 8.2.2 Implement InterleaveNode - Interleave streams
   - **File:** `src/graph/nodes/stream/interleave_node.rs`
   - **Ports:** `configuration`, `in_0`, `in_1`, ..., `in_n` → `out`, `error`
   - **Acceptance Criteria:**
