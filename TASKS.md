@@ -615,6 +615,56 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
+### 2.4 Advanced Math Functions
+
+- [ ] 2.4.1 Implement TrigonometricNode - Trigonometric functions
+  - **File:** `src/graph/nodes/math/trigonometric_node.rs`
+  - **Ports:** `configuration`, `in`, `function_type` → `out`, `error`
+  - **Context:** sin, cos, tan, asin, acos, atan functions
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Supports sin, cos, tan operations
+    - Supports inverse functions (asin, acos, atan)
+    - Handles domain errors
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 2.4.2 Implement HyperbolicNode - Hyperbolic functions
+  - **File:** `src/graph/nodes/math/hyperbolic_node.rs`
+  - **Ports:** `configuration`, `in`, `function_type` → `out`, `error`
+  - **Context:** sinh, cosh, tanh functions
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Supports sinh, cosh, tanh operations
+    - Handles overflow cases
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 2.4.3 Implement RandomNode - Random number generation
+  - **File:** `src/graph/nodes/math/random_node.rs`
+  - **Ports:** `configuration`, `min`, `max` → `out`, `error`
+  - **Context:** Generate random numbers within a range
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Generates random numbers in specified range
+    - Supports integer and floating point types
+    - Handles invalid ranges
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 2.4.4 Add advanced math function tests
+  - **File:** `src/graph/nodes/math/*_test.rs`
+  - **Acceptance Criteria:**
+    - Tests for each function
+    - Tests for edge cases
+    - Tests for error handling
+    - All tests pass
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
 ## 3. String Operations (HIGH PRIORITY)
 
 ### 3.1 Basic String Operations
@@ -811,6 +861,109 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
+### 3.4 Additional String Operations
+
+- [ ] 3.4.1 Implement StringIndexOfNode - Find index of substring
+  - **File:** `src/graph/nodes/string/index_of_node.rs`
+  - **Ports:** `configuration`, `in`, `substring` → `out`, `error`
+  - **Context:** Finds the index of the first occurrence of a substring
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Returns index of substring or -1 if not found
+    - Supports optional start index parameter
+    - Handles empty strings
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 3.4.2 Implement StringRepeatNode - Repeat string N times
+  - **File:** `src/graph/nodes/string/repeat_node.rs`
+  - **Ports:** `configuration`, `in`, `count` → `out`, `error`
+  - **Context:** Repeats a string a specified number of times
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Repeats string N times
+    - Handles zero and negative counts
+    - Handles non-string inputs
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 3.4.3 Implement StringCharNode - Character operations
+  - **File:** `src/graph/nodes/string/char_node.rs`
+  - **Ports:** `configuration`, `in`, `index` → `out`, `error`
+  - **Context:** Get character at index or character code operations
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Gets character at specified index
+    - Supports char code conversion
+    - Handles out-of-bounds indices
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 3.4.4 Implement StringPredicateNode - String predicate checks
+  - **File:** `src/graph/nodes/string/predicate_node.rs`
+  - **Ports:** `configuration`, `in`, `predicate_type` → `out`, `error`
+  - **Context:** Check string properties (is_empty, is_whitespace, is_digit, is_alpha, etc.)
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Supports multiple predicate types
+    - Returns boolean result
+    - Handles non-string inputs
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 3.4.5 Implement StringSearchNode - Search with regex
+  - **File:** `src/graph/nodes/string/search_node.rs`
+  - **Ports:** `configuration`, `in`, `pattern` → `out`, `error`
+  - **Context:** Search for regex pattern matches in string
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Finds regex matches
+    - Returns match positions or matched text
+    - Handles invalid regex patterns
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 3.4.6 Implement StringSplitLinesNode - Split by newlines
+  - **File:** `src/graph/nodes/string/split_lines_node.rs`
+  - **Ports:** `configuration`, `in` → `out`, `error`
+  - **Context:** Split string into array of lines
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Splits by newline characters
+    - Handles different line ending formats (LF, CRLF, CR)
+    - Returns array of strings
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 3.4.7 Implement StringSplitWordsNode - Split by words
+  - **File:** `src/graph/nodes/string/split_words_node.rs`
+  - **Ports:** `configuration`, `in` → `out`, `error`
+  - **Context:** Split string into array of words
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Splits by whitespace
+    - Handles multiple consecutive spaces
+    - Returns array of strings
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 3.4.8 Add additional string operation tests
+  - **File:** `src/graph/nodes/string/*_test.rs`
+  - **Acceptance Criteria:**
+    - Tests for each new operation
+    - Tests for edge cases
+    - Tests for error handling
+    - All tests pass
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
 ## 4. Array/Collection Operations (HIGH PRIORITY)
 
 ### 4.1 Array Access
@@ -990,6 +1143,44 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
+### 4.4 Additional Array Operations
+
+- [ ] 4.4.1 Implement ArrayFindNode - Find element matching predicate
+  - **File:** `src/graph/nodes/array/find_node.rs`
+  - **Ports:** `configuration`, `in`, `predicate` → `out`, `error`
+  - **Context:** Find first element matching a predicate function
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Finds first matching element
+    - Returns element or null if not found
+    - Supports custom predicate functions
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 4.4.2 Implement ArrayModifyNode - Modify array elements in-place
+  - **File:** `src/graph/nodes/array/modify_node.rs`
+  - **Ports:** `configuration`, `in`, `index`, `value` → `out`, `error`
+  - **Context:** Modify array element at specified index
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Modifies element at index
+    - Handles out-of-bounds indices
+    - Returns modified array
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 4.4.3 Add additional array operation tests
+  - **File:** `src/graph/nodes/array/*_test.rs`
+  - **Acceptance Criteria:**
+    - Tests for each new operation
+    - Tests for edge cases
+    - Tests for error handling
+    - All tests pass
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
 ## 5. Object/Map Operations (MEDIUM PRIORITY)
 
 ### 5.1 Object Access
@@ -1092,6 +1283,31 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
   - **Acceptance Criteria:**
     - Tests for each transformation
     - Tests for edge cases
+    - All tests pass
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+### 5.3 Additional Object Operations
+
+- [ ] 5.3.1 Implement ObjectRandomMemberNode - Get random key-value pair
+  - **File:** `src/graph/nodes/object/random_member_node.rs`
+  - **Ports:** `configuration`, `in` → `out`, `error`
+  - **Context:** Get a random key-value pair from object
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Returns random key-value pair
+    - Handles empty objects
+    - Returns consistent format (key, value tuple)
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 5.3.2 Add additional object operation tests
+  - **File:** `src/graph/nodes/object/*_test.rs`
+  - **Acceptance Criteria:**
+    - Tests for random member operation
+    - Tests for edge cases
+    - Tests for error handling
     - All tests pass
     - `bin/pre-commit` succeeds
     - Git commit is made
@@ -1363,6 +1579,70 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
   - **Acceptance Criteria:**
     - Tests for each operation
     - Tests for edge cases
+    - All tests pass
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+### 8.3 Advanced Stream Operations
+
+- [ ] 8.3.1 Implement PartitionNode - Partition stream into multiple streams
+  - **File:** `src/graph/nodes/stream/partition_node.rs`
+  - **Ports:** `configuration`, `in`, `predicate` → `out_true`, `out_false`, `error`
+  - **Context:** Split stream into two streams based on predicate
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Routes items to true/false streams based on predicate
+    - Supports custom predicate functions
+    - Handles predicate errors
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 8.3.2 Implement SplitAtNode - Split stream at index
+  - **File:** `src/graph/nodes/stream/split_at_node.rs`
+  - **Ports:** `configuration`, `in`, `index` → `out_before`, `out_after`, `error`
+  - **Context:** Split stream into two streams at specified index
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Splits stream at specified index
+    - Returns items before and after index
+    - Handles index out of bounds
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 8.3.3 Implement OrderedMergeNode - Merge streams maintaining order
+  - **File:** `src/graph/nodes/stream/ordered_merge_node.rs`
+  - **Ports:** `configuration`, `in_0`, `in_1`, ..., `in_n`, `key_function` → `out`, `error`
+  - **Context:** Merge multiple sorted streams maintaining sort order
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Merges streams while maintaining sort order
+    - Supports custom key extraction function
+    - Handles unsorted input gracefully
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 8.3.4 Implement BatchNode - Batch items into groups
+  - **File:** `src/graph/nodes/stream/batch_node.rs`
+  - **Ports:** `configuration`, `in`, `batch_size` → `out`, `error`
+  - **Context:** Group items into batches of specified size
+  - **Acceptance Criteria:**
+    - Node implements `Node` trait
+    - Groups items into batches
+    - Supports configurable batch size
+    - Handles partial batches at end
+    - Comprehensive tests
+    - `bin/pre-commit` succeeds
+    - Git commit is made
+
+- [ ] 8.3.5 Add advanced stream operation tests
+  - **File:** `src/graph/nodes/stream/*_test.rs`
+  - **Acceptance Criteria:**
+    - Tests for each new operation
+    - Tests for edge cases
+    - Tests for error handling
     - All tests pass
     - `bin/pre-commit` succeeds
     - Git commit is made
@@ -1652,7 +1932,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 11.2.3 Create usage examples
+- [x] 11.2.3 Create usage examples
   - **Context:** Provide real-world examples
   - **Acceptance Criteria:**
     - Examples for each category

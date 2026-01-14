@@ -81,6 +81,18 @@ tracing-subscriber = "0.3"
 name = "http-server"
 path = "examples/http-server/main.rs"
 
+[[example]]
+name = "arithmetic_operations"
+path = "examples/arithmetic_operations.rs"
+
+[[example]]
+name = "string_operations"
+path = "examples/string_operations.rs"
+
+[[example]]
+name = "array_operations"
+path = "examples/array_operations.rs"
+
 [[bench]]
 name = "in_process_bench"
 harness = false

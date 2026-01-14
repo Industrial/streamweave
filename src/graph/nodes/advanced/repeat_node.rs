@@ -185,6 +185,9 @@ impl Node for RepeatNode {
 
         while let Some((port, item)) = merged_stream.next().await {
           match port {
+            InputPort::Config => {
+              // Configuration port is unused for now
+            }
             InputPort::Count => {
               // Update count
               match get_usize(&item) {
