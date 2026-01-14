@@ -1558,7 +1558,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - `bin/pre-commit` succeeds
     - Git commit is made
 
-- [ ] 10.2.2 Implement TryCatchNode - Try-catch error handling
+- [x] 10.2.2 Implement TryCatchNode - Try-catch error handling
   - **File:** `src/graph/nodes/advanced/try_catch_node.rs`
   - **Ports:** `configuration`, `in`, `try`, `catch` → `out`, `error`
   - **Acceptance Criteria:**
