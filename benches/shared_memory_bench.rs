@@ -1,11 +1,11 @@
 //! # Shared Memory Benchmark
 //!
 //! **DISABLED**: This benchmark references old modules that have been removed:
-//! - `streamweave::graph::channels`
-//! - `streamweave::graph::nodes::ProducerNode`
-//! - `streamweave::graph::traits`
-//! - `streamweave::graph::serialization`
-//! - `streamweave::graph::shared_memory_channel`
+//! - `streamweave::channels`
+//! - `streamweave::nodes::ProducerNode`
+//! - `streamweave::traits`
+//! - `streamweave::serialization`
+//! - `streamweave::shared_memory_channel`
 //!
 //! This benchmark needs to be rewritten to use the new stream-based architecture.
 
@@ -31,11 +31,11 @@ impl AsyncExecutor for TokioExecutor {
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::collections::HashMap;
 use std::sync::Arc;
-use streamweave::graph::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-use streamweave::graph::nodes::ProducerNode;
-use streamweave::graph::serialization::serialize;
-use streamweave::graph::shared_memory_channel::SharedMemoryChannel;
-use streamweave::graph::traits::NodeTrait;
+use streamweave::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
+use streamweave::nodes::ProducerNode;
+use streamweave::serialization::serialize;
+use streamweave::shared_memory_channel::SharedMemoryChannel;
+use streamweave::traits::NodeTrait;
 use streamweave::producers::VecProducer;
 use tokio::sync::{RwLock, mpsc};
 

@@ -1,9 +1,9 @@
 //! # In-Process Benchmark
 //!
 //! **DISABLED**: This benchmark references old modules that have been removed:
-//! - `streamweave::graph::channels`
-//! - `streamweave::graph::nodes::ProducerNode`
-//! - `streamweave::graph::traits`
+//! - `streamweave::channels`
+//! - `streamweave::nodes::ProducerNode`
+//! - `streamweave::traits`
 //!
 //! This benchmark needs to be rewritten to use the new stream-based architecture.
 
@@ -16,9 +16,9 @@ use criterion::async_executor::AsyncExecutor;
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::collections::HashMap;
 use std::sync::Arc;
-use streamweave::graph::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
-use streamweave::graph::nodes::ProducerNode;
-use streamweave::graph::traits::NodeTrait;
+use streamweave::channels::{ChannelItem, TypeErasedReceiver, TypeErasedSender};
+use streamweave::nodes::ProducerNode;
+use streamweave::traits::NodeTrait;
 use streamweave::producers::VecProducer;
 use tokio::sync::{RwLock, mpsc};
 

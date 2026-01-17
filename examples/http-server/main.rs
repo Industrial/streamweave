@@ -31,11 +31,11 @@
 // //!   already converts the concrete type to the trait object type
 
 // use std::net::SocketAddr;
-// use streamweave::graph::GraphBuilder;
-// use streamweave::graph::http_server::nodes::{
+// use streamweaveBuilder;
+// use streamweave::http_server::nodes::{
 //   HttpPathRouterNode, HttpServerConsumerNode, HttpServerProducerNode,
 // };
-// use streamweave::graph::http_server::{GraphServer, GraphServerConfig};
+// use streamweave::http_server::{GraphServer, GraphServerConfig};
 
 // #[tokio::main]
 // async fn main() -> Result<(), Box<dyn std::error::Error>> {
