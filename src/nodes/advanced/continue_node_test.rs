@@ -1,6 +1,9 @@
 //! Tests for ContinueNode
+#![allow(unused)]
+#![allow(clippy::type_complexity)]
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node, OutputStreams};
+use crate::nodes::advanced::ContinueNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -37,7 +40,6 @@ fn create_input_streams() -> (
 
 #[tokio::test]
 async fn test_continue_node_creation() {
-  use crate::nodes::advanced::ContinueNode;
   let node = ContinueNode::new("test_continue".to_string());
   assert_eq!(node.name(), "test_continue");
   assert!(node.has_input_port("configuration"));
@@ -49,25 +51,30 @@ async fn test_continue_node_creation() {
 
 #[tokio::test]
 async fn test_continue_basic() {
-  use crate::nodes::advanced::ContinueNode;
   let node = ContinueNode::new("test_continue".to_string());
 
   let (_config_tx, in_tx, signal_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send items
   let _ = in_tx
     .send(Arc::new(1i32) as Arc<dyn Any + Send + Sync>)
     .await;
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send continue signal
   let _ = signal_tx
     .send(Arc::new(true) as Arc<dyn Any + Send + Sync>)
     .await;
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send next item (should be skipped)
   let _ = in_tx
     .send(Arc::new(2i32) as Arc<dyn Any + Send + Sync>)
     .await;
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send another item (should be forwarded)
   let _ = in_tx
     .send(Arc::new(3i32) as Arc<dyn Any + Send + Sync>)
@@ -114,12 +121,11 @@ async fn test_continue_basic() {
 
 #[tokio::test]
 async fn test_continue_no_signal() {
-  use crate::nodes::advanced::ContinueNode;
   let node = ContinueNode::new("test_continue".to_string());
 
   let (_config_tx, in_tx, signal_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send items without continue signal
   let _ = in_tx
@@ -178,33 +184,42 @@ async fn test_continue_no_signal() {
 
 #[tokio::test]
 async fn test_continue_multiple_signals() {
-  use crate::nodes::advanced::ContinueNode;
   let node = ContinueNode::new("test_continue".to_string());
 
   let (_config_tx, in_tx, signal_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send items with multiple continue signals
   let _ = in_tx
     .send(Arc::new(1i32) as Arc<dyn Any + Send + Sync>)
     .await;
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send continue signal
   let _ = signal_tx
     .send(Arc::new(true) as Arc<dyn Any + Send + Sync>)
     .await;
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send next item (should be skipped)
   let _ = in_tx
     .send(Arc::new(2i32) as Arc<dyn Any + Send + Sync>)
     .await;
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send another continue signal
   let _ = signal_tx
     .send(Arc::new(true) as Arc<dyn Any + Send + Sync>)
     .await;
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send next item (should be skipped)
   let _ = in_tx
     .send(Arc::new(3i32) as Arc<dyn Any + Send + Sync>)
     .await;
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send another item (should be forwarded)
   let _ = in_tx
     .send(Arc::new(4i32) as Arc<dyn Any + Send + Sync>)
@@ -251,21 +266,24 @@ async fn test_continue_multiple_signals() {
 
 #[tokio::test]
 async fn test_continue_signal_before_item() {
-  use crate::nodes::advanced::ContinueNode;
   let node = ContinueNode::new("test_continue".to_string());
 
   let (_config_tx, in_tx, signal_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send continue signal first
   let _ = signal_tx
     .send(Arc::new(true) as Arc<dyn Any + Send + Sync>)
     .await;
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send item (should be skipped)
   let _ = in_tx
     .send(Arc::new(1i32) as Arc<dyn Any + Send + Sync>)
     .await;
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send another item (should be forwarded)
   let _ = in_tx
     .send(Arc::new(2i32) as Arc<dyn Any + Send + Sync>)

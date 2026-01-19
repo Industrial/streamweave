@@ -69,7 +69,6 @@ fn get_usize(value: &Arc<dyn Any + Send + Sync>) -> Result<usize, String> {
 /// Enum to tag messages from different input ports for merging.
 #[derive(Debug, PartialEq)]
 enum InputPort {
-  Config,
   In,
   Count,
 }
@@ -78,8 +77,8 @@ enum InputPort {
 ///
 /// The count is received on the "count" port and can be:
 /// - A numeric value (usize, i32, i64, u32, u64)
-/// The node forwards the first N items from the "in" port to the "out" port,
-/// then stops forwarding (but continues consuming the stream).
+///   The node forwards the first N items from the "in" port to the "out" port,
+///   then stops forwarding (but continues consuming the stream).
 pub struct TakeNode {
   pub(crate) base: BaseNode,
 }
@@ -183,17 +182,24 @@ impl Node for TakeNode {
         let mut merged_stream = merged_stream;
         let mut count: Option<usize> = None;
         let mut items_taken: usize = 0;
+        let mut buffered_items: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
 
         while let Some((port, item)) = merged_stream.next().await {
           match port {
-            InputPort::Config => {
-              // Configuration port is unused for now
-            }
             InputPort::Count => {
               // Update count
               match get_usize(&item) {
                 Ok(c) => {
                   count = Some(c);
+                  // Process any buffered items now that we have configuration
+                  while let Some(buffered_item) = buffered_items.pop() {
+                    if items_taken < c {
+                      let _ = out_tx_clone.send(buffered_item).await;
+                      items_taken += 1;
+                    } else {
+                      break;
+                    }
+                  }
                 }
                 Err(e) => {
                   let error_arc = Arc::new(e) as Arc<dyn Any + Send + Sync>;
@@ -210,10 +216,8 @@ impl Node for TakeNode {
                 }
                 // If we've reached the limit, we continue consuming but don't forward
               } else {
-                // No count set yet - buffer or error?
-                // For now, we'll wait for count to be set before processing items
-                // This means items arriving before count will be dropped
-                // Alternative: buffer items until count is received
+                // Buffer items until count is set
+                buffered_items.push(item);
               }
             }
           }

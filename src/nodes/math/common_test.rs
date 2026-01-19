@@ -1,6 +1,5 @@
 //! Tests for math common utilities
 
-use crate::node::{InputStreams, Node, OutputStreams};
 use crate::nodes::math::common::abs_value;
 use std::any::Any;
 use std::sync::Arc;
@@ -56,30 +55,30 @@ fn test_abs_value_u64() {
 
 #[test]
 fn test_abs_value_f32_positive() {
-  let v = Arc::new(3.14f32) as Arc<dyn Any + Send + Sync>;
+  let v = Arc::new(std::f32::consts::PI) as Arc<dyn Any + Send + Sync>;
   let result = abs_value(&v).unwrap();
-  assert_eq!(*result.downcast::<f32>().unwrap(), 3.14f32);
+  assert_eq!(*result.downcast::<f32>().unwrap(), std::f32::consts::PI);
 }
 
 #[test]
 fn test_abs_value_f32_negative() {
-  let v = Arc::new(-3.14f32) as Arc<dyn Any + Send + Sync>;
+  let v = Arc::new(-std::f32::consts::PI) as Arc<dyn Any + Send + Sync>;
   let result = abs_value(&v).unwrap();
-  assert_eq!(*result.downcast::<f32>().unwrap(), 3.14f32);
+  assert_eq!(*result.downcast::<f32>().unwrap(), std::f32::consts::PI);
 }
 
 #[test]
 fn test_abs_value_f64_positive() {
-  let v = Arc::new(3.14159f64) as Arc<dyn Any + Send + Sync>;
+  let v = Arc::new(std::f64::consts::PI) as Arc<dyn Any + Send + Sync>;
   let result = abs_value(&v).unwrap();
-  assert_eq!(*result.downcast::<f64>().unwrap(), 3.14159f64);
+  assert_eq!(*result.downcast::<f64>().unwrap(), std::f64::consts::PI);
 }
 
 #[test]
 fn test_abs_value_f64_negative() {
-  let v = Arc::new(-3.14159f64) as Arc<dyn Any + Send + Sync>;
+  let v = Arc::new(-std::f64::consts::PI) as Arc<dyn Any + Send + Sync>;
   let result = abs_value(&v).unwrap();
-  assert_eq!(*result.downcast::<f64>().unwrap(), 3.14159f64);
+  assert_eq!(*result.downcast::<f64>().unwrap(), std::f64::consts::PI);
 }
 
 #[test]

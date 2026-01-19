@@ -2,7 +2,7 @@
 
 use crate::node::{InputStreams, Node};
 use crate::nodes::array::ArrayFilterNode;
-use crate::nodes::{FilterConfig, filter_config};
+use crate::nodes::filter_node::{FilterConfig, filter_config};
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -57,7 +57,7 @@ async fn test_array_filter_basic() {
   let mut outputs = outputs_future.await.unwrap();
 
   // Create a predicate that filters out values less than 3
-  let predicate: FilterConfig = filter_config(|value| async move {
+  let predicate: FilterConfig = filter_config(|value: Arc<dyn Any + Send + Sync>| async move {
     if let Ok(arc_i32) = value.downcast::<i32>() {
       Ok(*arc_i32 >= 3)
     } else {
@@ -221,7 +221,7 @@ async fn test_array_filter_strings() {
   let mut outputs = outputs_future.await.unwrap();
 
   // Create a predicate that filters strings longer than 3 characters
-  let predicate: FilterConfig = filter_config(|value| async move {
+  let predicate: FilterConfig = filter_config(|value: Arc<dyn Any + Send + Sync>| async move {
     if let Ok(arc_str) = value.downcast::<String>() {
       Ok(arc_str.len() > 3)
     } else {
@@ -282,7 +282,7 @@ async fn test_array_filter_predicate_error() {
   let mut outputs = outputs_future.await.unwrap();
 
   // Create a predicate that returns an error
-  let predicate: FilterConfig = filter_config(|value| async move {
+  let predicate: FilterConfig = filter_config(|value: Arc<dyn Any + Send + Sync>| async move {
     if let Ok(_arc_i32) = value.downcast::<i32>() {
       Err("Test error".to_string())
     } else {

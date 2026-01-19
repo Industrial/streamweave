@@ -1,9 +1,12 @@
 //! Tests for TimerNode
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node, OutputStreams};
+use crate::nodes::time::*;
+use futures::StreamExt;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
@@ -45,7 +48,7 @@ async fn test_timer_generates_events() {
 
   let (_config_tx, interval_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send interval: 50 milliseconds
   let _ = interval_tx
@@ -98,7 +101,7 @@ async fn test_timer_interval_updates() {
 
   let (_config_tx, interval_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send interval: 30 milliseconds
   let _ = interval_tx
@@ -141,7 +144,7 @@ async fn test_timer_duration_type() {
 
   let (_config_tx, interval_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send interval: 40 milliseconds as Duration
   let _ = interval_tx
@@ -184,7 +187,7 @@ async fn test_timer_invalid_interval() {
 
   let (_config_tx, interval_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send invalid interval: negative value
   let _ = interval_tx

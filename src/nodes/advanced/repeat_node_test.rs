@@ -1,6 +1,8 @@
 //! Tests for RepeatNode
+#![allow(clippy::type_complexity, unused)]
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
+use crate::nodes::advanced::RepeatNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -37,24 +39,22 @@ fn create_input_streams() -> (
 
 #[tokio::test]
 async fn test_repeat_node_creation() {
-  use crate::nodes::advanced::RepeatNode;
   let node = RepeatNode::new("test_repeat".to_string());
-  assert_eq!(node.name(), "test_repeat");
-  assert!(node.has_input_port("configuration"));
-  assert!(node.has_input_port("in"));
-  assert!(node.has_input_port("count"));
-  assert!(node.has_output_port("out"));
-  assert!(node.has_output_port("error"));
+  assert_eq!(Node::name(&node), "test_repeat");
+  assert!(Node::has_input_port(&node, "configuration"));
+  assert!(Node::has_input_port(&node, "in"));
+  assert!(Node::has_input_port(&node, "count"));
+  assert!(Node::has_output_port(&node, "out"));
+  assert!(Node::has_output_port(&node, "error"));
 }
 
 #[tokio::test]
 async fn test_repeat_basic() {
-  use crate::nodes::advanced::RepeatNode;
   let node = RepeatNode::new("test_repeat".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send count first
   let _ = count_tx
@@ -102,12 +102,11 @@ async fn test_repeat_basic() {
 
 #[tokio::test]
 async fn test_repeat_multiple_items() {
-  use crate::nodes::advanced::RepeatNode;
   let node = RepeatNode::new("test_repeat".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send count first
   let _ = count_tx
@@ -172,12 +171,11 @@ async fn test_repeat_multiple_items() {
 
 #[tokio::test]
 async fn test_repeat_zero_count() {
-  use crate::nodes::advanced::RepeatNode;
   let node = RepeatNode::new("test_repeat".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send count of 0
   let _ = count_tx
@@ -216,12 +214,11 @@ async fn test_repeat_zero_count() {
 
 #[tokio::test]
 async fn test_repeat_buffered_items() {
-  use crate::nodes::advanced::RepeatNode;
   let node = RepeatNode::new("test_repeat".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send items before count (should be buffered)
   let _ = in_tx
@@ -286,12 +283,11 @@ async fn test_repeat_buffered_items() {
 
 #[tokio::test]
 async fn test_repeat_invalid_count_type() {
-  use crate::nodes::advanced::RepeatNode;
   let node = RepeatNode::new("test_repeat".to_string());
 
   let (_config_tx, _in_tx, count_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send invalid count type (String)
   let _ = count_tx
@@ -330,12 +326,11 @@ async fn test_repeat_invalid_count_type() {
 
 #[tokio::test]
 async fn test_repeat_negative_count() {
-  use crate::nodes::advanced::RepeatNode;
   let node = RepeatNode::new("test_repeat".to_string());
 
   let (_config_tx, _in_tx, count_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = outputs_future.await.unwrap();
 
   // Send negative count
   let _ = count_tx

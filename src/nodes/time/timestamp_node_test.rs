@@ -1,6 +1,8 @@
 //! Tests for TimestampNode
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node, OutputStreams};
+use crate::nodes::time::*;
+use futures::StreamExt;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -74,17 +76,20 @@ async fn test_timestamp_wraps_primitive() {
   }
 
   assert_eq!(results.len(), 1);
-  if let Ok(wrapped) = results[0]
-    .clone()
-    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+  let first_result = &results[0];
+  let first_result_clone = first_result.clone();
+  let first_result_double_clone = first_result_clone.clone();
+  if let Ok(wrapped_arc) =
+    first_result_double_clone.downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
   {
+    let wrapped: &HashMap<String, Arc<dyn Any + Send + Sync>> = &wrapped_arc;
     // Should have "value" and "timestamp" properties
     assert!(wrapped.contains_key("value"));
     assert!(wrapped.contains_key("timestamp"));
 
     // Check value
     if let Some(value_arc) = wrapped.get("value") {
-      if let Ok(value) = value_arc.clone().downcast::<i32>() {
+      if let Ok(value) = (*value_arc).clone().downcast::<i32>() {
         assert_eq!(*value, 42i32);
       } else {
         panic!("Value is not an i32");
@@ -95,7 +100,7 @@ async fn test_timestamp_wraps_primitive() {
 
     // Check timestamp
     if let Some(timestamp_arc) = wrapped.get("timestamp") {
-      if let Ok(timestamp) = timestamp_arc.clone().downcast::<i64>() {
+      if let Ok(timestamp) = (*timestamp_arc).clone().downcast::<i64>() {
         assert!(*timestamp > 0); // Should be a valid timestamp
       } else {
         panic!("Timestamp is not an i64");
@@ -154,6 +159,7 @@ async fn test_timestamp_adds_to_object() {
   assert_eq!(results.len(), 1);
   if let Ok(timestamped_obj) = results[0]
     .clone()
+    .clone()
     .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
   {
     // Should have original properties plus timestamp
@@ -163,7 +169,7 @@ async fn test_timestamp_adds_to_object() {
 
     // Check original properties are preserved
     if let Some(name_arc) = timestamped_obj.get("name") {
-      if let Ok(name) = name_arc.clone().downcast::<String>() {
+      if let Ok(name) = (*name_arc).clone().downcast::<String>() {
         assert_eq!(*name, "test");
       } else {
         panic!("Name is not a String");
@@ -172,7 +178,7 @@ async fn test_timestamp_adds_to_object() {
 
     // Check timestamp
     if let Some(timestamp_arc) = timestamped_obj.get("timestamp") {
-      if let Ok(timestamp) = timestamp_arc.clone().downcast::<i64>() {
+      if let Ok(timestamp) = (*timestamp_arc).clone().downcast::<i64>() {
         assert!(*timestamp > 0);
       } else {
         panic!("Timestamp is not an i64");
@@ -230,13 +236,18 @@ async fn test_timestamp_multiple_items() {
   // Verify each item has a timestamp and timestamps are monotonically increasing
   let mut prev_timestamp: Option<i64> = None;
   for result in results {
-    if let Ok(wrapped) = result.downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>() {
+    let result_clone = result.clone();
+    let result_double_clone = result_clone.clone();
+    if let Ok(wrapped_arc) =
+      result_double_clone.downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+    {
+      let wrapped: &HashMap<String, Arc<dyn Any + Send + Sync>> = &wrapped_arc;
       assert!(wrapped.contains_key("value"));
       assert!(wrapped.contains_key("timestamp"));
 
       // Verify timestamp is monotonically increasing
       if let Some(timestamp_arc) = wrapped.get("timestamp") {
-        if let Ok(timestamp) = timestamp_arc.clone().downcast::<i64>() {
+        if let Ok(timestamp) = (*timestamp_arc).clone().downcast::<i64>() {
           if let Some(prev) = prev_timestamp {
             assert!(
               *timestamp >= prev,
@@ -299,12 +310,14 @@ async fn test_timestamp_timing_accuracy() {
     .as_millis() as i64;
 
   assert_eq!(results.len(), 1);
-  if let Ok(wrapped) = results[0]
-    .clone()
-    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
-  {
-    if let Some(timestamp_arc) = wrapped.get("timestamp") {
-      if let Ok(timestamp) = timestamp_arc.clone().downcast::<i64>() {
+  let result = &results[0];
+  let cloned_result = result.clone();
+  let double_cloned = cloned_result.clone();
+  if let Ok(hashmap_arc) = double_cloned.downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>() {
+    let hashmap: &HashMap<String, Arc<dyn Any + Send + Sync>> = &hashmap_arc;
+    if let Some(timestamp_arc) = hashmap.get("timestamp") {
+      let timestamp_arc_clone = (*timestamp_arc).clone();
+      if let Ok(timestamp) = timestamp_arc_clone.downcast::<i64>() {
         // Timestamp should be between before_time and after_time (with some tolerance)
         assert!(
           *timestamp >= before_time,

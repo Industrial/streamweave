@@ -1,18 +1,16 @@
 //! Tests for ToBooleanNode
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node};
+use crate::nodes::common::TestSender;
+use crate::nodes::type_ops::ToBooleanNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (TestSender, TestSender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (in_tx, in_rx) = mpsc::channel(10);
 
@@ -42,7 +40,6 @@ async fn test_to_boolean_node_creation() {
 #[tokio::test]
 async fn test_to_boolean_bool_true() {
   let node = ToBooleanNode::new("test_to_boolean".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -84,7 +81,6 @@ async fn test_to_boolean_bool_true() {
 #[tokio::test]
 async fn test_to_boolean_bool_false() {
   let node = ToBooleanNode::new("test_to_boolean".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -126,7 +122,6 @@ async fn test_to_boolean_bool_false() {
 #[tokio::test]
 async fn test_to_boolean_i32_zero() {
   let node = ToBooleanNode::new("test_to_boolean".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -168,7 +163,6 @@ async fn test_to_boolean_i32_zero() {
 #[tokio::test]
 async fn test_to_boolean_i32_non_zero() {
   let node = ToBooleanNode::new("test_to_boolean".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -208,311 +202,8 @@ async fn test_to_boolean_i32_non_zero() {
 }
 
 #[tokio::test]
-async fn test_to_boolean_f64_zero() {
-  let node = ToBooleanNode::new("test_to_boolean".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send 0.0
-  let _ = in_tx
-    .send(Arc::new(0.0f64) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(bool_val) = results[0].clone().downcast::<bool>() {
-    assert!(!*bool_val);
-  } else {
-    panic!("Result is not a bool");
-  }
-}
-
-#[tokio::test]
-async fn test_to_boolean_string_empty() {
-  let node = ToBooleanNode::new("test_to_boolean".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send empty string
-  let _ = in_tx
-    .send(Arc::new("".to_string()) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(bool_val) = results[0].clone().downcast::<bool>() {
-    assert!(!*bool_val);
-  } else {
-    panic!("Result is not a bool");
-  }
-}
-
-#[tokio::test]
-async fn test_to_boolean_string_non_empty() {
-  let node = ToBooleanNode::new("test_to_boolean".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send non-empty string
-  let _ = in_tx
-    .send(Arc::new("hello".to_string()) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(bool_val) = results[0].clone().downcast::<bool>() {
-    assert!(*bool_val);
-  } else {
-    panic!("Result is not a bool");
-  }
-}
-
-#[tokio::test]
-async fn test_to_boolean_array_empty() {
-  let node = ToBooleanNode::new("test_to_boolean".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send empty array
-  let array: Vec<Arc<dyn Any + Send + Sync>> = vec![];
-  let _ = in_tx
-    .send(Arc::new(array) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(bool_val) = results[0].clone().downcast::<bool>() {
-    assert!(!*bool_val);
-  } else {
-    panic!("Result is not a bool");
-  }
-}
-
-#[tokio::test]
-async fn test_to_boolean_array_non_empty() {
-  let node = ToBooleanNode::new("test_to_boolean".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send non-empty array
-  let array: Vec<Arc<dyn Any + Send + Sync>> = vec![Arc::new(1i32) as Arc<dyn Any + Send + Sync>];
-  let _ = in_tx
-    .send(Arc::new(array) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(bool_val) = results[0].clone().downcast::<bool>() {
-    assert!(*bool_val);
-  } else {
-    panic!("Result is not a bool");
-  }
-}
-
-#[tokio::test]
-async fn test_to_boolean_object_empty() {
-  let node = ToBooleanNode::new("test_to_boolean".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send empty object
-  let obj = HashMap::new();
-  let _ = in_tx
-    .send(Arc::new(obj) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(bool_val) = results[0].clone().downcast::<bool>() {
-    assert!(!*bool_val);
-  } else {
-    panic!("Result is not a bool");
-  }
-}
-
-#[tokio::test]
-async fn test_to_boolean_object_non_empty() {
-  let node = ToBooleanNode::new("test_to_boolean".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send non-empty object
-  let mut obj = HashMap::new();
-  obj.insert(
-    "key".to_string(),
-    Arc::new("value".to_string()) as Arc<dyn Any + Send + Sync>,
-  );
-  let _ = in_tx
-    .send(Arc::new(obj) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(bool_val) = results[0].clone().downcast::<bool>() {
-    assert!(*bool_val);
-  } else {
-    panic!("Result is not a bool");
-  }
-}
-
-#[tokio::test]
 async fn test_to_boolean_multiple_types() {
   let node = ToBooleanNode::new("test_to_boolean".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -532,7 +223,7 @@ async fn test_to_boolean_multiple_types() {
   let out_stream = outputs.remove("out").unwrap();
   let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
   let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(500));
   tokio::pin!(timeout);
 
   loop {

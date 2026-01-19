@@ -89,6 +89,9 @@ use tokio::task::JoinHandle;
 /// Error type for graph execution operations.
 pub type GraphExecutionError = Box<dyn std::error::Error + Send + Sync>;
 
+/// Type alias for execution handles to reduce type complexity
+type ExecutionHandleVec = Arc<Mutex<Vec<JoinHandle<Result<(), GraphExecutionError>>>>>;
+
 /// A graph containing nodes and edges.
 ///
 /// Graphs represent the structure of a data processing pipeline, with nodes
@@ -214,7 +217,7 @@ pub struct Graph {
   /// List of edges connecting nodes.
   edges: Vec<Edge>,
   /// Execution handles for spawned node tasks (used for wait_for_completion)
-  execution_handles: Arc<Mutex<Vec<JoinHandle<Result<(), GraphExecutionError>>>>>,
+  execution_handles: ExecutionHandleVec,
   /// Stop signal for graceful shutdown
   stop_signal: Arc<tokio::sync::Notify>,
   /// Pause signal for pausing execution

@@ -3,6 +3,7 @@
 //! Comprehensive test suite for the MatchNode implementation.
 
 use crate::node::{InputStreams, Node};
+use crate::nodes::common::TestSender;
 use crate::nodes::match_node::{
   MatchConfig, MatchNode, match_config, match_exact_string, match_numeric_range, match_regex,
 };
@@ -14,11 +15,7 @@ use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (TestSender, TestSender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (data_tx, data_rx) = mpsc::channel(10);
 

@@ -86,6 +86,7 @@ fn extract_duration(value: &Arc<dyn Any + Send + Sync>) -> Result<Duration, Stri
 /// The timeout is received on the "timeout" port and can be:
 /// - A Duration type directly
 /// - A numeric value (i32, i64, u32, u64, f64) interpreted as milliseconds
+///
 /// For each item from the "in" port, the node waits with the specified timeout.
 /// If the item arrives within the timeout, it is forwarded to "out".
 /// If the timeout expires, an error is sent to "error".
@@ -168,29 +169,27 @@ impl Node for TimeoutNode {
       tokio::spawn(async move {
         let mut timeout_stream = timeout_stream;
         let mut in_stream = in_stream;
+        #[allow(unused_assignments)]
         let mut timeout_duration: Option<Duration> = None;
 
         // First, get the timeout duration
-        while timeout_duration.is_none() {
-          if let Some(item) = timeout_stream.next().await {
-            match extract_duration(&item) {
-              Ok(dur) => {
-                timeout_duration = Some(dur);
-                break;
-              }
-              Err(e) => {
-                let error_arc = Arc::new(e) as Arc<dyn Any + Send + Sync>;
-                let _ = error_tx_clone.send(error_arc).await;
-                return;
-              }
+        if let Some(item) = timeout_stream.next().await {
+          match extract_duration(&item) {
+            Ok(dur) => {
+              timeout_duration = Some(dur);
             }
-          } else {
-            // Timeout stream ended without providing timeout
-            let error_arc =
-              Arc::new("Timeout duration not provided".to_string()) as Arc<dyn Any + Send + Sync>;
-            let _ = error_tx_clone.send(error_arc).await;
-            return;
+            Err(e) => {
+              let error_arc = Arc::new(e) as Arc<dyn Any + Send + Sync>;
+              let _ = error_tx_clone.send(error_arc).await;
+              return;
+            }
           }
+        } else {
+          // Timeout stream ended without providing timeout
+          let error_arc =
+            Arc::new("Timeout duration not provided".to_string()) as Arc<dyn Any + Send + Sync>;
+          let _ = error_tx_clone.send(error_arc).await;
+          return;
         }
 
         // Now process in_stream with timeout for each item

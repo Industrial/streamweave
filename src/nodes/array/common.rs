@@ -1,6 +1,8 @@
 //! Common utility functions for array operations.
 
 use crate::nodes::comparison::common::{compare_equal, compare_less_than};
+use crate::nodes::filter_node;
+use crate::nodes::map_node;
 use std::any::Any;
 use std::sync::Arc;
 
@@ -429,7 +431,7 @@ pub fn array_sort(
 /// Returns the result as `Arc<dyn Any + Send + Sync>` (Vec<Arc<dyn Any + Send + Sync>>) or an error string.
 pub async fn array_filter(
   v: &Arc<dyn Any + Send + Sync>,
-  predicate: &crate::nodes::FilterConfig,
+  predicate: &filter_node::FilterConfig,
 ) -> Result<Arc<dyn Any + Send + Sync>, String> {
   // Try to downcast array
   let arc_vec = v
@@ -473,7 +475,7 @@ pub async fn array_filter(
 /// Returns the result as `Arc<dyn Any + Send + Sync>` (Vec<Arc<dyn Any + Send + Sync>>) or an error string.
 pub async fn array_map(
   v: &Arc<dyn Any + Send + Sync>,
-  map_fn: &crate::nodes::MapConfig,
+  map_fn: &map_node::MapConfig,
 ) -> Result<Arc<dyn Any + Send + Sync>, String> {
   // Try to downcast array
   let arc_vec = v

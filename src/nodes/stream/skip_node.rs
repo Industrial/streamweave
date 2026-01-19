@@ -68,7 +68,6 @@ fn get_usize(value: &Arc<dyn Any + Send + Sync>) -> Result<usize, String> {
 /// Enum to tag messages from different input ports for merging.
 #[derive(Debug, PartialEq)]
 enum InputPort {
-  Config,
   In,
   Count,
 }
@@ -77,8 +76,8 @@ enum InputPort {
 ///
 /// The count is received on the "count" port and can be:
 /// - A numeric value (usize, i32, i64, u32, u64)
-/// The node skips the first N items from the "in" port and forwards
-/// the remaining items to the "out" port.
+///   The node skips the first N items from the "in" port and forwards
+///   the remaining items to the "out" port.
 pub struct SkipNode {
   pub(crate) base: BaseNode,
 }
@@ -182,17 +181,25 @@ impl Node for SkipNode {
         let mut merged_stream = merged_stream;
         let mut count: Option<usize> = None;
         let mut items_skipped: usize = 0;
+        let mut buffered_items: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
 
         while let Some((port, item)) = merged_stream.next().await {
           match port {
-            InputPort::Config => {
-              // Configuration port is unused for now
-            }
             InputPort::Count => {
               // Update count
               match get_usize(&item) {
                 Ok(c) => {
                   count = Some(c);
+                  // Process any buffered items now that we have configuration
+                  while let Some(buffered_item) = buffered_items.pop() {
+                    if items_skipped < c {
+                      // Skip this item
+                      items_skipped += 1;
+                    } else {
+                      // Forward this item
+                      let _ = out_tx_clone.send(buffered_item).await;
+                    }
+                  }
                 }
                 Err(e) => {
                   let error_arc = Arc::new(e) as Arc<dyn Any + Send + Sync>;
@@ -211,8 +218,8 @@ impl Node for SkipNode {
                   let _ = out_tx_clone.send(item).await;
                 }
               } else {
-                // No count set yet - wait for count before processing items
-                // Items arriving before count will be dropped
+                // Buffer items until count is set
+                buffered_items.push(item);
               }
             }
           }

@@ -2,6 +2,7 @@
 
 use crate::node::{InputStreams, Node};
 use crate::nodes::arithmetic::MultiplyNode;
+use crate::nodes::common::TestSender;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -9,12 +10,7 @@ use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (TestSender, TestSender, TestSender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (in1_tx, in1_rx) = mpsc::channel(10);
   let (in2_tx, in2_rx) = mpsc::channel(10);

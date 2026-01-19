@@ -1,11 +1,13 @@
 //! Tests for ReduceNode
+#![allow(unused_imports, dead_code, unused, clippy::type_complexity)]
 
-use crate::node::InputStreams;
+use super::{ReduceConfig, ReduceConfigWrapper, ReduceNode, reduce_config};
+use crate::node::{InputStreams, Node, OutputStreams};
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
@@ -58,8 +60,10 @@ async fn test_reduce_sum() {
   let node = ReduceNode::new("test_reduce".to_string());
 
   let (_config_tx, in_tx, initial_tx, function_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = match node.execute(inputs).await {
+    Ok(outputs) => outputs,
+    Err(e) => panic!("Node execution failed: {}", e),
+  };
 
   // Create a sum reduction function
   let sum_function: ReduceConfig = reduce_config(
@@ -128,17 +132,21 @@ async fn test_reduce_empty_stream() {
   let node = ReduceNode::new("test_reduce".to_string());
 
   let (_config_tx, in_tx, initial_tx, function_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = match node.execute(inputs).await {
+    Ok(outputs) => outputs,
+    Err(e) => panic!("Node execution failed: {}", e),
+  };
 
   // Create a sum reduction function
-  let sum_function: ReduceConfig = reduce_config(|acc, value| async move {
-    if let (Ok(acc_i32), Ok(val_i32)) = (acc.downcast::<i32>(), value.downcast::<i32>()) {
-      Ok(Arc::new(*acc_i32 + *val_i32) as Arc<dyn Any + Send + Sync>)
-    } else {
-      Err("Expected i32".to_string())
-    }
-  });
+  let sum_function: ReduceConfig = reduce_config(
+    |acc: Arc<dyn Any + Send + Sync>, value: Arc<dyn Any + Send + Sync>| async move {
+      if let (Ok(acc_i32), Ok(val_i32)) = (acc.downcast::<i32>(), value.downcast::<i32>()) {
+        Ok(Arc::new(*acc_i32 + *val_i32) as Arc<dyn Any + Send + Sync>)
+      } else {
+        Err("Expected i32".to_string())
+      }
+    },
+  );
 
   // Send initial value
   let _ = initial_tx
@@ -187,17 +195,21 @@ async fn test_reduce_single_value() {
   let node = ReduceNode::new("test_reduce".to_string());
 
   let (_config_tx, in_tx, initial_tx, function_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = match node.execute(inputs).await {
+    Ok(outputs) => outputs,
+    Err(e) => panic!("Node execution failed: {}", e),
+  };
 
   // Create a sum reduction function
-  let sum_function: ReduceConfig = reduce_config(|acc, value| async move {
-    if let (Ok(acc_i32), Ok(val_i32)) = (acc.downcast::<i32>(), value.downcast::<i32>()) {
-      Ok(Arc::new(*acc_i32 + *val_i32) as Arc<dyn Any + Send + Sync>)
-    } else {
-      Err("Expected i32".to_string())
-    }
-  });
+  let sum_function: ReduceConfig = reduce_config(
+    |acc: Arc<dyn Any + Send + Sync>, value: Arc<dyn Any + Send + Sync>| async move {
+      if let (Ok(acc_i32), Ok(val_i32)) = (acc.downcast::<i32>(), value.downcast::<i32>()) {
+        Ok(Arc::new(*acc_i32 + *val_i32) as Arc<dyn Any + Send + Sync>)
+      } else {
+        Err("Expected i32".to_string())
+      }
+    },
+  );
 
   // Send initial value
   let _ = initial_tx
@@ -249,21 +261,25 @@ async fn test_reduce_function_error() {
   let node = ReduceNode::new("test_reduce".to_string());
 
   let (_config_tx, in_tx, initial_tx, function_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = match node.execute(inputs).await {
+    Ok(outputs) => outputs,
+    Err(e) => panic!("Node execution failed: {}", e),
+  };
 
   // Create a function that returns an error for certain values
-  let error_function: ReduceConfig = reduce_config(|acc, value| async move {
-    if let (Ok(acc_i32), Ok(val_i32)) = (acc.downcast::<i32>(), value.downcast::<i32>()) {
-      if *val_i32 < 0 {
-        Err("Negative values not allowed".to_string())
+  let error_function: ReduceConfig = reduce_config(
+    |acc: Arc<dyn Any + Send + Sync>, value: Arc<dyn Any + Send + Sync>| async move {
+      if let (Ok(acc_i32), Ok(val_i32)) = (acc.downcast::<i32>(), value.downcast::<i32>()) {
+        if *val_i32 < 0 {
+          Err("Negative values not allowed".to_string())
+        } else {
+          Ok(Arc::new(*acc_i32 + *val_i32) as Arc<dyn Any + Send + Sync>)
+        }
       } else {
-        Ok(Arc::new(*acc_i32 + *val_i32) as Arc<dyn Any + Send + Sync>)
+        Err("Expected i32".to_string())
       }
-    } else {
-      Err("Expected i32".to_string())
-    }
-  });
+    },
+  );
 
   // Send initial value
   let _ = initial_tx
@@ -287,7 +303,7 @@ async fn test_reduce_function_error() {
   drop(function_tx);
 
   // Check error output
-  let error_stream = outputs.remove("error").unwrap();
+  let error_stream: crate::node::OutputStream = outputs.remove("error").unwrap();
   let mut errors: Vec<String> = Vec::new();
   let mut stream = error_stream;
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
@@ -297,7 +313,7 @@ async fn test_reduce_function_error() {
     tokio::select! {
       result = stream.next() => {
         if let Some(item) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
+          if let Ok(arc_str) = Arc::downcast::<String>(item.clone()) {
             errors.push((*arc_str).clone());
           }
         } else {
@@ -317,17 +333,21 @@ async fn test_reduce_f64() {
   let node = ReduceNode::new("test_reduce".to_string());
 
   let (_config_tx, in_tx, initial_tx, function_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = match node.execute(inputs).await {
+    Ok(outputs) => outputs,
+    Err(e) => panic!("Node execution failed: {}", e),
+  };
 
   // Create a sum reduction function for f64
-  let sum_function: ReduceConfig = reduce_config(|acc, value| async move {
-    if let (Ok(acc_f64), Ok(val_f64)) = (acc.downcast::<f64>(), value.downcast::<f64>()) {
-      Ok(Arc::new(*acc_f64 + *val_f64) as Arc<dyn Any + Send + Sync>)
-    } else {
-      Err("Expected f64".to_string())
-    }
-  });
+  let sum_function: ReduceConfig = reduce_config(
+    |acc: Arc<dyn Any + Send + Sync>, value: Arc<dyn Any + Send + Sync>| async move {
+      if let (Ok(acc_f64), Ok(val_f64)) = (acc.downcast::<f64>(), value.downcast::<f64>()) {
+        Ok(Arc::new(*acc_f64 + *val_f64) as Arc<dyn Any + Send + Sync>)
+      } else {
+        Err("Expected f64".to_string())
+      }
+    },
+  );
 
   // Send initial value
   let _ = initial_tx

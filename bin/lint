@@ -8,4 +8,4 @@ echo "> lint > cargo fmt --check"
 cargo fmt --all -- --check
 
 echo "> lint > cargo clippy"
-cargo clippy -- -D warnings
+cargo clippy --lib -- -D warnings

@@ -77,23 +77,6 @@ tokio-test = "0.4.2"
 criterion = { version = "0.5", features = ["async_tokio"] }
 tracing-subscriber = "0.3"
 
-[[example]]
-name = "http-server"
-path = "examples/http-server/main.rs"
-
-[[example]]
-name = "map_node"
-path = "examples/map_node.rs"
-
-[[example]]
-name = "filter_node"
-path = "examples/filter_node.rs"
-
-[[example]]
-name = "subgraph_node"
-path = "examples/subgraph_node.rs"
-
-
 [[bench]]
 name = "in_process_bench"
 harness = false

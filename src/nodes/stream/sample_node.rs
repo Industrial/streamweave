@@ -18,9 +18,9 @@
 //! - rate=2: Forward every 2nd item
 //! - rate=3: Forward every 3rd item
 //! - etc.
-//! It supports:
-//! - Sampling based on a numeric rate (usize, i32, i64, u32, u64)
-//! - Error handling: Invalid rate values (zero, negative, wrong type) result in errors sent to the error port
+//!   It supports:
+//!   - Sampling based on a numeric rate (usize, i32, i64, u32, u64)
+//!   - Error handling: Invalid rate values (zero, negative, wrong type) result in errors sent to the error port
 
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::nodes::common::BaseNode;
@@ -39,7 +39,11 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// - Numeric types (i32, i64, u32, u64) converted to usize
 fn get_usize(value: &Arc<dyn Any + Send + Sync>) -> Result<usize, String> {
   if let Ok(arc_usize) = value.clone().downcast::<usize>() {
-    Ok(*arc_usize)
+    let val = *arc_usize;
+    if val == 0 {
+      return Err("Rate must be positive".to_string());
+    }
+    Ok(val)
   } else if let Ok(arc_i32) = value.clone().downcast::<i32>() {
     if *arc_i32 <= 0 {
       return Err("Rate must be positive".to_string());
@@ -79,7 +83,6 @@ fn get_usize(value: &Arc<dyn Any + Send + Sync>) -> Result<usize, String> {
 /// Enum to tag messages from different input ports for merging.
 #[derive(Debug, PartialEq)]
 enum InputPort {
-  Config,
   In,
   Rate,
 }
@@ -88,10 +91,10 @@ enum InputPort {
 ///
 /// The rate is received on the "rate" port and can be:
 /// - A numeric value (usize, i32, i64, u32, u64) representing "every Nth item"
-/// - rate=1: Forward every item
-/// - rate=2: Forward every 2nd item
-/// - rate=N: Forward every Nth item
-/// The node forwards items from the "in" port to the "out" port based on the sampling rate.
+///   - rate=1: Forward every item
+///   - rate=2: Forward every 2nd item
+///   - rate=N: Forward every Nth item
+///     The node forwards items from the "in" port to the "out" port based on the sampling rate.
 pub struct SampleNode {
   pub(crate) base: BaseNode,
 }
@@ -195,17 +198,22 @@ impl Node for SampleNode {
         let mut merged_stream = merged_stream;
         let mut rate: Option<usize> = None;
         let mut item_counter: usize = 0;
+        let mut buffered_items: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
 
         while let Some((port, item)) = merged_stream.next().await {
           match port {
-            InputPort::Config => {
-              // Configuration port is unused for now
-            }
             InputPort::Rate => {
               // Update rate
               match get_usize(&item) {
                 Ok(r) => {
                   rate = Some(r);
+                  // Process any buffered items now that we have configuration
+                  while let Some(buffered_item) = buffered_items.pop() {
+                    item_counter += 1;
+                    if item_counter.is_multiple_of(r) {
+                      let _ = out_tx_clone.send(buffered_item).await;
+                    }
+                  }
                 }
                 Err(e) => {
                   let error_arc = Arc::new(e) as Arc<dyn Any + Send + Sync>;
@@ -218,12 +226,12 @@ impl Node for SampleNode {
               if let Some(r) = rate {
                 item_counter += 1;
                 // Forward item if it matches the sampling rate (every Nth item)
-                if item_counter % r == 0 {
+                if item_counter.is_multiple_of(r) {
                   let _ = out_tx_clone.send(item).await;
                 }
               } else {
-                // No rate set yet - wait for rate before processing items
-                // Items arriving before rate will be dropped
+                // Buffer items until rate is set
+                buffered_items.push(item);
               }
             }
           }

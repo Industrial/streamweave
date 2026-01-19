@@ -1,6 +1,5 @@
 //! Tests for comparison common utilities
 
-use crate::node::{InputStreams, Node, OutputStreams};
 use crate::nodes::comparison::common::compare_equal;
 use std::any::Any;
 use std::sync::Arc;
@@ -23,8 +22,8 @@ fn test_compare_equal_i32_not_equal() {
 
 #[test]
 fn test_compare_equal_f64() {
-  let v1 = Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>;
-  let v2 = Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>;
+  let v1 = Arc::new(std::f64::consts::PI) as Arc<dyn Any + Send + Sync>;
+  let v2 = Arc::new(std::f64::consts::PI) as Arc<dyn Any + Send + Sync>;
   let result = compare_equal(&v1, &v2).unwrap();
   assert!(*result.downcast::<bool>().unwrap());
 }

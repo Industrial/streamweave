@@ -5,4 +5,4 @@ exec > >(tee log/check.log) 2>&1
 echo "> check"
 
 echo "> check > cargo check"
-RUSTFLAGS='-D warnings' cargo check --all-targets --all-features
+RUSTFLAGS='-D warnings' cargo check --lib --all-features

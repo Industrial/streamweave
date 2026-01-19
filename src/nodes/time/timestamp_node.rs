@@ -14,6 +14,7 @@
 //! The node adds a timestamp to each item from the input stream. The timestamp is added as:
 //! - If the item is an object (HashMap), a "timestamp" property is added
 //! - If the item is not an object, it is wrapped in an object with "value" (the original item) and "timestamp" properties
+//!
 //! The timestamp is represented as i64 milliseconds since Unix epoch.
 
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
@@ -61,6 +62,7 @@ fn add_timestamp(item: Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send 
 /// Each item from the "in" port has a timestamp added:
 /// - If the item is an object (HashMap), a "timestamp" property is added
 /// - If the item is not an object, it is wrapped in an object with "value" and "timestamp" properties
+///
 /// The timestamp is represented as i64 milliseconds since Unix epoch.
 pub struct TimestampNode {
   pub(crate) base: BaseNode,

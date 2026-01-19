@@ -18,17 +18,16 @@
 //! - Error handling: Non-array inputs or transformation errors result in errors sent to the error port
 
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
-use crate::nodes::MapConfig;
 use crate::nodes::array::common::array_map;
-use crate::nodes::common::{BaseNode, MessageType};
+use crate::nodes::common::{BaseNode, process_configurable_node};
+use crate::nodes::map_node::MapConfig;
 use async_trait::async_trait;
-use futures::stream;
 use std::any::Any;
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::wrappers::ReceiverStream;
 
 /// A node that applies a transformation function to each element in an array.
 ///
@@ -36,7 +35,6 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// then outputs the mapped array to the "out" port.
 pub struct ArrayMapNode {
   pub(crate) base: BaseNode,
-  current_map_fn: Arc<Mutex<Option<Arc<MapConfig>>>>,
 }
 
 impl ArrayMapNode {
@@ -61,7 +59,6 @@ impl ArrayMapNode {
         ],
         vec!["out".to_string(), "error".to_string()],
       ),
-      current_map_fn: Arc::new(Mutex::new(None::<Arc<MapConfig>>)),
     }
   }
 }
@@ -98,8 +95,6 @@ impl Node for ArrayMapNode {
   ) -> Pin<
     Box<dyn std::future::Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>,
   > {
-    let map_fn_state = Arc::clone(&self.current_map_fn);
-
     Box::pin(async move {
       // Extract input streams (configuration port is present but unused for now)
       let _config_stream = inputs.remove("configuration");
@@ -108,83 +103,19 @@ impl Node for ArrayMapNode {
         .remove("function")
         .ok_or("Missing 'function' input")?;
 
-      // Tag streams to distinguish config from data
-      let function_stream = function_stream.map(|item| (MessageType::Config, item));
-      let in_stream = in_stream.map(|item| (MessageType::Data, item));
-
-      // Merge streams
-      let merged_stream = stream::select(function_stream, in_stream);
-
-      // Create output streams
-      let (out_tx, out_rx) = tokio::sync::mpsc::channel(10);
-      let (error_tx, error_rx) = tokio::sync::mpsc::channel(10);
-
-      // Process the merged stream
-      let out_tx_clone = out_tx.clone();
-      let error_tx_clone = error_tx.clone();
-      let map_fn_state_clone = Arc::clone(&map_fn_state);
-
-      tokio::spawn(async move {
-        let mut merged = merged_stream;
-        let mut pending_array: Option<Arc<dyn Any + Send + Sync>> = None;
-
-        while let Some((msg_type, item)) = merged.next().await {
-          match msg_type {
-            MessageType::Config => {
-              // Try to downcast function to MapConfig
-              if let Ok(map_fn_arc) = item.downcast::<MapConfig>() {
-                let mut map_fn = map_fn_state_clone.lock().await;
-                *map_fn = Some(map_fn_arc);
-                // Process pending array if we have one
-                if let Some(array) = pending_array.take() {
-                  let map_fn_opt = {
-                    let map_fn = map_fn_state_clone.lock().await;
-                    map_fn.clone()
-                  };
-                  if let Some(map_fn) = map_fn_opt {
-                    match array_map(&array, &map_fn).await {
-                      Ok(result) => {
-                        let _ = out_tx_clone.send(result).await;
-                      }
-                      Err(e) => {
-                        let error_arc = Arc::new(e) as Arc<dyn Any + Send + Sync>;
-                        let _ = error_tx_clone.send(error_arc).await;
-                      }
-                    }
-                  }
-                }
-              } else {
-                // Invalid function type - send error
-                let error_arc = Arc::new("Invalid function type: expected MapConfig".to_string())
-                  as Arc<dyn Any + Send + Sync>;
-                let _ = error_tx_clone.send(error_arc).await;
-              }
-            }
-            MessageType::Data => {
-              // Get the current map function
-              let map_fn_opt = {
-                let map_fn = map_fn_state_clone.lock().await;
-                map_fn.clone()
-              };
-
-              if let Some(map_fn) = map_fn_opt {
-                match array_map(&item, &map_fn).await {
-                  Ok(result) => {
-                    let _ = out_tx_clone.send(result).await;
-                  }
-                  Err(e) => {
-                    let error_arc = Arc::new(e) as Arc<dyn Any + Send + Sync>;
-                    let _ = error_tx_clone.send(error_arc).await;
-                  }
-                }
-              } else {
-                // No function set yet - store array for later processing
-                pending_array = Some(item);
-              }
-            }
+      // Process using unified helper with zero-copy guarantee
+      let (out_rx, error_rx) = process_configurable_node(
+        function_stream,
+        in_stream,
+        Arc::new(Mutex::new(None::<Arc<MapConfig>>)),
+        |item: Arc<dyn Any + Send + Sync>, cfg: &Arc<MapConfig>| {
+          let cfg = cfg.clone();
+          async move {
+            // Zero-copy: cfg.apply receives item by value (Arc), only refcount is incremented
+            array_map(&item, &cfg).await.map(Some)
           }
-        }
-      });
+        },
+      );
 
       // Convert channels to streams
       let mut outputs = HashMap::new();

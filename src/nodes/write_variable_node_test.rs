@@ -1,6 +1,7 @@
 //! Tests for WriteVariableNode
 
 use crate::node::{InputStreams, Node};
+use crate::nodes::common::TestSender;
 use crate::nodes::variable_node::VariableNode;
 use crate::nodes::write_variable_node::WriteVariableNode;
 use std::any::Any;
@@ -10,12 +11,7 @@ use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (TestSender, TestSender, TestSender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (name_tx, name_rx) = mpsc::channel(10);
   let (value_tx, value_rx) = mpsc::channel(10);

@@ -1,6 +1,7 @@
 //! Tests for JoinNode
 
 use crate::node::{InputStreams, Node};
+use crate::nodes::common::TestSender;
 use crate::nodes::join_node::{JoinNode, JoinStrategy, join_config};
 use std::any::Any;
 use std::collections::HashMap;
@@ -9,12 +10,7 @@ use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (TestSender, TestSender, TestSender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (left_tx, left_rx) = mpsc::channel(10);
   let (right_tx, right_rx) = mpsc::channel(10);

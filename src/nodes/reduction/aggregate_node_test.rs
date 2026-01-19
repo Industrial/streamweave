@@ -1,7 +1,11 @@
 //! Tests for AggregateNode
+#![allow(unused_imports, dead_code, unused, clippy::type_complexity)]
 
-use crate::node::InputStreams;
-use crate::nodes::reduction::AggregatorFunction;
+use crate::node::{InputStreams, Node, OutputStreams};
+use crate::nodes::reduction::{
+  AggregateConfig, AggregateConfigWrapper, AggregateNode, AggregatorFunction, aggregate_config,
+};
+
 use async_trait::async_trait;
 use futures::StreamExt;
 use std::any::Any;
@@ -75,12 +79,13 @@ async fn test_aggregate_sum() {
   let node = AggregateNode::new("test_aggregate".to_string());
 
   let (_config_tx, in_tx, aggregator_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = match node.execute(inputs).await {
+    Ok(outputs) => outputs,
+    Err(e) => panic!("Node execution failed: {}", e),
+  };
 
   // Create a sum aggregator
-  let aggregator: crate::nodes::AggregateConfig =
-    crate::nodes::aggregate_config(SumAggregator { sum: 0 });
+  let aggregator: AggregateConfig = aggregate_config(SumAggregator { sum: 0 });
 
   // Send aggregator
   let _ = aggregator_tx
@@ -132,12 +137,13 @@ async fn test_aggregate_empty_stream() {
   let node = AggregateNode::new("test_aggregate".to_string());
 
   let (_config_tx, in_tx, aggregator_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = match node.execute(inputs).await {
+    Ok(outputs) => outputs,
+    Err(e) => panic!("Node execution failed: {}", e),
+  };
 
   // Create a sum aggregator
-  let aggregator: crate::nodes::AggregateConfig =
-    crate::nodes::aggregate_config(SumAggregator { sum: 0 });
+  let aggregator: AggregateConfig = aggregate_config(SumAggregator { sum: 0 });
 
   // Send aggregator
   let _ = aggregator_tx
@@ -211,12 +217,13 @@ async fn test_aggregate_max() {
   let node = AggregateNode::new("test_aggregate".to_string());
 
   let (_config_tx, in_tx, aggregator_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = match node.execute(inputs).await {
+    Ok(outputs) => outputs,
+    Err(e) => panic!("Node execution failed: {}", e),
+  };
 
   // Create a max aggregator
-  let aggregator: crate::nodes::AggregateConfig =
-    crate::nodes::aggregate_config(MaxAggregator { max: None });
+  let aggregator: AggregateConfig = aggregate_config(MaxAggregator { max: None });
 
   // Send aggregator
   let _ = aggregator_tx
@@ -299,12 +306,13 @@ async fn test_aggregate_error_handling() {
   let node = AggregateNode::new("test_aggregate".to_string());
 
   let (_config_tx, in_tx, aggregator_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = match node.execute(inputs).await {
+    Ok(outputs) => outputs,
+    Err(e) => panic!("Node execution failed: {}", e),
+  };
 
   // Create an error aggregator
-  let aggregator: crate::nodes::AggregateConfig =
-    crate::nodes::aggregate_config(ErrorAggregator { count: 0 });
+  let aggregator: AggregateConfig = aggregate_config(ErrorAggregator { count: 0 });
 
   // Send aggregator
   let _ = aggregator_tx
@@ -335,7 +343,7 @@ async fn test_aggregate_error_handling() {
     tokio::select! {
       result = stream.next() => {
         if let Some(item) = result {
-          if let Ok(arc_str) = item.clone().downcast::<String>() {
+          if let Ok(arc_str) = item.downcast::<String>() {
             errors.push((*arc_str).clone());
           }
         } else {

@@ -16,12 +16,16 @@
 //! - **TimestampNode**: Add timestamp to items (`configuration`, `in` → `out`, `error`)
 
 pub mod delay_node;
+#[cfg(test)]
 pub mod delay_node_test;
 pub mod timeout_node;
+#[cfg(test)]
 pub mod timeout_node_test;
 pub mod timer_node;
+#[cfg(test)]
 pub mod timer_node_test;
 pub mod timestamp_node;
+#[cfg(test)]
 pub mod timestamp_node_test;
 
 pub use delay_node::DelayNode;

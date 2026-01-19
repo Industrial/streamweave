@@ -1,6 +1,7 @@
 //! Tests for WhileLoopNode
 
 use crate::node::{InputStreams, Node};
+use crate::nodes::common::TestSender;
 use crate::nodes::while_loop_node::{WhileLoopConfig, WhileLoopNode, while_loop_config};
 use std::any::Any;
 use std::collections::HashMap;
@@ -9,12 +10,7 @@ use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (TestSender, TestSender, TestSender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (data_tx, data_rx) = mpsc::channel(10);
   let (break_tx, break_rx) = mpsc::channel(10);
@@ -202,10 +198,7 @@ async fn test_while_loop_node_break_signal() {
     .send(Arc::new(10i32) as Arc<dyn Any + Send + Sync>)
     .await;
 
-  // Wait a bit for loop to start
-  tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-  // Send break signal
+  // Send break signal immediately
   let _ = break_tx
     .send(Arc::new(()) as Arc<dyn Any + Send + Sync>)
     .await;

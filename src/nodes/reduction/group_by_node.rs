@@ -1,4 +1,5 @@
 //! # Group By Node
+#![allow(clippy::type_complexity)]
 //!
 //! A reduction node that groups items from a stream by a key extracted using a configurable key function.
 //!
@@ -16,7 +17,7 @@
 //! It processes all items in the stream and outputs a single HashMap where:
 //! - Keys are the extracted key strings
 //! - Values are arrays of items that share the same key
-//! When the stream ends, it outputs the final grouped HashMap.
+//!   When the stream ends, it outputs the final grouped HashMap.
 
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::nodes::common::BaseNode;
@@ -53,7 +54,7 @@ pub type GroupByConfig = Arc<dyn GroupByKeyFunction>;
 
 /// Wrapper type to send GroupByConfig through streams.
 ///
-/// Since we can't directly downcast Arc<dyn Any> to Arc<dyn GroupByKeyFunction>,
+/// Since we can't directly downcast `Arc<dyn Any>` to `Arc<dyn GroupByKeyFunction>`,
 /// we wrap GroupByConfig in this struct so we can recover it from the stream.
 pub struct GroupByConfigWrapper(pub GroupByConfig);
 
@@ -240,7 +241,7 @@ impl Node for GroupByNode {
             }
             InputPort::KeyFunction => {
               // Set key function
-              if let Ok(wrapper) = item.clone().downcast::<GroupByConfigWrapper>() {
+              if let Ok(wrapper) = Arc::downcast::<GroupByConfigWrapper>(item.clone()) {
                 key_function = Some(wrapper.0.clone());
               } else {
                 let error_msg = format!(

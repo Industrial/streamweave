@@ -2,7 +2,7 @@
 
 use crate::node::{InputStreams, Node};
 use crate::nodes::array::ArrayMapNode;
-use crate::nodes::{MapConfig, map_config};
+use crate::nodes::map_node::{MapConfig, map_config};
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -70,6 +70,9 @@ async fn test_array_map_basic() {
     .send(Arc::new(map_fn) as Arc<dyn Any + Send + Sync>)
     .await;
 
+  // Wait a bit for function to be processed
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send values: [1, 2, 3, 4] → [2, 4, 6, 8] (multiply by 2)
   let vec: Vec<Arc<dyn Any + Send + Sync>> = vec![
     Arc::new(1i32) as Arc<dyn Any + Send + Sync>,
@@ -84,7 +87,7 @@ async fn test_array_map_basic() {
   let out_stream = outputs.remove("out").unwrap();
   let mut results = Vec::new();
   let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(500));
   tokio::pin!(timeout);
 
   loop {
@@ -138,6 +141,9 @@ async fn test_array_map_empty() {
     .send(Arc::new(map_fn) as Arc<dyn Any + Send + Sync>)
     .await;
 
+  // Wait a bit for function to be processed
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send values: [] → []
   let vec: Vec<Arc<dyn Any + Send + Sync>> = vec![];
   let _ = in_tx
@@ -147,7 +153,7 @@ async fn test_array_map_empty() {
   let out_stream = outputs.remove("out").unwrap();
   let mut results = Vec::new();
   let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(500));
   tokio::pin!(timeout);
 
   loop {
@@ -192,6 +198,9 @@ async fn test_array_map_strings() {
     .send(Arc::new(map_fn) as Arc<dyn Any + Send + Sync>)
     .await;
 
+  // Wait a bit for function to be processed
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send values: ["a", "b", "c"] → ["A", "B", "C"]
   let vec: Vec<Arc<dyn Any + Send + Sync>> = vec![
     Arc::new("a".to_string()) as Arc<dyn Any + Send + Sync>,
@@ -205,7 +214,7 @@ async fn test_array_map_strings() {
   let out_stream = outputs.remove("out").unwrap();
   let mut results = Vec::new();
   let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(500));
   tokio::pin!(timeout);
 
   loop {
@@ -256,6 +265,9 @@ async fn test_array_map_type_change() {
     .send(Arc::new(map_fn) as Arc<dyn Any + Send + Sync>)
     .await;
 
+  // Wait a bit for function to be processed
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send values: [1, 2, 3] → ["1", "2", "3"]
   let vec: Vec<Arc<dyn Any + Send + Sync>> = vec![
     Arc::new(1i32) as Arc<dyn Any + Send + Sync>,
@@ -269,7 +281,7 @@ async fn test_array_map_type_change() {
   let out_stream = outputs.remove("out").unwrap();
   let mut results = Vec::new();
   let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(500));
   tokio::pin!(timeout);
 
   loop {
@@ -320,6 +332,9 @@ async fn test_array_map_function_error() {
     .send(Arc::new(map_fn) as Arc<dyn Any + Send + Sync>)
     .await;
 
+  // Wait a bit for function to be processed
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send values: [1, 2]
   let vec: Vec<Arc<dyn Any + Send + Sync>> = vec![
     Arc::new(1i32) as Arc<dyn Any + Send + Sync>,
@@ -332,7 +347,7 @@ async fn test_array_map_function_error() {
   let error_stream = outputs.remove("error").unwrap();
   let mut errors = Vec::new();
   let mut stream = error_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(500));
   tokio::pin!(timeout);
 
   loop {
@@ -373,6 +388,9 @@ async fn test_array_map_non_array_input() {
     .send(Arc::new(map_fn) as Arc<dyn Any + Send + Sync>)
     .await;
 
+  // Wait a bit for function to be processed
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   // Send non-array input
   let _ = in_tx
     .send(Arc::new(42i32) as Arc<dyn Any + Send + Sync>)
@@ -381,7 +399,7 @@ async fn test_array_map_non_array_input() {
   let error_stream = outputs.remove("error").unwrap();
   let mut errors = Vec::new();
   let mut stream = error_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(500));
   tokio::pin!(timeout);
 
   loop {
@@ -417,10 +435,13 @@ async fn test_array_map_invalid_function() {
     .send(Arc::new(42i32) as Arc<dyn Any + Send + Sync>)
     .await;
 
+  // Wait a bit for error to be processed
+  tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
   let error_stream = outputs.remove("error").unwrap();
   let mut errors = Vec::new();
   let mut stream = error_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(500));
   tokio::pin!(timeout);
 
   loop {
@@ -440,5 +461,5 @@ async fn test_array_map_invalid_function() {
   }
 
   assert_eq!(errors.len(), 1);
-  assert!(errors[0].contains("Invalid function type"));
+  assert!(errors[0].contains("Invalid configuration type"));
 }

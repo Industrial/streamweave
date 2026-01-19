@@ -1,6 +1,7 @@
 //! Tests for CeilNode
 
 use crate::node::{InputStreams, Node};
+use crate::nodes::common::TestSender;
 use crate::nodes::math::CeilNode;
 use std::any::Any;
 use std::collections::HashMap;
@@ -9,11 +10,7 @@ use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels for single input nodes
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (TestSender, TestSender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (in_tx, in_rx) = mpsc::channel(10);
 

@@ -65,6 +65,7 @@ struct RetryFunctionWrapper<F> {
 }
 
 #[async_trait]
+
 impl<F, Fut> RetryFunction for RetryFunctionWrapper<F>
 where
   F: Fn(Arc<dyn Any + Send + Sync>) -> Fut + Send + Sync,
@@ -137,6 +138,7 @@ fn get_usize(value: &Arc<dyn Any + Send + Sync>) -> Result<usize, String> {
 
 /// Enum to tag messages from different input ports for merging.
 #[derive(Debug, PartialEq)]
+#[allow(dead_code)]
 enum InputPort {
   Config,
   In,
@@ -290,19 +292,19 @@ impl Node for RetryNode {
                 Ok(count) => {
                   max_retries = Some(count);
                   // Process any pending items now that we have max_retries
-                  if let Some(current_max_retries) = max_retries {
-                    if let Some(ref retry_fn) = current_config {
-                      for pending_item in pending_items.drain(..) {
-                        process_item_with_retry(
-                          &pending_item,
-                          &Some(retry_fn.clone()),
-                          current_max_retries,
-                          base_delay_ms,
-                          &out_tx_clone,
-                          &error_tx_clone,
-                        )
-                        .await;
-                      }
+                  if let Some(current_max_retries) = max_retries
+                    && let Some(ref retry_fn) = current_config
+                  {
+                    for pending_item in pending_items.drain(..) {
+                      process_item_with_retry(
+                        &pending_item,
+                        &Some(retry_fn.clone()),
+                        current_max_retries,
+                        base_delay_ms,
+                        &out_tx_clone,
+                        &error_tx_clone,
+                      )
+                      .await;
                     }
                   }
                 }
@@ -366,6 +368,7 @@ async fn process_item_with_retry(
   error_tx: &tokio::sync::mpsc::Sender<Arc<dyn Any + Send + Sync>>,
 ) {
   if let Some(retry_fn) = config {
+    #[allow(unused_assignments)]
     let mut last_error: Option<Arc<dyn Any + Send + Sync>> = None;
 
     // Try initial attempt

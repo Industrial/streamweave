@@ -1,11 +1,12 @@
 //! Tests for TakeNode
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
+use crate::nodes::stream::TakeNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
@@ -51,8 +52,8 @@ async fn test_take_first_n_items() {
   let node = TakeNode::new("test_take".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send count: 3
   let _ = count_tx
@@ -108,8 +109,8 @@ async fn test_take_zero_items() {
   let node = TakeNode::new("test_take".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send count: 0
   let _ = count_tx
@@ -151,8 +152,8 @@ async fn test_take_more_than_available() {
   let node = TakeNode::new("test_take".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send count: 10
   let _ = count_tx
@@ -194,8 +195,8 @@ async fn test_take_i32_count() {
   let node = TakeNode::new("test_take".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send count: 2 as i32
   let _ = count_tx
@@ -239,8 +240,8 @@ async fn test_take_invalid_count_negative() {
   let node = TakeNode::new("test_take".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send invalid count: negative value
   let _ = count_tx
@@ -260,7 +261,7 @@ async fn test_take_invalid_count_negative() {
     tokio::select! {
       result = stream.next() => {
         if let Some(item) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
+          if let Ok(arc_str) = Arc::downcast::<String>(item.clone()) {
             errors.push((*arc_str).clone());
           }
         } else {
@@ -280,8 +281,8 @@ async fn test_take_invalid_count_type() {
   let node = TakeNode::new("test_take".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send invalid count: string instead of numeric
   let _ = count_tx
@@ -301,7 +302,7 @@ async fn test_take_invalid_count_type() {
     tokio::select! {
       result = stream.next() => {
         if let Some(item) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
+          if let Ok(arc_str) = Arc::downcast::<String>(item.clone()) {
             errors.push((*arc_str).clone());
           }
         } else {

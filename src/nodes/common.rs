@@ -7,6 +7,7 @@ use futures::stream;
 use std::any::Any;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::sync::mpsc;
 use tokio_stream::StreamExt;
 
 /// Message type for distinguishing configuration from data in merged streams.
@@ -15,6 +16,12 @@ pub enum MessageType {
   Config,
   Data,
 }
+
+/// Type alias for commonly used sender type in tests to reduce type complexity.
+pub type TestSender = mpsc::Sender<Arc<dyn Any + Send + Sync>>;
+
+/// Type alias for vector of senders used in sync node tests to reduce type complexity.
+pub type TestSenderVec = Vec<mpsc::Sender<Arc<dyn Any + Send + Sync>>>;
 
 /// Unified configuration trait for all node types.
 ///

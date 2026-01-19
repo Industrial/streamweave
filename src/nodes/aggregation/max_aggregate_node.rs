@@ -118,7 +118,7 @@ impl Node for MaxAggregateNode {
               // Compare current item with current maximum
               match compare_greater_than(&item, current_max) {
                 Ok(greater_than_arc) => {
-                  if let Ok(greater_than) = greater_than_arc.downcast::<bool>()
+                  if let Ok(greater_than) = greater_than_arc.clone().downcast::<bool>()
                     && *greater_than
                   {
                     // Current item is greater than current maximum, update maximum

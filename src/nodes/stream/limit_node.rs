@@ -70,7 +70,6 @@ fn get_usize(value: &Arc<dyn Any + Send + Sync>) -> Result<usize, String> {
 /// Enum to tag messages from different input ports for merging.
 #[derive(Debug, PartialEq)]
 enum InputPort {
-  Config,
   In,
   MaxSize,
 }
@@ -79,8 +78,8 @@ enum InputPort {
 ///
 /// The max_size is received on the "max_size" port and can be:
 /// - A numeric value (usize, i32, i64, u32, u64)
-/// The node forwards items from the "in" port to the "out" port up to the max_size limit,
-/// then stops forwarding (but continues consuming the stream).
+///   The node forwards items from the "in" port to the "out" port up to the max_size limit,
+///   then stops forwarding (but continues consuming the stream).
 pub struct LimitNode {
   pub(crate) base: BaseNode,
 }
@@ -186,17 +185,24 @@ impl Node for LimitNode {
         let mut merged_stream = merged_stream;
         let mut max_size: Option<usize> = None;
         let mut items_forwarded: usize = 0;
+        let mut buffered_items: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
 
         while let Some((port, item)) = merged_stream.next().await {
           match port {
-            InputPort::Config => {
-              // Configuration port is unused for now
-            }
             InputPort::MaxSize => {
               // Update max_size
               match get_usize(&item) {
                 Ok(size) => {
                   max_size = Some(size);
+                  // Process any buffered items now that we have configuration
+                  while let Some(buffered_item) = buffered_items.pop() {
+                    if items_forwarded < size {
+                      let _ = out_tx_clone.send(buffered_item).await;
+                      items_forwarded += 1;
+                    } else {
+                      break;
+                    }
+                  }
                 }
                 Err(e) => {
                   let error_arc = Arc::new(e) as Arc<dyn Any + Send + Sync>;
@@ -213,8 +219,8 @@ impl Node for LimitNode {
                 }
                 // If we've reached the limit, we continue consuming but don't forward
               } else {
-                // No max_size set yet - wait for max_size before processing items
-                // Items arriving before max_size will be dropped
+                // Buffer items until max_size is set
+                buffered_items.push(item);
               }
             }
           }

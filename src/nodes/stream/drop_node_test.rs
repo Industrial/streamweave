@@ -1,11 +1,12 @@
 //! Tests for DropNode
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
+use crate::nodes::stream::DropNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
@@ -44,8 +45,8 @@ async fn test_drop_all_items() {
   let node = DropNode::new("test_drop".to_string());
 
   let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send 5 items
   for i in 1..=5 {
@@ -81,8 +82,8 @@ async fn test_drop_empty_stream() {
   let node = DropNode::new("test_drop".to_string());
 
   let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Don't send any items, just close the stream
   drop(in_tx);
@@ -115,8 +116,8 @@ async fn test_drop_many_items() {
   let node = DropNode::new("test_drop".to_string());
 
   let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send many items
   for i in 1..=100 {
@@ -152,8 +153,8 @@ async fn test_drop_different_types() {
   let node = DropNode::new("test_drop".to_string());
 
   let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send items of different types
   let _ = in_tx

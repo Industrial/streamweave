@@ -1,6 +1,7 @@
 //! Tests for SwitchNode
+#![allow(clippy::type_complexity, unused)]
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node, OutputStreams};
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -75,7 +76,9 @@ async fn test_switch_basic_routing() {
       Err("Expected i32".to_string())
     }
   });
-  let _ = config_tx.send(config as Arc<dyn Any + Send + Sync>).await;
+  let _ = config_tx
+    .send(Arc::new(config) as Arc<dyn Any + Send + Sync>)
+    .await;
 
   // Send data and value
   let _ = data_tx
@@ -142,7 +145,9 @@ async fn test_switch_default_routing() {
       Err("Expected i32".to_string())
     }
   });
-  let _ = config_tx.send(config as Arc<dyn Any + Send + Sync>).await;
+  let _ = config_tx
+    .send(Arc::new(config) as Arc<dyn Any + Send + Sync>)
+    .await;
 
   // Send data and value (value 2 doesn't match any case)
   let _ = data_tx
@@ -211,7 +216,9 @@ async fn test_switch_multiple_cases() {
       Err("Expected i32".to_string())
     }
   });
-  let _ = config_tx.send(config as Arc<dyn Any + Send + Sync>).await;
+  let _ = config_tx
+    .send(Arc::new(config) as Arc<dyn Any + Send + Sync>)
+    .await;
 
   // Send multiple items with different values
   let _ = data_tx

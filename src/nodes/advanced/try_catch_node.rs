@@ -22,7 +22,7 @@
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::nodes::common::BaseNode;
 use async_trait::async_trait;
-use futures::stream;
+
 use std::any::Any;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -36,7 +36,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The function receives an `Arc<dyn Any + Send + Sync>` and returns
 /// either `Ok(result)` on success or `Err(error)` on failure.
 #[async_trait]
-pub trait TryFunction: Send + Sync {
+pub trait TryFunction: Any + Send + Sync {
   /// Applies the try function to the input value.
   ///
   /// # Arguments
@@ -58,7 +58,7 @@ pub trait TryFunction: Send + Sync {
 /// The function receives an error `Arc<dyn Any + Send + Sync>` and returns
 /// either `Ok(result)` if the error was handled successfully, or `Err(error)` if handling failed.
 #[async_trait]
-pub trait CatchFunction: Send + Sync {
+pub trait CatchFunction: Any + Send + Sync {
   /// Applies the catch function to handle an error.
   ///
   /// # Arguments
@@ -88,7 +88,7 @@ struct TryFunctionWrapper<F> {
 #[async_trait]
 impl<F, Fut> TryFunction for TryFunctionWrapper<F>
 where
-  F: Fn(Arc<dyn Any + Send + Sync>) -> Fut + Send + Sync,
+  F: Fn(Arc<dyn Any + Send + Sync>) -> Fut + Send + Sync + 'static,
   Fut: std::future::Future<Output = Result<Arc<dyn Any + Send + Sync>, Arc<dyn Any + Send + Sync>>>
     + Send,
 {
@@ -108,7 +108,7 @@ struct CatchFunctionWrapper<F> {
 #[async_trait]
 impl<F, Fut> CatchFunction for CatchFunctionWrapper<F>
 where
-  F: Fn(Arc<dyn Any + Send + Sync>) -> Fut + Send + Sync,
+  F: Fn(Arc<dyn Any + Send + Sync>) -> Fut + Send + Sync + 'static,
   Fut: std::future::Future<Output = Result<Arc<dyn Any + Send + Sync>, Arc<dyn Any + Send + Sync>>>
     + Send,
 {
@@ -167,7 +167,6 @@ where
 /// Enum to tag messages from different input ports for merging.
 #[derive(Debug, PartialEq)]
 enum InputPort {
-  Config,
   In,
   Try,
   Catch,
@@ -288,90 +287,95 @@ impl Node for TryCatchNode {
       let try_stream = try_stream.map(|item| (InputPort::Try, item));
       let catch_stream = catch_stream.map(|item| (InputPort::Catch, item));
 
-      // Merge streams
-      let merged_stream = stream::select_all(vec![
-        Box::pin(in_stream)
-          as Pin<Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>>,
-        Box::pin(try_stream)
-          as Pin<Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>>,
-        Box::pin(catch_stream)
-          as Pin<Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>>,
-      ]);
-
       // Create output channels
       let (out_tx, out_rx) = tokio::sync::mpsc::channel(10);
       let (error_tx, error_rx) = tokio::sync::mpsc::channel(10);
 
-      // Process the merged stream
+      // Process streams with priority for configuration updates
       let out_tx_clone = out_tx.clone();
       let error_tx_clone = error_tx.clone();
 
       tokio::spawn(async move {
-        let mut merged_stream = merged_stream;
+        let mut in_stream = in_stream;
+        let mut try_stream = try_stream;
+        let mut catch_stream = catch_stream;
         let mut current_try_config: Option<TryConfig> = None;
         let mut current_catch_config: Option<CatchConfig> = None;
 
-        while let Some((port, item)) = merged_stream.next().await {
-          match port {
-            InputPort::Config => {
-              // Configuration port is unused for now
-            }
-            InputPort::Try => {
-              // Update try configuration
-              if let Ok(arc_arc_fn) = item.clone().downcast::<Arc<Arc<dyn TryFunction>>>() {
-                current_try_config = Some(Arc::clone(&**arc_arc_fn));
-                let mut config = try_config_state.lock().await;
-                *config = Some(Arc::clone(&**arc_arc_fn));
-              } else if let Ok(arc_function) = item.clone().downcast::<Arc<dyn TryFunction>>() {
-                current_try_config = Some(Arc::clone(&*arc_function));
-                let mut config = try_config_state.lock().await;
-                *config = Some(Arc::clone(&*arc_function));
+        loop {
+          tokio::select! {
+            // Prioritize configuration updates
+            try_result = try_stream.next() => {
+              if let Some((_, item)) = try_result {
+                // Update try configuration
+                if let Ok(arc_arc_fn) = item.clone().downcast::<Arc<Arc<dyn TryFunction>>>() {
+                  current_try_config = Some(Arc::clone(&**arc_arc_fn));
+                  let mut config = try_config_state.lock().await;
+                  *config = Some(Arc::clone(&**arc_arc_fn));
+                } else if let Ok(arc_function) = item.clone().downcast::<Arc<dyn TryFunction>>() {
+                  current_try_config = Some(Arc::clone(&*arc_function));
+                  let mut config = try_config_state.lock().await;
+                  *config = Some(Arc::clone(&*arc_function));
+                }
               }
             }
-            InputPort::Catch => {
-              // Update catch configuration
-              if let Ok(arc_arc_fn) = item.clone().downcast::<Arc<Arc<dyn CatchFunction>>>() {
-                current_catch_config = Some(Arc::clone(&**arc_arc_fn));
-                let mut config = catch_config_state.lock().await;
-                *config = Some(Arc::clone(&**arc_arc_fn));
-              } else if let Ok(arc_function) = item.clone().downcast::<Arc<dyn CatchFunction>>() {
-                current_catch_config = Some(Arc::clone(&*arc_function));
-                let mut config = catch_config_state.lock().await;
-                *config = Some(Arc::clone(&*arc_function));
+            catch_result = catch_stream.next() => {
+              if let Some((_, item)) = catch_result {
+                // Update catch configuration
+                if let Ok(arc_arc_fn) = item.clone().downcast::<Arc<Arc<dyn CatchFunction>>>() {
+                  current_catch_config = Some(Arc::clone(&**arc_arc_fn));
+                  let mut config = catch_config_state.lock().await;
+                  *config = Some(Arc::clone(&**arc_arc_fn));
+                } else if let Ok(arc_function) = item.clone().downcast::<Arc<dyn CatchFunction>>() {
+                  current_catch_config = Some(Arc::clone(&*arc_function));
+                  let mut config = catch_config_state.lock().await;
+                  *config = Some(Arc::clone(&*arc_function));
+                }
               }
             }
-            InputPort::In => {
-              // Process data item
-              if let Some(try_fn) = &current_try_config {
-                match try_fn.apply(item.clone()).await {
-                  Ok(result) => {
-                    // Try succeeded - send result to out
-                    let _ = out_tx_clone.send(result).await;
-                  }
-                  Err(error) => {
-                    // Try failed - apply catch function
-                    if let Some(catch_fn) = &current_catch_config {
-                      match catch_fn.apply(error).await {
-                        Ok(result) => {
-                          // Catch succeeded - send result to out
-                          let _ = out_tx_clone.send(result).await;
-                        }
-                        Err(catch_error) => {
-                          // Catch also failed - send to error port
-                          let _ = error_tx_clone.send(catch_error).await;
+            // Process data items after configurations
+            in_result = in_stream.next() => {
+              match in_result {
+                Some((_, item)) => {
+                  // Process data item
+                  if let Some(try_fn) = &current_try_config {
+                    match try_fn.apply(item.clone()).await {
+                      Ok(result) => {
+                        // Try succeeded - send result to out
+                        let _ = out_tx_clone.send(result).await;
+                      }
+                      Err(error) => {
+                        // Try failed - apply catch function
+                        if let Some(catch_fn) = &current_catch_config {
+                          match catch_fn.apply(error).await {
+                            Ok(result) => {
+                              // Catch succeeded - send result to out
+                              let _ = out_tx_clone.send(result).await;
+                            }
+                            Err(catch_error) => {
+                              // Catch also failed - send to error port
+                              let _ = error_tx_clone.send(catch_error).await;
+                            }
+                          }
+                        } else {
+                          // No catch function - send error to error port
+                          let _ = error_tx_clone.send(error).await;
                         }
                       }
-                    } else {
-                      // No catch function - send error to error port
-                      let _ = error_tx_clone.send(error).await;
                     }
+                  } else {
+                    // No try function - send item to error port
+                    let error_msg =
+                      Arc::new("No try function configured".to_string()) as Arc<dyn Any + Send + Sync>;
+                    let _ = error_tx_clone.send(error_msg).await;
                   }
                 }
-              } else {
-                // No try function - send item to error port
-                let error_msg =
-                  Arc::new("No try function configured".to_string()) as Arc<dyn Any + Send + Sync>;
-                let _ = error_tx_clone.send(error_msg).await;
+                None => {
+                  // Input stream ended, check if other streams are also ended
+                  if try_stream.next().await.is_none() && catch_stream.next().await.is_none() {
+                    break; // All streams ended
+                  }
+                }
               }
             }
           }

@@ -1,6 +1,7 @@
 //! Tests for AbsNode
 
 use crate::node::{InputStreams, Node};
+use crate::nodes::common::TestSender;
 use crate::nodes::math::AbsNode;
 use std::any::Any;
 use std::collections::HashMap;
@@ -9,11 +10,7 @@ use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (TestSender, TestSender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (in_tx, in_rx) = mpsc::channel(10);
 
@@ -330,7 +327,7 @@ async fn test_abs_node_f32_positive() {
 
   // Send value: abs(3.14) = 3.14
   let _ = in_tx
-    .send(Arc::new(3.14f32) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(std::f32::consts::PI) as Arc<dyn Any + Send + Sync>)
     .await;
 
   // Collect results
@@ -357,7 +354,7 @@ async fn test_abs_node_f32_positive() {
   }
 
   assert_eq!(results.len(), 1);
-  assert_eq!(results[0], 3.14f32);
+  assert_eq!(results[0], std::f32::consts::PI);
 }
 
 #[tokio::test]
@@ -370,7 +367,7 @@ async fn test_abs_node_f32_negative() {
 
   // Send value: abs(-3.14) = 3.14
   let _ = in_tx
-    .send(Arc::new(-3.14f32) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(-std::f32::consts::PI) as Arc<dyn Any + Send + Sync>)
     .await;
 
   // Collect results
@@ -397,7 +394,7 @@ async fn test_abs_node_f32_negative() {
   }
 
   assert_eq!(results.len(), 1);
-  assert_eq!(results[0], 3.14f32);
+  assert_eq!(results[0], std::f32::consts::PI);
 }
 
 #[tokio::test]
@@ -410,7 +407,7 @@ async fn test_abs_node_f64_positive() {
 
   // Send value: abs(3.14159) = 3.14159
   let _ = in_tx
-    .send(Arc::new(3.14159f64) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(std::f64::consts::PI) as Arc<dyn Any + Send + Sync>)
     .await;
 
   // Collect results
@@ -437,7 +434,7 @@ async fn test_abs_node_f64_positive() {
   }
 
   assert_eq!(results.len(), 1);
-  assert_eq!(results[0], 3.14159f64);
+  assert_eq!(results[0], std::f64::consts::PI);
 }
 
 #[tokio::test]
@@ -450,7 +447,7 @@ async fn test_abs_node_f64_negative() {
 
   // Send value: abs(-3.14159) = 3.14159
   let _ = in_tx
-    .send(Arc::new(-3.14159f64) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(-std::f64::consts::PI) as Arc<dyn Any + Send + Sync>)
     .await;
 
   // Collect results
@@ -477,7 +474,7 @@ async fn test_abs_node_f64_negative() {
   }
 
   assert_eq!(results.len(), 1);
-  assert_eq!(results[0], 3.14159f64);
+  assert_eq!(results[0], std::f64::consts::PI);
 }
 
 #[tokio::test]

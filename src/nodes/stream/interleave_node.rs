@@ -24,6 +24,10 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+/// Type alias for a pinned stream of items
+type PinnedItemStream =
+  Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>;
+
 /// A node that interleaves items from multiple streams.
 ///
 /// The node receives items from multiple input streams (in_0, in_1, ..., in_n)
@@ -110,10 +114,10 @@ impl Node for InterleaveNode {
 
       // Collect all input streams and their indices
       for (port_name, stream) in inputs {
-        if port_name.starts_with("in_") {
-          if let Ok(index) = port_name[3..].parse::<usize>() {
-            input_streams.push((index, stream));
-          }
+        if port_name.starts_with("in_")
+          && let Ok(index) = port_name[3..].parse::<usize>()
+        {
+          input_streams.push((index, stream));
         }
       }
 
@@ -134,14 +138,9 @@ impl Node for InterleaveNode {
 
       tokio::spawn(async move {
         // Convert streams to a vector of pinned streams
-        let mut streams: Vec<
-          Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
-        > = input_streams
+        let mut streams: Vec<PinnedItemStream> = input_streams
           .into_iter()
-          .map(|(_, stream)| {
-            Box::pin(stream)
-              as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>
-          })
+          .map(|(_, stream)| Box::pin(stream) as PinnedItemStream)
           .collect();
 
         // Track which streams are still active

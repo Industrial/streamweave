@@ -1,11 +1,12 @@
 //! Tests for SkipNode
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
+use crate::nodes::stream::SkipNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
@@ -51,8 +52,8 @@ async fn test_skip_first_n_items() {
   let node = SkipNode::new("test_skip".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send count: 2
   let _ = count_tx
@@ -108,8 +109,8 @@ async fn test_skip_zero_items() {
   let node = SkipNode::new("test_skip".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send count: 0
   let _ = count_tx
@@ -151,8 +152,8 @@ async fn test_skip_all_items() {
   let node = SkipNode::new("test_skip".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send count: 5
   let _ = count_tx
@@ -194,8 +195,8 @@ async fn test_skip_i32_count() {
   let node = SkipNode::new("test_skip".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send count: 1 as i32
   let _ = count_tx
@@ -242,8 +243,8 @@ async fn test_skip_invalid_count_negative() {
   let node = SkipNode::new("test_skip".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send invalid count: negative value
   let _ = count_tx
@@ -263,7 +264,7 @@ async fn test_skip_invalid_count_negative() {
     tokio::select! {
       result = stream.next() => {
         if let Some(item) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
+          if let Ok(arc_str) = Arc::downcast::<String>(item.clone()) {
             errors.push((*arc_str).clone());
           }
         } else {
@@ -283,8 +284,8 @@ async fn test_skip_invalid_count_type() {
   let node = SkipNode::new("test_skip".to_string());
 
   let (_config_tx, in_tx, count_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send invalid count: string instead of numeric
   let _ = count_tx
@@ -304,7 +305,7 @@ async fn test_skip_invalid_count_type() {
     tokio::select! {
       result = stream.next() => {
         if let Some(item) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
+          if let Ok(arc_str) = Arc::downcast::<String>(item.clone()) {
             errors.push((*arc_str).clone());
           }
         } else {

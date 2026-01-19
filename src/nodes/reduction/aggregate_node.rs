@@ -1,4 +1,5 @@
 //! # Aggregate Node
+#![allow(clippy::type_complexity)]
 //!
 //! A general-purpose aggregation node that applies a configurable aggregator function to process items from a stream.
 //!
@@ -61,7 +62,7 @@ pub type AggregateConfig = Arc<tokio::sync::Mutex<Box<dyn AggregatorFunction>>>;
 
 /// Wrapper type to send AggregateConfig through streams.
 ///
-/// Since we can't directly downcast Arc<dyn Any> to AggregateConfig,
+/// Since we can't directly downcast `Arc<dyn Any>` to `AggregateConfig`,
 /// we wrap it in this struct so we can recover it from the stream.
 pub struct AggregateConfigWrapper(pub AggregateConfig);
 
@@ -227,7 +228,7 @@ impl Node for AggregateNode {
             }
             InputPort::Aggregator => {
               // Set aggregator
-              if let Ok(wrapper) = item.clone().downcast::<AggregateConfigWrapper>() {
+              if let Ok(wrapper) = Arc::downcast::<AggregateConfigWrapper>(item.clone()) {
                 aggregator = Some(wrapper.0.clone());
               } else {
                 let error_msg = format!(

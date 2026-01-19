@@ -1,11 +1,12 @@
 //! Tests for LimitNode
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
+use crate::nodes::stream::LimitNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
@@ -51,8 +52,8 @@ async fn test_limit_stream_size() {
   let node = LimitNode::new("test_limit".to_string());
 
   let (_config_tx, in_tx, max_size_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send max_size: 3
   let _ = max_size_tx
@@ -108,8 +109,8 @@ async fn test_limit_zero_size() {
   let node = LimitNode::new("test_limit".to_string());
 
   let (_config_tx, in_tx, max_size_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send max_size: 0
   let _ = max_size_tx
@@ -151,8 +152,8 @@ async fn test_limit_more_than_available() {
   let node = LimitNode::new("test_limit".to_string());
 
   let (_config_tx, in_tx, max_size_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send max_size: 10
   let _ = max_size_tx
@@ -194,8 +195,8 @@ async fn test_limit_i32_max_size() {
   let node = LimitNode::new("test_limit".to_string());
 
   let (_config_tx, in_tx, max_size_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send max_size: 2 as i32
   let _ = max_size_tx
@@ -239,8 +240,8 @@ async fn test_limit_invalid_max_size_negative() {
   let node = LimitNode::new("test_limit".to_string());
 
   let (_config_tx, in_tx, max_size_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send invalid max_size: negative value
   let _ = max_size_tx
@@ -260,7 +261,7 @@ async fn test_limit_invalid_max_size_negative() {
     tokio::select! {
       result = stream.next() => {
         if let Some(item) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
+          if let Ok(arc_str) = Arc::downcast::<String>(item.clone()) {
             errors.push((*arc_str).clone());
           }
         } else {
@@ -280,8 +281,8 @@ async fn test_limit_invalid_max_size_type() {
   let node = LimitNode::new("test_limit".to_string());
 
   let (_config_tx, in_tx, max_size_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send invalid max_size: string instead of numeric
   let _ = max_size_tx
@@ -301,7 +302,7 @@ async fn test_limit_invalid_max_size_type() {
     tokio::select! {
       result = stream.next() => {
         if let Some(item) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
+          if let Ok(arc_str) = Arc::downcast::<String>(item.clone()) {
             errors.push((*arc_str).clone());
           }
         } else {

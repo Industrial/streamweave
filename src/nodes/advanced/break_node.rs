@@ -1,4 +1,5 @@
 //! # Break Node
+#![allow(clippy::type_complexity)]
 //!
 //! A transform node that breaks from processing when a signal is received.
 //!
@@ -23,7 +24,7 @@
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::nodes::common::BaseNode;
 use async_trait::async_trait;
-use futures::stream;
+
 use std::any::Any;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -34,7 +35,6 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// Enum to tag messages from different input ports for merging.
 #[derive(Debug, PartialEq)]
 enum InputPort {
-  Config,
   In,
   Signal,
 }
@@ -128,39 +128,46 @@ impl Node for BreakNode {
       let in_stream = in_stream.map(|item| (InputPort::In, item));
       let signal_stream = signal_stream.map(|item| (InputPort::Signal, item));
 
-      // Merge streams
-      let merged_stream: Pin<
-        Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>,
-      > = Box::pin(stream::select_all(vec![
-        Box::pin(in_stream)
-          as Pin<Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>>,
-        Box::pin(signal_stream)
-          as Pin<Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>>,
-      ]));
-
-      // Process the merged stream
+      // Process streams with fair scheduling
       let out_tx_clone = out_tx.clone();
       let _error_tx_clone = error_tx.clone(); // Unused for now, but kept for consistency
 
       tokio::spawn(async move {
-        let mut merged_stream = merged_stream;
+        let mut in_stream = in_stream;
+        let mut signal_stream = signal_stream;
         let mut broken = false;
 
-        while let Some((port, item)) = merged_stream.next().await {
-          match port {
-            InputPort::Signal => {
-              // Break signal received - stop forwarding items
-              broken = true;
-            }
-            InputPort::In => {
-              // Forward item only if not broken
-              if !broken {
-                let _ = out_tx_clone.send(item).await;
+        loop {
+          tokio::select! {
+            // Check for signals
+            signal_result = signal_stream.next() => {
+              match signal_result {
+                Some(_signal_item) => {
+                  // Break signal received - stop forwarding items
+                  broken = true;
+                }
+                None => {
+                  // Signal stream ended, continue processing inputs
+                }
               }
-              // If broken, we continue consuming but don't forward
             }
-            InputPort::Config => {
-              // Configuration port is unused for now
+            // Check for input items
+            in_result = in_stream.next() => {
+              match in_result {
+                Some((_, item)) => {
+                  // Forward item only if not broken
+                  if !broken {
+                    let _ = out_tx_clone.send(item).await;
+                  }
+                  // If broken, we continue consuming but don't forward
+                }
+                None => {
+                  // Input stream ended, check if signal stream is also ended
+                  if signal_stream.next().await.is_none() {
+                    break; // Both streams ended
+                  }
+                }
+              }
             }
           }
         }

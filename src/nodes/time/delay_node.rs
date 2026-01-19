@@ -16,6 +16,7 @@
 //! The duration can be provided as:
 //! - Numeric values (i32, i64, u32, u64, f64) interpreted as milliseconds
 //! - Duration type directly
+//!
 //! Each item is delayed independently, preserving order.
 
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
@@ -94,6 +95,7 @@ enum InputPort {
 /// The duration is received on the "duration" port and can be:
 /// - A Duration type directly
 /// - A numeric value (i32, i64, u32, u64, f64) interpreted as milliseconds
+///
 /// Each item from the "in" port is delayed by the duration before being forwarded to "out".
 pub struct DelayNode {
   pub(crate) base: BaseNode,
@@ -170,6 +172,7 @@ impl Node for DelayNode {
       let duration_stream = duration_stream.map(|item| (InputPort::Duration, item));
 
       // Merge streams
+      #[allow(clippy::type_complexity)]
       let merged_stream: Pin<
         Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>,
       > = Box::pin(stream::select_all(vec![

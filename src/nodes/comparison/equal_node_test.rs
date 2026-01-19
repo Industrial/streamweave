@@ -143,10 +143,10 @@ async fn test_equal_node_f64_equal() {
 
   // Send values: 3.14 == 3.14 = true (epsilon comparison)
   let _ = in1_tx
-    .send(Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(std::f64::consts::PI) as Arc<dyn Any + Send + Sync>)
     .await;
   let _ = in2_tx
-    .send(Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(std::f64::consts::PI) as Arc<dyn Any + Send + Sync>)
     .await;
 
   // Collect results

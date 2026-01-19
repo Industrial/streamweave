@@ -118,7 +118,7 @@ impl Node for MinAggregateNode {
               // Compare current item with current minimum
               match compare_less_than(&item, current_min) {
                 Ok(less_than_arc) => {
-                  if let Ok(less_than) = less_than_arc.downcast::<bool>()
+                  if let Ok(less_than) = less_than_arc.clone().downcast::<bool>()
                     && *less_than
                   {
                     // Current item is less than current minimum, update minimum

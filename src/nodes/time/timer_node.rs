@@ -15,7 +15,7 @@
 //! (as i64 milliseconds since epoch) or a simple counter. The interval can be provided as:
 //! - Numeric values (i32, i64, u32, u64, f64) interpreted as milliseconds
 //! - Duration type directly
-//! The node continues generating events until the interval stream ends or an error occurs.
+//!   The node continues generating events until the interval stream ends or an error occurs.
 
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::nodes::common::BaseNode;
@@ -84,7 +84,8 @@ fn extract_duration(value: &Arc<dyn Any + Send + Sync>) -> Result<Duration, Stri
 /// The interval is received on the "interval" port and can be:
 /// - A Duration type directly
 /// - A numeric value (i32, i64, u32, u64, f64) interpreted as milliseconds
-/// The node generates events (timestamps as i64 milliseconds since epoch) at the specified interval.
+///   The node generates events (timestamps as i64 milliseconds since epoch)
+///   at the specified interval.
 pub struct TimerNode {
   pub(crate) base: BaseNode,
 }
@@ -160,29 +161,27 @@ impl Node for TimerNode {
 
       tokio::spawn(async move {
         let mut interval_stream = interval_stream;
+        #[allow(unused_assignments)]
         let mut interval_duration: Option<Duration> = None;
 
         // First, get the interval duration
-        while interval_duration.is_none() {
-          if let Some(item) = interval_stream.next().await {
-            match extract_duration(&item) {
-              Ok(dur) => {
-                interval_duration = Some(dur);
-                break;
-              }
-              Err(e) => {
-                let error_arc = Arc::new(e) as Arc<dyn Any + Send + Sync>;
-                let _ = error_tx_clone.send(error_arc).await;
-                return;
-              }
+        if let Some(item) = interval_stream.next().await {
+          match extract_duration(&item) {
+            Ok(dur) => {
+              interval_duration = Some(dur);
             }
-          } else {
-            // Interval stream ended without providing interval
-            let error_arc =
-              Arc::new("Interval duration not provided".to_string()) as Arc<dyn Any + Send + Sync>;
-            let _ = error_tx_clone.send(error_arc).await;
-            return;
+            Err(e) => {
+              let error_arc = Arc::new(e) as Arc<dyn Any + Send + Sync>;
+              let _ = error_tx_clone.send(error_arc).await;
+              return;
+            }
           }
+        } else {
+          // Interval stream ended without providing interval
+          let error_arc =
+            Arc::new("Interval duration not provided".to_string()) as Arc<dyn Any + Send + Sync>;
+          let _ = error_tx_clone.send(error_arc).await;
+          return;
         }
 
         // Generate periodic events
@@ -190,6 +189,7 @@ impl Node for TimerNode {
           let mut interval = tokio::time::interval(interval_dur);
           interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
+          #[allow(clippy::never_loop)]
           loop {
             interval.tick().await;
 

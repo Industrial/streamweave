@@ -1,4 +1,5 @@
 //! # Repeat Node
+#![allow(clippy::type_complexity)]
 //!
 //! A transform node that repeats each item from the input stream N times.
 //!
@@ -70,7 +71,6 @@ fn get_usize(value: &Arc<dyn Any + Send + Sync>) -> Result<usize, String> {
 /// Enum to tag messages from different input ports for merging.
 #[derive(Debug, PartialEq)]
 enum InputPort {
-  Config,
   In,
   Count,
 }
@@ -78,7 +78,8 @@ enum InputPort {
 /// A node that repeats each item from the input stream N times.
 ///
 /// The count is received on the "count" port and can be:
-/// - A numeric value (usize, i32, i64, u32, u64)
+/// - A numeric value (usize, i32, i64, u32, u32, u64)
+///
 /// The node repeats each item from the "in" port N times on the "out" port.
 pub struct RepeatNode {
   pub(crate) base: BaseNode,
@@ -185,9 +186,6 @@ impl Node for RepeatNode {
 
         while let Some((port, item)) = merged_stream.next().await {
           match port {
-            InputPort::Config => {
-              // Configuration port is unused for now
-            }
             InputPort::Count => {
               // Update count
               match get_usize(&item) {

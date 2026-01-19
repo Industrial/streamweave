@@ -26,26 +26,37 @@
 //! - **ToArrayNode**: Convert value to array (`configuration`, `in` → `out`, `error`)
 
 pub mod is_array_node;
+#[cfg(test)]
 pub mod is_array_node_test;
 pub mod is_boolean_node;
+#[cfg(test)]
 pub mod is_boolean_node_test;
 pub mod is_null_node;
+#[cfg(test)]
 pub mod is_null_node_test;
 pub mod is_number_node;
+#[cfg(test)]
 pub mod is_number_node_test;
 pub mod is_object_node;
+#[cfg(test)]
 pub mod is_object_node_test;
 pub mod is_string_node;
+#[cfg(test)]
 pub mod is_string_node_test;
 pub mod to_array_node;
+#[cfg(test)]
 pub mod to_array_node_test;
 pub mod to_boolean_node;
+#[cfg(test)]
 pub mod to_boolean_node_test;
 pub mod to_number_node;
+#[cfg(test)]
 pub mod to_number_node_test;
 pub mod to_string_node;
+#[cfg(test)]
 pub mod to_string_node_test;
 pub mod type_of_node;
+#[cfg(test)]
 pub mod type_of_node_test;
 
 pub use is_array_node::IsArrayNode;

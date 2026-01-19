@@ -1,19 +1,18 @@
 //! Tests for DelayNode
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node, OutputStreams};
+use crate::nodes::common::TestSender;
+use crate::nodes::time::*;
+use futures::StreamExt;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (TestSender, TestSender, TestSender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (in_tx, in_rx) = mpsc::channel(10);
   let (duration_tx, duration_rx) = mpsc::channel(10);
@@ -58,6 +57,9 @@ async fn test_delay_i32_milliseconds() {
   let _ = duration_tx
     .send(Arc::new(50i32) as Arc<dyn Any + Send + Sync>)
     .await;
+
+  // Small delay to ensure duration is processed before input
+  tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
 
   // Send item
   let start = Instant::now();
@@ -112,6 +114,9 @@ async fn test_delay_duration_type() {
     .send(Arc::new(Duration::from_millis(30)) as Arc<dyn Any + Send + Sync>)
     .await;
 
+  // Small delay to ensure duration is processed before input
+  tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
+
   // Send item
   let start = Instant::now();
   let _ = in_tx
@@ -164,6 +169,9 @@ async fn test_delay_multiple_items() {
   let _ = duration_tx
     .send(Arc::new(20i32) as Arc<dyn Any + Send + Sync>)
     .await;
+
+  // Small delay to ensure duration is processed before input
+  tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
 
   // Send multiple items
   let start = Instant::now();

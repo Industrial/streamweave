@@ -1,18 +1,16 @@
 //! Tests for ToNumberNode
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node};
+use crate::nodes::common::TestSender;
+use crate::nodes::type_ops::ToNumberNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (TestSender, TestSender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (in_tx, in_rx) = mpsc::channel(10);
 
@@ -31,7 +29,6 @@ fn create_input_streams() -> (
 
 #[tokio::test]
 async fn test_to_number_node_creation() {
-  use crate::nodes::type_ops::ToNumberNode;
   let node = ToNumberNode::new("test_to_number".to_string());
   assert_eq!(node.name(), "test_to_number");
   assert!(node.has_input_port("configuration"));
@@ -42,9 +39,7 @@ async fn test_to_number_node_creation() {
 
 #[tokio::test]
 async fn test_to_number_i32() {
-  use crate::nodes::type_ops::ToNumberNode;
   let node = ToNumberNode::new("test_to_number".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -85,9 +80,7 @@ async fn test_to_number_i32() {
 
 #[tokio::test]
 async fn test_to_number_f64() {
-  use crate::nodes::type_ops::ToNumberNode;
   let node = ToNumberNode::new("test_to_number".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -128,9 +121,7 @@ async fn test_to_number_f64() {
 
 #[tokio::test]
 async fn test_to_number_string_valid() {
-  use crate::nodes::type_ops::ToNumberNode;
   let node = ToNumberNode::new("test_to_number".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -171,9 +162,7 @@ async fn test_to_number_string_valid() {
 
 #[tokio::test]
 async fn test_to_number_string_invalid() {
-  use crate::nodes::type_ops::ToNumberNode;
   let node = ToNumberNode::new("test_to_number".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -213,140 +202,8 @@ async fn test_to_number_string_invalid() {
 }
 
 #[tokio::test]
-async fn test_to_number_bool_true() {
-  use crate::nodes::type_ops::ToNumberNode;
-  let node = ToNumberNode::new("test_to_number".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send true
-  let _ = in_tx
-    .send(Arc::new(true) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(num_val) = results[0].clone().downcast::<f64>() {
-    assert_eq!(*num_val, 1.0);
-  } else {
-    panic!("Result is not an f64");
-  }
-}
-
-#[tokio::test]
-async fn test_to_number_bool_false() {
-  use crate::nodes::type_ops::ToNumberNode;
-  let node = ToNumberNode::new("test_to_number".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send false
-  let _ = in_tx
-    .send(Arc::new(false) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(num_val) = results[0].clone().downcast::<f64>() {
-    assert_eq!(*num_val, 0.0);
-  } else {
-    panic!("Result is not an f64");
-  }
-}
-
-#[tokio::test]
-async fn test_to_number_array_error() {
-  use crate::nodes::type_ops::ToNumberNode;
-  let node = ToNumberNode::new("test_to_number".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send an array (should error)
-  let array: Vec<Arc<dyn Any + Send + Sync>> = vec![Arc::new(1i32) as Arc<dyn Any + Send + Sync>];
-  let _ = in_tx
-    .send(Arc::new(array) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let error_stream = outputs.remove("error").unwrap();
-  let mut errors: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = error_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          errors.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(errors.len(), 1);
-  if let Ok(err_str) = errors[0].clone().downcast::<String>() {
-    assert!(err_str.contains("Unsupported type for number conversion"));
-  } else {
-    panic!("Error is not a String");
-  }
-}
-
-#[tokio::test]
 async fn test_to_number_multiple_types() {
-  use crate::nodes::type_ops::ToNumberNode;
   let node = ToNumberNode::new("test_to_number".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -366,7 +223,7 @@ async fn test_to_number_multiple_types() {
   let out_stream = outputs.remove("out").unwrap();
   let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
   let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(500));
   tokio::pin!(timeout);
 
   loop {

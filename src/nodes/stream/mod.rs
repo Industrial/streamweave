@@ -23,20 +23,28 @@
 //! - **MergeNode**: Merge multiple streams (`configuration`, `in1`, `in2`, ... → `out`, `error`)
 
 pub mod drop_node;
+#[cfg(test)]
 pub mod drop_node_test;
 pub mod interleave_node;
+#[cfg(test)]
 pub mod interleave_node_test;
 pub mod limit_node;
+#[cfg(test)]
 pub mod limit_node_test;
 pub mod merge_node;
+#[cfg(test)]
 pub mod merge_node_test;
 pub mod sample_node;
+#[cfg(test)]
 pub mod sample_node_test;
 pub mod skip_node;
+#[cfg(test)]
 pub mod skip_node_test;
 pub mod take_node;
+#[cfg(test)]
 pub mod take_node_test;
 pub mod zip_node;
+#[cfg(test)]
 pub mod zip_node_test;
 
 pub use drop_node::DropNode;

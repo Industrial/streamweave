@@ -1,4 +1,5 @@
 //! # Reduce Node
+#![allow(clippy::type_complexity)]
 //!
 //! A reduction node that applies a configurable reduction function to accumulate values from a stream.
 //!
@@ -58,7 +59,7 @@ pub type ReduceConfig = Arc<dyn ReduceFunction>;
 
 /// Wrapper type to send ReduceConfig through streams.
 ///
-/// Since we can't directly downcast Arc<dyn Any> to Arc<dyn ReduceFunction>,
+/// Since we can't directly downcast `Arc<dyn Any>` to `Arc<dyn ReduceFunction>`,
 /// we wrap ReduceConfig in this struct so we can recover it from the stream.
 pub struct ReduceConfigWrapper(pub ReduceConfig);
 
@@ -257,7 +258,7 @@ impl Node for ReduceNode {
             }
             InputPort::Function => {
               // Set reduction function
-              if let Ok(wrapper) = item.clone().downcast::<ReduceConfigWrapper>() {
+              if let Ok(wrapper) = Arc::downcast::<ReduceConfigWrapper>(item.clone()) {
                 reduction_function = Some(wrapper.0.clone());
               } else {
                 let error_msg = format!(

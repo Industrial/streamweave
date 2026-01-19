@@ -1,6 +1,9 @@
 //! Tests for GroupByNode
+#![allow(unused_imports, dead_code, unused, clippy::type_complexity)]
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node, OutputStreams};
+use crate::nodes::reduction::{GroupByConfig, GroupByConfigWrapper, GroupByNode, group_by_config};
+use futures::StreamExt;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -51,8 +54,10 @@ async fn test_group_by_simple() {
   let node = GroupByNode::new("test_group_by".to_string());
 
   let (_config_tx, in_tx, key_function_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = match node.execute(inputs).await {
+    Ok(outputs) => outputs,
+    Err(e) => panic!("Node execution failed: {}", e),
+  };
 
   // Create a key function that extracts the value itself as a string
   let key_function: GroupByConfig =
@@ -175,8 +180,10 @@ async fn test_group_by_empty_stream() {
   let node = GroupByNode::new("test_group_by".to_string());
 
   let (_config_tx, in_tx, key_function_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = match node.execute(inputs).await {
+    Ok(outputs) => outputs,
+    Err(e) => panic!("Node execution failed: {}", e),
+  };
 
   // Create a key function
   let key_function: GroupByConfig =
@@ -233,8 +240,10 @@ async fn test_group_by_key_function_error() {
   let node = GroupByNode::new("test_group_by".to_string());
 
   let (_config_tx, in_tx, key_function_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = match node.execute(inputs).await {
+    Ok(outputs) => outputs,
+    Err(e) => panic!("Node execution failed: {}", e),
+  };
 
   // Create a key function that returns an error for negative values
   let key_function: GroupByConfig =
@@ -279,7 +288,7 @@ async fn test_group_by_key_function_error() {
     tokio::select! {
       result = stream.next() => {
         if let Some(item) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
+          if let Ok(arc_str) = Arc::downcast::<String>(item.clone()) {
             errors.push((*arc_str).clone());
           }
         } else {
@@ -332,13 +341,15 @@ async fn test_group_by_string_values() {
   let node = GroupByNode::new("test_group_by".to_string());
 
   let (_config_tx, in_tx, key_function_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let mut outputs: OutputStreams = match node.execute(inputs).await {
+    Ok(outputs) => outputs,
+    Err(e) => panic!("Node execution failed: {}", e),
+  };
 
   // Create a key function that extracts first character
   let key_function: GroupByConfig =
     group_by_config(|value: Arc<dyn Any + Send + Sync>| async move {
-      if let Ok(arc_str) = value.clone().downcast::<String>() {
+      if let Ok(arc_str) = Arc::downcast::<String>(value.clone()) {
         if let Some(first_char) = arc_str.chars().next() {
           Ok::<String, String>(first_char.to_string())
         } else {

@@ -40,8 +40,9 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// Returns the result as `Arc<dyn Any + Send + Sync>` (Vec<Arc<dyn Any + Send + Sync>>) or an error string.
 fn to_array(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send + Sync>, String> {
   // Try array (already an array)
-  if let Ok(arc_vec) = v.clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
-    return Ok(Arc::new(arc_vec) as Arc<dyn Any + Send + Sync>);
+  if let Ok(_arc_vec) = v.clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
+    // For arrays, return as-is (already an array)
+    return Ok(v.clone());
   }
 
   // Try string (convert to array of characters)

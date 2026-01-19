@@ -1,11 +1,12 @@
 //! Tests for SampleNode
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
+use crate::nodes::stream::SampleNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
 fn create_input_streams() -> (
@@ -51,8 +52,8 @@ async fn test_sample_rate_one() {
   let node = SampleNode::new("test_sample".to_string());
 
   let (_config_tx, in_tx, rate_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send rate: 1 (forward every item)
   let _ = rate_tx
@@ -104,8 +105,8 @@ async fn test_sample_rate_two() {
   let node = SampleNode::new("test_sample".to_string());
 
   let (_config_tx, in_tx, rate_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send rate: 2 (forward every 2nd item)
   let _ = rate_tx
@@ -161,8 +162,8 @@ async fn test_sample_rate_three() {
   let node = SampleNode::new("test_sample".to_string());
 
   let (_config_tx, in_tx, rate_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send rate: 3 (forward every 3rd item)
   let _ = rate_tx
@@ -218,8 +219,8 @@ async fn test_sample_i32_rate() {
   let node = SampleNode::new("test_sample".to_string());
 
   let (_config_tx, in_tx, rate_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send rate: 2 as i32
   let _ = rate_tx
@@ -263,8 +264,8 @@ async fn test_sample_invalid_rate_zero() {
   let node = SampleNode::new("test_sample".to_string());
 
   let (_config_tx, in_tx, rate_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send invalid rate: zero
   let _ = rate_tx
@@ -284,7 +285,7 @@ async fn test_sample_invalid_rate_zero() {
     tokio::select! {
       result = stream.next() => {
         if let Some(item) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
+          if let Ok(arc_str) = Arc::downcast::<String>(item.clone()) {
             errors.push((*arc_str).clone());
           }
         } else {
@@ -304,8 +305,8 @@ async fn test_sample_invalid_rate_negative() {
   let node = SampleNode::new("test_sample".to_string());
 
   let (_config_tx, in_tx, rate_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send invalid rate: negative value
   let _ = rate_tx
@@ -325,7 +326,7 @@ async fn test_sample_invalid_rate_negative() {
     tokio::select! {
       result = stream.next() => {
         if let Some(item) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
+          if let Ok(arc_str) = Arc::downcast::<String>(item.clone()) {
             errors.push((*arc_str).clone());
           }
         } else {
@@ -345,8 +346,8 @@ async fn test_sample_invalid_rate_type() {
   let node = SampleNode::new("test_sample".to_string());
 
   let (_config_tx, in_tx, rate_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send invalid rate: string instead of numeric
   let _ = rate_tx
@@ -365,8 +366,8 @@ async fn test_sample_invalid_rate_type() {
   loop {
     tokio::select! {
       result = stream.next() => {
-        if let Some(item: Arc<dyn Any + Send + Sync>) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
+        if let Some(item) = result {
+          if let Ok(arc_str) = Arc::downcast::<String>(item.clone()) {
             errors.push((*arc_str).clone());
           }
         } else {

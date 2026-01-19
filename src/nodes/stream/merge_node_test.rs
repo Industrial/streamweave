@@ -1,11 +1,12 @@
 //! Tests for MergeNode
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
+use crate::nodes::stream::MergeNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels for MergeNode
 fn create_merge_input_streams(
@@ -51,9 +52,9 @@ async fn test_merge_node_creation() {
 async fn test_merge_two_streams() {
   let node = MergeNode::new("test_merge".to_string(), 2);
 
-  let (_config_tx, mut input_txs, inputs) = create_merge_input_streams(2);
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let (_config_tx, input_txs, inputs) = create_merge_input_streams(2);
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send items to first stream
   let _ = input_txs[0]
@@ -114,9 +115,9 @@ async fn test_merge_two_streams() {
 async fn test_merge_three_streams() {
   let node = MergeNode::new("test_merge".to_string(), 3);
 
-  let (_config_tx, mut input_txs, inputs) = create_merge_input_streams(3);
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let (_config_tx, input_txs, inputs) = create_merge_input_streams(3);
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send items to each stream
   for i in 0..3 {
@@ -168,9 +169,9 @@ async fn test_merge_three_streams() {
 async fn test_merge_different_lengths() {
   let node = MergeNode::new("test_merge".to_string(), 2);
 
-  let (_config_tx, mut input_txs, inputs) = create_merge_input_streams(2);
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let (_config_tx, input_txs, inputs) = create_merge_input_streams(2);
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send 3 items to first stream
   for i in 1..=3 {
@@ -228,8 +229,8 @@ async fn test_merge_empty_streams() {
   let node = MergeNode::new("test_merge".to_string(), 2);
 
   let (_config_tx, input_txs, inputs) = create_merge_input_streams(2);
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Don't send any items, just close streams
   for tx in input_txs {
@@ -264,8 +265,8 @@ async fn test_merge_one_empty_stream() {
   let node = MergeNode::new("test_merge".to_string(), 2);
 
   let (_config_tx, input_txs, inputs) = create_merge_input_streams(2);
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send items to first stream
   let _ = input_txs[0]
@@ -312,9 +313,9 @@ async fn test_merge_one_empty_stream() {
 async fn test_merge_different_types() {
   let node = MergeNode::new("test_merge".to_string(), 2);
 
-  let (_config_tx, mut input_txs, inputs) = create_merge_input_streams(2);
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
+  let (_config_tx, input_txs, inputs) = create_merge_input_streams(2);
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
 
   // Send different types to each stream
   let _ = input_txs[0]

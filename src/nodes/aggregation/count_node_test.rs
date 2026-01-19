@@ -182,7 +182,7 @@ async fn test_count_mixed_types() {
     .send(Arc::new("hello".to_string()) as Arc<dyn Any + Send + Sync>)
     .await;
   let _ = in_tx
-    .send(Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(std::f64::consts::PI) as Arc<dyn Any + Send + Sync>)
     .await;
   drop(in_tx); // Close the input stream
 

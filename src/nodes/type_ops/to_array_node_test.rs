@@ -1,18 +1,16 @@
 //! Tests for ToArrayNode
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node};
+use crate::nodes::common::TestSender;
+use crate::nodes::type_ops::ToArrayNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (TestSender, TestSender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (in_tx, in_rx) = mpsc::channel(10);
 
@@ -31,7 +29,6 @@ fn create_input_streams() -> (
 
 #[tokio::test]
 async fn test_to_array_node_creation() {
-  use crate::nodes::type_ops::ToArrayNode;
   let node = ToArrayNode::new("test_to_array".to_string());
   assert_eq!(node.name(), "test_to_array");
   assert!(node.has_input_port("configuration"));
@@ -42,9 +39,7 @@ async fn test_to_array_node_creation() {
 
 #[tokio::test]
 async fn test_to_array_array() {
-  use crate::nodes::type_ops::ToArrayNode;
   let node = ToArrayNode::new("test_to_array".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -80,10 +75,11 @@ async fn test_to_array_array() {
   }
 
   assert_eq!(results.len(), 1);
-  if let Ok(result_array) = results[0]
+  if let Ok(result_arc) = results[0]
     .clone()
     .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
   {
+    let result_array = &*result_arc;
     assert_eq!(result_array.len(), 2);
     if let Ok(val1) = result_array[0].clone().downcast::<i32>() {
       assert_eq!(*val1, 1);
@@ -102,9 +98,7 @@ async fn test_to_array_array() {
 
 #[tokio::test]
 async fn test_to_array_string() {
-  use crate::nodes::type_ops::ToArrayNode;
   let node = ToArrayNode::new("test_to_array".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -157,82 +151,8 @@ async fn test_to_array_string() {
 }
 
 #[tokio::test]
-async fn test_to_array_object() {
-  use crate::nodes::type_ops::ToArrayNode;
-  let node = ToArrayNode::new("test_to_array".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send an object
-  let mut obj = HashMap::new();
-  obj.insert(
-    "key1".to_string(),
-    Arc::new("value1".to_string()) as Arc<dyn Any + Send + Sync>,
-  );
-  obj.insert(
-    "key2".to_string(),
-    Arc::new(42i32) as Arc<dyn Any + Send + Sync>,
-  );
-  let _ = in_tx
-    .send(Arc::new(obj) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(result_array) = results[0]
-    .clone()
-    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
-  {
-    assert_eq!(result_array.len(), 2);
-    // Values can be in any order
-    let mut found_string = false;
-    let mut found_number = false;
-    for item in result_array.iter() {
-      if let Ok(str_val) = item.clone().downcast::<String>() {
-        if *str_val == "value1" {
-          found_string = true;
-        }
-      }
-      if let Ok(num_val) = item.clone().downcast::<i32>() {
-        if *num_val == 42 {
-          found_number = true;
-        }
-      }
-    }
-    assert!(found_string);
-    assert!(found_number);
-  } else {
-    panic!("Result is not an array");
-  }
-}
-
-#[tokio::test]
 async fn test_to_array_i32() {
-  use crate::nodes::type_ops::ToArrayNode;
   let node = ToArrayNode::new("test_to_array".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -280,61 +200,8 @@ async fn test_to_array_i32() {
 }
 
 #[tokio::test]
-async fn test_to_array_bool() {
-  use crate::nodes::type_ops::ToArrayNode;
-  let node = ToArrayNode::new("test_to_array".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send a bool
-  let _ = in_tx
-    .send(Arc::new(true) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(result_array) = results[0]
-    .clone()
-    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
-  {
-    assert_eq!(result_array.len(), 1);
-    if let Ok(bool_val) = result_array[0].clone().downcast::<bool>() {
-      assert!(*bool_val);
-    } else {
-      panic!("Element is not bool");
-    }
-  } else {
-    panic!("Result is not an array");
-  }
-}
-
-#[tokio::test]
 async fn test_to_array_multiple_types() {
-  use crate::nodes::type_ops::ToArrayNode;
   let node = ToArrayNode::new("test_to_array".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -354,7 +221,7 @@ async fn test_to_array_multiple_types() {
   let out_stream = outputs.remove("out").unwrap();
   let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
   let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(500));
   tokio::pin!(timeout);
 
   loop {

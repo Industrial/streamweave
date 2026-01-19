@@ -18,9 +18,9 @@
 //! - Error handling: Non-array inputs or predicate errors result in errors sent to the error port
 
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
-use crate::nodes::FilterConfig;
 use crate::nodes::array::common::array_filter;
 use crate::nodes::common::{BaseNode, MessageType};
+use crate::nodes::filter_node::FilterConfig;
 use async_trait::async_trait;
 use futures::stream;
 use std::any::Any;
@@ -98,7 +98,8 @@ impl Node for ArrayFilterNode {
   ) -> Pin<
     Box<dyn std::future::Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>,
   > {
-    let predicate_state = Arc::clone(&self.current_predicate);
+    let predicate_state: Arc<tokio::sync::Mutex<Option<Arc<FilterConfig>>>> =
+      Arc::clone(&self.current_predicate);
 
     Box::pin(async move {
       // Extract input streams (configuration port is present but unused for now)

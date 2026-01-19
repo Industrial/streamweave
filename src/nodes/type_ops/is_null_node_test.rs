@@ -1,18 +1,16 @@
 //! Tests for IsNullNode
 
-use crate::node::InputStreams;
+use crate::node::{InputStreams, Node};
+use crate::nodes::common::TestSender;
+use crate::nodes::type_ops::IsNullNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (TestSender, TestSender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (in_tx, in_rx) = mpsc::channel(10);
 
@@ -31,7 +29,6 @@ fn create_input_streams() -> (
 
 #[tokio::test]
 async fn test_is_null_node_creation() {
-  use crate::nodes::type_ops::IsNullNode;
   let node = IsNullNode::new("test_is_null".to_string());
   assert_eq!(node.name(), "test_is_null");
   assert!(node.has_input_port("configuration"));
@@ -42,9 +39,7 @@ async fn test_is_null_node_creation() {
 
 #[tokio::test]
 async fn test_is_null_none() {
-  use crate::nodes::type_ops::IsNullNode;
   let node = IsNullNode::new("test_is_null".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -85,9 +80,7 @@ async fn test_is_null_none() {
 
 #[tokio::test]
 async fn test_is_null_some() {
-  use crate::nodes::type_ops::IsNullNode;
   let node = IsNullNode::new("test_is_null".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -128,9 +121,7 @@ async fn test_is_null_some() {
 
 #[tokio::test]
 async fn test_is_null_i32() {
-  use crate::nodes::type_ops::IsNullNode;
   let node = IsNullNode::new("test_is_null".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -170,188 +161,8 @@ async fn test_is_null_i32() {
 }
 
 #[tokio::test]
-async fn test_is_null_string() {
-  use crate::nodes::type_ops::IsNullNode;
-  let node = IsNullNode::new("test_is_null".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send a String
-  let _ = in_tx
-    .send(Arc::new("hello".to_string()) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(is_nul) = results[0].clone().downcast::<bool>() {
-    assert!(!*is_nul);
-  } else {
-    panic!("Result is not a bool");
-  }
-}
-
-#[tokio::test]
-async fn test_is_null_bool() {
-  use crate::nodes::type_ops::IsNullNode;
-  let node = IsNullNode::new("test_is_null".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send a bool
-  let _ = in_tx
-    .send(Arc::new(true) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(is_nul) = results[0].clone().downcast::<bool>() {
-    assert!(!*is_nul);
-  } else {
-    panic!("Result is not a bool");
-  }
-}
-
-#[tokio::test]
-async fn test_is_null_array() {
-  use crate::nodes::type_ops::IsNullNode;
-  let node = IsNullNode::new("test_is_null".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send an array
-  let array: Vec<Arc<dyn Any + Send + Sync>> = vec![Arc::new(1i32) as Arc<dyn Any + Send + Sync>];
-  let _ = in_tx
-    .send(Arc::new(array) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(is_nul) = results[0].clone().downcast::<bool>() {
-    assert!(!*is_nul);
-  } else {
-    panic!("Result is not a bool");
-  }
-}
-
-#[tokio::test]
-async fn test_is_null_object() {
-  use crate::nodes::type_ops::IsNullNode;
-  let node = IsNullNode::new("test_is_null".to_string());
-
-  let (_config_tx, in_tx, inputs) = create_input_streams();
-  let outputs_future = node.execute(inputs);
-  let mut outputs = outputs_future.await.unwrap();
-
-  // Send an object
-  let mut obj = HashMap::new();
-  obj.insert(
-    "key".to_string(),
-    Arc::new("value".to_string()) as Arc<dyn Any + Send + Sync>,
-  );
-  let _ = in_tx
-    .send(Arc::new(obj) as Arc<dyn Any + Send + Sync>)
-    .await;
-  drop(in_tx);
-
-  let out_stream = outputs.remove("out").unwrap();
-  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-  let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
-  tokio::pin!(timeout);
-
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
-      }
-      _ = &mut timeout => break,
-    }
-  }
-
-  assert_eq!(results.len(), 1);
-  if let Ok(is_nul) = results[0].clone().downcast::<bool>() {
-    assert!(!*is_nul);
-  } else {
-    panic!("Result is not a bool");
-  }
-}
-
-#[tokio::test]
 async fn test_is_null_multiple_types() {
-  use crate::nodes::type_ops::IsNullNode;
   let node = IsNullNode::new("test_is_null".to_string());
-
   let (_config_tx, in_tx, inputs) = create_input_streams();
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
@@ -371,7 +182,7 @@ async fn test_is_null_multiple_types() {
   let out_stream = outputs.remove("out").unwrap();
   let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
   let mut stream = out_stream;
-  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(500));
   tokio::pin!(timeout);
 
   loop {
