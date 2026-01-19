@@ -465,22 +465,28 @@ impl HttpServerResponse {
   /// struct Data { value: u32 }
   ///
   /// let data = Data { value: 42 };
-  /// let response = HttpServerResponse::json(StatusCode::OK, &data).unwrap();
+  /// let response = HttpServerResponse::json(StatusCode::OK, &data).await.unwrap();
   /// ```
-  pub fn json<T: Serialize>(status: StatusCode, value: &T) -> Result<Self, serde_json::Error> {
-    Self::json_with_request_id(status, value, String::new())
+  pub async fn json<T: Serialize>(
+    status: StatusCode,
+    value: &T,
+  ) -> Result<Self, serde_json::Error> {
+    Self::json_with_request_id(status, value, String::new()).await
   }
 
   /// Create a JSON response from a serializable value with a request ID.
-  pub fn json_with_request_id<T: Serialize>(
+  pub async fn json_with_request_id<T: Serialize>(
     status: StatusCode,
     value: &T,
     request_id: String,
   ) -> Result<Self, serde_json::Error> {
-    let body = serde_json::to_vec(value)?;
+    // Use pooled buffer for zero-copy JSON serialization
+    let mut buffer = crate::memory_pool::global::get_buffer(1024).await;
+    serde_json::to_writer(&mut buffer, value)?;
+    let body = buffer.freeze();
     Ok(Self::with_request_id(
       status,
-      body,
+      body.to_vec(), // Convert to Vec<u8> for compatibility
       ContentType::Json,
       request_id,
     ))

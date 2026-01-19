@@ -35,18 +35,15 @@
 //! ## Example
 //!
 //! ```rust,no_run
-//! use streamweave::{Graph, GraphBuilder};
-//! use streamweave::producers::VecProducer;
-//! use streamweave::transformers::MapTransformer;
-//! use streamweave::consumers::VecConsumer;
+//! use streamweave::GraphBuilder;
+//! use streamweave::nodes::arithmetic::AddNode;
 //!
-//! let graph = GraphBuilder::new()
-//!     .add_producer("source", VecProducer::new(vec![1, 2, 3]))
-//!     .add_transformer("transform", MapTransformer::new(|x: i32| x * 2))
-//!     .add_consumer("sink", VecConsumer::new())
-//!     .connect("source", "transform")
-//!     .connect("transform", "sink")
-//!     .build();
+//! let graph = GraphBuilder::new("calculator")
+//!     .add_node("adder", Box::new(AddNode::new("adder".to_string())))
+//!     .expose_input_port("adder", "in1", "input")
+//!     .expose_output_port("adder", "out", "output")
+//!     .build()
+//!     .unwrap();
 //! ```
 
 #[cfg(test)]
