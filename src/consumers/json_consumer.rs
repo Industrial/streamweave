@@ -192,21 +192,16 @@ where
           }
         }
 
-        let json = match if self.json_config.pretty {
-          serde_json::to_string_pretty(&item)
+        // Use pooled buffer for zero-copy JSON serialization
+        let mut buffer = crate::memory_pool::global::get_buffer(1024).await;
+        let json_bytes = if self.json_config.pretty {
+          serde_json::to_writer_pretty(&mut buffer, &item)?;
+          buffer.freeze()
         } else {
-          serde_json::to_string(&item)
-        } {
-          Ok(json) => json,
-          Err(e) => {
-            let error = crate::error::StreamError::Serialization(e.to_string());
-            match self.handle_error(&error) {
-              crate::error::ErrorAction::Stop => return,
-              crate::error::ErrorAction::Skip => continue,
-              crate::error::ErrorAction::Retry => continue, // Skip this item for retry
-            }
-          }
+          serde_json::to_writer(&mut buffer, &item)?;
+          buffer.freeze()
         };
+        let json = String::from_utf8_lossy(&json_bytes);
 
         if let Err(e) = file.write_all(json.as_bytes()).await {
           let error = crate::error::StreamError::Io(e);
@@ -231,21 +226,16 @@ where
     } else {
       // Write individual objects (one per line, but valid JSON)
       while let Some(item) = stream.next().await {
-        let json = match if self.json_config.pretty {
-          serde_json::to_string_pretty(&item)
+        // Use pooled buffer for zero-copy JSON serialization
+        let mut buffer = crate::memory_pool::global::get_buffer(1024).await;
+        let json_bytes = if self.json_config.pretty {
+          serde_json::to_writer_pretty(&mut buffer, &item)?;
+          buffer.freeze()
         } else {
-          serde_json::to_string(&item)
-        } {
-          Ok(json) => json,
-          Err(e) => {
-            let error = crate::error::StreamError::Serialization(e.to_string());
-            match self.handle_error(&error) {
-              crate::error::ErrorAction::Stop => return,
-              crate::error::ErrorAction::Skip => continue,
-              crate::error::ErrorAction::Retry => continue, // Skip this item for retry
-            }
-          }
+          serde_json::to_writer(&mut buffer, &item)?;
+          buffer.freeze()
         };
+        let json = String::from_utf8_lossy(&json_bytes);
 
         if let Err(e) = file.write_all(json.as_bytes()).await {
           let error = crate::error::StreamError::Io(e);

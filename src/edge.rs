@@ -20,6 +20,7 @@
 /// assert_eq!(edge.source_node(), "node1");
 /// assert_eq!(edge.target_node(), "node2");
 /// ```
+#[derive(Debug, Clone)]
 pub struct Edge {
   /// The name of the source node.
   pub source_node: String,
