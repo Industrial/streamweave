@@ -56,5 +56,6 @@ mod node_test;
 pub mod edge;
 #[allow(clippy::module_inception)]
 pub mod graph;
+pub mod graph_builder;
 pub mod node;
 pub mod nodes;

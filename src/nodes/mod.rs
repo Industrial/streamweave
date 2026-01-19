@@ -40,10 +40,6 @@ pub mod variable_node;
 pub mod while_loop_node;
 pub mod write_variable_node;
 
-// Re-export commonly used types for convenience
-pub use filter_node::FilterConfig;
-pub use map_node::MapConfig;
-
 #[cfg(test)]
 mod condition_node_test;
 #[cfg(test)]
