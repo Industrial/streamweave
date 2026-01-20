@@ -90,5 +90,9 @@ harness = false
 name = "map_node"
 path = "examples/nodes/map_node.rs"
 
+[[example]]
+name = "filter_node"
+path = "examples/nodes/filter_node.rs"
+
 [lints.rust]
 # Shared lint configuration
