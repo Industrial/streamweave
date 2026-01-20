@@ -8,7 +8,7 @@
 //!
 //! The graph module provides:
 //!
-//! - **Graph Construction**: Type-safe graph builders with compile-time validation
+//! - **Graph Construction**: Direct graph construction with runtime validation
 //! - **Complex Topologies**: Support for fan-in, fan-out, and complex routing patterns
 //! - **Node System**: Wrapper nodes for producers, transformers, and consumers
 //! - **Execution Engine**: Concurrent execution of graph nodes with stream routing
@@ -20,8 +20,6 @@
 //! ## Core Components
 //!
 //! - **Graph**: The main graph structure for executing data processing pipelines
-//! - **GraphBuilder**: Type-safe builder for constructing graphs with compile-time validation
-//! - **RuntimeGraphBuilder**: Dynamic builder for runtime graph construction
 //! - **Nodes**: Wrapper types for producers, transformers, and consumers in graphs
 //! - **Execution**: Execution engine for running graphs with concurrent node execution
 //! - **Router**: Routing strategies for distributing data across multiple outputs
@@ -35,15 +33,13 @@
 //! ## Example
 //!
 //! ```rust,no_run
-//! use streamweave::GraphBuilder;
+//! use streamweave::Graph;
 //! use streamweave::nodes::arithmetic::AddNode;
 //!
-//! let graph = GraphBuilder::new("calculator")
-//!     .add_node("adder", Box::new(AddNode::new("adder".to_string())))
-//!     .expose_input_port("adder", "in1", "input")
-//!     .expose_output_port("adder", "out", "output")
-//!     .build()
-//!     .unwrap();
+//! let mut graph = Graph::new("calculator".to_string());
+//! graph.add_node("adder".to_string(), Box::new(AddNode::new("adder".to_string())))?;
+//! graph.expose_input_port("adder", "in1", "input")?;
+//! graph.expose_output_port("adder", "out", "output")?;
 //! ```
 
 #[cfg(test)]
@@ -56,6 +52,5 @@ mod node_test;
 pub mod edge;
 #[allow(clippy::module_inception)]
 pub mod graph;
-pub mod graph_builder;
 pub mod node;
 pub mod nodes;

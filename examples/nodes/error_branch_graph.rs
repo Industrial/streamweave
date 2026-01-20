@@ -1,12 +1,12 @@
 //! # Error Branch Graph Example
 //!
-//! This example demonstrates how to use GraphBuilder to construct a graph and ErrorBranchNode
+//! This example demonstrates how to construct a graph and use ErrorBranchNode
 //! for routing successful calculations vs errors.
 //! **No custom nodes required** - this example uses only existing nodes from the standard library.
 //!
 //! The example:
 //! 1. Creates a graph with DivideNode (which can produce division-by-zero errors) and ErrorBranchNode
-//! 2. Uses GraphBuilder to connect nodes in the graph structure
+//! 2. Uses the direct Graph API to connect nodes in the graph structure
 //! 3. Demonstrates ErrorBranchNode by executing it directly with test data
 //! 4. Shows how successful results vs errors are routed to different output ports
 //! 5. Displays meaningful results showing error routing behavior
@@ -20,7 +20,7 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
-use streamweave::graph_builder::GraphBuilder;
+use streamweave::graph::Graph;
 use streamweave::node::Node;
 use streamweave::nodes::arithmetic::DivideNode;
 use streamweave::nodes::error_branch_node::ErrorBranchNode;
@@ -34,21 +34,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("This example demonstrates ErrorBranchNode routing calculations with errors.");
   println!();
 
-  // Demonstrate GraphBuilder by building a graph structure
-  println!("Building graph structure with GraphBuilder...");
+  // Demonstrate graph construction with direct Graph API
+  println!("Building graph structure with direct Graph API...");
 
-  let _graph = GraphBuilder::new("calculator_with_error_handling")
-    // Add nodes
-    .add_node("divide", Box::new(DivideNode::new("divide".to_string())))
-    .add_node(
-      "error_branch",
-      Box::new(ErrorBranchNode::new("error_branch".to_string())),
-    )
-    // Connect nodes: divide results go to error_branch
-    .connect("divide", "out", "error_branch", "in")
-    .connect("divide", "error", "error_branch", "in")
-    .build()
-    .map_err(|e| format!("Failed to build graph: {}", e))?;
+  let mut graph = Graph::new("calculator_with_error_handling".to_string());
+  graph.add_node(
+    "divide".to_string(),
+    Box::new(DivideNode::new("divide".to_string())),
+  )?;
+  graph.add_node(
+    "error_branch".to_string(),
+    Box::new(ErrorBranchNode::new("error_branch".to_string())),
+  )?;
+  // Connect nodes: divide results go to error_branch
+  graph.connect_nodes("divide", "out", "error_branch", "in")?;
+  graph.connect_nodes("divide", "error", "error_branch", "in")?;
 
   println!("Graph built successfully!");
   println!("Nodes: divide, error_branch");
