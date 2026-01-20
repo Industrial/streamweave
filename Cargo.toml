@@ -94,5 +94,9 @@ path = "examples/nodes/map_node.rs"
 name = "filter_node"
 path = "examples/nodes/filter_node.rs"
 
+[[example]]
+name = "for_each_node"
+path = "examples/nodes/for_each_node.rs"
+
 [lints.rust]
 # Shared lint configuration
