@@ -86,5 +86,9 @@ harness = false
 name = "shared_memory_bench"
 harness = false
 
+[[example]]
+name = "graph_builder_map_example"
+path = "examples/nodes/graph_builder_map_example.rs"
+
 [lints.rust]
 # Shared lint configuration

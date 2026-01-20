@@ -78,6 +78,7 @@
 use crate::edge::Edge;
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use async_trait::async_trait;
+use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
@@ -230,6 +231,13 @@ pub struct Graph {
   /// Mapping of external output ports to internal nodes/ports
   /// Key: external port name (e.g., "output") -> (internal_node, internal_port)
   output_port_mapping: HashMap<String, PortMapping>,
+  /// Connected input channels for external data
+  /// Key: external port name -> receiver for input data
+  connected_input_channels:
+    HashMap<String, Option<tokio::sync::mpsc::Receiver<Arc<dyn Any + Send + Sync>>>>,
+  /// Connected output channels for external data
+  /// Key: external port name -> sender for output data
+  connected_output_channels: HashMap<String, tokio::sync::mpsc::Sender<Arc<dyn Any + Send + Sync>>>,
   /// Cached input port names for Node trait
   input_port_names: Vec<String>,
   /// Cached output port names for Node trait
@@ -265,6 +273,8 @@ impl Graph {
       execution_state: Arc::new(AtomicU8::new(0)), // 0 = stopped
       input_port_mapping: HashMap::new(),
       output_port_mapping: HashMap::new(),
+      connected_input_channels: HashMap::new(),
+      connected_output_channels: HashMap::new(),
       input_port_names: vec!["configuration".to_string(), "input".to_string()],
       output_port_names: vec!["output".to_string(), "error".to_string()],
     }
@@ -393,6 +403,82 @@ impl Graph {
       },
     );
 
+    Ok(())
+  }
+
+  /// Connects an input channel to an exposed input port.
+  ///
+  /// This allows external data to be sent to the graph through the specified port.
+  ///
+  /// # Arguments
+  ///
+  /// * `external_port` - The name of the exposed input port
+  /// * `receiver` - The channel receiver for input data
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if the connection was successful, or an error if the port is not exposed.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use tokio::sync::mpsc;
+  ///
+  /// let (tx, rx) = mpsc::channel(10);
+  /// graph.connect_input_channel("configuration", rx)?;
+  /// ```
+  pub fn connect_input_channel(
+    &mut self,
+    external_port: &str,
+    receiver: tokio::sync::mpsc::Receiver<Arc<dyn Any + Send + Sync>>,
+  ) -> Result<(), String> {
+    if !self.input_port_mapping.contains_key(external_port) {
+      return Err(format!(
+        "External input port '{}' is not exposed",
+        external_port
+      ));
+    }
+    self
+      .connected_input_channels
+      .insert(external_port.to_string(), Some(receiver));
+    Ok(())
+  }
+
+  /// Connects an output channel to an exposed output port.
+  ///
+  /// This allows graph output to be sent to external consumers through the specified port.
+  ///
+  /// # Arguments
+  ///
+  /// * `external_port` - The name of the exposed output port
+  /// * `sender` - The channel sender for output data
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if the connection was successful, or an error if the port is not exposed.
+  ///
+  /// # Example
+  ///
+  /// ```rust
+  /// use tokio::sync::mpsc;
+  ///
+  /// let (tx, rx) = mpsc::channel(10);
+  /// graph.connect_output_channel("output", tx)?;
+  /// ```
+  pub fn connect_output_channel(
+    &mut self,
+    external_port: &str,
+    sender: tokio::sync::mpsc::Sender<Arc<dyn Any + Send + Sync>>,
+  ) -> Result<(), String> {
+    if !self.output_port_mapping.contains_key(external_port) {
+      return Err(format!(
+        "External output port '{}' is not exposed",
+        external_port
+      ));
+    }
+    self
+      .connected_output_channels
+      .insert(external_port.to_string(), sender);
     Ok(())
   }
 
@@ -691,14 +777,16 @@ impl Graph {
   /// Executes the graph by connecting streams between nodes.
   ///
   /// This method:
-  /// 1. Performs topological sort to determine execution order
-  /// 2. For each node, collects input streams from connected upstream nodes
-  /// 3. Calls `node.execute(inputs)` which returns output streams
-  /// 4. Connects output streams to downstream nodes' input streams
-  /// 5. Drives all streams to completion
+  /// 1. Routes external input streams to exposed input ports
+  /// 2. Performs topological sort to determine execution order
+  /// 3. For each node, collects input streams from connected upstream nodes
+  /// 4. Calls `node.execute(inputs)` which returns output streams
+  /// 5. Routes exposed output ports to external output senders
+  /// 6. Connects output streams to downstream nodes' input streams
+  /// 7. Drives all streams to completion
   ///
   /// Channels are used internally for backpressure, but are never exposed to nodes.
-  /// Nodes only see and work with streams.
+  /// Nodes only see and work with streams. External I/O is handled through exposed ports.
   ///
   /// # Returns
   ///
@@ -706,6 +794,7 @@ impl Graph {
   /// - Nodes have invalid port configurations
   /// - Streams cannot be created or connected
   /// - Tasks cannot be spawned
+  /// - External I/O connections are invalid
   ///
   /// # Errors
   ///
@@ -714,10 +803,19 @@ impl Graph {
   /// # Example
   ///
   /// ```rust,no_run
+  /// use tokio::sync::mpsc;
+  /// use tokio_stream::wrappers::ReceiverStream;
+  ///
   /// // Build graph structure
-  /// graph.add_node("source".to_string(), Box::new(source_node))?;
-  /// graph.add_node("sink".to_string(), Box::new(sink_node))?;
-  /// graph.add_edge(Edge { ... })?;
+  /// graph.add_node("map".to_string(), Box::new(map_node))?;
+  /// graph.expose_input_port("map", "configuration", "configuration")?;
+  /// graph.expose_output_port("map", "out", "output")?;
+  ///
+  /// // Connect external I/O
+  /// let (config_tx, config_rx) = mpsc::channel(1);
+  /// let (output_tx, output_rx) = mpsc::channel(10);
+  /// graph.connect_external_input("configuration", Box::pin(ReceiverStream::new(config_rx)))?;
+  /// graph.connect_external_output("output", output_tx)?;
   ///
   /// // Start execution
   /// graph.execute().await?;
@@ -725,7 +823,42 @@ impl Graph {
   /// // Wait for completion
   /// graph.wait_for_completion().await?;
   /// ```
-  pub async fn execute(&self) -> Result<(), GraphExecutionError> {
+  pub async fn execute(&mut self) -> Result<(), GraphExecutionError> {
+    // Create input streams from connected channels
+    let mut external_inputs = HashMap::new();
+    for (port_name, receiver_option) in &mut self.connected_input_channels {
+      if let Some(receiver) = receiver_option.take() {
+        let stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
+        let pinned_stream = Box::pin(stream) as crate::node::InputStream;
+        external_inputs.insert(port_name.clone(), pinned_stream);
+      }
+    }
+
+    // Use connected output channels
+    let external_outputs = &self.connected_output_channels;
+
+    self
+      .execute_with_external_io(Some(external_inputs), Some(external_outputs))
+      .await
+  }
+
+  /// Execute the graph with optional external I/O connections.
+  ///
+  /// # Arguments
+  ///
+  /// * `external_inputs` - Optional map of external port names to input streams (consumed)
+  /// * `external_outputs` - Optional map of external port names to output senders
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if execution was started successfully.
+  pub async fn execute_with_external_io(
+    &self,
+    external_inputs: Option<HashMap<String, crate::node::InputStream>>,
+    external_outputs: Option<
+      &HashMap<String, tokio::sync::mpsc::Sender<Arc<dyn Any + Send + Sync>>>,
+    >,
+  ) -> Result<(), GraphExecutionError> {
     // Clear any previous execution handles
     self.execution_handles.lock().await.clear();
 
@@ -739,6 +872,18 @@ impl Graph {
     // Build a map of output streams for each node and port
     // Key: (node_name, port_name) -> OutputStream
     let mut output_streams: HashMap<(String, String), crate::node::OutputStream> = HashMap::new();
+
+    // Route external input streams to internal nodes
+    if let Some(mut external_inputs) = external_inputs {
+      for (external_port, external_stream) in external_inputs.drain() {
+        if let Some(mapping) = self.input_port_mapping.get(&external_port) {
+          output_streams.insert(
+            (mapping.node.clone(), mapping.port.clone()),
+            external_stream,
+          );
+        }
+      }
+    }
 
     // For each node in execution order, collect inputs and execute
     for node_name in execution_order {
@@ -774,12 +919,84 @@ impl Graph {
         }
       }
 
+      // Also check for directly routed external inputs to this node
+      let node_stream_keys: Vec<_> = output_streams
+        .keys()
+        .filter(|(n, _)| n == &node_name)
+        .cloned()
+        .collect();
+
+      for stream_key in node_stream_keys {
+        if let Some(stream) = output_streams.remove(&stream_key) {
+          let (_, port) = stream_key;
+          input_streams.insert(port, stream);
+        }
+      }
+
       // Execute the node
       let node_outputs = node.execute(input_streams).await?;
 
-      // Store the output streams for downstream nodes
+      // Store the output streams for downstream nodes and route exposed outputs
       for (port_name, stream) in node_outputs {
-        output_streams.insert((node_name.clone(), port_name.clone()), stream);
+        let stream_key = (node_name.clone(), port_name.clone());
+
+        // Check if this is an exposed output port
+        let is_exposed_output = self
+          .output_port_mapping
+          .values()
+          .any(|mapping| mapping.node == node_name && mapping.port == port_name);
+
+        if is_exposed_output {
+          // Find the external port name for this internal port
+          if let Some((external_port, _)) = self
+            .output_port_mapping
+            .iter()
+            .find(|(_, mapping)| mapping.node == node_name && mapping.port == port_name)
+          {
+            if let Some(external_sender) =
+              external_outputs.and_then(|outputs| outputs.get(external_port))
+            {
+              // Route the stream to the external sender
+              let sender = external_sender.clone();
+              let stream_for_task = stream;
+              let stop_signal = Arc::clone(&self.stop_signal);
+
+              let handle = tokio::spawn(async move {
+                use tokio_stream::StreamExt;
+                let mut stream = stream_for_task;
+                loop {
+                  tokio::select! {
+                    _ = stop_signal.notified() => {
+                      return Ok(());
+                    }
+                    result = stream.next() => {
+                      match result {
+                        Some(item) => {
+                          if sender.send(item).await.is_err() {
+                            // External receiver was dropped, stop sending
+                            return Ok(());
+                          }
+                        }
+                        None => break, // Stream ended
+                      }
+                    }
+                  }
+                }
+                Ok(())
+              });
+              self.execution_handles.lock().await.push(handle);
+            } else {
+              // No external sender connected, just store the stream normally
+              output_streams.insert(stream_key, stream);
+            }
+          } else {
+            // Should not happen, but store normally if mapping not found
+            output_streams.insert(stream_key, stream);
+          }
+        } else {
+          // Not an exposed output, store normally for internal routing
+          output_streams.insert(stream_key, stream);
+        }
       }
 
       // For sink nodes (no outputs), we still need to drive their execution
@@ -895,7 +1112,7 @@ impl Graph {
   /// outputs from internal boundary nodes to expose as external outputs.
   async fn execute_internal(
     &self,
-    external_inputs: InputStreams,
+    external_inputs: Option<InputStreams>,
   ) -> Result<OutputStreams, GraphExecutionError> {
     // Clear any previous execution handles
     self.execution_handles.lock().await.clear();
@@ -912,14 +1129,45 @@ impl Graph {
     let mut output_streams: HashMap<(String, String), crate::node::OutputStream> = HashMap::new();
 
     // Route external input streams to internal nodes based on port mapping
-    for (external_port, external_stream) in external_inputs {
-      if let Some(mapping) = self.input_port_mapping.get(&external_port) {
-        // Route this external stream to the internal node's port
-        output_streams.insert(
-          (mapping.node.clone(), mapping.port.clone()),
-          external_stream,
+    println!(
+      "DEBUG: About to check external_inputs: is_some={}",
+      external_inputs.is_some()
+    );
+    if let Some(mut external_inputs) = external_inputs {
+      println!(
+        "DEBUG: execute_with_external_io - routing {} external inputs",
+        external_inputs.len()
+      );
+      for (external_port, external_stream) in external_inputs.drain() {
+        println!(
+          "DEBUG: execute_with_external_io - processing external port '{}'",
+          external_port
         );
+        if let Some(mapping) = self.input_port_mapping.get(&external_port) {
+          println!(
+            "DEBUG: execute_with_external_io - mapped '{}' -> '{}'.'{}'",
+            external_port, mapping.node, mapping.port
+          );
+          // Route this external stream to the internal node's port
+          let stream_key = (mapping.node.clone(), mapping.port.clone());
+          println!(
+            "DEBUG: execute_with_external_io - inserting stream with key {:?}",
+            stream_key
+          );
+          output_streams.insert(stream_key, external_stream);
+          println!(
+            "DEBUG: execute_with_external_io - output_streams now has {} entries",
+            output_streams.len()
+          );
+        } else {
+          println!(
+            "DEBUG: execute_with_external_io - no mapping for external port '{}'",
+            external_port
+          );
+        }
       }
+    } else {
+      println!("DEBUG: execute_with_external_io - no external inputs provided");
     }
 
     // For each node in execution order, collect inputs and execute
@@ -953,6 +1201,20 @@ impl Graph {
               .into(),
             );
           }
+        }
+      }
+
+      // Also check for directly routed external inputs to this node
+      let node_stream_keys: Vec<_> = output_streams
+        .keys()
+        .filter(|(n, _)| n == &node_name)
+        .cloned()
+        .collect();
+
+      for stream_key in node_stream_keys {
+        if let Some(stream) = output_streams.remove(&stream_key) {
+          let (_, port) = stream_key;
+          input_streams.insert(port, stream);
         }
       }
 
@@ -1154,7 +1416,7 @@ impl Node for Graph {
     Box::pin(async move {
       // Execute the graph as a node, routing external streams to internal nodes
       self
-        .execute_internal(inputs)
+        .execute_internal(Some(inputs))
         .await
         .map_err(|e| format!("Graph execution error: {}", e).into())
     })

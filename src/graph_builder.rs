@@ -29,6 +29,9 @@
 use crate::edge::Edge;
 use crate::graph::Graph;
 use crate::node::Node;
+use std::any::Any;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Builder for constructing graphs with a fluent API.
 ///
@@ -60,6 +63,10 @@ pub struct GraphBuilder {
   input_mappings: Vec<(String, String, String)>, // (internal_node, internal_port, external_name)
   /// Output port mappings to be configured
   output_mappings: Vec<(String, String, String)>, // (internal_node, internal_port, external_name)
+  /// External input channels to connect
+  external_input_channels: HashMap<String, tokio::sync::mpsc::Receiver<Arc<dyn Any + Send + Sync>>>, // (external_port, receiver)
+  /// External output channels to connect
+  external_output_channels: HashMap<String, tokio::sync::mpsc::Sender<Arc<dyn Any + Send + Sync>>>, // (external_port, sender)
 }
 
 impl GraphBuilder {
@@ -87,6 +94,8 @@ impl GraphBuilder {
       edges: Vec::new(),
       input_mappings: Vec::new(),
       output_mappings: Vec::new(),
+      external_input_channels: HashMap::new(),
+      external_output_channels: HashMap::new(),
     }
   }
 
@@ -226,6 +235,82 @@ impl GraphBuilder {
     self
   }
 
+  /// Connects an external input stream to an exposed input port.
+  ///
+  /// This allows external data to be fed into the graph during execution.
+  /// The connection will be established when the graph is built.
+  ///
+  /// # Arguments
+  ///
+  /// * `external_port` - The name of the exposed input port
+  /// * `input_stream` - The external input stream to connect
+  ///
+  /// # Returns
+  ///
+  /// The `GraphBuilder` instance for method chaining.
+  ///
+  /// # Example
+  ///
+  /// ```rust,no_run
+  /// use tokio::sync::mpsc;
+  /// use tokio_stream::wrappers::ReceiverStream;
+  ///
+  /// let (tx, rx) = mpsc::channel(10);
+  /// let input_stream = Box::pin(ReceiverStream::new(rx)) as streamweave::node::InputStream;
+  ///
+  /// let graph = GraphBuilder::new("my_graph")
+  ///     .connect_external_input("configuration", input_stream)
+  ///     .build()?;
+  /// ```
+  pub fn connect_input_channel(
+    mut self,
+    external_port: impl Into<String>,
+    receiver: tokio::sync::mpsc::Receiver<Arc<dyn Any + Send + Sync>>,
+  ) -> Self {
+    self
+      .external_input_channels
+      .insert(external_port.into(), receiver);
+    self
+  }
+
+  /// Connects an external output sender to an exposed output port.
+  ///
+  /// This allows graph output to be sent to external channels during execution.
+  /// The connection will be established when the graph is built.
+  ///
+  /// # Arguments
+  ///
+  /// * `external_port` - The name of the exposed output port
+  /// * `output_sender` - The external sender to connect
+  ///
+  /// # Returns
+  ///
+  /// The `GraphBuilder` instance for method chaining.
+  ///
+  /// # Example
+  ///
+  /// ```rust,no_run
+  /// use tokio::sync::mpsc;
+  /// use std::sync::Arc;
+  /// use std::any::Any;
+  ///
+  /// let (tx, rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
+  ///
+  /// let graph = GraphBuilder::new("my_graph")
+  ///     .connect_external_output("output", tx)
+  ///     .build()?;
+  /// ```
+  pub fn connect_output_channel(
+    mut self,
+    external_port: impl Into<String>,
+    sender: tokio::sync::mpsc::Sender<Arc<dyn Any + Send + Sync>>,
+  ) -> Self {
+    self
+      .external_output_channels
+      .insert(external_port.into(), sender);
+    self
+  }
+
   /// Builds the final Graph instance.
   ///
   /// This method validates all the configuration and creates the Graph.
@@ -249,6 +334,19 @@ impl GraphBuilder {
   ///     .expect("Failed to build graph");
   /// ```
   pub fn build(self) -> Result<Graph, String> {
+    self.build_with_external_connections()
+  }
+
+  /// Builds the graph and returns external connection maps for manual connection.
+  ///
+  /// This method returns the graph along with the external input/output connection maps
+  /// that were configured during building. This allows manual connection of external
+  /// channels after graph construction.
+  ///
+  /// # Returns
+  ///
+  /// A `Result` containing a tuple of (Graph, external_inputs, external_outputs) or an error.
+  pub fn build_with_external_connections(self) -> Result<Graph, String> {
     let mut graph = Graph::new(self.name);
 
     // Add all nodes
@@ -269,6 +367,16 @@ impl GraphBuilder {
     // Configure output port mappings
     for (internal_node, internal_port, external_name) in self.output_mappings {
       graph.expose_output_port(&internal_node, &internal_port, &external_name)?;
+    }
+
+    // Connect external input channels
+    for (external_port, receiver) in self.external_input_channels {
+      graph.connect_input_channel(&external_port, receiver)?;
+    }
+
+    // Connect external output channels
+    for (external_port, sender) in self.external_output_channels {
+      graph.connect_output_channel(&external_port, sender)?;
     }
 
     Ok(graph)
