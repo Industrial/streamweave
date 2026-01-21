@@ -178,5 +178,9 @@ path = "examples/nodes/min_aggregate_node.rs"
 name = "add_node"
 path = "examples/nodes/add_node.rs"
 
+[[example]]
+name = "divide_node"
+path = "examples/nodes/divide_node.rs"
+
 [lints.rust]
 # Shared lint configuration
