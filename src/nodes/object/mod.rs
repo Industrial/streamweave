@@ -45,12 +45,3 @@ mod object_property_node_test;
 mod object_set_property_node_test;
 #[cfg(test)]
 mod object_values_node_test;
-
-pub use object_delete_property_node::ObjectDeletePropertyNode;
-pub use object_entries_node::ObjectEntriesNode;
-pub use object_has_property_node::ObjectHasPropertyNode;
-pub use object_keys_node::ObjectKeysNode;
-pub use object_merge_node::ObjectMergeNode;
-pub use object_property_node::ObjectPropertyNode;
-pub use object_set_property_node::ObjectSetPropertyNode;
-pub use object_values_node::ObjectValuesNode;

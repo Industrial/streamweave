@@ -523,7 +523,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - git commit made for each completed example (you may not use `--no-verify`).
 
   - [ ] 2.8 Object Nodes
-    - [x] 2.8.1 get_node
+    - [x] 2.8.1 object_get_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -531,7 +531,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-    - [x] 2.8.2 has_node
+    - [x] 2.8.2 object_has_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -539,7 +539,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-    - [x] 2.8.3 keys_node
+    - [x] 2.8.3 object_keys_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -547,7 +547,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-    - [o] 2.8.4 merge_node
+    - [x] 2.8.4 object_merge_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -555,7 +555,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-    - [ ] 2.8.5 set_node
+    - [x] 2.8.5 object_set_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -563,7 +563,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-    - [ ] 2.8.6 size_node
+    - [ ] 2.8.6 object_size_node (node does not exist in src/)
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -571,7 +571,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-    - [ ] 2.8.7 values_node
+    - [x] 2.8.7 object_values_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)

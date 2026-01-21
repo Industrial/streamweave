@@ -1,7 +1,7 @@
 //! Tests for ObjectDeletePropertyNode
 
 use crate::node::{InputStreams, Node};
-use crate::nodes::object::ObjectDeletePropertyNode;
+use crate::nodes::object::object_delete_property_node::ObjectDeletePropertyNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;

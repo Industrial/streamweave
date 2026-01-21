@@ -1,7 +1,7 @@
 //! Tests for ObjectMergeNode
 
 use crate::node::{InputStreams, Node};
-use crate::nodes::object::ObjectMergeNode;
+use crate::nodes::object::object_merge_node::ObjectMergeNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;

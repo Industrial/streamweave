@@ -2,7 +2,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use streamweave::graph::Graph;
-use streamweave::nodes::object::ObjectSetPropertyNode;
+use streamweave::nodes::object::object_set_property_node::ObjectSetPropertyNode;
 use tokio::sync::mpsc;
 
 #[tokio::main]
@@ -133,7 +133,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
       // Try to downcast to Arc<HashMap>
       if let Ok(updated_arc) = item.clone().downcast::<Arc<HashMap<String, Arc<dyn Any + Send + Sync>>>>() {
-        let updated = &**updated_arc;
+        let _updated = &**updated_arc;
         let updated = &**updated_arc;
         println!("    Updated object ({} properties)", updated.len());
 

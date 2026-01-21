@@ -1,7 +1,7 @@
 //! Tests for ObjectPropertyNode
 
 use crate::node::{InputStreams, Node};
-use crate::nodes::object::ObjectPropertyNode;
+use crate::nodes::object::object_property_node::ObjectPropertyNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;

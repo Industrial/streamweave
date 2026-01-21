@@ -1,7 +1,7 @@
 //! Tests for ObjectKeysNode
 
 use crate::node::{InputStreams, Node};
-use crate::nodes::object::ObjectKeysNode;
+use crate::nodes::object::object_keys_node::ObjectKeysNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;

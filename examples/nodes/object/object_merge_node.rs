@@ -2,7 +2,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use streamweave::graph::Graph;
-use streamweave::nodes::object::ObjectMergeNode;
+use streamweave::nodes::object::object_merge_node::ObjectMergeNode;
 use tokio::sync::mpsc;
 
 #[tokio::main]
