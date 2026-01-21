@@ -38,6 +38,9 @@ pub mod distinct_until_changed_node_test;
 pub mod drop_node;
 #[cfg(test)]
 pub mod drop_node_test;
+pub mod filter_map_node;
+#[cfg(test)]
+pub mod filter_map_node_test;
 pub mod interleave_node;
 #[cfg(test)]
 pub mod interleave_node_test;
@@ -65,6 +68,9 @@ pub use debounce_node::DebounceNode;
 pub use distinct_node::DistinctNode;
 pub use distinct_until_changed_node::DistinctUntilChangedNode;
 pub use drop_node::DropNode;
+pub use filter_map_node::{
+  FilterMapConfig, FilterMapConfigWrapper, FilterMapFunction, FilterMapNode, filter_map_config,
+};
 pub use interleave_node::InterleaveNode;
 pub use limit_node::LimitNode;
 pub use merge_node::MergeNode;

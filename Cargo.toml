@@ -131,6 +131,10 @@ name = "distinct_until_changed_node"
 path = "examples/nodes/stream/distinct_until_changed_node.rs"
 
 [[example]]
+name = "filter_map_node"
+path = "examples/nodes/stream/filter_map_node.rs"
+
+[[example]]
 name = "merge_node"
 path = "examples/nodes/stream/merge_node.rs"
 
