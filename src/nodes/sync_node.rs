@@ -165,8 +165,8 @@ impl Node for SyncNode {
           match msg_type {
             MessageType::Config => {
               // Try to downcast configuration
-              if let Ok(config_arc) = item.downcast::<SyncConfig>() {
-                *config_state_clone.lock().await = Some(config_arc);
+              if let Ok(config) = item.downcast::<SyncConfig>() {
+                *config_state_clone.lock().await = Some(config);
               } else {
                 let error_msg = "Invalid configuration type - expected SyncConfig".to_string();
                 let error_arc: Arc<dyn Any + Send + Sync> = Arc::new(error_msg);

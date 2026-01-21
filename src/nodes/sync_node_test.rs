@@ -55,10 +55,10 @@ async fn test_sync_node_basic_sync() {
   let mut outputs = outputs_future.await.unwrap();
 
   // Send configuration
-  let config = Arc::new(SyncConfig {
+  let config = SyncConfig {
     num_inputs: 2,
     timeout: None,
-  });
+  };
   let _ = config_tx
     .send(Arc::new(config) as Arc<dyn Any + Send + Sync>)
     .await;
@@ -112,10 +112,10 @@ async fn test_sync_node_three_inputs() {
   let mut outputs = outputs_future.await.unwrap();
 
   // Send configuration
-  let config = Arc::new(SyncConfig {
+  let config = SyncConfig {
     num_inputs: 3,
     timeout: None,
-  });
+  };
   let _ = config_tx
     .send(Arc::new(config) as Arc<dyn Any + Send + Sync>)
     .await;
@@ -216,10 +216,10 @@ async fn test_sync_node_timeout() {
   let mut outputs = outputs_future.await.unwrap();
 
   // Send configuration with short timeout
-  let config = Arc::new(SyncConfig {
+  let config = SyncConfig {
     num_inputs: 2,
     timeout: Some(Duration::from_millis(50)),
-  });
+  };
   let _ = config_tx
     .send(Arc::new(config) as Arc<dyn Any + Send + Sync>)
     .await;

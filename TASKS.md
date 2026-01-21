@@ -522,7 +522,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-  - [ ] 2.8 Object Nodes
+  - [x] 2.8 Object Nodes
     - [x] 2.8.1 object_get_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
@@ -580,7 +580,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - git commit made for each completed example (you may not use `--no-verify`).
 
   - [ ] 2.9 Reduction Nodes
-    - [ ] 2.9.1 fold_node
+    - [o] 2.9.1 fold_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
