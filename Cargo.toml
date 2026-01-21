@@ -251,6 +251,14 @@ name = "log_node"
 path = "examples/nodes/math/log_node.rs"
 
 [[example]]
+name = "max_node"
+path = "examples/nodes/math/max_node.rs"
+
+[[example]]
+name = "min_node"
+path = "examples/nodes/math/min_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 
