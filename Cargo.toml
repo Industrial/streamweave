@@ -263,6 +263,10 @@ name = "round_node"
 path = "examples/nodes/math/round_node.rs"
 
 [[example]]
+name = "sqrt_node"
+path = "examples/nodes/math/sqrt_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 
