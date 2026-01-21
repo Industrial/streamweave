@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
   // Create a switch configuration that routes based on switch value ranges
-  let switch_config: SwitchConfig = switch_config(|data, value| async move {
+  let switch_config: SwitchConfig = switch_config(|_data, value| async move {
     // Extract the switch value as an integer
     if let Ok(value_arc) = value.downcast::<i32>() {
       let switch_value = *value_arc;
@@ -65,11 +65,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send test data with corresponding switch values
   let test_cases = vec![
-    ("data_A", 5),   // 5 -> out_0 (0-9 range)
-    ("data_B", 15),  // 15 -> out_1 (10-19 range)
-    ("data_C", 25),  // 25 -> default (other values)
-    ("data_D", 8),   // 8 -> out_0 (0-9 range)
-    ("data_E", 12),  // 12 -> out_1 (10-19 range)
+    ("data_A", 5),  // 5 -> out_0 (0-9 range)
+    ("data_B", 15), // 15 -> out_1 (10-19 range)
+    ("data_C", 25), // 25 -> default (other values)
+    ("data_D", 8),  // 8 -> out_0 (0-9 range)
+    ("data_E", 12), // 12 -> out_1 (10-19 range)
   ];
 
   for (data, switch_value) in test_cases {

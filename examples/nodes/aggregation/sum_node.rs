@@ -14,10 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Build the graph using the Graph API
   let mut graph = Graph::new("sum_example".to_string());
-  graph.add_node(
-    "sum".to_string(),
-    Box::new(SumNode::new("sum".to_string())),
-  )?;
+  graph.add_node("sum".to_string(), Box::new(SumNode::new("sum".to_string())))?;
   graph.expose_input_port("sum", "configuration", "configuration")?;
   graph.expose_input_port("sum", "in", "input")?;
   graph.expose_output_port("sum", "out", "output")?;
@@ -36,10 +33,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send test data: numeric values to sum
   let test_values = vec![
-    10i32,  // 10
-    20i32,  // 20 (running sum: 30)
-    5i32,   // 5 (running sum: 35)
-    15i32,  // 15 (running sum: 50)
+    10i32, // 10
+    20i32, // 20 (running sum: 30)
+    5i32,  // 5 (running sum: 35)
+    15i32, // 15 (running sum: 50)
   ];
 
   for value in test_values {
@@ -101,7 +98,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

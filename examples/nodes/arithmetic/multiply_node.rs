@@ -40,12 +40,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Send test data: pairs of numbers to multiply
   let test_pairs = vec![(6i32, 7i32), (12i32, 8i32), (15i32, 4i32)]; // Results: 42, 96, 60
   for (a, b) in test_pairs {
-    let _ = in1_tx
-      .send(Arc::new(a) as Arc<dyn Any + Send + Sync>)
-      .await;
-    let _ = in2_tx
-      .send(Arc::new(b) as Arc<dyn Any + Send + Sync>)
-      .await;
+    let _ = in1_tx.send(Arc::new(a) as Arc<dyn Any + Send + Sync>).await;
+    let _ = in2_tx.send(Arc::new(b) as Arc<dyn Any + Send + Sync>).await;
     tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
   }
 
@@ -117,7 +113,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

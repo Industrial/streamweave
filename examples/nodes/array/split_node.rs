@@ -94,7 +94,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Print each chunk
         for (chunk_idx, chunk_arc) in chunks.iter().enumerate() {
-          if let Ok(chunk) = chunk_arc.clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
+          if let Ok(chunk) = chunk_arc
+            .clone()
+            .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+          {
             let chunk_vec = (**chunk).to_vec();
             println!("    Chunk {} (size {}):", chunk_idx, chunk_vec.len());
             for (elem_idx, elem) in chunk_vec.iter().enumerate() {
@@ -124,7 +127,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

@@ -38,7 +38,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let test_arrays = vec![
     vec!["a".to_string(), "b".to_string(), "c".to_string()], // ["a", "b", "c"] -> ["c", "b", "a"]
     vec!["1".to_string(), "2".to_string()],                  // ["1", "2"] -> ["2", "1"]
-    vec!["x".to_string(), "y".to_string(), "z".to_string(), "w".to_string()], // ["x", "y", "z", "w"] -> ["w", "z", "y", "x"]
+    vec![
+      "x".to_string(),
+      "y".to_string(),
+      "z".to_string(),
+      "w".to_string(),
+    ], // ["x", "y", "z", "w"] -> ["w", "z", "y", "x"]
   ];
 
   for array_data in test_arrays {
@@ -111,7 +116,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

@@ -15,10 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Build the graph using the Graph API
   let mut graph = Graph::new("nor_example".to_string());
-  graph.add_node(
-    "nor".to_string(),
-    Box::new(NorNode::new("nor".to_string())),
-  )?;
+  graph.add_node("nor".to_string(), Box::new(NorNode::new("nor".to_string())))?;
   graph.expose_input_port("nor", "configuration", "configuration")?;
   graph.expose_input_port("nor", "in1", "in1")?;
   graph.expose_input_port("nor", "in2", "in2")?;
@@ -108,7 +105,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

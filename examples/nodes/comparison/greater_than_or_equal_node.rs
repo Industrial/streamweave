@@ -17,7 +17,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let mut graph = Graph::new("greater_than_or_equal_example".to_string());
   graph.add_node(
     "greater_than_or_equal".to_string(),
-    Box::new(GreaterThanOrEqualNode::new("greater_than_or_equal".to_string())),
+    Box::new(GreaterThanOrEqualNode::new(
+      "greater_than_or_equal".to_string(),
+    )),
   )?;
   graph.expose_input_port("greater_than_or_equal", "configuration", "configuration")?;
   graph.expose_input_port("greater_than_or_equal", "in1", "in1")?;
@@ -125,7 +127,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       if let Ok(result_arc) = item.clone().downcast::<bool>() {
         let result = *result_arc;
         results_received += 1;
-        println!("  Greater than or equal result {}: {}", results_received, result);
+        println!(
+          "  Greater than or equal result {}: {}",
+          results_received, result
+        );
         success_count += 1;
         has_data = true;
       }
@@ -145,7 +150,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

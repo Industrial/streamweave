@@ -41,8 +41,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let test_cases = vec![
     (vec!["apple", "banana", "cherry"], "banana"), // contains: true
     (vec!["apple", "banana", "cherry"], "grape"),  // contains: false
-    (vec!["x", "y", "z"], "x"),                     // contains: true
-    (vec!["x", "y", "z"], "w"),                     // contains: false
+    (vec!["x", "y", "z"], "x"),                    // contains: true
+    (vec!["x", "y", "z"], "w"),                    // contains: false
   ];
 
   for (array_data, search_value) in test_cases {
@@ -113,7 +113,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

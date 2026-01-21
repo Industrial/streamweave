@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::sync::Arc;
 use streamweave::graph::Graph;
-use streamweave::nodes::math::AbsNode;
+use streamweave::nodes::math::ExpNode;
 use tokio::sync::mpsc;
 
 #[tokio::main]
@@ -13,59 +13,69 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
   // Build the graph using the Graph API
-  let mut graph = Graph::new("abs_example".to_string());
-  graph.add_node("abs".to_string(), Box::new(AbsNode::new("abs".to_string())))?;
-  graph.expose_input_port("abs", "configuration", "configuration")?;
-  graph.expose_input_port("abs", "in", "input")?;
-  graph.expose_output_port("abs", "out", "output")?;
-  graph.expose_output_port("abs", "error", "error")?;
+  let mut graph = Graph::new("exp_example".to_string());
+  graph.add_node(
+    "exp".to_string(),
+    Box::new(ExpNode::new("exp".to_string())),
+  )?;
+  graph.expose_input_port("exp", "configuration", "configuration")?;
+  graph.expose_input_port("exp", "in", "input")?;
+  graph.expose_output_port("exp", "out", "output")?;
+  graph.expose_output_port("exp", "error", "error")?;
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", in_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with AbsNode using Graph API");
+  println!("✓ Graph built with ExpNode using Graph API");
 
-  // Send configuration (optional for AbsNode)
+  // Send configuration (optional for ExpNode)
   let _ = config_tx
     .send(Arc::new(()) as Arc<dyn Any + Send + Sync>)
     .await;
 
-  // Test absolute value computations
-  println!("\n🧪 Testing absolute value computations...");
+  // Test exponential computations
+  println!("\n🧪 Testing exponential computations...");
 
-  // Test 1: abs(-10) (expected: 10)
-  println!("  Test 1: abs(-10i32) (expected: 10)");
+  // Test 1: exp(0) = e^0 = 1
+  println!("  Test 1: exp(0) = e^0 (expected: ~1.0)");
   let _ = in_tx
-    .send(Arc::new(-10i32) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(0.0f64) as Arc<dyn Any + Send + Sync>)
     .await;
   tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
-  // Test 2: abs(15) (expected: 15 - already positive)
-  println!("  Test 2: abs(15i32) (expected: 15)");
+  // Test 2: exp(1) = e^1 = e ≈ 2.718
+  println!("  Test 2: exp(1) = e^1 (expected: ~2.718)");
   let _ = in_tx
-    .send(Arc::new(15i32) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(1.0f64) as Arc<dyn Any + Send + Sync>)
     .await;
   tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
-  // Test 3: abs(-3.5) (expected: 3.5)
-  println!("  Test 3: abs(-3.5f64) (expected: 3.5)");
+  // Test 3: exp(2) = e^2 ≈ 7.389
+  println!("  Test 3: exp(2) = e^2 (expected: ~7.389)");
   let _ = in_tx
-    .send(Arc::new(-3.5f64) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(2.0f64) as Arc<dyn Any + Send + Sync>)
     .await;
   tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
-  // Test 4: abs(7.2) (expected: 7.2 - already positive)
-  println!("  Test 4: abs(7.2f64) (expected: 7.2)");
+  // Test 4: exp(-1) = e^(-1) ≈ 0.368
+  println!("  Test 4: exp(-1) = e^(-1) (expected: ~0.368)");
   let _ = in_tx
-    .send(Arc::new(7.2f64) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(-1.0f64) as Arc<dyn Any + Send + Sync>)
+    .await;
+  tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+  // Test 5: exp(0.5) = e^(0.5) ≈ 1.649
+  println!("  Test 5: exp(0.5) = e^(0.5) (expected: ~1.649)");
+  let _ = in_tx
+    .send(Arc::new(0.5f64) as Arc<dyn Any + Send + Sync>)
     .await;
   tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
   println!("✓ Configuration and test data sent to input channels");
 
   // Execute the graph
-  println!("Executing graph with AbsNode...");
+  println!("Executing graph with ExpNode...");
   let start = std::time::Instant::now();
   graph
     .execute()
@@ -92,18 +102,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut has_data = false;
 
     if let Ok(Some(item)) = out_result {
-      // AbsNode outputs the absolute value result
+      // ExpNode outputs the exponential result as f64
       results_received += 1;
-      println!("  Absolute value result {}:", results_received);
+      println!("  Exponential result {}:", results_received);
 
-      // Try different numeric types
-      if let Ok(int_result) = item.clone().downcast::<i32>() {
-        let value = *int_result;
-        println!("    i32: {}", value);
-        success_count += 1;
-      } else if let Ok(float_result) = item.clone().downcast::<f64>() {
-        let value = *float_result;
-        println!("    f64: {}", value);
+      if let Ok(exp_result) = item.clone().downcast::<f64>() {
+        let value = *exp_result;
+        println!("    f64: {:.6}", value);
         success_count += 1;
       } else {
         println!("    Unknown type");
@@ -126,20 +131,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!(
-    "✓ Received {} successful results via output channel",
-    success_count
-  );
+  println!("✓ Received {} successful results via output channel", success_count);
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 
-  // Verify behavior: should receive 4 results (10, 15, 3.5, 7.2)
-  if success_count == 4 && error_count == 0 {
-    println!("✓ AbsNode correctly computed absolute values");
-    println!("  Results should be: [10, 15, 3.5, 7.2]");
+  // Verify behavior: should receive 5 results
+  if success_count == 5 && error_count == 0 {
+    println!("✓ ExpNode correctly computed exponential values");
+    println!("  Expected results: e^0 ≈ 1.0, e^1 ≈ 2.718, e^2 ≈ 7.389, e^(-1) ≈ 0.368, e^(0.5) ≈ 1.649");
   } else {
     println!(
-      "⚠ AbsNode behavior may be unexpected (successes: {}, errors: {}, expected successes: 4, errors: 0)",
+      "⚠ ExpNode behavior may be unexpected (successes: {}, errors: {}, expected successes: 5, errors: 0)",
       success_count, error_count
     );
   }

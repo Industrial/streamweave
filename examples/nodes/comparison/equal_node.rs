@@ -175,14 +175,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 
   // Verify behavior: should receive 8 results (one for each test pair)
   if success_count == 8 && error_count == 0 {
     println!("✓ EqualNode correctly performed equality comparisons");
-    println!("  Results should match expected values: [true, false, true, false, true, false, true, false]");
+    println!(
+      "  Results should match expected values: [true, false, true, false, true, false, true, false]"
+    );
   } else {
     println!(
       "⚠ EqualNode behavior may be unexpected (successes: {}, errors: {}, expected successes: 8, errors: 0)",

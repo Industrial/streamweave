@@ -15,10 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Build the graph using the Graph API
   let mut graph = Graph::new("and_example".to_string());
-  graph.add_node(
-    "and".to_string(),
-    Box::new(AndNode::new("and".to_string())),
-  )?;
+  graph.add_node("and".to_string(), Box::new(AndNode::new("and".to_string())))?;
   graph.expose_input_port("and", "configuration", "configuration")?;
   graph.expose_input_port("and", "in1", "in1")?;
   graph.expose_input_port("and", "in2", "in2")?;
@@ -108,7 +105,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

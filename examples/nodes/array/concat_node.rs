@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send test data: pairs of arrays to concatenate
   let test_pairs = vec![
-    (vec!["a", "b"], vec!["c", "d"]),     // ["a", "b"] + ["c", "d"] = ["a", "b", "c", "d"]
+    (vec!["a", "b"], vec!["c", "d"]), // ["a", "b"] + ["c", "d"] = ["a", "b", "c", "d"]
     (vec!["x", "y", "z"], vec!["1", "2"]), // ["x", "y", "z"] + ["1", "2"] = ["x", "y", "z", "1", "2"]
   ];
 
@@ -121,7 +121,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

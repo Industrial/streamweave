@@ -239,6 +239,10 @@ name = "ceil_node"
 path = "examples/nodes/math/ceil_node.rs"
 
 [[example]]
+name = "exp_node"
+path = "examples/nodes/math/exp_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 

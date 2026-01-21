@@ -175,14 +175,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 
   // Verify behavior: should receive 8 results (false, true, false, true, false, true, false, true)
   if success_count == 8 && error_count == 0 {
     println!("✓ NotEqualNode correctly performed inequality comparisons");
-    println!("  Results should match expected values: [false, true, false, true, false, true, false, true]");
+    println!(
+      "  Results should match expected values: [false, true, false, true, false, true, false, true]"
+    );
   } else {
     println!(
       "⚠ NotEqualNode behavior may be unexpected (successes: {}, errors: {}, expected successes: 8, errors: 0)",

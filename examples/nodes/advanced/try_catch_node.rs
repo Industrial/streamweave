@@ -1,7 +1,9 @@
 use std::any::Any;
 use std::sync::Arc;
 use streamweave::graph::Graph;
-use streamweave::nodes::advanced::try_catch_node::{TryCatchNode, TryConfig, CatchConfig, try_config, catch_config};
+use streamweave::nodes::advanced::try_catch_node::{
+  CatchConfig, TryCatchNode, TryConfig, catch_config, try_config,
+};
 use tokio::sync::mpsc;
 
 #[tokio::main]
@@ -138,7 +140,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

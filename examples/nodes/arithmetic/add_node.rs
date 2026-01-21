@@ -15,10 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Build the graph using the Graph API
   let mut graph = Graph::new("add_example".to_string());
-  graph.add_node(
-    "add".to_string(),
-    Box::new(AddNode::new("add".to_string())),
-  )?;
+  graph.add_node("add".to_string(), Box::new(AddNode::new("add".to_string())))?;
   graph.expose_input_port("add", "configuration", "configuration")?;
   graph.expose_input_port("add", "in1", "in1")?;
   graph.expose_input_port("add", "in2", "in2")?;
@@ -40,12 +37,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Send test data: pairs of numbers to add
   let test_pairs = vec![(10i32, 5i32), (25i32, 15i32), (100i32, 50i32)]; // Results: 15, 40, 150
   for (a, b) in test_pairs {
-    let _ = in1_tx
-      .send(Arc::new(a) as Arc<dyn Any + Send + Sync>)
-      .await;
-    let _ = in2_tx
-      .send(Arc::new(b) as Arc<dyn Any + Send + Sync>)
-      .await;
+    let _ = in1_tx.send(Arc::new(a) as Arc<dyn Any + Send + Sync>).await;
+    let _ = in2_tx.send(Arc::new(b) as Arc<dyn Any + Send + Sync>).await;
     tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
   }
 
@@ -117,7 +110,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 
