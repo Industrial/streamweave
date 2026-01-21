@@ -135,6 +135,10 @@ name = "break_node"
 path = "examples/nodes/break_node.rs"
 
 [[example]]
+name = "continue_node"
+path = "examples/nodes/continue_node.rs"
+
+[[example]]
 name = "sync_node"
 path = "examples/nodes/sync_node.rs"
 
