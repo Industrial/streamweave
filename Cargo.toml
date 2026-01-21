@@ -158,5 +158,13 @@ path = "examples/nodes/switch_node.rs"
 name = "try_catch_node"
 path = "examples/nodes/try_catch_node.rs"
 
+[[example]]
+name = "average_node"
+path = "examples/nodes/average_node.rs"
+
+[[example]]
+name = "count_node"
+path = "examples/nodes/count_node.rs"
+
 [lints.rust]
 # Shared lint configuration
