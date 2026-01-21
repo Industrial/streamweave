@@ -267,6 +267,10 @@ name = "sqrt_node"
 path = "examples/nodes/math/sqrt_node.rs"
 
 [[example]]
+name = "get_node"
+path = "examples/nodes/object/get_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 
