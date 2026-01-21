@@ -195,6 +195,10 @@ name = "format_node"
 path = "examples/nodes/string/format_node.rs"
 
 [[example]]
+name = "string_index_of_node"
+path = "examples/nodes/string/index_of_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 

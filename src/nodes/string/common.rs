@@ -750,6 +750,42 @@ pub fn format_string(
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
 
+/// Finds the index of a substring within a string.
+///
+/// This function attempts to downcast the string and substring to their
+/// expected types and performs index finding. It supports:
+/// - Case-sensitive substring search
+/// - Returns index as i64, -1 if not found
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (i64) or an error string.
+pub fn string_index_of(
+  v: &Arc<dyn Any + Send + Sync>,
+  substring: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast string
+  let arc_str = v.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string index_of input: {} (input must be String)",
+      std::any::type_name_of_val(&**v)
+    )
+  })?;
+
+  // Try to downcast substring
+  let arc_substring = substring.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for substring: {} (substring must be String)",
+      std::any::type_name_of_val(&**substring)
+    )
+  })?;
+
+  // Find the index (case-sensitive)
+  let index = arc_str
+    .find(&*arc_substring)
+    .map(|i| i as i64)
+    .unwrap_or(-1);
+  Ok(Arc::new(index) as Arc<dyn Any + Send + Sync>)
+}
+
 /// Reverses the character order of a string.
 ///
 /// This function attempts to downcast the string to its expected type
