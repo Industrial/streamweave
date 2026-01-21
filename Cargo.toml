@@ -123,6 +123,10 @@ name = "debounce_node"
 path = "examples/nodes/stream/debounce_node.rs"
 
 [[example]]
+name = "distinct_node"
+path = "examples/nodes/stream/distinct_node.rs"
+
+[[example]]
 name = "merge_node"
 path = "examples/nodes/stream/merge_node.rs"
 
