@@ -32,6 +32,9 @@ pub mod debounce_node_test;
 pub mod distinct_node;
 #[cfg(test)]
 pub mod distinct_node_test;
+pub mod distinct_until_changed_node;
+#[cfg(test)]
+pub mod distinct_until_changed_node_test;
 pub mod drop_node;
 #[cfg(test)]
 pub mod drop_node_test;
@@ -60,6 +63,7 @@ pub mod zip_node_test;
 pub use buffer_node::BufferNode;
 pub use debounce_node::DebounceNode;
 pub use distinct_node::DistinctNode;
+pub use distinct_until_changed_node::DistinctUntilChangedNode;
 pub use drop_node::DropNode;
 pub use interleave_node::InterleaveNode;
 pub use limit_node::LimitNode;
