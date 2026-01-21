@@ -20,37 +20,37 @@
 //! - **ObjectDeletePropertyNode**: Delete property (`configuration`, `in`, `key` → `out`, `error`)
 
 pub mod common;
-pub mod delete_property_node;
-pub mod entries_node;
-pub mod has_property_node;
-pub mod keys_node;
-pub mod merge_node;
-pub mod property_node;
-pub mod set_property_node;
-pub mod values_node;
+pub mod object_delete_property_node;
+pub mod object_entries_node;
+pub mod object_has_property_node;
+pub mod object_keys_node;
+pub mod object_merge_node;
+pub mod object_property_node;
+pub mod object_set_property_node;
+pub mod object_values_node;
 
 #[cfg(test)]
-mod delete_property_node_test;
+mod object_delete_property_node_test;
 #[cfg(test)]
-mod entries_node_test;
+mod object_entries_node_test;
 #[cfg(test)]
-mod has_property_node_test;
+mod object_has_property_node_test;
 #[cfg(test)]
-mod keys_node_test;
+mod object_keys_node_test;
 #[cfg(test)]
-mod merge_node_test;
+mod object_merge_node_test;
 #[cfg(test)]
-mod property_node_test;
+mod object_property_node_test;
 #[cfg(test)]
-mod set_property_node_test;
+mod object_set_property_node_test;
 #[cfg(test)]
-mod values_node_test;
+mod object_values_node_test;
 
-pub use delete_property_node::ObjectDeletePropertyNode;
-pub use entries_node::ObjectEntriesNode;
-pub use has_property_node::ObjectHasPropertyNode;
-pub use keys_node::ObjectKeysNode;
-pub use merge_node::ObjectMergeNode;
-pub use property_node::ObjectPropertyNode;
-pub use set_property_node::ObjectSetPropertyNode;
-pub use values_node::ObjectValuesNode;
+pub use object_delete_property_node::ObjectDeletePropertyNode;
+pub use object_entries_node::ObjectEntriesNode;
+pub use object_has_property_node::ObjectHasPropertyNode;
+pub use object_keys_node::ObjectKeysNode;
+pub use object_merge_node::ObjectMergeNode;
+pub use object_property_node::ObjectPropertyNode;
+pub use object_set_property_node::ObjectSetPropertyNode;
+pub use object_values_node::ObjectValuesNode;

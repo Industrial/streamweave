@@ -267,16 +267,16 @@ name = "sqrt_node"
 path = "examples/nodes/math/sqrt_node.rs"
 
 [[example]]
-name = "get_node"
-path = "examples/nodes/object/get_node.rs"
+name = "object_property_node"
+path = "examples/nodes/object/object_property_node.rs"
 
 [[example]]
-name = "has_node"
-path = "examples/nodes/object/has_node.rs"
+name = "object_has_property_node"
+path = "examples/nodes/object/object_has_property_node.rs"
 
 [[example]]
-name = "keys_node"
-path = "examples/nodes/object/keys_node.rs"
+name = "object_keys_node"
+path = "examples/nodes/object/object_keys_node.rs"
 
 [[example]]
 name = "divide_node"
