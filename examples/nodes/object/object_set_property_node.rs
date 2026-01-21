@@ -47,8 +47,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test 1: Set new property in object
   println!("  Test 1: Set new 'city' property in person object");
   let mut obj1 = HashMap::new();
-  obj1.insert("name".to_string(), Arc::new("Alice".to_string()) as Arc<dyn Any + Send + Sync>);
-  obj1.insert("age".to_string(), Arc::new(30i64) as Arc<dyn Any + Send + Sync>);
+  obj1.insert(
+    "name".to_string(),
+    Arc::new("Alice".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
+  obj1.insert(
+    "age".to_string(),
+    Arc::new(30i64) as Arc<dyn Any + Send + Sync>,
+  );
 
   let _ = in_tx
     .send(Arc::new(obj1) as Arc<dyn Any + Send + Sync>)
@@ -64,8 +70,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test 2: Override existing property
   println!("  Test 2: Override existing 'age' property");
   let mut obj2 = HashMap::new();
-  obj2.insert("name".to_string(), Arc::new("Bob".to_string()) as Arc<dyn Any + Send + Sync>);
-  obj2.insert("age".to_string(), Arc::new(25i64) as Arc<dyn Any + Send + Sync>);
+  obj2.insert(
+    "name".to_string(),
+    Arc::new("Bob".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
+  obj2.insert(
+    "age".to_string(),
+    Arc::new(25i64) as Arc<dyn Any + Send + Sync>,
+  );
 
   let _ = in_tx
     .send(Arc::new(obj2) as Arc<dyn Any + Send + Sync>)
@@ -81,8 +93,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test 3: Set property with different value types
   println!("  Test 3: Set 'active' boolean property");
   let mut obj3 = HashMap::new();
-  obj3.insert("name".to_string(), Arc::new("Charlie".to_string()) as Arc<dyn Any + Send + Sync>);
-  obj3.insert("score".to_string(), Arc::new(95.5f64) as Arc<dyn Any + Send + Sync>);
+  obj3.insert(
+    "name".to_string(),
+    Arc::new("Charlie".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
+  obj3.insert(
+    "score".to_string(),
+    Arc::new(95.5f64) as Arc<dyn Any + Send + Sync>,
+  );
 
   let _ = in_tx
     .send(Arc::new(obj3) as Arc<dyn Any + Send + Sync>)
@@ -132,7 +150,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       println!("  Set result {}:", results_received);
 
       // Try to downcast to Arc<HashMap>
-      if let Ok(updated_arc) = item.clone().downcast::<Arc<HashMap<String, Arc<dyn Any + Send + Sync>>>>() {
+      if let Ok(updated_arc) = item
+        .clone()
+        .downcast::<Arc<HashMap<String, Arc<dyn Any + Send + Sync>>>>()
+      {
         let _updated = &**updated_arc;
         let updated = &**updated_arc;
         println!("    Updated object ({} properties)", updated.len());
@@ -156,7 +177,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
           }
         }
         success_count += 1;
-      } else if let Ok(updated_map) = item.clone().downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>() {
+      } else if let Ok(updated_map) = item
+        .clone()
+        .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+      {
         let updated = &*updated_map;
         println!("    Updated object ({} properties)", updated.len());
 
@@ -180,7 +204,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         success_count += 1;
       } else {
-        println!("    Unknown type (expected HashMap), got: {}", std::any::type_name_of_val(&*item));
+        println!(
+          "    Unknown type (expected HashMap), got: {}",
+          std::any::type_name_of_val(&*item)
+        );
         success_count += 1;
       }
       has_data = true;
@@ -200,7 +227,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

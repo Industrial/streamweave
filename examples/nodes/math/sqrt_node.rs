@@ -138,14 +138,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 
   // Verify behavior: should receive 5 results and 1 error
   if success_count == 5 && error_count == 1 {
     println!("✓ SqrtNode correctly computed square roots");
-    println!("  Results should be: sqrt(9) ≈ 3.0, sqrt(25) ≈ 5.0, sqrt(2) ≈ 1.414, sqrt(0) ≈ 0.0, sqrt(16) ≈ 4.0, sqrt(-4) = error");
+    println!(
+      "  Results should be: sqrt(9) ≈ 3.0, sqrt(25) ≈ 5.0, sqrt(2) ≈ 1.414, sqrt(0) ≈ 0.0, sqrt(16) ≈ 4.0, sqrt(-4) = error"
+    );
   } else {
     println!(
       "⚠ SqrtNode behavior may be unexpected (successes: {}, errors: {}, expected successes: 5, errors: 1)",

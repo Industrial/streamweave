@@ -15,10 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Build the graph using the Graph API
   let mut graph = Graph::new("max_example".to_string());
-  graph.add_node(
-    "max".to_string(),
-    Box::new(MaxNode::new("max".to_string())),
-  )?;
+  graph.add_node("max".to_string(), Box::new(MaxNode::new("max".to_string())))?;
   graph.expose_input_port("max", "configuration", "configuration")?;
   graph.expose_input_port("max", "in1", "input1")?;
   graph.expose_input_port("max", "in2", "input2")?;
@@ -145,7 +142,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

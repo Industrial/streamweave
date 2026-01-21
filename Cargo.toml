@@ -99,6 +99,10 @@ name = "for_each_node"
 path = "examples/nodes/stream/for_each_node.rs"
 
 [[example]]
+name = "drop_node"
+path = "examples/nodes/stream/drop_node.rs"
+
+[[example]]
 name = "join_node"
 path = "examples/nodes/string/join_node.rs"
 
@@ -177,6 +181,10 @@ path = "examples/nodes/aggregation/min_aggregate_node.rs"
 [[example]]
 name = "sum_node"
 path = "examples/nodes/aggregation/sum_node.rs"
+
+[[example]]
+name = "reduce_node"
+path = "examples/nodes/reduction/reduce_node.rs"
 
 [[example]]
 name = "add_node"

@@ -15,10 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Build the graph using the Graph API
   let mut graph = Graph::new("log_example".to_string());
-  graph.add_node(
-    "log".to_string(),
-    Box::new(LogNode::new("log".to_string())),
-  )?;
+  graph.add_node("log".to_string(), Box::new(LogNode::new("log".to_string())))?;
   graph.expose_input_port("log", "configuration", "configuration")?;
   graph.expose_input_port("log", "in", "input")?;
   graph.expose_input_port("log", "base", "base")?;
@@ -150,14 +147,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 
   // Verify behavior: should receive 5 results
   if success_count == 5 && error_count == 0 {
     println!("✓ LogNode correctly computed logarithm values");
-    println!("  Expected results: log₂(8) ≈ 3.0, log₁₀(100) ≈ 2.0, ln(e) ≈ 1.0, log₂(1) ≈ 0.0, log₂(0.5) ≈ -1.0");
+    println!(
+      "  Expected results: log₂(8) ≈ 3.0, log₁₀(100) ≈ 2.0, ln(e) ≈ 1.0, log₂(1) ≈ 0.0, log₂(0.5) ≈ -1.0"
+    );
   } else {
     println!(
       "⚠ LogNode behavior may be unexpected (successes: {}, errors: {}, expected successes: 5, errors: 0)",

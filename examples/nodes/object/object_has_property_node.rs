@@ -44,8 +44,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test 1: Check existing property
   println!("  Test 1: Has 'name' property (expected: true)");
   let mut obj1 = HashMap::new();
-  obj1.insert("name".to_string(), Arc::new("Alice".to_string()) as Arc<dyn Any + Send + Sync>);
-  obj1.insert("age".to_string(), Arc::new(30i64) as Arc<dyn Any + Send + Sync>);
+  obj1.insert(
+    "name".to_string(),
+    Arc::new("Alice".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
+  obj1.insert(
+    "age".to_string(),
+    Arc::new(30i64) as Arc<dyn Any + Send + Sync>,
+  );
   let _ = in_tx
     .send(Arc::new(obj1) as Arc<dyn Any + Send + Sync>)
     .await;
@@ -57,8 +63,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test 2: Check non-existing property
   println!("  Test 2: Has 'address' property (expected: false)");
   let mut obj2 = HashMap::new();
-  obj2.insert("name".to_string(), Arc::new("Bob".to_string()) as Arc<dyn Any + Send + Sync>);
-  obj2.insert("age".to_string(), Arc::new(25i64) as Arc<dyn Any + Send + Sync>);
+  obj2.insert(
+    "name".to_string(),
+    Arc::new("Bob".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
+  obj2.insert(
+    "age".to_string(),
+    Arc::new(25i64) as Arc<dyn Any + Send + Sync>,
+  );
   let _ = in_tx
     .send(Arc::new(obj2) as Arc<dyn Any + Send + Sync>)
     .await;
@@ -70,8 +82,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test 3: Check existing property with different object
   println!("  Test 3: Has 'active' property (expected: true)");
   let mut obj3 = HashMap::new();
-  obj3.insert("active".to_string(), Arc::new(true) as Arc<dyn Any + Send + Sync>);
-  obj3.insert("score".to_string(), Arc::new(95.5f64) as Arc<dyn Any + Send + Sync>);
+  obj3.insert(
+    "active".to_string(),
+    Arc::new(true) as Arc<dyn Any + Send + Sync>,
+  );
+  obj3.insert(
+    "score".to_string(),
+    Arc::new(95.5f64) as Arc<dyn Any + Send + Sync>,
+  );
   let _ = in_tx
     .send(Arc::new(obj3) as Arc<dyn Any + Send + Sync>)
     .await;
@@ -83,8 +101,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test 4: Check another non-existing property
   println!("  Test 4: Has 'email' property (expected: false)");
   let mut obj4 = HashMap::new();
-  obj4.insert("name".to_string(), Arc::new("Charlie".to_string()) as Arc<dyn Any + Send + Sync>);
-  obj4.insert("age".to_string(), Arc::new(35i64) as Arc<dyn Any + Send + Sync>);
+  obj4.insert(
+    "name".to_string(),
+    Arc::new("Charlie".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
+  obj4.insert(
+    "age".to_string(),
+    Arc::new(35i64) as Arc<dyn Any + Send + Sync>,
+  );
   let _ = in_tx
     .send(Arc::new(obj4) as Arc<dyn Any + Send + Sync>)
     .await;
@@ -153,14 +177,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 
   // Verify behavior: should receive 4 results (true, false, true, false)
   if success_count == 4 && error_count == 0 {
     println!("✓ ObjectHasPropertyNode correctly checked property existence");
-    println!("  Results should be: true, false, true, false (checking for existing/non-existing properties)");
+    println!(
+      "  Results should be: true, false, true, false (checking for existing/non-existing properties)"
+    );
   } else {
     println!(
       "⚠ ObjectHasPropertyNode behavior may be unexpected (successes: {}, errors: {}, expected successes: 4, errors: 0)",

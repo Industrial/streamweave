@@ -41,9 +41,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test 1: Extract keys from object with multiple properties
   println!("  Test 1: Extract keys from person object (expected: name, age, city)");
   let mut obj1 = HashMap::new();
-  obj1.insert("name".to_string(), Arc::new("Alice".to_string()) as Arc<dyn Any + Send + Sync>);
-  obj1.insert("age".to_string(), Arc::new(30i64) as Arc<dyn Any + Send + Sync>);
-  obj1.insert("city".to_string(), Arc::new("New York".to_string()) as Arc<dyn Any + Send + Sync>);
+  obj1.insert(
+    "name".to_string(),
+    Arc::new("Alice".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
+  obj1.insert(
+    "age".to_string(),
+    Arc::new(30i64) as Arc<dyn Any + Send + Sync>,
+  );
+  obj1.insert(
+    "city".to_string(),
+    Arc::new("New York".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
   let _ = in_tx
     .send(Arc::new(obj1) as Arc<dyn Any + Send + Sync>)
     .await;
@@ -52,7 +61,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test 2: Extract keys from object with single property
   println!("  Test 2: Extract keys from simple object (expected: value)");
   let mut obj2 = HashMap::new();
-  obj2.insert("value".to_string(), Arc::new(42i64) as Arc<dyn Any + Send + Sync>);
+  obj2.insert(
+    "value".to_string(),
+    Arc::new(42i64) as Arc<dyn Any + Send + Sync>,
+  );
   let _ = in_tx
     .send(Arc::new(obj2) as Arc<dyn Any + Send + Sync>)
     .await;
@@ -134,7 +146,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

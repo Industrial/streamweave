@@ -44,12 +44,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test 1: Merge objects with no overlapping keys
   println!("  Test 1: Merge objects with no overlapping keys");
   let mut obj1 = HashMap::new();
-  obj1.insert("name".to_string(), Arc::new("Alice".to_string()) as Arc<dyn Any + Send + Sync>);
-  obj1.insert("age".to_string(), Arc::new(30i64) as Arc<dyn Any + Send + Sync>);
+  obj1.insert(
+    "name".to_string(),
+    Arc::new("Alice".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
+  obj1.insert(
+    "age".to_string(),
+    Arc::new(30i64) as Arc<dyn Any + Send + Sync>,
+  );
 
   let mut obj2 = HashMap::new();
-  obj2.insert("city".to_string(), Arc::new("New York".to_string()) as Arc<dyn Any + Send + Sync>);
-  obj2.insert("country".to_string(), Arc::new("USA".to_string()) as Arc<dyn Any + Send + Sync>);
+  obj2.insert(
+    "city".to_string(),
+    Arc::new("New York".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
+  obj2.insert(
+    "country".to_string(),
+    Arc::new("USA".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
 
   let _ = in1_tx
     .send(Arc::new(obj1) as Arc<dyn Any + Send + Sync>)
@@ -62,12 +74,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test 2: Merge objects with overlapping keys (second object wins)
   println!("  Test 2: Merge objects with overlapping keys (second wins)");
   let mut obj3 = HashMap::new();
-  obj3.insert("name".to_string(), Arc::new("Bob".to_string()) as Arc<dyn Any + Send + Sync>);
-  obj3.insert("age".to_string(), Arc::new(25i64) as Arc<dyn Any + Send + Sync>);
+  obj3.insert(
+    "name".to_string(),
+    Arc::new("Bob".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
+  obj3.insert(
+    "age".to_string(),
+    Arc::new(25i64) as Arc<dyn Any + Send + Sync>,
+  );
 
   let mut obj4 = HashMap::new();
-  obj4.insert("age".to_string(), Arc::new(26i64) as Arc<dyn Any + Send + Sync>); // This should overwrite
-  obj4.insert("city".to_string(), Arc::new("London".to_string()) as Arc<dyn Any + Send + Sync>);
+  obj4.insert(
+    "age".to_string(),
+    Arc::new(26i64) as Arc<dyn Any + Send + Sync>,
+  ); // This should overwrite
+  obj4.insert(
+    "city".to_string(),
+    Arc::new("London".to_string()) as Arc<dyn Any + Send + Sync>,
+  );
 
   let _ = in1_tx
     .send(Arc::new(obj3) as Arc<dyn Any + Send + Sync>)
@@ -80,7 +104,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test 3: Merge with empty objects
   println!("  Test 3: Merge with one empty object");
   let mut obj5 = HashMap::new();
-  obj5.insert("value".to_string(), Arc::new(42i64) as Arc<dyn Any + Send + Sync>);
+  obj5.insert(
+    "value".to_string(),
+    Arc::new(42i64) as Arc<dyn Any + Send + Sync>,
+  );
 
   let obj6: HashMap<String, Arc<dyn Any + Send + Sync>> = HashMap::new(); // Empty object
 
@@ -128,7 +155,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       println!("  Merged result {}:", results_received);
 
       // Try to downcast to HashMap (returned as Arc<HashMap>)
-      if let Ok(merged_arc) = item.clone().downcast::<Arc<HashMap<String, Arc<dyn Any + Send + Sync>>>>() {
+      if let Ok(merged_arc) = item
+        .clone()
+        .downcast::<Arc<HashMap<String, Arc<dyn Any + Send + Sync>>>>()
+      {
         let merged = &**merged_arc;
         println!("    Merged object ({} properties)", merged.len());
 
@@ -149,7 +179,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         success_count += 1;
       } else {
         // Try direct HashMap downcast (if not wrapped in Arc)
-        if let Ok(merged_map) = item.clone().downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>() {
+        if let Ok(merged_map) = item
+          .clone()
+          .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+        {
           let merged = &*merged_map;
           println!("    Merged object ({} properties)", merged.len());
 
@@ -169,7 +202,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
           }
           success_count += 1;
         } else {
-          println!("    Unknown type (expected HashMap), got: {}", std::any::type_name_of_val(&*item));
+          println!(
+            "    Unknown type (expected HashMap), got: {}",
+            std::any::type_name_of_val(&*item)
+          );
           success_count += 1;
         }
       }
@@ -190,7 +226,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 

@@ -14,10 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Build the graph using the Graph API
   let mut graph = Graph::new("exp_example".to_string());
-  graph.add_node(
-    "exp".to_string(),
-    Box::new(ExpNode::new("exp".to_string())),
-  )?;
+  graph.add_node("exp".to_string(), Box::new(ExpNode::new("exp".to_string())))?;
   graph.expose_input_port("exp", "configuration", "configuration")?;
   graph.expose_input_port("exp", "in", "input")?;
   graph.expose_output_port("exp", "out", "output")?;
@@ -131,14 +128,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   }
 
-  println!("✓ Received {} successful results via output channel", success_count);
+  println!(
+    "✓ Received {} successful results via output channel",
+    success_count
+  );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 
   // Verify behavior: should receive 5 results
   if success_count == 5 && error_count == 0 {
     println!("✓ ExpNode correctly computed exponential values");
-    println!("  Expected results: e^0 ≈ 1.0, e^1 ≈ 2.718, e^2 ≈ 7.389, e^(-1) ≈ 0.368, e^(0.5) ≈ 1.649");
+    println!(
+      "  Expected results: e^0 ≈ 1.0, e^1 ≈ 2.718, e^2 ≈ 7.389, e^(-1) ≈ 0.368, e^(0.5) ≈ 1.649"
+    );
   } else {
     println!(
       "⚠ ExpNode behavior may be unexpected (successes: {}, errors: {}, expected successes: 5, errors: 0)",
