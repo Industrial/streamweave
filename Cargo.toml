@@ -218,5 +218,9 @@ path = "examples/nodes/index_node.rs"
 name = "index_of_node"
 path = "examples/nodes/index_of_node.rs"
 
+[[example]]
+name = "length_node"
+path = "examples/nodes/length_node.rs"
+
 [lints.rust]
 # Shared lint configuration
