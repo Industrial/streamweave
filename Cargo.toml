@@ -215,6 +215,10 @@ name = "greater_than_node"
 path = "examples/nodes/comparison/greater_than_node.rs"
 
 [[example]]
+name = "greater_than_or_equal_node"
+path = "examples/nodes/comparison/greater_than_or_equal_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 
