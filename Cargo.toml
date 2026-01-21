@@ -219,6 +219,10 @@ name = "string_replace_node"
 path = "examples/nodes/string/replace_node.rs"
 
 [[example]]
+name = "string_split_node"
+path = "examples/nodes/string/split_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 
