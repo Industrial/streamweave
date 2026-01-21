@@ -88,31 +88,31 @@ harness = false
 
 [[example]]
 name = "map_node"
-path = "examples/nodes/map_node.rs"
+path = "examples/nodes/stream/map_node.rs"
 
 [[example]]
 name = "filter_node"
-path = "examples/nodes/filter_node.rs"
+path = "examples/nodes/stream/filter_node.rs"
 
 [[example]]
 name = "for_each_node"
-path = "examples/nodes/for_each_node.rs"
+path = "examples/nodes/stream/for_each_node.rs"
 
 [[example]]
 name = "join_node"
-path = "examples/nodes/join_node.rs"
+path = "examples/nodes/string/join_node.rs"
 
 [[example]]
 name = "condition_node"
-path = "examples/nodes/condition_node.rs"
+path = "examples/nodes/advanced/condition_node.rs"
 
 [[example]]
 name = "error_branch_node"
-path = "examples/nodes/error_branch_node.rs"
+path = "examples/nodes/advanced/error_branch_node.rs"
 
 [[example]]
 name = "match_node"
-path = "examples/nodes/match_node.rs"
+path = "examples/nodes/string/match_node.rs"
 
 [[example]]
 name = "range_node"
@@ -120,11 +120,11 @@ path = "examples/nodes/range_node.rs"
 
 [[example]]
 name = "read_variable_node"
-path = "examples/nodes/read_variable_node.rs"
+path = "examples/nodes/variable/read_variable_node.rs"
 
 [[example]]
 name = "write_variable_node"
-path = "examples/nodes/write_variable_node.rs"
+path = "examples/nodes/variable/write_variable_node.rs"
 
 [[example]]
 name = "while_loop_node"
@@ -132,11 +132,11 @@ path = "examples/nodes/while_loop_node.rs"
 
 [[example]]
 name = "break_node"
-path = "examples/nodes/break_node.rs"
+path = "examples/nodes/advanced/break_node.rs"
 
 [[example]]
 name = "continue_node"
-path = "examples/nodes/continue_node.rs"
+path = "examples/nodes/advanced/continue_node.rs"
 
 [[example]]
 name = "sync_node"
@@ -144,83 +144,83 @@ path = "examples/nodes/sync_node.rs"
 
 [[example]]
 name = "repeat_node"
-path = "examples/nodes/repeat_node.rs"
+path = "examples/nodes/advanced/repeat_node.rs"
 
 [[example]]
 name = "retry_node"
-path = "examples/nodes/retry_node.rs"
+path = "examples/nodes/advanced/retry_node.rs"
 
 [[example]]
 name = "switch_node"
-path = "examples/nodes/switch_node.rs"
+path = "examples/nodes/advanced/switch_node.rs"
 
 [[example]]
 name = "try_catch_node"
-path = "examples/nodes/try_catch_node.rs"
+path = "examples/nodes/advanced/try_catch_node.rs"
 
 [[example]]
 name = "average_node"
-path = "examples/nodes/average_node.rs"
+path = "examples/nodes/aggregation/average_node.rs"
 
 [[example]]
 name = "count_node"
-path = "examples/nodes/count_node.rs"
+path = "examples/nodes/aggregation/count_node.rs"
 
 [[example]]
 name = "max_aggregate_node"
-path = "examples/nodes/max_aggregate_node.rs"
+path = "examples/nodes/aggregation/max_aggregate_node.rs"
 
 [[example]]
 name = "min_aggregate_node"
-path = "examples/nodes/min_aggregate_node.rs"
+path = "examples/nodes/aggregation/min_aggregate_node.rs"
 
 [[example]]
 name = "add_node"
-path = "examples/nodes/add_node.rs"
+path = "examples/nodes/arithmetic/add_node.rs"
 
 [[example]]
 name = "divide_node"
-path = "examples/nodes/divide_node.rs"
+path = "examples/nodes/arithmetic/divide_node.rs"
 
 [[example]]
 name = "modulo_node"
-path = "examples/nodes/modulo_node.rs"
+path = "examples/nodes/arithmetic/modulo_node.rs"
 
 [[example]]
 name = "multiply_node"
-path = "examples/nodes/multiply_node.rs"
+path = "examples/nodes/arithmetic/multiply_node.rs"
 
 [[example]]
 name = "power_node"
-path = "examples/nodes/power_node.rs"
+path = "examples/nodes/arithmetic/power_node.rs"
 
 [[example]]
 name = "subtract_node"
-path = "examples/nodes/subtract_node.rs"
+path = "examples/nodes/arithmetic/subtract_node.rs"
 
 [[example]]
 name = "concat_node"
-path = "examples/nodes/concat_node.rs"
+path = "examples/nodes/array/concat_node.rs"
 
 [[example]]
 name = "contains_node"
-path = "examples/nodes/contains_node.rs"
+path = "examples/nodes/array/contains_node.rs"
 
 [[example]]
 name = "flatten_node"
-path = "examples/nodes/flatten_node.rs"
+path = "examples/nodes/array/flatten_node.rs"
 
 [[example]]
 name = "index_node"
-path = "examples/nodes/index_node.rs"
+path = "examples/nodes/array/index_node.rs"
 
 [[example]]
 name = "index_of_node"
-path = "examples/nodes/index_of_node.rs"
+path = "examples/nodes/array/index_of_node.rs"
 
 [[example]]
 name = "length_node"
-path = "examples/nodes/length_node.rs"
+path = "examples/nodes/array/length_node.rs"
 
 [lints.rust]
 # Shared lint configuration
