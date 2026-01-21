@@ -283,6 +283,10 @@ name = "object_merge_node"
 path = "examples/nodes/object/object_merge_node.rs"
 
 [[example]]
+name = "object_set_property_node"
+path = "examples/nodes/object/object_set_property_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 
