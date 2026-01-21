@@ -243,6 +243,10 @@ name = "string_char_at_node"
 path = "examples/nodes/string/char_at_node.rs"
 
 [[example]]
+name = "string_concat_node"
+path = "examples/nodes/string/concat_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 
