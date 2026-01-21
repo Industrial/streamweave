@@ -107,6 +107,10 @@ name = "skip_node"
 path = "examples/nodes/stream/skip_node.rs"
 
 [[example]]
+name = "take_node"
+path = "examples/nodes/stream/take_node.rs"
+
+[[example]]
 name = "sample_node"
 path = "examples/nodes/stream/sample_node.rs"
 
