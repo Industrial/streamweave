@@ -266,5 +266,9 @@ path = "examples/nodes/array/sort_node.rs"
 name = "split_node"
 path = "examples/nodes/array/split_node.rs"
 
+[[example]]
+name = "unique_node"
+path = "examples/nodes/array/unique_node.rs"
+
 [lints.rust]
 # Shared lint configuration
