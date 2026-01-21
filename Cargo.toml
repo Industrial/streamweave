@@ -231,6 +231,10 @@ name = "string_slice_node"
 path = "examples/nodes/string/slice_node.rs"
 
 [[example]]
+name = "string_trim_node"
+path = "examples/nodes/string/trim_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 
