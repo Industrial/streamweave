@@ -271,6 +271,10 @@ name = "get_node"
 path = "examples/nodes/object/get_node.rs"
 
 [[example]]
+name = "has_node"
+path = "examples/nodes/object/has_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 
