@@ -21,6 +21,7 @@ pub mod index_of_node;
 pub mod join_node;
 pub mod last_index_of_node;
 pub mod length_node;
+pub mod lowercase_node;
 pub mod match_node;
 pub mod pad_node;
 pub mod replace_node;
@@ -55,6 +56,8 @@ mod last_index_of_node_test;
 #[cfg(test)]
 mod length_node_test;
 #[cfg(test)]
+mod lowercase_node_test;
+#[cfg(test)]
 mod match_node_test;
 #[cfg(test)]
 mod pad_node_test;
@@ -83,6 +86,7 @@ pub use index_of_node::StringIndexOfNode;
 pub use join_node::StringJoinNode;
 pub use last_index_of_node::StringLastIndexOfNode;
 pub use length_node::StringLengthNode;
+pub use lowercase_node::StringLowercaseNode;
 pub use match_node::StringMatchNode;
 pub use pad_node::StringPadNode;
 pub use replace_node::StringReplaceNode;

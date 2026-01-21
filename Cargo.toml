@@ -207,6 +207,10 @@ name = "string_length_node"
 path = "examples/nodes/string/length_node.rs"
 
 [[example]]
+name = "string_lowercase_node"
+path = "examples/nodes/string/lowercase_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 

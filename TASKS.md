@@ -798,7 +798,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-    - [o] 2.11.10 length_node
+    - [x] 2.11.10 length_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -806,7 +806,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-    - [ ] 2.11.11 lowercase_node
+    - [o] 2.11.11 lowercase_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)

@@ -704,6 +704,30 @@ pub fn capitalize_string(
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
 
+/// Converts a string to lowercase.
+///
+/// This function attempts to downcast the string to its expected type
+/// and converts all characters to lowercase. It supports:
+/// - ASCII and Unicode character lowercase conversion
+/// - Empty strings remain unchanged
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` or an error string.
+pub fn lowercase_string(
+  v: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast string
+  let arc_str = v.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string lowercase input: {} (input must be String)",
+      std::any::type_name_of_val(&**v)
+    )
+  })?;
+
+  // Convert to lowercase
+  let result = arc_str.to_lowercase();
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
+
 /// Formats a string template with a value using Rust's format! macro.
 ///
 /// This function attempts to downcast the template and value to their expected types
