@@ -206,5 +206,9 @@ path = "examples/nodes/concat_node.rs"
 name = "contains_node"
 path = "examples/nodes/contains_node.rs"
 
+[[example]]
+name = "flatten_node"
+path = "examples/nodes/flatten_node.rs"
+
 [lints.rust]
 # Shared lint configuration
