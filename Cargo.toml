@@ -179,6 +179,10 @@ name = "add_node"
 path = "examples/nodes/arithmetic/add_node.rs"
 
 [[example]]
+name = "and_node"
+path = "examples/nodes/boolean_logic/and_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 
