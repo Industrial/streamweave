@@ -231,6 +231,10 @@ name = "not_equal_node"
 path = "examples/nodes/comparison/not_equal_node.rs"
 
 [[example]]
+name = "abs_node"
+path = "examples/nodes/math/abs_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 
