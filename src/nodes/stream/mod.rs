@@ -26,6 +26,9 @@
 pub mod buffer_node;
 #[cfg(test)]
 pub mod buffer_node_test;
+pub mod debounce_node;
+#[cfg(test)]
+pub mod debounce_node_test;
 pub mod drop_node;
 #[cfg(test)]
 pub mod drop_node_test;
@@ -52,6 +55,7 @@ pub mod zip_node;
 pub mod zip_node_test;
 
 pub use buffer_node::BufferNode;
+pub use debounce_node::DebounceNode;
 pub use drop_node::DropNode;
 pub use interleave_node::InterleaveNode;
 pub use limit_node::LimitNode;

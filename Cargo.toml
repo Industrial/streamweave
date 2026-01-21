@@ -119,6 +119,10 @@ name = "buffer_node"
 path = "examples/nodes/stream/buffer_node.rs"
 
 [[example]]
+name = "debounce_node"
+path = "examples/nodes/stream/debounce_node.rs"
+
+[[example]]
 name = "merge_node"
 path = "examples/nodes/stream/merge_node.rs"
 
