@@ -147,6 +147,10 @@ name = "throttle_node"
 path = "examples/nodes/stream/throttle_node.rs"
 
 [[example]]
+name = "window_node"
+path = "examples/nodes/stream/window_node.rs"
+
+[[example]]
 name = "merge_node"
 path = "examples/nodes/stream/merge_node.rs"
 
