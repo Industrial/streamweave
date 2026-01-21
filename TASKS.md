@@ -115,7 +115,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
       - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
       - git commit made for each completed example
 
-- [o] 2. Create Node Examples
+- [x] 2. Create Node Examples
   - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
   - Acceptance Criteria:
     - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -262,7 +262,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example
 
-  - [o] 2.4 Array Nodes
+  - [x] 2.4 Array Nodes
     - [x] 2.4.1 concat_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
@@ -303,7 +303,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example
 
-    - [o] 2.4.6 length_node
+    - [x] 2.4.6 length_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -311,7 +311,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example
 
-    - [ ] 2.4.7 reverse_node
+    - [x] 2.4.7 reverse_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -351,8 +351,8 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example
 
-  - [ ] 2.5 Boolean Logic Nodes
-    - [ ] 2.5.1 and_node
+  - [x] 2.5 Boolean Logic Nodes
+    - [x] 2.5.1 and_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -360,7 +360,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example
 
-    - [ ] 2.5.2 nand_node
+    - [x] 2.5.2 nand_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -368,7 +368,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example
 
-    - [ ] 2.5.3 nor_node
+    - [x] 2.5.3 nor_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -376,7 +376,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example
 
-    - [ ] 2.5.4 not_node
+    - [x] 2.5.4 not_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -384,7 +384,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example
 
-    - [ ] 2.5.5 or_node
+    - [x] 2.5.5 or_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -392,7 +392,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example
 
-    - [ ] 2.5.6 xor_node
+    - [x] 2.5.6 xor_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
