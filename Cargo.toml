@@ -223,6 +223,10 @@ name = "string_split_node"
 path = "examples/nodes/string/split_node.rs"
 
 [[example]]
+name = "string_starts_with_node"
+path = "examples/nodes/string/starts_with_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 
