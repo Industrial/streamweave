@@ -1,34 +1,33 @@
 use std::any::Any;
-use std::collections::HashMap;
-use std::pin::Pin;
 use std::sync::Arc;
-use streamweave::node::Node;
+use streamweave::graph::Graph;
 use streamweave::nodes::error_branch_node::{ErrorBranchConfig, ErrorBranchNode};
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-  // Create the ErrorBranchNode directly
-  let error_branch_node = ErrorBranchNode::new("error_branch".to_string());
-
-  // Create input streams for the ErrorBranchNode
-  let (config_tx, config_rx) = mpsc::channel(10);
+  // Create channels for external I/O
+  let (config_tx, config_rx) = mpsc::channel(1);
   let (input_tx, input_rx) = mpsc::channel(10);
+  let (success_tx, mut success_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
+  let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  let mut inputs = HashMap::new();
-  inputs.insert(
-    "configuration".to_string(),
-    Box::pin(ReceiverStream::new(config_rx))
-      as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
-  );
-  inputs.insert(
-    "in".to_string(),
-    Box::pin(ReceiverStream::new(input_rx))
-      as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
-  );
+  // Build the graph using the Graph API
+  let mut graph = Graph::new("error_branch_example".to_string());
+  graph.add_node(
+    "error_branch".to_string(),
+    Box::new(ErrorBranchNode::new("error_branch".to_string())),
+  )?;
+  graph.expose_input_port("error_branch", "configuration", "configuration")?;
+  graph.expose_input_port("error_branch", "in", "input")?;
+  graph.expose_output_port("error_branch", "success", "success")?;
+  graph.expose_output_port("error_branch", "error", "error")?;
+  graph.connect_input_channel("configuration", config_rx)?;
+  graph.connect_input_channel("input", input_rx)?;
+  graph.connect_output_channel("success", success_tx)?;
+  graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ ErrorBranchNode created with input streams");
+  println!("✓ Graph built with ErrorBranchNode using Graph API");
 
   // Configuration is optional for ErrorBranchNode
   let config = Arc::new(ErrorBranchConfig {});
@@ -36,6 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Send the configuration
   let _ = config_tx.send(config as Arc<dyn Any + Send + Sync>).await;
 
+  // Send test results to demonstrate routing based on Result types
   let test_results: Vec<Result<Arc<dyn Any + Send + Sync>, String>> = vec![
     Ok(Arc::new("success_1".to_string()) as Arc<dyn Any + Send + Sync>),
     Err("error_1".to_string()),
@@ -49,6 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = input_tx
       .send(Arc::new(result) as Arc<dyn Any + Send + Sync>)
       .await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
   }
 
   // Also send a non-Result type to demonstrate error handling
@@ -56,52 +57,59 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .send(Arc::new("not_a_result".to_string()) as Arc<dyn Any + Send + Sync>)
     .await;
 
-  println!("✓ Configuration and input data sent to streams");
+  println!("✓ Configuration sent and test data sent to input channel");
+
+  // Execute the graph
+  println!("Executing graph with ErrorBranchNode...");
+  let start = std::time::Instant::now();
+  graph
+    .execute()
+    .await
+    .map_err(|e| format!("Graph execution failed: {:?}", e))?;
+  println!("✓ Graph execution completed in {:?}", start.elapsed());
 
   // Drop the transmitters to close the input channels (signals EOF to streams)
-  // This must happen BEFORE calling execute, so the streams know when input ends
   drop(config_tx);
   drop(input_tx);
 
-  // Execute the ErrorBranchNode
-  println!("Executing ErrorBranchNode...");
-  let start = std::time::Instant::now();
-  let outputs_future = error_branch_node.execute(inputs);
-  let mut outputs = outputs_future
-    .await
-    .map_err(|e| format!("ErrorBranchNode execution failed: {:?}", e))?;
-  println!(
-    "✓ ErrorBranchNode execution completed in {:?}",
-    start.elapsed()
-  );
-
-  // Read results from the "success" output stream
-  println!("Reading results from 'success' output stream...");
+  // Read results from the output channels
+  println!("Reading results from output channels...");
   let mut success_count = 0;
-  if let Some(mut success_stream) = outputs.remove("success") {
-    while let Some(item) = success_stream.next().await {
+  let mut error_count = 0;
+
+  loop {
+    let success_result =
+      tokio::time::timeout(tokio::time::Duration::from_millis(100), success_rx.recv()).await;
+    let error_result =
+      tokio::time::timeout(tokio::time::Duration::from_millis(100), error_rx.recv()).await;
+
+    let mut has_data = false;
+
+    if let Ok(Some(item)) = success_result {
       if let Ok(string_arc) = item.clone().downcast::<String>() {
-        let value = &**string_arc;
+        let value = (**string_arc).to_string();
         println!("  Success: {}", value);
         success_count += 1;
+        has_data = true;
       } else if let Ok(int_arc) = item.downcast::<i32>() {
         let value = *int_arc;
         println!("  Success: {}", value);
         success_count += 1;
+        has_data = true;
       }
     }
-  }
 
-  // Read results from the "error" output stream
-  println!("Reading results from 'error' output stream...");
-  let mut error_count = 0;
-  if let Some(mut error_stream) = outputs.remove("error") {
-    while let Some(item) = error_stream.next().await {
+    if let Ok(Some(item)) = error_result {
       if let Ok(error_msg) = item.downcast::<String>() {
-        let error = &**error_msg;
+        let error = (**error_msg).to_string();
         println!("  Error: {}", error);
         error_count += 1;
+        has_data = true;
       }
+    }
+
+    if !has_data {
+      break;
     }
   }
 
@@ -111,6 +119,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
+
+  // Verify behavior: should receive 3 success values and 4 errors (3 explicit + 1 non-Result)
+  if success_count == 3 && error_count == 4 {
+    println!("✓ ErrorBranchNode correctly routed Result values by success/failure");
+  } else {
+    println!(
+      "⚠ ErrorBranchNode behavior may be unexpected (success: {}, errors: {}, expected success: 3, errors: 4)",
+      success_count, error_count
+    );
+  }
 
   Ok(())
 }
