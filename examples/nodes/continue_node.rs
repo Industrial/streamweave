@@ -1,47 +1,43 @@
 use std::any::Any;
-use std::collections::HashMap;
-use std::pin::Pin;
 use std::sync::Arc;
-use streamweave::node::{Node, NodeExecutionError, OutputStreams};
+use streamweave::graph::Graph;
 use streamweave::nodes::advanced::continue_node::ContinueNode;
 use tokio::sync::mpsc;
-use tokio_stream::{Stream, StreamExt, wrappers::ReceiverStream};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-  // Create the ContinueNode directly
-  let continue_node = ContinueNode::new("continue".to_string());
-
-  // Create input streams for the ContinueNode
-  let (config_tx, config_rx) = mpsc::channel(10);
+  // Create channels for external I/O
+  let (config_tx, config_rx) = mpsc::channel(1);
   let (input_tx, input_rx) = mpsc::channel(10);
   let (signal_tx, signal_rx) = mpsc::channel(10);
+  let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
+  let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  let mut inputs = HashMap::new();
-  inputs.insert(
-    "configuration".to_string(),
-    Box::pin(ReceiverStream::new(config_rx))
-      as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
-  );
-  inputs.insert(
-    "in".to_string(),
-    Box::pin(ReceiverStream::new(input_rx))
-      as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
-  );
-  inputs.insert(
-    "signal".to_string(),
-    Box::pin(ReceiverStream::new(signal_rx))
-      as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
-  );
+  // Build the graph using the Graph API
+  let mut graph = Graph::new("continue_example".to_string());
+  graph.add_node(
+    "continue".to_string(),
+    Box::new(ContinueNode::new("continue".to_string())),
+  )?;
+  graph.expose_input_port("continue", "configuration", "configuration")?;
+  graph.expose_input_port("continue", "in", "input")?;
+  graph.expose_input_port("continue", "signal", "signal")?;
+  graph.expose_output_port("continue", "out", "output")?;
+  graph.expose_output_port("continue", "error", "error")?;
+  graph.connect_input_channel("configuration", config_rx)?;
+  graph.connect_input_channel("input", input_rx)?;
+  graph.connect_input_channel("signal", signal_rx)?;
+  graph.connect_output_channel("output", out_tx)?;
+  graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ ContinueNode created with input streams");
+  println!("✓ Graph built with ContinueNode using Graph API");
 
   // Send configuration (empty config for continue node)
   let _ = config_tx
     .send(Arc::new(()) as Arc<dyn Any + Send + Sync>)
     .await;
 
-  // Create a task to send input data and signals concurrently with node execution
+  // Create a task to send input data and signals concurrently with graph execution
   let input_tx_clone = input_tx.clone();
   let signal_tx_clone = signal_tx.clone();
 
@@ -73,58 +69,60 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   println!("✓ Configuration sent and concurrent data/signal sender started");
 
-  // Execute the ContinueNode
-  println!("Executing ContinueNode...");
+  // Execute the graph
+  println!("Executing graph with ContinueNode...");
   let start = std::time::Instant::now();
-  let outputs_future: Pin<
-    Box<dyn std::future::Future<Output = Result<OutputStreams, NodeExecutionError>> + Send>,
-  > = continue_node.execute(inputs);
-  let mut outputs: OutputStreams = outputs_future
+  graph
+    .execute()
     .await
-    .map_err(|e| format!("ContinueNode execution failed: {:?}", e))?;
-  println!(
-    "✓ ContinueNode execution completed in {:?}",
-    start.elapsed()
-  );
+    .map_err(|e| format!("Graph execution failed: {:?}", e))?;
+  println!("✓ Graph execution completed in {:?}", start.elapsed());
 
   // Drop the transmitters to close the input channels (signals EOF to streams)
   drop(config_tx);
   drop(input_tx);
   drop(signal_tx);
 
-  // Read results from the "out" output stream
-  println!("Reading results from 'out' output stream...");
+  // Read results from the output channels
+  println!("Reading results from output channels...");
   let mut output_count = 0;
   let mut received_items = Vec::new();
-  if let Some(out_stream) = outputs.remove("out") {
-    let mut out_stream: Pin<Box<dyn Stream<Item = Arc<dyn Any + Send + Sync>> + Send>> = out_stream;
-    while let Some(item) = out_stream.next().await {
+  let mut error_count = 0;
+
+  loop {
+    let out_result =
+      tokio::time::timeout(tokio::time::Duration::from_millis(100), out_rx.recv()).await;
+    let error_result =
+      tokio::time::timeout(tokio::time::Duration::from_millis(100), error_rx.recv()).await;
+
+    let mut has_data = false;
+
+    if let Ok(Some(item)) = out_result {
       if let Ok(item_arc) = item.downcast::<String>() {
         let item_str = (**item_arc).to_string();
         println!("  Output: {}", item_str);
         received_items.push(item_str);
         output_count += 1;
+        has_data = true;
       }
     }
-  }
 
-  // Read errors from the error stream
-  println!("Reading errors from error stream...");
-  let mut error_count = 0;
-  if let Some(error_stream) = outputs.remove("error") {
-    let mut error_stream: Pin<Box<dyn Stream<Item = Arc<dyn Any + Send + Sync>> + Send>> =
-      error_stream;
-    while let Some(item) = error_stream.next().await {
+    if let Ok(Some(item)) = error_result {
       if let Ok(error_msg) = item.downcast::<String>() {
         let error = &**error_msg;
         println!("  Error: {}", error);
         error_count += 1;
+        has_data = true;
       }
+    }
+
+    if !has_data {
+      break;
     }
   }
 
-  println!("✓ Received {} items via output stream", output_count);
-  println!("✓ Received {} errors via error stream", error_count);
+  println!("✓ Received {} items via output channel", output_count);
+  println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
 
   // Verify behavior: should receive item1, item2, item4, item5 (item3 should be skipped)
