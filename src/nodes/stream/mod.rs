@@ -15,6 +15,7 @@
 //! - **SkipNode**: Skip first N items (`configuration`, `in`, `count` → `out`, `error`)
 //! - **LimitNode**: Limit total items (`configuration`, `in`, `limit` → `out`, `error`)
 //! - **DropNode**: Discard all items (`configuration`, `in` → `out`, `error`)
+//! - **BufferNode**: Buffer items into batches (`configuration`, `in`, `size` → `out`, `error`)
 //! - **SampleNode**: Sample items at rate (`configuration`, `in`, `rate` → `out`, `error`)
 //!
 //! ### Stream Combination
@@ -22,6 +23,9 @@
 //! - **InterleaveNode**: Interleave multiple streams (`configuration`, `in1`, `in2`, ... → `out`, `error`)
 //! - **MergeNode**: Merge multiple streams (`configuration`, `in1`, `in2`, ... → `out`, `error`)
 
+pub mod buffer_node;
+#[cfg(test)]
+pub mod buffer_node_test;
 pub mod drop_node;
 #[cfg(test)]
 pub mod drop_node_test;
@@ -47,6 +51,7 @@ pub mod zip_node;
 #[cfg(test)]
 pub mod zip_node_test;
 
+pub use buffer_node::BufferNode;
 pub use drop_node::DropNode;
 pub use interleave_node::InterleaveNode;
 pub use limit_node::LimitNode;

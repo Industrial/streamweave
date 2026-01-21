@@ -115,6 +115,10 @@ name = "sample_node"
 path = "examples/nodes/stream/sample_node.rs"
 
 [[example]]
+name = "buffer_node"
+path = "examples/nodes/stream/buffer_node.rs"
+
+[[example]]
 name = "merge_node"
 path = "examples/nodes/stream/merge_node.rs"
 
