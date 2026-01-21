@@ -103,6 +103,14 @@ name = "drop_node"
 path = "examples/nodes/stream/drop_node.rs"
 
 [[example]]
+name = "sample_node"
+path = "examples/nodes/stream/sample_node.rs"
+
+[[example]]
+name = "merge_node"
+path = "examples/nodes/stream/merge_node.rs"
+
+[[example]]
 name = "join_node"
 path = "examples/nodes/string/join_node.rs"
 
