@@ -243,6 +243,10 @@ name = "exp_node"
 path = "examples/nodes/math/exp_node.rs"
 
 [[example]]
+name = "floor_node"
+path = "examples/nodes/math/floor_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 
