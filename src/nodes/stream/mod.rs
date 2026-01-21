@@ -47,6 +47,9 @@ pub mod first_node_test;
 pub mod interleave_node;
 #[cfg(test)]
 pub mod interleave_node_test;
+pub mod last_node;
+#[cfg(test)]
+pub mod last_node_test;
 pub mod limit_node;
 #[cfg(test)]
 pub mod limit_node_test;
@@ -76,6 +79,7 @@ pub use filter_map_node::{
 };
 pub use first_node::FirstNode;
 pub use interleave_node::InterleaveNode;
+pub use last_node::LastNode;
 pub use limit_node::LimitNode;
 pub use merge_node::MergeNode;
 pub use sample_node::SampleNode;

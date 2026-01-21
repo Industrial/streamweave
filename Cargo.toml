@@ -139,6 +139,10 @@ name = "first_node"
 path = "examples/nodes/stream/first_node.rs"
 
 [[example]]
+name = "last_node"
+path = "examples/nodes/stream/last_node.rs"
+
+[[example]]
 name = "merge_node"
 path = "examples/nodes/stream/merge_node.rs"
 
