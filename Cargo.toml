@@ -175,6 +175,10 @@ name = "min_aggregate_node"
 path = "examples/nodes/aggregation/min_aggregate_node.rs"
 
 [[example]]
+name = "sum_node"
+path = "examples/nodes/aggregation/sum_node.rs"
+
+[[example]]
 name = "add_node"
 path = "examples/nodes/arithmetic/add_node.rs"
 
