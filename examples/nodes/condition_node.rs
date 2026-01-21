@@ -1,34 +1,17 @@
 use std::any::Any;
-use std::collections::HashMap;
-use std::pin::Pin;
 use std::sync::Arc;
-use streamweave::node::Node;
+use streamweave::graph::Graph;
 use streamweave::nodes::condition_node::{ConditionConfig, ConditionNode, condition_config};
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-  // Create the ConditionNode directly
-  let condition_node = ConditionNode::new("condition".to_string());
-
-  // Create input streams for the ConditionNode
-  let (config_tx, config_rx) = mpsc::channel(10);
+  // Create channels for external I/O
+  let (config_tx, config_rx) = mpsc::channel(1);
   let (input_tx, input_rx) = mpsc::channel(10);
-
-  let mut inputs = HashMap::new();
-  inputs.insert(
-    "configuration".to_string(),
-    Box::pin(ReceiverStream::new(config_rx))
-      as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
-  );
-  inputs.insert(
-    "in".to_string(),
-    Box::pin(ReceiverStream::new(input_rx))
-      as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
-  );
-
-  println!("✓ ConditionNode created with input streams");
+  let (true_tx, mut true_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
+  let (false_tx, mut false_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
+  let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
   // Create a configuration that routes positive numbers (including zero) to "true" and negative to "false"
   let condition_config: ConditionConfig = condition_config(|value| async move {
@@ -40,74 +23,99 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   });
 
-  // Send the configuration
+  // Build the graph using the Graph API
+  let mut graph = Graph::new("condition_example".to_string());
+  graph.add_node(
+    "condition".to_string(),
+    Box::new(ConditionNode::new("condition".to_string())),
+  )?;
+  graph.expose_input_port("condition", "configuration", "configuration")?;
+  graph.expose_input_port("condition", "in", "input")?;
+  graph.expose_output_port("condition", "true", "true")?;
+  graph.expose_output_port("condition", "false", "false")?;
+  graph.expose_output_port("condition", "error", "error")?;
+  graph.connect_input_channel("configuration", config_rx)?;
+  graph.connect_input_channel("input", input_rx)?;
+  graph.connect_output_channel("true", true_tx)?;
+  graph.connect_output_channel("false", false_tx)?;
+  graph.connect_output_channel("error", error_tx)?;
+
+  println!("✓ Graph built with ConditionNode using Graph API");
+
+  // Send configuration
   let _ = config_tx
     .send(Arc::new(condition_config) as Arc<dyn Any + Send + Sync>)
     .await;
 
-  // Send test numbers
+  // Send test numbers to demonstrate conditional routing
   let test_numbers = vec![5, -3, 0, 10, -7, 2, -1];
   for num in test_numbers {
     let _ = input_tx
       .send(Arc::new(num) as Arc<dyn Any + Send + Sync>)
       .await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
   }
 
-  println!("✓ Configuration and input data sent to streams");
+  println!("✓ Configuration sent and test data sent to input channel");
+
+  // Execute the graph
+  println!("Executing graph with ConditionNode...");
+  let start = std::time::Instant::now();
+  graph
+    .execute()
+    .await
+    .map_err(|e| format!("Graph execution failed: {:?}", e))?;
+  println!("✓ Graph execution completed in {:?}", start.elapsed());
 
   // Drop the transmitters to close the input channels (signals EOF to streams)
-  // This must happen BEFORE calling execute, so the streams know when input ends
   drop(config_tx);
   drop(input_tx);
 
-  // Execute the ConditionNode
-  println!("Executing ConditionNode...");
-  let start = std::time::Instant::now();
-  let outputs_future = condition_node.execute(inputs);
-  let mut outputs = outputs_future
-    .await
-    .map_err(|e| format!("ConditionNode execution failed: {:?}", e))?;
-  println!(
-    "✓ ConditionNode execution completed in {:?}",
-    start.elapsed()
-  );
-
-  // Read results from the "true" output stream
-  println!("Reading results from 'true' output stream...");
+  // Read results from the output channels
+  println!("Reading results from output channels...");
   let mut true_count = 0;
-  if let Some(mut true_stream) = outputs.remove("true") {
-    while let Some(item) = true_stream.next().await {
+  let mut false_count = 0;
+  let mut error_count = 0;
+
+  loop {
+    let true_result =
+      tokio::time::timeout(tokio::time::Duration::from_millis(50), true_rx.recv()).await;
+    let false_result =
+      tokio::time::timeout(tokio::time::Duration::from_millis(50), false_rx.recv()).await;
+    let error_result =
+      tokio::time::timeout(tokio::time::Duration::from_millis(50), error_rx.recv()).await;
+
+    let mut has_data = false;
+
+    if let Ok(Some(item)) = true_result {
       if let Ok(num_arc) = item.downcast::<i32>() {
         let num = *num_arc;
         println!("  True: {}", num);
         true_count += 1;
+        has_data = true;
       }
     }
-  }
 
-  // Read results from the "false" output stream
-  println!("Reading results from 'false' output stream...");
-  let mut false_count = 0;
-  if let Some(mut false_stream) = outputs.remove("false") {
-    while let Some(item) = false_stream.next().await {
+    if let Ok(Some(item)) = false_result {
       if let Ok(num_arc) = item.downcast::<i32>() {
         let num = *num_arc;
         println!("  False: {}", num);
         false_count += 1;
+        has_data = true;
       }
     }
-  }
 
-  // Read errors from the error stream
-  println!("Reading errors from error stream...");
-  let mut error_count = 0;
-  if let Some(mut error_stream) = outputs.remove("error") {
-    while let Some(item) = error_stream.next().await {
+    if let Ok(Some(item)) = error_result {
       if let Ok(error_msg) = item.downcast::<String>() {
         let error = &**error_msg;
         println!("  Error: {}", error);
         error_count += 1;
+        has_data = true;
       }
+    }
+
+    if !has_data {
+      break;
     }
   }
 
@@ -118,6 +126,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   );
   println!("✓ Received {} errors via error channel", error_count);
   println!("✓ Total completed in {:?}", start.elapsed());
+
+  // Verify behavior: should receive 4 positive/zero numbers (5, 0, 10, 2) and 3 negative (-3, -7, -1)
+  if true_count == 4 && false_count == 3 {
+    println!("✓ ConditionNode correctly routed numbers based on condition (>= 0)");
+  } else {
+    println!(
+      "⚠ ConditionNode behavior may be unexpected (true: {}, false: {}, expected true: 4, false: 3)",
+      true_count, false_count
+    );
+  }
 
   Ok(())
 }
