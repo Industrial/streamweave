@@ -187,6 +187,10 @@ name = "capitalize_node"
 path = "examples/nodes/string/capitalize_node.rs"
 
 [[example]]
+name = "ends_with_node"
+path = "examples/nodes/string/ends_with_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 
