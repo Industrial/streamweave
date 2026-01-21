@@ -752,6 +752,64 @@ pub fn uppercase_string(
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
 
+/// Gets the character at a specific index in a string.
+///
+/// This function attempts to downcast the string and index to their expected types
+/// and returns the character at the specified index. It supports:
+/// - UTF-8 aware character indexing (not byte indexing)
+/// - Bounds checking
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` or an error string.
+pub fn char_at(
+  string_value: &Arc<dyn Any + Send + Sync>,
+  index_value: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast string
+  let arc_str = string_value.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string char_at input: {} (input must be String)",
+      std::any::type_name_of_val(&**string_value)
+    )
+  })?;
+
+  // Try to downcast index to various numeric types
+  let index = if let Ok(idx) = index_value.clone().downcast::<usize>() {
+    *idx
+  } else if let Ok(idx) = index_value.clone().downcast::<u32>() {
+    *idx as usize
+  } else if let Ok(idx) = index_value.clone().downcast::<u64>() {
+    *idx as usize
+  } else if let Ok(idx) = index_value.clone().downcast::<i32>() {
+    if *idx < 0 {
+      return Err("Index cannot be negative".to_string());
+    }
+    *idx as usize
+  } else if let Ok(idx) = index_value.clone().downcast::<i64>() {
+    if *idx < 0 {
+      return Err("Index cannot be negative".to_string());
+    }
+    *idx as usize
+  } else {
+    return Err(format!(
+      "Unsupported type for char_at index: {} (index must be a non-negative integer)",
+      std::any::type_name_of_val(&**index_value)
+    ));
+  };
+
+  // Get the character at the index (UTF-8 aware)
+  let chars: Vec<char> = arc_str.chars().collect();
+  if index >= chars.len() {
+    return Err(format!(
+      "Index {} is out of bounds for string of length {} (character count)",
+      index,
+      chars.len()
+    ));
+  }
+
+  let result = chars[index].to_string();
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
+
 /// Prepends a prefix to a string.
 ///
 /// This function attempts to downcast the prefix and base string to their expected types

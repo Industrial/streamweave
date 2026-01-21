@@ -11,6 +11,7 @@
 pub mod append_node;
 pub mod capitalize_node;
 pub mod case_node;
+pub mod char_at_node;
 pub mod common;
 pub mod concat_node;
 pub mod contains_node;
@@ -39,6 +40,8 @@ mod append_node_test;
 mod capitalize_node_test;
 #[cfg(test)]
 mod case_node_test;
+#[cfg(test)]
+mod char_at_node_test;
 #[cfg(test)]
 mod concat_node_test;
 #[cfg(test)]
@@ -83,6 +86,7 @@ mod uppercase_node_test;
 pub use append_node::StringAppendNode;
 pub use capitalize_node::StringCapitalizeNode;
 pub use case_node::StringCaseNode;
+pub use char_at_node::StringCharAtNode;
 pub use concat_node::StringConcatNode;
 pub use contains_node::StringContainsNode;
 pub use ends_with_node::StringEndsWithNode;
