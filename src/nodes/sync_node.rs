@@ -164,15 +164,11 @@ impl Node for SyncNode {
         while let Some((msg_type, item)) = config_stream.next().await {
           match msg_type {
             MessageType::Config => {
-              // Handle both Arc<SyncConfig> and Arc<Arc<SyncConfig>>
-              if let Ok(arc_arc_config) = item.clone().downcast::<Arc<Arc<SyncConfig>>>() {
-                let config = Arc::clone(&**arc_arc_config);
-                *config_state_clone.lock().await = Some(config);
-              } else if let Ok(arc_config) = item.clone().downcast::<Arc<SyncConfig>>() {
-                let config = Arc::clone(&*arc_config);
-                *config_state_clone.lock().await = Some(config);
+              // Try to downcast configuration
+              if let Ok(config_arc) = item.downcast::<SyncConfig>() {
+                *config_state_clone.lock().await = Some(config_arc);
               } else {
-                let error_msg = "Invalid configuration type - expected Arc<SyncConfig>".to_string();
+                let error_msg = "Invalid configuration type - expected SyncConfig".to_string();
                 let error_arc: Arc<dyn Any + Send + Sync> = Arc::new(error_msg);
                 let _ = error_tx_clone.send(error_arc).await;
               }

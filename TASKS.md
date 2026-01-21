@@ -35,7 +35,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ---
 
-- [ ] 1. Fix Node Examples
+- [x] 1. Fix Node Examples
   - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
   - Acceptance Criteria:
     - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -88,7 +88,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
       - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
       - git commit made for each completed example
 
-  - [o] 1.6 RangeNode (examples/nodes/range_node.rs)
+  - [x] 1.6 RangeNode (examples/nodes/range_node.rs)
     - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
     - Acceptance Criteria:
       - Example must ALWAYS use graph API to explain solution.
@@ -97,7 +97,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
       - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
       - git commit made for each completed example
 
-  - [ ] 1.7 ReadVariableNode (examples/nodes/read_variable_node.rs)
+  - [x] 1.7 ReadVariableNode (examples/nodes/read_variable_node.rs)
     - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
     - Acceptance Criteria:
       - Example must ALWAYS use graph API to explain solution.
@@ -106,7 +106,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
       - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
       - git commit made for each completed example
 
-  - [ ] 1.8 SyncNode (examples/nodes/sync_node.rs)
+  - [x] 1.8 SyncNode (examples/nodes/sync_node.rs)
     - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
     - Acceptance Criteria:
       - Example must ALWAYS use graph API to explain solution.
