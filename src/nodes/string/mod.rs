@@ -8,6 +8,7 @@
 //! - **Input Ports:** `configuration` (optional but should exist), plus data input ports (`in`, `in1`, `in2`, etc.)
 //! - **Output Ports:** Data output ports (`out`, `true`, `false`, etc.), plus `error`
 
+pub mod append_node;
 pub mod case_node;
 pub mod common;
 pub mod concat_node;
@@ -25,6 +26,8 @@ pub mod split_node;
 pub mod starts_with_node;
 pub mod trim_node;
 
+#[cfg(test)]
+mod append_node_test;
 #[cfg(test)]
 mod case_node_test;
 #[cfg(test)]
@@ -56,6 +59,7 @@ mod starts_with_node_test;
 #[cfg(test)]
 mod trim_node_test;
 
+pub use append_node::StringAppendNode;
 pub use case_node::StringCaseNode;
 pub use concat_node::StringConcatNode;
 pub use contains_node::StringContainsNode;

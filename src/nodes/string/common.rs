@@ -646,6 +646,33 @@ pub fn string_pad(
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
 
+/// Appends a suffix to a string.
+///
+/// This function attempts to downcast the string and suffix to their expected types
+/// and performs concatenation (base + suffix). It supports:
+/// - String + String: Direct concatenation
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` or an error string.
+pub fn append_suffix(
+  base: &Arc<dyn Any + Send + Sync>,
+  suffix: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try String + String
+  if let (Ok(arc_str1), Ok(arc_str2)) = (
+    base.clone().downcast::<String>(),
+    suffix.clone().downcast::<String>(),
+  ) {
+    let result = format!("{}{}", *arc_str1, *arc_str2);
+    return Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>);
+  }
+
+  Err(format!(
+    "Unsupported types for string append: {} + {} (both inputs must be String)",
+    std::any::type_name_of_val(&**base),
+    std::any::type_name_of_val(&**suffix)
+  ))
+}
+
 /// Reverses the character order of a string.
 ///
 /// This function attempts to downcast the string to its expected type

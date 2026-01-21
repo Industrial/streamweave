@@ -179,6 +179,10 @@ name = "match_node"
 path = "examples/nodes/string/match_node.rs"
 
 [[example]]
+name = "append_node"
+path = "examples/nodes/string/append_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 

@@ -37,38 +37,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .send(Arc::new(()) as Arc<dyn Any + Send + Sync>)
     .await;
 
-  // Test cases: string and substrings to check
-  let test_cases = vec![
-    ("Hello World", "World", true),
-    ("Hello World", "world", false), // case sensitive
-    ("The quick brown fox", "quick", true),
-    ("The quick brown fox", "slow", false),
+  // Send test data: strings and substrings to check
+  println!("📥 Sending test strings and substrings");
+  let test_strings = vec![
+    "Hello World".to_string(),
+    "Hello World".to_string(),
+    "The quick brown fox".to_string(),
+    "The quick brown fox".to_string(),
+  ];
+  let test_substrings = vec![
+    "World".to_string(),
+    "world".to_string(),
+    "quick".to_string(),
+    "slow".to_string(),
   ];
 
-  println!("📥 Testing string contains functionality");
-
-  for (input_str, substring, expected) in test_cases {
-    println!(
-      "  Testing: '{}' contains '{}' -> expected {}",
-      input_str, substring, expected
-    );
-
-    // Send input string and substring
+  for i in 0..test_strings.len() {
     input_tx
-      .send(Arc::new(input_str.to_string()) as Arc<dyn Any + Send + Sync>)
+      .send(Arc::new(test_strings[i].clone()) as Arc<dyn Any + Send + Sync>)
       .await
       .unwrap();
 
     substring_tx
-      .send(Arc::new(substring.to_string()) as Arc<dyn Any + Send + Sync>)
+      .send(Arc::new(test_substrings[i].clone()) as Arc<dyn Any + Send + Sync>)
       .await
       .unwrap();
 
-    // Small delay to ensure processing
-    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+    println!(
+      "  Sent: '{}' contains '{}' -> expected {}",
+      test_strings[i],
+      test_substrings[i],
+      test_strings[i].contains(&test_substrings[i])
+    );
   }
 
   println!("✓ Test data sent to input channels");
+
+  // Close input channels to signal end of data
+  drop(config_tx);
+  drop(input_tx);
+  drop(substring_tx);
 
   // Execute the graph
   println!("Executing graph with StringContainsNode...");
@@ -78,11 +86,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await
     .map_err(|e| format!("Graph execution failed: {:?}", e))?;
   println!("✓ Graph execution completed in {:?}", start.elapsed());
-
-  // Drop the transmitters to close the input channels (signals EOF to streams)
-  drop(config_tx);
-  drop(input_tx);
-  drop(substring_tx);
 
   // Read results from the output channels
   println!("Reading results from output channels...");
