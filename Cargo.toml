@@ -199,6 +199,10 @@ name = "or_node"
 path = "examples/nodes/boolean_logic/or_node.rs"
 
 [[example]]
+name = "xor_node"
+path = "examples/nodes/boolean_logic/xor_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 
