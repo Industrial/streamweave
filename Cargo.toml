@@ -187,6 +187,10 @@ name = "nand_node"
 path = "examples/nodes/boolean_logic/nand_node.rs"
 
 [[example]]
+name = "nor_node"
+path = "examples/nodes/boolean_logic/nor_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 
