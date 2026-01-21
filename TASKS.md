@@ -43,7 +43,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
     - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
     - git commit made for each completed example
   
-  - [ ] 1.1 BreakNode (examples/nodes/break_node.rs)
+  - [o] 1.1 BreakNode (examples/nodes/break_node.rs)
     - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
     - Acceptance Criteria:
       - Example must ALWAYS use graph API to explain solution.

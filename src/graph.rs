@@ -275,8 +275,8 @@ impl Graph {
       output_port_mapping: HashMap::new(),
       connected_input_channels: HashMap::new(),
       connected_output_channels: HashMap::new(),
-      input_port_names: vec!["configuration".to_string(), "input".to_string()],
-      output_port_names: vec!["output".to_string(), "error".to_string()],
+      input_port_names: Vec::new(),
+      output_port_names: Vec::new(),
     }
   }
 
@@ -309,14 +309,6 @@ impl Graph {
     internal_port: &str,
     external_name: &str,
   ) -> Result<(), String> {
-    // Validate external port name
-    if external_name != "configuration" && external_name != "input" {
-      return Err(format!(
-        "External input port name must be 'configuration' or 'input', got '{}'",
-        external_name
-      ));
-    }
-
     // Validate internal node exists
     let node = self
       .nodes
@@ -339,6 +331,11 @@ impl Graph {
         port: internal_port.to_string(),
       },
     );
+
+    // Add external port name to the list if not already present
+    if !self.input_port_names.contains(&external_name.to_string()) {
+      self.input_port_names.push(external_name.to_string());
+    }
 
     Ok(())
   }
@@ -372,14 +369,6 @@ impl Graph {
     internal_port: &str,
     external_name: &str,
   ) -> Result<(), String> {
-    // Validate external port name
-    if external_name != "output" && external_name != "error" {
-      return Err(format!(
-        "External output port name must be 'output' or 'error', got '{}'",
-        external_name
-      ));
-    }
-
     // Validate internal node exists
     let node = self
       .nodes
@@ -402,6 +391,11 @@ impl Graph {
         port: internal_port.to_string(),
       },
     );
+
+    // Add external port name to the list if not already present
+    if !self.output_port_names.contains(&external_name.to_string()) {
+      self.output_port_names.push(external_name.to_string());
+    }
 
     Ok(())
   }
@@ -1402,11 +1396,11 @@ impl Node for Graph {
   }
 
   fn has_input_port(&self, name: &str) -> bool {
-    name == "configuration" || name == "input"
+    self.input_port_names.contains(&name.to_string())
   }
 
   fn has_output_port(&self, name: &str) -> bool {
-    name == "output" || name == "error"
+    self.output_port_names.contains(&name.to_string())
   }
 
   fn execute(
