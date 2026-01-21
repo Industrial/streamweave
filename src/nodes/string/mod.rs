@@ -9,6 +9,7 @@
 //! - **Output Ports:** Data output ports (`out`, `true`, `false`, etc.), plus `error`
 
 pub mod append_node;
+pub mod capitalize_node;
 pub mod case_node;
 pub mod common;
 pub mod concat_node;
@@ -28,6 +29,8 @@ pub mod trim_node;
 
 #[cfg(test)]
 mod append_node_test;
+#[cfg(test)]
+mod capitalize_node_test;
 #[cfg(test)]
 mod case_node_test;
 #[cfg(test)]
@@ -60,6 +63,7 @@ mod starts_with_node_test;
 mod trim_node_test;
 
 pub use append_node::StringAppendNode;
+pub use capitalize_node::StringCapitalizeNode;
 pub use case_node::StringCaseNode;
 pub use concat_node::StringConcatNode;
 pub use contains_node::StringContainsNode;

@@ -183,6 +183,10 @@ name = "append_node"
 path = "examples/nodes/string/append_node.rs"
 
 [[example]]
+name = "capitalize_node"
+path = "examples/nodes/string/capitalize_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 

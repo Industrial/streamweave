@@ -673,6 +673,37 @@ pub fn append_suffix(
   ))
 }
 
+/// Capitalizes the first character of a string.
+///
+/// This function attempts to downcast the string to its expected type
+/// and capitalizes the first character while leaving the rest unchanged. It supports:
+/// - Capitalization of ASCII and Unicode characters
+/// - Empty strings remain unchanged
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` or an error string.
+pub fn capitalize_string(
+  v: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast string
+  let arc_str = v.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for string capitalize input: {} (input must be String)",
+      std::any::type_name_of_val(&**v)
+    )
+  })?;
+
+  // Capitalize the first character
+  let mut chars = arc_str.chars();
+  let result = if let Some(first_char) = chars.next() {
+    first_char.to_uppercase().collect::<String>() + chars.as_str()
+  } else {
+    // Empty string, return as-is
+    (*arc_str).clone()
+  };
+
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
+
 /// Reverses the character order of a string.
 ///
 /// This function attempts to downcast the string to its expected type
