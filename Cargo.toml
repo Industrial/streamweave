@@ -191,6 +191,10 @@ name = "ends_with_node"
 path = "examples/nodes/string/ends_with_node.rs"
 
 [[example]]
+name = "format_node"
+path = "examples/nodes/string/format_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 

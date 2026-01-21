@@ -16,6 +16,7 @@ pub mod concat_node;
 pub mod contains_node;
 pub mod ends_with_node;
 pub mod equal_node;
+pub mod format_node;
 pub mod join_node;
 pub mod length_node;
 pub mod match_node;
@@ -41,6 +42,8 @@ mod contains_node_test;
 mod ends_with_node_test;
 #[cfg(test)]
 mod equal_node_test;
+#[cfg(test)]
+mod format_node_test;
 #[cfg(test)]
 mod join_node_test;
 #[cfg(test)]
@@ -69,6 +72,7 @@ pub use concat_node::StringConcatNode;
 pub use contains_node::StringContainsNode;
 pub use ends_with_node::StringEndsWithNode;
 pub use equal_node::StringEqualNode;
+pub use format_node::StringFormatNode;
 pub use join_node::StringJoinNode;
 pub use length_node::StringLengthNode;
 pub use match_node::StringMatchNode;

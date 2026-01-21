@@ -704,6 +704,52 @@ pub fn capitalize_string(
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
 
+/// Formats a string template with a value using Rust's format! macro.
+///
+/// This function attempts to downcast the template and value to their expected types
+/// and performs string formatting. It supports:
+/// - Single placeholder substitution: "{}" in template replaced with value
+/// - Automatic string conversion for values
+/// - Standard Rust formatting syntax
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` or an error string.
+pub fn format_string(
+  template: &Arc<dyn Any + Send + Sync>,
+  value: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast template
+  let arc_template = template.clone().downcast::<String>().map_err(|_| {
+    format!(
+      "Unsupported type for template: {} (template must be String)",
+      std::any::type_name_of_val(&**template)
+    )
+  })?;
+
+  // Convert value to string for formatting
+  let value_str = if let Ok(arc_str) = value.clone().downcast::<String>() {
+    (*arc_str).clone()
+  } else if let Ok(arc_i32) = value.clone().downcast::<i32>() {
+    arc_i32.to_string()
+  } else if let Ok(arc_i64) = value.clone().downcast::<i64>() {
+    arc_i64.to_string()
+  } else if let Ok(arc_u32) = value.clone().downcast::<u32>() {
+    arc_u32.to_string()
+  } else if let Ok(arc_u64) = value.clone().downcast::<u64>() {
+    arc_u64.to_string()
+  } else if let Ok(arc_f64) = value.clone().downcast::<f64>() {
+    arc_f64.to_string()
+  } else if let Ok(arc_bool) = value.clone().downcast::<bool>() {
+    arc_bool.to_string()
+  } else {
+    // Fallback: use Debug representation
+    format!("{:?}", value)
+  };
+
+  // Perform formatting
+  let result = arc_template.replace("{}", &value_str);
+  Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
+}
+
 /// Reverses the character order of a string.
 ///
 /// This function attempts to downcast the string to its expected type
