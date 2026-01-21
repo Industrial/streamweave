@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::Arc;
 use streamweave::node::Node;
-use streamweave::nodes::join_node::{join_config, JoinConfig, JoinNode, JoinStrategy};
+use streamweave::nodes::join_node::{JoinConfig, JoinNode, JoinStrategy, join_config};
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
@@ -30,7 +30,6 @@ struct UserOrder {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-
   // Create join configuration for inner join
   let join_config: Arc<JoinConfig> = join_config(
     JoinStrategy::Inner,
@@ -43,7 +42,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
           Err("Expected User".to_string())
         }
       };
-      Box::pin(fut) as std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, String>> + Send>>
+      Box::pin(fut)
+        as std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, String>> + Send>>
     },
     // Right key extractor (Order.user_id)
     |value| {
@@ -54,16 +54,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
           Err("Expected Order".to_string())
         }
       };
-      Box::pin(fut) as std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, String>> + Send>>
+      Box::pin(fut)
+        as std::pin::Pin<Box<dyn std::future::Future<Output = Result<String, String>> + Send>>
     },
     // Combine function
     |left, right| {
       let fut = async move {
-        let user_arc = left.downcast::<User>()
+        let user_arc = left
+          .downcast::<User>()
           .map_err(|_| "Expected User in left".to_string())?;
 
         if let Some(order_arc) = right {
-          let order = order_arc.downcast::<Order>()
+          let order = order_arc
+            .downcast::<Order>()
             .map_err(|_| "Expected Order in right".to_string())?;
 
           let user_order = UserOrder {
@@ -76,7 +79,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
           Err("Inner join requires matching items".to_string())
         }
       };
-      Box::pin(fut) as std::pin::Pin<Box<dyn std::future::Future<Output = Result<Arc<dyn Any + Send + Sync>, String>> + Send>>
+      Box::pin(fut)
+        as std::pin::Pin<
+          Box<dyn std::future::Future<Output = Result<Arc<dyn Any + Send + Sync>, String>> + Send>,
+        >
     },
   );
 
@@ -114,9 +120,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send user data (left stream)
   let users = vec![
-    User { id: 1, name: "Alice".to_string() },
-    User { id: 2, name: "Bob".to_string() },
-    User { id: 3, name: "Charlie".to_string() },
+    User {
+      id: 1,
+      name: "Alice".to_string(),
+    },
+    User {
+      id: 2,
+      name: "Bob".to_string(),
+    },
+    User {
+      id: 3,
+      name: "Charlie".to_string(),
+    },
   ];
 
   for user in users {
@@ -127,10 +142,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send order data (right stream)
   let orders = vec![
-    Order { user_id: 1, amount: 100.0 }, // Alice's order
-    Order { user_id: 2, amount: 250.0 }, // Bob's order
-    Order { user_id: 1, amount: 75.0 },  // Alice's second order
-    Order { user_id: 4, amount: 50.0 },  // No matching user (will be ignored in inner join)
+    Order {
+      user_id: 1,
+      amount: 100.0,
+    }, // Alice's order
+    Order {
+      user_id: 2,
+      amount: 250.0,
+    }, // Bob's order
+    Order {
+      user_id: 1,
+      amount: 75.0,
+    }, // Alice's second order
+    Order {
+      user_id: 4,
+      amount: 50.0,
+    }, // No matching user (will be ignored in inner join)
   ];
 
   for order in orders {
