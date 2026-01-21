@@ -24,6 +24,7 @@ pub mod length_node;
 pub mod lowercase_node;
 pub mod match_node;
 pub mod pad_node;
+pub mod prepend_node;
 pub mod replace_node;
 pub mod reverse_node;
 pub mod slice_node;
@@ -62,6 +63,8 @@ mod match_node_test;
 #[cfg(test)]
 mod pad_node_test;
 #[cfg(test)]
+mod prepend_node_test;
+#[cfg(test)]
 mod replace_node_test;
 #[cfg(test)]
 mod reverse_node_test;
@@ -89,6 +92,7 @@ pub use length_node::StringLengthNode;
 pub use lowercase_node::StringLowercaseNode;
 pub use match_node::StringMatchNode;
 pub use pad_node::StringPadNode;
+pub use prepend_node::StringPrependNode;
 pub use replace_node::StringReplaceNode;
 pub use reverse_node::StringReverseNode;
 pub use slice_node::StringSliceNode;

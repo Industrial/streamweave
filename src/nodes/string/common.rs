@@ -728,6 +728,33 @@ pub fn lowercase_string(
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
 
+/// Prepends a prefix to a string.
+///
+/// This function attempts to downcast the prefix and base string to their expected types
+/// and performs concatenation (prefix + base). It supports:
+/// - String + String: Direct concatenation (prefix + base)
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` or an error string.
+pub fn prepend_prefix(
+  prefix: &Arc<dyn Any + Send + Sync>,
+  base: &Arc<dyn Any + Send + Sync>,
+) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try String + String
+  if let (Ok(arc_prefix), Ok(arc_base)) = (
+    prefix.clone().downcast::<String>(),
+    base.clone().downcast::<String>(),
+  ) {
+    let result = format!("{}{}", *arc_prefix, *arc_base);
+    return Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>);
+  }
+
+  Err(format!(
+    "Unsupported types for string prepend: {} + {} (both inputs must be String)",
+    std::any::type_name_of_val(&**prefix),
+    std::any::type_name_of_val(&**base)
+  ))
+}
+
 /// Formats a string template with a value using Rust's format! macro.
 ///
 /// This function attempts to downcast the template and value to their expected types

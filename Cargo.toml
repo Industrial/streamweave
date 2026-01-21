@@ -211,6 +211,14 @@ name = "string_lowercase_node"
 path = "examples/nodes/string/lowercase_node.rs"
 
 [[example]]
+name = "string_prepend_node"
+path = "examples/nodes/string/prepend_node.rs"
+
+[[example]]
+name = "string_replace_node"
+path = "examples/nodes/string/replace_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 
