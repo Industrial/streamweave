@@ -123,6 +123,10 @@ name = "join_node"
 path = "examples/nodes/string/join_node.rs"
 
 [[example]]
+name = "string_contains_node"
+path = "examples/nodes/string/contains_node.rs"
+
+[[example]]
 name = "condition_node"
 path = "examples/nodes/advanced/condition_node.rs"
 
@@ -201,6 +205,10 @@ path = "examples/nodes/aggregation/sum_node.rs"
 [[example]]
 name = "reduce_node"
 path = "examples/nodes/reduction/reduce_node.rs"
+
+[[example]]
+name = "scan_node"
+path = "examples/nodes/reduction/scan_node.rs"
 
 [[example]]
 name = "add_node"

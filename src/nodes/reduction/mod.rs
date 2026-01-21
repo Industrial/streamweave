@@ -16,6 +16,7 @@
 //! ## Available Nodes
 //!
 //! - **ReduceNode**: Apply reduction function with initial value (`configuration`, `in` → `out`, `error`)
+//! - **ScanNode**: Apply reduction function with initial value, emitting intermediate results (`configuration`, `in` → `out`, `error`)
 //! - **GroupByNode**: Group items by key (`configuration`, `in` → `out`, `error`)
 //! - **AggregateNode**: Apply aggregator function (`configuration`, `in` → `out`, `error`)
 
@@ -25,6 +26,8 @@ pub mod group_by_node;
 pub mod group_by_node_test;
 pub mod reduce_node;
 pub mod reduce_node_test;
+pub mod scan_node;
+pub mod scan_node_test;
 
 pub use aggregate_node::{
   AggregateConfig, AggregateConfigWrapper, AggregateNode, AggregatorFunction, aggregate_config,
@@ -35,3 +38,4 @@ pub use group_by_node::{
 pub use reduce_node::{
   ReduceConfig, ReduceConfigWrapper, ReduceFunction, ReduceNode, reduce_config,
 };
+pub use scan_node::{ScanConfig, ScanConfigWrapper, ScanFunction, ScanNode, scan_config};
