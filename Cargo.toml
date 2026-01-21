@@ -254,5 +254,9 @@ path = "examples/nodes/array/length_node.rs"
 name = "reverse_node"
 path = "examples/nodes/array/reverse_node.rs"
 
+[[example]]
+name = "slice_node"
+path = "examples/nodes/array/slice_node.rs"
+
 [lints.rust]
 # Shared lint configuration
