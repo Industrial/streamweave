@@ -31,6 +31,7 @@ pub mod slice_node;
 pub mod split_node;
 pub mod starts_with_node;
 pub mod trim_node;
+pub mod uppercase_node;
 
 #[cfg(test)]
 mod append_node_test;
@@ -76,6 +77,8 @@ mod split_node_test;
 mod starts_with_node_test;
 #[cfg(test)]
 mod trim_node_test;
+#[cfg(test)]
+mod uppercase_node_test;
 
 pub use append_node::StringAppendNode;
 pub use capitalize_node::StringCapitalizeNode;
@@ -99,3 +102,4 @@ pub use slice_node::StringSliceNode;
 pub use split_node::StringSplitNode;
 pub use starts_with_node::StringStartsWithNode;
 pub use trim_node::StringTrimNode;
+pub use uppercase_node::StringUppercaseNode;

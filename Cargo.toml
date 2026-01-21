@@ -235,6 +235,10 @@ name = "string_trim_node"
 path = "examples/nodes/string/trim_node.rs"
 
 [[example]]
+name = "string_uppercase_node"
+path = "examples/nodes/string/uppercase_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 
