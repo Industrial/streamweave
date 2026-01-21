@@ -247,6 +247,10 @@ name = "floor_node"
 path = "examples/nodes/math/floor_node.rs"
 
 [[example]]
+name = "log_node"
+path = "examples/nodes/math/log_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 
