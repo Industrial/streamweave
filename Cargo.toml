@@ -214,5 +214,9 @@ path = "examples/nodes/flatten_node.rs"
 name = "index_node"
 path = "examples/nodes/index_node.rs"
 
+[[example]]
+name = "index_of_node"
+path = "examples/nodes/index_of_node.rs"
+
 [lints.rust]
 # Shared lint configuration
