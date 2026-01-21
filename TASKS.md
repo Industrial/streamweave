@@ -35,12 +35,348 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
 
 ---
 
-- [ ] 1. Analyze Current Vec<u8> Usage
-  - Context: The current implementation uses Vec<u8> for data transmission, which creates unnecessary memory copies. bytes::Bytes provides zero-copy sharing through reference counting and can be more efficiently passed between async tasks.
+- [ ] 2. Create Node Examples
+  - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
   - Acceptance Criteria:
-    - Comprehensive analysis of all Vec<u8> usage in data transmission paths
-    - Identification of serialization, channel communication, and storage locations
-    - Performance impact assessment with benchmark data
-    - bin/pre-commit runs cleanly
-    - TASKS.md updated with findings
-    - git commit made
+    - Example created in examples/nodes/ following the direct node execution pattern
+    - Example added to Cargo.toml [[example]] section
+    - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+    - git commit made for each completed example
+
+  - [ ] 2.1 Advanced Control Flow Nodes
+    - [o] 2.1.1 break_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.1.2 continue_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.1.3 repeat_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.1.4 retry_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.1.5 switch_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.1.6 try_catch_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+
+  - [ ] 2.2 Aggregation Nodes
+    - [ ] 2.2.1 average_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.2.2 count_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.2.3 max_aggregate_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.2.4 min_aggregate_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.2.5 sum_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+
+  - [ ] 2.3 Arithmetic Nodes
+    - [ ] 2.3.1 add_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.3.2 divide_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.3.3 modulo_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.3.4 multiply_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.3.5 power_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.3.6 subtract_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+
+  - [ ] 2.4 Array Nodes
+    - [ ] 2.4.1 concat_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.4.2 contains_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.4.3 flatten_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.4.4 index_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.4.5 index_of_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.4.6 length_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.4.7 reverse_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.4.8 slice_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.4.9 sort_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.4.10 split_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.4.11 unique_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+
+  - [ ] 2.5 Boolean Logic Nodes
+    - [ ] 2.5.1 and_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.5.2 nand_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.5.3 nor_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.5.4 not_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.5.5 or_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+    - [ ] 2.5.6 xor_node
+      - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should follow the pattern established by existing examples (direct node execution, not Graph API).
+      - Acceptance Criteria:
+        - Example created in examples/nodes/ following the direct node execution pattern
+        - Example added to Cargo.toml [[example]] section
+        - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
+        - git commit made for each completed example
+
+  - [ ] 2.6 Comparison Nodes
+    - [ ] 2.6.1 equal_node
+    - [ ] 2.6.2 greater_than_node
+    - [ ] 2.6.3 greater_than_or_equal_node
+    - [ ] 2.6.4 less_than_node
+    - [ ] 2.6.5 less_than_or_equal_node
+    - [ ] 2.6.6 not_equal_node
+
+  - [ ] 2.7 Math Nodes
+    - [ ] 2.7.1 abs_node
+    - [ ] 2.7.2 ceil_node
+    - [ ] 2.7.3 exp_node
+    - [ ] 2.7.4 floor_node
+    - [ ] 2.7.5 log_node
+    - [ ] 2.7.6 max_node
+    - [ ] 2.7.7 min_node
+    - [ ] 2.7.8 round_node
+    - [ ] 2.7.9 sqrt_node
+
+  - [ ] 2.8 Object Nodes
+    - [ ] 2.8.1 get_node
+    - [ ] 2.8.2 has_node
+    - [ ] 2.8.3 keys_node
+    - [ ] 2.8.4 merge_node
+    - [ ] 2.8.5 set_node
+    - [ ] 2.8.6 size_node
+    - [ ] 2.8.7 values_node
+
+  - [ ] 2.9 Reduction Nodes
+    - [ ] 2.9.1 fold_node
+    - [ ] 2.9.2 reduce_node
+    - [ ] 2.9.3 scan_node
+
+  - [ ] 2.10 Stream Nodes
+    - [ ] 2.10.1 buffer_node
+    - [ ] 2.10.2 debounce_node
+    - [ ] 2.10.3 distinct_node
+    - [ ] 2.10.4 distinct_until_changed_node
+    - [ ] 2.10.5 drop_node
+    - [ ] 2.10.6 filter_map_node
+    - [ ] 2.10.7 first_node
+    - [ ] 2.10.8 last_node
+    - [ ] 2.10.9 merge_node
+    - [ ] 2.10.10 sample_node
+    - [ ] 2.10.11 skip_node
+    - [ ] 2.10.12 take_node
+    - [ ] 2.10.13 throttle_node
+    - [ ] 2.10.14 window_node
+    - [ ] 2.10.15 zip_node
+
+  - [ ] 2.11 String Nodes
+    - [ ] 2.11.1 append_node
+    - [ ] 2.11.2 capitalize_node
+    - [ ] 2.11.3 char_at_node
+    - [ ] 2.11.4 concat_node
+    - [ ] 2.11.5 contains_node
+    - [ ] 2.11.6 ends_with_node
+    - [ ] 2.11.7 format_node
+    - [ ] 2.11.8 index_of_node
+    - [ ] 2.11.9 last_index_of_node
+    - [ ] 2.11.10 length_node
+    - [ ] 2.11.11 lowercase_node
+    - [ ] 2.11.12 prepend_node
+    - [ ] 2.11.13 replace_node
+    - [ ] 2.11.14 split_node
+    - [ ] 2.11.15 starts_with_node
+    - [ ] 2.11.16 substring_node
+    - [ ] 2.11.17 trim_node
+    - [ ] 2.11.18 uppercase_node
+
+  - [ ] 2.12 Time Nodes
+    - [ ] 2.12.1 current_time_node
+    - [ ] 2.12.2 format_time_node
+    - [ ] 2.12.3 parse_time_node
+    - [ ] 2.12.4 timestamp_node
+
+  - [ ] 2.13 Type Operations Nodes
+    - [ ] 2.13.1 as_bool_node
+    - [ ] 2.13.2 as_float_node
+    - [ ] 2.13.3 as_int_node
+    - [ ] 2.13.4 as_string_node
+    - [ ] 2.13.5 is_array_node
+    - [ ] 2.13.6 is_bool_node
+    - [ ] 2.13.7 is_float_node
+    - [ ] 2.13.8 is_int_node
+    - [ ] 2.13.9 is_null_node
+    - [ ] 2.13.10 is_object_node
+    - [ ] 2.13.11 is_string_node
+    - [ ] 2.13.12 to_json_node

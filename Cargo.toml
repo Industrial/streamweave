@@ -98,5 +98,45 @@ path = "examples/nodes/filter_node.rs"
 name = "for_each_node"
 path = "examples/nodes/for_each_node.rs"
 
+[[example]]
+name = "join_node"
+path = "examples/nodes/join_node.rs"
+
+[[example]]
+name = "condition_node"
+path = "examples/nodes/condition_node.rs"
+
+[[example]]
+name = "error_branch_node"
+path = "examples/nodes/error_branch_node.rs"
+
+[[example]]
+name = "match_node"
+path = "examples/nodes/match_node.rs"
+
+[[example]]
+name = "range_node"
+path = "examples/nodes/range_node.rs"
+
+[[example]]
+name = "read_variable_node"
+path = "examples/nodes/read_variable_node.rs"
+
+[[example]]
+name = "write_variable_node"
+path = "examples/nodes/write_variable_node.rs"
+
+[[example]]
+name = "while_loop_node"
+path = "examples/nodes/while_loop_node.rs"
+
+[[example]]
+name = "break_node"
+path = "examples/nodes/break_node.rs"
+
+[[example]]
+name = "sync_node"
+path = "examples/nodes/sync_node.rs"
+
 [lints.rust]
 # Shared lint configuration

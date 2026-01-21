@@ -251,10 +251,15 @@ impl Node for WhileLoopNode {
               if let Some((msg_type, item)) = msg_opt {
                 match msg_type {
                   MessageType::Config => {
-                    // Update configuration
-                    if let Ok(arc_config) = item.clone().downcast::<Arc<WhileLoopConfig>>() {
-                      current_config = Some(Arc::clone(&*arc_config));
-                      *config_state_clone.lock().await = Some(Arc::clone(&*arc_config));
+                    // Update configuration - handle both Arc<WhileLoopConfig> and Arc<Arc<WhileLoopConfig>>
+                    if let Ok(arc_arc_config) = item.clone().downcast::<Arc<Arc<WhileLoopConfig>>>() {
+                      let config = Arc::clone(&**arc_arc_config);
+                      current_config = Some(Arc::clone(&config));
+                      *config_state_clone.lock().await = Some(config);
+                    } else if let Ok(arc_config) = item.clone().downcast::<Arc<WhileLoopConfig>>() {
+                      let config = Arc::clone(&*arc_config);
+                      current_config = Some(Arc::clone(&config));
+                      *config_state_clone.lock().await = Some(config);
                     } else {
                       // Invalid configuration type
                       let error_msg: String = "Invalid configuration type - expected Arc<WhileLoopConfig>".to_string();
