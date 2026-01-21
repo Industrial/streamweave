@@ -151,6 +151,10 @@ name = "window_node"
 path = "examples/nodes/stream/window_node.rs"
 
 [[example]]
+name = "zip_node"
+path = "examples/nodes/stream/zip_node.rs"
+
+[[example]]
 name = "merge_node"
 path = "examples/nodes/stream/merge_node.rs"
 
