@@ -203,6 +203,10 @@ name = "string_last_index_of_node"
 path = "examples/nodes/string/last_index_of_node.rs"
 
 [[example]]
+name = "string_length_node"
+path = "examples/nodes/string/length_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 
