@@ -65,6 +65,9 @@ pub mod skip_node_test;
 pub mod take_node;
 #[cfg(test)]
 pub mod take_node_test;
+pub mod throttle_node;
+#[cfg(test)]
+pub mod throttle_node_test;
 pub mod zip_node;
 #[cfg(test)]
 pub mod zip_node_test;
@@ -85,4 +88,5 @@ pub use merge_node::MergeNode;
 pub use sample_node::SampleNode;
 pub use skip_node::SkipNode;
 pub use take_node::TakeNode;
+pub use throttle_node::ThrottleNode;
 pub use zip_node::ZipNode;
