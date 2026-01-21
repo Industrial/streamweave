@@ -186,5 +186,9 @@ path = "examples/nodes/divide_node.rs"
 name = "modulo_node"
 path = "examples/nodes/modulo_node.rs"
 
+[[example]]
+name = "multiply_node"
+path = "examples/nodes/multiply_node.rs"
+
 [lints.rust]
 # Shared lint configuration
