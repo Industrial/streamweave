@@ -154,5 +154,9 @@ path = "examples/nodes/retry_node.rs"
 name = "switch_node"
 path = "examples/nodes/switch_node.rs"
 
+[[example]]
+name = "try_catch_node"
+path = "examples/nodes/try_catch_node.rs"
+
 [lints.rust]
 # Shared lint configuration
