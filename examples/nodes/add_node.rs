@@ -1,0 +1,135 @@
+use std::any::Any;
+use std::sync::Arc;
+use streamweave::graph::Graph;
+use streamweave::nodes::arithmetic::AddNode;
+use tokio::sync::mpsc;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+  // Create channels for external I/O
+  let (config_tx, config_rx) = mpsc::channel(1);
+  let (in1_tx, in1_rx) = mpsc::channel(10);
+  let (in2_tx, in2_rx) = mpsc::channel(10);
+  let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
+  let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
+
+  // Build the graph using the Graph API
+  let mut graph = Graph::new("add_example".to_string());
+  graph.add_node(
+    "add".to_string(),
+    Box::new(AddNode::new("add".to_string())),
+  )?;
+  graph.expose_input_port("add", "configuration", "configuration")?;
+  graph.expose_input_port("add", "in1", "in1")?;
+  graph.expose_input_port("add", "in2", "in2")?;
+  graph.expose_output_port("add", "out", "output")?;
+  graph.expose_output_port("add", "error", "error")?;
+  graph.connect_input_channel("configuration", config_rx)?;
+  graph.connect_input_channel("in1", in1_rx)?;
+  graph.connect_input_channel("in2", in2_rx)?;
+  graph.connect_output_channel("output", out_tx)?;
+  graph.connect_output_channel("error", error_tx)?;
+
+  println!("✓ Graph built with AddNode using Graph API");
+
+  // Send configuration (optional for AddNode)
+  let _ = config_tx
+    .send(Arc::new(()) as Arc<dyn Any + Send + Sync>)
+    .await;
+
+  // Send test data: pairs of numbers to add
+  let test_pairs = vec![(10i32, 5i32), (25i32, 15i32), (100i32, 50i32)]; // Results: 15, 40, 150
+  for (a, b) in test_pairs {
+    let _ = in1_tx
+      .send(Arc::new(a) as Arc<dyn Any + Send + Sync>)
+      .await;
+    let _ = in2_tx
+      .send(Arc::new(b) as Arc<dyn Any + Send + Sync>)
+      .await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+  }
+
+  println!("✓ Configuration sent and test data sent to input channels");
+
+  // Execute the graph
+  println!("Executing graph with AddNode...");
+  let start = std::time::Instant::now();
+  graph
+    .execute()
+    .await
+    .map_err(|e| format!("Graph execution failed: {:?}", e))?;
+  println!("✓ Graph execution completed in {:?}", start.elapsed());
+
+  // Drop the transmitters to close the input channels (signals EOF to streams)
+  drop(config_tx);
+  drop(in1_tx);
+  drop(in2_tx);
+
+  // Read results from the output channels
+  println!("Reading results from output channels...");
+  let mut success_count = 0;
+  let mut error_count = 0;
+
+  loop {
+    let out_result =
+      tokio::time::timeout(tokio::time::Duration::from_millis(100), out_rx.recv()).await;
+    let error_result =
+      tokio::time::timeout(tokio::time::Duration::from_millis(100), error_rx.recv()).await;
+
+    let mut has_data = false;
+
+    if let Ok(Some(item)) = out_result {
+      // AddNode outputs the sum in various numeric types
+      if let Ok(sum_i32) = item.clone().downcast::<i32>() {
+        let sum = *sum_i32;
+        println!("  Sum (i32): {}", sum);
+        success_count += 1;
+        has_data = true;
+      } else if let Ok(sum_i64) = item.clone().downcast::<i64>() {
+        let sum = *sum_i64;
+        println!("  Sum (i64): {}", sum);
+        success_count += 1;
+        has_data = true;
+      } else if let Ok(sum_f32) = item.clone().downcast::<f32>() {
+        let sum = *sum_f32;
+        println!("  Sum (f32): {:.2}", sum);
+        success_count += 1;
+        has_data = true;
+      } else if let Ok(sum_f64) = item.downcast::<f64>() {
+        let sum = *sum_f64;
+        println!("  Sum (f64): {:.2}", sum);
+        success_count += 1;
+        has_data = true;
+      }
+    }
+
+    if let Ok(Some(item)) = error_result {
+      if let Ok(error_msg) = item.downcast::<String>() {
+        let error = (**error_msg).to_string();
+        println!("  Error: {}", error);
+        error_count += 1;
+        has_data = true;
+      }
+    }
+
+    if !has_data {
+      break;
+    }
+  }
+
+  println!("✓ Received {} successful results via output channel", success_count);
+  println!("✓ Received {} errors via error channel", error_count);
+  println!("✓ Total completed in {:?}", start.elapsed());
+
+  // Verify behavior: should receive 3 results (15, 40, 150)
+  if success_count == 3 && error_count == 0 {
+    println!("✓ AddNode correctly performed addition operations");
+  } else {
+    println!(
+      "⚠ AddNode behavior may be unexpected (successes: {}, errors: {}, expected successes: 3, errors: 0)",
+      success_count, error_count
+    );
+  }
+
+  Ok(())
+}

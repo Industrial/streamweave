@@ -174,5 +174,9 @@ path = "examples/nodes/max_aggregate_node.rs"
 name = "min_aggregate_node"
 path = "examples/nodes/min_aggregate_node.rs"
 
+[[example]]
+name = "add_node"
+path = "examples/nodes/add_node.rs"
+
 [lints.rust]
 # Shared lint configuration
