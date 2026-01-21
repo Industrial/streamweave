@@ -103,6 +103,10 @@ name = "drop_node"
 path = "examples/nodes/stream/drop_node.rs"
 
 [[example]]
+name = "skip_node"
+path = "examples/nodes/stream/skip_node.rs"
+
+[[example]]
 name = "sample_node"
 path = "examples/nodes/stream/sample_node.rs"
 
