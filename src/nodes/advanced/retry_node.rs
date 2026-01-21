@@ -240,7 +240,7 @@ impl Node for RetryNode {
 
     Box::pin(async move {
       // Extract input streams
-      let _config_stream = inputs.remove("configuration");
+      let config_stream = inputs.remove("configuration");
       let in_stream = inputs.remove("in").ok_or("Missing 'in' input")?;
       let max_retries_stream = inputs
         .remove("max_retries")
@@ -250,13 +250,25 @@ impl Node for RetryNode {
       let in_stream = in_stream.map(|item| (InputPort::In, item));
       let max_retries_stream = max_retries_stream.map(|item| (InputPort::MaxRetries, item));
 
-      // Merge streams
-      let merged_stream = stream::select_all(vec![
+      // Merge streams - include config stream if present
+      let mut streams: Vec<
+        Pin<Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>>,
+      > = vec![
         Box::pin(in_stream)
           as Pin<Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>>,
         Box::pin(max_retries_stream)
           as Pin<Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>>,
-      ]);
+      ];
+
+      if let Some(config_stream) = config_stream {
+        let config_stream = config_stream.map(|item| (InputPort::Config, item));
+        streams.push(Box::pin(config_stream)
+          as Pin<
+            Box<dyn futures::Stream<Item = (InputPort, Arc<dyn Any + Send + Sync>)> + Send>,
+          >);
+      }
+
+      let merged_stream = stream::select_all(streams);
 
       // Create output channels
       let (out_tx, out_rx) = tokio::sync::mpsc::channel(10);
