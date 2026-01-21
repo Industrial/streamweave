@@ -207,6 +207,10 @@ name = "xor_node"
 path = "examples/nodes/boolean_logic/xor_node.rs"
 
 [[example]]
+name = "equal_node"
+path = "examples/nodes/comparison/equal_node.rs"
+
+[[example]]
 name = "divide_node"
 path = "examples/nodes/arithmetic/divide_node.rs"
 
