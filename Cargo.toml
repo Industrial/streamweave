@@ -283,6 +283,10 @@ name = "to_int_node"
 path = "examples/nodes/type_ops/to_int_node.rs"
 
 [[example]]
+name = "to_string_node"
+path = "examples/nodes/type_ops/to_string_node.rs"
+
+[[example]]
 name = "read_variable_node"
 path = "examples/nodes/variable/read_variable_node.rs"
 
