@@ -870,7 +870,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-  - [ ] 2.12 Time Nodes
+  - [x] 2.12 Time Nodes
     - [x] 2.12.1 current_time_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
