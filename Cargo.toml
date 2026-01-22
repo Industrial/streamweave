@@ -75,7 +75,7 @@ dyn-clone = "1.0"
 proptest = "1.5"
 tempfile = "3.10"
 tokio-test = "0.4.2"
-criterion = { version = "0.5", features = ["async_tokio"] }
+criterion = { version = "0.8", features = ["async_tokio"] }
 tracing-subscriber = "0.3"
 
 [[bench]]
