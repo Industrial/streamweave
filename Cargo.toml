@@ -247,6 +247,14 @@ name = "string_concat_node"
 path = "examples/nodes/string/concat_node.rs"
 
 [[example]]
+name = "current_time_node"
+path = "examples/nodes/time/current_time_node.rs"
+
+[[example]]
+name = "timestamp_node"
+path = "examples/nodes/time/timestamp_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 
