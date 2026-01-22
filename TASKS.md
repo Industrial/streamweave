@@ -904,7 +904,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - git commit made for each completed example (you may not use `--no-verify`).
 
   - [ ] 2.13 Type Operations Nodes
-    - [ ] 2.13.1 as_bool_node
+    - [x] 2.13.1 as_bool_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -912,7 +912,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-    - [ ] 2.13.2 as_float_node
+    - [x] 2.13.2 as_float_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -976,7 +976,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-    - [ ] 2.13.10 is_object_node
+    - [x] 2.13.10 is_object_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -984,7 +984,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-    - [ ] 2.13.11 is_string_node
+    - [x] 2.13.11 is_string_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)
@@ -992,7 +992,7 @@ sed -i 's/- \[ \] 1.1.1/- [x] 1.1.1/' TASKS.md && sed -i 's/- \[ \] 1.1.2/- [x] 
         - /test-example runs successfully (time timeout 10 cargo run --example <example_name>)
         - git commit made for each completed example (you may not use `--no-verify`).
 
-    - [ ] 2.13.12 to_json_node
+    - [x] 2.13.12 to_json_node
       - Context: Many nodes in src/nodes/ do not have example programs demonstrating their usage. Each example should use the Graph API and no node may be used by itself.
       - Acceptance Criteria:
         - Example created in examples/nodes/ using Graph API (no direct node execution)

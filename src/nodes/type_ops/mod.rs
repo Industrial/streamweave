@@ -22,6 +22,7 @@
 //! ### Type Conversion
 //! - **ToStringNode**: Convert value to string (`configuration`, `in` → `out`, `error`)
 //! - **ToNumberNode**: Convert value to number (`configuration`, `in` → `out`, `error`)
+//! - **ToFloatNode**: Convert value to float (`configuration`, `in` → `out`, `error`)
 //! - **ToBooleanNode**: Convert value to boolean (`configuration`, `in` → `out`, `error`)
 //! - **ToArrayNode**: Convert value to array (`configuration`, `in` → `out`, `error`)
 
@@ -49,6 +50,9 @@ pub mod to_array_node_test;
 pub mod to_boolean_node;
 #[cfg(test)]
 pub mod to_boolean_node_test;
+pub mod to_float_node;
+#[cfg(test)]
+pub mod to_float_node_test;
 pub mod to_number_node;
 #[cfg(test)]
 pub mod to_number_node_test;
@@ -67,6 +71,7 @@ pub use is_object_node::IsObjectNode;
 pub use is_string_node::IsStringNode;
 pub use to_array_node::ToArrayNode;
 pub use to_boolean_node::ToBooleanNode;
+pub use to_float_node::ToFloatNode;
 pub use to_number_node::ToNumberNode;
 pub use to_string_node::ToStringNode;
 pub use type_of_node::TypeOfNode;

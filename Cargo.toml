@@ -271,6 +271,14 @@ name = "to_boolean_node"
 path = "examples/nodes/type_ops/to_boolean_node.rs"
 
 [[example]]
+name = "to_number_node"
+path = "examples/nodes/type_ops/to_number_node.rs"
+
+[[example]]
+name = "to_float_node"
+path = "examples/nodes/type_ops/to_float_node.rs"
+
+[[example]]
 name = "read_variable_node"
 path = "examples/nodes/variable/read_variable_node.rs"
 
