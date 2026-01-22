@@ -259,6 +259,10 @@ name = "format_time_node"
 path = "examples/nodes/time/format_time_node.rs"
 
 [[example]]
+name = "parse_time_node"
+path = "examples/nodes/time/parse_time_node.rs"
+
+[[example]]
 name = "range_node"
 path = "examples/nodes/range_node.rs"
 

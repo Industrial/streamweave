@@ -16,6 +16,7 @@
 //! - **TimestampNode**: Add timestamp to items (`configuration`, `in` → `out`, `error`)
 //! - **CurrentTimeNode**: Generate current timestamp (`configuration`, `trigger` → `out`, `error`)
 //! - **FormatTimeNode**: Format timestamps into strings (`configuration`, `in`, `format` → `out`, `error`)
+//! - **ParseTimeNode**: Parse time strings into timestamps (`configuration`, `in`, `format` → `out`, `error`)
 
 pub mod current_time_node;
 #[cfg(test)]
@@ -26,6 +27,9 @@ pub mod delay_node_test;
 pub mod format_time_node;
 #[cfg(test)]
 pub mod format_time_node_test;
+pub mod parse_time_node;
+#[cfg(test)]
+pub mod parse_time_node_test;
 pub mod timeout_node;
 #[cfg(test)]
 pub mod timeout_node_test;
@@ -39,6 +43,7 @@ pub mod timestamp_node_test;
 pub use current_time_node::CurrentTimeNode;
 pub use delay_node::DelayNode;
 pub use format_time_node::FormatTimeNode;
+pub use parse_time_node::ParseTimeNode;
 pub use timeout_node::TimeoutNode;
 pub use timer_node::TimerNode;
 pub use timestamp_node::TimestampNode;
