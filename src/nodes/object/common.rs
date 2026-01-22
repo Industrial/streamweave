@@ -298,3 +298,28 @@ pub fn object_delete_property(
 
   Ok(Arc::new(new_map) as Arc<dyn Any + Send + Sync>)
 }
+
+/// Gets the size (number of properties) of an object (HashMap).
+///
+/// This function attempts to downcast the object to its expected type
+/// and returns the number of properties. It supports:
+/// - Getting size of HashMap<String, Arc<dyn Any + Send + Sync>> objects
+/// - Returns the count as i64
+///
+/// Returns the result as `Arc<dyn Any + Send + Sync>` (i64) or an error string.
+pub fn object_size(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send + Sync>, String> {
+  // Try to downcast object to HashMap
+  let arc_map = v
+    .clone()
+    .downcast::<HashMap<String, Arc<dyn Any + Send + Sync>>>()
+    .map_err(|_| {
+      format!(
+        "Unsupported type for object size input: {} (input must be HashMap<String, Arc<dyn Any + Send + Sync>>)",
+        std::any::type_name_of_val(&**v)
+      )
+    })?;
+
+  // Get the size of the map
+  let size = arc_map.len() as i64;
+  Ok(Arc::new(size) as Arc<dyn Any + Send + Sync>)
+}

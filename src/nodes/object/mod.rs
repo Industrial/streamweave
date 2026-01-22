@@ -27,6 +27,7 @@ pub mod object_keys_node;
 pub mod object_merge_node;
 pub mod object_property_node;
 pub mod object_set_property_node;
+pub mod object_size_node;
 pub mod object_values_node;
 
 #[cfg(test)]
@@ -43,5 +44,7 @@ mod object_merge_node_test;
 mod object_property_node_test;
 #[cfg(test)]
 mod object_set_property_node_test;
+#[cfg(test)]
+mod object_size_node_test;
 #[cfg(test)]
 mod object_values_node_test;
