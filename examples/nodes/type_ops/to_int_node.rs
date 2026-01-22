@@ -38,11 +38,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("📥 Sending various values for integer conversion");
   let test_cases = vec![
     ("Integer 42", Arc::new(42i32) as Arc<dyn Any + Send + Sync>),
-    ("Float 3.14", Arc::new(3.14f32) as Arc<dyn Any + Send + Sync>),
+    (
+      "Float 3.14",
+      Arc::new(3.14f32) as Arc<dyn Any + Send + Sync>,
+    ),
     ("Boolean true", Arc::new(true) as Arc<dyn Any + Send + Sync>),
-    ("Boolean false", Arc::new(false) as Arc<dyn Any + Send + Sync>),
-    ("String '42'", Arc::new("42".to_string()) as Arc<dyn Any + Send + Sync>),
-    ("Invalid string", Arc::new("not_a_number".to_string()) as Arc<dyn Any + Send + Sync>),
+    (
+      "Boolean false",
+      Arc::new(false) as Arc<dyn Any + Send + Sync>,
+    ),
+    (
+      "String '42'",
+      Arc::new("42".to_string()) as Arc<dyn Any + Send + Sync>,
+    ),
+    (
+      "Invalid string",
+      Arc::new("not_a_number".to_string()) as Arc<dyn Any + Send + Sync>,
+    ),
   ];
 
   for (description, value) in &test_cases {
@@ -114,7 +126,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     1i64,  // Boolean true
     0i64,  // Boolean false
     42i64, // String '42'
-    // Invalid string should produce error, not output
+           // Invalid string should produce error, not output
   ];
 
   if output_results == expected_results && error_count == 1 {
@@ -128,7 +140,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       "String '42' -> 42",
     ];
 
-    for (i, &result) in output_results.iter().enumerate() {
+    for (i, &_result) in output_results.iter().enumerate() {
       if i < descriptions.len() {
         println!("    {}", descriptions[i]);
       }

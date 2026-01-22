@@ -37,27 +37,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test various values to convert to strings
   println!("📥 Sending various values for string conversion");
   let test_cases = vec![
-    ("String", Arc::new("hello world".to_string()) as Arc<dyn Any + Send + Sync>),
+    (
+      "String",
+      Arc::new("hello world".to_string()) as Arc<dyn Any + Send + Sync>,
+    ),
     ("Integer 42", Arc::new(42i32) as Arc<dyn Any + Send + Sync>),
-    ("Float 3.14", Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>),
+    (
+      "Float 3.14",
+      Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>,
+    ),
     ("Boolean true", Arc::new(true) as Arc<dyn Any + Send + Sync>),
-    ("Boolean false", Arc::new(false) as Arc<dyn Any + Send + Sync>),
-    ("Large integer", Arc::new(123456789i64) as Arc<dyn Any + Send + Sync>),
-    ("Unsigned integer", Arc::new(42u32) as Arc<dyn Any + Send + Sync>),
+    (
+      "Boolean false",
+      Arc::new(false) as Arc<dyn Any + Send + Sync>,
+    ),
+    (
+      "Large integer",
+      Arc::new(123456789i64) as Arc<dyn Any + Send + Sync>,
+    ),
+    (
+      "Unsigned integer",
+      Arc::new(42u32) as Arc<dyn Any + Send + Sync>,
+    ),
     ("Float 0.0", Arc::new(0.0f32) as Arc<dyn Any + Send + Sync>),
-    ("Array of strings", Arc::new(vec![
-      Arc::new("apple".to_string()) as Arc<dyn Any + Send + Sync>,
-      Arc::new("banana".to_string()) as Arc<dyn Any + Send + Sync>,
-      Arc::new("cherry".to_string()) as Arc<dyn Any + Send + Sync>,
-    ]) as Arc<dyn Any + Send + Sync>),
+    (
+      "Array of strings",
+      Arc::new(vec![
+        Arc::new("apple".to_string()) as Arc<dyn Any + Send + Sync>,
+        Arc::new("banana".to_string()) as Arc<dyn Any + Send + Sync>,
+        Arc::new("cherry".to_string()) as Arc<dyn Any + Send + Sync>,
+      ]) as Arc<dyn Any + Send + Sync>,
+    ),
     ("Object (HashMap)", {
       let mut obj = std::collections::HashMap::new();
-      obj.insert("name".to_string(), Arc::new("John".to_string()) as Arc<dyn Any + Send + Sync>);
-      obj.insert("age".to_string(), Arc::new(30i32) as Arc<dyn Any + Send + Sync>);
-      obj.insert("active".to_string(), Arc::new(true) as Arc<dyn Any + Send + Sync>);
+      obj.insert(
+        "name".to_string(),
+        Arc::new("John".to_string()) as Arc<dyn Any + Send + Sync>,
+      );
+      obj.insert(
+        "age".to_string(),
+        Arc::new(30i32) as Arc<dyn Any + Send + Sync>,
+      );
+      obj.insert(
+        "active".to_string(),
+        Arc::new(true) as Arc<dyn Any + Send + Sync>,
+      );
       Arc::new(obj) as Arc<dyn Any + Send + Sync>
     }),
-    ("Unsupported type (Vec)", Arc::new(vec![1, 2, 3]) as Arc<dyn Any + Send + Sync>),
+    (
+      "Unsupported type (Vec)",
+      Arc::new(vec![1, 2, 3]) as Arc<dyn Any + Send + Sync>,
+    ),
   ];
 
   for (description, value) in &test_cases {
@@ -154,7 +184,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       "Object -> JSON-like representation",
     ];
 
-    for (i, result) in output_results.iter().enumerate() {
+    for (i, _result) in output_results.iter().enumerate() {
       if i < descriptions.len() {
         println!("    {}", descriptions[i]);
       }
@@ -170,7 +200,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   } else {
     println!(
       "⚠ ToStringNode behavior may be unexpected (received: {}, expected: {})",
-      output_results.len(), expected_results.len()
+      output_results.len(),
+      expected_results.len()
     );
   }
 

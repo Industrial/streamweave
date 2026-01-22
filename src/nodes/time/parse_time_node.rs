@@ -19,7 +19,7 @@
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::nodes::common::BaseNode;
 use async_trait::async_trait;
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use std::any::Any;
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -66,6 +66,15 @@ fn parse_time_string(
       let datetime = Utc.from_utc_datetime(&naive);
       let timestamp_ms = datetime.timestamp_millis();
       return Ok(Arc::new(timestamp_ms) as Arc<dyn Any + Send + Sync>);
+    } else if let Ok(date) = NaiveDate::parse_from_str(&time_string, &format_str) {
+      // For date-only formats, assume midnight UTC
+      let naive = date.and_hms_opt(0, 0, 0).unwrap_or_else(|| {
+        // Fallback if hms fails
+        NaiveDateTime::new(date, chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap())
+      });
+      let datetime = Utc.from_utc_datetime(&naive);
+      let timestamp_ms = datetime.timestamp_millis();
+      return Ok(Arc::new(timestamp_ms) as Arc<dyn Any + Send + Sync>);
     } else {
       return Err(format!(
         "Failed to parse '{}' with format '{}'",
@@ -89,6 +98,14 @@ fn parse_time_string(
       let timestamp_ms = datetime.timestamp_millis();
       return Ok(Arc::new(timestamp_ms) as Arc<dyn Any + Send + Sync>);
     } else if let Ok(naive) = NaiveDateTime::parse_from_str(&time_string, format_str) {
+      let datetime = Utc.from_utc_datetime(&naive);
+      let timestamp_ms = datetime.timestamp_millis();
+      return Ok(Arc::new(timestamp_ms) as Arc<dyn Any + Send + Sync>);
+    } else if let Ok(date) = NaiveDate::parse_from_str(&time_string, format_str) {
+      // For date-only formats, assume midnight UTC
+      let naive = date.and_hms_opt(0, 0, 0).unwrap_or_else(|| {
+        NaiveDateTime::new(date, chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap())
+      });
       let datetime = Utc.from_utc_datetime(&naive);
       let timestamp_ms = datetime.timestamp_millis();
       return Ok(Arc::new(timestamp_ms) as Arc<dyn Any + Send + Sync>);
@@ -187,7 +204,7 @@ impl Node for ParseTimeNode {
           // Try to get a format for this timestamp
           let format_item = if let Some(ref mut stream) = format_stream.as_mut() {
             // Use tokio::time::timeout to avoid blocking indefinitely
-            match tokio::time::timeout(tokio::time::Duration::from_millis(10), stream.next()).await
+            match tokio::time::timeout(tokio::time::Duration::from_millis(100), stream.next()).await
             {
               Ok(Some(format)) => Some(format),
               _ => None, // No format available or timeout

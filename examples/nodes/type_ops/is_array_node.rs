@@ -37,31 +37,61 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Test various values to check if they are arrays
   println!("📥 Sending various values to check if they are arrays");
   let test_cases = vec![
-    ("String value", Arc::new("hello world".to_string()) as Arc<dyn Any + Send + Sync>),
-    ("Integer value", Arc::new(42i32) as Arc<dyn Any + Send + Sync>),
-    ("Float value", Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>),
-    ("Boolean true", Arc::new(true) as Arc<dyn Any + Send + Sync>),
-    ("Boolean false", Arc::new(false) as Arc<dyn Any + Send + Sync>),
-    ("Empty array", Arc::new(vec![]) as Arc<dyn Any + Send + Sync>),
-    ("Array with strings", Arc::new(vec![
-      Arc::new("apple".to_string()) as Arc<dyn Any + Send + Sync>,
-      Arc::new("banana".to_string()) as Arc<dyn Any + Send + Sync>,
-      Arc::new("cherry".to_string()) as Arc<dyn Any + Send + Sync>,
-    ]) as Arc<dyn Any + Send + Sync>),
-    ("Array with numbers", Arc::new(vec![
-      Arc::new(1i32) as Arc<dyn Any + Send + Sync>,
-      Arc::new(2i32) as Arc<dyn Any + Send + Sync>,
-      Arc::new(3i32) as Arc<dyn Any + Send + Sync>,
-    ]) as Arc<dyn Any + Send + Sync>),
-    ("Array with mixed types", Arc::new(vec![
-      Arc::new("text".to_string()) as Arc<dyn Any + Send + Sync>,
+    (
+      "String value",
+      Arc::new("hello world".to_string()) as Arc<dyn Any + Send + Sync>,
+    ),
+    (
+      "Integer value",
       Arc::new(42i32) as Arc<dyn Any + Send + Sync>,
-      Arc::new(true) as Arc<dyn Any + Send + Sync>,
-    ]) as Arc<dyn Any + Send + Sync>),
+    ),
+    (
+      "Float value",
+      Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>,
+    ),
+    ("Boolean true", Arc::new(true) as Arc<dyn Any + Send + Sync>),
+    (
+      "Boolean false",
+      Arc::new(false) as Arc<dyn Any + Send + Sync>,
+    ),
+    (
+      "Empty array",
+      Arc::new(Vec::<Arc<dyn Any + Send + Sync>>::new()) as Arc<dyn Any + Send + Sync>,
+    ),
+    (
+      "Array with strings",
+      Arc::new(vec![
+        Arc::new("apple".to_string()) as Arc<dyn Any + Send + Sync>,
+        Arc::new("banana".to_string()) as Arc<dyn Any + Send + Sync>,
+        Arc::new("cherry".to_string()) as Arc<dyn Any + Send + Sync>,
+      ]) as Arc<dyn Any + Send + Sync>,
+    ),
+    (
+      "Array with numbers",
+      Arc::new(vec![
+        Arc::new(1i32) as Arc<dyn Any + Send + Sync>,
+        Arc::new(2i32) as Arc<dyn Any + Send + Sync>,
+        Arc::new(3i32) as Arc<dyn Any + Send + Sync>,
+      ]) as Arc<dyn Any + Send + Sync>,
+    ),
+    (
+      "Array with mixed types",
+      Arc::new(vec![
+        Arc::new("text".to_string()) as Arc<dyn Any + Send + Sync>,
+        Arc::new(42i32) as Arc<dyn Any + Send + Sync>,
+        Arc::new(true) as Arc<dyn Any + Send + Sync>,
+      ]) as Arc<dyn Any + Send + Sync>,
+    ),
     ("Object (HashMap)", {
       let mut obj = std::collections::HashMap::new();
-      obj.insert("name".to_string(), Arc::new("John".to_string()) as Arc<dyn Any + Send + Sync>);
-      obj.insert("age".to_string(), Arc::new(30i32) as Arc<dyn Any + Send + Sync>);
+      obj.insert(
+        "name".to_string(),
+        Arc::new("John".to_string()) as Arc<dyn Any + Send + Sync>,
+      );
+      obj.insert(
+        "age".to_string(),
+        Arc::new(30i32) as Arc<dyn Any + Send + Sync>,
+      );
       Arc::new(obj) as Arc<dyn Any + Send + Sync>
     }),
   ];
@@ -158,7 +188,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       "Object {{'name': 'John', 'age': 30}} -> false (not an array)",
     ];
 
-    for (i, &result) in output_results.iter().enumerate() {
+    for (i, &_result) in output_results.iter().enumerate() {
       if i < descriptions.len() {
         println!("    {}", descriptions[i]);
       }

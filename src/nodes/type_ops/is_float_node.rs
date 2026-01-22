@@ -121,7 +121,7 @@ impl Node for IsFloatNode {
 
       // Process the input stream
       let out_tx_clone = out_tx.clone();
-      let error_tx_clone = error_tx.clone();
+      let _error_tx_clone = error_tx.clone();
 
       tokio::spawn(async move {
         let mut stream = in_stream;

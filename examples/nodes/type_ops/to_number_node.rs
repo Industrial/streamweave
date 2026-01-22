@@ -38,10 +38,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("📥 Sending various values for number conversion");
   let test_cases = vec![
     ("Integer 42", Arc::new(42i32) as Arc<dyn Any + Send + Sync>),
-    ("Float 3.14", Arc::new(3.14f32) as Arc<dyn Any + Send + Sync>),
+    (
+      "Float 3.14",
+      Arc::new(3.14f32) as Arc<dyn Any + Send + Sync>,
+    ),
     ("Boolean true", Arc::new(true) as Arc<dyn Any + Send + Sync>),
-    ("String '42'", Arc::new("42".to_string()) as Arc<dyn Any + Send + Sync>),
-    ("Invalid string", Arc::new("not_a_number".to_string()) as Arc<dyn Any + Send + Sync>),
+    (
+      "String '42'",
+      Arc::new("42".to_string()) as Arc<dyn Any + Send + Sync>,
+    ),
+    (
+      "Invalid string",
+      Arc::new("not_a_number".to_string()) as Arc<dyn Any + Send + Sync>,
+    ),
   ];
 
   for (description, value) in &test_cases {
@@ -112,7 +121,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     (output_results[0] - 42.0).abs() < 0.001 &&  // Integer 42
     (output_results[1] - 3.14).abs() < 0.001 &&  // Float 3.14 (allow small precision differences)
     (output_results[2] - 1.0).abs() < 0.001 &&   // Boolean true
-    (output_results[3] - 42.0).abs() < 0.001;    // String '42'
+    (output_results[3] - 42.0).abs() < 0.001; // String '42'
 
   if results_match && error_count == 1 {
     println!("✓ ToNumberNode correctly converted all values");
@@ -124,7 +133,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       "String '42' -> 42.0",
     ];
 
-    for (i, &result) in output_results.iter().enumerate() {
+    for (i, &_result) in output_results.iter().enumerate() {
       if i < descriptions.len() {
         println!("    {}", descriptions[i]);
       }

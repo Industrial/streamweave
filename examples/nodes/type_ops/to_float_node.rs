@@ -103,8 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Verify behavior: should receive expected float values
   // Check results with tolerance for floating point precision
-  let results_match = output_results.len() == 1 &&
-    (output_results[0] - 42.0).abs() < 0.001;  // Integer 42
+  let results_match = output_results.len() == 1 && (output_results[0] - 42.0).abs() < 0.001; // Integer 42
 
   if results_match && error_count == 0 {
     println!("✓ ToFloatNode correctly converted the value");
