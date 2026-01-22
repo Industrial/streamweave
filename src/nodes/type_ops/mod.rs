@@ -33,6 +33,9 @@ pub mod is_array_node_test;
 pub mod is_boolean_node;
 #[cfg(test)]
 pub mod is_boolean_node_test;
+pub mod is_float_node;
+#[cfg(test)]
+pub mod is_float_node_test;
 pub mod is_null_node;
 #[cfg(test)]
 pub mod is_null_node_test;
@@ -69,6 +72,7 @@ pub mod type_of_node_test;
 
 pub use is_array_node::IsArrayNode;
 pub use is_boolean_node::IsBooleanNode;
+pub use is_float_node::IsFloatNode;
 pub use is_null_node::IsNullNode;
 pub use is_number_node::IsNumberNode;
 pub use is_object_node::IsObjectNode;
