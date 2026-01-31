@@ -121,6 +121,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .execute()
     .await
     .map_err(|e| format!("Graph execution failed: {:?}", e))?;
+  graph
+    .wait_for_completion()
+    .await
+    .map_err(|e| format!("Graph wait failed: {:?}", e))?;
   println!("✓ Graph execution completed in {:?}", start.elapsed());
 
   // Read results from the output channels

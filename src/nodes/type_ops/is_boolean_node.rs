@@ -108,8 +108,8 @@ impl Node for IsBooleanNode {
       let in_stream = inputs.remove("in").ok_or("Missing 'in' input")?;
 
       // Create output streams
-      let (out_tx, out_rx) = mpsc::channel(10);
-      let (error_tx, error_rx) = mpsc::channel(10);
+      let (out_tx, out_rx) = mpsc::channel(100);
+      let (error_tx, error_rx) = mpsc::channel(100);
 
       // Process the input stream
       let out_tx_clone = out_tx.clone();

@@ -8,9 +8,9 @@ use tokio::sync::mpsc;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Create channels for external I/O
   let (config_tx, config_rx) = mpsc::channel(1);
-  let (input_tx, input_rx) = mpsc::channel(10);
-  let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
-  let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
+  let (input_tx, input_rx) = mpsc::channel(100);
+  let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(100);
+  let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(100);
 
   // Build the graph using the Graph API
   let mut graph = Graph::new("is_boolean_example".to_string());
@@ -28,11 +28,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   graph.connect_output_channel("error", error_tx)?;
 
   println!("✓ Graph built with IsBooleanNode using Graph API");
-
-  // Send configuration (optional for IsBooleanNode)
-  let _ = config_tx
-    .send(Arc::new(()) as Arc<dyn Any + Send + Sync>)
-    .await;
 
   // Test various values to check if they are booleans
   println!("📥 Sending various values to check if they are booleans");
@@ -99,6 +94,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   for (description, value) in &test_cases {
     println!("  Checking: {}", description);
     input_tx.send(value.clone()).await.unwrap();
+    // Small delay to prevent overwhelming the channels
+    tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
   }
 
   println!("✓ All test cases sent");
@@ -114,6 +111,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .execute()
     .await
     .map_err(|e| format!("Graph execution failed: {:?}", e))?;
+  graph
+    .wait_for_completion()
+    .await
+    .map_err(|e| format!("Graph wait failed: {:?}", e))?;
   println!("✓ Graph execution completed in {:?}", start.elapsed());
 
   // Read results from the output channels
@@ -123,9 +124,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   loop {
     let output_result =
-      tokio::time::timeout(tokio::time::Duration::from_millis(500), output_rx.recv()).await;
+      tokio::time::timeout(tokio::time::Duration::from_millis(100), output_rx.recv()).await;
     let error_result =
-      tokio::time::timeout(tokio::time::Duration::from_millis(500), error_rx.recv()).await;
+      tokio::time::timeout(tokio::time::Duration::from_millis(100), error_rx.recv()).await;
 
     let mut has_data = false;
 

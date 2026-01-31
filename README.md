@@ -12,7 +12,7 @@
 StreamWeave is a general-purpose Rust framework built around the concept of
 **streaming data**, with a focus on simplicity, composability, and performance.
 
-**High-Performance Streaming:** Process **2-6 million messages per second** with in-process zero-copy execution. Perfect for high-throughput data processing pipelines.
+**High-Performance Memory Management:** Achieves optimal performance through advanced memory pooling techniques, including buffer pooling and string interning, significantly reducing allocation overhead and improving cache locality. This results in ultra-low latency and maximum throughput.
 
 ## ✨ Key Features
 
@@ -60,121 +60,182 @@ Add StreamWeave to your `Cargo.toml`:
 streamweave = "0.8.0"
 ```
 
-### Basic Example
+### Basic Example: Sum of Squares of Even Numbers
+
+This example demonstrates the Graph API by implementing a classic algorithm: generating numbers 1-10, filtering even numbers, squaring them, and summing the results.
 
 ```rust
-use streamweave::PipelineBuilder;
-use streamweave_array::ArrayProducer;
-use streamweave_transformers::MapTransformer;
-use streamweave_vec::VecConsumer;
+use std::any::Any;
+use std::sync::Arc;
+use streamweave::edge::Edge;
+use streamweave::graph::Graph;
+use streamweave::nodes::aggregation::SumNode;
+use streamweave::nodes::filter_node::{FilterNode, filter_config};
+use streamweave::nodes::map_node::{MapNode, map_config};
+use streamweave::nodes::range_node::RangeNode;
+use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let pipeline = PipelineBuilder::new()
-        .producer(ArrayProducer::new(vec![1, 2, 3, 4, 5]))
-        .transformer(MapTransformer::new(|x: i32| x * 2))
-        .consumer(VecConsumer::new());
+    // Create channels for external I/O
+    let (range_start_tx, range_start_rx) = mpsc::channel(1);
+    let (range_end_tx, range_end_rx) = mpsc::channel(1);
+    let (range_step_tx, range_step_rx) = mpsc::channel(1);
+    let (result_tx, mut result_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-    let ((), result) = pipeline.run().await?;
-    println!("Result: {:?}", result.collected);
+    // Build the graph
+    let mut graph = Graph::new("sum_of_squares".to_string());
+
+    // Add nodes
+    graph.add_node("range".to_string(), Box::new(RangeNode::new("range".to_string())))?;
+    graph.add_node("filter".to_string(), Box::new(FilterNode::new("filter".to_string())))?;
+    graph.add_node("square".to_string(), Box::new(MapNode::new("square".to_string())))?;
+    graph.add_node("sum".to_string(), Box::new(SumNode::new("sum".to_string())))?;
+
+    // Connect nodes with edges
+    graph.add_edge(Edge {
+        source_node: "range".to_string(),
+        source_port: "out".to_string(),
+        target_node: "filter".to_string(),
+        target_port: "in".to_string(),
+    })?;
+    graph.add_edge(Edge {
+        source_node: "filter".to_string(),
+        source_port: "out".to_string(),
+        target_node: "square".to_string(),
+        target_port: "in".to_string(),
+    })?;
+    graph.add_edge(Edge {
+        source_node: "square".to_string(),
+        source_port: "out".to_string(),
+        target_node: "sum".to_string(),
+        target_port: "in".to_string(),
+    })?;
+
+    // Expose input ports for range configuration
+    graph.expose_input_port("range", "start", "start")?;
+    graph.expose_input_port("range", "end", "end")?;
+    graph.expose_input_port("range", "step", "step")?;
+    
+    // Expose output port for final result
+    graph.expose_output_port("sum", "out", "result")?;
+
+    // Connect external channels
+    graph.connect_input_channel("start", range_start_rx)?;
+    graph.connect_input_channel("end", range_end_rx)?;
+    graph.connect_input_channel("step", range_step_rx)?;
+    graph.connect_output_channel("result", result_tx)?;
+
+    // Send range configuration
+    range_start_tx.send(Arc::new(1i32) as Arc<dyn Any + Send + Sync>).await?;
+    range_end_tx.send(Arc::new(11i32) as Arc<dyn Any + Send + Sync>).await?;
+    range_step_tx.send(Arc::new(1i32) as Arc<dyn Any + Send + Sync>).await?;
+
+    // Configure filter to keep only even numbers
+    let (filter_config_tx, filter_config_rx) = mpsc::channel(1);
+    graph.expose_input_port("filter", "configuration", "filter_config")?;
+    graph.connect_input_channel("filter_config", filter_config_rx)?;
+    
+    // Configure map to square each number  
+    let (square_config_tx, square_config_rx) = mpsc::channel(1);
+    graph.expose_input_port("square", "configuration", "square_config")?;
+    graph.connect_input_channel("square_config", square_config_rx)?;
+    
+    // Send configurations
+    filter_config_tx.send(Arc::new(filter_config(|value| async move {
+        if let Ok(arc_i32) = value.downcast::<i32>() {
+            Ok(*arc_i32 % 2 == 0)
+        } else {
+            Err("Expected i32".to_string())
+        }
+    })) as Arc<dyn Any + Send + Sync>).await?;
+    
+    square_config_tx.send(Arc::new(map_config(|value| async move {
+        if let Ok(arc_i32) = value.downcast::<i32>() {
+            Ok(Arc::new(*arc_i32 * *arc_i32) as Arc<dyn Any + Send + Sync>)
+        } else {
+            Err("Expected i32".to_string())
+        }
+    })) as Arc<dyn Any + Send + Sync>).await?;
+
+    // Execute the graph
+    graph.execute().await?;
+
+    // Wait for result
+    if let Some(result) = result_rx.recv().await {
+        if let Ok(sum) = result.downcast::<i32>() {
+            println!("Sum of squares of even numbers (2² + 4² + 6² + 8² + 10²): {}", *sum);
+            // Expected: 4 + 16 + 36 + 64 + 100 = 220
+        }
+    }
+
+    graph.wait_for_completion().await?;
     Ok(())
 }
 ```
 
+### Graph Visualization
+
+The following Mermaid diagram shows the graph structure with nodes that have multiple inputs and outputs:
+
+```mermaid
+graph LR
+    Start[Range Config<br/>start: 1<br/>end: 11<br/>step: 1] -->|start| Range[RangeNode<br/>Inputs: start, end, step<br/>Outputs: out]
+    Start -->|end| Range
+    Start -->|step| Range
+    
+    Range -->|out| Filter[FilterNode<br/>Inputs: configuration, in<br/>Outputs: out, error]
+    FilterConfig[Filter Config<br/>even numbers] -->|configuration| Filter
+    
+    Filter -->|out| Square[MapNode<br/>Inputs: configuration, in<br/>Outputs: out, error]
+    SquareConfig[Map Config<br/>square function] -->|configuration| Square
+    
+    Square -->|out| Sum[SumNode<br/>Inputs: configuration, in<br/>Outputs: out, error]
+    
+    Sum -->|out| Result[Result: 220]
+    
+    style Range fill:#e1f5ff
+    style Filter fill:#fff4e1
+    style Square fill:#fff4e1
+    style Sum fill:#e8f5e9
+    style Result fill:#f3e5f5
+```
+
+This graph demonstrates:
+- **Multiple inputs**: RangeNode receives `start`, `end`, and `step` from separate sources
+- **Fan-out**: RangeNode's output connects to FilterNode's input
+- **Linear processing**: Data flows through Filter → Square → Sum
+- **Configuration ports**: FilterNode and MapNode receive configuration on separate ports
+- **Multiple outputs**: Each node has both `out` and `error` ports (error ports not shown for clarity)
+
 For more examples and detailed documentation, see the [package documentation](#-packages) below.
 
-## 📦 Packages
+## 📦 Node Modules
 
-StreamWeave is organized as a monorepo with 39 packages, each providing specific functionality. Each package has its own README with detailed documentation, examples, and API reference.
+StreamWeave is organized as a monorepo with 13 core node modules, each providing specific functionality. Each module provides examples and API reference.
 
-### Core Foundation Packages
+### Core Node Modules
 
-These are the foundational packages that other packages depend on:
+StreamWeave's core functionality is built around a flexible node system. These modules provide the fundamental building blocks for data processing, including:
 
-- **[streamweave](packages/streamweave/README.md)** - Core traits and types (Producer, Transformer, Consumer)
-- **[error](packages/error/README.md)** - Error handling system with multiple strategies
-- **[message](packages/message/README.md)** - Message envelope and metadata
-- **[offset](packages/offset/README.md)** - Offset management for exactly-once processing
-- **[transaction](packages/transaction/README.md)** - Transaction support and boundaries
+-   **Advanced Node Operations:** `advanced/` (e.g., `Break`, `Continue`, `Repeat`, `Retry`, `Switch`, `TryCatch`)
+-   **Aggregation Nodes:** `aggregation/` (e.g., `Average`, `Count`, `Max`, `Min`, `Sum`)
+-   **Arithmetic Nodes:** `arithmetic/` (e.g., `Add`, `Divide`, `Modulo`, `Multiply`, `Power`, `Subtract`)
+-   **Array Nodes:** `array/` (e.g., `Concat`, `Contains`, `Flatten`, `Index`, `Length`, `Reverse`, `Slice`, `Sort`, `Split`, `Unique`)
+-   **Boolean Logic Nodes:** `boolean_logic/` (e.g., `And`, `Nand`, `Nor`, `Not`, `Or`, `Xor`)
+-   **Comparison Nodes:** `comparison/` (e.g., `Equal`, `GreaterThan`, `LessThan`, `NotEqual`)
+-   **Math Nodes:** `math/` (e.g., `Abs`, `Ceil`, `Exp`, `Floor`, `Log`, `Max`, `Min`, `Round`, `Sqrt`)
+-   **Object Nodes:** `object/` (e.g., `HasProperty`, `Keys`, `Merge`, `Property`, `SetProperty`, `Size`)
+-   **Reduction Nodes:** `reduction/` (e.g., `Aggregate`, `GroupBy`, `Reduce`, `Scan`)
+-   **Stream Processing Nodes:** `stream/` (e.g., `Buffer`, `Debounce`, `Distinct`, `Filter`, `Map`, `Merge`, `Sample`, `Skip`, `Take`, `Throttle`, `Window`, `Zip`)
+-   **String Manipulation Nodes:** `string/` (e.g., `Append`, `Capitalize`, `CharAt`, `Concat`, `Contains`, `EndsWith`, `Format`, `IndexOf`, `Join`, `Length`, `Lowercase`, `Match`, `Prepend`, `Replace`, `Slice`, `Split`, `StartsWith`, `Trim`, `Uppercase`)
+-   **Time-based Nodes:** `time/` (e.g., `CurrentTime`, `Delay`, `FormatTime`, `ParseTime`, `Timeout`, `Timer`, `Timestamp`)
+-   **Type Operation Nodes:** `type_ops/` (e.g., `IsArray`, `IsBoolean`, `IsFloat`, `IsInt`, `IsNull`, `IsNumber`, `IsObject`, `IsString`, `ToArray`, `ToBoolean`, `ToFloat`, `ToInt`, `ToNumber`, `ToString`, `TypeOf`)
+-   **Variable Nodes:** `variable/` (e.g., `ReadVariable`, `WriteVariable`)
+-   **Flow Control Nodes:** `while_loop_node.rs` (e.g., `WhileLoop`)
 
-### System Packages
 
-Core system functionality:
-
-- **[pipeline](packages/pipeline/README.md)** - Pipeline builder and execution
-- **[graph](packages/graph/README.md)** - Graph API for complex topologies
-- **[stateful](packages/stateful/README.md)** - Stateful processing and state management
-- **[window](packages/window/README.md)** - Windowing operations (tumbling, sliding, session)
-
-### I/O Packages
-
-Standard I/O and file system operations:
-
-- **[stdio](packages/stdio/README.md)** - Standard input/output streaming
-- **[file](packages/file/README.md)** - File I/O operations
-- **[fs](packages/fs/README.md)** - File system operations and directory traversal
-- **[tempfile](packages/tempfile/README.md)** - Temporary file handling
-- **[path](packages/path/README.md)** - Path manipulation and transformations
-
-### Data Format Packages
-
-Data format parsing and serialization:
-
-- **[csv](packages/csv/README.md)** - CSV parsing and writing
-- **[jsonl](packages/jsonl/README.md)** - JSON Lines format support
-- **[parquet](packages/parquet/README.md)** - Parquet format support
-
-### Database Packages
-
-Database integration:
-
-- **[database](packages/database/README.md)** - Generic database support
-- **[database-mysql](packages/database-mysql/README.md)** - MySQL integration
-- **[database-postgresql](packages/database-postgresql/README.md)** - PostgreSQL integration
-- **[database-sqlite](packages/database-sqlite/README.md)** - SQLite integration
-
-### Network Packages
-
-Network protocol integration:
-
-- **[kafka](packages/kafka/README.md)** - Apache Kafka producer and consumer
-- **[redis](packages/redis/README.md)** - Redis Streams integration
-- **[http-server](packages/http-server/README.md)** - HTTP graph server with Axum integration
-
-### Producer/Consumer Packages
-
-Various data source and sink implementations:
-
-- **[array](packages/array/README.md)** - Array-based streaming
-- **[vec](packages/vec/README.md)** - Vector-based streaming
-- **[env](packages/env/README.md)** - Environment variable streaming
-- **[command](packages/command/README.md)** - Command execution and output streaming
-- **[process](packages/process/README.md)** - Process management and monitoring
-- **[signal](packages/signal/README.md)** - Unix signal handling
-- **[timer](packages/timer/README.md)** - Time-based and interval-based streaming
-- **[tokio](packages/tokio/README.md)** - Tokio channel integration
-
-### Transformers Package
-
-Comprehensive transformer implementations:
-
-- **[transformers](packages/transformers/README.md)** - All transformer types including:
-  - Basic: Map, Filter, Reduce
-  - Advanced: Batch, Retry, CircuitBreaker, RateLimit
-  - Stateful: RunningSum, MovingAverage
-  - Routing: Router, Partition, RoundRobin
-  - Merging: Merge, OrderedMerge, Interleave
-  - ML: Inference, BatchedInference
-  - Utility: Sample, Skip, Take, Limit, Sort, Split, Zip, Timeout, MessageDedupe
-
-### Integration and Utility Packages
-
-Observability and integration capabilities:
-
-- **[integrations/opentelemetry](packages/integrations/opentelemetry/README.md)** - OpenTelemetry integration
-- **[integrations/sql](packages/integrations/sql/README.md)** - SQL query support
-- **[metrics](packages/metrics/README.md)** - Metrics collection and Prometheus integration
-- **[visualization](packages/visualization/README.md)** - Pipeline and graph visualization
+For detailed examples and usage of each node, please refer to the [examples directory](examples/nodes/).
 
 ## 📚 Documentation
 
