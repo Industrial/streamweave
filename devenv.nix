@@ -1,4 +1,8 @@
-{pkgs, ...}: {
+{
+  inputs,
+  pkgs,
+  ...
+}: {
   # Name of the project with version
   name = "streamweave";
 
@@ -26,12 +30,6 @@
     };
   };
 
-  services = {
-    kafka = {
-      enable = true;
-    };
-  };
-
   env = {
     RUST_BACKTRACE = "1";
     CARGO_TERM_COLOR = "always";
@@ -39,11 +37,13 @@
 
   # Development packages
   packages = with pkgs; [
+    # AI
+    inputs.nixpkgs-unstable.legacyPackages.${pkgs.system}.beads
+
     # Rust tools
     clippy
     rust-analyzer
     rustc
-    rustfmt
 
     # Development tools
     direnv
@@ -58,25 +58,9 @@
     cargo-llvm-cov
     cargo-nextest
 
-    # Documentation tools
-    mdbook
-    mdbook-mermaid
-
     # Version management
     git
     gh
-
-    # Build dependencies for Kafka integration
-    cmake
-    pkg-config
-    openssl
-    zlib
-    zstd
-
-    # For task-master
-    nodejs
-    task-master-ai
-    nodePackages.npm
 
     # treefmt
     actionlint
