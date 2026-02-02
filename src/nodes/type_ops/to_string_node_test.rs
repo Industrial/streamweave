@@ -183,3 +183,153 @@ async fn test_to_string_multiple_types() {
     panic!("Third result is not a String");
   }
 }
+
+#[tokio::test]
+async fn test_to_string_stream_completes_properly() {
+  // Regression test: Ensure the stream completes when input ends (doesn't hang)
+  let node = ToStringNode::new("test_to_string".to_string());
+  let (_config_tx, in_tx, inputs) = create_input_streams();
+  let outputs_future = node.execute(inputs);
+  let mut outputs = outputs_future.await.unwrap();
+
+  // Send a few items
+  let _ = in_tx
+    .send(Arc::new(1i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = in_tx
+    .send(Arc::new(2i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = in_tx
+    .send(Arc::new(3i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  
+  // Close the input channel to signal end of stream
+  drop(in_tx);
+
+  let out_stream = outputs.remove("out").unwrap();
+  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  let mut stream = out_stream;
+  
+  // Use timeout to ensure the stream completes within reasonable time
+  // This test will fail if the stream hangs (regression test)
+  let timeout_duration = tokio::time::Duration::from_secs(2);
+  let start = std::time::Instant::now();
+  
+  loop {
+    let timeout_future = tokio::time::sleep(timeout_duration);
+    tokio::pin!(timeout_future);
+    
+    tokio::select! {
+      result = stream.next() => {
+        if let Some(item) = result {
+          results.push(item);
+          if results.len() == 3 {
+            break; // Got all expected results
+          }
+        } else {
+          break; // Stream ended (this is expected and good)
+        }
+      }
+      _ = timeout_future => {
+        panic!("Stream did not complete within timeout - this indicates a hang bug!");
+      }
+    }
+    
+    // Safety check: if we've been running for too long, fail
+    if start.elapsed() > timeout_duration {
+      panic!("Test took too long - stream may be hanging!");
+    }
+  }
+
+  // Verify we got all results before the stream ended
+  assert_eq!(results.len(), 3, "Should receive all 3 items before stream ends");
+  
+  // Verify the results
+  if let Ok(str_val) = results[0].clone().downcast::<String>() {
+    assert_eq!(*str_val, "1");
+  } else {
+    panic!("First result is not a String");
+  }
+  if let Ok(str_val) = results[1].clone().downcast::<String>() {
+    assert_eq!(*str_val, "2");
+  } else {
+    panic!("Second result is not a String");
+  }
+  if let Ok(str_val) = results[2].clone().downcast::<String>() {
+    assert_eq!(*str_val, "3");
+  } else {
+    panic!("Third result is not a String");
+  }
+}
+
+#[tokio::test]
+async fn test_to_string_stream_completes_after_input_closed() {
+  // Regression test: Ensure the output stream completes when input stream ends
+  // This test verifies that the node doesn't hang waiting for more input
+  let node = ToStringNode::new("test_to_string".to_string());
+  let (_config_tx, in_tx, inputs) = create_input_streams();
+  let outputs_future = node.execute(inputs);
+  let mut outputs = outputs_future.await.unwrap();
+
+  // Send a few items
+  let _ = in_tx
+    .send(Arc::new(1i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = in_tx
+    .send(Arc::new(2i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = in_tx
+    .send(Arc::new(3i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  
+  // Close the input channel - this should cause the stream to end
+  drop(in_tx);
+
+  let out_stream = outputs.remove("out").unwrap();
+  let mut results: Vec<String> = Vec::new();
+  let mut stream = out_stream;
+  
+  // Collect all results - the stream should end after processing all items
+  // Use a reasonable timeout to detect hangs
+  let start = std::time::Instant::now();
+  let timeout_duration = tokio::time::Duration::from_millis(1000);
+  
+  loop {
+    let timeout = tokio::time::sleep(timeout_duration);
+    tokio::pin!(timeout);
+    
+    tokio::select! {
+      result = stream.next() => {
+        if let Some(item) = result {
+          if let Ok(str_val) = item.downcast::<String>() {
+            results.push((*str_val).clone());
+          }
+        } else {
+          // Stream ended - this is what we want
+          break;
+        }
+      }
+      _ = &mut timeout => {
+        // If we timeout, the stream didn't end properly (hang detected)
+        panic!("Stream did not complete within timeout - possible hang! Elapsed: {:?}, Results: {:?}", start.elapsed(), results);
+      }
+    }
+    
+    // Safety check: if we've been running too long, something is wrong
+    if start.elapsed() > timeout_duration {
+      panic!("Stream processing took too long - possible hang! Results: {:?}", results);
+    }
+  }
+
+  // Verify we got all expected results
+  assert_eq!(results.len(), 3);
+  assert_eq!(results[0], "1");
+  assert_eq!(results[1], "2");
+  assert_eq!(results[2], "3");
+  
+  // Verify the stream ended quickly (not hanging)
+  assert!(
+    start.elapsed() < timeout_duration,
+    "Stream should complete quickly after input closes"
+  );
+}

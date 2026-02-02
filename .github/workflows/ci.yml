@@ -64,3 +64,6 @@ jobs:
         run: nix profile install nixpkgs#devenv
       - name: Build docs
         run: devenv shell -- ./bin/docs
+      - name: Check docs (missing docs)
+        run: devenv shell -- ./bin/check-docs
+        continue-on-error: true

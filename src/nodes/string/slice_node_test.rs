@@ -459,3 +459,142 @@ async fn test_string_slice_negative_index() {
   assert_eq!(errors.len(), 1);
   assert!(errors[0].contains("cannot be negative"));
 }
+
+#[tokio::test]
+async fn test_string_slice_unicode_characters() {
+  let node = StringSliceNode::new("test_slice".to_string());
+
+  let (_config_tx, in_tx, start_tx, end_tx, inputs) = create_input_streams();
+  let outputs_future = node.execute(inputs);
+  let mut outputs = outputs_future.await.unwrap();
+
+  // Test slicing with Unicode emoji: "Unicode: 🚀" - slice from char 9 to 10 (the emoji)
+  let test_str = "Unicode: 🚀".to_string();
+  let _ = in_tx
+    .send(Arc::new(test_str.clone()) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = start_tx
+    .send(Arc::new(9usize) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = end_tx
+    .send(Arc::new(10usize) as Arc<dyn Any + Send + Sync>)
+    .await;
+
+  let out_stream = outputs.remove("out").unwrap();
+  let mut results = Vec::new();
+  let mut stream = out_stream;
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  tokio::pin!(timeout);
+
+  loop {
+    tokio::select! {
+      result = stream.next() => {
+        if let Some(item) = result {
+          if let Ok(arc_str) = item.downcast::<String>() {
+            results.push(arc_str.clone());
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+      _ = &mut timeout => break,
+    }
+  }
+
+  assert_eq!(results.len(), 1);
+  assert_eq!(*results[0], "🚀");
+}
+
+#[tokio::test]
+async fn test_string_slice_unicode_middle_of_multibyte() {
+  let node = StringSliceNode::new("test_slice".to_string());
+
+  let (_config_tx, in_tx, start_tx, end_tx, inputs) = create_input_streams();
+  let outputs_future = node.execute(inputs);
+  let mut outputs = outputs_future.await.unwrap();
+
+  // Test that slicing at character boundaries works even with multi-byte characters
+  // "Hello 🚀 World" - slice from char 6 to 7 (the emoji)
+  let test_str = "Hello 🚀 World".to_string();
+  let _ = in_tx
+    .send(Arc::new(test_str.clone()) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = start_tx
+    .send(Arc::new(6usize) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = end_tx
+    .send(Arc::new(7usize) as Arc<dyn Any + Send + Sync>)
+    .await;
+
+  let out_stream = outputs.remove("out").unwrap();
+  let mut results = Vec::new();
+  let mut stream = out_stream;
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  tokio::pin!(timeout);
+
+  loop {
+    tokio::select! {
+      result = stream.next() => {
+        if let Some(item) = result {
+          if let Ok(arc_str) = item.downcast::<String>() {
+            results.push(arc_str.clone());
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+      _ = &mut timeout => break,
+    }
+  }
+
+  assert_eq!(results.len(), 1);
+  assert_eq!(*results[0], "🚀");
+}
+
+#[tokio::test]
+async fn test_string_slice_unicode_multiple_chars() {
+  let node = StringSliceNode::new("test_slice".to_string());
+
+  let (_config_tx, in_tx, start_tx, end_tx, inputs) = create_input_streams();
+  let outputs_future = node.execute(inputs);
+  let mut outputs = outputs_future.await.unwrap();
+
+  // Test slicing multiple Unicode characters: "🚀🌍" slice from 0 to 2
+  let test_str = "🚀🌍".to_string();
+  let _ = in_tx
+    .send(Arc::new(test_str.clone()) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = start_tx
+    .send(Arc::new(0usize) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = end_tx
+    .send(Arc::new(2usize) as Arc<dyn Any + Send + Sync>)
+    .await;
+
+  let out_stream = outputs.remove("out").unwrap();
+  let mut results = Vec::new();
+  let mut stream = out_stream;
+  let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
+  tokio::pin!(timeout);
+
+  loop {
+    tokio::select! {
+      result = stream.next() => {
+        if let Some(item) = result {
+          if let Ok(arc_str) = item.downcast::<String>() {
+            results.push(arc_str.clone());
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+      _ = &mut timeout => break,
+    }
+  }
+
+  assert_eq!(results.len(), 1);
+  assert_eq!(*results[0], "🚀🌍");
+}

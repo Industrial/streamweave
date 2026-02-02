@@ -120,16 +120,17 @@ impl Node for IsFloatNode {
       let (error_tx, error_rx) = mpsc::channel(10);
 
       // Process the input stream
-      let out_tx_clone = out_tx.clone();
-      let _error_tx_clone = error_tx.clone();
-
+      // Move the senders into the spawned task so they're dropped when processing completes
       tokio::spawn(async move {
         let mut stream = in_stream;
         while let Some(item) = stream.next().await {
           let is_float = is_float(&item);
           let result = Arc::new(is_float) as Arc<dyn Any + Send + Sync>;
-          let _ = out_tx_clone.send(result).await;
+          let _ = out_tx.send(result).await;
         }
+        // When the loop exits, out_tx and error_tx are dropped here,
+        // which closes the channels and signals end of stream to receivers
+        drop(error_tx); // Explicitly drop to close error channel
       });
 
       // Convert channels to streams

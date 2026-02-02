@@ -209,22 +209,22 @@ impl Node for ToStringNode {
       let (error_tx, error_rx) = mpsc::channel(10);
 
       // Process the input stream
-      let out_tx_clone = out_tx.clone();
-      let error_tx_clone = error_tx.clone();
-
+      // Move the senders into the spawned task so they're dropped when processing completes
       tokio::spawn(async move {
         let mut stream = in_stream;
         while let Some(item) = stream.next().await {
           match to_string(&item) {
             Ok(result) => {
-              let _ = out_tx_clone.send(result).await;
+              let _ = out_tx.send(result).await;
             }
             Err(e) => {
               let error_arc = Arc::new(e) as Arc<dyn Any + Send + Sync>;
-              let _ = error_tx_clone.send(error_arc).await;
+              let _ = error_tx.send(error_arc).await;
             }
           }
         }
+        // When the loop exits, out_tx and error_tx are dropped here,
+        // which closes the channels and signals end of stream to receivers
       });
 
       // Convert channels to streams

@@ -141,23 +141,43 @@ pub fn string_slice(
     ));
   }
 
-  let str_len = arc_str.len();
-  if start_idx > str_len {
+  // Convert character indices to byte positions for Unicode-safe slicing
+  let char_count = arc_str.chars().count();
+  if start_idx > char_count {
     return Err(format!(
-      "Start index ({}) out of bounds for string of length {}",
-      start_idx, str_len
+      "Start index ({}) out of bounds for string of length {} (character count)",
+      start_idx, char_count
     ));
   }
 
-  if end_idx > str_len {
+  if end_idx > char_count {
     return Err(format!(
-      "End index ({}) out of bounds for string of length {}",
-      end_idx, str_len
+      "End index ({}) out of bounds for string of length {} (character count)",
+      end_idx, char_count
     ));
   }
 
-  // Extract substring
-  let result = arc_str[start_idx..end_idx].to_string();
+  // Find byte positions for character boundaries
+  let mut start_byte = 0;
+  let mut end_byte = arc_str.len();
+  
+  for (char_idx, (byte_idx, _)) in arc_str.char_indices().enumerate() {
+    if char_idx == start_idx {
+      start_byte = byte_idx;
+    }
+    if char_idx == end_idx {
+      end_byte = byte_idx;
+      break;
+    }
+  }
+  
+  // Handle case where end_idx equals the character count (slice to end of string)
+  if end_idx == char_count {
+    end_byte = arc_str.len();
+  }
+
+  // Extract substring using byte positions (now guaranteed to be at character boundaries)
+  let result = arc_str[start_byte..end_byte].to_string();
   Ok(Arc::new(result) as Arc<dyn Any + Send + Sync>)
 }
 

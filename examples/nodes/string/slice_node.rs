@@ -59,8 +59,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let start_idx = test_start_indices[i];
     let end_idx = test_end_indices[i];
 
-    let expected = if start_idx <= end_idx && end_idx <= input_str.len() {
-      &input_str[start_idx..end_idx]
+    // Compute expected result using character-level slicing (Unicode-safe)
+    let expected = if start_idx <= end_idx {
+      let char_count = input_str.chars().count();
+      if end_idx <= char_count {
+        // Convert character indices to byte positions
+        let mut start_byte = 0;
+        let mut end_byte = input_str.len();
+        
+        for (char_idx, (byte_idx, _)) in input_str.char_indices().enumerate() {
+          if char_idx == start_idx {
+            start_byte = byte_idx;
+          }
+          if char_idx == end_idx {
+            end_byte = byte_idx;
+            break;
+          }
+        }
+        
+        if end_idx == char_count {
+          end_byte = input_str.len();
+        }
+        
+        &input_str[start_byte..end_byte]
+      } else {
+        "<invalid range>"
+      }
     } else {
       "<invalid range>"
     };
@@ -153,7 +177,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     "🚀".to_string(),
     "Single".to_string(),
     "".to_string(),
-    "unds".to_string(),
+    "nds".to_string(), // "Bounds"[3..6] = "nds"
   ];
 
   if output_results == expected_results && error_count == 0 {
