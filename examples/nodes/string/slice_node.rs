@@ -66,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Convert character indices to byte positions
         let mut start_byte = 0;
         let mut end_byte = input_str.len();
-        
+
         for (char_idx, (byte_idx, _)) in input_str.char_indices().enumerate() {
           if char_idx == start_idx {
             start_byte = byte_idx;
@@ -76,11 +76,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             break;
           }
         }
-        
+
         if end_idx == char_count {
           end_byte = input_str.len();
         }
-        
+
         &input_str[start_byte..end_byte]
       } else {
         "<invalid range>"

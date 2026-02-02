@@ -243,22 +243,22 @@ async fn test_is_null_stream_completes_properly() {
   let _ = in_tx
     .send(Arc::new("hello".to_string()) as Arc<dyn Any + Send + Sync>)
     .await;
-  
+
   // Close the input channel to signal end of stream
   drop(in_tx);
 
   let out_stream = outputs.remove("out").unwrap();
   let mut results: Vec<bool> = Vec::new();
   let mut stream = out_stream;
-  
+
   // Use timeout to ensure the stream completes within reasonable time
   let timeout_duration = tokio::time::Duration::from_secs(2);
   let start = std::time::Instant::now();
-  
+
   loop {
     let timeout_future = tokio::time::sleep(timeout_duration);
     tokio::pin!(timeout_future);
-    
+
     tokio::select! {
       result = stream.next() => {
         if let Some(item) = result {
@@ -276,7 +276,7 @@ async fn test_is_null_stream_completes_properly() {
         panic!("Stream did not complete within timeout - this indicates a hang bug!");
       }
     }
-    
+
     // Safety check: if we've been running for too long, fail
     if start.elapsed() > timeout_duration {
       panic!("Test took too long - stream may be hanging!");
@@ -284,7 +284,11 @@ async fn test_is_null_stream_completes_properly() {
   }
 
   // Verify we got all results before the stream ended
-  assert_eq!(results.len(), 3, "Should receive all 3 items before stream ends");
+  assert_eq!(
+    results.len(),
+    3,
+    "Should receive all 3 items before stream ends"
+  );
   assert!(results[0]); // None -> true
   assert!(!results[1]); // i32 -> false
   assert!(!results[2]); // String -> false

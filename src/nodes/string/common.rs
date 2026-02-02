@@ -160,7 +160,7 @@ pub fn string_slice(
   // Find byte positions for character boundaries
   let mut start_byte = 0;
   let mut end_byte = arc_str.len();
-  
+
   for (char_idx, (byte_idx, _)) in arc_str.char_indices().enumerate() {
     if char_idx == start_idx {
       start_byte = byte_idx;
@@ -170,7 +170,7 @@ pub fn string_slice(
       break;
     }
   }
-  
+
   // Handle case where end_idx equals the character count (slice to end of string)
   if end_idx == char_count {
     end_byte = arc_str.len();
