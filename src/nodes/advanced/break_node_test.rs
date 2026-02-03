@@ -97,7 +97,7 @@ async fn test_break_basic() {
   // Should have items 1 and 2 (sent before break signal)
   // Due to async timing, we accept 1-2 items
   assert!(
-    results.len() >= 1,
+    !results.is_empty(),
     "Expected at least 1 item, got {}",
     results.len()
   );

@@ -123,7 +123,7 @@ async fn test_scan_sum() {
   assert_eq!(results.len(), 4);
 
   // Check each result
-  let expected = vec![0i32, 1i32, 3i32, 6i32];
+  let expected = [0i32, 1i32, 3i32, 6i32];
   for (i, result) in results.iter().enumerate() {
     if let Ok(value) = result.clone().downcast::<i32>() {
       assert_eq!(
@@ -264,7 +264,7 @@ async fn test_scan_single_value() {
   assert_eq!(results.len(), 2);
 
   // Check each result
-  let expected = vec![10i32, 15i32];
+  let expected = [10i32, 15i32];
   for (i, result) in results.iter().enumerate() {
     if let Ok(value) = result.clone().downcast::<i32>() {
       assert_eq!(

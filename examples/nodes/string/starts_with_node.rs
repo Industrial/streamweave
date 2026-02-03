@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send test data: strings and prefixes to check
   println!("📥 Sending strings and prefixes to check");
-  let test_input_strings = vec![
+  let test_input_strings = [
     "Hello World".to_string(),
     "Rust Programming".to_string(),
     "Test Case".to_string(),
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     "prefix test".to_string(),
     "no match".to_string(),
   ];
-  let test_prefixes = vec![
+  let test_prefixes = [
     "Hello".to_string(),
     "Python".to_string(),
     "Test".to_string(),
@@ -109,21 +109,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(result_bool) = item.downcast::<bool>() {
-        output_results.push(*result_bool);
-        println!("  Output: {}", *result_bool);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(result_bool) = item.downcast::<bool>()
+    {
+      output_results.push(*result_bool);
+      println!("  Output: {}", *result_bool);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

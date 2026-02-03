@@ -56,18 +56,27 @@ async fn test_to_number_i32() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        results.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);
@@ -87,7 +96,7 @@ async fn test_to_number_f64() {
 
   // Send an f64
   let _ = in_tx
-    .send(Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(2.5f64) as Arc<dyn Any + Send + Sync>)
     .await;
   drop(in_tx);
 
@@ -97,23 +106,32 @@ async fn test_to_number_f64() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        results.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);
   if let Ok(num_val) = results[0].clone().downcast::<f64>() {
-    assert_eq!(*num_val, 3.14);
+    assert_eq!(*num_val, 2.5);
   } else {
     panic!("Result is not an f64");
   }
@@ -138,18 +156,27 @@ async fn test_to_number_string_valid() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        results.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);
@@ -179,18 +206,27 @@ async fn test_to_number_string_invalid() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          errors.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        errors.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(errors.len(), 1);
@@ -213,7 +249,7 @@ async fn test_to_number_multiple_types() {
     .send(Arc::new(42i32) as Arc<dyn Any + Send + Sync>)
     .await;
   let _ = in_tx
-    .send(Arc::new("3.14".to_string()) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new("2.5".to_string()) as Arc<dyn Any + Send + Sync>)
     .await;
   let _ = in_tx
     .send(Arc::new(true) as Arc<dyn Any + Send + Sync>)
@@ -251,9 +287,9 @@ async fn test_to_number_multiple_types() {
     panic!("First result is not an f64");
   }
 
-  // Second item: String "3.14" -> 3.14
+  // Second item: String "2.5" -> 2.5
   if let Ok(num_val) = results[1].clone().downcast::<f64>() {
-    assert_eq!(*num_val, 3.14);
+    assert_eq!(*num_val, 2.5);
   } else {
     panic!("Second result is not an f64");
   }

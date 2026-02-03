@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send test data: strings and delimiters to split by
   println!("📥 Sending strings and delimiters to split by");
-  let test_input_strings = vec![
+  let test_input_strings = [
     "apple,banana,cherry".to_string(),
     "hello world rust".to_string(),
     "one-two-three-four".to_string(),
@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     "single".to_string(),
     "a,b,c,".to_string(),
   ];
-  let test_delimiters = vec![
+  let test_delimiters = [
     ",".to_string(),
     " ".to_string(),
     "-".to_string(),
@@ -107,28 +107,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(vec_arc) = item.downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
-        let mut parts = Vec::new();
-        for part in vec_arc.iter() {
-          if let Ok(part_str) = part.clone().downcast::<String>() {
-            parts.push((*part_str).clone());
-          }
+    if let Ok(Some(item)) = output_result
+      && let Ok(vec_arc) = item.downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    {
+      let mut parts = Vec::new();
+      for part in vec_arc.iter() {
+        if let Ok(part_str) = part.clone().downcast::<String>() {
+          parts.push((*part_str).clone());
         }
-        let parts_clone = parts.clone();
-        output_results.push(parts);
-        println!("  Output: {:?}", parts_clone);
-        has_data = true;
       }
+      let parts_clone = parts.clone();
+      output_results.push(parts);
+      println!("  Output: {:?}", parts_clone);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

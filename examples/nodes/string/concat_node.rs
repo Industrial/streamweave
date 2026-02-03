@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send test data: pairs of strings to concatenate
   println!("📥 Sending pairs of strings to concatenate");
-  let test_str1 = vec![
+  let test_str1 = [
     "Hello".to_string(),
     "Rust".to_string(),
     "Test".to_string(),
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     "Mix".to_string(),
     "Unicode: ".to_string(),
   ];
-  let test_str2 = vec![
+  let test_str2 = [
     " World".to_string(),
     " Programming".to_string(),
     "Case".to_string(),
@@ -66,10 +66,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let str2 = &test_str2[i];
 
     println!(
-      "  Concatenating '{}' + '{}' -> expected '{}'",
-      str1,
-      str2,
-      format!("{}{}", str1, str2)
+      "  Concatenating '{}' + '{}' -> expected '{}{}'",
+      str1, str2, str1, str2
     );
 
     input1_tx
@@ -112,21 +110,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(result_str) = item.downcast::<String>() {
-        output_results.push((*result_str).clone());
-        println!("  Output: '{}'", *result_str);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(result_str) = item.downcast::<String>()
+    {
+      output_results.push((*result_str).clone());
+      println!("  Output: '{}'", *result_str);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

@@ -43,28 +43,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send test data: strings, patterns, and replacements
   println!("📥 Sending strings, patterns, and replacements");
-  let test_input_strings = vec![
+  let test_input_strings = [
     "Hello World World".to_string(),
     "foo bar foo baz".to_string(),
     "a b a c a".to_string(),
     "test.txt.backup".to_string(),
     "no matches here".to_string(),
   ];
-  let test_patterns = vec![
+  let test_patterns = [
     "World".to_string(),
     "foo".to_string(),
     "a".to_string(),
     ".".to_string(),
     "xyz".to_string(),
   ];
-  let test_replacements = vec![
+  let test_replacements = [
     "Universe".to_string(),
     "qux".to_string(),
     "X".to_string(),
     "_".to_string(),
     "replacement".to_string(),
   ];
-  let expected_results = vec![
+  let expected_results = [
     "Hello Universe Universe".to_string(),
     "qux bar qux baz".to_string(),
     "X b X c X".to_string(),
@@ -124,21 +124,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(result_str) = item.downcast::<String>() {
-        output_results.push((*result_str).clone());
-        println!("  Output: '{}'", *result_str);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(result_str) = item.downcast::<String>()
+    {
+      output_results.push((*result_str).clone());
+      println!("  Output: '{}'", *result_str);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

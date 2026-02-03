@@ -40,13 +40,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send test data: base strings and suffixes to append
   println!("📥 Sending base strings and suffixes to append");
-  let test_bases = vec![
+  let test_bases = [
     "Hello".to_string(),
     "Count: ".to_string(),
     "File".to_string(),
     "Line".to_string(),
   ];
-  let test_suffixes = vec![
+  let test_suffixes = [
     " World".to_string(),
     "42".to_string(),
     ".txt".to_string(),
@@ -65,10 +65,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       .unwrap();
 
     println!(
-      "  Sent: '{}' + '{}' -> expected '{}'",
-      test_bases[i],
-      test_suffixes[i],
-      format!("{}{}", test_bases[i], test_suffixes[i])
+      "  Sent: '{}' + '{}' -> expected '{}{}'",
+      test_bases[i], test_suffixes[i], test_bases[i], test_suffixes[i]
     );
   }
 
@@ -101,21 +99,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(result_str) = item.downcast::<String>() {
-        output_results.push((*result_str).clone());
-        println!("  Output: '{}'", *result_str);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(result_str) = item.downcast::<String>()
+    {
+      output_results.push((*result_str).clone());
+      println!("  Output: '{}'", *result_str);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

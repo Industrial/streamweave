@@ -92,31 +92,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = out_result {
-      if let Ok(num_arc) = item.downcast::<i32>() {
-        let num = *num_arc;
-        println!("  Completed loop: final value {}", num);
-        completed_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = out_result
+      && let Ok(num_arc) = item.downcast::<i32>()
+    {
+      let num = *num_arc;
+      println!("  Completed loop: final value {}", num);
+      completed_count += 1;
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = break_result {
-      if let Ok(num_arc) = item.downcast::<i32>() {
-        let num = *num_arc;
-        println!("  Broken loop: interrupted at value {}", num);
-        broken_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = break_result
+      && let Ok(num_arc) = item.downcast::<i32>()
+    {
+      let num = *num_arc;
+      println!("  Broken loop: interrupted at value {}", num);
+      broken_count += 1;
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = &**error_msg;
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = &**error_msg;
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

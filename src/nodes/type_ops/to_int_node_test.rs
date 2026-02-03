@@ -8,12 +8,10 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+type AnySender = mpsc::Sender<Arc<dyn Any + Send + Sync>>;
+
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (AnySender, AnySender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (input_tx, input_rx) = mpsc::channel(10);
 
@@ -81,7 +79,7 @@ async fn test_to_int_node_float() {
 
   // Send float
   let _ = input_tx
-    .send(Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(2.5f64) as Arc<dyn Any + Send + Sync>)
     .await;
 
   // Close input channel
@@ -99,7 +97,7 @@ async fn test_to_int_node_float() {
   }
 
   assert_eq!(results.len(), 1);
-  assert_eq!(results[0], 3i64); // 3.14 truncated to 3
+  assert_eq!(results[0], 2i64); // 2.5 truncated to 2
 }
 
 #[tokio::test]

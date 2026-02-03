@@ -105,7 +105,7 @@ async fn test_distinct_with_duplicates() {
   // Send items with duplicates: 1, 2, 2, 3, 1, 4
   // Expected output: 1, 2, 3, 4 (duplicates filtered out)
   let test_values = vec![1i32, 2i32, 2i32, 3i32, 1i32, 4i32];
-  let expected_unique = vec![1i32, 2i32, 3i32, 4i32];
+  let expected_unique = [1i32, 2i32, 3i32, 4i32];
 
   for value in test_values {
     in_tx

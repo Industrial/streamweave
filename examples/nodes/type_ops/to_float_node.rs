@@ -73,21 +73,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(arc_float) = item.downcast::<f32>() {
-        output_results.push(*arc_float);
-        println!("  Output: {}", *arc_float);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(arc_float) = item.downcast::<f32>()
+    {
+      output_results.push(*arc_float);
+      println!("  Output: {}", *arc_float);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

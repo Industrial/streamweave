@@ -8,13 +8,10 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+type AnySender = mpsc::Sender<Arc<dyn Any + Send + Sync>>;
+
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (AnySender, AnySender, AnySender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (base_tx, base_rx) = mpsc::channel(10);
   let (suffix_tx, suffix_rx) = mpsc::channel(10);
@@ -70,20 +67,14 @@ async fn test_string_append_basic() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
-            results.push((*arc_str).clone());
-            break;
-          }
-        } else {
-          break;
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result
+        && let Ok(arc_str) = item.downcast::<String>() {
+          results.push((*arc_str).clone());
         }
-      }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(results.len(), 1);
@@ -113,20 +104,14 @@ async fn test_string_append_empty_base() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
-            results.push((*arc_str).clone());
-            break;
-          }
-        } else {
-          break;
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result
+        && let Ok(arc_str) = item.downcast::<String>() {
+          results.push((*arc_str).clone());
         }
-      }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(results.len(), 1);
@@ -156,20 +141,14 @@ async fn test_string_append_unicode() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          if let Ok(arc_str) = item.downcast::<String>() {
-            results.push((*arc_str).clone());
-            break;
-          }
-        } else {
-          break;
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result
+        && let Ok(arc_str) = item.downcast::<String>() {
+          results.push((*arc_str).clone());
         }
-      }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(results.len(), 1);

@@ -99,18 +99,20 @@ async fn test_switch_basic_routing() {
   tokio::pin!(timeout);
 
   use tokio_stream::StreamExt;
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+    result = stream.next() => {
+
+      if let Some(item) = result {
+
+        results.push(item);
+
       }
-      _ = &mut timeout => break,
+
     }
+
+    _ = &mut timeout => {},
+
   }
 
   assert_eq!(results.len(), 1);
@@ -168,18 +170,20 @@ async fn test_switch_default_routing() {
   tokio::pin!(timeout);
 
   use tokio_stream::StreamExt;
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+    result = stream.next() => {
+
+      if let Some(item) = result {
+
+        results.push(item);
+
       }
-      _ = &mut timeout => break,
+
     }
+
+    _ = &mut timeout => {},
+
   }
 
   assert_eq!(results.len(), 1);
@@ -254,18 +258,13 @@ async fn test_switch_multiple_cases() {
   tokio::pin!(timeout);
 
   use tokio_stream::StreamExt;
-  loop {
-    tokio::select! {
-      result = stream0.next() => {
-        if let Some(item) = result {
-          results0.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+    result = stream0.next() => {
+      if let Some(item) = result {
+        results0.push(item);
       }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(results0.len(), 1);
@@ -282,18 +281,13 @@ async fn test_switch_multiple_cases() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream1.next() => {
-        if let Some(item) = result {
-          results1.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+    result = stream1.next() => {
+      if let Some(item) = result {
+        results1.push(item);
       }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(results1.len(), 1);
@@ -310,18 +304,13 @@ async fn test_switch_multiple_cases() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream2.next() => {
-        if let Some(item) = result {
-          results2.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+    result = stream2.next() => {
+      if let Some(item) = result {
+        results2.push(item);
       }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(results2.len(), 1);
@@ -359,18 +348,20 @@ async fn test_switch_no_config() {
   tokio::pin!(timeout);
 
   use tokio_stream::StreamExt;
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+    result = stream.next() => {
+
+      if let Some(item) = result {
+
+        results.push(item);
+
       }
-      _ = &mut timeout => break,
+
     }
+
+    _ = &mut timeout => {},
+
   }
 
   // Should route to default when no config

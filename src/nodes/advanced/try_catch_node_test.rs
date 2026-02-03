@@ -103,18 +103,20 @@ async fn test_try_catch_success() {
   tokio::pin!(timeout);
 
   use tokio_stream::StreamExt;
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+    result = stream.next() => {
+
+      if let Some(item) = result {
+
+        results.push(item);
+
       }
-      _ = &mut timeout => break,
+
     }
+
+    _ = &mut timeout => {},
+
   }
 
   println!("Results: {}", results.len());
@@ -182,18 +184,20 @@ async fn test_try_catch_error_handled() {
   tokio::pin!(timeout);
 
   use tokio_stream::StreamExt;
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+    result = stream.next() => {
+
+      if let Some(item) = result {
+
+        results.push(item);
+
       }
-      _ = &mut timeout => break,
+
     }
+
+    _ = &mut timeout => {},
+
   }
 
   assert_eq!(results.len(), 1);
@@ -256,18 +260,20 @@ async fn test_try_catch_error_not_handled() {
   tokio::pin!(timeout);
 
   use tokio_stream::StreamExt;
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+    result = stream.next() => {
+
+      if let Some(item) = result {
+
+        results.push(item);
+
       }
-      _ = &mut timeout => break,
+
     }
+
+    _ = &mut timeout => {},
+
   }
 
   assert_eq!(results.len(), 1);
@@ -323,18 +329,20 @@ async fn test_try_catch_no_catch_function() {
   tokio::pin!(timeout);
 
   use tokio_stream::StreamExt;
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+    result = stream.next() => {
+
+      if let Some(item) = result {
+
+        results.push(item);
+
       }
-      _ = &mut timeout => break,
+
     }
+
+    _ = &mut timeout => {},
+
   }
 
   assert_eq!(results.len(), 1);

@@ -8,13 +8,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
+type AnySender = mpsc::Sender<Arc<dyn Any + Send + Sync>>;
 
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (AnySender, AnySender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (in_tx, in_rx) = mpsc::channel(10);
 
@@ -61,18 +58,27 @@ async fn test_timestamp_wraps_primitive() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        results.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);
@@ -142,18 +148,27 @@ async fn test_timestamp_adds_to_object() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        results.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);
@@ -246,16 +261,16 @@ async fn test_timestamp_multiple_items() {
       assert!(wrapped.contains_key("timestamp"));
 
       // Verify timestamp is monotonically increasing
-      if let Some(timestamp_arc) = wrapped.get("timestamp") {
-        if let Ok(timestamp) = (*timestamp_arc).clone().downcast::<i64>() {
-          if let Some(prev) = prev_timestamp {
-            assert!(
-              *timestamp >= prev,
-              "Timestamps should be monotonically increasing"
-            );
-          }
-          prev_timestamp = Some(*timestamp);
+      if let Some(timestamp_arc) = wrapped.get("timestamp")
+        && let Ok(timestamp) = (*timestamp_arc).clone().downcast::<i64>()
+      {
+        if let Some(prev) = prev_timestamp {
+          assert!(
+            *timestamp >= prev,
+            "Timestamps should be monotonically increasing"
+          );
         }
+        prev_timestamp = Some(*timestamp);
       }
     } else {
       panic!("Result is not a HashMap");
@@ -289,18 +304,27 @@ async fn test_timestamp_timing_accuracy() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        results.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   // Record time after receiving

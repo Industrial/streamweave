@@ -60,18 +60,27 @@ async fn test_to_array_array() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        results.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);
@@ -115,18 +124,27 @@ async fn test_to_array_string() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        results.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);
@@ -169,18 +187,27 @@ async fn test_to_array_i32() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        results.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);

@@ -8,14 +8,10 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+type AnySender = mpsc::Sender<Arc<dyn Any + Send + Sync>>;
+
 /// Helper to create input streams from channels for InterleaveNode
-fn create_interleave_input_streams(
-  num_inputs: usize,
-) -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  Vec<mpsc::Sender<Arc<dyn Any + Send + Sync>>>,
-  InputStreams,
-) {
+fn create_interleave_input_streams(num_inputs: usize) -> (AnySender, Vec<AnySender>, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let mut input_txs = Vec::new();
   let mut inputs = HashMap::new();
@@ -126,11 +122,11 @@ async fn test_interleave_three_streams() {
   let mut outputs = execute_result.unwrap();
 
   // Send items to each stream
-  for i in 0..3 {
-    let _ = input_txs[i]
+  for (i, tx) in input_txs.iter().enumerate().take(3) {
+    let _ = tx
       .send(Arc::new(i as i32) as Arc<dyn Any + Send + Sync>)
       .await;
-    let _ = input_txs[i]
+    let _ = tx
       .send(Arc::new((i + 3) as i32) as Arc<dyn Any + Send + Sync>)
       .await;
   }

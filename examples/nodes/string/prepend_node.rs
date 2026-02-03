@@ -40,13 +40,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send test data: base strings and prefixes to prepend
   println!("📥 Sending base strings and prefixes to prepend");
-  let test_bases = vec![
+  let test_bases = [
     "World".to_string(),
     "42".to_string(),
     ".txt".to_string(),
     " 1\n".to_string(),
   ];
-  let test_prefixes = vec![
+  let test_prefixes = [
     "Hello ".to_string(),
     "Count: ".to_string(),
     "file".to_string(),
@@ -55,10 +55,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   for i in 0..test_bases.len() {
     println!(
-      "  Prepending: '{}' + '{}' -> expected '{}'",
-      test_prefixes[i],
-      test_bases[i],
-      format!("{}{}", test_prefixes[i], test_bases[i])
+      "  Prepending: '{}' + '{}' -> expected '{}{}'",
+      test_prefixes[i], test_bases[i], test_prefixes[i], test_bases[i]
     );
 
     input_tx
@@ -101,21 +99,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(result_str) = item.downcast::<String>() {
-        output_results.push((*result_str).clone());
-        println!("  Output: '{}'", *result_str);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(result_str) = item.downcast::<String>()
+    {
+      output_results.push((*result_str).clone());
+      println!("  Output: '{}'", *result_str);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

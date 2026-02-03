@@ -82,7 +82,7 @@ async fn test_filter_map_filter_and_double() {
   // Send values: 1, 2, 3, 4, 5, 6
   // Expected output: 4, 8, 12 (doubled evens: 2->4, 4->8, 6->12; odds filtered)
   let test_values = vec![1i32, 2i32, 3i32, 4i32, 5i32, 6i32];
-  let expected_output = vec![4i32, 8i32, 12i32];
+  let expected_output = [4i32, 8i32, 12i32];
 
   for value in test_values {
     in_tx

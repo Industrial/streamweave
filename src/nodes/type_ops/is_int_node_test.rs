@@ -7,13 +7,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+type AnySender = mpsc::Sender<Arc<dyn Any + Send + Sync>>;
 
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (AnySender, AnySender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (input_tx, input_rx) = mpsc::channel(10);
 
@@ -158,7 +155,7 @@ async fn test_is_int_f32() {
     .send(Arc::new(()) as Arc<dyn Any + Send + Sync>)
     .await;
   let _ = input_tx
-    .send(Arc::new(3.14f32) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(2.5f32) as Arc<dyn Any + Send + Sync>)
     .await;
 
   // Close input channels
@@ -274,7 +271,7 @@ async fn test_is_int_multiple_types() {
     .send(Arc::new(99u32) as Arc<dyn Any + Send + Sync>)
     .await; // u32 -> true
   let _ = input_tx
-    .send(Arc::new(3.14f32) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(2.5f32) as Arc<dyn Any + Send + Sync>)
     .await; // f32 -> false
   let _ = input_tx
     .send(Arc::new("test".to_string()) as Arc<dyn Any + Send + Sync>)
@@ -319,7 +316,7 @@ async fn test_is_int_stream_completes_properly() {
     .send(Arc::new(100i64) as Arc<dyn Any + Send + Sync>)
     .await;
   let _ = in_tx
-    .send(Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(2.5f64) as Arc<dyn Any + Send + Sync>)
     .await;
 
   // Close the input channel to signal end of stream

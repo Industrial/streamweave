@@ -1,3 +1,4 @@
+#![allow(clippy::approx_constant)]
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -127,13 +128,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       }
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = &**error_msg;
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = &**error_msg;
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

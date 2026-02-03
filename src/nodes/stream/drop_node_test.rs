@@ -8,12 +8,10 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+type AnySender = mpsc::Sender<Arc<dyn Any + Send + Sync>>;
+
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (AnySender, AnySender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (in_tx, in_rx) = mpsc::channel(10);
 
@@ -164,7 +162,7 @@ async fn test_drop_different_types() {
     .send(Arc::new("hello".to_string()) as Arc<dyn Any + Send + Sync>)
     .await;
   let _ = in_tx
-    .send(Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(2.5f64) as Arc<dyn Any + Send + Sync>)
     .await;
   drop(in_tx);
 

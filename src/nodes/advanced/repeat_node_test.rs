@@ -302,18 +302,13 @@ async fn test_repeat_invalid_count_type() {
   tokio::pin!(timeout);
 
   use tokio_stream::StreamExt;
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          errors.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result {
+        errors.push(item);
       }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(errors.len(), 1);
@@ -345,18 +340,13 @@ async fn test_repeat_negative_count() {
   tokio::pin!(timeout);
 
   use tokio_stream::StreamExt;
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          errors.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result {
+        errors.push(item);
       }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(errors.len(), 1);

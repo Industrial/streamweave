@@ -1,3 +1,4 @@
+#![allow(clippy::approx_constant)]
 use std::any::Any;
 use std::sync::Arc;
 use streamweave::graph;
@@ -87,21 +88,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(arc_number) = item.downcast::<f64>() {
-        output_results.push(*arc_number);
-        println!("  Output: {}", *arc_number);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(arc_number) = item.downcast::<f64>()
+    {
+      output_results.push(*arc_number);
+      println!("  Output: {}", *arc_number);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {
@@ -127,7 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   if results_match && error_count == 1 {
     println!("✓ ToNumberNode correctly converted all values");
     println!("  Examples:");
-    let descriptions = vec![
+    let descriptions = [
       "Integer 42 -> 42.0",
       "Float 3.14 -> 3.14",
       "Boolean true -> 1.0",

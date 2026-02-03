@@ -8,14 +8,10 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+type AnySender = mpsc::Sender<Arc<dyn Any + Send + Sync>>;
+
 /// Helper to create input streams from channels for ZipNode
-fn create_zip_input_streams(
-  num_inputs: usize,
-) -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  Vec<mpsc::Sender<Arc<dyn Any + Send + Sync>>>,
-  InputStreams,
-) {
+fn create_zip_input_streams(num_inputs: usize) -> (AnySender, Vec<AnySender>, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let mut input_txs = Vec::new();
   let mut inputs = HashMap::new();
@@ -165,8 +161,8 @@ async fn test_zip_three_streams() {
   let mut outputs = execute_result.unwrap();
 
   // Send items to each stream
-  for i in 0..3 {
-    let _ = input_txs[i]
+  for (i, tx) in input_txs.iter().enumerate().take(3) {
+    let _ = tx
       .send(Arc::new(i as i32) as Arc<dyn Any + Send + Sync>)
       .await;
   }
@@ -182,18 +178,27 @@ async fn test_zip_three_streams() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        results.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);

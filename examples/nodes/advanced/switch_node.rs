@@ -24,9 +24,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
       // Route based on ranges:
       // 0-9 -> out_0, 10-19 -> out_1, others -> default
-      if switch_value >= 0 && switch_value < 10 {
+      if (0..10).contains(&switch_value) {
         Ok(Some(0))
-      } else if switch_value >= 10 && switch_value < 20 {
+      } else if (10..20).contains(&switch_value) {
         Ok(Some(1))
       } else {
         Ok(None) // route to default
@@ -118,40 +118,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = out0_result {
-      if let Ok(data_arc) = item.downcast::<String>() {
-        let data = (**data_arc).to_string();
-        println!("  Out_0: {}", data);
-        out0_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = out0_result
+      && let Ok(data_arc) = item.downcast::<String>()
+    {
+      let data = (**data_arc).to_string();
+      println!("  Out_0: {}", data);
+      out0_count += 1;
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = out1_result {
-      if let Ok(data_arc) = item.downcast::<String>() {
-        let data = (**data_arc).to_string();
-        println!("  Out_1: {}", data);
-        out1_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = out1_result
+      && let Ok(data_arc) = item.downcast::<String>()
+    {
+      let data = (**data_arc).to_string();
+      println!("  Out_1: {}", data);
+      out1_count += 1;
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = default_result {
-      if let Ok(data_arc) = item.downcast::<String>() {
-        let data = (**data_arc).to_string();
-        println!("  Default: {}", data);
-        default_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = default_result
+      && let Ok(data_arc) = item.downcast::<String>()
+    {
+      let data = (**data_arc).to_string();
+      println!("  Default: {}", data);
+      default_count += 1;
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

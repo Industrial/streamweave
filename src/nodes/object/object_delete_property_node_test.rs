@@ -8,13 +8,10 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+type AnySender = mpsc::Sender<Arc<dyn Any + Send + Sync>>;
+
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (AnySender, AnySender, AnySender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (in_tx, in_rx) = mpsc::channel(10);
   let (key_tx, key_rx) = mpsc::channel(10);
@@ -78,18 +75,27 @@ async fn test_object_delete_property_existing() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        results.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);
@@ -138,18 +144,27 @@ async fn test_object_delete_property_non_existing() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        results.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);
@@ -193,18 +208,27 @@ async fn test_object_delete_property_empty_object() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        results.push(item);
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);

@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send test data: strings and indices to get characters from
   println!("📥 Sending strings and indices to get characters from");
-  let test_input_strings = vec![
+  let test_input_strings = [
     "Hello".to_string(),
     "World".to_string(),
     "🚀🚁🚂".to_string(),
@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     "Unicode: ñ".to_string(),
     "Mixed123".to_string(),
   ];
-  let test_indices = vec![0, 2, 1, 3, 0, 9, 5];
+  let test_indices = [0, 2, 1, 3, 0, 9, 5];
 
   for i in 0..test_input_strings.len() {
     let input_str = &test_input_strings[i];
@@ -68,7 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       .unwrap();
 
     index_tx
-      .send(Arc::new(index as usize) as Arc<dyn Any + Send + Sync>)
+      .send(Arc::new(index) as Arc<dyn Any + Send + Sync>)
       .await
       .unwrap();
   }
@@ -102,21 +102,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(result_str) = item.downcast::<String>() {
-        output_results.push((*result_str).clone());
-        println!("  Output: '{}'", *result_str);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(result_str) = item.downcast::<String>()
+    {
+      output_results.push((*result_str).clone());
+      println!("  Output: '{}'", *result_str);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

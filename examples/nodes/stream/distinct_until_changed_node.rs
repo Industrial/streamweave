@@ -73,21 +73,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(value) = item.downcast::<String>() {
-        output_items.push(value.clone());
-        println!("  Output: {}", *value);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(value) = item.downcast::<String>()
+    {
+      output_items.push(value.clone());
+      println!("  Output: {}", *value);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {
@@ -100,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("✓ Total completed in {:?}", start.elapsed());
 
   // Verify behavior: should receive only items that changed from previous: A, B, A, C
-  let expected_values = vec!["A", "B", "A", "C"];
+  let expected_values = ["A", "B", "A", "C"];
 
   if output_items.len() == expected_values.len() && error_count == 0 {
     let mut all_correct = true;

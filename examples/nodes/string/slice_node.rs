@@ -43,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send test data: strings, start indices, and end indices to slice
   println!("📥 Sending strings, start indices, and end indices to slice");
-  let test_input_strings = vec![
+  let test_input_strings = [
     "Hello World".to_string(),
     "Rust Programming".to_string(),
     "Test String".to_string(),
@@ -52,8 +52,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     "Empty".to_string(),
     "Bounds".to_string(),
   ];
-  let test_start_indices = vec![0, 5, 0, 9, 0, 0, 3];
-  let test_end_indices = vec![5, 16, 4, 10, 6, 0, 6];
+  let test_start_indices = [0, 5, 0, 9, 0, 0, 3];
+  let test_end_indices = [5, 16, 4, 10, 6, 0, 6];
 
   for i in 0..test_input_strings.len() {
     let input_str = &test_input_strings[i];
@@ -101,12 +101,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       .unwrap();
 
     start_tx
-      .send(Arc::new(start_idx as usize) as Arc<dyn Any + Send + Sync>)
+      .send(Arc::new(start_idx) as Arc<dyn Any + Send + Sync>)
       .await
       .unwrap();
 
     end_tx
-      .send(Arc::new(end_idx as usize) as Arc<dyn Any + Send + Sync>)
+      .send(Arc::new(end_idx) as Arc<dyn Any + Send + Sync>)
       .await
       .unwrap();
   }
@@ -141,21 +141,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(result_str) = item.downcast::<String>() {
-        output_results.push((*result_str).clone());
-        println!("  Output: '{}'", *result_str);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(result_str) = item.downcast::<String>()
+    {
+      output_results.push((*result_str).clone());
+      println!("  Output: '{}'", *result_str);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

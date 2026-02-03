@@ -3,6 +3,9 @@
 	"module": "index.ts",
 	"type": "module",
 	"private": true,
+	"scripts": {
+		"ci:pre-commit": "bin/pre-commit"
+	},
 	"devDependencies": {
 		"@types/bun": "latest"
 	},

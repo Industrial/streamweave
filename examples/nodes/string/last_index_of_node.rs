@@ -40,14 +40,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // Send test data: strings and substrings to find last indices of
   println!("📥 Sending strings and substrings to find last indices");
-  let test_input_strings = vec![
+  let test_input_strings = [
     "Hello World World".to_string(),
     "test.txt.backup.txt".to_string(),
     "programming".to_string(),
     "aaa".to_string(),
     "Hello".to_string(),
   ];
-  let test_substrings = vec![
+  let test_substrings = [
     "World".to_string(),
     ".txt".to_string(),
     "ram".to_string(),
@@ -102,21 +102,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(result) = item.downcast::<i64>() {
-        output_results.push(*result);
-        println!("  Output: {}", *result);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(result) = item.downcast::<i64>()
+    {
+      output_results.push(*result);
+      println!("  Output: {}", *result);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

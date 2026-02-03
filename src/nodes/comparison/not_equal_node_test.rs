@@ -8,13 +8,10 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+type AnySender = mpsc::Sender<Arc<dyn Any + Send + Sync>>;
+
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (AnySender, AnySender, AnySender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (in1_tx, in1_rx) = mpsc::channel(10);
   let (in2_tx, in2_rx) = mpsc::channel(10);
@@ -141,12 +138,12 @@ async fn test_not_equal_node_f64_equal() {
   let outputs_future = node.execute(inputs);
   let mut outputs = outputs_future.await.unwrap();
 
-  // Send values: 3.14 != 3.14 = false (epsilon comparison)
+  // Send values: 2.5 != 2.5 = false (epsilon comparison)
   let _ = in1_tx
-    .send(Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(2.5f64) as Arc<dyn Any + Send + Sync>)
     .await;
   let _ = in2_tx
-    .send(Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>)
+    .send(Arc::new(2.5f64) as Arc<dyn Any + Send + Sync>)
     .await;
 
   // Collect results

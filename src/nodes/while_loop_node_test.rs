@@ -97,20 +97,14 @@ async fn test_while_loop_node_basic_loop() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          if let Ok(arc_string) = item.downcast::<String>() {
-            errors.push(arc_string.clone());
-            break;
-          }
-        } else {
-          break;
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result
+        && let Ok(arc_string) = item.downcast::<String>() {
+          errors.push(arc_string.clone());
         }
-      }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(errors.len(), 1);
@@ -151,20 +145,14 @@ async fn test_while_loop_node_exits_when_condition_false() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          if let Ok(arc_i32) = item.downcast::<i32>() {
-            results.push(*arc_i32);
-            break;
-          }
-        } else {
-          break;
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result
+        && let Ok(arc_i32) = item.downcast::<i32>() {
+          results.push(*arc_i32);
         }
-      }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(results.len(), 1);
@@ -213,20 +201,14 @@ async fn test_while_loop_node_break_signal() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          if let Ok(arc_i32) = item.downcast::<i32>() {
-            results.push(*arc_i32);
-            break;
-          }
-        } else {
-          break;
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result
+        && let Ok(arc_i32) = item.downcast::<i32>() {
+          results.push(*arc_i32);
         }
-      }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(results.len(), 1);
@@ -253,20 +235,14 @@ async fn test_while_loop_node_error_on_no_config() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          if let Ok(arc_string) = item.downcast::<String>() {
-            errors.push(arc_string.clone());
-            break;
-          }
-        } else {
-          break;
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result
+        && let Ok(arc_string) = item.downcast::<String>() {
+          errors.push(arc_string.clone());
         }
-      }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(errors.len(), 1);
@@ -305,20 +281,14 @@ async fn test_while_loop_node_condition_error() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          if let Ok(arc_string) = item.downcast::<String>() {
-            errors.push(arc_string.clone());
-            break;
-          }
-        } else {
-          break;
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result
+        && let Ok(arc_string) = item.downcast::<String>() {
+          errors.push(arc_string.clone());
         }
-      }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(errors.len(), 1);

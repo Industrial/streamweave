@@ -54,6 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let _ = in1_tx
     .send(Arc::new(42i32) as Arc<dyn Any + Send + Sync>)
     .await;
+  #[allow(clippy::approx_constant)]
   let _ = in2_tx
     .send(Arc::new(3.14f64) as Arc<dyn Any + Send + Sync>)
     .await;
@@ -91,34 +92,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(vec_arc) = item.downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
-        let combined = vec_arc;
-        println!("  Synchronized data ({} items):", combined.len());
-        for (i, value) in combined.iter().enumerate() {
-          if let Ok(string_arc) = value.clone().downcast::<String>() {
-            let s = &**string_arc;
-            println!("    [{}] {}", i, s);
-          } else if let Ok(int_arc) = value.clone().downcast::<i32>() {
-            let n = *int_arc;
-            println!("    [{}] {}", i, n);
-          } else if let Ok(float_arc) = value.clone().downcast::<f64>() {
-            let f = *float_arc;
-            println!("    [{}] {}", i, f);
-          }
+    if let Ok(Some(item)) = output_result
+      && let Ok(vec_arc) = item.downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    {
+      let combined = vec_arc;
+      println!("  Synchronized data ({} items):", combined.len());
+      for (i, value) in combined.iter().enumerate() {
+        if let Ok(string_arc) = value.clone().downcast::<String>() {
+          let s = &**string_arc;
+          println!("    [{}] {}", i, s);
+        } else if let Ok(int_arc) = value.clone().downcast::<i32>() {
+          let n = *int_arc;
+          println!("    [{}] {}", i, n);
+        } else if let Ok(float_arc) = value.clone().downcast::<f64>() {
+          let f = *float_arc;
+          println!("    [{}] {}", i, f);
         }
-        output_count += 1;
-        has_data = true;
       }
+      output_count += 1;
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = &**error_msg;
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = &**error_msg;
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

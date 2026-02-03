@@ -86,42 +86,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(zipped) = item.downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
-        let zipped_values: Vec<String> = zipped
-          .iter()
-          .enumerate()
-          .map(|(i, arc)| {
-            if i == 0 {
-              // First element should be i32
-              arc
-                .clone()
-                .downcast::<i32>()
-                .map(|v| v.to_string())
-                .unwrap_or_else(|_| "unknown".to_string())
-            } else {
-              // Second element should be String
-              arc
-                .clone()
-                .downcast::<String>()
-                .map(|s| (*s).clone())
-                .unwrap_or_else(|_| "unknown".to_string())
-            }
-          })
-          .collect();
-        println!("  Output zipped pair: {:?}", zipped_values);
-        output_items.push(zipped_values);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(zipped) = item.downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    {
+      let zipped_values: Vec<String> = zipped
+        .iter()
+        .enumerate()
+        .map(|(i, arc)| {
+          if i == 0 {
+            // First element should be i32
+            arc
+              .clone()
+              .downcast::<i32>()
+              .map(|v| v.to_string())
+              .unwrap_or_else(|_| "unknown".to_string())
+          } else {
+            // Second element should be String
+            arc
+              .clone()
+              .downcast::<String>()
+              .map(|s| (*s).clone())
+              .unwrap_or_else(|_| "unknown".to_string())
+          }
+        })
+        .collect();
+      println!("  Output zipped pair: {:?}", zipped_values);
+      output_items.push(zipped_values);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

@@ -95,18 +95,13 @@ async fn test_retry_success_first_attempt() {
   tokio::pin!(timeout);
 
   use tokio_stream::StreamExt;
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result {
+        results.push(item);
       }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   // Should have success result
@@ -174,18 +169,13 @@ async fn test_retry_success_after_retries() {
   tokio::pin!(timeout);
 
   use tokio_stream::StreamExt;
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result {
+        results.push(item);
       }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   // Should succeed after retries
@@ -240,18 +230,13 @@ async fn test_retry_all_attempts_fail() {
   tokio::pin!(timeout);
 
   use tokio_stream::StreamExt;
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          results.push(item);
-          break;
-        } else {
-          break;
-        }
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result {
+        results.push(item);
       }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   // Should have error after all retries exhausted

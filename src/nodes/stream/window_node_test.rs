@@ -98,7 +98,7 @@ async fn test_window_node_exact_windows() {
   assert_eq!(results.len(), 3);
 
   // Check each window
-  let expected_windows = vec![
+  let expected_windows = [
     vec![1i32, 2i32, 3i32],
     vec![4i32, 5i32, 6i32],
     vec![7i32, 8i32, 9i32],
@@ -171,7 +171,7 @@ async fn test_window_node_partial_window_discarded() {
   assert_eq!(results.len(), 2);
 
   // Check the windows
-  let expected_windows = vec![vec![1i32, 2i32, 3i32], vec![4i32, 5i32, 6i32]];
+  let expected_windows = [vec![1i32, 2i32, 3i32], vec![4i32, 5i32, 6i32]];
 
   for (i, result) in results.iter().enumerate() {
     if let Ok(window) = result.clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {

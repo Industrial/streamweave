@@ -85,27 +85,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(batch) = item.downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
-        output_batches.push(batch.clone());
-        println!(
-          "  Output batch: {:?}",
-          batch
-            .iter()
-            .map(|item| { item.clone().downcast::<i32>().map(|v| *v).unwrap_or(0) })
-            .collect::<Vec<i32>>()
-        );
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(batch) = item.downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    {
+      output_batches.push(batch.clone());
+      println!(
+        "  Output batch: {:?}",
+        batch
+          .iter()
+          .map(|item| { item.clone().downcast::<i32>().map(|v| *v).unwrap_or(0) })
+          .collect::<Vec<i32>>()
+      );
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {
@@ -121,7 +121,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("✓ Total completed in {:?}", start.elapsed());
 
   // Verify behavior: should receive 2 batches of 3 items each, partial batch discarded
-  let expected_batches = vec![vec![1i32, 2i32, 3i32], vec![4i32, 5i32, 6i32]];
+  let expected_batches = [vec![1i32, 2i32, 3i32], vec![4i32, 5i32, 6i32]];
 
   if output_batches.len() == expected_batches.len() && error_count == 0 {
     let mut all_correct = true;

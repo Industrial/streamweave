@@ -90,7 +90,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   ];
 
   let expected_sizes = vec![3, 1, 0, 4];
-  let descriptions = vec![
+  let descriptions = [
     "Object with 3 properties (name, age, active)",
     "Object with 1 property (single)",
     "Empty object (0 properties)",
@@ -133,21 +133,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(arc_size) = item.downcast::<i64>() {
-        output_results.push(*arc_size);
-        println!("  Output: object size = {}", *arc_size);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(arc_size) = item.downcast::<i64>()
+    {
+      output_results.push(*arc_size);
+      println!("  Output: object size = {}", *arc_size);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {

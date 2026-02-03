@@ -75,22 +75,31 @@ async fn test_delay_i32_milliseconds() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          let elapsed = start.elapsed();
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        let elapsed = start.elapsed();
           results.push(item);
           // Verify delay was approximately 50ms (allow some tolerance)
           assert!(elapsed >= Duration::from_millis(45));
           assert!(elapsed <= Duration::from_millis(100));
-          break;
-        } else {
-          break;
-        }
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);
@@ -131,22 +140,31 @@ async fn test_delay_duration_type() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          let elapsed = start.elapsed();
+  tokio::select! {
+
+
+    result = stream.next() => {
+
+
+      if let Some(item) = result {
+
+
+        let elapsed = start.elapsed();
           results.push(item);
           // Verify delay was approximately 30ms
           assert!(elapsed >= Duration::from_millis(25));
           assert!(elapsed <= Duration::from_millis(80));
-          break;
-        } else {
-          break;
-        }
+
+
       }
-      _ = &mut timeout => break,
+
+
     }
+
+
+    _ = &mut timeout => {},
+
+
   }
 
   assert_eq!(results.len(), 1);

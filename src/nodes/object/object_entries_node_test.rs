@@ -8,12 +8,10 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+type AnySender = mpsc::Sender<Arc<dyn Any + Send + Sync>>;
+
 /// Helper to create input streams from channels
-fn create_input_streams() -> (
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  mpsc::Sender<Arc<dyn Any + Send + Sync>>,
-  InputStreams,
-) {
+fn create_input_streams() -> (AnySender, AnySender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
   let (in_tx, in_rx) = mpsc::channel(10);
 
@@ -95,11 +93,11 @@ async fn test_object_entries_basic() {
     if let Ok(arc_pair) = entry.clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
       assert_eq!(arc_pair.len(), 2); // Each entry is [key, value]
       let key = arc_pair[0].clone().downcast::<String>().unwrap();
-      if *key == "name".to_string() {
+      if key.as_str() == "name" {
         let value = arc_pair[1].clone().downcast::<String>().unwrap();
         assert_eq!(*value, "John".to_string());
         has_name_entry = true;
-      } else if *key == "age".to_string() {
+      } else if key.as_str() == "age" {
         let value = arc_pair[1].clone().downcast::<i32>().unwrap();
         assert_eq!(*value, 30i32);
         has_age_entry = true;

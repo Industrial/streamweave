@@ -66,20 +66,14 @@ async fn test_add_node_i32() {
   let timeout = tokio::time::sleep(tokio::time::Duration::from_millis(200));
   tokio::pin!(timeout);
 
-  loop {
-    tokio::select! {
-      result = stream.next() => {
-        if let Some(item) = result {
-          if let Ok(arc_i32) = item.downcast::<i32>() {
-            results.push(*arc_i32);
-            break;
-          }
-        } else {
-          break;
+  tokio::select! {
+    result = stream.next() => {
+      if let Some(item) = result
+        && let Ok(arc_i32) = item.downcast::<i32>() {
+          results.push(*arc_i32);
         }
-      }
-      _ = &mut timeout => break,
     }
+    _ = &mut timeout => {},
   }
 
   assert_eq!(results.len(), 1);

@@ -53,7 +53,7 @@ async fn test_distinct_until_changed_consecutive_duplicates() {
   // Send items with consecutive duplicates: A, A, B, B, A, C, C
   // Expected output: A, B, A, C (only when value changes)
   let test_values = vec!["A", "A", "B", "B", "A", "C", "C"];
-  let expected_unique = vec!["A", "B", "A", "C"];
+  let expected_unique = ["A", "B", "A", "C"];
 
   for value in test_values {
     in_tx

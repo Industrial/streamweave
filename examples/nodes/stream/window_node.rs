@@ -85,25 +85,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut has_data = false;
 
-    if let Ok(Some(item)) = output_result {
-      if let Ok(window) = item.downcast::<Vec<Arc<dyn Any + Send + Sync>>>() {
-        let window_values: Vec<i32> = window
-          .iter()
-          .filter_map(|arc| arc.clone().downcast::<i32>().ok().map(|v| *v))
-          .collect();
-        println!("  Output window: {:?}", window_values);
-        output_items.push(window_values);
-        has_data = true;
-      }
+    if let Ok(Some(item)) = output_result
+      && let Ok(window) = item.downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    {
+      let window_values: Vec<i32> = window
+        .iter()
+        .filter_map(|arc| arc.clone().downcast::<i32>().ok().map(|v| *v))
+        .collect();
+      println!("  Output window: {:?}", window_values);
+      output_items.push(window_values);
+      has_data = true;
     }
 
-    if let Ok(Some(item)) = error_result {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = (**error_msg).to_string();
-        println!("  Error: {}", error);
-        error_count += 1;
-        has_data = true;
-      }
+    if let Ok(Some(item)) = error_result
+      && let Ok(error_msg) = item.downcast::<String>()
+    {
+      let error = (**error_msg).to_string();
+      println!("  Error: {}", error);
+      error_count += 1;
+      has_data = true;
     }
 
     if !has_data {
