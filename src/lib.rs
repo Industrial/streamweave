@@ -34,9 +34,18 @@
 pub mod edge;
 /// Graph execution and management.
 pub mod graph;
+/// Graph builder for constructing graphs with a fluent API.
+pub mod graph_builder;
+/// Macros for declarative graph construction.
+pub mod graph_macros;
 /// Memory pool for efficient allocation.
 pub mod memory_pool;
 /// Core node trait and interfaces.
 pub mod node;
 /// Collection of built-in nodes for common operations.
 pub mod nodes;
+
+#[cfg(test)]
+mod graph_test;
+#[cfg(test)]
+mod graph_macros_test;

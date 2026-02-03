@@ -7,7 +7,7 @@
 [![License: CC BY-SA 4.0](https://img.shields.io/badge/License-CC%20BY--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-sa/4.0/)
 
 **Composable, async, stream-first computation in pure Rust**  
-*Build fully composable, async data pipelines using a fluent API.*
+*Build fully composable, async data processing graphs using a declarative API.*
 
 StreamWeave is a general-purpose Rust framework built around the concept of
 **streaming data**, with a focus on simplicity, composability, and performance.
@@ -18,36 +18,30 @@ StreamWeave is a general-purpose Rust framework built around the concept of
 
 - Pure Rust API with zero-cost abstractions
 - Full async/await compatibility via `futures::Stream`
-- Fluent pipeline-style API with type-safe builder pattern
-- **Graph-based API** for complex topologies with fan-in/fan-out patterns
+- **Graph-based API** for building data processing topologies
+- **`graph!` macro** for declarative graph construction with minimal syntax (80-90% less boilerplate)
 - **Flow-Based Programming (FBP)** patterns with type-safe routing
+- Support for fan-in patterns (multiple sources → one target)
 - Comprehensive error handling system with multiple strategies
 - Code-as-configuration — no external DSLs
 - Extensive package ecosystem for I/O, transformations, and integrations
 
 ## 📦 Core Concepts
 
-StreamWeave breaks computation into **three primary building blocks**:
+StreamWeave uses a **graph-based architecture** where computation is organized as nodes connected by edges:
 
 | Component       | Description                                |
 | --------------- | ------------------------------------------ |
-| **Producer**    | Starts a stream of data                    |
-| **Transformer** | Transforms stream items (e.g., map/filter) |
-| **Consumer**    | Consumes the stream, e.g. writing, logging |
+| **Nodes**       | Processing units that consume and produce streams |
+| **Edges**       | Connections between node ports that route data |
+| **Graphs**      | Collections of nodes and edges forming a processing topology |
 
-All components can be chained together fluently. These components can be used in both the **Pipeline API** (for simple linear flows) and the **Graph API** (for complex topologies with fan-in/fan-out patterns).
+Nodes can have:
+- **Input ports**: Receive data from upstream nodes or external sources
+- **Output ports**: Send data to downstream nodes or external consumers
+- **Zero or more inputs/outputs**: Nodes can be sources (no inputs), sinks (no outputs), or transforms (both)
 
-## 🔀 Pipeline vs Graph API
-
-StreamWeave provides two APIs for building data processing workflows:
-
-| Feature | Pipeline API | Graph API |
-|---------|-------------|-----------|
-| **Use Case** | Simple linear flows | Complex topologies |
-| **Topology** | Single path: Producer → Transformer → Consumer | Multiple paths, fan-in/fan-out |
-| **Routing** | Sequential processing | Configurable routing strategies |
-| **Complexity** | Lower complexity, easier to use | Higher flexibility, more powerful |
-| **Best For** | ETL pipelines, simple transformations | Complex workflows, parallel processing, data distribution |
+All data flows as `Arc<dyn Any + Send + Sync>` for zero-copy efficiency, with explicit port naming for clarity and type safety.
 
 ## 🚀 Quick Start
 
@@ -63,6 +57,8 @@ streamweave = "0.8.0"
 ### Basic Example: Sum of Squares of Even Numbers
 
 This example demonstrates the Graph API by implementing a classic algorithm: generating numbers 1-10, filtering even numbers, squaring them, and summing the results.
+
+#### Using the Traditional Graph API
 
 ```rust
 use std::any::Any;
@@ -174,6 +170,53 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+#### Using the `graph!` Macro (Minimal Syntax)
+
+The `graph!` macro provides a declarative syntax that reduces boilerplate significantly:
+
+```rust
+use streamweave::graph;
+use streamweave::graph::Graph;
+use streamweave::nodes::aggregation::SumNode;
+use streamweave::nodes::filter_node::FilterNode;
+use streamweave::nodes::map_node::MapNode;
+use streamweave::nodes::range_node::RangeNode;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Build graph with minimal syntax
+    let mut graph: Graph = graph! {
+        range: RangeNode::new("range".to_string()),
+        filter: FilterNode::new("filter".to_string()),
+        square: MapNode::new("square".to_string()),
+        sum: SumNode::new("sum".to_string()),
+        ; range.out => filter.in,
+          filter.out => square.in,
+          square.out => sum.in,
+          sum.out => graph.result
+    };
+    
+    // Expose input ports and connect channels (same as traditional API)
+    // ... (external I/O setup remains the same)
+    
+    // Execute the graph
+    Graph::execute(&mut graph).await?;
+    graph.wait_for_completion().await?;
+    Ok(())
+}
+```
+
+**Key Benefits of `graph!` Macro:**
+- **80-90% less boilerplate** - Connections are declared declaratively
+- **Visual clarity** - Graph structure is immediately visible
+- **Type safety** - Compile-time validation of node names and connections
+- **Explicit ports** - All connections require explicit port names (no defaults)
+
+For more `graph!` macro examples, see:
+- `examples/graph_macro_simple.rs` - Simple linear pipeline
+- `examples/graph_macro_fan_patterns.rs` - Fan-in patterns
+- `examples/graph_macro_io.rs` - Graph I/O patterns
+
 ### Graph Visualization
 
 The following Mermaid diagram shows the graph structure with nodes that have multiple inputs and outputs:
@@ -203,10 +246,10 @@ graph LR
 
 This graph demonstrates:
 - **Multiple inputs**: RangeNode receives `start`, `end`, and `step` from separate sources
-- **Fan-out**: RangeNode's output connects to FilterNode's input
-- **Linear processing**: Data flows through Filter → Square → Sum
+- **Linear processing**: Data flows through Range → Filter → Square → Sum
 - **Configuration ports**: FilterNode and MapNode receive configuration on separate ports
 - **Multiple outputs**: Each node has both `out` and `error` ports (error ports not shown for clarity)
+- **Graph I/O**: External configuration and results flow through exposed graph ports
 
 For more examples and detailed documentation, see the [package documentation](#-packages) below.
 
@@ -252,6 +295,10 @@ For detailed examples and usage of each node, please refer to the [examples dire
 
 StreamWeave includes comprehensive examples demonstrating all major features. See the [examples directory](examples/) for:
 
+- **Graph Macro Examples:**
+  - `graph_macro_simple.rs` - Simple linear pipeline with `graph!` macro
+  - `graph_macro_fan_patterns.rs` - Fan-in patterns (fan-out not supported)
+  - `graph_macro_io.rs` - Graph I/O with values and without values
 - Integration examples (Kafka, Redis, Database, HTTP)
 - File format examples (CSV, JSONL, Parquet)
 - Processing examples (Stateful, Error Handling, Windowing)

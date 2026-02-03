@@ -13,8 +13,8 @@
 //! - **Stream Execution**: Executing graphs with stream-based node connections
 
 use crate::edge::Edge;
+use crate::graph::{Graph, topological_sort};
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
-use crate::{Graph, topological_sort};
 use async_trait::async_trait;
 use std::any::Any;
 use std::collections::HashMap;
@@ -454,8 +454,8 @@ async fn test_execute_simple_graph() {
 
   graph.add_edge(edge).unwrap();
 
-  // Execute the graph
-  assert!(graph.execute().await.is_ok());
+  // Execute the graph (use Graph::execute to disambiguate from Node::execute)
+  assert!(Graph::execute(&mut graph).await.is_ok());
 
   // Wait for completion
   assert!(graph.wait_for_completion().await.is_ok());
@@ -490,8 +490,8 @@ async fn test_execute_transform_graph() {
     })
     .unwrap();
 
-  // Execute the graph
-  assert!(graph.execute().await.is_ok());
+  // Execute the graph (use Graph::execute to disambiguate from Node::execute)
+  assert!(Graph::execute(&mut graph).await.is_ok());
 
   // Wait for completion
   assert!(graph.wait_for_completion().await.is_ok());
@@ -515,7 +515,7 @@ async fn test_stop_execution() {
     })
     .unwrap();
 
-  graph.execute().await.unwrap();
+  Graph::execute(&mut graph).await.unwrap();
 
   // Stop execution
   assert!(graph.stop().await.is_ok());
@@ -659,7 +659,7 @@ async fn test_graph_as_node_execute() {
     .unwrap();
 
   // Expose ports
-  subgraph
+  let _ = subgraph
     .expose_input_port("producer", "out", "input")
     .is_err(); // producer has no input
   // Instead, we'll expose transform's output as graph's output
@@ -722,7 +722,7 @@ async fn test_stop_clears_state() {
     .unwrap();
 
   // Start execution
-  graph.execute().await.unwrap();
+  Graph::execute(&mut graph).await.unwrap();
 
   // Stop should clear state
   assert!(graph.stop().await.is_ok());
