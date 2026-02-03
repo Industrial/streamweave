@@ -51,7 +51,7 @@ Add StreamWeave to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-streamweave = "0.8.0"
+streamweave = "0.9.0"
 ```
 
 ### Basic Example: Sum of Squares of Even Numbers
