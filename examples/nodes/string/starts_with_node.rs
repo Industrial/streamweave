@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::string::StringStartsWithNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("starts_with_example".to_string());
-  graph.add_node(
-    "starts_with".to_string(),
-    Box::new(StringStartsWithNode::new("starts_with".to_string())),
-  )?;
-  graph.expose_input_port("starts_with", "configuration", "configuration")?;
-  graph.expose_input_port("starts_with", "in", "input")?;
-  graph.expose_input_port("starts_with", "prefix", "prefix")?;
-  graph.expose_output_port("starts_with", "out", "output")?;
-  graph.expose_output_port("starts_with", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    starts_with: StringStartsWithNode::new("starts_with".to_string()),
+    graph.configuration => starts_with.configuration,
+    graph.input => starts_with.in,
+    graph.prefix => starts_with.prefix,
+    starts_with.out => graph.output,
+    starts_with.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("prefix", prefix_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with StringStartsWithNode using Graph API");
+  println!("✓ Graph built with StringStartsWithNode using graph! macro");
 
   // Send configuration (optional for StringStartsWithNode)
   let _ = config_tx

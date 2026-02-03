@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::stream::MergeNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(20);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("merge_example".to_string());
-  graph.add_node(
-    "merge".to_string(),
-    Box::new(MergeNode::new("merge".to_string(), 2)),
-  )?;
-  graph.expose_input_port("merge", "configuration", "configuration")?;
-  graph.expose_input_port("merge", "in_0", "input0")?;
-  graph.expose_input_port("merge", "in_1", "input1")?;
-  graph.expose_output_port("merge", "out", "output")?;
-  graph.expose_output_port("merge", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    merge: MergeNode::new("merge".to_string(), 2),
+    graph.configuration => merge.configuration,
+    graph.input0 => merge.in_0,
+    graph.input1 => merge.in_1,
+    merge.out => graph.output,
+    merge.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input0", in0_rx)?;
   graph.connect_input_channel("input1", in1_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with MergeNode using Graph API");
+  println!("✓ Graph built with MergeNode using graph! macro");
 
   // Send configuration (optional for MergeNode)
   let _ = config_tx

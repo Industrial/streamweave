@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::object::object_keys_node::ObjectKeysNode;
 use tokio::sync::mpsc;
@@ -13,22 +14,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("keys_example".to_string());
-  graph.add_node(
-    "keys".to_string(),
-    Box::new(ObjectKeysNode::new("keys".to_string())),
-  )?;
-  graph.expose_input_port("keys", "configuration", "configuration")?;
-  graph.expose_input_port("keys", "in", "input")?;
-  graph.expose_output_port("keys", "out", "output")?;
-  graph.expose_output_port("keys", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    keys: ObjectKeysNode::new("keys".to_string()),
+    graph.configuration => keys.configuration,
+    graph.input => keys.in,
+    keys.out => graph.output,
+    keys.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", in_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ObjectKeysNode (keys) using Graph API");
+  println!("✓ Graph built with ObjectKeysNode (keys) using graph! macro");
 
   // Send configuration (optional for ObjectKeysNode)
   let _ = config_tx

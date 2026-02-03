@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::advanced::continue_node::ContinueNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("continue_example".to_string());
-  graph.add_node(
-    "continue".to_string(),
-    Box::new(ContinueNode::new("continue".to_string())),
-  )?;
-  graph.expose_input_port("continue", "configuration", "configuration")?;
-  graph.expose_input_port("continue", "in", "input")?;
-  graph.expose_input_port("continue", "signal", "signal")?;
-  graph.expose_output_port("continue", "out", "output")?;
-  graph.expose_output_port("continue", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    continue_node: ContinueNode::new("continue".to_string()),
+    graph.configuration => continue_node.configuration,
+    graph.input => continue_node.in,
+    graph.signal => continue_node.signal,
+    continue_node.out => graph.output,
+    continue_node.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("signal", signal_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ContinueNode using Graph API");
+  println!("✓ Graph built with ContinueNode using graph! macro");
 
   // Send configuration (empty config for continue node)
   let _ = config_tx

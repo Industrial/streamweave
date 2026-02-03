@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::reduction::{ScanNode, scan_config};
 use tokio::sync::mpsc;
@@ -14,18 +15,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("scan_example".to_string());
-  graph.add_node(
-    "scan".to_string(),
-    Box::new(ScanNode::new("scan".to_string())),
-  )?;
-  graph.expose_input_port("scan", "configuration", "configuration")?;
-  graph.expose_input_port("scan", "in", "input")?;
-  graph.expose_input_port("scan", "initial", "initial")?;
-  graph.expose_input_port("scan", "function", "function")?;
-  graph.expose_output_port("scan", "out", "output")?;
-  graph.expose_output_port("scan", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    scan: ScanNode::new("scan".to_string()),
+    graph.configuration => scan.configuration,
+    graph.input => scan.in,
+    graph.initial => scan.initial,
+    graph.function => scan.function,
+    scan.out => graph.output,
+    scan.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("initial", initial_rx)?;

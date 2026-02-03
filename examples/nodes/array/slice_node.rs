@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::array::ArraySliceNode;
 use tokio::sync::mpsc;
@@ -14,18 +15,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("slice_example".to_string());
-  graph.add_node(
-    "slice".to_string(),
-    Box::new(ArraySliceNode::new("slice".to_string())),
-  )?;
-  graph.expose_input_port("slice", "configuration", "configuration")?;
-  graph.expose_input_port("slice", "in", "input")?;
-  graph.expose_input_port("slice", "start", "start")?;
-  graph.expose_input_port("slice", "end", "end")?;
-  graph.expose_output_port("slice", "out", "output")?;
-  graph.expose_output_port("slice", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    slice: ArraySliceNode::new("slice".to_string()),
+    graph.configuration => slice.configuration,
+    graph.input => slice.in,
+    graph.start => slice.start,
+    graph.end => slice.end,
+    slice.out => graph.output,
+    slice.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", in_rx)?;
   graph.connect_input_channel("start", start_rx)?;
@@ -33,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ArraySliceNode using Graph API");
+  println!("✓ Graph built with ArraySliceNode using graph! macro");
 
   // Send configuration (optional for ArraySliceNode)
   let _ = config_tx

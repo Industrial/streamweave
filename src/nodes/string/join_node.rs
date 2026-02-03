@@ -29,7 +29,9 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Enum to tag input ports
 enum InputPort {
+  /// Input array of strings.
   In,
+  /// Delimiter string.
   Delimiter,
 }
 

@@ -1,34 +1,43 @@
 use std::any::Any;
-use std::collections::HashMap;
-use std::pin::Pin;
 use std::sync::Arc;
-use streamweave::node::Node;
+use streamweave::graph;
+use streamweave::graph::Graph;
 use streamweave::nodes::match_node::{MatchConfig, MatchNode, match_exact_string};
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-  // Create the MatchNode directly
-  let match_node = MatchNode::new("match".to_string(), 3);
-
-  // Create input streams for the MatchNode
+  // Create channels for external I/O
   let (config_tx, config_rx) = mpsc::channel(10);
   let (input_tx, input_rx) = mpsc::channel(10);
+  let (out0_tx, mut out0_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
+  let (out1_tx, mut out1_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
+  let (out2_tx, mut out2_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
+  let (default_tx, mut default_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
+  let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  let mut inputs = HashMap::new();
-  inputs.insert(
-    "configuration".to_string(),
-    Box::pin(ReceiverStream::new(config_rx))
-      as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
-  );
-  inputs.insert(
-    "in".to_string(),
-    Box::pin(ReceiverStream::new(input_rx))
-      as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
-  );
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    match_node: MatchNode::new("match".to_string(), 3),
+    graph.configuration => match_node.configuration,
+    graph.input => match_node.in,
+    match_node.out_0 => graph.output0,
+    match_node.out_1 => graph.output1,
+    match_node.out_2 => graph.output2,
+    match_node.default => graph.default,
+    match_node.error => graph.error
+  };
 
-  println!("✓ MatchNode created with input streams");
+  // Connect external channels at runtime
+  graph.connect_input_channel("configuration", config_rx)?;
+  graph.connect_input_channel("input", input_rx)?;
+  graph.connect_output_channel("output0", out0_tx)?;
+  graph.connect_output_channel("output1", out1_tx)?;
+  graph.connect_output_channel("output2", out2_tx)?;
+  graph.connect_output_channel("default", default_tx)?;
+  graph.connect_output_channel("error", error_tx)?;
+
+  println!("✓ Graph built with MatchNode using graph! macro");
 
   // Create a configuration that routes strings to different output ports
   let string_config: MatchConfig = match_exact_string(vec![
@@ -64,75 +73,94 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   println!("✓ Configuration and input data sent to streams");
 
   // Drop the transmitters to close the input channels (signals EOF to streams)
-  // This must happen BEFORE calling execute, so the streams know when input ends
   drop(config_tx);
   drop(input_tx);
 
-  // Execute the MatchNode
-  println!("Executing MatchNode...");
+  // Execute the graph
+  println!("Executing graph with MatchNode...");
   let start = std::time::Instant::now();
-  let outputs_future = match_node.execute(inputs);
-  let mut outputs = outputs_future
+  graph
+    .execute()
     .await
-    .map_err(|e| format!("MatchNode execution failed: {:?}", e))?;
-  println!("✓ MatchNode execution completed in {:?}", start.elapsed());
+    .map_err(|e| format!("Graph execution failed: {:?}", e))?;
+  println!("✓ Graph execution completed in {:?}", start.elapsed());
 
-  // Read results from the output streams
-  println!("Reading results from output streams...");
+  // Read results from the output channels
+  println!("Reading results from output channels...");
   let mut total_processed = 0;
 
-  // Read from "out_0" stream
-  if let Some(mut out0_stream) = outputs.remove("out_0") {
-    while let Some(item) = out0_stream.next().await {
-      if let Ok(string_arc) = item.downcast::<String>() {
-        let value = &**string_arc;
-        println!("  out_0: {}", value);
-        total_processed += 1;
+  // Read from output0 channel
+  loop {
+    match tokio::time::timeout(tokio::time::Duration::from_millis(100), out0_rx.recv()).await {
+      Ok(Some(item)) => {
+        if let Ok(string_arc) = item.downcast::<String>() {
+          let value = &**string_arc;
+          println!("  out_0: {}", value);
+          total_processed += 1;
+        }
       }
+      Ok(None) => break,
+      Err(_) => break,
     }
   }
 
-  // Read from "out_1" stream
-  if let Some(mut out1_stream) = outputs.remove("out_1") {
-    while let Some(item) = out1_stream.next().await {
-      if let Ok(string_arc) = item.downcast::<String>() {
-        let value = &**string_arc;
-        println!("  out_1: {}", value);
-        total_processed += 1;
+  // Read from output1 channel
+  loop {
+    match tokio::time::timeout(tokio::time::Duration::from_millis(100), out1_rx.recv()).await {
+      Ok(Some(item)) => {
+        if let Ok(string_arc) = item.downcast::<String>() {
+          let value = &**string_arc;
+          println!("  out_1: {}", value);
+          total_processed += 1;
+        }
       }
+      Ok(None) => break,
+      Err(_) => break,
     }
   }
 
-  // Read from "out_2" stream
-  if let Some(mut out2_stream) = outputs.remove("out_2") {
-    while let Some(item) = out2_stream.next().await {
-      if let Ok(string_arc) = item.downcast::<String>() {
-        let value = &**string_arc;
-        println!("  out_2: {}", value);
-        total_processed += 1;
+  // Read from output2 channel
+  loop {
+    match tokio::time::timeout(tokio::time::Duration::from_millis(100), out2_rx.recv()).await {
+      Ok(Some(item)) => {
+        if let Ok(string_arc) = item.downcast::<String>() {
+          let value = &**string_arc;
+          println!("  out_2: {}", value);
+          total_processed += 1;
+        }
       }
+      Ok(None) => break,
+      Err(_) => break,
     }
   }
 
-  // Read from "default" stream
-  if let Some(mut default_stream) = outputs.remove("default") {
-    while let Some(item) = default_stream.next().await {
-      if let Ok(string_arc) = item.downcast::<String>() {
-        let value = &**string_arc;
-        println!("  default: {}", value);
-        total_processed += 1;
+  // Read from default channel
+  loop {
+    match tokio::time::timeout(tokio::time::Duration::from_millis(100), default_rx.recv()).await {
+      Ok(Some(item)) => {
+        if let Ok(string_arc) = item.downcast::<String>() {
+          let value = &**string_arc;
+          println!("  default: {}", value);
+          total_processed += 1;
+        }
       }
+      Ok(None) => break,
+      Err(_) => break,
     }
   }
 
-  // Read errors from the error stream
-  if let Some(mut error_stream) = outputs.remove("error") {
-    while let Some(item) = error_stream.next().await {
-      if let Ok(error_msg) = item.downcast::<String>() {
-        let error = &**error_msg;
-        println!("  error: {}", error);
-        total_processed += 1;
+  // Read errors from the error channel
+  loop {
+    match tokio::time::timeout(tokio::time::Duration::from_millis(100), error_rx.recv()).await {
+      Ok(Some(item)) => {
+        if let Ok(error_msg) = item.downcast::<String>() {
+          let error = &**error_msg;
+          println!("  error: {}", error);
+          total_processed += 1;
+        }
       }
+      Ok(None) => break,
+      Err(_) => break,
     }
   }
 

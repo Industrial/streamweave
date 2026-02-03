@@ -157,7 +157,10 @@ impl Node for XorNode {
   }
 }
 
+/// Enum to tag input ports.
 enum InputPort {
+  /// First input operand.
   In1,
+  /// Second input operand.
   In2,
 }

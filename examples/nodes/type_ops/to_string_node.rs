@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::type_ops::ToStringNode;
 use tokio::sync::mpsc;
@@ -12,22 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("to_string_example".to_string());
-  graph.add_node(
-    "to_string".to_string(),
-    Box::new(ToStringNode::new("to_string".to_string())),
-  )?;
-  graph.expose_input_port("to_string", "configuration", "configuration")?;
-  graph.expose_input_port("to_string", "in", "input")?;
-  graph.expose_output_port("to_string", "out", "output")?;
-  graph.expose_output_port("to_string", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    to_string: ToStringNode::new("to_string".to_string()),
+    graph.configuration => to_string.configuration,
+    graph.input => to_string.in,
+    to_string.out => graph.output,
+    to_string.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ToStringNode using Graph API");
+  println!("✓ Graph built with ToStringNode using graph! macro");
 
   // Send configuration (optional for ToStringNode)
   let _ = config_tx

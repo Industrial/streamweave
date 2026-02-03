@@ -76,6 +76,7 @@ impl FilterMapConfigWrapper {
 
 /// Wrapper type that implements FilterMapFunction for async closures.
 struct FilterMapFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 
@@ -138,7 +139,9 @@ where
 /// Enum to tag messages from different input ports for merging.
 #[allow(dead_code)]
 enum InputPort {
+  /// Input stream.
   In,
+  /// Filter/map function configuration.
   Function,
 }
 

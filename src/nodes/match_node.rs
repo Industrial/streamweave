@@ -56,6 +56,7 @@ pub type MatchConfig = Arc<dyn MatchFunction>;
 
 /// Wrapper type that implements MatchFunction for async closures.
 struct MatchFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 

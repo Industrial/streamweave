@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::advanced::try_catch_node::{
   CatchConfig, TryCatchNode, TryConfig, catch_config, try_config,
@@ -40,18 +41,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   });
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("try_catch_example".to_string());
-  graph.add_node(
-    "try_catch".to_string(),
-    Box::new(TryCatchNode::new("try_catch".to_string())),
-  )?;
-  graph.expose_input_port("try_catch", "configuration", "configuration")?;
-  graph.expose_input_port("try_catch", "in", "input")?;
-  graph.expose_input_port("try_catch", "try", "try")?;
-  graph.expose_input_port("try_catch", "catch", "catch")?;
-  graph.expose_output_port("try_catch", "out", "output")?;
-  graph.expose_output_port("try_catch", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    try_catch: TryCatchNode::new("try_catch".to_string()),
+    graph.configuration => try_catch.configuration,
+    graph.input => try_catch.in,
+    graph.try => try_catch.try,
+    graph.catch => try_catch.catch,
+    try_catch.out => graph.output,
+    try_catch.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("try", try_rx)?;
@@ -59,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with TryCatchNode using Graph API");
+  println!("✓ Graph built with TryCatchNode using graph! macro");
 
   // Send configuration (optional for TryCatchNode)
   let _ = config_tx

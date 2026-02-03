@@ -61,6 +61,7 @@ pub type RetryConfig = Arc<dyn RetryFunction>;
 
 /// Wrapper type that implements RetryFunction for async closures.
 struct RetryFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 
@@ -140,8 +141,11 @@ fn get_usize(value: &Arc<dyn Any + Send + Sync>) -> Result<usize, String> {
 #[derive(Debug, PartialEq)]
 #[allow(dead_code)]
 enum InputPort {
+  /// Configuration port.
   Config,
+  /// Input data port.
   In,
+  /// Maximum retries port.
   MaxRetries,
 }
 
@@ -155,6 +159,7 @@ pub struct RetryNode {
   pub(crate) base: BaseNode,
   /// Current configuration state.
   current_config: Arc<Mutex<Option<RetryConfig>>>,
+  /// Base delay in milliseconds for exponential backoff.
   base_delay_ms: u64,
 }
 

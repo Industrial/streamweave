@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::math::ExpNode;
 use tokio::sync::mpsc;
@@ -12,19 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("exp_example".to_string());
-  graph.add_node("exp".to_string(), Box::new(ExpNode::new("exp".to_string())))?;
-  graph.expose_input_port("exp", "configuration", "configuration")?;
-  graph.expose_input_port("exp", "in", "input")?;
-  graph.expose_output_port("exp", "out", "output")?;
-  graph.expose_output_port("exp", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    exp: ExpNode::new("exp".to_string()),
+    graph.configuration => exp.configuration,
+    graph.input => exp.in,
+    exp.out => graph.output,
+    exp.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", in_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ExpNode using Graph API");
+  println!("✓ Graph built with ExpNode using graph! macro");
 
   // Send configuration (optional for ExpNode)
   let _ = config_tx

@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::array::ArraySortNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("sort_example".to_string());
-  graph.add_node(
-    "sort".to_string(),
-    Box::new(ArraySortNode::new("sort".to_string())),
-  )?;
-  graph.expose_input_port("sort", "configuration", "configuration")?;
-  graph.expose_input_port("sort", "in", "input")?;
-  graph.expose_input_port("sort", "order", "order")?;
-  graph.expose_output_port("sort", "out", "output")?;
-  graph.expose_output_port("sort", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    sort: ArraySortNode::new("sort".to_string()),
+    graph.configuration => sort.configuration,
+    graph.input => sort.in,
+    graph.order => sort.order,
+    sort.out => graph.output,
+    sort.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", in_rx)?;
   graph.connect_input_channel("order", order_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ArraySortNode using Graph API");
+  println!("✓ Graph built with ArraySortNode using graph! macro");
 
   // Send configuration (optional for ArraySortNode)
   let _ = config_tx

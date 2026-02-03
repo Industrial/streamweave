@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::arithmetic::PowerNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("power_example".to_string());
-  graph.add_node(
-    "power".to_string(),
-    Box::new(PowerNode::new("power".to_string())),
-  )?;
-  graph.expose_input_port("power", "configuration", "configuration")?;
-  graph.expose_input_port("power", "base", "base")?;
-  graph.expose_input_port("power", "exponent", "exponent")?;
-  graph.expose_output_port("power", "out", "output")?;
-  graph.expose_output_port("power", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    power: PowerNode::new("power".to_string()),
+    graph.configuration => power.configuration,
+    graph.base => power.base,
+    graph.exponent => power.exponent,
+    power.out => graph.output,
+    power.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("base", base_rx)?;
   graph.connect_input_channel("exponent", exponent_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with PowerNode using Graph API");
+  println!("✓ Graph built with PowerNode using graph! macro");
 
   // Send configuration (optional for PowerNode)
   let _ = config_tx

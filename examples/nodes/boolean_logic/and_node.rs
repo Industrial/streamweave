@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::boolean_logic::AndNode;
 use tokio::sync::mpsc;
@@ -13,21 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("and_example".to_string());
-  graph.add_node("and".to_string(), Box::new(AndNode::new("and".to_string())))?;
-  graph.expose_input_port("and", "configuration", "configuration")?;
-  graph.expose_input_port("and", "in1", "in1")?;
-  graph.expose_input_port("and", "in2", "in2")?;
-  graph.expose_output_port("and", "out", "output")?;
-  graph.expose_output_port("and", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    and: AndNode::new("and".to_string()),
+    graph.configuration => and.configuration,
+    graph.in1 => and.in1,
+    graph.in2 => and.in2,
+    and.out => graph.output,
+    and.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("in1", in1_rx)?;
   graph.connect_input_channel("in2", in2_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with AndNode using Graph API");
+  println!("✓ Graph built with AndNode using graph! macro");
 
   // Send configuration (optional for AndNode)
   let _ = config_tx

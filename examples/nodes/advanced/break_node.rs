@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::advanced::break_node::BreakNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("break_example".to_string());
-  graph.add_node(
-    "break".to_string(),
-    Box::new(BreakNode::new("break".to_string())),
-  )?;
-  graph.expose_input_port("break", "configuration", "configuration")?;
-  graph.expose_input_port("break", "in", "in")?;
-  graph.expose_input_port("break", "signal", "signal")?;
-  graph.expose_output_port("break", "out", "out")?;
-  graph.expose_output_port("break", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    break_node: BreakNode::new("break".to_string()),
+    graph.configuration => break_node.configuration,
+    graph.in => break_node.in,
+    graph.signal => break_node.signal,
+    break_node.out => graph.out,
+    break_node.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("in", input_rx)?;
   graph.connect_input_channel("signal", signal_rx)?;
   graph.connect_output_channel("out", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with BreakNode using Graph API");
+  println!("✓ Graph built with BreakNode using graph! macro");
 
   // Send configuration (empty config for break node)
   let _ = config_tx

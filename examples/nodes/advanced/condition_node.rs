@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::condition_node::{ConditionConfig, ConditionNode, condition_config};
 use tokio::sync::mpsc;
@@ -23,24 +24,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   });
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("condition_example".to_string());
-  graph.add_node(
-    "condition".to_string(),
-    Box::new(ConditionNode::new("condition".to_string())),
-  )?;
-  graph.expose_input_port("condition", "configuration", "configuration")?;
-  graph.expose_input_port("condition", "in", "input")?;
-  graph.expose_output_port("condition", "true", "true")?;
-  graph.expose_output_port("condition", "false", "false")?;
-  graph.expose_output_port("condition", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    condition: ConditionNode::new("condition".to_string()),
+    graph.configuration => condition.configuration,
+    graph.input => condition.in,
+    condition.true => graph.true,
+    condition.false => graph.false,
+    condition.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("true", true_tx)?;
   graph.connect_output_channel("false", false_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ConditionNode using Graph API");
+  println!("✓ Graph built with ConditionNode using graph! macro");
 
   // Send configuration
   let _ = config_tx

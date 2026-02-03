@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::object::object_property_node::ObjectPropertyNode;
 use tokio::sync::mpsc;
@@ -14,24 +15,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("get_example".to_string());
-  graph.add_node(
-    "get".to_string(),
-    Box::new(ObjectPropertyNode::new("get".to_string())),
-  )?;
-  graph.expose_input_port("get", "configuration", "configuration")?;
-  graph.expose_input_port("get", "in", "input")?;
-  graph.expose_input_port("get", "key", "key")?;
-  graph.expose_output_port("get", "out", "output")?;
-  graph.expose_output_port("get", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    get: ObjectPropertyNode::new("get".to_string()),
+    graph.configuration => get.configuration,
+    graph.input => get.in,
+    graph.key => get.key,
+    get.out => graph.output,
+    get.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", in_rx)?;
   graph.connect_input_channel("key", key_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ObjectPropertyNode (get) using Graph API");
+  println!("✓ Graph built with ObjectPropertyNode (get) using graph! macro");
 
   // Send configuration (optional for ObjectPropertyNode)
   let _ = config_tx

@@ -13,6 +13,7 @@
 
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::reduction::{ReduceConfigWrapper, ReduceNode, reduce_config};
 use tokio::sync::mpsc;
@@ -27,18 +28,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("reduce_example".to_string());
-  graph.add_node(
-    "reduce".to_string(),
-    Box::new(ReduceNode::new("reduce".to_string())),
-  )?;
-  graph.expose_input_port("reduce", "configuration", "configuration")?;
-  graph.expose_input_port("reduce", "initial", "initial")?;
-  graph.expose_input_port("reduce", "function", "function")?;
-  graph.expose_input_port("reduce", "in", "in")?;
-  graph.expose_output_port("reduce", "out", "output")?;
-  graph.expose_output_port("reduce", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    reduce: ReduceNode::new("reduce".to_string()),
+    graph.configuration => reduce.configuration,
+    graph.initial => reduce.initial,
+    graph.function => reduce.function,
+    graph.in => reduce.in,
+    reduce.out => graph.output,
+    reduce.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("initial", initial_rx)?;
   graph.connect_input_channel("function", function_rx)?;
@@ -46,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ReduceNode using Graph API");
+  println!("✓ Graph built with ReduceNode using graph! macro");
 
   // Create a sum reduction function
   let sum_function = reduce_config(

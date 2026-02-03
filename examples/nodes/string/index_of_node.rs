@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::string::StringIndexOfNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("index_of_example".to_string());
-  graph.add_node(
-    "index_of".to_string(),
-    Box::new(StringIndexOfNode::new("index_of".to_string())),
-  )?;
-  graph.expose_input_port("index_of", "configuration", "configuration")?;
-  graph.expose_input_port("index_of", "in", "input")?;
-  graph.expose_input_port("index_of", "substring", "substring")?;
-  graph.expose_output_port("index_of", "out", "output")?;
-  graph.expose_output_port("index_of", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    index_of: StringIndexOfNode::new("index_of".to_string()),
+    graph.configuration => index_of.configuration,
+    graph.input => index_of.in,
+    graph.substring => index_of.substring,
+    index_of.out => graph.output,
+    index_of.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("substring", substring_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with StringIndexOfNode using Graph API");
+  println!("✓ Graph built with StringIndexOfNode using graph! macro");
 
   // Send configuration (optional for StringIndexOfNode)
   let _ = config_tx

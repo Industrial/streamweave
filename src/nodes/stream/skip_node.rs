@@ -68,7 +68,9 @@ fn get_usize(value: &Arc<dyn Any + Send + Sync>) -> Result<usize, String> {
 /// Enum to tag messages from different input ports for merging.
 #[derive(Debug, PartialEq)]
 enum InputPort {
+  /// Input stream.
   In,
+  /// Number of items to skip.
   Count,
 }
 

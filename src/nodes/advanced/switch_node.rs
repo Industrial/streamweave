@@ -61,6 +61,7 @@ pub type SwitchConfig = Arc<dyn SwitchFunction>;
 
 /// Wrapper type that implements SwitchFunction for async closures.
 struct SwitchFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 
@@ -113,8 +114,11 @@ where
 /// Enum to tag messages from different input ports for merging.
 #[derive(Debug, PartialEq)]
 enum InputPort {
+  /// Configuration port.
   Config,
+  /// Data input port.
   Data,
+  /// Switch value port.
   Value,
 }
 
@@ -127,6 +131,7 @@ pub struct SwitchNode {
   pub(crate) base: BaseNode,
   /// Current configuration state.
   current_config: Arc<Mutex<Option<SwitchConfig>>>,
+  /// Maximum number of output branches supported.
   max_branches: usize,
 }
 

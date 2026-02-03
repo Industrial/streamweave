@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::arithmetic::ModuloNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("modulo_example".to_string());
-  graph.add_node(
-    "modulo".to_string(),
-    Box::new(ModuloNode::new("modulo".to_string())),
-  )?;
-  graph.expose_input_port("modulo", "configuration", "configuration")?;
-  graph.expose_input_port("modulo", "in1", "in1")?;
-  graph.expose_input_port("modulo", "in2", "in2")?;
-  graph.expose_output_port("modulo", "out", "output")?;
-  graph.expose_output_port("modulo", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    modulo: ModuloNode::new("modulo".to_string()),
+    graph.configuration => modulo.configuration,
+    graph.in1 => modulo.in1,
+    graph.in2 => modulo.in2,
+    modulo.out => graph.output,
+    modulo.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("in1", in1_rx)?;
   graph.connect_input_channel("in2", in2_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ModuloNode using Graph API");
+  println!("✓ Graph built with ModuloNode using graph! macro");
 
   // Send configuration (optional for ModuloNode)
   let _ = config_tx

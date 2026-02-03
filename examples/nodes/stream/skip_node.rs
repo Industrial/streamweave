@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::stream::SkipNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("skip_example".to_string());
-  graph.add_node(
-    "skip".to_string(),
-    Box::new(SkipNode::new("skip".to_string())),
-  )?;
-  graph.expose_input_port("skip", "configuration", "configuration")?;
-  graph.expose_input_port("skip", "in", "input")?;
-  graph.expose_input_port("skip", "count", "count")?;
-  graph.expose_output_port("skip", "out", "output")?;
-  graph.expose_output_port("skip", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    skip: SkipNode::new("skip".to_string()),
+    graph.configuration => skip.configuration,
+    graph.input => skip.in,
+    graph.count => skip.count,
+    skip.out => graph.output,
+    skip.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("count", count_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with SkipNode using Graph API");
+  println!("✓ Graph built with SkipNode using graph! macro");
 
   // Send configuration (optional for SkipNode)
   let _ = config_tx

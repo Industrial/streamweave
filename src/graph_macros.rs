@@ -167,63 +167,63 @@ macro_rules! graph {
 macro_rules! graph_parse_items {
     // Base case: done
     ($builder:ident $(,)?) => {};
-    
+
     // Node pattern: name: expr, ...
     ($builder:ident, $name:ident : $node:expr, $($rest:tt)*) => {
         $crate::validate_node_name!(stringify!($name));
         let $builder = $builder.add_node(stringify!($name), Box::new($node));
         $crate::graph_parse_items!($builder, $($rest)*);
     };
-    
+
     // Node pattern without trailing comma: name: expr
     ($builder:ident, $name:ident : $node:expr) => {
         $crate::validate_node_name!(stringify!($name));
         let $builder = $builder.add_node(stringify!($name), Box::new($node));
     };
-    
+
     // Graph input with value: graph.name: value => node.port, ...
     // Must come before node pattern to avoid matching "graph" as a node name
     ($builder:ident, graph . $in_name:ident : $value:expr => $node:ident . $port:ident, $($rest:tt)*) => {
         let $builder = $builder.input(stringify!($in_name), stringify!($node), stringify!($port), Some($value));
         $crate::graph_parse_items!($builder, $($rest)*);
     };
-    
+
     // Graph input with value without trailing comma
     ($builder:ident, graph . $in_name:ident : $value:expr => $node:ident . $port:ident) => {
         let $builder = $builder.input(stringify!($in_name), stringify!($node), stringify!($port), Some($value));
     };
-    
+
     // Graph input without value: graph.name => node.port, ...
     // Must come before node pattern to avoid matching "graph" as a node name
     ($builder:ident, graph . $in_name:ident => $node:ident . $port:ident, $($rest:tt)*) => {
         let $builder = $builder.input(stringify!($in_name), stringify!($node), stringify!($port), None::<()>);
         $crate::graph_parse_items!($builder, $($rest)*);
     };
-    
+
     // Graph input without value without trailing comma
     ($builder:ident, graph . $in_name:ident => $node:ident . $port:ident) => {
         let $builder = $builder.input(stringify!($in_name), stringify!($node), stringify!($port), None::<()>);
     };
-    
+
     // Graph output: node.port => graph.name, ...
     // Must come before node-to-node pattern
     ($builder:ident, $node:ident . $port:ident => graph . $out_name:ident, $($rest:tt)*) => {
         let $builder = $builder.output(stringify!($out_name), stringify!($node), stringify!($port));
         $crate::graph_parse_items!($builder, $($rest)*);
     };
-    
+
     // Graph output without trailing comma
     ($builder:ident, $node:ident . $port:ident => graph . $out_name:ident) => {
         let $builder = $builder.output(stringify!($out_name), stringify!($node), stringify!($port));
     };
-    
+
     // Node-to-node connection: source.port => target.port, ...
     // Must come after graph I/O patterns
     ($builder:ident, $source:ident . $sp:ident => $target:ident . $tp:ident, $($rest:tt)*) => {
         let $builder = $builder.connect(stringify!($source), stringify!($sp), stringify!($target), stringify!($tp));
         $crate::graph_parse_items!($builder, $($rest)*);
     };
-    
+
     // Node-to-node connection without trailing comma
     ($builder:ident, $source:ident . $sp:ident => $target:ident . $tp:ident) => {
         let $builder = $builder.connect(stringify!($source), stringify!($sp), stringify!($target), stringify!($tp));
@@ -317,7 +317,7 @@ macro_rules! parse_connections {
             $crate::parse_connections!($builder, $($rest)*)
         }
     };
-    
+
     // Parse graph input connection: graph.input_name => node.port
     // Must come before node-to-node rule to avoid matching "graph" as a node name
     ($builder:ident, graph . $input_name:ident => $node:ident . $port:ident $(, $rest:tt)*) => {
@@ -326,7 +326,7 @@ macro_rules! parse_connections {
             $crate::parse_connections!($builder, $($rest)*)
         }
     };
-    
+
     // Parse graph output: node.port => graph.output_name
     // Must come before node-to-node rule to avoid matching "graph" as a node name
     ($builder:ident, $node:ident . $port:ident => graph . $output_name:ident $(, $rest:tt)*) => {
@@ -335,7 +335,7 @@ macro_rules! parse_connections {
             $crate::parse_connections!($builder, $($rest)*)
         }
     };
-    
+
     // Parse node-to-node connection: source_node.source_port => target_node.target_port
     // All ports must be explicitly named
     // Fan-out detection happens at runtime in GraphBuilder::connect()
@@ -346,7 +346,7 @@ macro_rules! parse_connections {
             $crate::parse_connections!($builder, $($rest)*)
         }
     };
-    
+
     // Base case: no more connections
     ($builder:ident, $(,)?) => {
         $builder

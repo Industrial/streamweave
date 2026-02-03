@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::sync::Arc;
 use std::time::Duration;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::sync_node::{SyncConfig, SyncNode};
 use tokio::sync::mpsc;
@@ -21,18 +22,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     timeout: Some(Duration::from_millis(500)), // 500ms timeout
   };
 
-  // Build the graph directly with connected channels
-  let mut graph = Graph::new("data_sync".to_string());
-  graph.add_node(
-    "sync".to_string(),
-    Box::new(SyncNode::new("sync".to_string(), 3)),
-  )?;
-  graph.expose_input_port("sync", "configuration", "configuration")?;
-  graph.expose_input_port("sync", "in_0", "in_0")?;
-  graph.expose_input_port("sync", "in_1", "in_1")?;
-  graph.expose_input_port("sync", "in_2", "in_2")?;
-  graph.expose_output_port("sync", "out", "output")?;
-  graph.expose_output_port("sync", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    sync: SyncNode::new("sync".to_string(), 3),
+    graph.configuration => sync.configuration,
+    graph.in_0 => sync.in_0,
+    graph.in_1 => sync.in_1,
+    graph.in_2 => sync.in_2,
+    sync.out => graph.output,
+    sync.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("in_0", in0_rx)?;
   graph.connect_input_channel("in_1", in1_rx)?;
@@ -40,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with connected channels");
+  println!("✓ Graph built with graph! macro and connected channels");
 
   // Send configuration and input data to the channels AFTER building
   let _ = config_tx

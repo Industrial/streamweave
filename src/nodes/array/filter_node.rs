@@ -37,6 +37,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 pub struct ArrayFilterNode {
   /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current predicate function configuration state.
   current_predicate: Arc<Mutex<Option<Arc<FilterConfig>>>>,
 }
 

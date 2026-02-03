@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::join_node::{JoinConfig, JoinNode, JoinStrategy, join_config};
 use tokio::sync::mpsc;
@@ -90,24 +91,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     },
   );
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("user_order_join_example".to_string());
-  graph.add_node(
-    "join".to_string(),
-    Box::new(JoinNode::new("join".to_string())),
-  )?;
-  graph.expose_input_port("join", "configuration", "configuration")?;
-  graph.expose_input_port("join", "left", "left")?;
-  graph.expose_input_port("join", "right", "right")?;
-  graph.expose_output_port("join", "out", "output")?;
-  graph.expose_output_port("join", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    join: JoinNode::new("join".to_string()),
+    graph.configuration => join.configuration,
+    graph.left => join.left,
+    graph.right => join.right,
+    join.out => graph.output,
+    join.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("left", left_rx)?;
   graph.connect_input_channel("right", right_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with JoinNode using Graph API");
+  println!("✓ Graph built with JoinNode using graph! macro");
 
   // Send configuration
   let _ = config_tx

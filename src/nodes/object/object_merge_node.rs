@@ -31,7 +31,9 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Enum to tag input ports
 enum InputPort {
+  /// First input object.
   In1,
+  /// Second input object.
   In2,
 }
 

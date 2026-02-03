@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::array::ArrayConcatNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("concat_example".to_string());
-  graph.add_node(
-    "concat".to_string(),
-    Box::new(ArrayConcatNode::new("concat".to_string())),
-  )?;
-  graph.expose_input_port("concat", "configuration", "configuration")?;
-  graph.expose_input_port("concat", "in1", "in1")?;
-  graph.expose_input_port("concat", "in2", "in2")?;
-  graph.expose_output_port("concat", "out", "output")?;
-  graph.expose_output_port("concat", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    concat: ArrayConcatNode::new("concat".to_string()),
+    graph.configuration => concat.configuration,
+    graph.in1 => concat.in1,
+    graph.in2 => concat.in2,
+    concat.out => graph.output,
+    concat.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("in1", in1_rx)?;
   graph.connect_input_channel("in2", in2_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ArrayConcatNode using Graph API");
+  println!("✓ Graph built with ArrayConcatNode using graph! macro");
 
   // Send configuration (optional for ArrayConcatNode)
   let _ = config_tx

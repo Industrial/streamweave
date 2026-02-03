@@ -56,6 +56,7 @@ pub type ConditionConfig = Arc<dyn ConditionFunction>;
 
 /// Wrapper type that implements ConditionFunction for async closures.
 struct ConditionFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 
@@ -111,6 +112,7 @@ where
 pub struct ConditionNode {
   /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current condition function configuration state.
   current_config: Arc<Mutex<Option<Arc<dyn ConditionFunction>>>>,
 }
 

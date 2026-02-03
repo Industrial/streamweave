@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::time::FormatTimeNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("format_time_example".to_string());
-  graph.add_node(
-    "format_time".to_string(),
-    Box::new(FormatTimeNode::new("format_time".to_string())),
-  )?;
-  graph.expose_input_port("format_time", "configuration", "configuration")?;
-  graph.expose_input_port("format_time", "in", "input")?;
-  graph.expose_input_port("format_time", "format", "format")?;
-  graph.expose_output_port("format_time", "out", "output")?;
-  graph.expose_output_port("format_time", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    format_time: FormatTimeNode::new("format_time".to_string()),
+    graph.configuration => format_time.configuration,
+    graph.input => format_time.in,
+    graph.format => format_time.format,
+    format_time.out => graph.output,
+    format_time.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("format", format_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with FormatTimeNode using Graph API");
+  println!("✓ Graph built with FormatTimeNode using graph! macro");
 
   // Send configuration (optional for FormatTimeNode)
   let _ = config_tx

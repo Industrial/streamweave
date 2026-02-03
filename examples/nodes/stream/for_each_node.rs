@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::for_each_node::{ForEachConfig, ForEachNode, for_each_config};
 use tokio::sync::mpsc;
@@ -25,16 +26,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   });
 
-  // Build the graph directly with connected channels
-  let mut graph = Graph::new("collection_expander".to_string());
-  graph.add_node(
-    "for_each".to_string(),
-    Box::new(ForEachNode::new("for_each".to_string())),
-  )?;
-  graph.expose_input_port("for_each", "configuration", "configuration")?;
-  graph.expose_input_port("for_each", "in", "input")?;
-  graph.expose_output_port("for_each", "out", "output")?;
-  graph.expose_output_port("for_each", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    for_each: ForEachNode::new("for_each".to_string()),
+    graph.configuration => for_each.configuration,
+    graph.input => for_each.in,
+    for_each.out => graph.output,
+    for_each.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", output_tx)?;

@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::stream::DropNode;
 use tokio::sync::mpsc;
@@ -12,22 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("drop_example".to_string());
-  graph.add_node(
-    "drop".to_string(),
-    Box::new(DropNode::new("drop".to_string())),
-  )?;
-  graph.expose_input_port("drop", "configuration", "configuration")?;
-  graph.expose_input_port("drop", "in", "input")?;
-  graph.expose_output_port("drop", "out", "output")?;
-  graph.expose_output_port("drop", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    drop: DropNode::new("drop".to_string()),
+    graph.configuration => drop.configuration,
+    graph.input => drop.in,
+    drop.out => graph.output,
+    drop.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with DropNode using Graph API");
+  println!("✓ Graph built with DropNode using graph! macro");
 
   // Send configuration (optional for DropNode)
   let _ = config_tx

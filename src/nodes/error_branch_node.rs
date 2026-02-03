@@ -41,6 +41,7 @@ pub struct ErrorBranchConfig {
 pub struct ErrorBranchNode {
   /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current error branch configuration state.
   current_config: Arc<Mutex<Option<Arc<ErrorBranchConfig>>>>,
 }
 

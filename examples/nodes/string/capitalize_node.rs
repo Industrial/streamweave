@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::string::StringCapitalizeNode;
 use tokio::sync::mpsc;
@@ -12,22 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("capitalize_example".to_string());
-  graph.add_node(
-    "capitalize".to_string(),
-    Box::new(StringCapitalizeNode::new("capitalize".to_string())),
-  )?;
-  graph.expose_input_port("capitalize", "configuration", "configuration")?;
-  graph.expose_input_port("capitalize", "in", "input")?;
-  graph.expose_output_port("capitalize", "out", "output")?;
-  graph.expose_output_port("capitalize", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    capitalize: StringCapitalizeNode::new("capitalize".to_string()),
+    graph.configuration => capitalize.configuration,
+    graph.input => capitalize.in,
+    capitalize.out => graph.output,
+    capitalize.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with StringCapitalizeNode using Graph API");
+  println!("✓ Graph built with StringCapitalizeNode using graph! macro");
 
   // Send configuration (optional for StringCapitalizeNode)
   let _ = config_tx

@@ -72,6 +72,7 @@ impl ReduceConfigWrapper {
 
 /// Wrapper type that implements ReduceFunction for async closures.
 struct ReduceFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 
@@ -129,9 +130,13 @@ where
 /// Enum to tag input ports
 #[allow(dead_code)]
 enum InputPort {
+  /// Configuration port.
   Config,
+  /// Input data port.
   In,
+  /// Initial value port.
   Initial,
+  /// Reduce function port.
   Function,
 }
 

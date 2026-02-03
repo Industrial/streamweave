@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::string::StringPrependNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("prepend_example".to_string());
-  graph.add_node(
-    "prepend".to_string(),
-    Box::new(StringPrependNode::new("prepend".to_string())),
-  )?;
-  graph.expose_input_port("prepend", "configuration", "configuration")?;
-  graph.expose_input_port("prepend", "in", "input")?;
-  graph.expose_input_port("prepend", "prefix", "prefix")?;
-  graph.expose_output_port("prepend", "out", "output")?;
-  graph.expose_output_port("prepend", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    prepend: StringPrependNode::new("prepend".to_string()),
+    graph.configuration => prepend.configuration,
+    graph.input => prepend.in,
+    graph.prefix => prepend.prefix,
+    prepend.out => graph.output,
+    prepend.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("prefix", prefix_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with StringPrependNode using Graph API");
+  println!("✓ Graph built with StringPrependNode using graph! macro");
 
   // Send configuration (optional for StringPrependNode)
   let _ = config_tx

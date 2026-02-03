@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::math::AbsNode;
 use tokio::sync::mpsc;
@@ -12,19 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("abs_example".to_string());
-  graph.add_node("abs".to_string(), Box::new(AbsNode::new("abs".to_string())))?;
-  graph.expose_input_port("abs", "configuration", "configuration")?;
-  graph.expose_input_port("abs", "in", "input")?;
-  graph.expose_output_port("abs", "out", "output")?;
-  graph.expose_output_port("abs", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    abs: AbsNode::new("abs".to_string()),
+    graph.configuration => abs.configuration,
+    graph.input => abs.in,
+    abs.out => graph.output,
+    abs.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", in_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with AbsNode using Graph API");
+  println!("✓ Graph built with AbsNode using graph! macro");
 
   // Send configuration (optional for AbsNode)
   let _ = config_tx

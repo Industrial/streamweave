@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::write_variable_node::{WriteVariableConfig, WriteVariableNode};
 use tokio::sync::mpsc;
@@ -17,24 +18,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Create a variable store and share it with the node
   let variable_store: WriteVariableConfig = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
 
-  // Build the graph directly with connected channels
-  let mut graph = Graph::new("variable_writer".to_string());
-  graph.add_node(
-    "write_var".to_string(),
-    Box::new(WriteVariableNode::new("write_var".to_string())),
-  )?;
-  graph.expose_input_port("write_var", "configuration", "configuration")?;
-  graph.expose_input_port("write_var", "name", "name")?;
-  graph.expose_input_port("write_var", "value", "value")?;
-  graph.expose_output_port("write_var", "out", "out")?;
-  graph.expose_output_port("write_var", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    write_var: WriteVariableNode::new("write_var".to_string()),
+    graph.configuration => write_var.configuration,
+    graph.name => write_var.name,
+    graph.value => write_var.value,
+    write_var.out => graph.out,
+    write_var.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("name", name_rx)?;
   graph.connect_input_channel("value", value_rx)?;
   graph.connect_output_channel("out", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with connected channels");
+  println!("✓ Graph built with graph! macro");
 
   // Send configuration and input data to the channels AFTER building
   let _ = config_tx

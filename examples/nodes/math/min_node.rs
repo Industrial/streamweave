@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::math::MinNode;
 use tokio::sync::mpsc;
@@ -13,21 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("min_example".to_string());
-  graph.add_node("min".to_string(), Box::new(MinNode::new("min".to_string())))?;
-  graph.expose_input_port("min", "configuration", "configuration")?;
-  graph.expose_input_port("min", "in1", "input1")?;
-  graph.expose_input_port("min", "in2", "input2")?;
-  graph.expose_output_port("min", "out", "output")?;
-  graph.expose_output_port("min", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    min: MinNode::new("min".to_string()),
+    graph.configuration => min.configuration,
+    graph.input1 => min.in1,
+    graph.input2 => min.in2,
+    min.out => graph.output,
+    min.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input1", in1_rx)?;
   graph.connect_input_channel("input2", in2_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with MinNode using Graph API");
+  println!("✓ Graph built with MinNode using graph! macro");
 
   // Send configuration (optional for MinNode)
   let _ = config_tx

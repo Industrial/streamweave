@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::aggregation::SumNode;
 use tokio::sync::mpsc;
@@ -12,19 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("sum_example".to_string());
-  graph.add_node("sum".to_string(), Box::new(SumNode::new("sum".to_string())))?;
-  graph.expose_input_port("sum", "configuration", "configuration")?;
-  graph.expose_input_port("sum", "in", "input")?;
-  graph.expose_output_port("sum", "out", "output")?;
-  graph.expose_output_port("sum", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    sum: SumNode::new("sum".to_string()),
+    graph.configuration => sum.configuration,
+    graph.input => sum.in,
+    sum.out => graph.output,
+    sum.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", in_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with SumNode using Graph API");
+  println!("✓ Graph built with SumNode using graph! macro");
 
   // Send configuration (optional for SumNode)
   let _ = config_tx

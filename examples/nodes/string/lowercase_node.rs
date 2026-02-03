@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::string::StringLowercaseNode;
 use tokio::sync::mpsc;
@@ -12,22 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("lowercase_example".to_string());
-  graph.add_node(
-    "lowercase".to_string(),
-    Box::new(StringLowercaseNode::new("lowercase".to_string())),
-  )?;
-  graph.expose_input_port("lowercase", "configuration", "configuration")?;
-  graph.expose_input_port("lowercase", "in", "input")?;
-  graph.expose_output_port("lowercase", "out", "output")?;
-  graph.expose_output_port("lowercase", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    lowercase: StringLowercaseNode::new("lowercase".to_string()),
+    graph.configuration => lowercase.configuration,
+    graph.input => lowercase.in,
+    lowercase.out => graph.output,
+    lowercase.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with StringLowercaseNode using Graph API");
+  println!("✓ Graph built with StringLowercaseNode using graph! macro");
 
   // Send configuration (optional for StringLowercaseNode)
   let _ = config_tx

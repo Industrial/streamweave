@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::advanced::repeat_node::RepeatNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("repeat_example".to_string());
-  graph.add_node(
-    "repeat".to_string(),
-    Box::new(RepeatNode::new("repeat".to_string())),
-  )?;
-  graph.expose_input_port("repeat", "configuration", "configuration")?;
-  graph.expose_input_port("repeat", "in", "input")?;
-  graph.expose_input_port("repeat", "count", "count")?;
-  graph.expose_output_port("repeat", "out", "output")?;
-  graph.expose_output_port("repeat", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    repeat: RepeatNode::new("repeat".to_string()),
+    graph.configuration => repeat.configuration,
+    graph.input => repeat.in,
+    graph.count => repeat.count,
+    repeat.out => graph.output,
+    repeat.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("count", count_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with RepeatNode using Graph API");
+  println!("✓ Graph built with RepeatNode using graph! macro");
 
   // Configuration is optional for RepeatNode
   let _ = config_tx

@@ -85,8 +85,11 @@ fn extract_duration(value: &Arc<dyn Any + Send + Sync>) -> Result<Duration, Stri
 /// Enum to tag input ports
 #[allow(dead_code)]
 enum InputPort {
+  /// Configuration port.
   Config,
+  /// Input data port.
   In,
+  /// Delay duration port.
   Duration,
 }
 

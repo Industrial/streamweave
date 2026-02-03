@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::stream::WindowNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("window_example".to_string());
-  graph.add_node(
-    "window".to_string(),
-    Box::new(WindowNode::new("window".to_string())),
-  )?;
-  graph.expose_input_port("window", "configuration", "configuration")?;
-  graph.expose_input_port("window", "in", "input")?;
-  graph.expose_input_port("window", "size", "size")?;
-  graph.expose_output_port("window", "out", "output")?;
-  graph.expose_output_port("window", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    window: WindowNode::new("window".to_string()),
+    graph.configuration => window.configuration,
+    graph.input => window.in,
+    graph.size => window.size,
+    window.out => graph.output,
+    window.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("size", size_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with WindowNode using Graph API");
+  println!("✓ Graph built with WindowNode using graph! macro");
 
   // Send configuration (optional for WindowNode)
   let _ = config_tx

@@ -157,7 +157,10 @@ impl Node for AndNode {
   }
 }
 
+/// Enum to tag input ports.
 enum InputPort {
+  /// First input operand.
   In1,
+  /// Second input operand.
   In2,
 }

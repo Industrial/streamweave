@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::string::StringUppercaseNode;
 use tokio::sync::mpsc;
@@ -12,22 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("uppercase_example".to_string());
-  graph.add_node(
-    "uppercase".to_string(),
-    Box::new(StringUppercaseNode::new("uppercase".to_string())),
-  )?;
-  graph.expose_input_port("uppercase", "configuration", "configuration")?;
-  graph.expose_input_port("uppercase", "in", "input")?;
-  graph.expose_output_port("uppercase", "out", "output")?;
-  graph.expose_output_port("uppercase", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    uppercase: StringUppercaseNode::new("uppercase".to_string()),
+    graph.configuration => uppercase.configuration,
+    graph.input => uppercase.in,
+    uppercase.out => graph.output,
+    uppercase.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with StringUppercaseNode using Graph API");
+  println!("✓ Graph built with StringUppercaseNode using graph! macro");
 
   // Send configuration (optional for StringUppercaseNode)
   let _ = config_tx

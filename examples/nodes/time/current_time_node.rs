@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::time::CurrentTimeNode;
 use tokio::sync::mpsc;
@@ -13,22 +14,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("current_time_example".to_string());
-  graph.add_node(
-    "current_time".to_string(),
-    Box::new(CurrentTimeNode::new("current_time".to_string())),
-  )?;
-  graph.expose_input_port("current_time", "configuration", "configuration")?;
-  graph.expose_input_port("current_time", "trigger", "trigger")?;
-  graph.expose_output_port("current_time", "out", "output")?;
-  graph.expose_output_port("current_time", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    current_time: CurrentTimeNode::new("current_time".to_string()),
+    graph.configuration => current_time.configuration,
+    graph.trigger => current_time.trigger,
+    current_time.out => graph.output,
+    current_time.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("trigger", trigger_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with CurrentTimeNode using Graph API");
+  println!("✓ Graph built with CurrentTimeNode using graph! macro");
 
   // Send configuration (optional for CurrentTimeNode)
   let _ = config_tx

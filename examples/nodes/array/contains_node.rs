@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::array::ArrayContainsNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("contains_example".to_string());
-  graph.add_node(
-    "contains".to_string(),
-    Box::new(ArrayContainsNode::new("contains".to_string())),
-  )?;
-  graph.expose_input_port("contains", "configuration", "configuration")?;
-  graph.expose_input_port("contains", "in", "input")?;
-  graph.expose_input_port("contains", "value", "value")?;
-  graph.expose_output_port("contains", "out", "output")?;
-  graph.expose_output_port("contains", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    contains: ArrayContainsNode::new("contains".to_string()),
+    graph.configuration => contains.configuration,
+    graph.input => contains.in,
+    graph.value => contains.value,
+    contains.out => graph.output,
+    contains.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", in_rx)?;
   graph.connect_input_channel("value", value_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ArrayContainsNode using Graph API");
+  println!("✓ Graph built with ArrayContainsNode using graph! macro");
 
   // Send configuration (optional for ArrayContainsNode)
   let _ = config_tx

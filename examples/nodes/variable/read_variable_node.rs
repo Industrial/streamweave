@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::read_variable_node::{ReadVariableConfig, ReadVariableNode};
 use tokio::sync::{Mutex, mpsc};
@@ -37,22 +38,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
   }
 
-  // Build the graph directly with connected channels
-  let mut graph = Graph::new("variable_reader".to_string());
-  graph.add_node(
-    "read_var".to_string(),
-    Box::new(ReadVariableNode::new("read_var".to_string())),
-  )?;
-  graph.expose_input_port("read_var", "configuration", "configuration")?;
-  graph.expose_input_port("read_var", "name", "name")?;
-  graph.expose_output_port("read_var", "out", "out")?;
-  graph.expose_output_port("read_var", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    read_var: ReadVariableNode::new("read_var".to_string()),
+    graph.configuration => read_var.configuration,
+    graph.name => read_var.name,
+    read_var.out => graph.out,
+    read_var.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("name", name_rx)?;
   graph.connect_output_channel("out", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with connected channels");
+  println!("✓ Graph built with graph! macro");
 
   // Send configuration and input data to the channels AFTER building
   let _ = config_tx

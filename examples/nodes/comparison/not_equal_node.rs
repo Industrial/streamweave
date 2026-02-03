@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::comparison::NotEqualNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("not_equal_example".to_string());
-  graph.add_node(
-    "not_equal".to_string(),
-    Box::new(NotEqualNode::new("not_equal".to_string())),
-  )?;
-  graph.expose_input_port("not_equal", "configuration", "configuration")?;
-  graph.expose_input_port("not_equal", "in1", "in1")?;
-  graph.expose_input_port("not_equal", "in2", "in2")?;
-  graph.expose_output_port("not_equal", "out", "output")?;
-  graph.expose_output_port("not_equal", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    not_equal: NotEqualNode::new("not_equal".to_string()),
+    graph.configuration => not_equal.configuration,
+    graph.in1 => not_equal.in1,
+    graph.in2 => not_equal.in2,
+    not_equal.out => graph.output,
+    not_equal.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("in1", in1_rx)?;
   graph.connect_input_channel("in2", in2_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with NotEqualNode using Graph API");
+  println!("✓ Graph built with NotEqualNode using graph! macro");
 
   // Send configuration (optional for NotEqualNode)
   let _ = config_tx

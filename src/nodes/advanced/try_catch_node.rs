@@ -82,6 +82,7 @@ pub type CatchConfig = Arc<dyn CatchFunction>;
 
 /// Wrapper type that implements TryFunction for async closures.
 struct TryFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 
@@ -102,6 +103,7 @@ where
 
 /// Wrapper type that implements CatchFunction for async closures.
 struct CatchFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 
@@ -167,8 +169,11 @@ where
 /// Enum to tag messages from different input ports for merging.
 #[derive(Debug, PartialEq)]
 enum InputPort {
+  /// Input data port.
   In,
+  /// Try function configuration port.
   Try,
+  /// Catch function configuration port.
   Catch,
 }
 
@@ -181,7 +186,9 @@ enum InputPort {
 pub struct TryCatchNode {
   /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current try function configuration state.
   current_try_config: Arc<Mutex<Option<TryConfig>>>,
+  /// Current catch function configuration state.
   current_catch_config: Arc<Mutex<Option<CatchConfig>>>,
 }
 

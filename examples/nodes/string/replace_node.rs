@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::string::StringReplaceNode;
 use tokio::sync::mpsc;
@@ -14,18 +15,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("replace_example".to_string());
-  graph.add_node(
-    "replace".to_string(),
-    Box::new(StringReplaceNode::new("replace".to_string())),
-  )?;
-  graph.expose_input_port("replace", "configuration", "configuration")?;
-  graph.expose_input_port("replace", "in", "input")?;
-  graph.expose_input_port("replace", "pattern", "pattern")?;
-  graph.expose_input_port("replace", "replacement", "replacement")?;
-  graph.expose_output_port("replace", "out", "output")?;
-  graph.expose_output_port("replace", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    replace: StringReplaceNode::new("replace".to_string()),
+    graph.configuration => replace.configuration,
+    graph.input => replace.in,
+    graph.pattern => replace.pattern,
+    graph.replacement => replace.replacement,
+    replace.out => graph.output,
+    replace.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("pattern", pattern_rx)?;
@@ -33,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with StringReplaceNode using Graph API");
+  println!("✓ Graph built with StringReplaceNode using graph! macro");
 
   // Send configuration (optional for StringReplaceNode)
   let _ = config_tx

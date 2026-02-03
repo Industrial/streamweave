@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::arithmetic::DivideNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("divide_example".to_string());
-  graph.add_node(
-    "divide".to_string(),
-    Box::new(DivideNode::new("divide".to_string())),
-  )?;
-  graph.expose_input_port("divide", "configuration", "configuration")?;
-  graph.expose_input_port("divide", "in1", "in1")?;
-  graph.expose_input_port("divide", "in2", "in2")?;
-  graph.expose_output_port("divide", "out", "output")?;
-  graph.expose_output_port("divide", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    divide: DivideNode::new("divide".to_string()),
+    graph.configuration => divide.configuration,
+    graph.in1 => divide.in1,
+    graph.in2 => divide.in2,
+    divide.out => graph.output,
+    divide.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("in1", in1_rx)?;
   graph.connect_input_channel("in2", in2_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with DivideNode using Graph API");
+  println!("✓ Graph built with DivideNode using graph! macro");
 
   // Send configuration (optional for DivideNode)
   let _ = config_tx

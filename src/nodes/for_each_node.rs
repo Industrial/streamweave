@@ -54,6 +54,7 @@ pub type ForEachConfig = Arc<dyn ForEachFunction>;
 
 /// Wrapper type that implements ForEachFunction for async closures.
 struct ForEachFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 

@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::string::StringFormatNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("format_example".to_string());
-  graph.add_node(
-    "format".to_string(),
-    Box::new(StringFormatNode::new("format".to_string())),
-  )?;
-  graph.expose_input_port("format", "configuration", "configuration")?;
-  graph.expose_input_port("format", "template", "template")?;
-  graph.expose_input_port("format", "value", "value")?;
-  graph.expose_output_port("format", "out", "output")?;
-  graph.expose_output_port("format", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    format: StringFormatNode::new("format".to_string()),
+    graph.configuration => format.configuration,
+    graph.template => format.template,
+    graph.value => format.value,
+    format.out => graph.output,
+    format.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("template", template_rx)?;
   graph.connect_input_channel("value", value_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with StringFormatNode using Graph API");
+  println!("✓ Graph built with StringFormatNode using graph! macro");
 
   // Send configuration (optional for StringFormatNode)
   let _ = config_tx

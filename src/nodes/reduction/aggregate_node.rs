@@ -113,8 +113,11 @@ where
 /// Enum to tag input ports
 #[allow(dead_code)]
 enum InputPort {
+  /// Configuration port.
   Config,
+  /// Input data port.
   In,
+  /// Aggregator function port.
   Aggregator,
 }
 

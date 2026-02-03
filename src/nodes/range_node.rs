@@ -334,6 +334,7 @@ async fn generate_range(
   )
 }
 
+/// Generates a range of i32 values from start to end with the given step size.
 fn generate_i32_range(
   start: i32,
   end: i32,
@@ -369,6 +370,7 @@ fn generate_i32_range(
   Ok(numbers)
 }
 
+/// Generates a range of i64 values from start to end with the given step size.
 fn generate_i64_range(
   start: i64,
   end: i64,
@@ -404,6 +406,7 @@ fn generate_i64_range(
   Ok(numbers)
 }
 
+/// Generates a range of u32 values from start to end with the given step size.
 fn generate_u32_range(
   start: u32,
   end: u32,
@@ -428,6 +431,7 @@ fn generate_u32_range(
   Ok(numbers)
 }
 
+/// Generates a range of u64 values from start to end with the given step size.
 fn generate_u64_range(
   start: u64,
   end: u64,
@@ -452,6 +456,7 @@ fn generate_u64_range(
   Ok(numbers)
 }
 
+/// Generates a range of f32 values from start to end with the given step size.
 fn generate_f32_range(
   start: f32,
   end: f32,
@@ -491,6 +496,7 @@ fn generate_f32_range(
   Ok(numbers)
 }
 
+/// Generates a range of f64 values from start to end with the given step size.
 fn generate_f64_range(
   start: f64,
   end: f64,

@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::type_ops::IsIntNode;
 use tokio::sync::mpsc;
@@ -12,22 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("is_int_example".to_string());
-  graph.add_node(
-    "is_int".to_string(),
-    Box::new(IsIntNode::new("is_int".to_string())),
-  )?;
-  graph.expose_input_port("is_int", "configuration", "configuration")?;
-  graph.expose_input_port("is_int", "in", "input")?;
-  graph.expose_output_port("is_int", "out", "output")?;
-  graph.expose_output_port("is_int", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    is_int: IsIntNode::new("is_int".to_string()),
+    graph.configuration => is_int.configuration,
+    graph.input => is_int.in,
+    is_int.out => graph.output,
+    is_int.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with IsIntNode using Graph API");
+  println!("✓ Graph built with IsIntNode using graph! macro");
 
   // Send configuration (optional for IsIntNode)
   let _ = config_tx

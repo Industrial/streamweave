@@ -46,6 +46,6 @@ pub mod node;
 pub mod nodes;
 
 #[cfg(test)]
-mod graph_test;
-#[cfg(test)]
 mod graph_macros_test;
+#[cfg(test)]
+mod graph_test;

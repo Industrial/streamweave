@@ -45,9 +45,9 @@
 #[cfg(test)]
 mod edge_test;
 #[cfg(test)]
-mod graph_test;
-#[cfg(test)]
 mod graph_macros_test;
+#[cfg(test)]
+mod graph_test;
 #[cfg(test)]
 mod node_test;
 

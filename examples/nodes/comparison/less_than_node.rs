@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::comparison::LessThanNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("less_than_example".to_string());
-  graph.add_node(
-    "less_than".to_string(),
-    Box::new(LessThanNode::new("less_than".to_string())),
-  )?;
-  graph.expose_input_port("less_than", "configuration", "configuration")?;
-  graph.expose_input_port("less_than", "in1", "in1")?;
-  graph.expose_input_port("less_than", "in2", "in2")?;
-  graph.expose_output_port("less_than", "out", "output")?;
-  graph.expose_output_port("less_than", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    less_than: LessThanNode::new("less_than".to_string()),
+    graph.configuration => less_than.configuration,
+    graph.in1 => less_than.in1,
+    graph.in2 => less_than.in2,
+    less_than.out => graph.output,
+    less_than.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("in1", in1_rx)?;
   graph.connect_input_channel("in2", in2_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with LessThanNode using Graph API");
+  println!("✓ Graph built with LessThanNode using graph! macro");
 
   // Send configuration (optional for LessThanNode)
   let _ = config_tx

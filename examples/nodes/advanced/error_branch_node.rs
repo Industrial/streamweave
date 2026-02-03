@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::error_branch_node::{ErrorBranchConfig, ErrorBranchNode};
 use tokio::sync::mpsc;
@@ -12,22 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (success_tx, mut success_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("error_branch_example".to_string());
-  graph.add_node(
-    "error_branch".to_string(),
-    Box::new(ErrorBranchNode::new("error_branch".to_string())),
-  )?;
-  graph.expose_input_port("error_branch", "configuration", "configuration")?;
-  graph.expose_input_port("error_branch", "in", "input")?;
-  graph.expose_output_port("error_branch", "success", "success")?;
-  graph.expose_output_port("error_branch", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    error_branch: ErrorBranchNode::new("error_branch".to_string()),
+    graph.configuration => error_branch.configuration,
+    graph.input => error_branch.in,
+    error_branch.success => graph.success,
+    error_branch.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("success", success_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ErrorBranchNode using Graph API");
+  println!("✓ Graph built with ErrorBranchNode using graph! macro");
 
   // Configuration is optional for ErrorBranchNode
   let config = Arc::new(ErrorBranchConfig {});

@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::object::object_size_node::ObjectSizeNode;
 use tokio::sync::mpsc;
@@ -13,22 +14,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("object_size_example".to_string());
-  graph.add_node(
-    "object_size".to_string(),
-    Box::new(ObjectSizeNode::new("object_size".to_string())),
-  )?;
-  graph.expose_input_port("object_size", "configuration", "configuration")?;
-  graph.expose_input_port("object_size", "in", "input")?;
-  graph.expose_output_port("object_size", "out", "output")?;
-  graph.expose_output_port("object_size", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    object_size: ObjectSizeNode::new("object_size".to_string()),
+    graph.configuration => object_size.configuration,
+    graph.input => object_size.in,
+    object_size.out => graph.output,
+    object_size.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ObjectSizeNode using Graph API");
+  println!("✓ Graph built with ObjectSizeNode using graph! macro");
 
   // Send configuration (optional for ObjectSizeNode)
   let _ = config_tx

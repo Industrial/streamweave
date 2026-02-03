@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::comparison::GreaterThanNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("greater_than_example".to_string());
-  graph.add_node(
-    "greater_than".to_string(),
-    Box::new(GreaterThanNode::new("greater_than".to_string())),
-  )?;
-  graph.expose_input_port("greater_than", "configuration", "configuration")?;
-  graph.expose_input_port("greater_than", "in1", "in1")?;
-  graph.expose_input_port("greater_than", "in2", "in2")?;
-  graph.expose_output_port("greater_than", "out", "output")?;
-  graph.expose_output_port("greater_than", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    greater_than: GreaterThanNode::new("greater_than".to_string()),
+    graph.configuration => greater_than.configuration,
+    graph.in1 => greater_than.in1,
+    graph.in2 => greater_than.in2,
+    greater_than.out => graph.output,
+    greater_than.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("in1", in1_rx)?;
   graph.connect_input_channel("in2", in2_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with GreaterThanNode using Graph API");
+  println!("✓ Graph built with GreaterThanNode using graph! macro");
 
   // Send configuration (optional for GreaterThanNode)
   let _ = config_tx

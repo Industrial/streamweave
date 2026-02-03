@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::stream::DistinctUntilChangedNode;
 use tokio::sync::mpsc;
@@ -12,24 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("distinct_until_changed_example".to_string());
-  graph.add_node(
-    "distinct_until_changed".to_string(),
-    Box::new(DistinctUntilChangedNode::new(
-      "distinct_until_changed".to_string(),
-    )),
-  )?;
-  graph.expose_input_port("distinct_until_changed", "configuration", "configuration")?;
-  graph.expose_input_port("distinct_until_changed", "in", "input")?;
-  graph.expose_output_port("distinct_until_changed", "out", "output")?;
-  graph.expose_output_port("distinct_until_changed", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    distinct_until_changed: DistinctUntilChangedNode::new("distinct_until_changed".to_string()),
+    graph.configuration => distinct_until_changed.configuration,
+    graph.input => distinct_until_changed.in,
+    distinct_until_changed.out => graph.output,
+    distinct_until_changed.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with DistinctUntilChangedNode using Graph API");
+  println!("✓ Graph built with DistinctUntilChangedNode using graph! macro");
 
   // Send configuration (optional for DistinctUntilChangedNode)
   let _ = config_tx

@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::string::StringEndsWithNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("ends_with_example".to_string());
-  graph.add_node(
-    "ends_with".to_string(),
-    Box::new(StringEndsWithNode::new("ends_with".to_string())),
-  )?;
-  graph.expose_input_port("ends_with", "configuration", "configuration")?;
-  graph.expose_input_port("ends_with", "in", "input")?;
-  graph.expose_input_port("ends_with", "suffix", "suffix")?;
-  graph.expose_output_port("ends_with", "out", "output")?;
-  graph.expose_output_port("ends_with", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    ends_with: StringEndsWithNode::new("ends_with".to_string()),
+    graph.configuration => ends_with.configuration,
+    graph.input => ends_with.in,
+    graph.suffix => ends_with.suffix,
+    ends_with.out => graph.output,
+    ends_with.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("suffix", suffix_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with StringEndsWithNode using Graph API");
+  println!("✓ Graph built with StringEndsWithNode using graph! macro");
 
   // Send configuration (optional for StringEndsWithNode)
   let _ = config_tx

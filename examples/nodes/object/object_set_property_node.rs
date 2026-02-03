@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::object::object_set_property_node::ObjectSetPropertyNode;
 use tokio::sync::mpsc;
@@ -15,18 +16,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("set_example".to_string());
-  graph.add_node(
-    "set".to_string(),
-    Box::new(ObjectSetPropertyNode::new("set".to_string())),
-  )?;
-  graph.expose_input_port("set", "configuration", "configuration")?;
-  graph.expose_input_port("set", "in", "input")?;
-  graph.expose_input_port("set", "key", "key")?;
-  graph.expose_input_port("set", "value", "value")?;
-  graph.expose_output_port("set", "out", "output")?;
-  graph.expose_output_port("set", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    set: ObjectSetPropertyNode::new("set".to_string()),
+    graph.configuration => set.configuration,
+    graph.input => set.in,
+    graph.key => set.key,
+    graph.value => set.value,
+    set.out => graph.output,
+    set.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", in_rx)?;
   graph.connect_input_channel("key", key_rx)?;

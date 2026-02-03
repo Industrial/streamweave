@@ -74,6 +74,7 @@ impl ScanConfigWrapper {
 
 /// Wrapper type that implements ScanFunction for async closures.
 struct ScanFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 
@@ -131,9 +132,13 @@ where
 /// Enum to tag input ports
 #[allow(dead_code)]
 enum InputPort {
+  /// Configuration port.
   Config,
+  /// Input data port.
   In,
+  /// Initial value port.
   Initial,
+  /// Scan function port.
   Function,
 }
 

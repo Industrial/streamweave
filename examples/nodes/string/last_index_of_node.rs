@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::string::StringLastIndexOfNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("last_index_of_example".to_string());
-  graph.add_node(
-    "last_index_of".to_string(),
-    Box::new(StringLastIndexOfNode::new("last_index_of".to_string())),
-  )?;
-  graph.expose_input_port("last_index_of", "configuration", "configuration")?;
-  graph.expose_input_port("last_index_of", "in", "input")?;
-  graph.expose_input_port("last_index_of", "substring", "substring")?;
-  graph.expose_output_port("last_index_of", "out", "output")?;
-  graph.expose_output_port("last_index_of", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    last_index_of: StringLastIndexOfNode::new("last_index_of".to_string()),
+    graph.configuration => last_index_of.configuration,
+    graph.input => last_index_of.in,
+    graph.substring => last_index_of.substring,
+    last_index_of.out => graph.output,
+    last_index_of.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("substring", substring_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with StringLastIndexOfNode using Graph API");
+  println!("✓ Graph built with StringLastIndexOfNode using graph! macro");
 
   // Send configuration (optional for StringLastIndexOfNode)
   let _ = config_tx

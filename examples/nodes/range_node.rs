@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::range_node::{RangeConfig, RangeNode};
 use tokio::sync::mpsc;
@@ -14,18 +15,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("range_example".to_string());
-  graph.add_node(
-    "range".to_string(),
-    Box::new(RangeNode::new("range".to_string())),
-  )?;
-  graph.expose_input_port("range", "configuration", "configuration")?;
-  graph.expose_input_port("range", "start", "start")?;
-  graph.expose_input_port("range", "end", "end")?;
-  graph.expose_input_port("range", "step", "step")?;
-  graph.expose_output_port("range", "out", "output")?;
-  graph.expose_output_port("range", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    range: RangeNode::new("range".to_string()),
+    graph.configuration => range.configuration,
+    graph.start => range.start,
+    graph.end => range.end,
+    graph.step => range.step,
+    range.out => graph.output,
+    range.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("start", start_rx)?;
   graph.connect_input_channel("end", end_rx)?;
@@ -33,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with RangeNode using Graph API");
+  println!("✓ Graph built with RangeNode using graph! macro");
 
   // Configuration is optional for RangeNode
   let config = Arc::new(RangeConfig {});

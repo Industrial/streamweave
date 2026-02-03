@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::array::ArrayLengthNode;
 use tokio::sync::mpsc;
@@ -12,22 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("length_example".to_string());
-  graph.add_node(
-    "length".to_string(),
-    Box::new(ArrayLengthNode::new("length".to_string())),
-  )?;
-  graph.expose_input_port("length", "configuration", "configuration")?;
-  graph.expose_input_port("length", "in", "input")?;
-  graph.expose_output_port("length", "out", "output")?;
-  graph.expose_output_port("length", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    length: ArrayLengthNode::new("length".to_string()),
+    graph.configuration => length.configuration,
+    graph.input => length.in,
+    length.out => graph.output,
+    length.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", in_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ArrayLengthNode using Graph API");
+  println!("✓ Graph built with ArrayLengthNode using graph! macro");
 
   // Send configuration (optional for ArrayLengthNode)
   let _ = config_tx

@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::math::SqrtNode;
 use tokio::sync::mpsc;
@@ -12,22 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("sqrt_example".to_string());
-  graph.add_node(
-    "sqrt".to_string(),
-    Box::new(SqrtNode::new("sqrt".to_string())),
-  )?;
-  graph.expose_input_port("sqrt", "configuration", "configuration")?;
-  graph.expose_input_port("sqrt", "in", "input")?;
-  graph.expose_output_port("sqrt", "out", "output")?;
-  graph.expose_output_port("sqrt", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    sqrt: SqrtNode::new("sqrt".to_string()),
+    graph.configuration => sqrt.configuration,
+    graph.input => sqrt.in,
+    sqrt.out => graph.output,
+    sqrt.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", in_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with SqrtNode using Graph API");
+  println!("✓ Graph built with SqrtNode using graph! macro");
 
   // Send configuration (optional for SqrtNode)
   let _ = config_tx

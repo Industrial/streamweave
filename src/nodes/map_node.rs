@@ -55,6 +55,7 @@ pub type MapConfig = Arc<dyn MapFunction>;
 
 /// Wrapper type that implements MapFunction for async closures.
 struct MapFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 
@@ -115,6 +116,7 @@ where
 pub struct MapNode {
   /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current map function configuration state.
   current_config: Arc<Mutex<Option<Arc<MapConfig>>>>,
 }
 

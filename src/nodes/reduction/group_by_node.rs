@@ -67,6 +67,7 @@ impl GroupByConfigWrapper {
 
 /// Wrapper type that implements GroupByKeyFunction for async closures.
 struct GroupByKeyFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 
@@ -124,8 +125,11 @@ where
 /// Enum to tag input ports
 #[allow(dead_code)]
 enum InputPort {
+  /// Configuration port.
   Config,
+  /// Input data port.
   In,
+  /// Key function port.
   KeyFunction,
 }
 

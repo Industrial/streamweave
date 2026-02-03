@@ -47,6 +47,7 @@ pub trait NodeFunction: Send + Sync {
 /// without needing separate types for each node.
 pub type NodeConfig = Arc<dyn NodeFunction>;
 
+/// Type alias for output receiver channel.
 type OutputReceiver = tokio::sync::mpsc::Receiver<Arc<dyn Any + Send + Sync>>;
 
 /// Helper function to process a configuration-enabled node with merged config and data streams.

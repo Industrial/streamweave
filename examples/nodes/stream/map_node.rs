@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::map_node::{MapConfig, MapNode, map_config};
 use tokio::sync::mpsc;
@@ -21,17 +22,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   });
 
-  // Build the graph directly with connected channels
-  let mut graph = Graph::new("number_squarer".to_string());
-  graph.add_node("map".to_string(), Box::new(MapNode::new("map".to_string())))?;
-  graph.expose_input_port("map", "configuration", "configuration")?;
-  graph.expose_input_port("map", "in", "input")?;
-  graph.expose_output_port("map", "out", "output")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    map: MapNode::new("map".to_string()),
+    graph.configuration => map.configuration,
+    graph.input => map.in,
+    map.out => graph.output
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", output_tx)?;
 
-  println!("✓ Graph built with connected channels");
+  println!("✓ Graph built with graph! macro");
 
   // Send configuration and input data to the channels AFTER building
   let _ = config_tx

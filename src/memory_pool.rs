@@ -74,7 +74,9 @@ impl Default for MemoryPoolConfig {
 /// This pool maintains separate pools for different buffer sizes to optimize
 /// memory usage and reduce allocation overhead.
 pub struct MemoryPool {
+  /// Map of buffer size to available buffers in that size pool.
   pools: Mutex<HashMap<usize, Vec<BytesMut>>>,
+  /// Configuration settings for the memory pool.
   config: MemoryPoolConfig,
 }
 
@@ -193,7 +195,9 @@ pub struct MemoryPoolStats {
 /// Strings are stored in a global registry and reused when the same string
 /// is requested multiple times, eliminating duplicate allocations.
 pub struct StringInterner {
+  /// Map of string values to interned Arc<str> instances.
   strings: Mutex<HashMap<String, Arc<str>>>,
+  /// Configuration settings for the string interner.
   config: MemoryPoolConfig,
 }
 

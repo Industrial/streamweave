@@ -67,7 +67,9 @@ fn get_u64(value: &Arc<dyn Any + Send + Sync>) -> Result<u64, String> {
 /// Enum to tag messages from different input ports for merging.
 #[derive(Debug, PartialEq)]
 enum InputPort {
+  /// Input stream.
   In,
+  /// Delay duration in milliseconds.
   Delay,
 }
 

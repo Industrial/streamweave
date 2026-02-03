@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::aggregation::MaxAggregateNode;
 use tokio::sync::mpsc;
@@ -12,22 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("max_aggregate_example".to_string());
-  graph.add_node(
-    "max".to_string(),
-    Box::new(MaxAggregateNode::new("max".to_string())),
-  )?;
-  graph.expose_input_port("max", "configuration", "configuration")?;
-  graph.expose_input_port("max", "in", "input")?;
-  graph.expose_output_port("max", "out", "output")?;
-  graph.expose_output_port("max", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    max: MaxAggregateNode::new("max".to_string()),
+    graph.configuration => max.configuration,
+    graph.input => max.in,
+    max.out => graph.output,
+    max.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with MaxAggregateNode using Graph API");
+  println!("✓ Graph built with MaxAggregateNode using graph! macro");
 
   // Send configuration (optional for MaxAggregateNode)
   let _ = config_tx

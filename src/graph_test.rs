@@ -530,23 +530,61 @@ async fn test_stop_execution() {
 
 #[test]
 fn test_graph_has_input_ports() {
-  let graph = Graph::new("test".to_string());
-  assert!(graph.has_input_port("configuration"));
-  assert!(graph.has_input_port("input"));
+  let mut graph = Graph::new("test".to_string());
+  // New graphs have no ports by default
+  assert!(!graph.has_input_port("configuration"));
+  assert!(!graph.has_input_port("input"));
   assert!(!graph.has_input_port("nonexistent"));
+
+  // Add a node and expose a port
+  let transform = Box::new(MockTransformNode::new("transform".to_string()));
+  graph.add_node("transform".to_string(), transform).unwrap();
+  graph.expose_input_port("transform", "in", "input").unwrap();
+  assert!(graph.has_input_port("input"));
+  assert!(!graph.has_input_port("configuration"));
 }
 
 #[test]
 fn test_graph_has_output_ports() {
-  let graph = Graph::new("test".to_string());
-  assert!(graph.has_output_port("output"));
-  assert!(graph.has_output_port("error"));
+  let mut graph = Graph::new("test".to_string());
+  // New graphs have no ports by default
+  assert!(!graph.has_output_port("output"));
+  assert!(!graph.has_output_port("error"));
   assert!(!graph.has_output_port("nonexistent"));
+
+  // Add a node and expose a port
+  let producer = Box::new(MockProducerNode::new("producer".to_string(), vec![1]));
+  graph.add_node("producer".to_string(), producer).unwrap();
+  graph
+    .expose_output_port("producer", "out", "output")
+    .unwrap();
+  assert!(graph.has_output_port("output"));
+  assert!(!graph.has_output_port("error"));
 }
 
 #[test]
 fn test_graph_input_port_names() {
-  let graph = Graph::new("test".to_string());
+  let mut graph = Graph::new("test".to_string());
+  // New graphs have no ports by default
+  let ports = graph.input_port_names();
+  assert_eq!(ports.len(), 0);
+
+  // Add a node and expose a port
+  let transform = Box::new(MockTransformNode::new("transform".to_string()));
+  graph.add_node("transform".to_string(), transform).unwrap();
+  graph.expose_input_port("transform", "in", "input").unwrap();
+  let ports = graph.input_port_names();
+  assert_eq!(ports.len(), 1);
+  assert!(ports.contains(&"input".to_string()));
+
+  // Expose another port with a different name
+  let transform2 = Box::new(MockTransformNode::new("transform2".to_string()));
+  graph
+    .add_node("transform2".to_string(), transform2)
+    .unwrap();
+  graph
+    .expose_input_port("transform2", "in", "configuration")
+    .unwrap();
   let ports = graph.input_port_names();
   assert_eq!(ports.len(), 2);
   assert!(ports.contains(&"configuration".to_string()));
@@ -555,7 +593,25 @@ fn test_graph_input_port_names() {
 
 #[test]
 fn test_graph_output_port_names() {
-  let graph = Graph::new("test".to_string());
+  let mut graph = Graph::new("test".to_string());
+  // New graphs have no ports by default
+  let ports = graph.output_port_names();
+  assert_eq!(ports.len(), 0);
+
+  // Add a node and expose a port
+  let producer = Box::new(MockProducerNode::new("producer".to_string(), vec![1]));
+  graph.add_node("producer".to_string(), producer).unwrap();
+  graph
+    .expose_output_port("producer", "out", "output")
+    .unwrap();
+  let ports = graph.output_port_names();
+  assert_eq!(ports.len(), 1);
+  assert!(ports.contains(&"output".to_string()));
+
+  // Expose another port with a different name (using same node's port twice)
+  graph
+    .expose_output_port("producer", "out", "error")
+    .unwrap();
   let ports = graph.output_port_names();
   assert_eq!(ports.len(), 2);
   assert!(ports.contains(&"output".to_string()));
@@ -578,13 +634,6 @@ fn test_expose_input_port() {
 
   // Expose transform's input as graph's input
   assert!(graph.expose_input_port("transform", "in", "input").is_ok());
-
-  // Try invalid external port name
-  assert!(
-    graph
-      .expose_input_port("transform", "in", "invalid")
-      .is_err()
-  );
 
   // Try non-existent internal node
   assert!(
@@ -613,13 +662,6 @@ fn test_expose_output_port() {
     graph
       .expose_output_port("producer", "out", "output")
       .is_ok()
-  );
-
-  // Try invalid external port name
-  assert!(
-    graph
-      .expose_output_port("producer", "out", "invalid")
-      .is_err()
   );
 
   // Try non-existent internal node

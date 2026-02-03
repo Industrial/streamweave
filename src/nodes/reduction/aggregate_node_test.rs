@@ -44,6 +44,7 @@ fn create_input_streams() -> (
 
 /// Simple sum aggregator for testing
 struct SumAggregator {
+  /// Running sum value.
   sum: i32,
 }
 
@@ -183,6 +184,7 @@ async fn test_aggregate_empty_stream() {
 
 /// Max aggregator for testing
 struct MaxAggregator {
+  /// Current maximum value.
   max: Option<i32>,
 }
 
@@ -278,6 +280,7 @@ async fn test_aggregate_max() {
 
 /// Error aggregator for testing error handling
 struct ErrorAggregator {
+  /// Count of processed items.
   count: i32,
 }
 

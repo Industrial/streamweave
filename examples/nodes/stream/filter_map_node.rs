@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::stream::{FilterMapConfigWrapper, FilterMapNode, filter_map_config};
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("filter_map_example".to_string());
-  graph.add_node(
-    "filter_map".to_string(),
-    Box::new(FilterMapNode::new("filter_map".to_string())),
-  )?;
-  graph.expose_input_port("filter_map", "configuration", "configuration")?;
-  graph.expose_input_port("filter_map", "in", "input")?;
-  graph.expose_input_port("filter_map", "function", "function")?;
-  graph.expose_output_port("filter_map", "out", "output")?;
-  graph.expose_output_port("filter_map", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    filter_map: FilterMapNode::new("filter_map".to_string()),
+    graph.configuration => filter_map.configuration,
+    graph.input => filter_map.in,
+    graph.function => filter_map.function,
+    filter_map.out => graph.output,
+    filter_map.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("function", function_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with FilterMapNode using Graph API");
+  println!("✓ Graph built with FilterMapNode using graph! macro");
 
   // Send configuration (optional for FilterMapNode)
   let _ = config_tx

@@ -35,7 +35,9 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// Enum to tag messages from different input ports for merging.
 #[derive(Debug, PartialEq)]
 enum InputPort {
+  /// Input data port.
   In,
+  /// Signal port for continue command.
   Signal,
 }
 

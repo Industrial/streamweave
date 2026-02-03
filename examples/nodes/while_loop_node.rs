@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::while_loop_node::{WhileLoopConfig, WhileLoopNode, while_loop_config};
 use tokio::sync::mpsc;
@@ -23,18 +24,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     1000, // max iterations to prevent infinite loops
   );
 
-  // Build the graph directly with connected channels
-  let mut graph = Graph::new("counter_loop".to_string());
-  graph.add_node(
-    "while_loop".to_string(),
-    Box::new(WhileLoopNode::new("while_loop".to_string())),
-  )?;
-  graph.expose_input_port("while_loop", "configuration", "configuration")?;
-  graph.expose_input_port("while_loop", "in", "input")?;
-  graph.expose_input_port("while_loop", "condition", "condition")?;
-  graph.expose_output_port("while_loop", "out", "out")?;
-  graph.expose_output_port("while_loop", "break", "break")?;
-  graph.expose_output_port("while_loop", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    while_loop: WhileLoopNode::new("while_loop".to_string()),
+    graph.configuration => while_loop.configuration,
+    graph.input => while_loop.in,
+    graph.condition => while_loop.condition,
+    while_loop.out => graph.out,
+    while_loop.break => graph.break,
+    while_loop.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", data_rx)?;
   graph.connect_input_channel("condition", break_rx)?;
@@ -42,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   graph.connect_output_channel("break", break_out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with connected channels");
+  println!("✓ Graph built with graph! macro and connected channels");
 
   // Send configuration and input data to the channels AFTER building
   let _ = config_tx

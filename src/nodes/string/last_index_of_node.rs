@@ -31,7 +31,9 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 /// Enum to tag input ports
 enum InputPort {
+  /// Input string.
   In,
+  /// Substring to find last index of.
   Substring,
 }
 

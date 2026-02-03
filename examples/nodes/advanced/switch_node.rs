@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::advanced::switch_node::{SwitchConfig, SwitchNode, switch_config};
 use tokio::sync::mpsc;
@@ -35,19 +36,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   });
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("switch_example".to_string());
-  graph.add_node(
-    "switch".to_string(),
-    Box::new(SwitchNode::new("switch".to_string(), 2)), // 2 branches: out_0, out_1
-  )?;
-  graph.expose_input_port("switch", "configuration", "configuration")?;
-  graph.expose_input_port("switch", "in", "input")?;
-  graph.expose_input_port("switch", "value", "value")?;
-  graph.expose_output_port("switch", "out_0", "out_0")?;
-  graph.expose_output_port("switch", "out_1", "out_1")?;
-  graph.expose_output_port("switch", "default", "default")?;
-  graph.expose_output_port("switch", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    switch: SwitchNode::new("switch".to_string(), 2), // 2 branches: out_0, out_1
+    graph.configuration => switch.configuration,
+    graph.input => switch.in,
+    graph.value => switch.value,
+    switch.out_0 => graph.out_0,
+    switch.out_1 => graph.out_1,
+    switch.default => graph.default,
+    switch.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("value", value_rx)?;
@@ -56,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   graph.connect_output_channel("default", default_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with SwitchNode using Graph API");
+  println!("✓ Graph built with SwitchNode using graph! macro");
 
   // Send configuration
   let _ = config_tx

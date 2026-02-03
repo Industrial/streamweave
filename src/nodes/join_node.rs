@@ -77,6 +77,7 @@ pub struct JoinConfig {
 
 /// Wrapper type that implements JoinKeyFunction for async closures.
 struct JoinKeyFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 
@@ -96,6 +97,7 @@ where
 
 /// Wrapper type that implements JoinCombineFunction for async closures.
 struct JoinCombineFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 
@@ -169,6 +171,7 @@ where
 pub struct JoinNode {
   /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current join configuration state.
   current_config: Arc<Mutex<Option<Arc<JoinConfig>>>>,
 }
 

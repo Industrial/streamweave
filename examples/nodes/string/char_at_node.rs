@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::string::StringCharAtNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("char_at_example".to_string());
-  graph.add_node(
-    "char_at".to_string(),
-    Box::new(StringCharAtNode::new("char_at".to_string())),
-  )?;
-  graph.expose_input_port("char_at", "configuration", "configuration")?;
-  graph.expose_input_port("char_at", "in", "input")?;
-  graph.expose_input_port("char_at", "index", "index")?;
-  graph.expose_output_port("char_at", "out", "output")?;
-  graph.expose_output_port("char_at", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    char_at: StringCharAtNode::new("char_at".to_string()),
+    graph.configuration => char_at.configuration,
+    graph.input => char_at.in,
+    graph.index => char_at.index,
+    char_at.out => graph.output,
+    char_at.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("index", index_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with StringCharAtNode using Graph API");
+  println!("✓ Graph built with StringCharAtNode using graph! macro");
 
   // Send configuration (optional for StringCharAtNode)
   let _ = config_tx

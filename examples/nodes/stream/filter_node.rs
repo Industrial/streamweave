@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::filter_node::{FilterConfig, FilterNode, filter_config};
 use tokio::sync::mpsc;
@@ -22,16 +23,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   });
 
-  // Build the graph directly with connected channels
-  let mut graph = Graph::new("number_filter".to_string());
-  graph.add_node(
-    "filter".to_string(),
-    Box::new(FilterNode::new("filter".to_string())),
-  )?;
-  graph.expose_input_port("filter", "configuration", "configuration")?;
-  graph.expose_input_port("filter", "in", "input")?;
-  graph.expose_output_port("filter", "out", "output")?;
-  graph.expose_output_port("filter", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    filter: FilterNode::new("filter".to_string()),
+    graph.configuration => filter.configuration,
+    graph.input => filter.in,
+    filter.out => graph.output,
+    filter.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", output_tx)?;

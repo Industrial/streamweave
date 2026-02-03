@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::array::ArraySplitNode;
 use tokio::sync::mpsc;
@@ -13,24 +14,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("split_example".to_string());
-  graph.add_node(
-    "split".to_string(),
-    Box::new(ArraySplitNode::new("split".to_string())),
-  )?;
-  graph.expose_input_port("split", "configuration", "configuration")?;
-  graph.expose_input_port("split", "in", "input")?;
-  graph.expose_input_port("split", "chunk_size", "chunk_size")?;
-  graph.expose_output_port("split", "out", "output")?;
-  graph.expose_output_port("split", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    split: ArraySplitNode::new("split".to_string()),
+    graph.configuration => split.configuration,
+    graph.input => split.in,
+    graph.chunk_size => split.chunk_size,
+    split.out => graph.output,
+    split.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", in_rx)?;
   graph.connect_input_channel("chunk_size", chunk_size_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with ArraySplitNode using Graph API");
+  println!("✓ Graph built with ArraySplitNode using graph! macro");
 
   // Send configuration (optional for ArraySplitNode)
   let _ = config_tx

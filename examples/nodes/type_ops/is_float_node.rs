@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::type_ops::IsFloatNode;
 use tokio::sync::mpsc;
@@ -12,22 +13,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("is_float_example".to_string());
-  graph.add_node(
-    "is_float".to_string(),
-    Box::new(IsFloatNode::new("is_float".to_string())),
-  )?;
-  graph.expose_input_port("is_float", "configuration", "configuration")?;
-  graph.expose_input_port("is_float", "in", "input")?;
-  graph.expose_output_port("is_float", "out", "output")?;
-  graph.expose_output_port("is_float", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    is_float: IsFloatNode::new("is_float".to_string()),
+    graph.configuration => is_float.configuration,
+    graph.input => is_float.in,
+    is_float.out => graph.output,
+    is_float.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with IsFloatNode using Graph API");
+  println!("✓ Graph built with IsFloatNode using graph! macro");
 
   // Send configuration (optional for IsFloatNode)
   let _ = config_tx

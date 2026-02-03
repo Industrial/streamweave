@@ -53,6 +53,7 @@ pub type FilterConfig = Arc<dyn FilterFunction>;
 
 /// Wrapper type that implements FilterFunction for async closures.
 struct FilterFunctionWrapper<F> {
+  /// The async function to wrap.
   function: F,
 }
 

@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::advanced::retry_node::{RetryConfig, RetryNode, retry_config};
 use tokio::sync::mpsc;
@@ -31,24 +32,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   });
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("retry_example".to_string());
-  graph.add_node(
-    "retry".to_string(),
-    Box::new(RetryNode::new("retry".to_string(), 100)), // 100ms base delay
-  )?;
-  graph.expose_input_port("retry", "configuration", "configuration")?;
-  graph.expose_input_port("retry", "in", "input")?;
-  graph.expose_input_port("retry", "max_retries", "max_retries")?;
-  graph.expose_output_port("retry", "out", "output")?;
-  graph.expose_output_port("retry", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    retry: RetryNode::new("retry".to_string(), 100), // 100ms base delay
+    graph.configuration => retry.configuration,
+    graph.input => retry.in,
+    graph.max_retries => retry.max_retries,
+    retry.out => graph.output,
+    retry.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_input_channel("max_retries", max_retries_rx)?;
   graph.connect_output_channel("output", out_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with RetryNode using Graph API");
+  println!("✓ Graph built with RetryNode using graph! macro");
 
   // Send configuration first
   let _ = config_tx

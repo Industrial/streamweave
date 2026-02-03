@@ -2,6 +2,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
+use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::time::TimestampNode;
 use tokio::sync::mpsc;
@@ -14,22 +15,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the Graph API
-  let mut graph = Graph::new("timestamp_example".to_string());
-  graph.add_node(
-    "timestamp".to_string(),
-    Box::new(TimestampNode::new("timestamp".to_string())),
-  )?;
-  graph.expose_input_port("timestamp", "configuration", "configuration")?;
-  graph.expose_input_port("timestamp", "in", "input")?;
-  graph.expose_output_port("timestamp", "out", "output")?;
-  graph.expose_output_port("timestamp", "error", "error")?;
+  // Build the graph using the graph! macro
+  let mut graph: Graph = graph! {
+    timestamp: TimestampNode::new("timestamp".to_string()),
+    graph.configuration => timestamp.configuration,
+    graph.input => timestamp.in,
+    timestamp.out => graph.output,
+    timestamp.error => graph.error
+  };
+
+  // Connect external channels at runtime
   graph.connect_input_channel("configuration", config_rx)?;
   graph.connect_input_channel("input", input_rx)?;
   graph.connect_output_channel("output", output_tx)?;
   graph.connect_output_channel("error", error_tx)?;
 
-  println!("✓ Graph built with TimestampNode using Graph API");
+  println!("✓ Graph built with TimestampNode using graph! macro");
 
   // Send configuration (optional for TimestampNode)
   let _ = config_tx
