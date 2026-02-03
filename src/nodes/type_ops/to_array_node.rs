@@ -126,6 +126,7 @@ fn to_array(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send + Sync>
 /// The node receives any value on the "in" port and outputs
 /// its array representation to the "out" port.
 pub struct ToArrayNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

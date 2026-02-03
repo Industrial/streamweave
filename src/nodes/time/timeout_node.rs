@@ -91,6 +91,7 @@ fn extract_duration(value: &Arc<dyn Any + Send + Sync>) -> Result<Duration, Stri
 /// If the item arrives within the timeout, it is forwarded to "out".
 /// If the timeout expires, an error is sent to "error".
 pub struct TimeoutNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

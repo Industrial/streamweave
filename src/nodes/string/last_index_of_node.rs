@@ -37,6 +37,7 @@ enum InputPort {
 
 /// A node that finds the last index of a substring within a string.
 pub struct StringLastIndexOfNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

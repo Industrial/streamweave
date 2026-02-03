@@ -29,6 +29,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node consumes all items from the "in" port but does not forward any items
 /// to the "out" port. The output stream will be empty.
 pub struct DropNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

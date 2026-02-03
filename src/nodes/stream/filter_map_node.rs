@@ -150,6 +150,7 @@ enum InputPort {
 /// - Filter out the item (return None)
 /// - Cause an error (return Err)
 pub struct FilterMapNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -27,6 +27,7 @@ pub mod group_by_node_test;
 pub mod reduce_node;
 pub mod reduce_node_test;
 pub mod scan_node;
+/// Test module for scan node functionality.
 pub mod scan_node_test;
 
 pub use aggregate_node::{

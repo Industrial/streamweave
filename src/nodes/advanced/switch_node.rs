@@ -123,7 +123,9 @@ enum InputPort {
 /// The node receives configuration that defines switch cases, and routes
 /// each input item to the appropriate output port based on the switch value.
 pub struct SwitchNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current configuration state.
   current_config: Arc<Mutex<Option<SwitchConfig>>>,
   max_branches: usize,
 }

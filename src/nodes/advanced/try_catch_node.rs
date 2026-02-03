@@ -179,6 +179,7 @@ enum InputPort {
 /// If it fails, the catch function is applied to the error, and the result is sent to "out".
 /// If the catch function also fails, the error is sent to "error" port.
 pub struct TryCatchNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
   current_try_config: Arc<Mutex<Option<TryConfig>>>,
   current_catch_config: Arc<Mutex<Option<CatchConfig>>>,

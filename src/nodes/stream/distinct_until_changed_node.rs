@@ -64,6 +64,7 @@ fn values_equal(a: &Arc<dyn Any + Send + Sync>, b: &Arc<dyn Any + Send + Sync>) 
 /// The node tracks the last emitted value and only emits new values
 /// that are different from the last one.
 pub struct DistinctUntilChangedNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

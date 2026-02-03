@@ -45,6 +45,7 @@ fn is_float(v: &Arc<dyn Any + Send + Sync>) -> bool {
 /// The node receives any value on the "in" port and outputs
 /// a boolean (true if float, false otherwise) to the "out" port.
 pub struct IsFloatNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

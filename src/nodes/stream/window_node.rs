@@ -78,6 +78,7 @@ enum InputPort {
 /// The node buffers incoming items until the window size is reached,
 /// then emits the complete window as a vector of items.
 pub struct WindowNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

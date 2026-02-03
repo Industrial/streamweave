@@ -40,6 +40,7 @@ enum InputPort {
 /// The node receives a value on "in" and a base on "base" ports and outputs
 /// the logarithm result to the "out" port as f64.
 pub struct LogNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

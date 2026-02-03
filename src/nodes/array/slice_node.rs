@@ -43,6 +43,7 @@ enum InputPort {
 /// on the "start" and "end" ports, then outputs the extracted slice
 /// to the "out" port.
 pub struct ArraySliceNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

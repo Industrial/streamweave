@@ -26,6 +26,7 @@ use tokio_stream::StreamExt;
 /// The node receives two boolean values on "in1" and "in2" ports and outputs
 /// the result of the XOR operation to the "out" port.
 pub struct XorNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

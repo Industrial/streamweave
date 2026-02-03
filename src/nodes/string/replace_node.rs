@@ -42,6 +42,7 @@ enum InputPort {
 /// and a replacement on the "replacement" port, then outputs the string with all
 /// occurrences of the pattern replaced to the "out" port.
 pub struct StringReplaceNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -40,6 +40,7 @@ enum InputPort {
 /// The node receives two values on "in1" and "in2" ports and outputs
 /// the result of the less than comparison (as a boolean) to the "out" port.
 pub struct LessThanNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

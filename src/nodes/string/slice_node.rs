@@ -43,6 +43,7 @@ enum InputPort {
 /// on the "start" and "end" ports, then outputs the extracted substring
 /// to the "out" port.
 pub struct StringSliceNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

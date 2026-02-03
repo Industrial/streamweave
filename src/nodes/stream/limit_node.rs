@@ -81,6 +81,7 @@ enum InputPort {
 ///   The node forwards items from the "in" port to the "out" port up to the max_size limit,
 ///   then stops forwarding (but continues consuming the stream).
 pub struct LimitNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

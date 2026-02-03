@@ -32,6 +32,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node collects all items from the input stream and emits only
 /// the final item when the stream ends.
 pub struct LastNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

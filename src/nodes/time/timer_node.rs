@@ -87,6 +87,7 @@ fn extract_duration(value: &Arc<dyn Any + Send + Sync>) -> Result<Duration, Stri
 ///   The node generates events (timestamps as i64 milliseconds since epoch)
 ///   at the specified interval.
 pub struct TimerNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

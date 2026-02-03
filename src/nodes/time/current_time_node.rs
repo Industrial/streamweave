@@ -33,6 +33,7 @@ enum InputPort {
 
 /// A source node that outputs the current timestamp.
 pub struct CurrentTimeNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -31,6 +31,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives a numeric value on the "in" port and outputs
 /// e raised to the power of that value to the "out" port as f64.
 pub struct ExpNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

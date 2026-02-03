@@ -93,6 +93,7 @@ fn to_int(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send + Sync>, 
 /// The node receives any value on the "in" port and outputs
 /// its integer representation to the "out" port.
 pub struct ToIntNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -40,6 +40,7 @@ enum InputPort {
 /// The node receives two numeric values on "in1" and "in2" ports and outputs
 /// the result of the addition to the "out" port.
 pub struct AddNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

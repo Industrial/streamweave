@@ -137,6 +137,7 @@ enum InputPort {
 /// - Keys are the extracted key strings
 /// - Values are arrays of items that share the same key
 pub struct GroupByNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

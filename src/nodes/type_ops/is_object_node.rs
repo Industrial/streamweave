@@ -39,6 +39,7 @@ fn is_object(v: &Arc<dyn Any + Send + Sync>) -> bool {
 /// The node receives any value on the "in" port and outputs
 /// a boolean (true if object, false otherwise) to the "out" port.
 pub struct IsObjectNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

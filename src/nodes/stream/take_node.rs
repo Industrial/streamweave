@@ -80,6 +80,7 @@ enum InputPort {
 ///   The node forwards the first N items from the "in" port to the "out" port,
 ///   then stops forwarding (but continues consuming the stream).
 pub struct TakeNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -34,6 +34,7 @@ use tokio_stream::wrappers::ReceiverStream;
 /// The node receives an array value on the "in" port and a transformation function on the "function" port,
 /// then outputs the mapped array to the "out" port.
 pub struct ArrayMapNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -98,6 +98,7 @@ fn to_boolean(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send + Syn
 /// The node receives any value on the "in" port and outputs
 /// its boolean representation to the "out" port.
 pub struct ToBooleanNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

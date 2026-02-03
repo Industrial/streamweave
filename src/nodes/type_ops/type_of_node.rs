@@ -30,6 +30,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives any value on the "in" port and outputs
 /// its type name (as a String) to the "out" port.
 pub struct TypeOfNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -39,6 +39,7 @@ enum InputPort {
 /// The node receives an array value on the "in" port and a search value on the "value" port,
 /// then outputs a boolean result to the "out" port.
 pub struct ArrayContainsNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -35,6 +35,7 @@ enum InputPort {
 
 /// A node that appends a suffix to a string.
 pub struct StringAppendNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

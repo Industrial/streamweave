@@ -32,6 +32,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives a numeric value on the "in" port and outputs
 /// the square root value to the "out" port as f64.
 pub struct SqrtNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

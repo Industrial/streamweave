@@ -142,6 +142,7 @@ enum InputPort {
 /// Each item from the "in" port is combined with the accumulator using the reduction function.
 /// When the stream ends, the final accumulator is sent to the "out" port.
 pub struct ReduceNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

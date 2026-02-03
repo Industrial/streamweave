@@ -35,6 +35,7 @@ type PinnedItemStream =
 /// and zips them together by taking one item from each stream and combining
 /// them into an array. The zipping stops when any stream ends.
 pub struct ZipNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

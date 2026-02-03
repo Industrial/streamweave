@@ -34,6 +34,7 @@ enum InputPort {
 
 /// A node that converts a string to lowercase.
 pub struct StringLowercaseNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

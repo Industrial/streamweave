@@ -41,6 +41,7 @@ enum InputPort {
 /// The node receives an object value on the "in" port and a key on the "key" port,
 /// then outputs the object with the property deleted to the "out" port.
 pub struct ObjectDeletePropertyNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

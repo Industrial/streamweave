@@ -40,6 +40,7 @@ enum InputPort {
 /// The node receives an object value on the "in" port and a key on the "key" port,
 /// then outputs a boolean indicating if the property exists to the "out" port.
 pub struct ObjectHasPropertyNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

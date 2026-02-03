@@ -31,6 +31,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives items on the "in" port and outputs
 /// the count of all items to the "out" port when the stream ends.
 pub struct CountNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

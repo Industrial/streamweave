@@ -39,6 +39,7 @@ enum InputPort {
 /// The node receives a string value on the "in" port and a delimiter on the "delimiter" port,
 /// then outputs an array of strings (Vec<Arc<dyn Any + Send + Sync>>) to the "out" port.
 pub struct StringSplitNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

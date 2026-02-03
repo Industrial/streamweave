@@ -34,6 +34,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives numeric values on the "in" port and outputs
 /// the maximum value to the "out" port when the stream ends.
 pub struct MaxAggregateNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

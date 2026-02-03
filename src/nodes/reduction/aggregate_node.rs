@@ -124,6 +124,7 @@ enum InputPort {
 /// Each item from the "in" port is processed by the aggregator, which maintains its own state.
 /// When the stream ends, the aggregator's finalize method is called to get the result.
 pub struct AggregateNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -37,6 +37,7 @@ enum InputPort {
 
 /// A node that finds the index of a substring within a string.
 pub struct StringIndexOfNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

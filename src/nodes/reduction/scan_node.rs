@@ -145,6 +145,7 @@ enum InputPort {
 /// Each item from the "in" port is combined with the accumulator using the reduction function.
 /// After each combination, the intermediate accumulator is sent to the "out" port.
 pub struct ScanNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

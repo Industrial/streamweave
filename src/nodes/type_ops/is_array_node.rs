@@ -39,6 +39,7 @@ fn is_array(v: &Arc<dyn Any + Send + Sync>) -> bool {
 /// The node receives any value on the "in" port and outputs
 /// a boolean (true if array, false otherwise) to the "out" port.
 pub struct IsArrayNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

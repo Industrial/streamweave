@@ -41,11 +41,15 @@ pub struct RangeConfig {
 /// The node collects start, end, and step values from input ports and generates
 /// a sequence of numbers, emitting each number as a separate output.
 pub struct RangeNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current configuration state.
   current_config: Arc<Mutex<Option<Arc<RangeConfig>>>>,
-  // State to track received values
+  /// State to track received start value.
   start_value: Arc<Mutex<Option<Arc<dyn Any + Send + Sync>>>>,
+  /// State to track received end value.
   end_value: Arc<Mutex<Option<Arc<dyn Any + Send + Sync>>>>,
+  /// State to track received step value.
   step_value: Arc<Mutex<Option<Arc<dyn Any + Send + Sync>>>>,
 }
 

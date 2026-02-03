@@ -106,7 +106,9 @@ where
 /// predicate returns `true` are sent to the "out" port. Items where it returns `false` are
 /// filtered out (dropped). Errors are sent to the "error" port.
 pub struct FilterNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current configuration state.
   current_config: Arc<Mutex<Option<Arc<FilterConfig>>>>,
 }
 

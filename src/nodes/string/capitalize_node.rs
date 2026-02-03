@@ -34,6 +34,7 @@ enum InputPort {
 
 /// A node that capitalizes the first character of a string.
 pub struct StringCapitalizeNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

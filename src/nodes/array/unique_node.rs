@@ -33,6 +33,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives an array value on the "in" port and outputs
 /// the array with duplicates removed to the "out" port.
 pub struct ArrayUniqueNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

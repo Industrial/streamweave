@@ -31,6 +31,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives a numeric value on the "in" port and outputs
 /// its absolute value to the "out" port.
 pub struct AbsNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

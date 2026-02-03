@@ -32,6 +32,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The order is non-deterministic and depends on which stream has items available.
 /// The merge continues until all streams have ended.
 pub struct MergeNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

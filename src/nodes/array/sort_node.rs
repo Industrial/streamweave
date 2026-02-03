@@ -40,6 +40,7 @@ enum InputPort {
 /// The node receives an array value on the "in" port and a sort order on the "order" port,
 /// then outputs the sorted array to the "out" port.
 pub struct ArraySortNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

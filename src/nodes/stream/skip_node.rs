@@ -79,6 +79,7 @@ enum InputPort {
 ///   The node skips the first N items from the "in" port and forwards
 ///   the remaining items to the "out" port.
 pub struct SkipNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

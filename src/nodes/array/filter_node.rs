@@ -35,6 +35,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives an array value on the "in" port and a predicate function configuration
 /// on the "predicate" port, then outputs the filtered array to the "out" port.
 pub struct ArrayFilterNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
   current_predicate: Arc<Mutex<Option<Arc<FilterConfig>>>>,
 }

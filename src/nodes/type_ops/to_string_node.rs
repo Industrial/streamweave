@@ -134,6 +134,7 @@ fn to_string(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send + Sync
 /// The node receives any value on the "in" port and outputs
 /// its string representation to the "out" port.
 pub struct ToStringNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

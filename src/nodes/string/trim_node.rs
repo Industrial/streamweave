@@ -30,6 +30,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives a string value on the "in" port and outputs
 /// the trimmed string to the "out" port.
 pub struct StringTrimNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

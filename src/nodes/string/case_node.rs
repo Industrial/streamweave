@@ -40,6 +40,7 @@ enum InputPort {
 /// The node receives a string value on the "in" port and a case type on the "case_type" port,
 /// then outputs the converted string to the "out" port.
 pub struct StringCaseNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

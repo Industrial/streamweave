@@ -89,6 +89,7 @@ fn to_float(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send + Sync>
 /// The node receives any value on the "in" port and outputs
 /// its float representation to the "out" port.
 pub struct ToFloatNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

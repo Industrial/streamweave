@@ -26,6 +26,7 @@ use tokio_stream::StreamExt;
 /// The node receives two boolean values on "in1" and "in2" ports and outputs
 /// the result of the NAND operation to the "out" port.
 pub struct NandNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

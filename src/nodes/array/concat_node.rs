@@ -39,6 +39,7 @@ enum InputPort {
 /// The node receives two array values on "in1" and "in2" ports and outputs
 /// the concatenated result to the "out" port.
 pub struct ArrayConcatNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -30,6 +30,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives a string value on the "in" port and outputs
 /// the reversed string to the "out" port.
 pub struct StringReverseNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

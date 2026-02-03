@@ -41,7 +41,9 @@ pub struct SyncConfig {
 /// This node provides barrier synchronization, ensuring that processing only proceeds
 /// when all required inputs are available.
 pub struct SyncNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current configuration state.
   current_config: Arc<Mutex<Option<Arc<SyncConfig>>>>,
 }
 

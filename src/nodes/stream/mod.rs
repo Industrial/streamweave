@@ -25,30 +25,39 @@
 
 pub mod buffer_node;
 #[cfg(test)]
+/// Test module for buffer node functionality.
 pub mod buffer_node_test;
 pub mod debounce_node;
 #[cfg(test)]
+/// Test module for debounce node functionality.
 pub mod debounce_node_test;
 pub mod distinct_node;
 #[cfg(test)]
+/// Test module for distinct node functionality.
 pub mod distinct_node_test;
 pub mod distinct_until_changed_node;
 #[cfg(test)]
+/// Test module for distinct until changed node functionality.
 pub mod distinct_until_changed_node_test;
 pub mod drop_node;
 #[cfg(test)]
+/// Test module for drop node functionality.
 pub mod drop_node_test;
 pub mod filter_map_node;
 #[cfg(test)]
+/// Test module for filter map node functionality.
 pub mod filter_map_node_test;
 pub mod first_node;
 #[cfg(test)]
+/// Test module for first node functionality.
 pub mod first_node_test;
 pub mod interleave_node;
 #[cfg(test)]
+/// Test module for interleave node functionality.
 pub mod interleave_node_test;
 pub mod last_node;
 #[cfg(test)]
+/// Test module for last node functionality.
 pub mod last_node_test;
 pub mod limit_node;
 #[cfg(test)]
@@ -67,9 +76,11 @@ pub mod take_node;
 pub mod take_node_test;
 pub mod throttle_node;
 #[cfg(test)]
+/// Test module for throttle node functionality.
 pub mod throttle_node_test;
 pub mod window_node;
 #[cfg(test)]
+/// Test module for window node functionality.
 pub mod window_node_test;
 pub mod zip_node;
 #[cfg(test)]

@@ -118,7 +118,9 @@ where
 /// The node receives configuration that defines how to extract collections from input items,
 /// and emits each item from the collection as a separate output.
 pub struct ForEachNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current configuration state.
   current_config: Arc<Mutex<Option<ForEachConfig>>>,
 }
 

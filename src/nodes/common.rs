@@ -13,7 +13,9 @@ use tokio_stream::StreamExt;
 /// Message type for distinguishing configuration from data in merged streams.
 #[derive(Clone, Copy)]
 pub enum MessageType {
+  /// Configuration message type.
   Config,
+  /// Data message type.
   Data,
 }
 
@@ -45,6 +47,8 @@ pub trait NodeFunction: Send + Sync {
 /// without needing separate types for each node.
 pub type NodeConfig = Arc<dyn NodeFunction>;
 
+type OutputReceiver = tokio::sync::mpsc::Receiver<Arc<dyn Any + Send + Sync>>;
+
 /// Helper function to process a configuration-enabled node with merged config and data streams.
 ///
 /// This function handles the common pattern of:
@@ -56,6 +60,7 @@ pub type NodeConfig = Arc<dyn NodeFunction>;
 ///
 /// * `C` - The configuration type (must be `Send + Sync + Clone`)
 /// * `F` - A closure that processes data items with the current config
+/// * `Fut` - The future type returned by the process_data closure
 ///
 /// # Arguments
 ///
@@ -74,8 +79,6 @@ pub type NodeConfig = Arc<dyn NodeFunction>;
 /// - Data items are moved into the process_data closure (Arc ownership transfer)
 /// - Only Arc references are cloned (atomic refcount increment, ~1-2ns)
 /// - No data copying occurs
-type OutputReceiver = tokio::sync::mpsc::Receiver<Arc<dyn Any + Send + Sync>>;
-
 pub fn process_configurable_node<C, F, Fut>(
   config_stream: InputStream,
   data_stream: InputStream,
@@ -167,8 +170,11 @@ where
 /// This struct stores the node's name and port names, providing default
 /// implementations for the `Node` trait's metadata methods.
 pub struct BaseNode {
+  /// The name of the node.
   pub name: String,
+  /// List of input port names for this node.
   pub input_port_names: Vec<String>,
+  /// List of output port names for this node.
   pub output_port_names: Vec<String>,
 }
 

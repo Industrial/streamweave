@@ -123,6 +123,7 @@ fn parse_time_string(
 /// The node receives time strings on the "in" port and optional format strings on the "format" port,
 /// then outputs timestamps to the "out" port.
 pub struct ParseTimeNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

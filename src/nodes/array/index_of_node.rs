@@ -39,6 +39,7 @@ enum InputPort {
 /// The node receives an array value on the "in" port and a search value on the "value" port,
 /// then outputs the index of the value (or -1 if not found) to the "out" port.
 pub struct ArrayIndexOfNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

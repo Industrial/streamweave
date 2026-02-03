@@ -38,6 +38,7 @@ enum InputPort {
 /// The node receives a string value on the "in" port and a regex pattern on the "pattern" port,
 /// then outputs a boolean result to the "out" port.
 pub struct StringMatchNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -96,6 +96,7 @@ enum InputPort {
 ///   - rate=N: Forward every Nth item
 ///     The node forwards items from the "in" port to the "out" port based on the sampling rate.
 pub struct SampleNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -81,6 +81,7 @@ fn format_timestamp(
 /// The node receives timestamps on the "in" port and optional format strings on the "format" port,
 /// then outputs formatted time strings to the "out" port.
 pub struct FormatTimeNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

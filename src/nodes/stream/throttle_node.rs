@@ -76,6 +76,7 @@ enum InputPort {
 /// The node ensures that items are not emitted more frequently than
 /// the specified throttle period, dropping items that arrive too quickly.
 pub struct ThrottleNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

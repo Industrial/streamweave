@@ -40,6 +40,7 @@ enum InputPort {
 /// The node receives two object values on "in1" and "in2" ports and outputs
 /// the merged object to the "out" port.
 pub struct ObjectMergeNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -31,6 +31,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives an object value on the "in" port and outputs
 /// the number of properties to the "out" port.
 pub struct ObjectSizeNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

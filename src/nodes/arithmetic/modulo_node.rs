@@ -40,6 +40,7 @@ enum InputPort {
 /// The node receives two numeric values on "in1" (dividend) and "in2" (divisor) ports
 /// and outputs the result of the modulo operation to the "out" port.
 pub struct ModuloNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

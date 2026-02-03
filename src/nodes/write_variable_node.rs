@@ -37,7 +37,9 @@ pub type WriteVariableConfig = Arc<Mutex<HashMap<String, Arc<dyn Any + Send + Sy
 /// VariableNode directly. It requires the variable store to be configured via the
 /// configuration port.
 pub struct WriteVariableNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current configuration state.
   current_config: Arc<Mutex<Option<WriteVariableConfig>>>,
 }
 

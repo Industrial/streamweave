@@ -36,7 +36,9 @@ pub type ReadVariableConfig = Arc<Mutex<HashMap<String, Arc<dyn Any + Send + Syn
 /// VariableNode directly. It requires the variable store to be configured via the
 /// configuration port.
 pub struct ReadVariableNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current configuration state.
   current_config: Arc<Mutex<Option<ReadVariableConfig>>>,
 }
 

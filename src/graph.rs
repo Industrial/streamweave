@@ -210,6 +210,13 @@ struct PortMapping {
   port: String,
 }
 
+/// A graph containing nodes and edges.
+///
+/// Graphs represent the structure of a data processing pipeline, with nodes
+/// representing processing components and edges representing data flow between them.
+///
+/// See the module-level documentation for detailed information about graph execution,
+/// nested graphs, lifecycle control, and usage examples.
 pub struct Graph {
   /// The name of the graph.
   name: String,

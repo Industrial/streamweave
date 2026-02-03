@@ -40,6 +40,7 @@ enum InputPort {
 /// The node receives an array value on the "in" port and a delimiter on the "delimiter" port,
 /// then outputs the joined string to the "out" port.
 pub struct ArrayJoinNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

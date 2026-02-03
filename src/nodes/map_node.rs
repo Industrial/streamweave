@@ -113,6 +113,7 @@ where
 /// Each item from the "in" port is transformed according to the current configuration
 /// and sent to the "out" port. Errors are sent to the "error" port.
 pub struct MapNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
   current_config: Arc<Mutex<Option<Arc<MapConfig>>>>,
 }

@@ -43,6 +43,7 @@ fn is_null(v: &Arc<dyn Any + Send + Sync>) -> bool {
 /// The node receives any value on the "in" port and outputs
 /// a boolean (true if null/None, false otherwise) to the "out" port.
 pub struct IsNullNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

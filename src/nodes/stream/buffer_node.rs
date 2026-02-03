@@ -97,6 +97,7 @@ enum InputPort {
 /// The node collects items from the "in" port into buffers of the specified size.
 /// When a buffer is full, it emits the batch to the "out" port.
 pub struct BufferNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

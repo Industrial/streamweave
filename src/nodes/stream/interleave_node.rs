@@ -34,6 +34,7 @@ type PinnedItemStream =
 /// and interleaves them by taking one item from each stream in round-robin order.
 /// When a stream ends, it is skipped and interleaving continues with remaining streams.
 pub struct InterleaveNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

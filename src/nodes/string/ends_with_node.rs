@@ -38,6 +38,7 @@ enum InputPort {
 /// The node receives a string value on the "in" port and a suffix on the "suffix" port,
 /// then outputs a boolean result to the "out" port.
 pub struct StringEndsWithNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -65,6 +65,7 @@ fn add_timestamp(item: Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send 
 ///
 /// The timestamp is represented as i64 milliseconds since Unix epoch.
 pub struct TimestampNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -40,6 +40,7 @@ enum InputPort {
 /// The node receives two numeric values on "base" and "exponent" ports and outputs
 /// the result of the power operation to the "out" port.
 pub struct PowerNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

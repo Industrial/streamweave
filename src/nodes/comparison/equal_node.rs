@@ -42,6 +42,7 @@ enum InputPort {
 /// The node receives two values on "in1" and "in2" ports and outputs
 /// the result of the equality comparison (as a boolean) to the "out" port.
 pub struct EqualNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

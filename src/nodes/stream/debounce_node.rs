@@ -79,6 +79,7 @@ enum InputPort {
 /// The node debounces items from the "in" port, emitting each item only after
 /// the specified delay period has passed without receiving a new item.
 pub struct DebounceNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

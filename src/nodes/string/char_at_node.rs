@@ -38,6 +38,7 @@ enum InputPort {
 
 /// A node that gets the character at a specific index in a string.
 pub struct StringCharAtNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

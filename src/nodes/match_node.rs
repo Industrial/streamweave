@@ -300,8 +300,11 @@ where
 /// The node receives configuration that defines pattern matching logic, and routes
 /// each input item to the appropriate output port based on the match result.
 pub struct MatchNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current configuration state.
   current_config: Arc<Mutex<Option<MatchConfig>>>,
+  /// Maximum number of output branches supported.
   max_branches: usize,
 }
 

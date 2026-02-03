@@ -65,6 +65,7 @@ pub trait WhileLoopConditionFunction: Send + Sync {
 
 /// Wrapper type that implements WhileLoopConditionFunction for async closures.
 struct WhileLoopConditionFunctionWrapper<F> {
+  /// The wrapped async closure function.
   function: F,
 }
 
@@ -123,7 +124,9 @@ where
 /// If the condition is true, it continues looping. If false, it exits and outputs the item.
 /// Supports a break signal to exit early and has a maximum iteration limit to prevent infinite loops.
 pub struct WhileLoopNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current configuration state.
   current_config: Arc<Mutex<Option<Arc<WhileLoopConfig>>>>,
 }
 

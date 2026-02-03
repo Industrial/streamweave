@@ -46,6 +46,7 @@ enum InputPort {
 /// The node receives a string value, target length, padding character, and side
 /// on their respective ports, then outputs the padded string to the "out" port.
 pub struct StringPadNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

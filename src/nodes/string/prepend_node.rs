@@ -35,6 +35,7 @@ enum InputPort {
 
 /// A node that prepends a prefix to a string.
 pub struct StringPrependNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

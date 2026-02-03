@@ -41,6 +41,7 @@ enum InputPort {
 /// The node receives an array value on the "in" port and a chunk size on the "chunk_size" port,
 /// then outputs an array of chunks to the "out" port.
 pub struct ArraySplitNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

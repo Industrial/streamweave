@@ -115,6 +115,7 @@ impl Hash for ArcWrapper {
 /// The node maintains a set of items that have been seen and only emits
 /// items that haven't been encountered before.
 pub struct DistinctNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

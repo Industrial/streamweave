@@ -40,6 +40,7 @@ enum InputPort {
 /// The node receives an object value on the "in" port and a key on the "key" port,
 /// then outputs the property value to the "out" port.
 pub struct ObjectPropertyNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

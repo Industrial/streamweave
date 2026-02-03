@@ -39,6 +39,7 @@ pub struct ErrorBranchConfig {
 /// The node receives items that should be `Result` types and routes them based on
 /// whether they are `Ok` or `Err`.
 pub struct ErrorBranchNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
   current_config: Arc<Mutex<Option<Arc<ErrorBranchConfig>>>>,
 }

@@ -24,6 +24,7 @@ use tokio_stream::StreamExt;
 /// The node receives a boolean value on the "in" port and outputs
 /// the negated result to the "out" port.
 pub struct NotNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

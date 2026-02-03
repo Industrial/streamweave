@@ -98,6 +98,7 @@ enum InputPort {
 ///
 /// Each item from the "in" port is delayed by the duration before being forwarded to "out".
 pub struct DelayNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

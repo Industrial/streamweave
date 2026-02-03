@@ -167,6 +167,7 @@ where
 ///
 /// This node provides SQL-like join functionality, supporting inner, left, right, and outer joins.
 pub struct JoinNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
   current_config: Arc<Mutex<Option<Arc<JoinConfig>>>>,
 }

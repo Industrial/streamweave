@@ -32,6 +32,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives an object value on the "in" port and outputs
 /// an array of [key, value] pairs to the "out" port.
 pub struct ObjectEntriesNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

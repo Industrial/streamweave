@@ -31,6 +31,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 ///
 /// After emitting the first item, all subsequent items are silently ignored.
 pub struct FirstNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

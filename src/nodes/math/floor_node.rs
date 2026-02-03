@@ -30,6 +30,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives a numeric value on the "in" port and outputs
 /// the floored integer value to the "out" port.
 pub struct FloorNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

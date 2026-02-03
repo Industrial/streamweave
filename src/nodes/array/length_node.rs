@@ -30,6 +30,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives an array value on the "in" port and outputs
 /// the array length (usize) to the "out" port.
 pub struct ArrayLengthNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

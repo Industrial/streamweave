@@ -30,6 +30,7 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 /// The node receives a numeric value on the "in" port and outputs
 /// the rounded integer value to the "out" port.
 pub struct RoundNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

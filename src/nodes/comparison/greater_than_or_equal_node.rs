@@ -40,6 +40,7 @@ enum InputPort {
 /// The node receives two values on "in1" and "in2" ports and outputs
 /// the result of the greater than or equal comparison (as a boolean) to the "out" port.
 pub struct GreaterThanOrEqualNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -40,7 +40,9 @@ pub struct VariableConfig {
 /// The node maintains a shared variable store that can be accessed by multiple nodes
 /// in the graph. Variables are stored as type-erased values and must be downcast when retrieved.
 pub struct VariableNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current configuration state.
   current_config: Arc<Mutex<Option<Arc<VariableConfig>>>>,
   /// Thread-safe variable storage
   variables: Arc<Mutex<HashMap<String, Arc<dyn Any + Send + Sync>>>>,

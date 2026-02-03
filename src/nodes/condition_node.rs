@@ -109,6 +109,7 @@ where
 /// predicate returns `true` are sent to the "true" port. Items where it returns `false` are
 /// sent to the "false" port. Errors are sent to the "error" port.
 pub struct ConditionNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
   current_config: Arc<Mutex<Option<Arc<dyn ConditionFunction>>>>,
 }

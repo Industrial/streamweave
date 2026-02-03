@@ -34,6 +34,7 @@ enum InputPort {
 
 /// A node that converts a string to uppercase.
 pub struct StringUppercaseNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

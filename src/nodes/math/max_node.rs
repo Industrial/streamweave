@@ -39,6 +39,7 @@ enum InputPort {
 /// The node receives two numeric values on "in1" and "in2" ports and outputs
 /// the maximum value to the "out" port.
 pub struct MaxNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

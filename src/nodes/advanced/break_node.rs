@@ -45,6 +45,7 @@ enum InputPort {
 /// a signal is received on the "signal" port. Once a signal is received,
 /// it stops forwarding items.
 pub struct BreakNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

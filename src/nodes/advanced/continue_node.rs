@@ -45,6 +45,7 @@ enum InputPort {
 /// is received on the "signal" port, it skips forwarding the next item from the
 /// "in" port (if any).
 pub struct ContinueNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

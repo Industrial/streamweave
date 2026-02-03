@@ -38,6 +38,7 @@ enum InputPort {
 /// The node receives a string value on the "in" port and a substring on the "substring" port,
 /// then outputs a boolean result to the "out" port.
 pub struct StringContainsNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

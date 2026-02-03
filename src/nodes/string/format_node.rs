@@ -36,6 +36,7 @@ enum InputPort {
 
 /// A node that formats strings with placeholders.
 pub struct StringFormatNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

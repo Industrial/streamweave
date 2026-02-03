@@ -89,6 +89,7 @@ fn to_number(v: &Arc<dyn Any + Send + Sync>) -> Result<Arc<dyn Any + Send + Sync
 /// The node receives any value on the "in" port and outputs
 /// its numeric representation (f64) to the "out" port.
 pub struct ToNumberNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

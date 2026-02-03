@@ -151,7 +151,9 @@ enum InputPort {
 /// If the function fails, it retries up to max_retries times with exponential backoff.
 /// Base delay is 100ms, and each retry doubles the delay: 100ms, 200ms, 400ms, etc.
 pub struct RetryNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// Current configuration state.
   current_config: Arc<Mutex<Option<RetryConfig>>>,
   base_delay_ms: u64,
 }

@@ -82,6 +82,7 @@ enum InputPort {
 ///
 /// The node repeats each item from the "in" port N times on the "out" port.
 pub struct RepeatNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

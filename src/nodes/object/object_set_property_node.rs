@@ -43,6 +43,7 @@ enum InputPort {
 /// The node receives an object value on the "in" port, a key on the "key" port,
 /// and a value on the "value" port, then outputs the object with the property set to the "out" port.
 pub struct ObjectSetPropertyNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 

@@ -57,6 +57,7 @@ fn is_int(v: &Arc<dyn Any + Send + Sync>) -> bool {
 /// The node receives any value on the "in" port and outputs
 /// a boolean (true if integer, false otherwise) to the "out" port.
 pub struct IsIntNode {
+  /// Base node functionality.
   pub(crate) base: BaseNode,
 }
 
