@@ -83,15 +83,23 @@ use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::Mutex as StdMutex;
 use std::sync::atomic::{AtomicU8, Ordering};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
+use tokio_stream::StreamExt;
+
+/// Default channel capacity for dataflow edges (backpressure).
+const DATAFLOW_CHANNEL_CAPACITY: usize = 64;
 
 /// Error type for graph execution operations.
 pub type GraphExecutionError = Box<dyn std::error::Error + Send + Sync>;
 
 /// Type alias for execution handles to reduce type complexity
 type ExecutionHandleVec = Arc<Mutex<Vec<JoinHandle<Result<(), GraphExecutionError>>>>>;
+
+/// Type alias for the map of nodes restored after dataflow run (reduces type complexity).
+type NodesRestoredMap = Arc<Mutex<HashMap<String, Box<dyn Node>>>>;
 
 /// A graph containing nodes and edges.
 ///
@@ -144,62 +152,53 @@ type ExecutionHandleVec = Arc<Mutex<Vec<JoinHandle<Result<(), GraphExecutionErro
 /// # Example: Basic Graph
 ///
 /// ```rust,no_run
-/// use streamweave;
+/// use streamweave::graph::Graph;
 /// use streamweave::node::Node;
 /// use streamweave::edge::Edge;
+/// use streamweave::nodes::variable_node::VariableNode;
 ///
-/// // Create a new graph
 /// let mut graph = Graph::new("my_graph".to_string());
-///
-/// // Build graph structure (sync)
-/// graph.add_node("source".to_string(), Box::new(source_node))?;
-/// graph.add_node("sink".to_string(), Box::new(sink_node))?;
+/// graph.add_node("source".to_string(), Box::new(VariableNode::new("source".to_string()))).unwrap();
+/// graph.add_node("sink".to_string(), Box::new(VariableNode::new("sink".to_string()))).unwrap();
 /// graph.add_edge(Edge {
 ///     source_node: "source".to_string(),
 ///     source_port: "out".to_string(),
 ///     target_node: "sink".to_string(),
-///     target_port: "in".to_string(),
-/// })?;
-///
-/// // Execute graph (async)
-/// graph.execute().await?;
-/// graph.wait_for_completion().await?;
+///     target_port: "value".to_string(),
+/// }).unwrap();
+/// // Then: graph.execute().await?; graph.wait_for_completion().await?;
 /// ```
 ///
 /// # Example: Nested Graph (Subgraph)
 ///
 /// ```rust,no_run
-/// use streamweave;
+/// use streamweave::graph::Graph;
 /// use streamweave::node::Node;
 /// use streamweave::edge::Edge;
+/// use streamweave::nodes::variable_node::VariableNode;
 ///
-/// // Create a subgraph
 /// let mut subgraph = Graph::new("subgraph".to_string());
-/// subgraph.add_node("internal_source".to_string(), Box::new(source_node))?;
-/// subgraph.add_node("internal_transform".to_string(), Box::new(transform_node))?;
+/// subgraph.add_node("internal_source".to_string(), Box::new(VariableNode::new("internal_source".to_string()))).unwrap();
+/// subgraph.add_node("internal_transform".to_string(), Box::new(VariableNode::new("internal_transform".to_string()))).unwrap();
 /// subgraph.add_edge(Edge {
 ///     source_node: "internal_source".to_string(),
 ///     source_port: "out".to_string(),
 ///     target_node: "internal_transform".to_string(),
-///     target_port: "in".to_string(),
-/// })?;
+///     target_port: "value".to_string(),
+/// }).unwrap();
 ///
-/// // Expose internal ports as external ports
-/// subgraph.expose_input_port("internal_source", "in", "input")?;
-/// subgraph.expose_output_port("internal_transform", "out", "output")?;
-///
-/// // Use subgraph as a node in parent graph
+/// subgraph.expose_input_port("internal_source", "value", "input").unwrap();
+/// subgraph.expose_output_port("internal_transform", "out", "output").unwrap();
 /// let mut parent = Graph::new("parent".to_string());
+/// parent.add_node("source".to_string(), Box::new(VariableNode::new("source".to_string()))).unwrap();
 /// let subgraph_node: Box<dyn Node> = Box::new(subgraph);
-/// parent.add_node("subgraph".to_string(), subgraph_node)?;
-///
-/// // Connect to subgraph's external ports
+/// parent.add_node("subgraph".to_string(), subgraph_node).unwrap();
 /// parent.add_edge(Edge {
 ///     source_node: "source".to_string(),
 ///     source_port: "out".to_string(),
 ///     target_node: "subgraph".to_string(),
 ///     target_port: "input".to_string(),
-/// })?;
+/// }).unwrap();
 /// ```
 /// Port mapping from external port name to internal (node, port).
 #[derive(Clone, Debug)]
@@ -220,8 +219,8 @@ struct PortMapping {
 pub struct Graph {
   /// The name of the graph.
   name: String,
-  /// Map of node names to node instances.
-  nodes: HashMap<String, Box<dyn Node>>,
+  /// Map of node names to node instances. Wrapped for interior mutability so execute_internal can take nodes with &self.
+  nodes: Arc<StdMutex<HashMap<String, Box<dyn Node>>>>,
   /// List of edges connecting nodes.
   edges: Vec<Edge>,
   /// Execution handles for spawned node tasks (used for wait_for_completion)
@@ -249,6 +248,8 @@ pub struct Graph {
   input_port_names: Vec<String>,
   /// Cached output port names for Node trait
   output_port_names: Vec<String>,
+  /// After dataflow execution, nodes are returned here so they can be restored in wait_for_completion.
+  nodes_restored_after_run: Option<NodesRestoredMap>,
 }
 
 impl Graph {
@@ -265,14 +266,14 @@ impl Graph {
   /// # Example
   ///
   /// ```rust
-  /// use streamweave;
+  /// use streamweave::graph::Graph;
   ///
   /// let graph = Graph::new("my_graph".to_string());
   /// ```
   pub fn new(name: String) -> Self {
     Self {
       name,
-      nodes: HashMap::new(),
+      nodes: Arc::new(StdMutex::new(HashMap::new())),
       edges: Vec::new(),
       execution_handles: Arc::new(Mutex::new(Vec::new())),
       stop_signal: Arc::new(tokio::sync::Notify::new()),
@@ -284,6 +285,7 @@ impl Graph {
       connected_output_channels: HashMap::new(),
       input_port_names: Vec::new(),
       output_port_names: Vec::new(),
+      nodes_restored_after_run: None,
     }
   }
 
@@ -307,8 +309,11 @@ impl Graph {
   /// # Example
   ///
   /// ```rust,no_run
-  /// graph.add_node("source".to_string(), Box::new(source_node))?;
-  /// graph.expose_input_port("source", "in", "input")?;
+  /// use streamweave::graph::Graph;
+  /// use streamweave::nodes::variable_node::VariableNode;
+  /// let mut graph = Graph::new("g".to_string());
+  /// graph.add_node("source".to_string(), Box::new(VariableNode::new("source".to_string()))).unwrap();
+  /// graph.expose_input_port("source", "value", "input").unwrap();
   /// ```
   pub fn expose_input_port(
     &mut self,
@@ -317,8 +322,8 @@ impl Graph {
     external_name: &str,
   ) -> Result<(), String> {
     // Validate internal node exists
-    let node = self
-      .nodes
+    let guard = self.nodes.lock().unwrap();
+    let node = guard
       .get(internal_node)
       .ok_or_else(|| format!("Internal node '{}' does not exist", internal_node))?;
 
@@ -367,8 +372,11 @@ impl Graph {
   /// # Example
   ///
   /// ```rust,no_run
-  /// graph.add_node("sink".to_string(), Box::new(sink_node))?;
-  /// graph.expose_output_port("sink", "out", "output")?;
+  /// use streamweave::graph::Graph;
+  /// use streamweave::nodes::variable_node::VariableNode;
+  /// let mut graph = Graph::new("g".to_string());
+  /// graph.add_node("sink".to_string(), Box::new(VariableNode::new("sink".to_string()))).unwrap();
+  /// graph.expose_output_port("sink", "out", "output").unwrap();
   /// ```
   pub fn expose_output_port(
     &mut self,
@@ -377,8 +385,8 @@ impl Graph {
     external_name: &str,
   ) -> Result<(), String> {
     // Validate internal node exists
-    let node = self
-      .nodes
+    let guard = self.nodes.lock().unwrap();
+    let node = guard
       .get(internal_node)
       .ok_or_else(|| format!("Internal node '{}' does not exist", internal_node))?;
 
@@ -422,11 +430,16 @@ impl Graph {
   ///
   /// # Example
   ///
-  /// ```rust
+  /// ```rust,no_run
+  /// use streamweave::graph::Graph;
+  /// use streamweave::nodes::variable_node::VariableNode;
   /// use tokio::sync::mpsc;
-  ///
+  /// use std::sync::Arc;
+  /// let mut graph = Graph::new("g".to_string());
+  /// graph.add_node("n".to_string(), Box::new(VariableNode::new("n".to_string()))).unwrap();
+  /// graph.expose_input_port("n", "value", "configuration").unwrap();
   /// let (tx, rx) = mpsc::channel(10);
-  /// graph.connect_input_channel("configuration", rx)?;
+  /// graph.connect_input_channel("configuration", rx).unwrap();
   /// ```
   pub fn connect_input_channel(
     &mut self,
@@ -460,11 +473,16 @@ impl Graph {
   ///
   /// # Example
   ///
-  /// ```rust
+  /// ```rust,no_run
+  /// use streamweave::graph::Graph;
+  /// use streamweave::nodes::variable_node::VariableNode;
   /// use tokio::sync::mpsc;
-  ///
+  /// use std::sync::Arc;
+  /// let mut graph = Graph::new("g".to_string());
+  /// graph.add_node("n".to_string(), Box::new(VariableNode::new("n".to_string()))).unwrap();
+  /// graph.expose_output_port("n", "out", "output").unwrap();
   /// let (tx, rx) = mpsc::channel(10);
-  /// graph.connect_output_channel("output", tx)?;
+  /// graph.connect_output_channel("output", tx).unwrap();
   /// ```
   pub fn connect_output_channel(
     &mut self,
@@ -501,16 +519,16 @@ impl Graph {
     self.name = name.to_string();
   }
 
-  /// Returns all nodes in the graph.
+  /// Returns a guard over the nodes map. Use `.values()` to iterate node references.
   ///
   /// # Returns
   ///
-  /// A vector of references to boxed nodes in the graph.
-  pub fn get_nodes(&self) -> Vec<&dyn Node> {
-    self.nodes.values().map(|node| node.as_ref()).collect()
+  /// A mutex guard that derefs to the nodes `HashMap`.
+  pub fn get_nodes(&self) -> std::sync::MutexGuard<'_, HashMap<String, Box<dyn Node>>> {
+    self.nodes.lock().unwrap()
   }
 
-  /// Gets a node by name.
+  /// Returns a guard over the nodes map if the given node exists. Use `.get(name)` to get the node.
   ///
   /// # Arguments
   ///
@@ -518,9 +536,17 @@ impl Graph {
   ///
   /// # Returns
   ///
-  /// `Some(&dyn Node)` if a node with the given name exists, `None` otherwise.
-  pub fn find_node_by_name(&self, name: &str) -> Option<&dyn Node> {
-    self.nodes.get(name).map(|node| node.as_ref())
+  /// `Some(guard)` if the node exists; the guard derefs to the nodes `HashMap`.
+  pub fn find_node_by_name(
+    &self,
+    name: &str,
+  ) -> Option<std::sync::MutexGuard<'_, HashMap<String, Box<dyn Node>>>> {
+    let guard = self.nodes.lock().unwrap();
+    if guard.contains_key(name) {
+      Some(guard)
+    } else {
+      None
+    }
   }
 
   /// Returns the number of nodes in the graph.
@@ -529,7 +555,7 @@ impl Graph {
   ///
   /// The number of nodes in the graph.
   pub fn node_count(&self) -> usize {
-    self.nodes.len()
+    self.nodes.lock().unwrap().len()
   }
 
   /// Returns the number of edges in the graph.
@@ -551,7 +577,7 @@ impl Graph {
   ///
   /// `true` if a node with the given name exists, `false` otherwise.
   pub fn has_node(&self, name: &str) -> bool {
-    self.nodes.contains_key(name)
+    self.nodes.lock().unwrap().contains_key(name)
   }
 
   /// Checks if an edge exists between two nodes and ports.
@@ -587,10 +613,11 @@ impl Graph {
   ///
   /// Returns an error string if a node with the given name already exists in the graph.
   pub fn add_node(&mut self, name: String, node: Box<dyn Node>) -> Result<(), String> {
-    if self.nodes.contains_key(&name) {
+    let mut g = self.nodes.lock().unwrap();
+    if g.contains_key(&name) {
       return Err(format!("Node with name '{}' already exists", name));
     }
-    self.nodes.insert(name, node);
+    g.insert(name, node);
     Ok(())
   }
 
@@ -610,7 +637,8 @@ impl Graph {
   /// Returns an error string if the node doesn't exist or cannot be removed
   /// (e.g., it has connected edges).
   pub fn remove_node(&mut self, name: &str) -> Result<(), String> {
-    if !self.nodes.contains_key(name) {
+    let mut g = self.nodes.lock().unwrap();
+    if !g.contains_key(name) {
       return Err(format!("Node with name '{}' does not exist", name));
     }
 
@@ -626,7 +654,7 @@ impl Graph {
       ));
     }
 
-    self.nodes.remove(name);
+    g.remove(name);
     Ok(())
   }
 
@@ -684,8 +712,9 @@ impl Graph {
   /// - The source or target port doesn't exist on the respective node
   /// - The edge would create a duplicate connection
   pub fn add_edge(&mut self, edge: Edge) -> Result<(), String> {
+    let g = self.nodes.lock().unwrap();
     // Validate source node exists
-    if !self.nodes.contains_key(edge.source_node()) {
+    if !g.contains_key(edge.source_node()) {
       return Err(format!(
         "Source node '{}' does not exist",
         edge.source_node()
@@ -693,7 +722,7 @@ impl Graph {
     }
 
     // Validate target node exists
-    if !self.nodes.contains_key(edge.target_node()) {
+    if !g.contains_key(edge.target_node()) {
       return Err(format!(
         "Target node '{}' does not exist",
         edge.target_node()
@@ -701,7 +730,7 @@ impl Graph {
     }
 
     // Validate ports exist
-    let source_node = self.nodes.get(edge.source_node()).unwrap();
+    let source_node = g.get(edge.source_node()).unwrap();
     if !source_node.has_output_port(edge.source_port()) {
       return Err(format!(
         "Source node '{}' does not have output port '{}'",
@@ -710,7 +739,7 @@ impl Graph {
       ));
     }
 
-    let target_node = self.nodes.get(edge.target_node()).unwrap();
+    let target_node = g.get(edge.target_node()).unwrap();
     if !target_node.has_input_port(edge.target_port()) {
       return Err(format!(
         "Target node '{}' does not have input port '{}'",
@@ -718,6 +747,7 @@ impl Graph {
         edge.target_port()
       ));
     }
+    drop(g);
 
     // Check for duplicates
     if self
@@ -804,25 +834,23 @@ impl Graph {
   /// # Example
   ///
   /// ```rust,no_run
+  /// use streamweave::graph::Graph;
+  /// use streamweave::nodes::variable_node::VariableNode;
   /// use tokio::sync::mpsc;
-  /// use tokio_stream::wrappers::ReceiverStream;
-  ///
-  /// // Build graph structure
-  /// graph.add_node("map".to_string(), Box::new(map_node))?;
-  /// graph.expose_input_port("map", "configuration", "configuration")?;
-  /// graph.expose_output_port("map", "out", "output")?;
-  ///
-  /// // Connect external I/O
-  /// let (config_tx, config_rx) = mpsc::channel(1);
-  /// let (output_tx, output_rx) = mpsc::channel(10);
-  /// graph.connect_external_input("configuration", Box::pin(ReceiverStream::new(config_rx)))?;
-  /// graph.connect_external_output("output", output_tx)?;
-  ///
-  /// // Start execution
-  /// graph.execute().await?;
-  ///
-  /// // Wait for completion
-  /// graph.wait_for_completion().await?;
+  /// #[tokio::main]
+  /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+  ///   let mut graph = Graph::new("g".to_string());
+  ///   graph.add_node("map".to_string(), Box::new(VariableNode::new("map".to_string())))?;
+  ///   graph.expose_input_port("map", "value", "configuration")?;
+  ///   graph.expose_output_port("map", "out", "output")?;
+  ///   let (config_tx, config_rx) = mpsc::channel(1);
+  ///   let (output_tx, _output_rx) = mpsc::channel(10);
+  ///   graph.connect_input_channel("configuration", config_rx)?;
+  ///   graph.connect_output_channel("output", output_tx)?;
+  ///   graph.execute().await.unwrap();
+  ///   graph.wait_for_completion().await.unwrap();
+  ///   Ok(())
+  /// }
   /// ```
   pub async fn execute(&mut self) -> Result<(), GraphExecutionError> {
     // Create input streams from connected channels
@@ -838,198 +866,190 @@ impl Graph {
     // Use connected output channels
     let external_outputs = &self.connected_output_channels;
 
-    self
-      .execute_with_external_io(Some(external_inputs), Some(external_outputs))
-      .await
+    // Dataflow model: take nodes out so each can run in its own task; restore in wait_for_completion
+    let nodes = {
+      let mut g = self.nodes.lock().unwrap();
+      std::mem::take(&mut *g)
+    };
+    let (handles, nodes_restored) = self
+      .run_dataflow(nodes, Some(external_inputs), Some(external_outputs))
+      .await?;
+    self.execution_handles.lock().await.clear();
+    self.execution_handles.lock().await.extend(handles);
+    self.nodes_restored_after_run = Some(nodes_restored);
+    Ok(())
   }
 
-  /// Execute the graph with optional external I/O connections.
-  ///
-  /// # Arguments
-  ///
-  /// * `external_inputs` - Optional map of external port names to input streams (consumed)
-  /// * `external_outputs` - Optional map of external port names to output senders
-  ///
-  /// # Returns
-  ///
-  /// `Ok(())` if execution was started successfully.
-  pub async fn execute_with_external_io(
+  /// Dataflow execution: one channel per edge, one task per node. Supports cycles.
+  /// Returns (handles, nodes_restored) so callers can await and restore nodes.
+  async fn run_dataflow(
     &self,
+    mut nodes: HashMap<String, Box<dyn Node>>,
     external_inputs: Option<HashMap<String, crate::node::InputStream>>,
     external_outputs: Option<
       &HashMap<String, tokio::sync::mpsc::Sender<Arc<dyn Any + Send + Sync>>>,
     >,
-  ) -> Result<(), GraphExecutionError> {
-    // Clear any previous execution handles
-    self.execution_handles.lock().await.clear();
+  ) -> Result<
+    (
+      Vec<JoinHandle<Result<(), GraphExecutionError>>>,
+      NodesRestoredMap,
+    ),
+    GraphExecutionError,
+  > {
+    let edges = self.get_edges();
+    type Payload = Arc<dyn Any + Send + Sync>;
 
-    // Get all nodes and edges
-    let nodes: Vec<&dyn Node> = self.get_nodes();
-    let edges: Vec<&Edge> = self.get_edges();
+    // One channel per edge: (target_node, target_port) -> receiver
+    let mut input_rx: HashMap<(String, String), tokio::sync::mpsc::Receiver<Payload>> =
+      HashMap::new();
+    // (source_node, source_port) -> list of senders (one per edge; plus external if exposed)
+    let mut output_txs: HashMap<(String, String), Vec<tokio::sync::mpsc::Sender<Payload>>> =
+      HashMap::new();
 
-    // Perform topological sort to determine execution order
-    let execution_order = topological_sort(&nodes, &edges)?;
+    for edge in &edges {
+      let (tx, rx) = tokio::sync::mpsc::channel(DATAFLOW_CHANNEL_CAPACITY);
+      input_rx.insert(
+        (
+          edge.target_node().to_string(),
+          edge.target_port().to_string(),
+        ),
+        rx,
+      );
+      output_txs
+        .entry((
+          edge.source_node().to_string(),
+          edge.source_port().to_string(),
+        ))
+        .or_default()
+        .push(tx);
+    }
 
-    // Build a map of output streams for each node and port
-    // Key: (node_name, port_name) -> OutputStream
-    let mut output_streams: HashMap<(String, String), crate::node::OutputStream> = HashMap::new();
+    let nodes_restored = Arc::new(Mutex::new(HashMap::new()));
+    let mut all_handles = Vec::new();
 
-    // Route external input streams to internal nodes
+    // Route external input streams into channels and give receiver to the target port
     if let Some(mut external_inputs) = external_inputs {
-      for (external_port, external_stream) in external_inputs.drain() {
+      for (external_port, stream) in external_inputs.drain() {
         if let Some(mapping) = self.input_port_mapping.get(&external_port) {
-          output_streams.insert(
-            (mapping.node.clone(), mapping.port.clone()),
-            external_stream,
-          );
+          let (tx, rx) = tokio::sync::mpsc::channel(DATAFLOW_CHANNEL_CAPACITY);
+          input_rx.insert((mapping.node.clone(), mapping.port.clone()), rx);
+          let stop_signal = Arc::clone(&self.stop_signal);
+          let handle = tokio::spawn(async move {
+            let mut stream = stream;
+            loop {
+              tokio::select! {
+                _ = stop_signal.notified() => break,
+                item = stream.next() => {
+                  match item {
+                    Some(item) => {
+                      if tx.send(item).await.is_err() {
+                        break;
+                      }
+                    }
+                    None => break,
+                  }
+                }
+              }
+            }
+            drop(tx);
+            Ok(()) as Result<(), GraphExecutionError>
+          });
+          all_handles.push(handle);
         }
       }
     }
 
-    // For each node in execution order, collect inputs and execute
-    for node_name in execution_order {
-      let node = self
-        .nodes
-        .get(&node_name)
-        .ok_or_else(|| format!("Node '{}' not found", node_name))?;
+    let stop_signal = Arc::clone(&self.stop_signal);
+    let output_port_mapping = self.output_port_mapping.clone();
 
-      // Collect input streams from upstream nodes
-      let mut input_streams: InputStreams = HashMap::new();
-
-      // Find all edges that target this node
-      for edge in &edges {
-        if edge.target_node() == node_name {
-          let source_node_name = edge.source_node();
-          let source_port = edge.source_port();
-          let target_port = edge.target_port();
-
-          // Get the output stream from the source node
-          let stream_key = (source_node_name.to_string(), source_port.to_string());
-          if let Some(source_stream) = output_streams.remove(&stream_key) {
-            // Move the stream to this node's input
-            input_streams.insert(target_port.to_string(), source_stream);
-          } else {
-            return Err(
-              format!(
-                "Missing output stream from node '{}' port '{}'",
-                source_node_name, source_port
-              )
-              .into(),
-            );
-          }
-        }
-      }
-
-      // Also check for directly routed external inputs to this node
-      let node_stream_keys: Vec<_> = output_streams
+    for (node_name, node) in nodes.drain() {
+      let node_input_keys: Vec<(String, String)> = input_rx
         .keys()
         .filter(|(n, _)| n == &node_name)
         .cloned()
         .collect();
-
-      for stream_key in node_stream_keys {
-        if let Some(stream) = output_streams.remove(&stream_key) {
-          let (_, port) = stream_key;
-          input_streams.insert(port, stream);
+      let mut input_streams: InputStreams = HashMap::new();
+      for (_, port) in node_input_keys {
+        if let Some(rx) = input_rx.remove(&(node_name.clone(), port.clone())) {
+          let stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+          input_streams.insert(port, Box::pin(stream) as crate::node::InputStream);
         }
       }
+      let output_txs_for_node: HashMap<String, Vec<tokio::sync::mpsc::Sender<Payload>>> =
+        output_txs
+          .iter()
+          .filter(|((n, _), _)| n == &node_name)
+          .map(|(k, v)| (k.1.clone(), v.clone()))
+          .collect();
+      let nodes_restored = Arc::clone(&nodes_restored);
+      let stop_signal = Arc::clone(&stop_signal);
+      let output_port_mapping = output_port_mapping.clone();
+      let external_outputs = external_outputs.cloned();
 
-      // Execute the node
-      let node_outputs = node.execute(input_streams).await?;
+      let handle = tokio::spawn(async move {
+        let node_outputs = match node.execute(input_streams).await {
+          Ok(o) => o,
+          Err(e) => {
+            let _ = nodes_restored.lock().await.insert(node_name.clone(), node);
+            return Err(format!("Node '{}' execution error: {}", node_name, e).into());
+          }
+        };
 
-      // Store the output streams for downstream nodes and route exposed outputs
-      for (port_name, stream) in node_outputs {
-        let stream_key = (node_name.clone(), port_name.clone());
+        nodes_restored.lock().await.insert(node_name.clone(), node);
 
-        // Check if this is an exposed output port
-        let is_exposed_output = self
-          .output_port_mapping
-          .values()
-          .any(|mapping| mapping.node == node_name && mapping.port == port_name);
-
-        if is_exposed_output {
-          // Find the external port name for this internal port
-          if let Some((external_port, _)) = self
-            .output_port_mapping
-            .iter()
-            .find(|(_, mapping)| mapping.node == node_name && mapping.port == port_name)
+        let mut forwarder_handles = Vec::new();
+        for (port_name, stream) in node_outputs {
+          let mut senders = output_txs_for_node
+            .get(&port_name)
+            .cloned()
+            .unwrap_or_default();
+          let is_exposed = output_port_mapping
+            .values()
+            .any(|mapping| mapping.node == node_name && mapping.port == port_name);
+          if is_exposed
+            && let Some(ref outputs) = external_outputs
+            && let Some((external_port, _)) = output_port_mapping
+              .iter()
+              .find(|(_, m)| m.node == node_name && m.port == port_name)
+            && let Some(tx) = outputs.get(external_port)
           {
-            if let Some(external_sender) =
-              external_outputs.and_then(|outputs| outputs.get(external_port))
-            {
-              // Route the stream to the external sender
-              let sender = external_sender.clone();
-              let stream_for_task = stream;
-              let stop_signal = Arc::clone(&self.stop_signal);
+            senders.push(tx.clone());
+          }
 
-              let handle = tokio::spawn(async move {
-                use tokio_stream::StreamExt;
-                let mut stream = stream_for_task;
-                loop {
-                  tokio::select! {
-                    _ = stop_signal.notified() => {
-                      return Ok(());
-                    }
-                    result = stream.next() => {
-                      match result {
-                        Some(item) => {
-                          if sender.send(item).await.is_err() {
-                            // External receiver was dropped, stop sending
-                            return Ok(());
-                          }
+          let stop_signal = Arc::clone(&stop_signal);
+          let handle = tokio::spawn(async move {
+            let mut stream = stream;
+            loop {
+              tokio::select! {
+                _ = stop_signal.notified() => break,
+                item = stream.next() => {
+                  match item {
+                    Some(item) => {
+                      for tx in &senders {
+                        if tx.send(item.clone()).await.is_err() {
+                          return Ok(());
                         }
-                        None => break, // Stream ended
                       }
                     }
+                    None => break,
                   }
                 }
-                Ok(())
-              });
-              self.execution_handles.lock().await.push(handle);
-            } else {
-              // No external sender connected, just store the stream normally
-              output_streams.insert(stream_key, stream);
-            }
-          } else {
-            // Should not happen, but store normally if mapping not found
-            output_streams.insert(stream_key, stream);
-          }
-        } else {
-          // Not an exposed output, store normally for internal routing
-          output_streams.insert(stream_key, stream);
-        }
-      }
-
-      // For sink nodes (no outputs), we still need to drive their execution
-      // The node's execute() method should handle consuming the input streams
-    }
-
-    // Spawn tasks to drive all remaining output streams to completion
-    // This ensures streams are consumed even if they're not connected to anything
-    let handles = Arc::clone(&self.execution_handles);
-
-    for (_stream_key, mut stream) in output_streams {
-      let stop_signal = Arc::clone(&self.stop_signal);
-      let handle = tokio::spawn(async move {
-        use tokio_stream::StreamExt;
-        loop {
-          tokio::select! {
-            _ = stop_signal.notified() => {
-              return Ok(());
-            }
-            result = stream.next() => {
-              if result.is_none() {
-                break;
               }
             }
-          }
+            Ok(()) as Result<(), GraphExecutionError>
+          });
+          forwarder_handles.push(handle);
+        }
+
+        for h in forwarder_handles {
+          let _ = h.await;
         }
         Ok(())
       });
-      handles.lock().await.push(handle);
+      all_handles.push(handle);
     }
 
-    Ok(())
+    Ok((all_handles, nodes_restored))
   }
 
   /// Starts graph execution.
@@ -1109,187 +1129,49 @@ impl Graph {
   /// Internal execution method that routes external streams to internal nodes.
   ///
   /// This is called when Graph is used as a Node in another graph.
-  /// It routes external input streams to internal boundary nodes and collects
-  /// outputs from internal boundary nodes to expose as external outputs.
+  /// Uses the same dataflow execution as execute() so nested graphs support cycles.
   async fn execute_internal(
     &self,
     external_inputs: Option<InputStreams>,
   ) -> Result<OutputStreams, GraphExecutionError> {
-    // Clear any previous execution handles
-    self.execution_handles.lock().await.clear();
+    type Payload = Arc<dyn Any + Send + Sync>;
 
-    // Get all nodes and edges
-    let nodes: Vec<&dyn Node> = self.get_nodes();
-    let edges: Vec<&Edge> = self.get_edges();
+    // Take nodes out of the graph so we can run dataflow
+    let nodes = {
+      let mut g = self.nodes.lock().unwrap();
+      std::mem::take(&mut *g)
+    };
 
-    // Perform topological sort to determine execution order
-    let execution_order = topological_sort(&nodes, &edges)?;
-
-    // Build a map of output streams for each node and port
-    // Key: (node_name, port_name) -> OutputStream
-    let mut output_streams: HashMap<(String, String), crate::node::OutputStream> = HashMap::new();
-
-    // Route external input streams to internal nodes based on port mapping
-    println!(
-      "DEBUG: About to check external_inputs: is_some={}",
-      external_inputs.is_some()
-    );
-    if let Some(mut external_inputs) = external_inputs {
-      println!(
-        "DEBUG: execute_with_external_io - routing {} external inputs",
-        external_inputs.len()
-      );
-      for (external_port, external_stream) in external_inputs.drain() {
-        println!(
-          "DEBUG: execute_with_external_io - processing external port '{}'",
-          external_port
-        );
-        if let Some(mapping) = self.input_port_mapping.get(&external_port) {
-          println!(
-            "DEBUG: execute_with_external_io - mapped '{}' -> '{}'.'{}'",
-            external_port, mapping.node, mapping.port
-          );
-          // Route this external stream to the internal node's port
-          let stream_key = (mapping.node.clone(), mapping.port.clone());
-          println!(
-            "DEBUG: execute_with_external_io - inserting stream with key {:?}",
-            stream_key
-          );
-          output_streams.insert(stream_key, external_stream);
-          println!(
-            "DEBUG: execute_with_external_io - output_streams now has {} entries",
-            output_streams.len()
-          );
-        } else {
-          println!(
-            "DEBUG: execute_with_external_io - no mapping for external port '{}'",
-            external_port
-          );
-        }
-      }
-    } else {
-      println!("DEBUG: execute_with_external_io - no external inputs provided");
+    // Create a channel for each exposed output port; run_dataflow will send to these
+    let mut external_output_txs: HashMap<String, tokio::sync::mpsc::Sender<Payload>> =
+      HashMap::new();
+    let mut output_rxs: HashMap<String, tokio::sync::mpsc::Receiver<Payload>> = HashMap::new();
+    for external_port in self.output_port_mapping.keys() {
+      let (tx, rx) = tokio::sync::mpsc::channel(DATAFLOW_CHANNEL_CAPACITY);
+      external_output_txs.insert(external_port.clone(), tx);
+      output_rxs.insert(external_port.clone(), rx);
     }
 
-    // For each node in execution order, collect inputs and execute
-    for node_name in execution_order {
-      let node = self
-        .nodes
-        .get(&node_name)
-        .ok_or_else(|| format!("Node '{}' not found", node_name))?;
+    let (handles, nodes_restored) = self
+      .run_dataflow(nodes, external_inputs, Some(&external_output_txs))
+      .await?;
 
-      // Collect input streams from upstream nodes
-      let mut input_streams: InputStreams = HashMap::new();
-
-      // Find all edges that target this node
-      for edge in &edges {
-        if edge.target_node() == node_name {
-          let source_node_name = edge.source_node();
-          let source_port = edge.source_port();
-          let target_port = edge.target_port();
-
-          // Get the output stream from the source node
-          let stream_key = (source_node_name.to_string(), source_port.to_string());
-          if let Some(source_stream) = output_streams.remove(&stream_key) {
-            // Move the stream to this node's input
-            input_streams.insert(target_port.to_string(), source_stream);
-          } else {
-            return Err(
-              format!(
-                "Missing output stream from node '{}' port '{}'",
-                source_node_name, source_port
-              )
-              .into(),
-            );
-          }
-        }
-      }
-
-      // Also check for directly routed external inputs to this node
-      let node_stream_keys: Vec<_> = output_streams
-        .keys()
-        .filter(|(n, _)| n == &node_name)
-        .cloned()
-        .collect();
-
-      for stream_key in node_stream_keys {
-        if let Some(stream) = output_streams.remove(&stream_key) {
-          let (_, port) = stream_key;
-          input_streams.insert(port, stream);
-        }
-      }
-
-      // Execute the node
-      let node_outputs = node.execute(input_streams).await?;
-
-      // Store the output streams for downstream nodes
-      for (port_name, stream) in node_outputs {
-        output_streams.insert((node_name.clone(), port_name.clone()), stream);
-      }
+    for handle in handles {
+      handle.await??;
     }
 
-    // Collect external output streams from internal boundary nodes
+    // Restore nodes into the graph
+    {
+      let mut restored = nodes_restored.lock().await;
+      *self.nodes.lock().unwrap() = std::mem::take(&mut *restored);
+    }
+
+    // Build OutputStreams from the receivers we created for exposed outputs
     let mut external_outputs: OutputStreams = HashMap::new();
-
-    for (external_port, mapping) in &self.output_port_mapping {
-      let stream_key = (mapping.node.clone(), mapping.port.clone());
-      if let Some(stream) = output_streams.remove(&stream_key) {
-        external_outputs.insert(external_port.clone(), stream);
-      } else {
-        // If the internal port doesn't have a stream, create an empty one
-        // This handles the case where the internal node hasn't produced output yet
-        use tokio::sync::mpsc;
-        use tokio_stream::wrappers::ReceiverStream;
-        let (_tx, rx) = mpsc::channel(10);
-        external_outputs.insert(
-          external_port.clone(),
-          Box::pin(ReceiverStream::new(rx)) as crate::node::OutputStream,
-        );
-      }
-    }
-
-    // Spawn tasks to drive all remaining output streams to completion
-    // This ensures streams are consumed even if they're not connected to anything
-    let handles = Arc::clone(&self.execution_handles);
-    let stop_signal = Arc::clone(&self.stop_signal);
-    let pause_signal = Arc::clone(&self.pause_signal);
-    let execution_state = Arc::clone(&self.execution_state);
-
-    for (_stream_key, mut stream) in output_streams {
-      let stop_signal_clone = Arc::clone(&stop_signal);
-      let pause_signal_clone = Arc::clone(&pause_signal);
-      let execution_state_clone = Arc::clone(&execution_state);
-      let handle = tokio::spawn(async move {
-        use tokio_stream::StreamExt;
-        loop {
-          tokio::select! {
-            _ = stop_signal_clone.notified() => {
-              return Ok(());
-            }
-            _ = pause_signal_clone.notified() => {
-              // Wait for resume
-              loop {
-                let state = execution_state_clone.load(Ordering::Acquire);
-                if state == 1 {
-                  break; // Resumed (running)
-                }
-                if state == 0 {
-                  return Ok(()); // Stopped
-                }
-                // state == 2 (paused), wait a bit and check again
-                tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-              }
-            }
-            result = stream.next() => {
-              if result.is_none() {
-                break;
-              }
-            }
-          }
-        }
-        Ok(())
-      });
-      handles.lock().await.push(handle);
+    for (external_port, rx) in output_rxs {
+      let stream =
+        Box::pin(tokio_stream::wrappers::ReceiverStream::new(rx)) as crate::node::OutputStream;
+      external_outputs.insert(external_port, stream);
     }
 
     Ok(external_outputs)
@@ -1298,7 +1180,8 @@ impl Graph {
   /// Waits for all nodes in the graph to complete execution.
   ///
   /// This method blocks until all node tasks have finished. Use this after calling
-  /// `execute()` to wait for the graph to finish processing.
+  /// `execute()` to wait for the graph to finish processing. When using the dataflow
+  /// execution model, nodes are restored into the graph after all tasks complete.
   ///
   /// # Returns
   ///
@@ -1307,7 +1190,7 @@ impl Graph {
   /// # Errors
   ///
   /// Returns `GraphExecutionError` if any node execution failed or if waiting timed out.
-  pub async fn wait_for_completion(&self) -> Result<(), GraphExecutionError> {
+  pub async fn wait_for_completion(&mut self) -> Result<(), GraphExecutionError> {
     let handles = {
       let mut handles_guard = self.execution_handles.lock().await;
       std::mem::take(&mut *handles_guard)
@@ -1316,6 +1199,12 @@ impl Graph {
     // Wait for all tasks to complete
     for handle in handles {
       handle.await??;
+    }
+
+    // Restore nodes after dataflow execution so the graph can be reused
+    if let Some(restore) = self.nodes_restored_after_run.take() {
+      let mut map = restore.lock().await;
+      *self.nodes.lock().unwrap() = std::mem::take(&mut *map);
     }
 
     Ok(())

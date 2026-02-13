@@ -28,13 +28,15 @@ type InputBinding = (String, String, String, Option<Arc<dyn Any + Send + Sync>>)
 /// # Example
 ///
 /// ```rust,no_run
-/// use streamweave::graph::builder::GraphBuilder;
-/// use streamweave::node::Node;
+/// use streamweave::graph_builder::GraphBuilder;
+/// use streamweave::nodes::variable_node::VariableNode;
 ///
 /// let graph = GraphBuilder::new("my_graph")
-///     .add_node("source", Box::new(source_node))
-///     .connect("source", "out", "sink", "in")
-///     .build()?;
+///     .add_node("source", Box::new(VariableNode::new("source".to_string())))
+///     .add_node("sink", Box::new(VariableNode::new("sink".to_string())))
+///     .connect("source", "out", "sink", "value")
+///     .build()
+///     .unwrap();
 /// ```
 pub struct GraphBuilder {
   /// The name of the graph being built.
@@ -63,7 +65,7 @@ impl GraphBuilder {
   /// # Example
   ///
   /// ```rust,no_run
-  /// use streamweave::graph::builder::GraphBuilder;
+  /// use streamweave::graph_builder::GraphBuilder;
   ///
   /// let builder = GraphBuilder::new("my_graph");
   /// ```
@@ -95,11 +97,11 @@ impl GraphBuilder {
   /// # Example
   ///
   /// ```rust,no_run
-  /// use streamweave::graph::builder::GraphBuilder;
-  /// use streamweave::node::Node;
+  /// use streamweave::graph_builder::GraphBuilder;
+  /// use streamweave::nodes::variable_node::VariableNode;
   ///
   /// let builder = GraphBuilder::new("my_graph")
-  ///     .add_node("source", Box::new(source_node));
+  ///     .add_node("source", Box::new(VariableNode::new("source".to_string())));
   /// ```
   pub fn add_node(mut self, name: impl Into<String>, node: Box<dyn Node>) -> Self {
     let name_str = name.into();
@@ -128,12 +130,13 @@ impl GraphBuilder {
   /// # Example
   ///
   /// ```rust,no_run
-  /// use streamweave::graph::builder::GraphBuilder;
+  /// use streamweave::graph_builder::GraphBuilder;
+  /// use streamweave::nodes::variable_node::VariableNode;
   ///
   /// let builder = GraphBuilder::new("my_graph")
-  ///     .add_node("source", Box::new(source_node))
-  ///     .add_node("sink", Box::new(sink_node))
-  ///     .connect("source", "out", "sink", "in");
+  ///     .add_node("source", Box::new(VariableNode::new("source".to_string())))
+  ///     .add_node("sink", Box::new(VariableNode::new("sink".to_string())))
+  ///     .connect("source", "out", "sink", "value");
   /// ```
   pub fn connect(
     mut self,
@@ -184,16 +187,15 @@ impl GraphBuilder {
   /// # Example
   ///
   /// ```rust,no_run
-  /// use streamweave::graph::builder::GraphBuilder;
+  /// use streamweave::graph_builder::GraphBuilder;
+  /// use streamweave::nodes::variable_node::VariableNode;
   ///
-  /// // Bind graph input with an initial value
   /// let builder = GraphBuilder::new("my_graph")
-  ///     .add_node("source", Box::new(source_node))
-  ///     .input("start", "source", "start", Some(1i32));
+  ///     .add_node("source", Box::new(VariableNode::new("source".to_string())))
+  ///     .input("start", "source", "value", Some(1i32));
   ///
-  /// // Bind graph input without a value (for runtime connection)
   /// let builder = GraphBuilder::new("my_graph")
-  ///     .add_node("source", Box::new(source_node))
+  ///     .add_node("source", Box::new(VariableNode::new("source".to_string())))
   ///     .input("config", "source", "configuration", None::<()>);
   /// ```
   pub fn input<T: Send + Sync + 'static>(
@@ -231,10 +233,11 @@ impl GraphBuilder {
   /// # Example
   ///
   /// ```rust,no_run
-  /// use streamweave::graph::builder::GraphBuilder;
+  /// use streamweave::graph_builder::GraphBuilder;
+  /// use streamweave::nodes::variable_node::VariableNode;
   ///
   /// let builder = GraphBuilder::new("my_graph")
-  ///     .add_node("sink", Box::new(sink_node))
+  ///     .add_node("sink", Box::new(VariableNode::new("sink".to_string())))
   ///     .output("result", "sink", "out");
   /// ```
   pub fn output(mut self, external_name: impl Into<String>, node: &str, port: &str) -> Self {
@@ -267,15 +270,17 @@ impl GraphBuilder {
   /// # Example
   ///
   /// ```rust,no_run
-  /// use streamweave::graph::builder::GraphBuilder;
+  /// use streamweave::graph_builder::GraphBuilder;
+  /// use streamweave::nodes::variable_node::VariableNode;
   ///
   /// let graph = GraphBuilder::new("my_graph")
-  ///     .add_node("source", Box::new(source_node))
-  ///     .add_node("sink", Box::new(sink_node))
-  ///     .connect("source", "out", "sink", "in")
-  ///     .input("start", "source", "start", Some(1i32))
+  ///     .add_node("source", Box::new(VariableNode::new("source".to_string())))
+  ///     .add_node("sink", Box::new(VariableNode::new("sink".to_string())))
+  ///     .connect("source", "out", "sink", "value")
+  ///     .input("start", "source", "value", Some(1i32))
   ///     .output("result", "sink", "out")
-  ///     .build()?;
+  ///     .build()
+  ///     .unwrap();
   /// ```
   pub fn build(self) -> Result<Graph, GraphExecutionError> {
     let mut graph = Graph::new(self.name);

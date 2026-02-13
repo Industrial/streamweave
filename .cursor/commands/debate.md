@@ -1,1 +1,1 @@
-Don't generate files. Only debate me on the topic discussed.
+Don't change/generate any files yet. Only debate me on the topic.

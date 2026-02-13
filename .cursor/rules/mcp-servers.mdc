@@ -1,5 +1,5 @@
 ---
-description: "MCP server usage guidelines and tool selection rules for Serena, Context7, MCP Debugger, and Drift."
+description: "MCP server usage guidelines and tool selection rules for Serena, Context7, MCP Debugger"
 alwaysApply: true
 ---
 
@@ -11,9 +11,7 @@ This project uses multiple MCP servers, each optimized for specific tasks:
 - **Serena**: Semantic code analysis and editing
 - **Context7**: External library documentation
 - **MCP Debugger**: Interactive debugging
-- **Drift**: Automated codebase pattern detection and analysis
 
-See `.cursor/rules/drift.mdc` for detailed Drift usage guidelines.
 
 ## Agent Rules
 
@@ -110,39 +108,3 @@ See `.cursor/rules/drift.mdc` for detailed Drift usage guidelines.
 5. Use `get_local_variables`, `get_stack_trace`, `evaluate_expression` to inspect state
 6. `close_debug_session` when done
 
-### Codebase Analysis Agent Rules - Drift MCP Server
-
-**Drift provides automated codebase pattern detection and analysis. Use these tools for automated analysis:**
-
-#### Pattern Discovery
-- **`drift_patterns_list`**: ALWAYS use to discover code patterns in the codebase. Shows learned conventions.
-- **`drift_pattern_get`**: Use to get detailed information about a specific pattern.
-- **`drift_context`**: Use for high-level codebase understanding ("how do I add X?").
-
-#### Impact & Reachability Analysis
-- **`drift_impact_analysis`**: ALWAYS use before refactoring to see what breaks if you change code.
-- **`drift_reachability`**: Use to understand what data a function can access.
-- **`drift_reachability --inverse`**: Use to find who can access sensitive data (security analysis).
-
-#### Architecture Analysis
-- **`drift_coupling`**: ALWAYS use to check for dependency cycles before refactoring.
-- **`drift_test_topology`**: Use to find which tests should be run for changed code.
-
-#### Security Analysis
-- **`drift_boundaries`**: Use for security boundary overview and sensitive data access tracking.
-- **`drift_security_summary`**: Use for security patterns overview.
-
-#### Status & Discovery
-- **`drift_status`**: Use to check Drift's understanding of the codebase.
-- **`drift_capabilities`**: Use to see what Drift can analyze.
-
-**Usage Pattern**: 
-1. Start with `drift_status` for quick health check (discovery layer)
-2. Use `drift_patterns_list` to discover patterns (exploration layer)
-3. Use `drift_impact_analysis` before changes (detail layer)
-4. Use `drift_coupling` for architecture analysis (analysis layer)
-5. Combine with Serena for detailed symbol-level analysis
-
-**Token Efficiency**: Use lower layers (discovery/surgical) for quick checks, escalate to higher layers only when needed.
-
-See `.cursor/rules/drift.mdc` for comprehensive Drift usage guidelines.
