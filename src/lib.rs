@@ -71,3 +71,5 @@ mod graph_test;
 mod rebalance_test;
 #[cfg(test)]
 mod cluster_health_test;
+#[cfg(test)]
+mod incremental_test;

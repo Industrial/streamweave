@@ -148,7 +148,7 @@ This document summarizes what has been implemented vs. what remains for each cap
 ---
 
 ### incremental-recomputation.md
-**Status: ⚠️ Partial**
+**Status: ⚠️ Partial (Phase 4 implemented)**
 
 | Level | Status | Notes |
 |-------|--------|-------|
@@ -156,7 +156,7 @@ This document summarizes what has been implemented vs. what remains for each cap
 | MemoizingMapNode | ✅ Done | `src/nodes/memoizing_map_node.rs` |
 | Replay from checkpoint | ✅ Done | Via restore_from_checkpoint + exactly-once state |
 | Medium term – differential operators | ✅ Done | DifferentialGroupByNode, DifferentialJoinNode are incremental by construction |
-| Long term – time-range recomputation | ⚠️ Partial | `TimeRange`, `RecomputeRequest`; `nodes_depending_on`, `nodes_downstream_transitive`; full time-scoped execution deferred |
+| Long term – time-range recomputation | ⚠️ Partial | `TimeRange`, `RecomputeRequest`, `RecomputePlan`; `plan_recompute`; `ProgressHandle::from_sink_frontiers`, `sink_frontiers()`; `Graph::plan_recompute`, `Graph::execute_recompute` (runs full graph); subgraph time-scoped execution deferred |
 
 ---
 

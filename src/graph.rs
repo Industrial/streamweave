@@ -75,6 +75,7 @@
 //! })?;
 //! ```
 
+use crate::incremental::{plan_recompute as incremental_plan_recompute, RecomputePlan, RecomputeRequest};
 use crate::checkpoint::{
     CheckpointDone, CheckpointId, CheckpointMetadata, CheckpointStorage,
     DistributedCheckpointStorage,
@@ -1143,6 +1144,61 @@ impl Graph {
     out
   }
 
+  /// Plans which nodes need recomputation for a time range.
+  ///
+  /// Uses [`plan_recompute`](crate::incremental::plan_recompute) with this graph's
+  /// dependency structure. When `progress_handle` has per-sink frontiers (from
+  /// [`execute_with_progress_per_sink`](Self::execute_with_progress_per_sink)),
+  /// sinks that have already completed the time range may be excluded.
+  ///
+  /// # Returns
+  ///
+  /// A [`RecomputePlan`](crate::incremental::RecomputePlan) with node IDs to run.
+  pub fn plan_recompute(
+    &self,
+    request: &RecomputeRequest,
+    progress_handle: Option<&ProgressHandle>,
+  ) -> RecomputePlan {
+    let all_nodes: Vec<String> = self.nodes.lock().unwrap().keys().cloned().collect();
+    let sink_keys: std::collections::HashSet<(String, String)> = self
+      .output_port_mapping
+      .values()
+      .map(|m| (m.node.clone(), m.port.clone()))
+      .collect();
+    let sink_keys = if sink_keys.is_empty() {
+      None
+    } else {
+      Some(sink_keys)
+    };
+    let sink_frontiers_owned = progress_handle.and_then(|h| h.sink_frontiers());
+    let sink_frontiers = sink_frontiers_owned.as_ref();
+    incremental_plan_recompute(
+      request,
+      |n| self.nodes_downstream_transitive(n),
+      &all_nodes,
+      sink_frontiers,
+      sink_keys.as_ref(),
+    )
+  }
+
+  /// Executes recomputation for the given plan.
+  ///
+  /// When subgraph time-scoped execution is not yet implemented, this runs the
+  /// full graph via [`execute`](Self::execute). Call [`wait_for_completion`](Self::wait_for_completion)
+  /// after. Use with timestamped inputs bounded to the plan's time range for
+  /// correct semantics.
+  ///
+  /// # Note
+  ///
+  /// Full time-scoped execution (run only `plan.nodes` for the time range) is
+  /// planned for a future release. See [incremental-recomputation.md](../docs/incremental-recomputation.md).
+  pub async fn execute_recompute(
+    &mut self,
+    _plan: &RecomputePlan,
+  ) -> Result<(), GraphExecutionError> {
+    self.execute().await
+  }
+
   /// Returns true if the graph contains at least one cycle.
   ///
   /// Uses DFS to detect back edges. Cyclic graphs require
@@ -1696,12 +1752,14 @@ impl Graph {
     };
     let mut per_sink = HashMap::new();
     let mut frontiers = Vec::new();
+    let mut sink_keys = Vec::new();
     for mapping in self.output_port_mapping.values() {
       let key = (mapping.node.clone(), mapping.port.clone());
       if !per_sink.contains_key(&key) {
         let f = Arc::new(CompletedFrontier::new());
-        per_sink.insert(key, Arc::clone(&f));
+        per_sink.insert(key.clone(), Arc::clone(&f));
         frontiers.push(f);
+        sink_keys.push(key);
       }
     }
     let progress_config = if per_sink.is_empty() {
@@ -1712,7 +1770,7 @@ impl Graph {
     let progress_handle = if frontiers.is_empty() {
       ProgressHandle::new(Arc::new(CompletedFrontier::new()))
     } else {
-      ProgressHandle::from_frontiers(frontiers)
+      ProgressHandle::from_sink_frontiers(frontiers, sink_keys)
     };
     let (handles, nodes_restored) = self
       .run_dataflow(

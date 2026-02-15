@@ -136,17 +136,19 @@ This section documents how to achieve incremental behavior today and with planne
 | **1** | Document incremental patterns (replay, memoization, subgraph restart). **Done:** §4.3. |
 | **2** | (Optional) Provide a memoizing wrapper node or trait for deterministic, keyed nodes. **Done:** MemoizingMapNode with MemoizeKeyExtractor (IdentityKeyExtractor, HashKeyExtractor). |
 | **3** | With differential dataflow: document and rely on incremental behavior of differential operators. **Done.** |
-| **4** | Progress + dependency-based time-range recomputation. **Partial:** `TimeRange`, `RecomputeRequest`; `nodes_depending_on`, `nodes_downstream_transitive`; full time-scoped execution deferred. See §5.1. |
+| **4** | Progress + dependency-based time-range recomputation. **Implemented:** `plan_recompute`, `RecomputePlan`, `Graph::plan_recompute`, `Graph::execute_recompute`; per-sink frontiers via `ProgressHandle::from_sink_frontiers` / `sink_frontiers()`. Subgraph time-scoped execution deferred. See §5.1. |
 
 ### 5.1 Phase 4 implementation details (time-range recomputation)
 
 **Dependency tracking:** `Graph::nodes_depending_on(node)` (direct dependents), `Graph::nodes_downstream_transitive(node)` (transitive downstream).
 
-**Types (`incremental` module):** `TimeRange { from, to }`, `RecomputeRequest { time_range, source_node }`.
+**Types (`incremental` module):** `TimeRange { from, to }`, `RecomputeRequest { time_range, source_node }`, `RecomputePlan { nodes }`.
 
-**Progress:** `CompletedFrontier` and `ProgressHandle` provide completed time at sinks. Use with dependency tracking to decide which nodes need recomputation.
+**Scheduler:** `plan_recompute(request, downstream_fn, all_nodes, sink_frontiers, sink_keys)` returns which nodes need recomputation. Use with `Graph::plan_recompute` and optional `ProgressHandle` from `execute_with_progress_per_sink`.
 
-**Deferred:** Scheduler for "run only node N for time range [T1,T2]"; requires execution-model changes.
+**Per-sink progress:** `ProgressHandle::from_sink_frontiers(frontiers, keys)` and `sink_frontiers()` expose completed logical time per (node, port). `execute_with_progress_per_sink` returns a handle with keys for recompute planning.
+
+**Execution:** `Graph::execute_recompute(plan)` runs the full graph (fallback). Subgraph time-scoped execution ("run only plan.nodes for time range") is deferred.
 
 ---
 

@@ -412,9 +412,14 @@ unsafe impl<T: Send> Sync for TimestampedInputHandle<T> {}
 /// When created from multiple frontiers (e.g. per-sink), [`frontier`](Self::frontier)
 /// returns the **minimum** over all frontiers (graph-level progress = "all sinks have
 /// completed up to T").
+///
+/// Use [`from_sink_frontiers`](Self::from_sink_frontiers) when you need per-sink
+/// frontier lookup for recompute planning (see [`crate::incremental::plan_recompute`]).
 #[derive(Clone, Debug)]
 pub struct ProgressHandle {
     frontiers: Vec<std::sync::Arc<CompletedFrontier>>,
+    /// Optional: (node, port) keys for each frontier, for per-sink lookup.
+    sink_keys: Option<Vec<(String, String)>>,
 }
 
 impl ProgressHandle {
@@ -422,6 +427,7 @@ impl ProgressHandle {
     pub fn new(frontier: std::sync::Arc<CompletedFrontier>) -> Self {
         Self {
             frontiers: vec![frontier],
+            sink_keys: None,
         }
     }
 
@@ -429,7 +435,29 @@ impl ProgressHandle {
     /// Graph-level progress is the minimum over all frontiers: "all sinks have
     /// completed up to T" when `frontier() >= T`.
     pub fn from_frontiers(frontiers: Vec<std::sync::Arc<CompletedFrontier>>) -> Self {
-        Self { frontiers }
+        Self {
+            frontiers,
+            sink_keys: None,
+        }
+    }
+
+    /// Creates a progress handle with per-sink frontier keys.
+    ///
+    /// Enables [`sink_frontiers`](Self::sink_frontiers) for recompute planning.
+    /// The `keys` slice must have the same length and order as `frontiers`.
+    pub fn from_sink_frontiers(
+        frontiers: Vec<std::sync::Arc<CompletedFrontier>>,
+        keys: Vec<(String, String)>,
+    ) -> Self {
+        assert_eq!(
+            frontiers.len(),
+            keys.len(),
+            "frontiers and keys must have same length"
+        );
+        Self {
+            frontiers,
+            sink_keys: Some(keys),
+        }
     }
 
     fn effective_frontier(&self) -> LogicalTime {
@@ -438,6 +466,23 @@ impl ProgressHandle {
             .map(|f| f.get())
             .min()
             .unwrap_or(LogicalTime::minimum())
+    }
+
+    /// Returns per-sink completed frontiers when constructed with
+    /// [`from_sink_frontiers`](Self::from_sink_frontiers).
+    ///
+    /// Map from (node, port) to the completed logical time at that sink.
+    pub fn sink_frontiers(
+        &self,
+    ) -> Option<std::collections::HashMap<(String, String), LogicalTime>> {
+        let keys = self.sink_keys.as_ref()?;
+        let mut map = std::collections::HashMap::new();
+        for (i, key) in keys.iter().enumerate() {
+            if let Some(f) = self.frontiers.get(i) {
+                map.insert(key.clone(), f.get());
+            }
+        }
+        Some(map)
     }
 
     /// Returns whether it is still possible to see a timestamp less than `t`.
