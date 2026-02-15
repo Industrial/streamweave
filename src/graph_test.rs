@@ -16,11 +16,13 @@ use crate::checkpoint::{CheckpointId, CheckpointMetadata, CheckpointStorage, Fil
 use crate::edge::Edge;
 use crate::graph::{Graph, topological_sort};
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
+use crate::supervision::{FailureAction, SupervisionPolicy};
 use crate::time::LogicalTime;
 use async_trait::async_trait;
 use std::any::Any;
 use std::collections::HashMap;
 use std::pin::Pin;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -243,6 +245,81 @@ impl Node for MockSinkNode {
       });
 
       Ok(HashMap::new())
+    })
+  }
+}
+
+/// Node that fails the first N times, then succeeds. Uses a shared counter so
+/// state persists across graph restarts (execute_with_supervision).
+struct FailNTimesThenSucceedNode {
+  name: String,
+  count: Arc<AtomicU32>,
+  fail_count: u32,
+  input_port_names: Vec<String>,
+  output_port_names: Vec<String>,
+}
+
+impl FailNTimesThenSucceedNode {
+  fn new(name: String, fail_count: u32) -> Self {
+    Self {
+      name,
+      count: Arc::new(AtomicU32::new(0)),
+      fail_count,
+      input_port_names: vec!["in".to_string()],
+      output_port_names: vec!["out".to_string()],
+    }
+  }
+}
+
+#[async_trait]
+impl Node for FailNTimesThenSucceedNode {
+  fn name(&self) -> &str {
+    &self.name
+  }
+
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_string();
+  }
+
+  fn input_port_names(&self) -> &[String] {
+    &self.input_port_names
+  }
+
+  fn output_port_names(&self) -> &[String] {
+    &self.output_port_names
+  }
+
+  fn has_input_port(&self, name: &str) -> bool {
+    self.input_port_names.contains(&name.to_string())
+  }
+
+  fn has_output_port(&self, name: &str) -> bool {
+    self.output_port_names.contains(&name.to_string())
+  }
+
+  fn execute(
+    &self,
+    mut inputs: InputStreams,
+  ) -> Pin<
+    Box<dyn std::future::Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>,
+  > {
+    let count = Arc::clone(&self.count);
+    let fail_count = self.fail_count;
+    Box::pin(async move {
+      let c = count.fetch_add(1, Ordering::SeqCst);
+      if c < fail_count {
+        return Err(format!("Failing attempt {} (fail_count={})", c + 1, fail_count).into());
+      }
+      let input_stream = inputs.remove("in").ok_or("Missing 'in' input")?;
+      let output_stream: OutputStreams = {
+        let mut map = HashMap::new();
+        map.insert(
+          "out".to_string(),
+          Box::pin(input_stream) as Pin<Box<dyn Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
+        );
+        map
+      };
+      Ok(output_stream)
     })
   }
 }
@@ -485,6 +562,33 @@ async fn test_execute_simple_graph() {
 }
 
 #[tokio::test]
+async fn test_is_ready_and_is_live() {
+  let mut graph = Graph::new("test".to_string());
+  let producer = Box::new(MockProducerNode::new("producer".to_string(), vec![1]));
+  let sink = Box::new(MockSinkNode::new("sink".to_string()));
+
+  graph.add_node("producer".to_string(), producer).unwrap();
+  graph.add_node("sink".to_string(), sink).unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "producer".to_string(),
+      source_port: "out".to_string(),
+      target_node: "sink".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+
+  assert!(!graph.is_ready());
+  assert!(graph.is_live());
+
+  Graph::execute(&mut graph).await.unwrap();
+  assert!(graph.is_ready());
+
+  graph.wait_for_completion().await.unwrap();
+  assert!(!graph.is_ready());
+}
+
+#[tokio::test]
 async fn test_execute_transform_graph() {
   let mut graph = Graph::new("test".to_string());
   let producer = Box::new(MockProducerNode::new("producer".to_string(), vec![1, 2, 3]));
@@ -545,6 +649,158 @@ async fn test_stop_execution() {
 
   // Wait for completion (should complete quickly after stop)
   assert!(graph.wait_for_completion().await.is_ok());
+}
+
+#[tokio::test]
+async fn test_execute_with_supervision_restart_on_failure() {
+  let mut graph = Graph::new("test".to_string());
+  let producer = Box::new(MockProducerNode::new("producer".to_string(), vec![1, 2, 3]));
+  let fail_node = Box::new(FailNTimesThenSucceedNode::new("fail_node".to_string(), 1));
+  let sink = Box::new(MockSinkNode::new("sink".to_string()));
+
+  graph.add_node("producer".to_string(), producer).unwrap();
+  graph.add_node("fail_node".to_string(), fail_node).unwrap();
+  graph.add_node("sink".to_string(), sink).unwrap();
+
+  graph
+    .add_edge(Edge {
+      source_node: "producer".to_string(),
+      source_port: "out".to_string(),
+      target_node: "fail_node".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "fail_node".to_string(),
+      source_port: "out".to_string(),
+      target_node: "sink".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+
+  graph.set_node_supervision_policy(
+    "fail_node",
+    SupervisionPolicy::new(FailureAction::Restart).with_max_restarts(Some(2)),
+  );
+
+  graph.execute_with_supervision(|_| Ok(())).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_execute_with_supervision_stop_on_failure() {
+  let mut graph = Graph::new("test".to_string());
+  let producer = Box::new(MockProducerNode::new("producer".to_string(), vec![1]));
+  let fail_node = Box::new(FailNTimesThenSucceedNode::new("fail_node".to_string(), 10));
+  let sink = Box::new(MockSinkNode::new("sink".to_string()));
+
+  graph.add_node("producer".to_string(), producer).unwrap();
+  graph.add_node("fail_node".to_string(), fail_node).unwrap();
+  graph.add_node("sink".to_string(), sink).unwrap();
+
+  graph
+    .add_edge(Edge {
+      source_node: "producer".to_string(),
+      source_port: "out".to_string(),
+      target_node: "fail_node".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "fail_node".to_string(),
+      source_port: "out".to_string(),
+      target_node: "sink".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+
+  graph.set_node_supervision_policy(
+    "fail_node",
+    SupervisionPolicy::new(FailureAction::Stop).with_max_restarts(Some(0)),
+  );
+
+  let err = graph
+    .execute_with_supervision(|_| Ok(()))
+    .await
+    .unwrap_err();
+  assert!(err.to_string().contains("Failing attempt"));
+}
+
+#[tokio::test]
+async fn test_execute_with_supervision_restart_group() {
+  let mut graph = Graph::new("test".to_string());
+  let producer = Box::new(MockProducerNode::new("producer".to_string(), vec![1, 2]));
+  let fail_node = Box::new(FailNTimesThenSucceedNode::new("fail_node".to_string(), 1));
+  let sink = Box::new(MockSinkNode::new("sink".to_string()));
+
+  graph.add_node("producer".to_string(), producer).unwrap();
+  graph.add_node("fail_node".to_string(), fail_node).unwrap();
+  graph.add_node("sink".to_string(), sink).unwrap();
+
+  graph
+    .add_edge(Edge {
+      source_node: "producer".to_string(),
+      source_port: "out".to_string(),
+      target_node: "fail_node".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "fail_node".to_string(),
+      source_port: "out".to_string(),
+      target_node: "sink".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+
+  graph.set_node_supervision_policy(
+    "fail_node",
+    SupervisionPolicy::new(FailureAction::RestartGroup).with_max_restarts(Some(2)),
+  );
+
+  graph.execute_with_supervision(|_| Ok(())).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_execute_with_supervision_escalate() {
+  let mut graph = Graph::new("test".to_string());
+  let producer = Box::new(MockProducerNode::new("producer".to_string(), vec![1]));
+  let fail_node = Box::new(FailNTimesThenSucceedNode::new("fail_node".to_string(), 10));
+  let sink = Box::new(MockSinkNode::new("sink".to_string()));
+
+  graph.add_node("producer".to_string(), producer).unwrap();
+  graph.add_node("fail_node".to_string(), fail_node).unwrap();
+  graph.add_node("sink".to_string(), sink).unwrap();
+
+  graph
+    .add_edge(Edge {
+      source_node: "producer".to_string(),
+      source_port: "out".to_string(),
+      target_node: "fail_node".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "fail_node".to_string(),
+      source_port: "out".to_string(),
+      target_node: "sink".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+
+  graph.set_node_supervision_policy(
+    "fail_node",
+    SupervisionPolicy::new(FailureAction::Escalate),
+  );
+
+  let err = graph
+    .execute_with_supervision(|_| Ok(()))
+    .await
+    .unwrap_err();
+  assert!(err.to_string().contains("Failing attempt"));
 }
 
 #[tokio::test]

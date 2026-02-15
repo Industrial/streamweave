@@ -107,9 +107,9 @@ impl Graph {
 |-------|--------|
 | **1** | Define `SupervisionPolicy` and `FailureAction`; document contract. **Done:** `supervision::FailureAction`, `SupervisionPolicy` in `src/supervision.rs`. |
 | **2** | In the execution layer, catch node task failure (Err/panic) and send to a supervisor handle (e.g. channel). **Done:** `FailureReport`, `Graph::enable_failure_reporting()`, `wait_for_completion` sends on failure. |
-| **3** | Implement a simple supervisor loop: on failure, apply policy (e.g. restart node up to N times, then stop). Restart = spawn a new task for that node with the same graph topology (re-use or re-create channels). |
+| **3** | Implement a simple supervisor loop: on failure, apply policy (e.g. restart node up to N times, then stop). Restart = spawn a new task for that node with the same graph topology (re-use or re-create channels). **Done:** `execute_with_supervision()` implements graph-level restart (whole graph restarts on node failure when policy is Restart); `set_node_supervision_policy()`, `wait_for_completion` awaits all handles and restores nodes for retry. |
 | **4** | Add “restart group” and “escalate” so that subgraph or graph can be stopped. |
-| **5** | Add tests: inject failure, assert restart or stop behavior. |
+| **5** | Add tests: inject failure, assert restart or stop behavior. **Done:** test_execute_with_supervision_restart_on_failure, test_execute_with_supervision_stop_on_failure, test_execute_with_supervision_restart_group, test_execute_with_supervision_escalate. |
 
 ---
 

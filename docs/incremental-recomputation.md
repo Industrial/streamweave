@@ -132,7 +132,7 @@ This section documents how to achieve incremental behavior today and with planne
 | Phase | Content |
 |-------|--------|
 | **1** | Document incremental patterns (replay, memoization, subgraph restart). **Done:** §4.3. |
-| **2** | (Optional) Provide a memoizing wrapper node or trait for deterministic, keyed nodes. |
+| **2** | (Optional) Provide a memoizing wrapper node or trait for deterministic, keyed nodes. **Done:** MemoizingMapNode with MemoizeKeyExtractor (IdentityKeyExtractor, HashKeyExtractor). |
 | **3** | With differential dataflow: document and rely on incremental behavior of differential operators. |
 | **4** | (Later) Progress + dependency-based time-range recomputation. |
 

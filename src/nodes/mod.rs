@@ -35,6 +35,7 @@ pub mod for_each_node;
 pub mod join_node;
 pub mod map_node;
 pub mod match_node;
+pub mod memoizing_map_node;
 pub mod range_node;
 pub mod read_variable_node;
 pub mod sync_node;
@@ -58,6 +59,8 @@ mod for_each_node_test;
 mod join_node_test;
 #[cfg(test)]
 mod map_node_test;
+#[cfg(test)]
+mod memoizing_map_node_test;
 #[cfg(test)]
 mod match_node_test;
 #[cfg(test)]
