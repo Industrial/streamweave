@@ -324,3 +324,29 @@ Sections 1–16 above are already in **dependency order**. A practical sequence:
 5. **Later:** Auto-scaling (§16), “mature” rebalancing and state migration.
 
 This order keeps the current in-process, composable design intact while adding capabilities in dependency order and avoids building distribution before the semantic foundation (time, progress, state) is in place.
+
+---
+
+## Detailed design documents
+
+Each remaining functionality has a dedicated design document in this directory with objectives, current state, detailed design, implementation phases, and references:
+
+| § | Topic | Document |
+|---|--------|----------|
+| 2 | Deterministic execution | [deterministic-execution.md](deterministic-execution.md) |
+| 3 | Exactly-once state | [exactly-once-state.md](exactly-once-state.md) |
+| 4 | Scope (in-process, no distributed FT) | [scope-in-process-no-distributed-fault-tolerance.md](scope-in-process-no-distributed-fault-tolerance.md) |
+| 5 | Cyclic iterative dataflows | [cyclic-iterative-dataflows.md](cyclic-iterative-dataflows.md) |
+| 6 | Actor supervision trees | [actor-supervision-trees.md](actor-supervision-trees.md) |
+| 7 | Production cluster tooling | [production-cluster-tooling.md](production-cluster-tooling.md) |
+| 8 | Event-time semantics | [event-time-semantics.md](event-time-semantics.md) |
+| 9 | Progress tracking (watermarks) | [progress-tracking.md](progress-tracking.md) |
+| 10 | Timestamped differential dataflow | [timestamped-differential-dataflow.md](timestamped-differential-dataflow.md) |
+| 11 | Windowing | [windowing.md](windowing.md) |
+| 12 | Event-time processing | [event-time-processing.md](event-time-processing.md) |
+| 13 | Incremental recomputation | [incremental-recomputation.md](incremental-recomputation.md) |
+| 14 | Cluster sharding | [cluster-sharding.md](cluster-sharding.md) |
+| 15 | Distributed checkpointing | [distributed-checkpointing.md](distributed-checkpointing.md) |
+| 16 | Auto-scaling clusters | [auto-scaling-clusters.md](auto-scaling-clusters.md) |
+
+§1 (Logical timestamps) is implemented; see [logical-timestamps-timely-and-streamweave.md](logical-timestamps-timely-and-streamweave.md) for the design and `src/time.rs` for the implementation.
