@@ -200,8 +200,8 @@ Use **full buffer** (Option A1): collect all output items for round k before sta
 | Phase | Content |
 |-------|--------|
 | **1** | Design and document the bounded iteration API (rounds, seed, feedback, max_rounds, converged). **Done:** §5 above. |
-| **2** | Implement `BoundedIterationNode` (or equivalent) that runs an inner graph for multiple rounds with buffered feedback. |
-| **3** | Add tests: e.g. simple fixed-point (x := x/2 + 1 until stable), PageRank-style stub. |
+| **2** | Implement `BoundedIterationNode` (or equivalent) that runs an inner graph for multiple rounds with buffered feedback. **Done:** `src/nodes/bounded_iteration_node.rs`. |
+| **3** | Add tests: e.g. simple fixed-point (x := x/2 + 1 until stable), PageRank-style stub. **Done:** single round, two rounds, fixed-point (10→6→4→3→2). |
 | **4** | (Later) Option B: integrate rounds with logical time and allow cycles in the main graph with round-based delivery. |
 
 ---

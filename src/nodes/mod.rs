@@ -25,6 +25,7 @@ pub mod string;
 pub mod time;
 pub mod type_ops;
 
+pub mod bounded_iteration_node;
 pub mod common;
 pub mod condition_node;
 pub mod differential_join_node;
@@ -41,6 +42,8 @@ pub mod variable_node;
 pub mod while_loop_node;
 pub mod write_variable_node;
 
+#[cfg(test)]
+mod bounded_iteration_node_test;
 #[cfg(test)]
 mod condition_node_test;
 #[cfg(test)]
