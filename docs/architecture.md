@@ -47,6 +47,17 @@ StreamWeave uses a **graph-based architecture** where computation is organized a
 
 See [deterministic-execution.md](deterministic-execution.md) for the full design.
 
+## Exactly-once state
+
+Stateful nodes that participate in checkpoint/replay should follow the **exactly-once state contract**:
+
+- **Keyed state:** State is addressed by a key (e.g. `user_id`). All updates are (key, value, version).
+- **Version / logical time:** Every update carries a version (e.g. `LogicalTime`). Applying the same (key, value, version) again is **idempotent** (no double-apply).
+- **Ordering:** Updates for the same key are processed in version order; older versions arriving after newer may be ignored.
+- **Persistence:** Backends must support `snapshot` and `restore` for checkpointing.
+
+Implement the [`ExactlyOnceStateBackend`](https://docs.rs/streamweave/*/streamweave/state/trait.ExactlyOnceStateBackend.html) trait for custom state stores. See [exactly-once-state.md](exactly-once-state.md).
+
 ## Scope
 
 StreamWeave is an **in-process**, graph-based streaming framework. It does not provide distributed execution or fault tolerance; for that, run multiple processes and use external coordination (e.g. Kafka consumer groups, external state stores). See [scope-in-process-no-distributed-fault-tolerance.md](scope-in-process-no-distributed-fault-tolerance.md).

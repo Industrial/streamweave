@@ -300,6 +300,10 @@ Use [`execute_with_progress`](https://docs.rs/streamweave/*/streamweave/graph/st
 
 By default, nodes run **concurrently**; ordering between nodes and across multiple inputs is not guaranteed. For reproducible runs, use a **deterministic execution mode** (when available): single-task, topological order, or logical-time ordering. The determinism contract: output order of a node is deterministic given the order of items on its input ports and the node's internal logic. Avoid shared mutable state and non-deterministic constructs (e.g. `rand::random()`, unordered fan-in) in nodes that need reproducibility. See [docs/deterministic-execution.md](docs/deterministic-execution.md) and [docs/architecture.md](docs/architecture.md#determinism).
 
+## ✅ Exactly-once state
+
+Stateful nodes that need correct semantics after replay or recovery should use the **exactly-once state contract**: state is keyed, every update carries a **version** (e.g. `LogicalTime`), and `put(key, value, version)` is **idempotent** (applying the same triple again has no effect). Implement [`ExactlyOnceStateBackend`](https://docs.rs/streamweave/*/streamweave/state/trait.ExactlyOnceStateBackend.html) for custom state stores. See [docs/exactly-once-state.md](docs/exactly-once-state.md).
+
 ## 📚 Documentation
 
 - [API Documentation](https://docs.rs/streamweave) - Full API reference on docs.rs
