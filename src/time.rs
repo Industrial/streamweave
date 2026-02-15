@@ -204,6 +204,107 @@ impl<T> StreamMessage<T> {
     }
 }
 
+/// A payload with logical timestamp and multiplicity (diff) for differential dataflow.
+///
+/// In differential dataflow, each record carries a **multiplicity** (diff): **+1** =
+/// insert, **−1** = retract. Operators compute and propagate only **changes**; downstream
+/// can integrate diffs to obtain the current collection. This enables efficient
+/// incremental and reactive updates.
+///
+/// See [docs/timestamped-differential-dataflow.md](../docs/timestamped-differential-dataflow.md).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DifferentialElement<T> {
+    /// The payload.
+    pub payload: T,
+    /// Logical time for ordering and progress.
+    pub time: LogicalTime,
+    /// Multiplicity: +1 insert, −1 retract; +k/−k for batch updates.
+    pub diff: i64,
+}
+
+impl<T> DifferentialElement<T> {
+    /// Creates a new differential element.
+    #[inline]
+    pub const fn new(payload: T, time: LogicalTime, diff: i64) -> Self {
+        Self { payload, time, diff }
+    }
+
+    /// Creates an insert (+1) at the given time.
+    #[inline]
+    pub fn insert(payload: T, time: LogicalTime) -> Self {
+        Self::new(payload, time, 1)
+    }
+
+    /// Creates a retract (−1) at the given time.
+    #[inline]
+    pub fn retract(payload: T, time: LogicalTime) -> Self {
+        Self::new(payload, time, -1)
+    }
+
+    /// Returns the payload.
+    #[inline]
+    pub const fn payload(&self) -> &T {
+        &self.payload
+    }
+
+    /// Returns the logical time.
+    #[inline]
+    pub const fn time(&self) -> LogicalTime {
+        self.time
+    }
+
+    /// Returns the diff (multiplicity).
+    #[inline]
+    pub const fn diff(&self) -> i64 {
+        self.diff
+    }
+
+    /// Converts to [`Timestamped`] by dropping the diff (for compatibility with non-differential nodes).
+    #[inline]
+    pub fn into_timestamped(self) -> Timestamped<T> {
+        Timestamped::new(self.payload, self.time)
+    }
+}
+
+unsafe impl<T: Send> Send for DifferentialElement<T> {}
+unsafe impl<T: Sync> Sync for DifferentialElement<T> {}
+
+/// Stream message for the differential execution path: data with (payload, time, diff) or watermark.
+///
+/// Channels in the **differential execution path** carry `DifferentialStreamMessage<Payload>`.
+/// Differential-aware nodes consume and produce this type. Watermarks propagate progress
+/// as in the standard path.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum DifferentialStreamMessage<T> {
+    /// Differential data element (payload, time, diff).
+    Data(DifferentialElement<T>),
+    /// Watermark: no more data with logical time &lt; `t` will arrive.
+    Watermark(LogicalTime),
+}
+
+unsafe impl<T: Send> Send for DifferentialStreamMessage<T> {}
+unsafe impl<T: Sync> Sync for DifferentialStreamMessage<T> {}
+
+impl<T> DifferentialStreamMessage<T> {
+    /// Returns `Some(&DifferentialElement<T>)` if this is `Data`, otherwise `None`.
+    #[inline]
+    pub fn data(&self) -> Option<&DifferentialElement<T>> {
+        match self {
+            Self::Data(elem) => Some(elem),
+            Self::Watermark(_) => None,
+        }
+    }
+
+    /// Returns `Some(LogicalTime)` if this is `Watermark`, otherwise `None`.
+    #[inline]
+    pub fn watermark(&self) -> Option<LogicalTime> {
+        match self {
+            Self::Data(_) => None,
+            Self::Watermark(t) => Some(*t),
+        }
+    }
+}
+
 /// Shared state for the minimum logical time that has been completed (single-worker).
 ///
 /// Updated by the execution layer when all items with time ≤ some value have
@@ -412,6 +513,39 @@ mod tests {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<Timestamped<u64>>();
         assert_send_sync::<Timestamped<String>>();
+    }
+
+    #[test]
+    fn differential_element_insert_retract() {
+        let ins = DifferentialElement::insert(42i32, LogicalTime::new(1));
+        assert_eq!(ins.payload(), &42);
+        assert_eq!(ins.time(), LogicalTime::new(1));
+        assert_eq!(ins.diff(), 1);
+
+        let ret = DifferentialElement::retract(42i32, LogicalTime::new(1));
+        assert_eq!(ret.diff(), -1);
+    }
+
+    #[test]
+    fn differential_element_into_timestamped() {
+        let elem = DifferentialElement::insert(99u64, LogicalTime::new(5));
+        let ts = elem.into_timestamped();
+        assert_eq!(ts.payload, 99);
+        assert_eq!(ts.time, LogicalTime::new(5));
+    }
+
+    #[test]
+    fn differential_stream_message_data_watermark() {
+        let msg = DifferentialStreamMessage::Data(DifferentialElement::insert(
+            String::from("x"),
+            LogicalTime::new(2),
+        ));
+        assert!(msg.data().is_some());
+        assert!(msg.watermark().is_none());
+
+        let wm = DifferentialStreamMessage::<()>::Watermark(LogicalTime::new(3));
+        assert!(wm.data().is_none());
+        assert_eq!(wm.watermark(), Some(LogicalTime::new(3)));
     }
 
     #[test]

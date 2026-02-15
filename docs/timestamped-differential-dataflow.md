@@ -106,7 +106,7 @@ Differential Dataflow supports **nested timestamps** and **iterative fixed point
 
 | Phase | Content |
 |-------|--------|
-| **1** | Define `DifferentialElement<T>` (or equivalent) and add a “differential” execution path (channels carry (payload, time, diff)). |
+| **1** | Define `DifferentialElement<T>` (or equivalent) and add a “differential” execution path (channels carry (payload, time, diff)). **Done:** `DifferentialElement<T>` and `DifferentialStreamMessage<T>` in `src/time.rs`. |
 | **2** | Wrap existing nodes so that they produce (payload, time, +1); consume (payload, time, diff) by stripping diff for non-differential nodes or by integrating for snapshot. |
 | **3** | Implement **differential group-by** (single key, sum or count; output diffs as deltas). |
 | **4** | Implement **differential join** (equi-join; output changes only). |
