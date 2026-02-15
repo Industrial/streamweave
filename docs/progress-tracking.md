@@ -29,7 +29,7 @@ while progress.less_than(LogicalTime::new(5)) {
 let completed = progress.frontier(); // minimum completed logical time at the sink
 ```
 
-**WatermarkInjectorNode** turns a timestamped (or event-time) stream into a stream of `StreamMessage::Data` and `StreamMessage::Watermark`; use it before event-time window nodes. See [event-time-semantics.md](event-time-semantics.md) and `event_time_watermark` / examples for full pipelines.
+**WatermarkInjectorNode** turns a timestamped (or event-time) stream into a stream of `StreamMessage::Data` and `StreamMessage::Watermark`; use it before event-time window nodes. See [event-time-semantics.md](event-time-semantics.md) for event time. **Full runnable example:** `cargo run --example event_time_watermark` (execute_with_progress, WatermarkInjectorNode, frontier). See [examples/event_time_watermark.rs](../examples/event_time_watermark.rs).
 
 ---
 

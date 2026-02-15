@@ -8,6 +8,12 @@
 
 ---
 
+## Quick start / Example
+
+Use **BoundedIterationNode** (or **execute_with_rounds** on the graph) to run a subgraph with feedback for a fixed number of rounds or until convergence. **Full runnable example:** `cargo run --example bounded_iteration`. See [examples/bounded_iteration.rs](../examples/bounded_iteration.rs).
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** Support graphs that contain **cycles** (feedback edges) and execute until a fixed point or a bounded number of rounds. Used for iterative algorithms (e.g. PageRank, iterative refinement, recursive rules).

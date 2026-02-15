@@ -8,6 +8,12 @@
 
 ---
 
+## Quick start / Example
+
+Use **is_ready** and **is_live** on the graph for health checks; Prometheus metrics and structured logging for observability. **Full runnable example:** `cargo run --example production_ready`. See [examples/production_ready.rs](../examples/production_ready.rs).
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** Operational features for running the system in production: deployment, config management, health checks, metrics, logging, upgrades, and failure procedures.

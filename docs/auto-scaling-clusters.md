@@ -10,6 +10,12 @@
 
 ---
 
+## Quick start / Example
+
+When cluster sharding exists, the **scaler** module will provide **ScalerConfig**, **record_backlog_size**, **scale_to**, and a policy loop. For now, use Kubernetes HPA or a custom controller that drives rebalance based on metrics. See [production-cluster-tooling.md](production-cluster-tooling.md) for health and metrics.
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** The runtime (or an external controller) **adds or removes workers** (or replicas) based on load, backlog, or policy, and **rebalances** work (partitions, shards) across the new set. This provides operational flexibility and cost efficiency in cloud environments.

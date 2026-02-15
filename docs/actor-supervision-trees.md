@@ -8,6 +8,12 @@
 
 ---
 
+## Quick start / Example
+
+Use **execute_with_supervision** to run the graph with failure handling; **set_node_supervision_policy** (or **set_supervision_group**) to configure **Restart** or **Escalate**. **Full runnable example:** `cargo run --example supervision_restart` (failure + restart). See [examples/supervision_restart.rs](../examples/supervision_restart.rs).
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** A hierarchy of “supervisors” where each parent supervises children: on child failure, the parent can **restart**, **escalate**, or **stop**. Used in Erlang/Elixir and Akka for fault containment and recovery.

@@ -8,6 +8,12 @@
 
 ---
 
+## Quick start / Example
+
+Use **trigger_checkpoint** and **restore_from_checkpoint** on the graph with a [`CheckpointStorage`](https://docs.rs/streamweave/*/streamweave/checkpoint/trait.CheckpointStorage.html) (e.g. [`FileCheckpointStorage`](https://docs.rs/streamweave/*/streamweave/checkpoint/struct.FileCheckpointStorage.html)) to persist and restore state. **Full runnable example:** `cargo run --example checkpoint_restore`. See [examples/checkpoint_restore.rs](../examples/checkpoint_restore.rs).
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** Periodically persist a **consistent snapshot** of the entire distributed computation (operator state, in-flight positions, etc.) so that on failure the system can **restore** and **resume** from that snapshot without duplicate or lost work.

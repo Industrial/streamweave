@@ -8,6 +8,14 @@
 
 ---
 
+## Quick start / Example
+
+**Event-time tumbling:** Use [`WatermarkInjectorNode`](https://docs.rs/streamweave/*/streamweave/nodes/stream/struct.WatermarkInjectorNode.html) to attach watermarks to a timestamped stream, then [`TumblingEventTimeWindowNode`](https://docs.rs/streamweave/*/streamweave/nodes/stream/struct.TumblingEventTimeWindowNode.html) to assign items by event time and close windows on watermark. Sliding and session event-time windows: [`SlidingEventTimeWindowNode`](https://docs.rs/streamweave/*/streamweave/nodes/stream/struct.SlidingEventTimeWindowNode.html), [`SessionEventTimeWindowNode`](https://docs.rs/streamweave/*/streamweave/nodes/stream/struct.SessionEventTimeWindowNode.html). For processing-time (timer-based) tumbling: [`TumblingProcessingTimeWindowNode`](https://docs.rs/streamweave/*/streamweave/nodes/stream/struct.TumblingProcessingTimeWindowNode.html). Late data can be dropped (default) or sent to a side output via [`LateDataPolicy::SideOutput`](https://docs.rs/streamweave/*/streamweave/nodes/stream/enum.LateDataPolicy.html).
+
+**Full runnable example:** `cargo run --example event_time_window` (tumbling event-time windows, watermarks, optional late-data side output). See [examples/event_time_window.rs](../examples/event_time_window.rs). Event-time semantics and progress: [event-time-semantics.md](event-time-semantics.md), [progress-tracking.md](progress-tracking.md).
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** Group events into **finite windows** (tumbling, sliding, session, or custom) for aggregation or join. Windows can be defined by **count**, **processing time**, or **event time**.

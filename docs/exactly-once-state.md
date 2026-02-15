@@ -8,6 +8,30 @@
 
 ---
 
+## Quick start / Example
+
+Use [`KeyedStateBackend`](https://docs.rs/streamweave/*/streamweave/state/type.KeyedStateBackend.html) (alias for `HashMapStateBackend<K, V, LogicalTime>`) with the [`StatefulNodeDriver`](https://docs.rs/streamweave/*/streamweave/state/trait.StatefulNodeDriver.html) trait for idempotent updates keyed by logical time. Snapshot and restore use [`ExactlyOnceStateBackend::snapshot`](https://docs.rs/streamweave/*/streamweave/state/trait.ExactlyOnceStateBackend.html#tymethod.snapshot) / [`restore`](https://docs.rs/streamweave/*/streamweave/state/trait.ExactlyOnceStateBackend.html#tymethod.restore).
+
+```rust
+use streamweave::state::{ExactlyOnceStateBackend, HashMapStateBackend, KeyedStateBackend, StatefulNodeDriver};
+use streamweave::time::LogicalTime;
+
+let backend: KeyedStateBackend<String, u64> = HashMapStateBackend::new();
+backend.apply_update("user:alice".to_string(), 100u64, LogicalTime::new(1))?;
+backend.apply_update("user:alice".to_string(), 150u64, LogicalTime::new(2))?;
+// Idempotent: same version again does not change state
+backend.apply_update("user:alice".to_string(), 999u64, LogicalTime::new(2))?;
+assert_eq!(backend.get_value(&"user:alice".to_string())?, Some((150u64, LogicalTime::new(2))));
+
+let bytes = backend.snapshot_bytes()?;
+let mut restored: KeyedStateBackend<String, u64> = HashMapStateBackend::new();
+restored.restore(&bytes)?;
+```
+
+**Full runnable example:** `cargo run --example exactly_once_state` (keyed state, snapshot/restore, idempotent sink pattern). See [examples/exactly_once_state.rs](../examples/exactly_once_state.rs).
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** Each update to internal state is applied exactly once, and on recovery the state is consistent (no double-apply, no lost updates). Usually achieved with idempotent updates, deterministic replay, and checkpointing.

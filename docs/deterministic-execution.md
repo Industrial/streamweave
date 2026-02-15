@@ -8,6 +8,25 @@
 
 ---
 
+## Quick start / Example
+
+To get reproducible, same-order execution (e.g. for tests or debugging), set the execution mode to **Deterministic** before running the graph:
+
+```rust
+use streamweave::graph::{ExecutionMode, Graph};
+
+let mut graph = Graph::new("my_graph".to_string());
+// ... add nodes and edges ...
+
+graph.set_execution_mode(ExecutionMode::Deterministic);
+// Then run the graph (e.g. graph.execute().await?).
+// Same inputs produce the same output order every time.
+```
+
+With **Concurrent** (the default), node tasks run in parallel and ordering is not guaranteed. Use **Deterministic** when you need reproducible runs. **Full runnable example:** `cargo run --example deterministic_execution` (set_execution_mode(Deterministic), execute_deterministic). See [examples/deterministic_execution.rs](../examples/deterministic_execution.rs).
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** For the same logical input and graph structure, execution produces the same outputs (and ideally the same observable side effects) regardless of scheduling, parallelism, or run order. This is essential for testing, debugging, and reproducibility.

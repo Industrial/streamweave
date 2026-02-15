@@ -551,6 +551,10 @@ name = "production_ready"
 path = "examples/production_ready.rs"
 
 [[example]]
+name = "memoizing_node"
+path = "examples/memoizing_node.rs"
+
+[[example]]
 name = "shard_config"
 path = "examples/shard_config.rs"
 

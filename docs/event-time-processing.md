@@ -8,6 +8,12 @@
 
 ---
 
+## Quick start / Example
+
+End-to-end event-time pipelines: use [event-time semantics](event-time-semantics.md) and [progress tracking](progress-tracking.md) (watermarks), then event-time window nodes. Late data can be dropped (default) or sent to a side output via `LateDataPolicy::SideOutput`. **Full runnable example:** `cargo run --example event_time_window` (tumbling event-time windows, watermarks, late-data policy). See [examples/event_time_window.rs](../examples/event_time_window.rs).
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** End-to-end processing where **ordering**, **windowing**, and **progress** are based on **event time**, with explicit handling of **late data** (drop, buffer, or side output). This is what users mean by “correct streaming with late data.”

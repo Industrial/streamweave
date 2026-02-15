@@ -8,6 +8,12 @@
 
 ---
 
+## Quick start / Example
+
+Use **ShardConfig** and **partition_by_key** (or **owns_key**) for key-based routing; **ShardedRunner** to run the graph across shards; **export_state** / import for state migration on rebalance. **Full runnable example:** `cargo run --example shard_config` (in-process sharding demo). See [examples/shard_config.rs](../examples/shard_config.rs).
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** Partition the logical graph (or data) across **multiple workers** so that each worker runs a subset of state and computation. **Routing** is by key or partition; **state** is local to the shard that owns the key. “Mature” means stable partitioning, rebalancing, and state migration.

@@ -8,6 +8,12 @@
 
 ---
 
+## Quick start / Example
+
+Use **MemoizingMapNode** for cache-based incremental recomputation (cache hit/miss). For time-range or dependency-based recomputation, see **plan_recompute** and **execute_recompute** on the graph. **Full runnable example:** `cargo run --example memoizing_node`. See [examples/memoizing_node.rs](../examples/memoizing_node.rs).
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** When inputs change (e.g. new data, updated source), **only recompute** the minimal set of downstream work that depends on that change, instead of re-running the entire pipeline. This improves efficiency and scalability.
