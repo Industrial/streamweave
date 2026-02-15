@@ -79,6 +79,7 @@ use crate::checkpoint::{CheckpointId, CheckpointMetadata, CheckpointStorage};
 use crate::edge::Edge;
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::partitioning::PartitionKey;
+use crate::supervision::FailureReport;
 use crate::time::{CompletedFrontier, LogicalTime, ProgressHandle, Timestamped};
 use async_trait::async_trait;
 use std::any::Any;
@@ -167,8 +168,10 @@ enum EdgeMessage {
 /// Error type for graph execution operations.
 pub type GraphExecutionError = Box<dyn std::error::Error + Send + Sync>;
 
+/// Handle for a task: `Some(node_id)` for node tasks, `None` for bridge tasks.
+type TaskHandle = (Option<String>, JoinHandle<Result<(), GraphExecutionError>>);
 /// Type alias for execution handles to reduce type complexity
-type ExecutionHandleVec = Arc<Mutex<Vec<JoinHandle<Result<(), GraphExecutionError>>>>>;
+type ExecutionHandleVec = Arc<Mutex<Vec<TaskHandle>>>;
 
 /// Type alias for the map of nodes restored after dataflow run (reduces type complexity).
 type NodesRestoredMap = Arc<Mutex<HashMap<String, Box<dyn Node>>>>;
@@ -334,6 +337,8 @@ pub struct Graph {
   restored_position: Option<LogicalTime>,
   /// Sequence number for checkpoint ids.
   checkpoint_sequence: std::sync::atomic::AtomicU64,
+  /// When set, node task failures are sent here for the supervisor.
+  failure_tx: Option<tokio::sync::mpsc::Sender<FailureReport>>,
 }
 
 impl Graph {
@@ -375,7 +380,18 @@ impl Graph {
       shard_config: None,
       restored_position: None,
       checkpoint_sequence: std::sync::atomic::AtomicU64::new(0),
+      failure_tx: None,
     }
+  }
+
+  /// Enables failure reporting: node task failures (Err or panic) are sent to the returned receiver.
+  ///
+  /// The supervisor (or caller) should receive from the returned channel and apply the
+  /// configured policy (restart, stop, escalate). See [actor-supervision-trees.md](../docs/actor-supervision-trees.md).
+  pub fn enable_failure_reporting(&mut self) -> tokio::sync::mpsc::Receiver<FailureReport> {
+    let (tx, rx) = tokio::sync::mpsc::channel(64);
+    self.failure_tx = Some(tx);
+    rx
   }
 
   /// Sets shard identity for cluster-sharded execution.
@@ -1372,13 +1388,7 @@ impl Graph {
       String,
       tokio::sync::mpsc::Receiver<Timestamped<Arc<dyn Any + Send + Sync>>>,
     >,
-  ) -> Result<
-    (
-      Vec<JoinHandle<Result<(), GraphExecutionError>>>,
-      NodesRestoredMap,
-    ),
-    GraphExecutionError,
-  > {
+  ) -> Result<(Vec<TaskHandle>, NodesRestoredMap), GraphExecutionError> {
     let edges = self.get_edges();
 
     let initial_time = self
@@ -1415,7 +1425,7 @@ impl Graph {
     }
 
     let nodes_restored = Arc::new(Mutex::new(HashMap::new()));
-    let mut all_handles = Vec::new();
+    let mut all_handles: Vec<TaskHandle> = Vec::new();
     let deterministic = self.execution_mode == ExecutionMode::Deterministic;
 
     // Route external input streams into channels. Prefer timestamped (user-provided time) over payload-only (counter).
@@ -1453,7 +1463,7 @@ impl Graph {
           drop(tx);
           Ok(()) as Result<(), GraphExecutionError>
         });
-        all_handles.push(handle);
+        all_handles.push((None, handle));
       }
     }
     // Route payload-only external inputs (use counter when progress enabled)
@@ -1496,7 +1506,7 @@ impl Graph {
             drop(tx);
             Ok(()) as Result<(), GraphExecutionError>
           });
-          all_handles.push(handle);
+          all_handles.push((None, handle));
         }
       }
     }
@@ -1543,6 +1553,7 @@ impl Graph {
       let external_outputs = external_outputs.cloned();
       let progress_config = progress_config.clone();
       let counter = time_counter.clone();
+      let node_name_for_handle = node_name.clone();
 
       let handle = tokio::spawn(async move {
         let node_outputs = match node.execute(input_streams).await {
@@ -1631,7 +1642,7 @@ impl Graph {
         }
         Ok(())
       });
-      all_handles.push(handle);
+      all_handles.push((Some(node_name_for_handle), handle));
     }
 
     Ok((all_handles, nodes_restored))
@@ -1698,7 +1709,7 @@ impl Graph {
       std::mem::take(&mut *handles_guard)
     };
 
-    for handle in handles {
+    for (_node_id_opt, handle) in handles {
       let _ = handle.await;
     }
 
@@ -1741,7 +1752,7 @@ impl Graph {
       .run_dataflow(nodes, external_inputs, Some(&external_output_txs), None, HashMap::new())
       .await?;
 
-    for handle in handles {
+    for (_node_id_opt, handle) in handles {
       handle.await??;
     }
 
@@ -1782,8 +1793,28 @@ impl Graph {
     };
 
     // Wait for all tasks to complete
-    for handle in handles {
-      handle.await??;
+    for (node_id_opt, handle) in handles {
+      match handle.await {
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => {
+          if let (Some(tx), Some(node_id)) = (&self.failure_tx, &node_id_opt) {
+            let _ = tx.try_send(FailureReport {
+              node_id: node_id.clone(),
+              error: e.to_string(),
+            });
+          }
+          return Err(e.into());
+        }
+        Err(join_err) => {
+          if let (Some(tx), Some(node_id)) = (&self.failure_tx, &node_id_opt) {
+            let _ = tx.try_send(FailureReport {
+              node_id: node_id.clone(),
+              error: format!("task panicked: {}", join_err),
+            });
+          }
+          return Err(join_err.to_string().into());
+        }
+      }
     }
 
     // Restore nodes after dataflow execution so the graph can be reused

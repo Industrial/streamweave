@@ -48,6 +48,8 @@ pub mod checkpoint;
 pub mod state;
 /// Memory pool for efficient allocation.
 pub mod memory_pool;
+/// Supervision policies for node failure handling.
+pub mod supervision;
 /// Core node trait and interfaces.
 pub mod node;
 /// Collection of built-in nodes for common operations.

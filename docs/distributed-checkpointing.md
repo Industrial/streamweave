@@ -87,19 +87,111 @@ All workers in the cluster take a **coordinated** checkpoint so that the **globa
 
 ---
 
-## 6. Implementation phases
+## 6. Coordinated checkpoint protocol (phase 4)
+
+This section documents the protocol for coordinated checkpoints across N workers. StreamWeave does not implement this yet; it is a specification for future work.
+
+### 6.1 Prerequisites
+
+- **N graph instances** (shards), each with `ShardConfig` (see [cluster-sharding.md](cluster-sharding.md)).
+- **Shared checkpoint storage** (e.g. S3, distributed filesystem) that all workers can read/write.
+- **Coordinator** process or service that knows the worker set and can send barriers and collect reports.
+
+### 6.2 Protocol: barrier-based aligned checkpoint
+
+1. **Coordinator** assigns a checkpoint id (e.g. sequence number) and barrier (e.g. logical time T or barrier id).
+2. **Coordinator** sends “take checkpoint &lt;id&gt; at barrier &lt;T&gt;” to all workers (e.g. via HTTP, RPC, or a shared queue).
+3. **Each worker:**
+   - Waits until its graph has processed input up to T (or drains in-flight if no logical time).
+   - Calls `trigger_checkpoint(storage)` (or equivalent) to snapshot its nodes.
+   - Writes snapshots to shared storage under `<base>/<id>/shard_<shard_id>/`.
+   - Reports “checkpoint done” to the coordinator.
+4. **Coordinator** waits for all N workers to report (with timeout).
+5. **Commit:** If all reported, coordinator marks checkpoint id as committed (e.g. writes `<base>/<id>/COMMITTED` or updates a registry).
+6. **Abort:** If any worker fails or times out, coordinator marks the checkpoint as aborted. Workers may retain their partial snapshots for debugging; the next checkpoint will overwrite. Recovery uses the previous committed checkpoint.
+
+### 6.3 Protocol: Chandy–Lamport (marker-based)
+
+Alternative for graphs without a global logical time:
+
+1. **Coordinator** sends a “marker” (checkpoint id) to all workers.
+2. **Each worker** runs the Chandy–Lamport algorithm: on receiving a marker on all inputs, snapshot state, then forward markers on all outputs.
+3. Workers write snapshots to shared storage and report to the coordinator.
+4. Commit/abort same as barrier-based.
+
+### 6.4 Message contract (sketch)
+
+| Message | Direction | Content |
+|---------|-----------|---------|
+| `CheckpointRequest` | Coordinator → Worker | `{ checkpoint_id, barrier_t? }` |
+| `CheckpointDone` | Worker → Coordinator | `{ checkpoint_id, shard_id, success }` |
+| `CheckpointCommitted` | Coordinator → Worker | `{ checkpoint_id }` (optional ack) |
+
+### 6.5 Storage layout (distributed)
+
+```
+<base>/
+  <checkpoint_id>/
+    COMMITTED          # written when all workers reported
+    metadata.json      # global metadata (barrier T, worker list)
+    shard_0/           # worker 0 snapshots
+      metadata.json
+      <node_id>.bin
+    shard_1/
+      ...
+```
+
+---
+
+## 7. Recovery from worker failure (phase 5)
+
+When a worker fails, the coordinator (or orchestration layer) recovers using the last committed checkpoint.
+
+### 7.1 Detection
+
+- **Health checks:** Coordinator periodically pings workers; missing response → worker presumed dead.
+- **Explicit failure:** Worker sends a failure report before exiting (optional).
+- **Orchestrator:** Kubernetes, systemd, or similar may signal the worker is down.
+
+### 7.2 Recovery steps
+
+1. **Stop routing** to the failed worker; do not send new input for its keys.
+2. **Choose checkpoint:** Use the last **committed** checkpoint (not partial or in-progress).
+3. **Reassign keys:** The failed worker’s key range (e.g. `shard_id`, `total_shards` before failure) must be reassigned:
+   - **Option A:** Reduce `total_shards` by 1; remaining workers absorb the keys (e.g. `hash(key) % (N-1)`).
+   - **Option B:** Start a new worker (replace); assign it the failed worker’s `shard_id` and key range.
+4. **Restore:** For each remaining (or new) worker:
+   - Load checkpoint from shared storage for its shard(s).
+   - Call `restore_from_checkpoint` (or equivalent) to load state into the graph.
+   - If a worker gains keys (Option A), use `import_state_for_keys` with state exported from the checkpoint for those keys (see [cluster-sharding.md](cluster-sharding.md) state migration).
+5. **Resume:** Workers resume from the checkpoint position; sources replay input from recorded positions. Exactly-once state ensures no double-apply.
+
+### 7.3 Key reassignment and state migration
+
+- If **Option B** (replace worker): New worker gets same `shard_id`; restore from `shard_<id>/` in the checkpoint. No state migration between workers.
+- If **Option A** (absorb keys): Workers that gain keys must import state. The checkpoint contains per-shard snapshots; the coordinator (or a migration step) extracts state for the moved keys from the failed shard’s checkpoint and provides it to the gaining workers. Use `Graph::import_state_for_keys` on the gaining workers.
+
+### 7.4 Input replay
+
+- **Positions:** Checkpoint metadata records input positions (e.g. Kafka offsets, logical time) per shard.
+- **Replay:** After restore, each worker resumes consuming from its recorded position. Sources (Kafka, etc.) must support seek to that position.
+- **Idempotency:** Exactly-once state and idempotent sinks ensure replay does not produce duplicates.
+
+---
+
+## 8. Implementation phases
 
 | Phase | Content |
 |-------|--------|
 | **1** | **Local checkpointing:** State backends support `snapshot`/`restore`. Graph (or execution) can trigger “checkpoint now” (quiesce, snapshot all, record positions). Document format and storage. **Done:** `checkpoint::CheckpointStorage`, `FileCheckpointStorage`, `CheckpointId`, `CheckpointMetadata` in `src/checkpoint.rs`. Format: `<base>/<id>/metadata.json` and `<base>/<id>/<node_id>.bin`. |
 | **2** | **Restore and resume:** On startup, `restore_from_checkpoint(id)`; load state, set positions; sources replay from positions. **Done:** `Graph::restore_from_checkpoint(storage, id)` loads checkpoint, calls `Node::restore_state` on nodes with snapshot data, stores position; `restored_position()` for query; time counter initialized from position when executing with progress. `Node::restore_state` default no-op; stateful nodes override. Integrate with exactly-once state. |
 | **3** | **Periodic checkpointing:** Timer or “every N items” triggers checkpoint in the background (or at safe points). **Done:** `Graph::trigger_checkpoint(storage)` snapshots all stateful nodes via `Node::snapshot_state`, saves metadata and snapshots to storage, returns `CheckpointId`. Sequenced IDs via `checkpoint_sequence`. Tests: `test_trigger_checkpoint`, `test_trigger_checkpoint_no_nodes_fails`. |
-| **4** | (With distribution) **Coordinated protocol:** Coordinator sends barrier or markers; workers snapshot and report; commit when all done. |
+| **4** | (With distribution) **Coordinated protocol:** Coordinator sends barrier or markers; workers snapshot and report; commit when all done. **Documented:** §6 (barrier-based, Chandy–Lamport, message contract, storage layout). |
 | **5** | **Recovery from failure:** On worker failure, coordinator (or remaining workers) restore from last committed checkpoint; reassign failed worker’s keys; resume. |
 
 ---
 
-## 7. References
+## 9. References
 
 - Gap analysis §15 (Distributed checkpointing).
 - [exactly-once-state.md](exactly-once-state.md), [cluster-sharding.md](cluster-sharding.md).
