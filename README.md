@@ -313,6 +313,7 @@ StreamWeave runs in a **single process**. It does not provide distributed execut
 - [API Documentation](https://docs.rs/streamweave) - Full API reference on docs.rs
 - [Local Documentation](target/doc/streamweave/index.html) - Generated with rustdoc (run `./bin/docs`)
 - [Implementation Status](docs/IMPLEMENTATION-STATUS.md) - What is implemented vs. planned for each capability
+- [Examples and how-to index](docs/EXAMPLES-AND-HOW-TO.md) - Feature → design doc and example (runnable or planned)
 - [Examples Roadmap](docs/EXAMPLES-ROADMAP.md) - Recommended examples for each supported feature
 - [Graph API Guide](GRAPH.md) - Advanced graph patterns, routing strategies, and Flow-Based Programming
 - [Getting Started Guide](docs/getting_started.md)
