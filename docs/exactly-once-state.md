@@ -108,8 +108,7 @@ Nodes that implement this (or use a state store that does) can advertise “exac
 
 ### 4.4 Sinks: idempotent write pattern
 
-- **Document** a pattern for idempotent sinks: e.g. “each output record has a stable `(key, version)`; the sink writes with that key and version; overwrite is idempotent.”
-- Optionally provide a **wrapper node** or helper that adds a deterministic “output record id” (e.g. hash of (input_key, logical_time)) so that downstream sinks can deduplicate.
+See [§6 Idempotent sink pattern](#6-idempotent-sink-pattern) for the full pattern.
 
 ### 4.5 Edge cases
 
@@ -125,12 +124,52 @@ Nodes that implement this (or use a state store that does) can advertise “exac
 | **1** | Define and document the exactly-once state contract and key/version semantics. **Done:** `state::ExactlyOnceStateBackend` trait, README § Exactly-once state, [architecture.md](architecture.md#exactly-once-state). |
 | **2** | Implement an in-process state backend with `put(key, value, version)`, `get`, `snapshot`, `restore` (e.g. in-memory + optional file snapshot). **Done:** `state::HashMapStateBackend<K, V, Ver>` in `src/state.rs`. |
 | **3** | Add a “stateful node” helper or trait that uses this backend and is driven by logical time from the execution layer. |
-| **4** | Document idempotent sink pattern and, if needed, add a small helper for stable output ids. |
+| **4** | Document idempotent sink pattern and, if needed, add a small helper for stable output ids. **Done:** §6 Idempotent sink pattern. |
 | **5** | Integrate with local checkpointing (see [distributed-checkpointing.md](distributed-checkpointing.md)) so that state is included in checkpoints. |
 
 ---
 
-## 6. References
+## 6. Idempotent sink pattern
+
+For exactly-once semantics at the sink, each output record must be written in an **idempotent** way: writing the same record again (e.g. on replay after failure) must not change the result. The standard pattern is:
+
+### 6.1 Pattern
+
+1. **Stable record identity:** Each output record has a stable `(key, version)` where:
+   - **Key:** Identifies the record (e.g. user_id, partition key, or a deterministic hash of business fields).
+   - **Version:** A monotonic identifier (e.g. `LogicalTime`, sequence number, or event timestamp).
+
+2. **Idempotent write:** The sink writes with that key and version. Overwriting the same key with the same version is a no-op. Examples:
+   - **Key-value store:** `put(key, { value, version })`; on read, ignore records where `version <= stored_version`.
+   - **Database:** `INSERT ... ON CONFLICT (key) DO UPDATE SET value = ..., version = ... WHERE version > stored_version`.
+   - **File/Kafka:** Write to a deterministic path or partition derived from `(key, version)`; overwrite is idempotent.
+
+3. **Deriving identity from dataflow:** When using the timestamped execution path, each item carries `Timestamped<T>`. Use `item.time` as the version. The key is derived from the payload (e.g. `user_id`, `session_id`, or `hash(payload_fields)`).
+
+### 6.2 Implementation checklist
+
+- [ ] Define how to extract or compute `key` from the payload (stable and deterministic).
+- [ ] Use `LogicalTime` (or event timestamp) as `version` when available.
+- [ ] Ensure the sink backend supports overwrite-by-key with version check (or equivalent).
+- [ ] On replay, duplicate writes with the same `(key, version)` must not double-apply.
+
+### 6.3 Example: stable output id
+
+For sinks that require a single id (e.g. Kafka message key), use a deterministic id:
+
+```
+output_id = hash(key || version)
+```
+
+where `key` and `version` are serialized consistently. Same `(key, version)` always yields the same id; sinks can deduplicate by this id.
+
+### 6.4 Optional helper
+
+A future helper could add a deterministic output record id to items (e.g. `hash(input_key, logical_time)`) so that downstream sinks can deduplicate without custom logic. Defer until a concrete sink needs it.
+
+---
+
+## 7. References
 
 - Gap analysis §3 (Exactly-once state).
 - [distributed-checkpointing.md](distributed-checkpointing.md) for checkpoint/restore.
