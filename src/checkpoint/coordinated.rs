@@ -311,17 +311,25 @@ impl CheckpointCoordinator for InMemoryCheckpointCoordinator {
   }
 
   async fn await_commit(&self, checkpoint_id: CheckpointId) -> bool {
-    let notify_and_ok = {
+    let state = {
       let pending = self.pending.read().unwrap();
-      pending
-        .get(&checkpoint_id)
-        .map(|(n, _, ok)| (std::sync::Arc::clone(n), std::sync::Arc::clone(ok)))
+      pending.get(&checkpoint_id).map(|(n, count, ok)| {
+        let already_done =
+          count.load(std::sync::atomic::Ordering::SeqCst) >= self.total_shards;
+        (
+          std::sync::Arc::clone(n),
+          already_done,
+          std::sync::Arc::clone(ok),
+        )
+      })
     };
-    if let Some((notify, all_ok)) = notify_and_ok {
-      notify.notified().await;
-      all_ok.load(std::sync::atomic::Ordering::SeqCst)
-    } else {
-      false
+    match state {
+      Some((_notify, true, all_ok)) => all_ok.load(std::sync::atomic::Ordering::SeqCst),
+      Some((notify, false, all_ok)) => {
+        notify.notified().await;
+        all_ok.load(std::sync::atomic::Ordering::SeqCst)
+      }
+      None => false,
     }
   }
 }
