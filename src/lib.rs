@@ -40,6 +40,8 @@ pub mod graph_builder;
 pub mod graph_macros;
 /// Logical timestamps for dataflow progress and ordering.
 pub mod time;
+/// Prometheus-compatible metrics for production observability.
+pub mod metrics;
 /// Partitioning contract for sharded execution (cluster sharding).
 pub mod partitioning;
 /// Local checkpoint storage for state recovery.

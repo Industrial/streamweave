@@ -109,15 +109,54 @@ When you have a distributed runtime (workers, sharding), add:
 
 | Phase | Content |
 |-------|--------|
-| **1** | Add readiness/liveness semantics: document or implement `is_ready()`, optional HTTP health endpoints. |
-| **2** | Integrate structured logging (e.g. `tracing`) for key events (start, stop, error, restart). |
-| **3** | Add metrics (counters/gauges) for items in/out, errors, optional backpressure; expose in Prometheus or OTel format. |
-| **4** | Document config format and graceful shutdown behavior; add shutdown timeout if needed. |
+| **1** | Add readiness/liveness semantics: document or implement `is_ready()`, optional HTTP health endpoints. **Done:** `Graph::is_ready()`, `Graph::is_live()`. |
+| **2** | Integrate structured logging (e.g. `tracing`) for key events (start, stop, error, restart). **Done:** `tracing::info!` for graph start/stop in `execute()` and `stop()`; `tracing::error!` for node failure in `wait_for_completion()`; `tracing::warn!` for node restart in `execute_with_supervision()`. |
+| **3** | Add metrics (counters/gauges) for items in/out, errors, optional backpressure; expose in Prometheus or OTel format. **Done:** `streamweave_errors_total` counter with graph_id/node_id labels; `metrics::install_prometheus_recorder()` and `install_prometheus_recorder_on(addr)` for Prometheus scrape endpoint. Items in/out deferred (requires stream instrumentation). |
+| **4** | Document config format and graceful shutdown behavior; add shutdown timeout if needed. **Done:** §7 documents config-as-data model and `stop()` order of operations; timeout left to caller (e.g. `tokio::time::timeout`). |
 | **5** | (With distribution) Cluster health and config distribution. |
 
 ---
 
-## 7. References
+## 7. Config format and graceful shutdown (phase 4)
+
+### 7.1 Configuration
+
+**Current model:** StreamWeave uses **configuration as data** flowing through the graph. There is no first-class config file or schema; config is passed via input ports and consumed by nodes.
+
+| Mechanism | Description |
+|-----------|-------------|
+| **Input ports** | Expose a node’s input port (e.g. `"configuration"`) and connect a channel. Send config items (`Arc<dyn Any>`) through that channel. |
+| **GraphBuilder** | `.input("external", "node", "port", Some(initial_value))` sends an initial value at startup. Use for bootstrap config. |
+| **Node-specific types** | Configurable nodes (MapNode, ForEachNode, MatchNode, etc.) expect specific types on their config port. See each node’s docs. |
+
+**Versioning:** Not yet implemented. For upgrades, ensure config producers and consumers use compatible types.
+
+**Sources:** Config typically comes from: env vars (read by your code and sent into the graph), files (read at startup), or upstream nodes. Avoid hardcoding secrets; prefer config from env or from a secure store.
+
+### 7.2 Graceful shutdown
+
+**`stop()` behavior:**
+
+1. **Signal:** `stop_signal.notify_waiters()` – all node tasks are notified to stop.
+2. **Drain:** The runtime waits for all node tasks to finish (`handle.await` for each).
+3. **Reset:** `execution_state` and `running` are cleared; execution handles are dropped.
+4. **Return:** `stop()` returns only after all tasks have completed.
+
+**Order of operations:** Sources stop when they observe the stop signal on their input streams or when their downstream drops. Channels are closed when senders are dropped; receivers see `None` and exit. No explicit “stop sources first” ordering – the runtime relies on backpressure and signal propagation.
+
+**Shutdown timeout:** Not implemented. If a node blocks indefinitely, `stop()` will not return. Consider wrapping `stop()` with `tokio::time::timeout()` if you need a hard limit:
+
+```rust
+if tokio::time::timeout(Duration::from_secs(30), graph.stop()).await.is_err() {
+    tracing::warn!("Graph stop timed out after 30s");
+}
+```
+
+**Recommendation:** For graceful process exit, call `stop()` (or `wait_for_completion()` if waiting for normal completion) before exiting. Integrate with signal handlers (e.g. `tokio::signal::ctrl_c()`) to trigger shutdown on SIGTERM/SIGINT.
+
+---
+
+## 8. References
 
 - Gap analysis §7 (Production-hardened cluster tooling).
 - OpenTelemetry, Prometheus: metrics and tracing.

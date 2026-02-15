@@ -79,7 +79,7 @@ use crate::checkpoint::{CheckpointId, CheckpointMetadata, CheckpointStorage};
 use crate::edge::Edge;
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::partitioning::PartitionKey;
-use crate::supervision::FailureReport;
+use crate::supervision::{FailureAction, FailureReport, SupervisionPolicy};
 use crate::time::{CompletedFrontier, LogicalTime, ProgressHandle, Timestamped};
 use async_trait::async_trait;
 use std::any::Any;
@@ -339,6 +339,12 @@ pub struct Graph {
   checkpoint_sequence: std::sync::atomic::AtomicU64,
   /// When set, node task failures are sent here for the supervisor.
   failure_tx: Option<tokio::sync::mpsc::Sender<FailureReport>>,
+  /// True when execute() has started and graph is running (until stop or wait_for_completion).
+  running: Arc<std::sync::atomic::AtomicBool>,
+  /// Per-node supervision policy; falls back to default when not set.
+  node_supervision_policies: HashMap<String, SupervisionPolicy>,
+  /// Default policy for nodes without an explicit policy.
+  default_supervision_policy: SupervisionPolicy,
 }
 
 impl Graph {
@@ -381,7 +387,23 @@ impl Graph {
       restored_position: None,
       checkpoint_sequence: std::sync::atomic::AtomicU64::new(0),
       failure_tx: None,
+      running: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+      node_supervision_policies: HashMap::new(),
+      default_supervision_policy: SupervisionPolicy::default(),
     }
+  }
+
+  /// Sets the supervision policy for a node.
+  ///
+  /// When a node fails (panic or `Err` from `execute`), the supervisor applies
+  /// this policy. See [actor-supervision-trees.md](../docs/actor-supervision-trees.md).
+  pub fn set_node_supervision_policy(&mut self, node_id: &str, policy: SupervisionPolicy) {
+    self.node_supervision_policies.insert(node_id.to_string(), policy);
+  }
+
+  /// Sets the default supervision policy for nodes without an explicit policy.
+  pub fn set_default_supervision_policy(&mut self, policy: SupervisionPolicy) {
+    self.default_supervision_policy = policy;
   }
 
   /// Enables failure reporting: node task failures (Err or panic) are sent to the returned receiver.
@@ -1189,7 +1211,26 @@ impl Graph {
     self.execution_handles.lock().await.clear();
     self.execution_handles.lock().await.extend(handles);
     self.nodes_restored_after_run = Some(nodes_restored);
+    self.running.store(true, Ordering::Release);
+    tracing::info!(graph_id = %self.name, "Graph execution started");
     Ok(())
+  }
+
+  /// Returns true if the graph is ready to accept work (started and running).
+  ///
+  /// Use for Kubernetes readiness probes: return 200 when ready, 503 otherwise.
+  /// The graph is ready after [`execute`](Self::execute) has started and until
+  /// [`stop`](Self::stop) or [`wait_for_completion`](Self::wait_for_completion) finishes.
+  pub fn is_ready(&self) -> bool {
+    self.running.load(Ordering::Acquire)
+  }
+
+  /// Returns true if the graph is alive (always true for an existing graph).
+  ///
+  /// Use for Kubernetes liveness probes. Process-level liveness is typically
+  /// handled by the HTTP server; this indicates the graph instance exists.
+  pub fn is_live(&self) -> bool {
+    true
   }
 
   /// Starts graph execution in deterministic mode.
@@ -1252,6 +1293,7 @@ impl Graph {
     self.execution_handles.lock().await.clear();
     self.execution_handles.lock().await.extend(handles);
     self.nodes_restored_after_run = Some(nodes_restored);
+    self.running.store(true, Ordering::Release);
     Ok(progress_handle)
   }
 
@@ -1319,6 +1361,7 @@ impl Graph {
     self.execution_handles.lock().await.clear();
     self.execution_handles.lock().await.extend(handles);
     self.nodes_restored_after_run = Some(nodes_restored);
+    self.running.store(true, Ordering::Release);
     Ok(progress_handle)
   }
 
@@ -1700,6 +1743,7 @@ impl Graph {
   ///
   /// Returns `GraphExecutionError` if execution cannot be stopped gracefully.
   pub async fn stop(&self) -> Result<(), GraphExecutionError> {
+    tracing::info!(graph_id = %self.name, "Graph stop requested");
     // Notify all tasks to stop
     self.stop_signal.notify_waiters();
 
@@ -1715,10 +1759,12 @@ impl Graph {
 
     // Reset execution state
     self.execution_state.store(0, Ordering::Release); // 0 = stopped
+    self.running.store(false, Ordering::Release);
 
     // Clear execution handles
     self.execution_handles.lock().await.clear();
 
+    tracing::info!(graph_id = %self.name, "Graph stopped");
     Ok(())
   }
 
@@ -1792,38 +1838,151 @@ impl Graph {
       std::mem::take(&mut *handles_guard)
     };
 
-    // Wait for all tasks to complete
+    let mut first_error: Option<GraphExecutionError> = None;
+
+    // Wait for all tasks to complete (await all so nodes are restored for retry)
     for (node_id_opt, handle) in handles {
       match handle.await {
         Ok(Ok(())) => {}
         Ok(Err(e)) => {
-          if let (Some(tx), Some(node_id)) = (&self.failure_tx, &node_id_opt) {
-            let _ = tx.try_send(FailureReport {
-              node_id: node_id.clone(),
-              error: e.to_string(),
-            });
+          if first_error.is_none() {
+            let node_id = node_id_opt.as_deref().unwrap_or("?");
+            crate::metrics::record_node_error(&self.name, node_id);
+            tracing::error!(
+              graph_id = %self.name,
+              node_id = %node_id,
+              error = %e,
+              "Node execution failed"
+            );
+            if let (Some(tx), Some(node_id)) = (&self.failure_tx, &node_id_opt) {
+              let _ = tx.try_send(FailureReport {
+                node_id: node_id.clone(),
+                error: e.to_string(),
+              });
+            }
+            first_error = Some(e.into());
           }
-          return Err(e.into());
         }
         Err(join_err) => {
-          if let (Some(tx), Some(node_id)) = (&self.failure_tx, &node_id_opt) {
-            let _ = tx.try_send(FailureReport {
-              node_id: node_id.clone(),
-              error: format!("task panicked: {}", join_err),
-            });
+          if first_error.is_none() {
+            let node_id = node_id_opt.as_deref().unwrap_or("?");
+            crate::metrics::record_node_error(&self.name, node_id);
+            tracing::error!(
+              graph_id = %self.name,
+              node_id = %node_id,
+              error = %join_err,
+              "Node task panicked"
+            );
+            if let (Some(tx), Some(node_id)) = (&self.failure_tx, &node_id_opt) {
+              let _ = tx.try_send(FailureReport {
+                node_id: node_id.clone(),
+                error: format!("task panicked: {}", join_err),
+              });
+            }
+            first_error = Some(join_err.to_string().into());
           }
-          return Err(join_err.to_string().into());
         }
       }
     }
 
-    // Restore nodes after dataflow execution so the graph can be reused
+    // Restore nodes after dataflow execution so the graph can be reused (including for retry)
     if let Some(restore) = self.nodes_restored_after_run.take() {
       let mut map = restore.lock().await;
       *self.nodes.lock().unwrap() = std::mem::take(&mut *map);
     }
 
-    Ok(())
+    self.running.store(false, Ordering::Release);
+
+    if let Some(e) = first_error {
+      Err(e)
+    } else {
+      Ok(())
+    }
+  }
+
+  /// Executes the graph with supervision: on node failure, applies the configured
+  /// policy (restart graph up to N times, or stop).
+  ///
+  /// Uses **graph-level restart**: when a node fails and the policy says Restart,
+  /// the whole graph is restarted. Per-node restart requires reconnecting inputs;
+  /// use the `reconnect` closure to provide fresh channels for each attempt.
+  ///
+  /// # Arguments
+  ///
+  /// * `reconnect` - Called before each execution attempt (including the first).
+  ///   Must set up input/output channels via `connect_input_channel`, etc.
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if the graph completed successfully, or an error if:
+  /// - Policy says Stop/Escalate
+  /// - Max restarts exceeded
+  /// - Reconnect or execution fails
+  pub async fn execute_with_supervision<F>(
+    &mut self,
+    mut reconnect: F,
+  ) -> Result<(), GraphExecutionError>
+  where
+    F: FnMut(&mut Graph) -> Result<(), GraphExecutionError>,
+  {
+    let mut failure_rx = self.enable_failure_reporting();
+    let mut restart_count: HashMap<String, u32> = HashMap::new();
+
+    loop {
+      reconnect(self)?;
+
+      if let Err(e) = self.execute().await {
+        return Err(e);
+      }
+
+      match self.wait_for_completion().await {
+        Ok(()) => return Ok(()),
+        Err(exec_err) => {
+          // Receive the failure report (sent before wait_for_completion returned)
+          let report = tokio::time::timeout(
+            std::time::Duration::from_secs(1),
+            failure_rx.recv(),
+          )
+          .await
+          .ok()
+          .flatten();
+
+          let node_id = report
+            .as_ref()
+            .map(|r| r.node_id.as_str())
+            .unwrap_or("?");
+
+          let policy = self
+            .node_supervision_policies
+            .get(node_id)
+            .cloned()
+            .unwrap_or_else(|| self.default_supervision_policy.clone());
+
+          let count = restart_count.entry(node_id.to_string()).or_insert(0);
+          *count += 1;
+
+          match policy.on_failure {
+            FailureAction::Stop | FailureAction::Escalate => {
+              return Err(exec_err);
+            }
+            FailureAction::Restart | FailureAction::RestartGroup => {
+              if let Some(max) = policy.max_restarts {
+                if *count > max {
+                  return Err(exec_err);
+                }
+              }
+              tracing::warn!(
+                node_id = %node_id,
+                error = %report.as_ref().map(|r| r.error.as_str()).unwrap_or(""),
+                restart_count = *count,
+                "Node failed, restarting graph"
+              );
+              tokio::time::sleep(policy.restart_backoff).await;
+            }
+          }
+        }
+      }
+    }
   }
 }
 

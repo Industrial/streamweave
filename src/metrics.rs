@@ -1,0 +1,77 @@
+//! Prometheus/OpenTelemetry-compatible metrics for StreamWeave.
+//!
+//! Records operational metrics (errors, throughput) for production observability.
+//! Use [`install_prometheus_recorder`] at startup to expose metrics for scraping.
+//!
+//! # Example
+//!
+//! ```rust,no_run
+//! use streamweave::metrics;
+//!
+//! // At startup, install the Prometheus recorder (spawns HTTP server on default port)
+//! metrics::install_prometheus_recorder();
+//!
+//! // Or with custom address:
+//! // metrics::install_prometheus_recorder_on("0.0.0.0:9090".parse().unwrap());
+//! ```
+
+use metrics::counter;
+
+/// Installs the Prometheus recorder as the global metrics recorder.
+///
+/// Spawns an HTTP server (when the `http-listener` feature is enabled) that serves
+/// Prometheus metrics at `GET /metrics` on the default address. Call once at startup.
+///
+/// If not called, metrics recording is a no-op (metrics are dropped).
+pub fn install_prometheus_recorder() {
+  use metrics_exporter_prometheus::PrometheusBuilder;
+  PrometheusBuilder::new()
+    .install()
+    .expect("failed to install Prometheus recorder");
+}
+
+/// Installs the Prometheus recorder and serves metrics on the given address.
+///
+/// Use when you need to configure the listen address. Spawns an HTTP server
+/// that serves Prometheus metrics at `GET /metrics`.
+pub fn install_prometheus_recorder_on(addr: std::net::SocketAddr) {
+  use metrics_exporter_prometheus::PrometheusBuilder;
+  PrometheusBuilder::new()
+    .with_http_listener(addr)
+    .install()
+    .expect("failed to install Prometheus recorder");
+}
+
+/// Records a node execution error for the `streamweave_errors_total` counter.
+pub fn record_node_error(graph_id: &str, node_id: &str) {
+  counter!(
+    "streamweave_errors_total",
+    "graph_id" => graph_id.to_string(),
+    "node_id" => node_id.to_string()
+  )
+  .increment(1);
+}
+
+/// Records items received on an input port (for future instrumentation).
+#[allow(dead_code)]
+pub(crate) fn record_items_in(graph_id: &str, node_id: &str, port: &str, count: u64) {
+  counter!(
+    "streamweave_items_in_total",
+    "graph_id" => graph_id.to_string(),
+    "node_id" => node_id.to_string(),
+    "port" => port.to_string()
+  )
+  .increment(count);
+}
+
+/// Records items sent on an output port (for future instrumentation).
+#[allow(dead_code)]
+pub(crate) fn record_items_out(graph_id: &str, node_id: &str, port: &str, count: u64) {
+  counter!(
+    "streamweave_items_out_total",
+    "graph_id" => graph_id.to_string(),
+    "node_id" => node_id.to_string(),
+    "port" => port.to_string()
+  )
+  .increment(count);
+}

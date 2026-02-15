@@ -4,6 +4,8 @@
 
 **Dependencies:** Mature cluster sharding, Production-hardened cluster tooling.
 
+**Status:** Deferred until cluster sharding exists. Auto-scaling (add/remove workers based on load) is a future goal. It will require cluster sharding, metrics (see [production-cluster-tooling.md](production-cluster-tooling.md)), and a rebalance API. Use Kubernetes HPA or a custom controller that drives rebalance based on metrics when distribution is available.
+
 ---
 
 ## 1. Objective and rationale
@@ -80,7 +82,7 @@
 
 | Phase | Content |
 |-------|--------|
-| **1** | Document auto-scaling as a future goal; document that it depends on sharding and production tooling (metrics, rebalance API). |
+| **1** | Document auto-scaling as a future goal; document that it depends on sharding and production tooling (metrics, rebalance API). **Done:** Status callout and §4.3. |
 | **2** | (With distribution) Expose metrics and rebalance API so that external controllers can scale and rebalance. |
 | **3** | (Optional) Provide an example or reference design for Kubernetes HPA + rebalance (e.g. operator or Helm chart with hooks). |
 | **4** | (Optional) Implement a simple built-in scaler that reads metrics and calls rebalance (e.g. “scale to N workers when backlog > threshold”). Defer until core distribution is stable. |

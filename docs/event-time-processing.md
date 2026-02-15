@@ -75,7 +75,45 @@ Plus one cross-cutting concern: **late-data policy**.
 
 ---
 
-## 6. Testing
+## 6. How to wire an event-time pipeline
+
+### 6.1 Steps
+
+1. **Provide timestamped input.** Use `graph.connect_timestamped_input_channel(port, receiver)` where the receiver yields `Timestamped<Arc<dyn Any>>` with event time in `time`. Or use `EventTimeExtractorNode` to wrap a payload stream and extract event time from each item.
+
+2. **Use progress-aware execution.** Call `graph.execute_with_progress()` (or `execute_with_progress_per_sink()`) so the runtime propagates watermarks from sources to sinks and advances the frontier.
+
+3. **Add event-time window nodes.** Insert `TumblingEventTimeWindowNode`, `SlidingEventTimeWindowNode`, or `SessionEventTimeWindowNode` in the path. These require `StreamMessage` (Data/Watermark) input; when using the timestamped path, the graph supplies this automatically.
+
+4. **Configure late-data policy.** Each event-time window node supports `with_late_data_policy(policy)`:
+   - `LateDataPolicy::Drop` (default): discard events whose event time is before the watermark.
+   - `LateDataPolicy::SideOutput`: send late events to the `"late"` output port for separate handling.
+
+5. **Connect outputs.** Exposed output ports receive window results (or stream output). The `"late"` port, when using SideOutput, carries late events only.
+
+### 6.2 Example sketch
+
+```rust
+// Connect timestamped input (event time from your source)
+graph.connect_timestamped_input_channel("events", timestamped_rx)?;
+
+// Or use EventTimeExtractorNode to add event time from payload
+let extractor = EventTimeExtractorNode::new("extract", event_time_from_map());
+graph.add_node("extract", Box::new(extractor))?;
+// ... wire extractor output to downstream
+
+// Event-time window with side output for late data
+let window = TumblingEventTimeWindowNode::new("win", window_size)
+    .with_late_data_policy(LateDataPolicy::SideOutput);
+graph.add_node("win", Box::new(window))?;
+// Connect "late" port to a sink or logger
+
+graph.execute_with_progress().await?;
+```
+
+---
+
+## 7. Testing
 
 - **Out-of-order:** Feed events in wrong order (e.g. time 3, 1, 2); assert window results are correct when watermark passes. **Done:** `test_event_time_window_out_of_order`, `test_sliding_window_out_of_order`, `test_session_window_out_of_order`.
 - **Late data:** Feed event with time T after watermark has passed T; assert drop / allowed-lateness update / side-output emission per policy. **Done:** `test_event_time_window_late_data_dropped`, `test_event_time_window_late_data_side_output`.
@@ -83,7 +121,7 @@ Plus one cross-cutting concern: **late-data policy**.
 
 ---
 
-## 7. References
+## 8. References
 
 - Gap analysis §12 (Event-time processing).
 - [event-time-semantics.md](event-time-semantics.md), [progress-tracking.md](progress-tracking.md), [windowing.md](windowing.md).
