@@ -4,6 +4,8 @@
 
 **Dependencies:** None (optional: Logical timestamps for time-based determinism).
 
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md#deterministic-executionmd). All phases done.
+
 ---
 
 ## 1. Objective and rationale
@@ -129,12 +131,12 @@ then the observable output order is determined by logical time. Concurrency is a
 
 ## 5. Implementation phases
 
-| Phase | Content |
-|-------|--------|
-| **1** | Define and document the determinism contract (this doc + README/ARCHITECTURE). **Done:** See README § Determinism, [architecture.md](architecture.md#determinism). |
-| **2** | Implement `ExecutionMode::Deterministic` (single-task, topological driver) and `execute_deterministic()` (or equivalent). **Done:** `ExecutionMode` enum, `set_execution_mode()`, `execute_deterministic()`. Nodes started in topological order; external inputs processed in port-name order. |
-| **3** | Add tests: same input → same output in deterministic mode. **Done:** `test_execute_deterministic_reproducible` runs the same graph twice in deterministic mode and asserts identical outputs. |
-| **4** | Add deterministic merge for multi-input nodes. **Done:** `MergeNode::new_deterministic()` merges in round-robin by port index (port 0, 1, 2, …). Use in graphs that need reproducible multi-input order. Logical-time-based concurrent determinism is future work. |
+| Phase | Status | Content |
+|-------|--------|---------|
+| **1** | Done | Determinism contract in README, architecture. |
+| **2** | Done | `ExecutionMode::Deterministic`, `execute_deterministic()`. |
+| **3** | Done | `test_execute_deterministic_reproducible`. |
+| **4** | Done | `MergeNode::new_deterministic()`. |
 
 ---
 

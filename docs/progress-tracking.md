@@ -4,6 +4,8 @@
 
 **Dependencies:** Logical timestamps (implemented).
 
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md). Complete: CompletedFrontier, ProgressHandle, execute_with_progress, execute_with_progress_per_sink, WatermarkInjectorNode.
+
 ---
 
 ## 1. Objective and rationale

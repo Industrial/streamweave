@@ -312,6 +312,8 @@ StreamWeave runs in a **single process**. It does not provide distributed execut
 
 - [API Documentation](https://docs.rs/streamweave) - Full API reference on docs.rs
 - [Local Documentation](target/doc/streamweave/index.html) - Generated with rustdoc (run `./bin/docs`)
+- [Implementation Status](docs/IMPLEMENTATION-STATUS.md) - What is implemented vs. planned for each capability
+- [Examples Roadmap](docs/EXAMPLES-ROADMAP.md) - Recommended examples for each supported feature
 - [Graph API Guide](GRAPH.md) - Advanced graph patterns, routing strategies, and Flow-Based Programming
 - [Getting Started Guide](docs/getting_started.md)
 - [Architecture Overview](docs/architecture.md)
@@ -321,17 +323,31 @@ StreamWeave runs in a **single process**. It does not provide distributed execut
 
 ## 📖 Examples
 
-StreamWeave includes comprehensive examples demonstrating all major features. See the [examples directory](examples/) for:
+StreamWeave includes examples demonstrating core features. See the [examples directory](examples/) and [Examples Roadmap](docs/EXAMPLES-ROADMAP.md) for the full list.
 
-- **Graph Macro Examples:**
-  - `graph_macro_simple.rs` - Simple linear pipeline with `graph!` macro
-  - `graph_macro_fan_patterns.rs` - Fan-in patterns (fan-out not supported)
-  - `graph_macro_io.rs` - Graph I/O with values and without values
-- Integration examples (Kafka, Redis, Database, HTTP)
-- File format examples (CSV, JSONL, Parquet)
-- Processing examples (Stateful, Error Handling, Windowing)
-- Visualization examples
-- Graph API examples
+### Existing examples
+
+| Example | Description |
+|---------|-------------|
+| `graph_macro_simple` | Simple linear pipeline with `graph!` macro |
+| `graph_macro_fan_patterns` | Fan-in patterns (multiple sources → one target) |
+| `graph_macro_io` | Graph I/O with values and without values |
+
+### Recommended examples (see [EXAMPLES-ROADMAP.md](docs/EXAMPLES-ROADMAP.md))
+
+Examples to add for newly supported features:
+
+| Example | Feature | Status |
+|---------|---------|--------|
+| `event_time_window` | Event-time windows (tumbling, sliding, session) | Planned |
+| `event_time_watermark` | Progress tracking, watermarks | Planned |
+| `checkpoint_restore` | Local checkpointing, restore from checkpoint | Planned |
+| `deterministic_execution` | Deterministic mode, reproducible runs | Planned |
+| `supervision_restart` | Actor supervision, failure + restart | Planned |
+| `bounded_iteration` | Cyclic dataflow (BoundedIterationNode) | Planned |
+| `differential_stream` | Differential operators (group-by, join) | Planned |
+| `exactly_once_state` | Keyed state, idempotent updates | Planned |
+| `production_ready` | Health checks, Prometheus metrics | Planned |
 
 Run any example with:
 ```bash

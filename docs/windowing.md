@@ -4,6 +4,8 @@
 
 **Dependencies:** None for count-based and processing-time. Event-time semantics and Progress tracking for event-time windows.
 
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md). Complete: TumblingEventTimeWindowNode, SlidingEventTimeWindowNode, SessionEventTimeWindowNode, TumblingProcessingTimeWindowNode; count-based exists.
+
 ---
 
 ## 1. Objective and rationale

@@ -4,6 +4,8 @@
 
 **Dependencies:** Local checkpointing (in-process), Exactly-once state, Mature cluster sharding.
 
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md#distributed-checkpointingmd). Phases 1–4 done (local + coordinated protocol). Phase 5 (recovery from worker failure) not done.
+
 ---
 
 ## 1. Objective and rationale
@@ -89,7 +91,7 @@ All workers in the cluster take a **coordinated** checkpoint so that the **globa
 
 ## 6. Coordinated checkpoint protocol (phase 4)
 
-This section documents the protocol for coordinated checkpoints across N workers. StreamWeave does not implement this yet; it is a specification for future work.
+This section documents the protocol for coordinated checkpoints across N workers. **Implemented:** `checkpoint::coordinated` module with `CheckpointRequest`, `CheckpointDone`, `CheckpointCoordinator` trait, `DistributedCheckpointStorage`, `FileDistributedCheckpointStorage`, `InMemoryCheckpointCoordinator`. Graph: `trigger_checkpoint_for_coordination()`, `restore_from_distributed_checkpoint()`.
 
 ### 6.1 Prerequisites
 
@@ -181,13 +183,13 @@ When a worker fails, the coordinator (or orchestration layer) recovers using the
 
 ## 8. Implementation phases
 
-| Phase | Content |
-|-------|--------|
-| **1** | **Local checkpointing:** State backends support `snapshot`/`restore`. Graph (or execution) can trigger “checkpoint now” (quiesce, snapshot all, record positions). Document format and storage. **Done:** `checkpoint::CheckpointStorage`, `FileCheckpointStorage`, `CheckpointId`, `CheckpointMetadata` in `src/checkpoint.rs`. Format: `<base>/<id>/metadata.json` and `<base>/<id>/<node_id>.bin`. |
-| **2** | **Restore and resume:** On startup, `restore_from_checkpoint(id)`; load state, set positions; sources replay from positions. **Done:** `Graph::restore_from_checkpoint(storage, id)` loads checkpoint, calls `Node::restore_state` on nodes with snapshot data, stores position; `restored_position()` for query; time counter initialized from position when executing with progress. `Node::restore_state` default no-op; stateful nodes override. Integrate with exactly-once state. |
-| **3** | **Periodic checkpointing:** Timer or “every N items” triggers checkpoint in the background (or at safe points). **Done:** `Graph::trigger_checkpoint(storage)` snapshots all stateful nodes via `Node::snapshot_state`, saves metadata and snapshots to storage, returns `CheckpointId`. Sequenced IDs via `checkpoint_sequence`. Tests: `test_trigger_checkpoint`, `test_trigger_checkpoint_no_nodes_fails`. |
-| **4** | (With distribution) **Coordinated protocol:** Coordinator sends barrier or markers; workers snapshot and report; commit when all done. **Documented:** §6 (barrier-based, Chandy–Lamport, message contract, storage layout). |
-| **5** | **Recovery from failure:** On worker failure, coordinator (or remaining workers) restore from last committed checkpoint; reassign failed worker’s keys; resume. |
+| Phase | Status | Content |
+|-------|--------|---------|
+| **1** | Done | **Local checkpointing:** State backends support `snapshot`/`restore`. Graph (or execution) can trigger “checkpoint now” (quiesce, snapshot all, record positions). Document format and storage. **Done:** `checkpoint::CheckpointStorage`, `FileCheckpointStorage`, `CheckpointId`, `CheckpointMetadata` in `src/checkpoint.rs`. Format: `<base>/<id>/metadata.json` and `<base>/<id>/<node_id>.bin`. |
+| **2** | Done | **Restore and resume:** On startup, `restore_from_checkpoint(id)`; load state, set positions; sources replay from positions. **Done:** `Graph::restore_from_checkpoint(storage, id)` loads checkpoint, calls `Node::restore_state` on nodes with snapshot data, stores position; `restored_position()` for query; time counter initialized from position when executing with progress. `Node::restore_state` default no-op; stateful nodes override. Integrate with exactly-once state. |
+| **3** | Done | **Periodic checkpointing:** Timer or “every N items” triggers checkpoint in the background (or at safe points). **Done:** `Graph::trigger_checkpoint(storage)` snapshots all stateful nodes via `Node::snapshot_state`, saves metadata and snapshots to storage, returns `CheckpointId`. Sequenced IDs via `checkpoint_sequence`. Tests: `test_trigger_checkpoint`, `test_trigger_checkpoint_no_nodes_fails`. |
+| **4** | Done | **Coordinated protocol:** `CheckpointCoordinator` trait, `DistributedCheckpointStorage`, `FileDistributedCheckpointStorage`, `InMemoryCheckpointCoordinator`. Graph: `trigger_checkpoint_for_coordination()`, `restore_from_distributed_checkpoint()`. Message contract and storage layout in §6. |
+| **5** | Not done | **Recovery from failure:** On worker failure, coordinator (or remaining workers) restore from last committed checkpoint; reassign failed worker’s keys; resume. |
 
 ---
 

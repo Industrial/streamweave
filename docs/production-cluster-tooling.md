@@ -4,6 +4,8 @@
 
 **Dependencies:** None for single-process hardening. Mature cluster sharding for cluster-level tooling.
 
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md). Phases 1–4 done (health, logging, metrics, config/shutdown docs); cluster health deferred.
+
 ---
 
 ## 1. Objective and rationale

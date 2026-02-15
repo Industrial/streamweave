@@ -1,7 +1,17 @@
-//! Local checkpointing for stateful nodes.
+//! Local and coordinated checkpointing for stateful nodes.
 //!
 //! Persists state snapshots and optional positions to durable storage for
-//! recovery. See [docs/distributed-checkpointing.md](../docs/distributed-checkpointing.md).
+//! recovery. See [docs/distributed-checkpointing.md](../../docs/distributed-checkpointing.md).
+
+mod coordinated;
+#[cfg(test)]
+mod coordinated_test;
+
+pub use coordinated::{
+    CheckpointCommitted, CheckpointCoordinator, CheckpointDone, CheckpointRequest,
+    DistributedCheckpointStorage, FileDistributedCheckpointStorage,
+    InMemoryCheckpointCoordinator,
+};
 
 use crate::time::LogicalTime;
 use std::collections::HashMap;

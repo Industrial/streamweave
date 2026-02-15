@@ -350,3 +350,5 @@ Each remaining functionality has a dedicated design document in this directory w
 | 16 | Auto-scaling clusters | [auto-scaling-clusters.md](auto-scaling-clusters.md) |
 
 §1 (Logical timestamps) is implemented; see [logical-timestamps-timely-and-streamweave.md](logical-timestamps-timely-and-streamweave.md) for the design and `src/time.rs` for the implementation.
+
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md) for a complete summary of what is done vs. not done for each capability.

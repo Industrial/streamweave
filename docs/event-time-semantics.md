@@ -4,6 +4,8 @@
 
 **Dependencies:** Logical timestamps (implemented).
 
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md). Complete: HasEventTime, EventTimeExtractorNode, connect_timestamped_input_channel.
+
 ---
 
 ## 1. Objective and rationale

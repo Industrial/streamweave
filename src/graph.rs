@@ -75,7 +75,10 @@
 //! })?;
 //! ```
 
-use crate::checkpoint::{CheckpointId, CheckpointMetadata, CheckpointStorage};
+use crate::checkpoint::{
+    CheckpointDone, CheckpointId, CheckpointMetadata, CheckpointStorage,
+    DistributedCheckpointStorage,
+};
 use crate::edge::Edge;
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::partitioning::PartitionKey;
@@ -506,6 +509,62 @@ impl Graph {
     Ok(id)
   }
 
+  /// Triggers a checkpoint for coordinated distributed execution.
+  ///
+  /// Snapshots all stateful nodes and writes to shared storage under
+  /// `<base>/<id>/shard_<shard_id>/`. Returns a [`CheckpointDone`] that the
+  /// caller must report to the coordinator via
+  /// [`CheckpointCoordinator::report_done`](crate::checkpoint::CheckpointCoordinator::report_done).
+  ///
+  /// Use this when the graph runs as a shard in a coordinated checkpoint
+  /// (see [distributed-checkpointing.md](../docs/distributed-checkpointing.md) §6).
+  pub fn trigger_checkpoint_for_coordination(
+    &self,
+    storage: &dyn DistributedCheckpointStorage,
+    request: &crate::checkpoint::CheckpointRequest,
+    shard_id: u32,
+  ) -> Result<CheckpointDone, GraphExecutionError> {
+    let nodes = self.nodes.lock().unwrap();
+    if nodes.is_empty() {
+      return Err("Cannot checkpoint: no nodes (graph may be executing)".into());
+    }
+
+    let mut snapshots = HashMap::new();
+    for (node_id, node) in nodes.iter() {
+      match node.snapshot_state() {
+        Ok(data) if !data.is_empty() => {
+          snapshots.insert(node_id.clone(), data);
+        }
+        Ok(_) => {}
+        Err(_e) => {
+          return Ok(CheckpointDone {
+            checkpoint_id: request.checkpoint_id,
+            shard_id,
+            success: false,
+          });
+        }
+      }
+    }
+
+    let metadata = CheckpointMetadata {
+      id: request.checkpoint_id,
+      position: self.restored_position,
+    };
+
+    match storage.save_shard(request.checkpoint_id, shard_id, &metadata, &snapshots) {
+      Ok(()) => Ok(CheckpointDone {
+        checkpoint_id: request.checkpoint_id,
+        shard_id,
+        success: true,
+      }),
+      Err(_) => Ok(CheckpointDone {
+        checkpoint_id: request.checkpoint_id,
+        shard_id,
+        success: false,
+      }),
+    }
+  }
+
   /// Restores graph state from a checkpoint.
   ///
   /// Loads the checkpoint from storage, restores state into nodes that support
@@ -527,6 +586,33 @@ impl Graph {
     let (metadata, snapshots) = storage
       .load(id)
       .map_err(|e| format!("Checkpoint load failed: {}", e))?;
+
+    let mut nodes = self.nodes.lock().unwrap();
+    for (node_id, data) in &snapshots {
+      if let Some(node) = nodes.get_mut(node_id) {
+        node
+          .restore_state(data)
+          .map_err(|e| format!("Node '{}' restore failed: {}", node_id, e))?;
+      }
+    }
+
+    self.restored_position = metadata.position;
+    Ok(())
+  }
+
+  /// Restores graph state from a coordinated distributed checkpoint.
+  ///
+  /// Loads this shard's snapshot from shared storage. Call after the coordinator
+  /// has committed the checkpoint (e.g. on worker recovery).
+  pub fn restore_from_distributed_checkpoint(
+    &mut self,
+    storage: &dyn DistributedCheckpointStorage,
+    id: CheckpointId,
+    shard_id: u32,
+  ) -> Result<(), GraphExecutionError> {
+    let (metadata, snapshots) = storage
+      .load_shard(id, shard_id)
+      .map_err(|e| format!("Distributed checkpoint load failed: {}", e))?;
 
     let mut nodes = self.nodes.lock().unwrap();
     for (node_id, data) in &snapshots {

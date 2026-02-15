@@ -4,6 +4,8 @@
 
 **Dependencies:** Timestamped differential dataflow (full incremental); or Progress tracking (for time-range recomputation).
 
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md). Partial: MemoizingMapNode, replay-from-checkpoint, differential operators done; time-range recomputation deferred.
+
 ---
 
 ## 1. Objective and rationale

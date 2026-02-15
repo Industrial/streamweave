@@ -4,6 +4,8 @@
 
 **Dependencies:** None.
 
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md). Complete: README scope, architecture doc, API docs.
+
 ---
 
 ## 1. Objective and rationale

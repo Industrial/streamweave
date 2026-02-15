@@ -4,6 +4,8 @@
 
 **Dependencies:** Event-time semantics, Progress tracking, Windowing (event-time).
 
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md). Complete: event-time semantics, watermarks, event-time windows, LateDataPolicy (Drop, SideOutput).
+
 ---
 
 ## 1. Objective and rationale

@@ -6,6 +6,8 @@
 
 **Status:** Deferred until cluster sharding exists. Auto-scaling (add/remove workers based on load) is a future goal. It will require cluster sharding, metrics (see [production-cluster-tooling.md](production-cluster-tooling.md)), and a rebalance API. Use Kubernetes HPA or a custom controller that drives rebalance based on metrics when distribution is available.
 
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md#auto-scaling-clustersmd). Phase 1 (document as future goal) done. Phases 2–4 not started; explicitly deferred.
+
 ---
 
 ## 1. Objective and rationale

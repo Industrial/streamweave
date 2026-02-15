@@ -4,6 +4,8 @@
 
 **Dependencies:** None (optional: Logical timestamps for time-based dedup; checkpointing for recovery).
 
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md). Complete: ExactlyOnceStateBackend, HashMapStateBackend, KeyedStateBackend, StatefulNodeDriver, idempotent sink pattern doc.
+
 ---
 
 ## 1. Objective and rationale
