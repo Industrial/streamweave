@@ -110,7 +110,7 @@ When an event arrives with event_time T but watermark has already passed T:
 
 | Phase | Content |
 |-------|--------|
-| **1** | Document count window (existing); add processing-time tumbling window node (timer-based). |
+| **1** | Document count window (existing); add processing-time tumbling window node (timer-based). **Done:** Count window: `WindowNode` (configuration, in, size → out, error). Processing-time tumbling: `TumblingProcessingTimeWindowNode` in `src/nodes/stream/tumbling_processing_time_window_node.rs`. |
 | **2** | Implement tumbling event-time window (buffer by window, close on watermark). Requires progress/watermark integration. |
 | **3** | Add sliding and session windows (event-time). |
 | **4** | Add late-data policy (configurable: drop, allowed lateness, side output). |
