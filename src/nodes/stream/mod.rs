@@ -78,6 +78,9 @@ pub mod throttle_node;
 #[cfg(test)]
 /// Test module for throttle node functionality.
 pub mod throttle_node_test;
+pub mod tumbling_event_time_window_node;
+#[cfg(test)]
+pub mod tumbling_event_time_window_node_test;
 pub mod tumbling_processing_time_window_node;
 #[cfg(test)]
 pub mod tumbling_processing_time_window_node_test;
@@ -106,6 +109,7 @@ pub use sample_node::SampleNode;
 pub use skip_node::SkipNode;
 pub use take_node::TakeNode;
 pub use throttle_node::ThrottleNode;
+pub use tumbling_event_time_window_node::TumblingEventTimeWindowNode;
 pub use tumbling_processing_time_window_node::TumblingProcessingTimeWindowNode;
 pub use window_node::WindowNode;
 pub use zip_node::ZipNode;
