@@ -4,7 +4,7 @@
 
 **Dependencies:** None for single-process hardening. Mature cluster sharding for cluster-level tooling.
 
-**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md). Phases 1–4 done (health, logging, metrics, config/shutdown docs); cluster health deferred.
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md). Phases 1–5 done. Phase 5: `cluster_health::aggregate_cluster_health`, `ClusterHealthReport` (all_healthy, quorum_healthy).
 
 ---
 
@@ -115,7 +115,7 @@ When you have a distributed runtime (workers, sharding), add:
 | **2** | Integrate structured logging (e.g. `tracing`) for key events (start, stop, error, restart). **Done:** `tracing::info!` for graph start/stop in `execute()` and `stop()`; `tracing::error!` for node failure in `wait_for_completion()`; `tracing::warn!` for node restart in `execute_with_supervision()`. |
 | **3** | Add metrics (counters/gauges) for items in/out, errors, optional backpressure; expose in Prometheus or OTel format. **Done:** `streamweave_errors_total` counter with graph_id/node_id labels; `metrics::install_prometheus_recorder()` and `install_prometheus_recorder_on(addr)` for Prometheus scrape endpoint. Items in/out deferred (requires stream instrumentation). |
 | **4** | Document config format and graceful shutdown behavior; add shutdown timeout if needed. **Done:** §7 documents config-as-data model and `stop()` order of operations; timeout left to caller (e.g. `tokio::time::timeout`). |
-| **5** | (With distribution) Cluster health and config distribution. |
+| **5** | Done | **Cluster health:** `aggregate_cluster_health`, `ClusterHealthReport` (all_healthy, quorum_healthy). Config distribution deferred. |
 
 ---
 

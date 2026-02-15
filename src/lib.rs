@@ -54,6 +54,8 @@ pub mod memory_pool;
 pub mod supervision;
 /// Rebalance protocol for cluster sharding (add/remove workers, state migration).
 pub mod rebalance;
+/// Cluster health aggregation (all shards running, quorum).
+pub mod cluster_health;
 /// Core node trait and interfaces.
 pub mod node;
 /// Collection of built-in nodes for common operations.
@@ -65,3 +67,5 @@ mod graph_macros_test;
 mod graph_test;
 #[cfg(test)]
 mod rebalance_test;
+#[cfg(test)]
+mod cluster_health_test;

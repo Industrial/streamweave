@@ -173,7 +173,7 @@ This document summarizes what has been implemented vs. what remains for each cap
 ---
 
 ### production-cluster-tooling.md
-**Status: ✅ Complete (single-process)**
+**Status: ✅ Complete**
 
 | Phase | Status | Notes |
 |-------|--------|-------|
@@ -181,7 +181,7 @@ This document summarizes what has been implemented vs. what remains for each cap
 | 2 – Structured logging | ✅ Done | tracing in execute, stop, wait_for_completion |
 | 3 – Metrics | ✅ Done | Prometheus, streamweave_errors_total |
 | 4 – Config/shutdown docs | ✅ Done | §7 in doc |
-| 5 – Cluster health | ⏳ Not done | Requires distribution |
+| 5 – Cluster health | ✅ Done | aggregate_cluster_health, ClusterHealthReport |
 
 ---
 
