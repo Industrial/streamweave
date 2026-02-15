@@ -152,6 +152,58 @@ impl<T> Timestamped<T> {
 unsafe impl<T: Send> Send for Timestamped<T> {}
 unsafe impl<T: Sync> Sync for Timestamped<T> {}
 
+/// Stream message: either data with timestamp or a watermark.
+///
+/// Channels that carry "data or watermark" use `StreamMessage<Payload>`. Sources (or a
+/// watermark injector node) can emit `Watermark(T)` when they know no more data with
+/// time < T will arrive. Nodes that buffer by time (e.g. event-time windows) consume
+/// both: on `Watermark(T)` they advance their completed frontier and may flush windows.
+/// Nodes that only care about data can strip watermarks.
+///
+/// See [docs/progress-tracking.md](../docs/progress-tracking.md).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum StreamMessage<T> {
+    /// Timestamped data item.
+    Data(Timestamped<T>),
+    /// Watermark: no more data with logical time < `t` will arrive.
+    Watermark(LogicalTime),
+}
+
+unsafe impl<T: Send> Send for StreamMessage<T> {}
+unsafe impl<T: Sync> Sync for StreamMessage<T> {}
+
+impl<T> StreamMessage<T> {
+    /// Returns `Some(&Timestamped<T>)` if this is `Data`, otherwise `None`.
+    #[inline]
+    pub fn data(&self) -> Option<&Timestamped<T>> {
+        match self {
+            Self::Data(ts) => Some(ts),
+            Self::Watermark(_) => None,
+        }
+    }
+
+    /// Returns `Some(LogicalTime)` if this is `Watermark`, otherwise `None`.
+    #[inline]
+    pub fn watermark(&self) -> Option<LogicalTime> {
+        match self {
+            Self::Data(_) => None,
+            Self::Watermark(t) => Some(*t),
+        }
+    }
+
+    /// Returns `true` if this is `Data`.
+    #[inline]
+    pub fn is_data(&self) -> bool {
+        matches!(self, Self::Data(_))
+    }
+
+    /// Returns `true` if this is `Watermark`.
+    #[inline]
+    pub fn is_watermark(&self) -> bool {
+        matches!(self, Self::Watermark(_))
+    }
+}
+
 /// Shared state for the minimum logical time that has been completed (single-worker).
 ///
 /// Updated by the execution layer when all items with time ≤ some value have
@@ -433,6 +485,22 @@ mod tests {
         frontier.advance_to(LogicalTime::new(2));
         assert!(!probe.less_equal(LogicalTime::new(1)));
         assert_eq!(probe.frontier(), LogicalTime::new(2));
+    }
+
+    #[test]
+    fn stream_message_data_and_watermark() {
+        let ts = Timestamped::new(42u64, LogicalTime::new(1));
+        let data = StreamMessage::Data(ts.clone());
+        assert!(data.is_data());
+        assert!(!data.is_watermark());
+        assert_eq!(data.data(), Some(&ts));
+        assert_eq!(data.watermark(), None);
+
+        let wm = StreamMessage::<u64>::Watermark(LogicalTime::new(5));
+        assert!(!wm.is_data());
+        assert!(wm.is_watermark());
+        assert_eq!(wm.data(), None);
+        assert_eq!(wm.watermark(), Some(LogicalTime::new(5)));
     }
 
     #[test]
