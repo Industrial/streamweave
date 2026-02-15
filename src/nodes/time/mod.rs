@@ -14,11 +14,13 @@
 //! - **TimeoutNode**: Apply timeout to item reception (`configuration`, `in`, `timeout` → `out`, `error`)
 //! - **TimerNode**: Generate periodic events (`configuration`, `interval` → `out`, `error`)
 //! - **TimestampNode**: Add timestamp to items (`configuration`, `in` → `out`, `error`)
+- **EventTimeExtractorNode**: Extract event time from payloads, add `event_timestamp` (`configuration`, `in` → `out`, `error`)
 //! - **CurrentTimeNode**: Generate current timestamp (`configuration`, `trigger` → `out`, `error`)
 //! - **FormatTimeNode**: Format timestamps into strings (`configuration`, `in`, `format` → `out`, `error`)
 //! - **ParseTimeNode**: Parse time strings into timestamps (`configuration`, `in`, `format` → `out`, `error`)
 
 pub mod current_time_node;
+pub mod event_time_extractor_node;
 #[cfg(test)]
 pub mod current_time_node_test;
 pub mod delay_node;
@@ -41,6 +43,10 @@ pub mod timestamp_node;
 pub mod timestamp_node_test;
 
 pub use current_time_node::CurrentTimeNode;
+pub use event_time_extractor_node::{
+    event_time_extractor, event_time_from_map, EventTimeExtractor, EventTimeExtractorConfig,
+    EventTimeExtractorNode,
+};
 pub use delay_node::DelayNode;
 pub use format_time_node::FormatTimeNode;
 pub use parse_time_node::ParseTimeNode;
