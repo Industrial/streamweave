@@ -93,6 +93,19 @@ use tokio_stream::StreamExt;
 /// Default channel capacity for dataflow edges (backpressure).
 const DATAFLOW_CHANNEL_CAPACITY: usize = 64;
 
+/// Execution mode for the graph.
+///
+/// - **Concurrent**: Default. Each node runs in its own task; ordering between nodes is not guaranteed.
+/// - **Deterministic**: Nodes are started in topological order; improves reproducibility for testing.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
+pub enum ExecutionMode {
+    /// Concurrent tasks per node; order not guaranteed.
+    #[default]
+    Concurrent,
+    /// Single-task-friendly: nodes started in topological order for reproducibility.
+    Deterministic,
+}
+
 /// Progress frontier configuration for run_dataflow.
 #[derive(Clone)]
 enum ProgressFrontierConfig {
@@ -275,6 +288,8 @@ pub struct Graph {
   output_port_names: Vec<String>,
   /// After dataflow execution, nodes are returned here so they can be restored in wait_for_completion.
   nodes_restored_after_run: Option<NodesRestoredMap>,
+  /// Execution mode: Concurrent (default) or Deterministic.
+  execution_mode: ExecutionMode,
 }
 
 impl Graph {
@@ -312,7 +327,20 @@ impl Graph {
       input_port_names: Vec::new(),
       output_port_names: Vec::new(),
       nodes_restored_after_run: None,
+      execution_mode: ExecutionMode::default(),
     }
+  }
+
+  /// Sets the execution mode.
+  ///
+  /// Use [`ExecutionMode::Deterministic`] for reproducible runs (e.g. tests).
+  pub fn set_execution_mode(&mut self, mode: ExecutionMode) {
+    self.execution_mode = mode;
+  }
+
+  /// Returns the current execution mode.
+  pub fn execution_mode(&self) -> ExecutionMode {
+    self.execution_mode
   }
 
   /// Exposes an internal node's input port as an external input port.
@@ -953,6 +981,16 @@ impl Graph {
     Ok(())
   }
 
+  /// Starts graph execution in deterministic mode.
+  ///
+  /// Same as [`execute()`](Self::execute), but uses [`ExecutionMode::Deterministic`]:
+  /// nodes are started in topological order for reproducible runs. Use in tests
+  /// and when reproducibility matters.
+  pub async fn execute_deterministic(&mut self) -> Result<(), GraphExecutionError> {
+    self.set_execution_mode(ExecutionMode::Deterministic);
+    self.execute().await
+  }
+
   /// Starts graph execution with progress tracking.
   ///
   /// Same as [`execute()`](Self::execute), but the completed frontier is advanced
@@ -1073,6 +1111,55 @@ impl Graph {
     Ok(progress_handle)
   }
 
+  /// Returns node names in topological order (sources first).
+  /// Nodes with no incoming edges come first; ties broken by name.
+  fn topological_order(
+    nodes: &HashMap<String, Box<dyn Node>>,
+    edges: &[&Edge],
+  ) -> Vec<String> {
+    let mut in_degree: HashMap<String, usize> = nodes.keys().map(|n| (n.clone(), 0)).collect();
+    let mut outgoing: HashMap<String, Vec<String>> = HashMap::new();
+    for e in edges {
+      if e.source_node() != e.target_node() {
+        in_degree
+          .entry(e.target_node().to_string())
+          .and_modify(|d| *d += 1)
+          .or_insert(1);
+        outgoing
+          .entry(e.source_node().to_string())
+          .or_default()
+          .push(e.target_node().to_string());
+      }
+    }
+    let mut queue: VecDeque<String> = in_degree
+      .iter()
+      .filter(|kv| *kv.1 == 0)
+      .map(|(n, _)| n.clone())
+      .collect();
+    queue.make_contiguous().sort();
+    let mut result = Vec::new();
+    while let Some(n) = queue.pop_front() {
+      result.push(n.clone());
+      for m in outgoing.get(&n).into_iter().flatten().cloned().collect::<Vec<_>>() {
+        if let Some(d) = in_degree.get_mut(&m) {
+          *d = d.saturating_sub(1);
+          if *d == 0 {
+            queue.push_back(m);
+          }
+        }
+      }
+      queue.make_contiguous().sort();
+    }
+    // Add any remaining nodes (e.g. in cycles) in sorted order
+    for n in in_degree.keys().cloned().collect::<Vec<_>>() {
+      if !result.contains(&n) {
+        result.push(n);
+      }
+    }
+    result.sort();
+    result
+  }
+
   /// Dataflow execution: one channel per edge, one task per node. Supports cycles.
   /// When `progress_config` is `Some`, items on edges carry logical times and the
   /// frontier(s) are advanced when items reach exposed outputs (sinks).
@@ -1128,9 +1215,15 @@ impl Graph {
 
     let nodes_restored = Arc::new(Mutex::new(HashMap::new()));
     let mut all_handles = Vec::new();
+    let deterministic = self.execution_mode == ExecutionMode::Deterministic;
 
     // Route external input streams into channels. Prefer timestamped (user-provided time) over payload-only (counter).
-    for (external_port, mut receiver) in external_timestamped_inputs.drain() {
+    // In deterministic mode, process ports in sorted order.
+    let mut ts_inputs: Vec<_> = external_timestamped_inputs.drain().collect();
+    if deterministic {
+      ts_inputs.sort_by(|a, b| a.0.cmp(&b.0));
+    }
+    for (external_port, mut receiver) in ts_inputs {
       if let Some(mapping) = self.input_port_mapping.get(&external_port) {
         let (tx, rx) = tokio::sync::mpsc::channel::<EdgeMessage>(DATAFLOW_CHANNEL_CAPACITY);
         input_rx.insert((mapping.node.clone(), mapping.port.clone()), rx);
@@ -1163,8 +1256,13 @@ impl Graph {
       }
     }
     // Route payload-only external inputs (use counter when progress enabled)
+    // In deterministic mode, process ports in sorted order.
     if let Some(mut external_inputs) = external_inputs {
-      for (external_port, stream) in external_inputs.drain() {
+      let mut inputs: Vec<_> = external_inputs.drain().collect();
+      if deterministic {
+        inputs.sort_by(|a, b| a.0.cmp(&b.0));
+      }
+      for (external_port, stream) in inputs {
         if let Some(mapping) = self.input_port_mapping.get(&external_port) {
           let (tx, rx) = tokio::sync::mpsc::channel::<EdgeMessage>(DATAFLOW_CHANNEL_CAPACITY);
           input_rx.insert((mapping.node.clone(), mapping.port.clone()), rx);
@@ -1205,7 +1303,18 @@ impl Graph {
     let stop_signal = Arc::clone(&self.stop_signal);
     let output_port_mapping = self.output_port_mapping.clone();
 
-    for (node_name, node) in nodes.drain() {
+    // In deterministic mode, process nodes in topological order.
+    let node_order: Vec<String> = if deterministic {
+      Self::topological_order(&nodes, &edges)
+    } else {
+      nodes.keys().cloned().collect()
+    };
+
+    for node_name in node_order {
+      let node = match nodes.remove(&node_name) {
+        Some(n) => n,
+        None => continue,
+      };
       let node_input_keys: Vec<(String, String)> = input_rx
         .keys()
         .filter(|(n, _)| n == &node_name)

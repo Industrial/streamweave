@@ -132,7 +132,7 @@ then the observable output order is determined by logical time. Concurrency is a
 | Phase | Content |
 |-------|--------|
 | **1** | Define and document the determinism contract (this doc + README/ARCHITECTURE). **Done:** See README § Determinism, [architecture.md](architecture.md#determinism). |
-| **2** | Implement `ExecutionMode::Deterministic` (single-task, topological driver) and `execute_deterministic()` (or equivalent). |
+| **2** | Implement `ExecutionMode::Deterministic` (single-task, topological driver) and `execute_deterministic()` (or equivalent). **Done:** `ExecutionMode` enum, `set_execution_mode()`, `execute_deterministic()`. Nodes started in topological order; external inputs processed in port-name order. |
 | **3** | Add tests: same input → same output in deterministic mode. |
 | **4** | (Later) Add deterministic merge for multi-input nodes and logical-time-based concurrent determinism. |
 
