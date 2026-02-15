@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> unique.configuration
+%% streamweave: input input -> unique.in
+%% streamweave: output output <- unique.out
+%% streamweave: output error <- unique.error
+%% streamweave: node unique kind=ArrayUniqueNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph unique["ArrayUniqueNode"]
+    direction LR
+    unique_in_configuration["configuration"]
+    unique_in_in["in"]
+    unique_core["unique"]
+    unique_out_output["output"]
+    unique_out_error["error"]
+    unique_in_configuration --> unique_core
+    unique_in_in --> unique_core
+    unique_core --> unique_out_output
+    unique_core --> unique_out_error
+  end
+
+  configuration --> unique_in_configuration
+  input --> unique_in_in
+  unique_out_output --> output
+  unique_out_error --> error

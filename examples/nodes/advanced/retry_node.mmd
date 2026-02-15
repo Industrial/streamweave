@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> retry.configuration
+%% streamweave: input input -> retry.in
+%% streamweave: input max_retries -> retry.max_retries
+%% streamweave: output output <- retry.out
+%% streamweave: output error <- retry.error
+%% streamweave: node retry kind=RetryNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  max_retries["max_retries"]
+  output["output"]
+  error["error"]
+
+  subgraph retry["RetryNode"]
+    direction LR
+    retry_in_configuration["configuration"]
+    retry_in_in["in"]
+    retry_in_max_retries["max_retries"]
+    retry_core["retry"]
+    retry_out_output["output"]
+    retry_out_error["error"]
+    retry_in_configuration --> retry_core
+    retry_in_in --> retry_core
+    retry_in_max_retries --> retry_core
+    retry_core --> retry_out_output
+    retry_core --> retry_out_error
+  end
+
+  configuration --> retry_in_configuration
+  input --> retry_in_in
+  max_retries --> retry_in_max_retries
+  retry_out_output --> output
+  retry_out_error --> error

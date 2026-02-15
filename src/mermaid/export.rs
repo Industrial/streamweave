@@ -1,17 +1,12 @@
 //! Export a graph blueprint to Mermaid (`.mmd`) string.
 //!
-//! When the `mermaid` feature is enabled, uses the `mermaid-builder` crate to build the flowchart.
-//! When the feature is off, uses the hand-written format from [`GraphBlueprint::to_mermaid_string`]
-//! so that string node ids are preserved and no extra dependency is required.
-//!
-//! Optionally, [`write_blueprint_to_path`] writes both the `.mmd` file and a co-located
-//! `*.streamweave.yaml` sidecar so that roundtrip (parse → export → parse) preserves structure.
+//! Uses the `mermaid-builder` crate to build the flowchart. Optionally, [`write_blueprint_to_path`]
+//! writes both the `.mmd` file and a co-located `*.streamweave.yaml` sidecar so that roundtrip
+//! (parse → export → parse) preserves structure.
 
 use crate::mermaid::blueprint::GraphBlueprint;
-use std::path::Path;
-
-#[cfg(feature = "mermaid")]
 use crate::mermaid::convention;
+use std::path::Path;
 
 /// Converts a live graph to a Mermaid flowchart string per the StreamWeave convention.
 ///
@@ -28,11 +23,7 @@ pub fn graph_to_mermaid(graph: &crate::graph::Graph) -> String {
 /// `node_id` mapping lines), then a `flowchart TD` diagram. Edge labels use `source_port->target_port`.
 #[must_use]
 pub fn blueprint_to_mermaid(bp: &GraphBlueprint) -> String {
-  #[cfg(feature = "mermaid")]
-  return blueprint_to_mermaid_with_builder(bp);
-
-  #[cfg(not(feature = "mermaid"))]
-  bp.to_mermaid_string()
+  blueprint_to_mermaid_with_builder(bp)
 }
 
 /// Error when writing blueprint to path (mmd or sidecar).
@@ -41,8 +32,7 @@ pub enum ExportPathError {
   /// I/O error writing the `.mmd` or sidecar file.
   #[error("io: {0}")]
   Io(#[from] std::io::Error),
-  /// Sidecar write failed (e.g. when `mermaid` feature is off).
-  #[cfg(feature = "mermaid")]
+  /// Sidecar write failed.
   #[error("sidecar: {0}")]
   Sidecar(#[from] crate::mermaid::sidecar::SidecarError),
 }
@@ -50,27 +40,17 @@ pub enum ExportPathError {
 /// Writes the blueprint to `path` as `.mmd` and to a co-located `*.streamweave.yaml` sidecar.
 ///
 /// `path` is the intended `.mmd` path (e.g. `pipeline.mmd`). The sidecar is written to
-/// `pipeline.streamweave.yaml`. When the `mermaid` feature is disabled, only the `.mmd` content
-/// is written (using the hand-written format); sidecar write is skipped and no error is returned.
+/// `pipeline.streamweave.yaml`.
 pub fn write_blueprint_to_path(path: &Path, bp: &GraphBlueprint) -> Result<(), ExportPathError> {
   let mmd = blueprint_to_mermaid(bp);
   std::fs::write(path, mmd)?;
-  #[cfg(feature = "mermaid")]
-  {
-    let sidecar_path = path.with_extension("streamweave.yaml");
-    crate::mermaid::sidecar::write_sidecar(&sidecar_path, bp)?;
-  }
+  let sidecar_path = path.with_extension("streamweave.yaml");
+  crate::mermaid::sidecar::write_sidecar(&sidecar_path, bp)?;
   Ok(())
 }
 
-#[cfg(feature = "mermaid")]
-/// Renders a blueprint to Mermaid diagram text (streamweave comments + flow/block syntax) using mermaid-builder.
+/// Renders a blueprint to Mermaid diagram text (Style B: node-as-subgraph with port boxes).
 fn blueprint_to_mermaid_with_builder(bp: &GraphBlueprint) -> String {
-  use std::collections::BTreeMap;
-  use std::rc::Rc;
-
-  use mermaid_builder::prelude::*;
-
   let mut out = String::new();
   // Emit streamweave comment block (same content as blueprint, plus node_id mapping)
   out.push_str("%% streamweave: begin\n");
@@ -115,57 +95,120 @@ fn blueprint_to_mermaid_with_builder(bp: &GraphBlueprint) -> String {
   for fb in &bp.feedback_edge_ids {
     out.push_str(&format!("%% streamweave: feedback {}\n", fb));
   }
-  // Deterministic order for node_id mapping (mermaid-builder uses v0, v1, ...)
   let node_ids: Vec<String> = {
     let mut v: Vec<String> = bp.nodes.keys().cloned().collect();
     v.sort();
     v
   };
-  for (i, nid) in node_ids.iter().enumerate() {
-    out.push_str(&format!("%% streamweave: node_id v{}={}\n", i, nid));
+  for (_, nid) in node_ids.iter().enumerate() {
+    if let Some(info) = bp.nodes.get(nid) {
+      if let Some(ref k) = info.kind {
+        out.push_str(&format!("%% streamweave: node {} kind={}\n", nid, k));
+      }
+    }
   }
   out.push_str("%% streamweave: end\n");
 
-  let mut builder = FlowchartBuilder::default();
-  let mut node_rcs: BTreeMap<String, Rc<FlowchartNode>> = BTreeMap::new();
-  for (i, node_id) in node_ids.iter().enumerate() {
+  // Style B: each node is a subgraph; port boxes inside; external I/O as nodes outside.
+  out.push_str("flowchart TD\n");
+  use std::collections::BTreeSet;
+
+  // External I/O nodes (outside any subgraph)
+  for b in &bp.inputs {
+    let safe = convention::external_name_to_safe(&b.external_name);
+    out.push_str(&format!("  {}[\"{}\"]\n", safe, b.external_name));
+  }
+  for b in &bp.outputs {
+    let safe = convention::external_name_to_safe(&b.external_name);
+    out.push_str(&format!("  {}[\"{}\"]\n", safe, b.external_name));
+  }
+  out.push('\n');
+
+  // Per-node subgraph with port boxes and core
+  for node_id in &node_ids {
     let info = bp.nodes.get(node_id).map_or_else(
       crate::mermaid::blueprint::NodeInfo::default,
       std::clone::Clone::clone,
     );
-    let label = info
-      .label
+    let subgraph_label = info
+      .kind
       .as_deref()
       .unwrap_or(node_id)
       .replace('"', "\\\"");
-    let node_builder = FlowchartNodeBuilder::default()
-      .id(i as u64)
-      .label(&label)
-      .expect("node label");
-    let node = builder.node(node_builder).expect("add node");
-    node_rcs.insert(node_id.clone(), node);
+    let mut input_ports: BTreeSet<String> = BTreeSet::new();
+    let mut output_ports: BTreeSet<String> = BTreeSet::new();
+    for b in &bp.inputs {
+      if b.node_id == *node_id {
+        input_ports.insert(b.port_name.clone());
+      }
+    }
+    for b in &bp.outputs {
+      if b.node_id == *node_id {
+        output_ports.insert(b.port_name.clone());
+      }
+    }
+    for e in &bp.edges {
+      if e.target_node == *node_id {
+        input_ports.insert(e.target_port.clone());
+      }
+      if e.source_node == *node_id {
+        output_ports.insert(e.source_port.clone());
+      }
+    }
+
+    // Core node uses {node_id}_core to avoid Mermaid cycle (subgraph id same as node id).
+    let core_id = format!("{}_core", node_id);
+    out.push_str(&format!("  subgraph {}[\"{}\"]\n", node_id, subgraph_label));
+    out.push_str("    direction LR\n");
+    for p in &input_ports {
+      let safe = convention::port_name_to_safe(p);
+      let in_id = format!("{}_in_{}", node_id, safe);
+      out.push_str(&format!("    {}[\"{}\"]\n", in_id, p));
+    }
+    out.push_str(&format!("    {}[\"{}\"]\n", core_id, node_id));
+    for p in &output_ports {
+      let safe = convention::port_name_to_safe(p);
+      let out_id = format!("{}_out_{}", node_id, safe);
+      out.push_str(&format!("    {}[\"{}\"]\n", out_id, p));
+    }
+    for p in &input_ports {
+      let safe = convention::port_name_to_safe(p);
+      let in_id = format!("{}_in_{}", node_id, safe);
+      out.push_str(&format!("    {} --> {}\n", in_id, core_id));
+    }
+    for p in &output_ports {
+      let safe = convention::port_name_to_safe(p);
+      let out_id = format!("{}_out_{}", node_id, safe);
+      out.push_str(&format!("    {} --> {}\n", core_id, out_id));
+    }
+    out.push_str("  end\n\n");
+  }
+
+  // Edges: external input -> port box; port box -> external output; port box -> port box (internal edges)
+  for b in &bp.inputs {
+    let ext_safe = convention::external_name_to_safe(&b.external_name);
+    let in_id = format!("{}_in_{}", b.node_id, convention::port_name_to_safe(&b.port_name));
+    out.push_str(&format!("  {} --> {}\n", ext_safe, in_id));
+  }
+  for b in &bp.outputs {
+    let ext_safe = convention::external_name_to_safe(&b.external_name);
+    let out_id = format!("{}_out_{}", b.node_id, convention::port_name_to_safe(&b.port_name));
+    out.push_str(&format!("  {} --> {}\n", out_id, ext_safe));
   }
   for e in &bp.edges {
-    let src = node_rcs
-      .get(&e.source_node)
-      .expect("source node in map")
-      .clone();
-    let dst = node_rcs
-      .get(&e.target_node)
-      .expect("target node in map")
-      .clone();
-    let label = convention::format_edge_label(&e.source_port, &e.target_port);
-    let edge_builder = FlowchartEdgeBuilder::default()
-      .source(src)
-      .expect("edge source")
-      .destination(dst)
-      .expect("edge dest")
-      .label(label)
-      .expect("edge label");
-    builder.edge(edge_builder).expect("add edge");
+    let src_out = format!(
+      "{}_out_{}",
+      e.source_node,
+      convention::port_name_to_safe(&e.source_port)
+    );
+    let tgt_in = format!(
+      "{}_in_{}",
+      e.target_node,
+      convention::port_name_to_safe(&e.target_port)
+    );
+    out.push_str(&format!("  {} --> {}\n", src_out, tgt_in));
   }
-  let flowchart: Flowchart = builder.into();
-  out.push_str(&flowchart.to_string());
+
   out
 }
 
@@ -193,9 +236,12 @@ mod tests {
       s.contains("flowchart") || s.contains("graph"),
       "must contain flowchart or graph"
     );
+    // Style B: subgraph per node, port boxes; edge from a_out_out to b_in_in
+    assert!(s.contains("subgraph a"), "Style B: subgraph for node a");
+    assert!(s.contains("subgraph b"), "Style B: subgraph for node b");
     assert!(
-      s.contains("out->in") || s.contains("a -->|out->in| b") || s.contains("-->|out->in|"),
-      "edge label must use convention"
+      s.contains("a_out_out") && s.contains("b_in_in"),
+      "Style B: port box ids for edge out->in"
     );
   }
 
@@ -248,9 +294,10 @@ mod tests {
     let s = blueprint_to_mermaid(&bp);
     assert!(s.contains("%% streamweave:"));
     assert!(s.contains("flowchart") || s.contains("graph"));
-    assert!(s.contains("out->in1"));
-    assert!(s.contains("out->in2"));
-    assert!(s.contains("out->in3"));
+    // Style B: edges via port boxes (sink_in_in1, etc.)
+    assert!(s.contains("sink_in_in1"));
+    assert!(s.contains("sink_in_in2"));
+    assert!(s.contains("sink_in_in3"));
   }
 
   #[test]
@@ -289,6 +336,8 @@ mod tests {
     assert!(s.contains("input input -> src.value"));
     assert!(s.contains("output output <- dst.out"));
     assert!(s.contains("flowchart") || s.contains("graph"));
-    assert!(s.contains("out->value"));
+    // Style B: edge from src_out_out to dst_in_value
+    assert!(s.contains("src_out_out"));
+    assert!(s.contains("dst_in_value"));
   }
 }

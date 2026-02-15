@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> concat.configuration
+%% streamweave: input in1 -> concat.in1
+%% streamweave: input in2 -> concat.in2
+%% streamweave: output output <- concat.out
+%% streamweave: output error <- concat.error
+%% streamweave: node concat kind=ArrayConcatNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in1["in1"]
+  in2["in2"]
+  output["output"]
+  error["error"]
+
+  subgraph concat["ArrayConcatNode"]
+    direction LR
+    concat_in_configuration["configuration"]
+    concat_in_in1["in1"]
+    concat_in_in2["in2"]
+    concat_core["concat"]
+    concat_out_output["output"]
+    concat_out_error["error"]
+    concat_in_configuration --> concat_core
+    concat_in_in1 --> concat_core
+    concat_in_in2 --> concat_core
+    concat_core --> concat_out_output
+    concat_core --> concat_out_error
+  end
+
+  configuration --> concat_in_configuration
+  in1 --> concat_in_in1
+  in2 --> concat_in_in2
+  concat_out_output --> output
+  concat_out_error --> error

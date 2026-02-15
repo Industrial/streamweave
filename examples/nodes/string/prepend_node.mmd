@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> prepend.configuration
+%% streamweave: input input -> prepend.in
+%% streamweave: input prefix -> prepend.prefix
+%% streamweave: output output <- prepend.out
+%% streamweave: output error <- prepend.error
+%% streamweave: node prepend kind=StringPrependNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  prefix["prefix"]
+  output["output"]
+  error["error"]
+
+  subgraph prepend["StringPrependNode"]
+    direction LR
+    prepend_in_configuration["configuration"]
+    prepend_in_in["in"]
+    prepend_in_prefix["prefix"]
+    prepend_core["prepend"]
+    prepend_out_output["output"]
+    prepend_out_error["error"]
+    prepend_in_configuration --> prepend_core
+    prepend_in_in --> prepend_core
+    prepend_in_prefix --> prepend_core
+    prepend_core --> prepend_out_output
+    prepend_core --> prepend_out_error
+  end
+
+  configuration --> prepend_in_configuration
+  input --> prepend_in_in
+  prefix --> prepend_in_prefix
+  prepend_out_output --> output
+  prepend_out_error --> error

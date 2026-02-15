@@ -2,7 +2,6 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
-use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::read_variable_node::{ReadVariableConfig, ReadVariableNode};
 use tokio::sync::{Mutex, mpsc};
@@ -39,13 +38,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
   }
 
-  // Build the graph using the graph! macro
-  let mut graph: Graph = graph! {
-    read_var: ReadVariableNode::new("read_var".to_string()),
-    graph.configuration => read_var.configuration,
-    graph.name => read_var.name,
-    read_var.out => graph.out,
-    read_var.error => graph.error
+  // Build the graph from Mermaid (.mmd)
+  let mut graph: Graph = {
+    use std::path::Path;
+    use streamweave::mermaid::{
+      NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+    };
+    let path = Path::new("examples/nodes/variable/read_variable_node.mmd");
+    let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+    let mut registry = NodeRegistry::new();
+    registry.register("ReadVariableNode", |id, _inputs, _outputs| {
+      Box::new(ReadVariableNode::new(id))
+    });
+    blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?
   };
 
   // Connect external channels at runtime

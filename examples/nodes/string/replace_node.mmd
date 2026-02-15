@@ -1,0 +1,44 @@
+%% streamweave: begin
+%% streamweave: input configuration -> replace.configuration
+%% streamweave: input input -> replace.in
+%% streamweave: input pattern -> replace.pattern
+%% streamweave: input replacement -> replace.replacement
+%% streamweave: output output <- replace.out
+%% streamweave: output error <- replace.error
+%% streamweave: node replace kind=StringReplaceNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  pattern["pattern"]
+  replacement["replacement"]
+  output["output"]
+  error["error"]
+
+  subgraph replace["StringReplaceNode"]
+    direction LR
+    replace_in_configuration["configuration"]
+    replace_in_in["in"]
+    replace_in_pattern["pattern"]
+    replace_in_replacement["replacement"]
+    replace_core["replace"]
+    replace_out_output["output"]
+    replace_out_error["error"]
+    replace_in_configuration --> replace_core
+    replace_in_in --> replace_core
+    replace_in_pattern --> replace_core
+    replace_in_replacement --> replace_core
+    replace_core --> replace_out_output
+    replace_core --> replace_out_error
+  end
+
+  configuration --> replace_in_configuration
+  input --> replace_in_in
+  pattern --> replace_in_pattern
+  replacement --> replace_in_replacement
+  replace_out_output --> output
+  replace_out_error --> error

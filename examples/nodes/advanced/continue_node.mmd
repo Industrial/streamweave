@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> continue_node.configuration
+%% streamweave: input input -> continue_node.in
+%% streamweave: input signal -> continue_node.signal
+%% streamweave: output output <- continue_node.out
+%% streamweave: output error <- continue_node.error
+%% streamweave: node continue_node kind=ContinueNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  signal["signal"]
+  output["output"]
+  error["error"]
+
+  subgraph continue_node["ContinueNode"]
+    direction LR
+    continue_node_in_configuration["configuration"]
+    continue_node_in_in["in"]
+    continue_node_in_signal["signal"]
+    continue_node_core["continue_node"]
+    continue_node_out_out["out"]
+    continue_node_out_error["error"]
+    continue_node_in_configuration --> continue_node_core
+    continue_node_in_in --> continue_node_core
+    continue_node_in_signal --> continue_node_core
+    continue_node_core --> continue_node_out_out
+    continue_node_core --> continue_node_out_error
+  end
+
+  configuration --> continue_node_in_configuration
+  input --> continue_node_in_in
+  signal --> continue_node_in_signal
+  continue_node_out_out --> output
+  continue_node_out_error --> error

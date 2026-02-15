@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> parse_time.configuration
+%% streamweave: input input -> parse_time.in
+%% streamweave: input format -> parse_time.format
+%% streamweave: output output <- parse_time.out
+%% streamweave: output error <- parse_time.error
+%% streamweave: node parse_time kind=ParseTimeNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  format["format"]
+  output["output"]
+  error["error"]
+
+  subgraph parse_time["ParseTimeNode"]
+    direction LR
+    parse_time_in_configuration["configuration"]
+    parse_time_in_in["in"]
+    parse_time_in_format["format"]
+    parse_time_core["parse_time"]
+    parse_time_out_output["output"]
+    parse_time_out_error["error"]
+    parse_time_in_configuration --> parse_time_core
+    parse_time_in_in --> parse_time_core
+    parse_time_in_format --> parse_time_core
+    parse_time_core --> parse_time_out_output
+    parse_time_core --> parse_time_out_error
+  end
+
+  configuration --> parse_time_in_configuration
+  input --> parse_time_in_in
+  format --> parse_time_in_format
+  parse_time_out_output --> output
+  parse_time_out_error --> error

@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> floor.configuration
+%% streamweave: input input -> floor.in
+%% streamweave: output output <- floor.out
+%% streamweave: output error <- floor.error
+%% streamweave: node floor kind=FloorNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph floor["FloorNode"]
+    direction LR
+    floor_in_configuration["configuration"]
+    floor_in_in["in"]
+    floor_core["floor"]
+    floor_out_output["output"]
+    floor_out_error["error"]
+    floor_in_configuration --> floor_core
+    floor_in_in --> floor_core
+    floor_core --> floor_out_output
+    floor_core --> floor_out_error
+  end
+
+  configuration --> floor_in_configuration
+  input --> floor_in_in
+  floor_out_output --> output
+  floor_out_error --> error

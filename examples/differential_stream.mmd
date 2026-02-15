@@ -1,0 +1,46 @@
+%% streamweave: begin
+%% streamweave: input key_config -> diff_group_by.key_function
+%% streamweave: output output <- diff_group_by.out
+%% streamweave: node producer kind=Producer
+%% streamweave: node to_diff kind=ToDifferentialNode
+%% streamweave: node diff_group_by kind=DifferentialGroupByNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  key_config["key_config"]
+  output["output"]
+
+  subgraph producer["Producer"]
+    direction LR
+    producer_core["producer"]
+    producer_out_out["out"]
+    producer_core --> producer_out_out
+  end
+
+  subgraph to_diff["ToDifferentialNode"]
+    direction LR
+    to_diff_in_in["in"]
+    to_diff_core["to_diff"]
+    to_diff_out_out["out"]
+    to_diff_in_in --> to_diff_core
+    to_diff_core --> to_diff_out_out
+  end
+
+  subgraph diff_group_by["DifferentialGroupByNode"]
+    direction LR
+    diff_group_by_in_key_function["key_function"]
+    diff_group_by_in_in["in"]
+    diff_group_by_core["diff_group_by"]
+    diff_group_by_out_out["out"]
+    diff_group_by_in_key_function --> diff_group_by_core
+    diff_group_by_in_in --> diff_group_by_core
+    diff_group_by_core --> diff_group_by_out_out
+  end
+
+  key_config --> diff_group_by_in_key_function
+  producer_out_out --> to_diff_in_in
+  to_diff_out_out --> diff_group_by_in_in
+  diff_group_by_out_out --> output

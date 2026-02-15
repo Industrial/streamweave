@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> add.configuration
+%% streamweave: input in1 -> add.in1
+%% streamweave: input in2 -> add.in2
+%% streamweave: output output <- add.out
+%% streamweave: output error <- add.error
+%% streamweave: node add kind=AddNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in1["in1"]
+  in2["in2"]
+  output["output"]
+  error["error"]
+
+  subgraph add["AddNode"]
+    direction LR
+    add_in_configuration["configuration"]
+    add_in_in1["in1"]
+    add_in_in2["in2"]
+    add_core["add"]
+    add_out_output["output"]
+    add_out_error["error"]
+    add_in_configuration --> add_core
+    add_in_in1 --> add_core
+    add_in_in2 --> add_core
+    add_core --> add_out_output
+    add_core --> add_out_error
+  end
+
+  configuration --> add_in_configuration
+  in1 --> add_in_in1
+  in2 --> add_in_in2
+  add_out_output --> output
+  add_out_error --> error

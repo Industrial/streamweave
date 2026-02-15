@@ -95,6 +95,38 @@ pub fn unescape_port(segment: &str) -> String {
   out
 }
 
+/// Converts a port name to a Mermaid-safe node id segment (Style B).
+/// Use for port box ids: "end" is reserved in Mermaid, so we use "end_port".
+#[must_use]
+pub fn port_name_to_safe(port_name: &str) -> String {
+  if port_name == "end" {
+    "end_port".to_string()
+  } else {
+    port_name.replace(['.', ' ', '-'], "_")
+  }
+}
+
+/// Converts a safe port id back to the original port name (Style B).
+#[must_use]
+pub fn safe_to_port_name(safe: &str) -> String {
+  if safe == "end_port" {
+    "end".to_string()
+  } else {
+    safe.to_string()
+  }
+}
+
+/// Converts an external name (graph I/O) to a Mermaid-safe node id (Style B).
+/// "end" is reserved, so we use "end_port".
+#[must_use]
+pub fn external_name_to_safe(name: &str) -> String {
+  if name == "end" {
+    "end_port".to_string()
+  } else {
+    name.replace(['.', ' ', '-'], "_")
+  }
+}
+
 /// Returns whether the line is a StreamWeave comment line (after trim).
 #[must_use]
 pub fn is_streamweave_comment(line: &str) -> bool {

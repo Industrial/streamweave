@@ -1,0 +1,49 @@
+%% streamweave: begin
+%% streamweave: input configuration -> match_node.configuration
+%% streamweave: input input -> match_node.in
+%% streamweave: output output0 <- match_node.out_0
+%% streamweave: output output1 <- match_node.out_1
+%% streamweave: output output2 <- match_node.out_2
+%% streamweave: output default <- match_node.default
+%% streamweave: output error <- match_node.error
+%% streamweave: node match_node kind=MatchNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output0["output0"]
+  output1["output1"]
+  output2["output2"]
+  default["default"]
+  error["error"]
+
+  subgraph match_node["MatchNode"]
+    direction LR
+    match_node_in_configuration["configuration"]
+    match_node_in_in["in"]
+    match_node_core["match_node"]
+    match_node_out_out_0["out_0"]
+    match_node_out_out_1["out_1"]
+    match_node_out_out_2["out_2"]
+    match_node_out_default["default"]
+    match_node_out_error["error"]
+    match_node_in_configuration --> match_node_core
+    match_node_in_in --> match_node_core
+    match_node_core --> match_node_out_out_0
+    match_node_core --> match_node_out_out_1
+    match_node_core --> match_node_out_out_2
+    match_node_core --> match_node_out_default
+    match_node_core --> match_node_out_error
+  end
+
+  configuration --> match_node_in_configuration
+  input --> match_node_in_in
+  match_node_out_out_0 --> output0
+  match_node_out_out_1 --> output1
+  match_node_out_out_2 --> output2
+  match_node_out_default --> default
+  match_node_out_error --> error

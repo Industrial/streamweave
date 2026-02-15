@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> sum.configuration
+%% streamweave: input input -> sum.in
+%% streamweave: output output <- sum.out
+%% streamweave: output error <- sum.error
+%% streamweave: node sum kind=SumNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph sum["SumNode"]
+    direction LR
+    sum_in_configuration["configuration"]
+    sum_in_in["in"]
+    sum_core["sum"]
+    sum_out_output["output"]
+    sum_out_error["error"]
+    sum_in_configuration --> sum_core
+    sum_in_in --> sum_core
+    sum_core --> sum_out_output
+    sum_core --> sum_out_error
+  end
+
+  configuration --> sum_in_configuration
+  input --> sum_in_in
+  sum_out_output --> output
+  sum_out_error --> error

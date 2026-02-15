@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> count.configuration
+%% streamweave: input input -> count.in
+%% streamweave: output output <- count.out
+%% streamweave: output error <- count.error
+%% streamweave: node count kind=CountNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph count["CountNode"]
+    direction LR
+    count_in_configuration["configuration"]
+    count_in_in["in"]
+    count_core["count"]
+    count_out_output["output"]
+    count_out_error["error"]
+    count_in_configuration --> count_core
+    count_in_in --> count_core
+    count_core --> count_out_output
+    count_core --> count_out_error
+  end
+
+  configuration --> count_in_configuration
+  input --> count_in_in
+  count_out_output --> output
+  count_out_error --> error

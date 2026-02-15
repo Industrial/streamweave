@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> take.configuration
+%% streamweave: input input -> take.in
+%% streamweave: input count -> take.count
+%% streamweave: output output <- take.out
+%% streamweave: output error <- take.error
+%% streamweave: node take kind=TakeNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  count["count"]
+  output["output"]
+  error["error"]
+
+  subgraph take["TakeNode"]
+    direction LR
+    take_in_configuration["configuration"]
+    take_in_in["in"]
+    take_in_count["count"]
+    take_core["take"]
+    take_out_output["output"]
+    take_out_error["error"]
+    take_in_configuration --> take_core
+    take_in_in --> take_core
+    take_in_count --> take_core
+    take_core --> take_out_output
+    take_core --> take_out_error
+  end
+
+  configuration --> take_in_configuration
+  input --> take_in_in
+  count --> take_in_count
+  take_out_output --> output
+  take_out_error --> error

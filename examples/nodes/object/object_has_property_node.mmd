@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> has.configuration
+%% streamweave: input input -> has.in
+%% streamweave: input key -> has.key
+%% streamweave: output output <- has.out
+%% streamweave: output error <- has.error
+%% streamweave: node has kind=ObjectHasPropertyNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  key["key"]
+  output["output"]
+  error["error"]
+
+  subgraph has["ObjectHasPropertyNode"]
+    direction LR
+    has_in_configuration["configuration"]
+    has_in_in["in"]
+    has_in_key["key"]
+    has_core["has"]
+    has_out_output["output"]
+    has_out_error["error"]
+    has_in_configuration --> has_core
+    has_in_in --> has_core
+    has_in_key --> has_core
+    has_core --> has_out_output
+    has_core --> has_out_error
+  end
+
+  configuration --> has_in_configuration
+  input --> has_in_in
+  key --> has_in_key
+  has_out_output --> output
+  has_out_error --> error

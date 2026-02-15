@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> throttle.configuration
+%% streamweave: input input -> throttle.in
+%% streamweave: input period -> throttle.period
+%% streamweave: output output <- throttle.out
+%% streamweave: output error <- throttle.error
+%% streamweave: node throttle kind=ThrottleNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  period["period"]
+  output["output"]
+  error["error"]
+
+  subgraph throttle["ThrottleNode"]
+    direction LR
+    throttle_in_configuration["configuration"]
+    throttle_in_in["in"]
+    throttle_in_period["period"]
+    throttle_core["throttle"]
+    throttle_out_output["output"]
+    throttle_out_error["error"]
+    throttle_in_configuration --> throttle_core
+    throttle_in_in --> throttle_core
+    throttle_in_period --> throttle_core
+    throttle_core --> throttle_out_output
+    throttle_core --> throttle_out_error
+  end
+
+  configuration --> throttle_in_configuration
+  input --> throttle_in_in
+  period --> throttle_in_period
+  throttle_out_output --> output
+  throttle_out_error --> error

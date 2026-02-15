@@ -1,0 +1,44 @@
+%% streamweave: begin
+%% streamweave: input configuration -> while_loop.configuration
+%% streamweave: input input -> while_loop.in
+%% streamweave: input condition -> while_loop.condition
+%% streamweave: output out <- while_loop.out
+%% streamweave: output break <- while_loop.break
+%% streamweave: output error <- while_loop.error
+%% streamweave: node while_loop kind=WhileLoopNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  condition["condition"]
+  out["out"]
+  break["break"]
+  error["error"]
+
+  subgraph while_loop["WhileLoopNode"]
+    direction LR
+    while_loop_in_configuration["configuration"]
+    while_loop_in_in["in"]
+    while_loop_in_condition["condition"]
+    while_loop_core["while_loop"]
+    while_loop_out_out["out"]
+    while_loop_out_break["break"]
+    while_loop_out_error["error"]
+    while_loop_in_configuration --> while_loop_core
+    while_loop_in_in --> while_loop_core
+    while_loop_in_condition --> while_loop_core
+    while_loop_core --> while_loop_out_out
+    while_loop_core --> while_loop_out_break
+    while_loop_core --> while_loop_out_error
+  end
+
+  configuration --> while_loop_in_configuration
+  input --> while_loop_in_in
+  condition --> while_loop_in_condition
+  while_loop_out_out --> out
+  while_loop_out_break --> break
+  while_loop_out_error --> error

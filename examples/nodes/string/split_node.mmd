@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> split.configuration
+%% streamweave: input input -> split.in
+%% streamweave: input delimiter -> split.delimiter
+%% streamweave: output output <- split.out
+%% streamweave: output error <- split.error
+%% streamweave: node split kind=StringSplitNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  delimiter["delimiter"]
+  output["output"]
+  error["error"]
+
+  subgraph split["StringSplitNode"]
+    direction LR
+    split_in_configuration["configuration"]
+    split_in_in["in"]
+    split_in_delimiter["delimiter"]
+    split_core["split"]
+    split_out_output["output"]
+    split_out_error["error"]
+    split_in_configuration --> split_core
+    split_in_in --> split_core
+    split_in_delimiter --> split_core
+    split_core --> split_out_output
+    split_core --> split_out_error
+  end
+
+  configuration --> split_in_configuration
+  input --> split_in_in
+  delimiter --> split_in_delimiter
+  split_out_output --> output
+  split_out_error --> error

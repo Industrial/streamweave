@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::sync::Arc;
-use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::while_loop_node::{WhileLoopConfig, WhileLoopNode, while_loop_config};
 use tokio::sync::mpsc;
@@ -24,15 +23,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     1000, // max iterations to prevent infinite loops
   );
 
-  // Build the graph using the graph! macro
-  let mut graph: Graph = graph! {
-    while_loop: WhileLoopNode::new("while_loop".to_string()),
-    graph.configuration => while_loop.configuration,
-    graph.input => while_loop.in,
-    graph.condition => while_loop.condition,
-    while_loop.out => graph.out,
-    while_loop.break => graph.break,
-    while_loop.error => graph.error
+  // Build the graph from Mermaid (.mmd)
+  let mut graph: Graph = {
+    use std::path::Path;
+    use streamweave::mermaid::{
+      NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+    };
+    let path = Path::new("examples/nodes/while_loop_node.mmd");
+    let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+    let mut registry = NodeRegistry::new();
+    registry.register("WhileLoopNode", |id, _inputs, _outputs| {
+      Box::new(WhileLoopNode::new(id))
+    });
+    blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?
   };
 
   // Connect external channels at runtime

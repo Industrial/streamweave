@@ -1,0 +1,44 @@
+%% streamweave: begin
+%% streamweave: input configuration -> reduce.configuration
+%% streamweave: input initial -> reduce.initial
+%% streamweave: input function -> reduce.function
+%% streamweave: input in -> reduce.in
+%% streamweave: output output <- reduce.out
+%% streamweave: output error <- reduce.error
+%% streamweave: node reduce kind=ReduceNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  initial["initial"]
+  function["function"]
+  in["in"]
+  output["output"]
+  error["error"]
+
+  subgraph reduce["ReduceNode"]
+    direction LR
+    reduce_in_configuration["configuration"]
+    reduce_in_initial["initial"]
+    reduce_in_function["function"]
+    reduce_in_in["in"]
+    reduce_core["reduce"]
+    reduce_out_output["output"]
+    reduce_out_error["error"]
+    reduce_in_configuration --> reduce_core
+    reduce_in_initial --> reduce_core
+    reduce_in_function --> reduce_core
+    reduce_in_in --> reduce_core
+    reduce_core --> reduce_out_output
+    reduce_core --> reduce_out_error
+  end
+
+  configuration --> reduce_in_configuration
+  initial --> reduce_in_initial
+  function --> reduce_in_function
+  in --> reduce_in_in
+  reduce_out_output --> output
+  reduce_out_error --> error

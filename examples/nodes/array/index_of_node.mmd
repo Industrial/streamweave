@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> index_of.configuration
+%% streamweave: input input -> index_of.in
+%% streamweave: input value -> index_of.value
+%% streamweave: output output <- index_of.out
+%% streamweave: output error <- index_of.error
+%% streamweave: node index_of kind=ArrayIndexOfNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  value["value"]
+  output["output"]
+  error["error"]
+
+  subgraph index_of["ArrayIndexOfNode"]
+    direction LR
+    index_of_in_configuration["configuration"]
+    index_of_in_in["in"]
+    index_of_in_value["value"]
+    index_of_core["index_of"]
+    index_of_out_output["output"]
+    index_of_out_error["error"]
+    index_of_in_configuration --> index_of_core
+    index_of_in_in --> index_of_core
+    index_of_in_value --> index_of_core
+    index_of_core --> index_of_out_output
+    index_of_core --> index_of_out_error
+  end
+
+  configuration --> index_of_in_configuration
+  input --> index_of_in_in
+  value --> index_of_in_value
+  index_of_out_output --> output
+  index_of_out_error --> error

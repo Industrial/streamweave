@@ -5,6 +5,9 @@
 //! - Graph inputs without values: `graph.input => node.port`
 //! - Graph outputs: `node.port => graph.output`
 //!
+//! A single-node graph with I/O is also defined in [graph_macro_io.mmd](graph_macro_io.mmd)
+//! (Style B Mermaid diagram).
+//!
 //! Graph I/O allows you to expose internal node ports as graph-level interfaces,
 //! making graphs composable and reusable.
 

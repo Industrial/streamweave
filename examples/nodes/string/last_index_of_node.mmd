@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> last_index_of.configuration
+%% streamweave: input input -> last_index_of.in
+%% streamweave: input substring -> last_index_of.substring
+%% streamweave: output output <- last_index_of.out
+%% streamweave: output error <- last_index_of.error
+%% streamweave: node last_index_of kind=StringLastIndexOfNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  substring["substring"]
+  output["output"]
+  error["error"]
+
+  subgraph last_index_of["StringLastIndexOfNode"]
+    direction LR
+    last_index_of_in_configuration["configuration"]
+    last_index_of_in_in["in"]
+    last_index_of_in_substring["substring"]
+    last_index_of_core["last_index_of"]
+    last_index_of_out_output["output"]
+    last_index_of_out_error["error"]
+    last_index_of_in_configuration --> last_index_of_core
+    last_index_of_in_in --> last_index_of_core
+    last_index_of_in_substring --> last_index_of_core
+    last_index_of_core --> last_index_of_out_output
+    last_index_of_core --> last_index_of_out_error
+  end
+
+  configuration --> last_index_of_in_configuration
+  input --> last_index_of_in_in
+  substring --> last_index_of_in_substring
+  last_index_of_out_output --> output
+  last_index_of_out_error --> error

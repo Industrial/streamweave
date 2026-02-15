@@ -1,0 +1,44 @@
+%% streamweave: begin
+%% streamweave: input configuration -> scan.configuration
+%% streamweave: input input -> scan.in
+%% streamweave: input initial -> scan.initial
+%% streamweave: input function -> scan.function
+%% streamweave: output output <- scan.out
+%% streamweave: output error <- scan.error
+%% streamweave: node scan kind=ScanNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  initial["initial"]
+  function["function"]
+  output["output"]
+  error["error"]
+
+  subgraph scan["ScanNode"]
+    direction LR
+    scan_in_configuration["configuration"]
+    scan_in_in["in"]
+    scan_in_initial["initial"]
+    scan_in_function["function"]
+    scan_core["scan"]
+    scan_out_output["output"]
+    scan_out_error["error"]
+    scan_in_configuration --> scan_core
+    scan_in_in --> scan_core
+    scan_in_initial --> scan_core
+    scan_in_function --> scan_core
+    scan_core --> scan_out_output
+    scan_core --> scan_out_error
+  end
+
+  configuration --> scan_in_configuration
+  input --> scan_in_in
+  initial --> scan_in_initial
+  function --> scan_in_function
+  scan_out_output --> output
+  scan_out_error --> error

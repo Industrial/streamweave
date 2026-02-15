@@ -1,0 +1,41 @@
+%% streamweave: begin
+%% streamweave: output output <- tumbling.out
+%% streamweave: node producer kind=Producer
+%% streamweave: node watermark kind=WatermarkInjectorNode
+%% streamweave: node tumbling kind=TumblingEventTimeWindowNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  output["output"]
+
+  subgraph producer["Producer"]
+    direction LR
+    producer_core["producer"]
+    producer_out_out["out"]
+    producer_core --> producer_out_out
+  end
+
+  subgraph watermark["WatermarkInjectorNode"]
+    direction LR
+    watermark_in_in["in"]
+    watermark_core["watermark"]
+    watermark_out_out["out"]
+    watermark_in_in --> watermark_core
+    watermark_core --> watermark_out_out
+  end
+
+  subgraph tumbling["TumblingEventTimeWindowNode"]
+    direction LR
+    tumbling_in_in["in"]
+    tumbling_core["tumbling"]
+    tumbling_out_out["out"]
+    tumbling_in_in --> tumbling_core
+    tumbling_core --> tumbling_out_out
+  end
+
+  producer_out_out --> watermark_in_in
+  watermark_out_out --> tumbling_in_in
+  tumbling_out_out --> output

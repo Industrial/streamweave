@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> last.configuration
+%% streamweave: input input -> last.in
+%% streamweave: output output <- last.out
+%% streamweave: output error <- last.error
+%% streamweave: node last kind=LastNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph last["LastNode"]
+    direction LR
+    last_in_configuration["configuration"]
+    last_in_in["in"]
+    last_core["last"]
+    last_out_output["output"]
+    last_out_error["error"]
+    last_in_configuration --> last_core
+    last_in_in --> last_core
+    last_core --> last_out_output
+    last_core --> last_out_error
+  end
+
+  configuration --> last_in_configuration
+  input --> last_in_in
+  last_out_output --> output
+  last_out_error --> error

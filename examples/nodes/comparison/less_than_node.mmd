@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> less_than.configuration
+%% streamweave: input in1 -> less_than.in1
+%% streamweave: input in2 -> less_than.in2
+%% streamweave: output output <- less_than.out
+%% streamweave: output error <- less_than.error
+%% streamweave: node less_than kind=LessThanNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in1["in1"]
+  in2["in2"]
+  output["output"]
+  error["error"]
+
+  subgraph less_than["LessThanNode"]
+    direction LR
+    less_than_in_configuration["configuration"]
+    less_than_in_in1["in1"]
+    less_than_in_in2["in2"]
+    less_than_core["less_than"]
+    less_than_out_output["output"]
+    less_than_out_error["error"]
+    less_than_in_configuration --> less_than_core
+    less_than_in_in1 --> less_than_core
+    less_than_in_in2 --> less_than_core
+    less_than_core --> less_than_out_output
+    less_than_core --> less_than_out_error
+  end
+
+  configuration --> less_than_in_configuration
+  in1 --> less_than_in_in1
+  in2 --> less_than_in_in2
+  less_than_out_output --> output
+  less_than_out_error --> error

@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> error_branch.configuration
+%% streamweave: input input -> error_branch.in
+%% streamweave: output success <- error_branch.success
+%% streamweave: output error <- error_branch.error
+%% streamweave: node error_branch kind=ErrorBranchNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  success["success"]
+  error["error"]
+
+  subgraph error_branch["ErrorBranchNode"]
+    direction LR
+    error_branch_in_configuration["configuration"]
+    error_branch_in_in["in"]
+    error_branch_core["error_branch"]
+    error_branch_out_success["success"]
+    error_branch_out_error["error"]
+    error_branch_in_configuration --> error_branch_core
+    error_branch_in_in --> error_branch_core
+    error_branch_core --> error_branch_out_success
+    error_branch_core --> error_branch_out_error
+  end
+
+  configuration --> error_branch_in_configuration
+  input --> error_branch_in_in
+  error_branch_out_success --> success
+  error_branch_out_error --> error

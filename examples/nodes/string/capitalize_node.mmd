@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> capitalize.configuration
+%% streamweave: input input -> capitalize.in
+%% streamweave: output output <- capitalize.out
+%% streamweave: output error <- capitalize.error
+%% streamweave: node capitalize kind=StringCapitalizeNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph capitalize["StringCapitalizeNode"]
+    direction LR
+    capitalize_in_configuration["configuration"]
+    capitalize_in_in["in"]
+    capitalize_core["capitalize"]
+    capitalize_out_output["output"]
+    capitalize_out_error["error"]
+    capitalize_in_configuration --> capitalize_core
+    capitalize_in_in --> capitalize_core
+    capitalize_core --> capitalize_out_output
+    capitalize_core --> capitalize_out_error
+  end
+
+  configuration --> capitalize_in_configuration
+  input --> capitalize_in_in
+  capitalize_out_output --> output
+  capitalize_out_error --> error

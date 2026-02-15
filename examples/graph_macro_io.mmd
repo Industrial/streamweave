@@ -1,0 +1,24 @@
+%% streamweave: begin
+%% streamweave: input input -> transform.in
+%% streamweave: output output <- transform.out
+%% streamweave: node transform kind=TransformNode
+%% streamweave: end
+%% ---
+%% Style B: node-as-subgraph with port boxes.
+%% Graph I/O: graph input -> transform.in, transform.out -> graph output
+%% ---
+flowchart TD
+  input["input"]
+  output["output"]
+
+  subgraph transform["TransformNode"]
+    direction LR
+    transform_in_in["in"]
+    transform_core["transform"]
+    transform_out_out["out"]
+    transform_in_in --> transform_core
+    transform_core --> transform_out_out
+  end
+
+  input --> transform_in_in
+  transform_out_out --> output

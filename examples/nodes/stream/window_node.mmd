@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> window.configuration
+%% streamweave: input input -> window.in
+%% streamweave: input size -> window.size
+%% streamweave: output output <- window.out
+%% streamweave: output error <- window.error
+%% streamweave: node window kind=WindowNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  size["size"]
+  output["output"]
+  error["error"]
+
+  subgraph window["WindowNode"]
+    direction LR
+    window_in_configuration["configuration"]
+    window_in_in["in"]
+    window_in_size["size"]
+    window_core["window"]
+    window_out_output["output"]
+    window_out_error["error"]
+    window_in_configuration --> window_core
+    window_in_in --> window_core
+    window_in_size --> window_core
+    window_core --> window_out_output
+    window_core --> window_out_error
+  end
+
+  configuration --> window_in_configuration
+  input --> window_in_in
+  size --> window_in_size
+  window_out_output --> output
+  window_out_error --> error

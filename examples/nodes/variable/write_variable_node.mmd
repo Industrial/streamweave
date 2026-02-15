@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> write_var.configuration
+%% streamweave: input name -> write_var.name
+%% streamweave: input value -> write_var.value
+%% streamweave: output out <- write_var.out
+%% streamweave: output error <- write_var.error
+%% streamweave: node write_var kind=WriteVariableNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  name["name"]
+  value["value"]
+  out["out"]
+  error["error"]
+
+  subgraph write_var["WriteVariableNode"]
+    direction LR
+    write_var_in_configuration["configuration"]
+    write_var_in_name["name"]
+    write_var_in_value["value"]
+    write_var_core["write_var"]
+    write_var_out_out["out"]
+    write_var_out_error["error"]
+    write_var_in_configuration --> write_var_core
+    write_var_in_name --> write_var_core
+    write_var_in_value --> write_var_core
+    write_var_core --> write_var_out_out
+    write_var_core --> write_var_out_error
+  end
+
+  configuration --> write_var_in_configuration
+  name --> write_var_in_name
+  value --> write_var_in_value
+  write_var_out_out --> out
+  write_var_out_error --> error

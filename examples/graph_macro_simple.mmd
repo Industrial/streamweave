@@ -1,0 +1,35 @@
+%% streamweave: begin
+%% streamweave: node producer kind=ProducerNode
+%% streamweave: node transform kind=TransformNode
+%% streamweave: node sink kind=SinkNode
+%% streamweave: end
+%% ---
+%% Style B: node-as-subgraph with port boxes.
+%% Linear pipeline: producer -> transform -> sink (sink has no output port)
+%% ---
+flowchart TD
+  subgraph producer["ProducerNode"]
+    direction LR
+    producer_core["producer"]
+    producer_out_out["out"]
+    producer_core --> producer_out_out
+  end
+
+  subgraph transform["TransformNode"]
+    direction LR
+    transform_in_in["in"]
+    transform_core["transform"]
+    transform_out_out["out"]
+    transform_in_in --> transform_core
+    transform_core --> transform_out_out
+  end
+
+  subgraph sink["SinkNode"]
+    direction LR
+    sink_in_in["in"]
+    sink_core["sink"]
+    sink_in_in --> sink_core
+  end
+
+  producer_out_out --> transform_in_in
+  transform_out_out --> sink_in_in

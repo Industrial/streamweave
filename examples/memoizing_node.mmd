@@ -1,0 +1,29 @@
+%% streamweave: begin
+%% streamweave: input configuration -> memo.configuration
+%% streamweave: input input -> memo.in
+%% streamweave: output output <- memo.out
+%% streamweave: node memo kind=MemoizingMapNode
+%% streamweave: end
+%% ---
+%% Style B: node-as-subgraph with port boxes.
+%% Single node: memo (MemoizingMapNode) with graph I/O
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+
+  subgraph memo["MemoizingMapNode"]
+    direction LR
+    memo_in_configuration["configuration"]
+    memo_in_in["in"]
+    memo_core["memo"]
+    memo_out_out["out"]
+    memo_in_configuration --> memo_core
+    memo_in_in --> memo_core
+    memo_core --> memo_out_out
+  end
+
+  configuration --> memo_in_configuration
+  input --> memo_in_in
+  memo_out_out --> output

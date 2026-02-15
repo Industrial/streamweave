@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> contains.configuration
+%% streamweave: input input -> contains.in
+%% streamweave: input value -> contains.value
+%% streamweave: output output <- contains.out
+%% streamweave: output error <- contains.error
+%% streamweave: node contains kind=ArrayContainsNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  value["value"]
+  output["output"]
+  error["error"]
+
+  subgraph contains["ArrayContainsNode"]
+    direction LR
+    contains_in_configuration["configuration"]
+    contains_in_in["in"]
+    contains_in_value["value"]
+    contains_core["contains"]
+    contains_out_output["output"]
+    contains_out_error["error"]
+    contains_in_configuration --> contains_core
+    contains_in_in --> contains_core
+    contains_in_value --> contains_core
+    contains_core --> contains_out_output
+    contains_core --> contains_out_error
+  end
+
+  configuration --> contains_in_configuration
+  input --> contains_in_in
+  value --> contains_in_value
+  contains_out_output --> output
+  contains_out_error --> error

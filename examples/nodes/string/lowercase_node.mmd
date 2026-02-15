@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> lowercase.configuration
+%% streamweave: input input -> lowercase.in
+%% streamweave: output output <- lowercase.out
+%% streamweave: output error <- lowercase.error
+%% streamweave: node lowercase kind=StringLowercaseNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph lowercase["StringLowercaseNode"]
+    direction LR
+    lowercase_in_configuration["configuration"]
+    lowercase_in_in["in"]
+    lowercase_core["lowercase"]
+    lowercase_out_output["output"]
+    lowercase_out_error["error"]
+    lowercase_in_configuration --> lowercase_core
+    lowercase_in_in --> lowercase_core
+    lowercase_core --> lowercase_out_output
+    lowercase_core --> lowercase_out_error
+  end
+
+  configuration --> lowercase_in_configuration
+  input --> lowercase_in_in
+  lowercase_out_output --> output
+  lowercase_out_error --> error

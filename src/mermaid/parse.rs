@@ -1,17 +1,13 @@
 //! Parse Mermaid (`.mmd`) source into a graph blueprint.
 //!
-//! Requires the `mermaid` feature. Uses `mermaid-rs-renderer` to parse flowchart syntax,
-//! then maps vertices and edges (with edge labels per convention) to a [`GraphBlueprint`].
-//! The `%% streamweave:` comment block is parsed separately (see [`parse_streamweave_comments`]).
-//! Optionally, a co-located `*.streamweave.yaml` sidecar can be loaded and merged (see [`parse_mmd_file_to_blueprint`]).
+//! Uses `mermaid-rs-renderer` to parse flowchart syntax, then maps vertices and edges
+//! (with edge labels per convention) to a [`GraphBlueprint`]. The `%% streamweave:` comment
+//! block is parsed separately (see [`parse_streamweave_comments`]). Optionally, a co-located
+//! `*.streamweave.yaml` sidecar can be loaded and merged (see [`parse_mmd_file_to_blueprint`]).
 
-use crate::mermaid::blueprint::GraphBlueprint;
-#[cfg(feature = "mermaid")]
-use crate::mermaid::blueprint::{BlueprintEdge, InputBinding, NodeInfo, OutputBinding};
+use crate::mermaid::blueprint::{BlueprintEdge, GraphBlueprint, InputBinding, NodeInfo, OutputBinding};
 use crate::mermaid::convention;
-#[cfg(feature = "mermaid")]
 use std::collections::HashSet;
-#[cfg(feature = "mermaid")]
 use std::path::Path;
 
 /// Error returned when parsing `.mmd` fails.
@@ -33,25 +29,21 @@ pub enum ParseError {
   #[error("read mmd file: {0}")]
   ReadMmdFile(#[from] std::io::Error),
   /// Loading or applying the sidecar file failed.
-  #[cfg(feature = "mermaid")]
   #[error("sidecar: {0}")]
   Sidecar(#[from] crate::mermaid::sidecar::SidecarError),
 }
 
 /// Default edge label when the diagram has no label (convention fallback).
-#[cfg(feature = "mermaid")]
 const DEFAULT_EDGE_LABEL: &str = "out->in";
 
 /// Parses `.mmd` source into a blueprint (topology only).
 ///
-/// Requires the `mermaid` feature. Only flowchart diagrams are supported.
-/// Fills nodes and edges; use [`parse_streamweave_comments`] on the same source to fill
-/// I/O bindings and metadata, then merge.
+/// Only flowchart diagrams are supported. Fills nodes and edges; use [`parse_streamweave_comments`]
+/// on the same source to fill I/O bindings and metadata, then merge.
 ///
 /// Node ids from the parser are used as-is (e.g. `a`, `b` or `v0`, `v1`). If the source
 /// contains `%% streamweave: node_id v0=a` lines, apply the mapping after parsing (see
 /// convention doc §2.6).
-#[cfg(feature = "mermaid")]
 pub fn mmd_to_blueprint(mmd: &str) -> Result<GraphBlueprint, ParseError> {
   use mermaid_rs_renderer::{DiagramKind, parse_mermaid};
 
@@ -72,45 +64,153 @@ pub fn mmd_to_blueprint(mmd: &str) -> Result<GraphBlueprint, ParseError> {
     bp.add_node(id.clone(), NodeInfo { kind: None, label });
   }
 
-  for edge in &graph.edges {
-    let raw = edge.label.as_deref().unwrap_or(DEFAULT_EDGE_LABEL).trim();
-    // Mermaid/builders may wrap the label in backticks or quotes; strip layers for roundtrip.
-    let mut label_str = raw;
-    loop {
-      let trimmed = label_str
-        .strip_prefix('`')
-        .and_then(|s| s.strip_suffix('`'))
-        .or_else(|| {
-          label_str
-            .strip_prefix('"')
-            .and_then(|s| s.strip_suffix('"'))
-        });
-      match trimmed {
-        Some(s) if s != label_str => label_str = s,
-        _ => break,
-      }
-    }
-    let label_str = label_str.trim();
-    let (source_port, target_port) =
-      convention::parse_edge_label(label_str).ok_or_else(|| ParseError::InvalidEdgeLabel {
-        label: raw.to_string(),
-      })?;
-    bp.add_edge(BlueprintEdge {
-      source_node: edge.from.clone(),
-      source_port,
-      target_node: edge.to.clone(),
-      target_port,
-    });
-  }
+  let is_style_b = !graph.subgraphs.is_empty() && is_style_b_layout(graph);
 
-  if !graph.subgraphs.is_empty() {
-    apply_subgraphs(graph, &mut bp);
+  if is_style_b {
+    reduce_style_b(graph, &mut bp);
+  } else {
+    for edge in &graph.edges {
+      let raw = edge.label.as_deref().unwrap_or(DEFAULT_EDGE_LABEL).trim();
+      // Mermaid/builders may wrap the label in backticks or quotes; strip layers for roundtrip.
+      let mut label_str = raw;
+      loop {
+        let trimmed = label_str
+          .strip_prefix('`')
+          .and_then(|s| s.strip_suffix('`'))
+          .or_else(|| {
+            label_str
+              .strip_prefix('"')
+              .and_then(|s| s.strip_suffix('"'))
+          });
+        match trimmed {
+          Some(s) if s != label_str => label_str = s,
+          _ => break,
+        }
+      }
+      let label_str = label_str.trim();
+      let (source_port, target_port) =
+        convention::parse_edge_label(label_str).ok_or_else(|| ParseError::InvalidEdgeLabel {
+          label: raw.to_string(),
+        })?;
+      bp.add_edge(BlueprintEdge {
+        source_node: edge.from.clone(),
+        source_port,
+        target_node: edge.to.clone(),
+        target_port,
+      });
+    }
+    if !graph.subgraphs.is_empty() {
+      apply_subgraphs(graph, &mut bp);
+    }
   }
 
   Ok(bp)
 }
 
-#[cfg(feature = "mermaid")]
+/// Style B: each node is a subgraph with id = node id; inside are port boxes named
+/// `{node_id}_in_{safe}` and `{node_id}_out_{safe}` and a core node `{node_id}` or `{node_id}_core`
+/// (core uses _core suffix to avoid Mermaid cycle when subgraph id equals node id).
+fn is_style_b_layout(graph: &mermaid_rs_renderer::Graph) -> bool {
+  for subgraph in &graph.subgraphs {
+    let sg_id = subgraph
+      .id
+      .as_deref()
+      .unwrap_or(&subgraph.label)
+      .to_string();
+    let prefix_in = format!("{}_in_", sg_id);
+    let prefix_out = format!("{}_out_", sg_id);
+    let core_alt = format!("{}_core", sg_id);
+    let mut has_core = false;
+    for node_id in &subgraph.nodes {
+      if *node_id == sg_id || *node_id == core_alt {
+        has_core = true;
+      } else if node_id.starts_with(&prefix_in) || node_id.starts_with(&prefix_out) {
+        // port box
+      } else {
+        return false;
+      }
+    }
+    if !has_core {
+      return false;
+    }
+  }
+  true
+}
+
+/// Reduces a Style B diagram to a flat blueprint: one node per subgraph (core id), edges from
+/// port-box-to-port-box edges (decode port names from box ids via safe_to_port_name).
+fn reduce_style_b(graph: &mermaid_rs_renderer::Graph, bp: &mut GraphBlueprint) {
+  use crate::mermaid::blueprint::BlueprintEdge;
+  use std::collections::HashMap;
+
+  #[derive(Clone)]
+  enum PortRole {
+    Core,
+    In(String),
+    Out(String),
+  }
+
+  let mut node_to_sg_and_role: HashMap<String, (String, PortRole)> = HashMap::new();
+  let mut core_ids: HashSet<String> = HashSet::new();
+
+  for subgraph in &graph.subgraphs {
+    let sg_id = subgraph
+      .id
+      .as_deref()
+      .unwrap_or(&subgraph.label)
+      .to_string();
+    core_ids.insert(sg_id.clone());
+    let prefix_in = format!("{}_in_", sg_id);
+    let prefix_out = format!("{}_out_", sg_id);
+    let core_alt = format!("{}_core", sg_id);
+    for node_id in &subgraph.nodes {
+      let role = if *node_id == sg_id || *node_id == core_alt {
+        PortRole::Core
+      } else if let Some(safe) = node_id.strip_prefix(&prefix_in) {
+        PortRole::In(safe.to_string())
+      } else if let Some(safe) = node_id.strip_prefix(&prefix_out) {
+        PortRole::Out(safe.to_string())
+      } else {
+        continue;
+      };
+      node_to_sg_and_role.insert(node_id.clone(), (sg_id.clone(), role));
+    }
+  }
+
+  // Rebuild nodes: one per subgraph (id = sg_id). NodeInfo from core node (sg_id or sg_id_core).
+  let mut new_nodes = std::collections::HashMap::new();
+  for sg_id in &core_ids {
+    let core_alt = format!("{}_core", sg_id);
+    let info = bp
+      .nodes
+      .get(sg_id)
+      .or_else(|| bp.nodes.get(&core_alt))
+      .cloned()
+      .unwrap_or_default();
+    new_nodes.insert(sg_id.clone(), info);
+  }
+  bp.nodes = new_nodes;
+  bp.edges.clear();
+
+  for edge in &graph.edges {
+    let Some((from_sg, from_role)) = node_to_sg_and_role.get(&edge.from) else {
+      continue;
+    };
+    let Some((to_sg, to_role)) = node_to_sg_and_role.get(&edge.to) else {
+      continue;
+    };
+    let (PortRole::Out(safe_src), PortRole::In(safe_tgt)) = (from_role, to_role) else {
+      continue;
+    };
+    bp.add_edge(BlueprintEdge {
+      source_node: from_sg.clone(),
+      source_port: convention::safe_to_port_name(safe_src),
+      target_node: to_sg.clone(),
+      target_port: convention::safe_to_port_name(safe_tgt),
+    });
+  }
+}
+
 /// Moves nodes and edges that belong to Mermaid subgraphs into nested blueprints and wires inputs/outputs.
 fn apply_subgraphs(graph: &mermaid_rs_renderer::Graph, bp: &mut GraphBlueprint) {
   use crate::mermaid::blueprint::BlueprintEdge;
@@ -243,23 +343,33 @@ pub fn parse_streamweave_comments(mmd: &str, bp: &mut GraphBlueprint) {
       let mut node_id = None;
       let mut policy = String::new();
       let mut group = None;
+      let mut kind = None;
       for part in rest.split_whitespace() {
         if let Some(id) = part.strip_prefix("supervision_policy=") {
           policy = id.to_string();
         } else if let Some(g) = part.strip_prefix("supervision_group=") {
           group = Some(g.to_string());
+        } else if let Some(k) = part.strip_prefix("kind=") {
+          kind = Some(k.to_string());
         } else if !part.contains('=') && node_id.is_none() {
           node_id = Some(part.to_string());
         }
       }
-      if let Some(nid) = node_id {
-        bp.node_supervision.insert(
-          nid,
-          crate::mermaid::blueprint::NodeSupervision {
-            policy,
-            supervision_group: group,
-          },
-        );
+      if let Some(nid) = node_id.clone() {
+        if !policy.is_empty() || group.is_some() {
+          bp.node_supervision.insert(
+            nid.clone(),
+            crate::mermaid::blueprint::NodeSupervision {
+              policy,
+              supervision_group: group,
+            },
+          );
+        }
+        if let Some(k) = kind
+          && let Some(info) = bp.nodes.get_mut(&nid)
+        {
+          info.kind = Some(k);
+        }
       }
     } else if let Some(rest) = payload.strip_prefix("subgraph_unit ") {
       bp.subgraph_units.push(rest.trim().to_string());
@@ -302,10 +412,8 @@ pub fn parse_streamweave_comments(mmd: &str, bp: &mut GraphBlueprint) {
 
 /// Parses full `.mmd` source into a blueprint (topology + comment block).
 ///
-/// When the `mermaid` feature is enabled, uses the Mermaid parser for the flowchart and
-/// fills topology, then parses the `%% streamweave:` block for I/O and metadata.
-/// When the feature is off, returns an error (parse requires mermaid-rs-renderer).
-#[cfg(feature = "mermaid")]
+/// Uses the Mermaid parser for the flowchart and fills topology, then parses the
+/// `%% streamweave:` block for I/O and metadata.
 pub fn parse_mmd_to_blueprint(mmd: &str) -> Result<GraphBlueprint, ParseError> {
   let mut bp = mmd_to_blueprint(mmd)?;
   parse_streamweave_comments(mmd, &mut bp);
@@ -315,9 +423,6 @@ pub fn parse_mmd_to_blueprint(mmd: &str) -> Result<GraphBlueprint, ParseError> {
 /// Reads a `.mmd` file from `path`, parses it to a blueprint, and if a co-located
 /// `*.streamweave.yaml` sidecar exists (e.g. `pipeline.streamweave.yaml` next to `pipeline.mmd`),
 /// loads and applies it (sidecar overrides comment-block metadata).
-///
-/// Requires the `mermaid` feature.
-#[cfg(feature = "mermaid")]
 pub fn parse_mmd_file_to_blueprint(path: &Path) -> Result<GraphBlueprint, ParseError> {
   let mmd = std::fs::read_to_string(path)?;
   let mut bp = parse_mmd_to_blueprint(&mmd)?;
@@ -333,7 +438,6 @@ pub fn parse_mmd_file_to_blueprint(path: &Path) -> Result<GraphBlueprint, ParseE
 mod tests {
   use super::*;
 
-  #[cfg(feature = "mermaid")]
   #[test]
   fn parse_mmd_to_blueprint_linear() {
     let mmd = r#"flowchart TD
@@ -359,7 +463,6 @@ mod tests {
   }
 
   /// Parse fixture: export a blueprint to .mmd then parse back; assert structure and I/O preserved.
-  #[cfg(feature = "mermaid")]
   #[test]
   fn parse_fixture_from_export_roundtrip() {
     use crate::mermaid::blueprint::{BlueprintEdge, ExecutionMode, InputBinding, OutputBinding};
@@ -411,6 +514,46 @@ mod tests {
     );
   }
 
+  /// Style B: subgraph per node with port boxes; parse reduces to flat blueprint.
+  #[test]
+  fn parse_style_b_subgraph_port_boxes() {
+    let mmd = r#"flowchart TD
+  subgraph a["NodeA"]
+    direction LR
+    a_in_in["in"]
+    a["a"]
+    a_out_out["out"]
+    a_in_in --> a
+    a --> a_out_out
+  end
+  subgraph b["NodeB"]
+    direction LR
+    b_in_in["in"]
+    b["b"]
+    b_out_out["out"]
+    b_in_in --> b
+    b --> b_out_out
+  end
+  a_out_out --> b_in_in
+"#;
+    let bp = parse_mmd_to_blueprint(mmd).expect("parse Style B");
+    assert_eq!(bp.nodes.len(), 2, "one node per subgraph");
+    assert!(bp.nodes.contains_key("a"));
+    assert!(bp.nodes.contains_key("b"));
+    let edge = bp
+      .edges
+      .iter()
+      .find(|e| e.source_node == "a" && e.target_node == "b");
+    assert!(
+      edge.is_some(),
+      "edge from a.out to b.in, got {:?}",
+      bp.edges
+    );
+    let e = edge.unwrap();
+    assert_eq!(e.source_port, "out");
+    assert_eq!(e.target_port, "in");
+  }
+
   #[test]
   fn parse_streamweave_comments_fills_io_and_mode() {
     let mmd = r#"
@@ -437,7 +580,6 @@ flowchart TD
   }
 
   /// Roundtrip: blueprint → export → parse; assert structural equality and metadata preserved.
-  #[cfg(feature = "mermaid")]
   #[test]
   fn roundtrip_export_parse_structural_equality() {
     use std::collections::BTreeSet;
@@ -526,7 +668,6 @@ flowchart TD
   }
 
   /// Roundtrip with sidecar: write blueprint to path (mmd + sidecar), then parse from path.
-  #[cfg(feature = "mermaid")]
   #[test]
   fn roundtrip_with_sidecar_preserves_name_and_metadata() {
     use std::collections::BTreeSet;

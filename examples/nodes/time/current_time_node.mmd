@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> current_time.configuration
+%% streamweave: input trigger -> current_time.trigger
+%% streamweave: output output <- current_time.out
+%% streamweave: output error <- current_time.error
+%% streamweave: node current_time kind=CurrentTimeNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  trigger["trigger"]
+  output["output"]
+  error["error"]
+
+  subgraph current_time["CurrentTimeNode"]
+    direction LR
+    current_time_in_configuration["configuration"]
+    current_time_in_trigger["trigger"]
+    current_time_core["current_time"]
+    current_time_out_output["output"]
+    current_time_out_error["error"]
+    current_time_in_configuration --> current_time_core
+    current_time_in_trigger --> current_time_core
+    current_time_core --> current_time_out_output
+    current_time_core --> current_time_out_error
+  end
+
+  configuration --> current_time_in_configuration
+  trigger --> current_time_in_trigger
+  current_time_out_output --> output
+  current_time_out_error --> error

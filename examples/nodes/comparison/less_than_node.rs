@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::sync::Arc;
-use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::comparison::LessThanNode;
 use tokio::sync::mpsc;
@@ -14,14 +13,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the graph! macro
-  let mut graph: Graph = graph! {
-    less_than: LessThanNode::new("less_than".to_string()),
-    graph.configuration => less_than.configuration,
-    graph.in1 => less_than.in1,
-    graph.in2 => less_than.in2,
-    less_than.out => graph.output,
-    less_than.error => graph.error
+  // Build the graph from Mermaid (.mmd)
+  let mut graph: Graph = {
+    use std::path::Path;
+    use streamweave::mermaid::{
+      NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+    };
+    let path = Path::new("examples/nodes/comparison/less_than_node.mmd");
+    let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+    let mut registry = NodeRegistry::new();
+    registry.register("LessThanNode", |id, _inputs, _outputs| {
+      Box::new(LessThanNode::new(id))
+    });
+    blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?
   };
 
   // Connect external channels at runtime

@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::sync::Arc;
-use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::array::ArrayFlattenNode;
 use tokio::sync::mpsc;
@@ -13,13 +12,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the graph! macro
-  let mut graph: Graph = graph! {
-    flatten: ArrayFlattenNode::new("flatten".to_string()),
-    graph.configuration => flatten.configuration,
-    graph.input => flatten.in,
-    flatten.out => graph.output,
-    flatten.error => graph.error
+  // Build the graph from Mermaid (.mmd)
+  let mut graph: Graph = {
+    use std::path::Path;
+    use streamweave::mermaid::{
+      NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+    };
+    let path = Path::new("examples/nodes/array/flatten_node.mmd");
+    let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+    let mut registry = NodeRegistry::new();
+    registry.register("ArrayFlattenNode", |id, _inputs, _outputs| {
+      Box::new(ArrayFlattenNode::new(id))
+    });
+    blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?
   };
 
   // Connect external channels at runtime

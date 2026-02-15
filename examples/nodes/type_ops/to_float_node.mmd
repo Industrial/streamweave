@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> to_float.configuration
+%% streamweave: input input -> to_float.in
+%% streamweave: output output <- to_float.out
+%% streamweave: output error <- to_float.error
+%% streamweave: node to_float kind=ToFloatNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph to_float["ToFloatNode"]
+    direction LR
+    to_float_in_configuration["configuration"]
+    to_float_in_in["in"]
+    to_float_core["to_float"]
+    to_float_out_output["output"]
+    to_float_out_error["error"]
+    to_float_in_configuration --> to_float_core
+    to_float_in_in --> to_float_core
+    to_float_core --> to_float_out_output
+    to_float_core --> to_float_out_error
+  end
+
+  configuration --> to_float_in_configuration
+  input --> to_float_in_in
+  to_float_out_output --> output
+  to_float_out_error --> error

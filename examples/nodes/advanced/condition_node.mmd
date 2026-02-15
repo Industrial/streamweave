@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> condition.configuration
+%% streamweave: input input -> condition.in
+%% streamweave: output true <- condition.true
+%% streamweave: output false <- condition.false
+%% streamweave: output error <- condition.error
+%% streamweave: node condition kind=ConditionNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  true["true"]
+  false["false"]
+  error["error"]
+
+  subgraph condition["ConditionNode"]
+    direction LR
+    condition_in_configuration["configuration"]
+    condition_in_in["in"]
+    condition_core["condition"]
+    condition_out_true["true"]
+    condition_out_false["false"]
+    condition_out_error["error"]
+    condition_in_configuration --> condition_core
+    condition_in_in --> condition_core
+    condition_core --> condition_out_true
+    condition_core --> condition_out_false
+    condition_core --> condition_out_error
+  end
+
+  configuration --> condition_in_configuration
+  input --> condition_in_in
+  condition_out_true --> true
+  condition_out_false --> false
+  condition_out_error --> error

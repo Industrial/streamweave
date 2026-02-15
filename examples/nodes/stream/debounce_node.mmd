@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> debounce.configuration
+%% streamweave: input input -> debounce.in
+%% streamweave: input delay -> debounce.delay
+%% streamweave: output output <- debounce.out
+%% streamweave: output error <- debounce.error
+%% streamweave: node debounce kind=DebounceNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  delay["delay"]
+  output["output"]
+  error["error"]
+
+  subgraph debounce["DebounceNode"]
+    direction LR
+    debounce_in_configuration["configuration"]
+    debounce_in_in["in"]
+    debounce_in_delay["delay"]
+    debounce_core["debounce"]
+    debounce_out_output["output"]
+    debounce_out_error["error"]
+    debounce_in_configuration --> debounce_core
+    debounce_in_in --> debounce_core
+    debounce_in_delay --> debounce_core
+    debounce_core --> debounce_out_output
+    debounce_core --> debounce_out_error
+  end
+
+  configuration --> debounce_in_configuration
+  input --> debounce_in_in
+  delay --> debounce_in_delay
+  debounce_out_output --> output
+  debounce_out_error --> error

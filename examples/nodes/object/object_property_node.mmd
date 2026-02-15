@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> get.configuration
+%% streamweave: input input -> get.in
+%% streamweave: input key -> get.key
+%% streamweave: output output <- get.out
+%% streamweave: output error <- get.error
+%% streamweave: node get kind=ObjectPropertyNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  key["key"]
+  output["output"]
+  error["error"]
+
+  subgraph get["ObjectPropertyNode"]
+    direction LR
+    get_in_configuration["configuration"]
+    get_in_in["in"]
+    get_in_key["key"]
+    get_core["get"]
+    get_out_output["output"]
+    get_out_error["error"]
+    get_in_configuration --> get_core
+    get_in_in --> get_core
+    get_in_key --> get_core
+    get_core --> get_out_output
+    get_core --> get_out_error
+  end
+
+  configuration --> get_in_configuration
+  input --> get_in_in
+  key --> get_in_key
+  get_out_output --> output
+  get_out_error --> error

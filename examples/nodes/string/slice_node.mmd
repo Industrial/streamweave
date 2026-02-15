@@ -1,0 +1,45 @@
+%% streamweave: begin
+%% streamweave: input configuration -> slice.configuration
+%% streamweave: input input -> slice.in
+%% streamweave: input start -> slice.start
+%% streamweave: input end -> slice.end
+%% streamweave: output output <- slice.out
+%% streamweave: output error <- slice.error
+%% streamweave: node slice kind=StringSliceNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% "end" is a Mermaid reserved word; we use end_port as node id and display "end" as label.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  start["start"]
+  end_port["end"]
+  output["output"]
+  error["error"]
+
+  subgraph slice["StringSliceNode"]
+    direction LR
+    slice_in_configuration["configuration"]
+    slice_in_in["in"]
+    slice_in_start["start"]
+    slice_in_end_port["end"]
+    slice_core["slice"]
+    slice_out_output["output"]
+    slice_out_error["error"]
+    slice_in_configuration --> slice_core
+    slice_in_in --> slice_core
+    slice_in_start --> slice_core
+    slice_in_end_port --> slice_core
+    slice_core --> slice_out_output
+    slice_core --> slice_out_error
+  end
+
+  configuration --> slice_in_configuration
+  input --> slice_in_in
+  start --> slice_in_start
+  end_port --> slice_in_end_port
+  slice_out_output --> output
+  slice_out_error --> error

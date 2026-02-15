@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> or.configuration
+%% streamweave: input in1 -> or.in1
+%% streamweave: input in2 -> or.in2
+%% streamweave: output output <- or.out
+%% streamweave: output error <- or.error
+%% streamweave: node or kind=OrNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in1["in1"]
+  in2["in2"]
+  output["output"]
+  error["error"]
+
+  subgraph or["OrNode"]
+    direction LR
+    or_in_configuration["configuration"]
+    or_in_in1["in1"]
+    or_in_in2["in2"]
+    or_core["or"]
+    or_out_output["output"]
+    or_out_error["error"]
+    or_in_configuration --> or_core
+    or_in_in1 --> or_core
+    or_in_in2 --> or_core
+    or_core --> or_out_output
+    or_core --> or_out_error
+  end
+
+  configuration --> or_in_configuration
+  in1 --> or_in_in1
+  in2 --> or_in_in2
+  or_out_output --> output
+  or_out_error --> error

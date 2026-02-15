@@ -1,0 +1,29 @@
+%% streamweave: begin
+%% streamweave: input configuration -> map.configuration
+%% streamweave: input input -> map.in
+%% streamweave: output output <- map.out
+%% streamweave: node map kind=MapNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+
+  subgraph map["MapNode"]
+    direction LR
+    map_in_configuration["configuration"]
+    map_in_in["in"]
+    map_core["map"]
+    map_out_output["output"]
+    map_in_configuration --> map_core
+    map_in_in --> map_core
+    map_core --> map_out_output
+  end
+
+  configuration --> map_in_configuration
+  input --> map_in_in
+  map_out_output --> output

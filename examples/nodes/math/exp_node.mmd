@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> exp.configuration
+%% streamweave: input input -> exp.in
+%% streamweave: output output <- exp.out
+%% streamweave: output error <- exp.error
+%% streamweave: node exp kind=ExpNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph exp["ExpNode"]
+    direction LR
+    exp_in_configuration["configuration"]
+    exp_in_in["in"]
+    exp_core["exp"]
+    exp_out_output["output"]
+    exp_out_error["error"]
+    exp_in_configuration --> exp_core
+    exp_in_in --> exp_core
+    exp_core --> exp_out_output
+    exp_core --> exp_out_error
+  end
+
+  configuration --> exp_in_configuration
+  input --> exp_in_in
+  exp_out_output --> output
+  exp_out_error --> error

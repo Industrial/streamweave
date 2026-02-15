@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> sort.configuration
+%% streamweave: input input -> sort.in
+%% streamweave: input order -> sort.order
+%% streamweave: output output <- sort.out
+%% streamweave: output error <- sort.error
+%% streamweave: node sort kind=ArraySortNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  order["order"]
+  output["output"]
+  error["error"]
+
+  subgraph sort["ArraySortNode"]
+    direction LR
+    sort_in_configuration["configuration"]
+    sort_in_in["in"]
+    sort_in_order["order"]
+    sort_core["sort"]
+    sort_out_output["output"]
+    sort_out_error["error"]
+    sort_in_configuration --> sort_core
+    sort_in_in --> sort_core
+    sort_in_order --> sort_core
+    sort_core --> sort_out_output
+    sort_core --> sort_out_error
+  end
+
+  configuration --> sort_in_configuration
+  input --> sort_in_in
+  order --> sort_in_order
+  sort_out_output --> output
+  sort_out_error --> error

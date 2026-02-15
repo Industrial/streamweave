@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> not_equal.configuration
+%% streamweave: input in1 -> not_equal.in1
+%% streamweave: input in2 -> not_equal.in2
+%% streamweave: output output <- not_equal.out
+%% streamweave: output error <- not_equal.error
+%% streamweave: node not_equal kind=NotEqualNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in1["in1"]
+  in2["in2"]
+  output["output"]
+  error["error"]
+
+  subgraph not_equal["NotEqualNode"]
+    direction LR
+    not_equal_in_configuration["configuration"]
+    not_equal_in_in1["in1"]
+    not_equal_in_in2["in2"]
+    not_equal_core["not_equal"]
+    not_equal_out_output["output"]
+    not_equal_out_error["error"]
+    not_equal_in_configuration --> not_equal_core
+    not_equal_in_in1 --> not_equal_core
+    not_equal_in_in2 --> not_equal_core
+    not_equal_core --> not_equal_out_output
+    not_equal_core --> not_equal_out_error
+  end
+
+  configuration --> not_equal_in_configuration
+  in1 --> not_equal_in_in1
+  in2 --> not_equal_in_in2
+  not_equal_out_output --> output
+  not_equal_out_error --> error

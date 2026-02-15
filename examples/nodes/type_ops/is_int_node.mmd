@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> is_int.configuration
+%% streamweave: input input -> is_int.in
+%% streamweave: output output <- is_int.out
+%% streamweave: output error <- is_int.error
+%% streamweave: node is_int kind=IsIntNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph is_int["IsIntNode"]
+    direction LR
+    is_int_in_configuration["configuration"]
+    is_int_in_in["in"]
+    is_int_core["is_int"]
+    is_int_out_output["output"]
+    is_int_out_error["error"]
+    is_int_in_configuration --> is_int_core
+    is_int_in_in --> is_int_core
+    is_int_core --> is_int_out_output
+    is_int_core --> is_int_out_error
+  end
+
+  configuration --> is_int_in_configuration
+  input --> is_int_in_in
+  is_int_out_output --> output
+  is_int_out_error --> error

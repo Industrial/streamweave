@@ -3,17 +3,22 @@
 //! Demonstrates [`MemoizingMapNode`] with value-based caching ([`HashKeyExtractor`]):
 //! repeated inputs with the same value are served from cache and skip recomputation.
 //!
+//! Graph is loaded from [memoizing_node.mmd](memoizing_node.mmd) (Style B Mermaid diagram).
+//!
 //! See [docs/incremental-recomputation.md](docs/incremental-recomputation.md) and
 //! [docs/EXAMPLES-AND-HOW-TO.md](docs/EXAMPLES-AND-HOW-TO.md).
 
 use std::any::Any;
-use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
-use streamweave::node::{InputStreams, Node};
+use streamweave::graph::Graph;
+use streamweave::mermaid::{
+  NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+};
 use streamweave::nodes::map_node::map_config;
 use streamweave::nodes::memoizing_map_node::{HashKeyExtractor, MemoizingMapNode};
 use tokio::sync::mpsc;
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
+use tokio_stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -27,22 +32,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
   });
 
-  let node = MemoizingMapNode::with_key_extractor("memo".to_string(), Arc::new(HashKeyExtractor));
+  let path = Path::new("examples/memoizing_node.mmd");
+  let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+  let mut registry = NodeRegistry::new();
+  registry.register("MemoizingMapNode", |id, _inputs, _outputs| {
+    Box::new(MemoizingMapNode::with_key_extractor(id, Arc::new(HashKeyExtractor)))
+  });
+  let mut graph = blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?;
+
   let (config_tx, config_rx) = mpsc::channel(10);
   let (data_tx, data_rx) = mpsc::channel(10);
+  let (out_tx, mut out_rx) = mpsc::channel(10);
 
-  let mut inputs: InputStreams = HashMap::new();
-  inputs.insert(
-    "configuration".to_string(),
-    Box::pin(ReceiverStream::new(config_rx)) as streamweave::node::InputStream,
-  );
-  inputs.insert(
-    "in".to_string(),
-    Box::pin(ReceiverStream::new(data_rx)) as streamweave::node::InputStream,
-  );
-
-  let mut outputs = node.execute(inputs).await?;
-  let mut out_stream = outputs.remove("out").unwrap();
+  graph.connect_input_channel("configuration", config_rx)?;
+  graph.connect_input_channel("input", data_rx)?;
+  graph.connect_output_channel("output", out_tx)?;
 
   config_tx
     .send(Arc::new(config) as Arc<dyn Any + Send + Sync>)
@@ -56,12 +60,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
   }
   drop(data_tx);
 
+  graph.execute().await.map_err(|e| format!("{:?}", e))?;
+
   let mut results = Vec::new();
-  while let Some(arc) = out_stream.next().await {
+  while let Some(arc) = out_rx.recv().await {
     if let Ok(n) = arc.downcast::<i32>() {
       results.push(*n);
     }
   }
+  graph.wait_for_completion().await?;
 
   println!("Input:  [1, 2, 1, 2] (repeated values)");
   println!(

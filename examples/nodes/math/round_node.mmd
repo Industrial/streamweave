@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> round.configuration
+%% streamweave: input input -> round.in
+%% streamweave: output output <- round.out
+%% streamweave: output error <- round.error
+%% streamweave: node round kind=RoundNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph round["RoundNode"]
+    direction LR
+    round_in_configuration["configuration"]
+    round_in_in["in"]
+    round_core["round"]
+    round_out_output["output"]
+    round_out_error["error"]
+    round_in_configuration --> round_core
+    round_in_in --> round_core
+    round_core --> round_out_output
+    round_core --> round_out_error
+  end
+
+  configuration --> round_in_configuration
+  input --> round_in_in
+  round_out_output --> output
+  round_out_error --> error

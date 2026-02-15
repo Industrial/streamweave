@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
 use std::time::Duration;
-use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::sync_node::{SyncConfig, SyncNode};
 use tokio::sync::mpsc;
@@ -22,15 +21,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     timeout: Some(Duration::from_millis(500)), // 500ms timeout
   };
 
-  // Build the graph using the graph! macro
-  let mut graph: Graph = graph! {
-    sync: SyncNode::new("sync".to_string(), 3),
-    graph.configuration => sync.configuration,
-    graph.in_0 => sync.in_0,
-    graph.in_1 => sync.in_1,
-    graph.in_2 => sync.in_2,
-    sync.out => graph.output,
-    sync.error => graph.error
+  // Build the graph from Mermaid (.mmd)
+  let mut graph: Graph = {
+    use std::path::Path;
+    use streamweave::mermaid::{
+      NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+    };
+    let path = Path::new("examples/nodes/sync_node.mmd");
+    let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+    let mut registry = NodeRegistry::new();
+    registry.register("SyncNode", |id, _inputs, _outputs| {
+      Box::new(SyncNode::new(id, 3))
+    });
+    blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?
   };
 
   // Connect external channels at runtime

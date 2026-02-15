@@ -1,0 +1,44 @@
+%% streamweave: begin
+%% streamweave: input configuration -> range.configuration
+%% streamweave: input start -> range.start
+%% streamweave: input end -> range.end
+%% streamweave: input step -> range.step
+%% streamweave: output output <- range.out
+%% streamweave: output error <- range.error
+%% streamweave: node range kind=RangeNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  start["start"]
+  end_port["end"]
+  step["step"]
+  output["output"]
+  error["error"]
+
+  subgraph range["RangeNode"]
+    direction LR
+    range_in_configuration["configuration"]
+    range_in_start["start"]
+    range_in_end_port["end"]
+    range_in_step["step"]
+    range_core["range"]
+    range_out_out["out"]
+    range_out_error["error"]
+    range_in_configuration --> range_core
+    range_in_start --> range_core
+    range_in_end_port --> range_core
+    range_in_step --> range_core
+    range_core --> range_out_out
+    range_core --> range_out_error
+  end
+
+  configuration --> range_in_configuration
+  start --> range_in_start
+  end_port --> range_in_end_port
+  step --> range_in_step
+  range_out_out --> output
+  range_out_error --> error

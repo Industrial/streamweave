@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> nand.configuration
+%% streamweave: input in1 -> nand.in1
+%% streamweave: input in2 -> nand.in2
+%% streamweave: output output <- nand.out
+%% streamweave: output error <- nand.error
+%% streamweave: node nand kind=NandNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in1["in1"]
+  in2["in2"]
+  output["output"]
+  error["error"]
+
+  subgraph nand["NandNode"]
+    direction LR
+    nand_in_configuration["configuration"]
+    nand_in_in1["in1"]
+    nand_in_in2["in2"]
+    nand_core["nand"]
+    nand_out_output["output"]
+    nand_out_error["error"]
+    nand_in_configuration --> nand_core
+    nand_in_in1 --> nand_core
+    nand_in_in2 --> nand_core
+    nand_core --> nand_out_output
+    nand_core --> nand_out_error
+  end
+
+  configuration --> nand_in_configuration
+  in1 --> nand_in_in1
+  in2 --> nand_in_in2
+  nand_out_output --> output
+  nand_out_error --> error

@@ -13,7 +13,6 @@
 
 use std::any::Any;
 use std::sync::Arc;
-use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::reduction::{ReduceConfigWrapper, ReduceNode, reduce_config};
 use tokio::sync::mpsc;
@@ -28,15 +27,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the graph! macro
-  let mut graph: Graph = graph! {
-    reduce: ReduceNode::new("reduce".to_string()),
-    graph.configuration => reduce.configuration,
-    graph.initial => reduce.initial,
-    graph.function => reduce.function,
-    graph.in => reduce.in,
-    reduce.out => graph.output,
-    reduce.error => graph.error
+  // Build the graph from Mermaid (.mmd)
+  let mut graph: Graph = {
+    use std::path::Path;
+    use streamweave::mermaid::{
+      NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+    };
+    let path = Path::new("examples/nodes/reduction/reduce_node.mmd");
+    let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+    let mut registry = NodeRegistry::new();
+    registry.register("ReduceNode", |id, _inputs, _outputs| {
+      Box::new(ReduceNode::new(id))
+    });
+    blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?
   };
 
   // Connect external channels at runtime

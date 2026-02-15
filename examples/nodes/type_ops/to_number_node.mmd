@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> to_number.configuration
+%% streamweave: input input -> to_number.in
+%% streamweave: output output <- to_number.out
+%% streamweave: output error <- to_number.error
+%% streamweave: node to_number kind=ToNumberNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph to_number["ToNumberNode"]
+    direction LR
+    to_number_in_configuration["configuration"]
+    to_number_in_in["in"]
+    to_number_core["to_number"]
+    to_number_out_output["output"]
+    to_number_out_error["error"]
+    to_number_in_configuration --> to_number_core
+    to_number_in_in --> to_number_core
+    to_number_core --> to_number_out_output
+    to_number_core --> to_number_out_error
+  end
+
+  configuration --> to_number_in_configuration
+  input --> to_number_in_in
+  to_number_out_output --> output
+  to_number_out_error --> error

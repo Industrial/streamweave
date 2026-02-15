@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> sqrt.configuration
+%% streamweave: input input -> sqrt.in
+%% streamweave: output output <- sqrt.out
+%% streamweave: output error <- sqrt.error
+%% streamweave: node sqrt kind=SqrtNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph sqrt["SqrtNode"]
+    direction LR
+    sqrt_in_configuration["configuration"]
+    sqrt_in_in["in"]
+    sqrt_core["sqrt"]
+    sqrt_out_output["output"]
+    sqrt_out_error["error"]
+    sqrt_in_configuration --> sqrt_core
+    sqrt_in_in --> sqrt_core
+    sqrt_core --> sqrt_out_output
+    sqrt_core --> sqrt_out_error
+  end
+
+  configuration --> sqrt_in_configuration
+  input --> sqrt_in_in
+  sqrt_out_output --> output
+  sqrt_out_error --> error

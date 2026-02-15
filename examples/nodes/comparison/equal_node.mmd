@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> equal.configuration
+%% streamweave: input in1 -> equal.in1
+%% streamweave: input in2 -> equal.in2
+%% streamweave: output output <- equal.out
+%% streamweave: output error <- equal.error
+%% streamweave: node equal kind=EqualNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in1["in1"]
+  in2["in2"]
+  output["output"]
+  error["error"]
+
+  subgraph equal["EqualNode"]
+    direction LR
+    equal_in_configuration["configuration"]
+    equal_in_in1["in1"]
+    equal_in_in2["in2"]
+    equal_core["equal"]
+    equal_out_output["output"]
+    equal_out_error["error"]
+    equal_in_configuration --> equal_core
+    equal_in_in1 --> equal_core
+    equal_in_in2 --> equal_core
+    equal_core --> equal_out_output
+    equal_core --> equal_out_error
+  end
+
+  configuration --> equal_in_configuration
+  in1 --> equal_in_in1
+  in2 --> equal_in_in2
+  equal_out_output --> output
+  equal_out_error --> error

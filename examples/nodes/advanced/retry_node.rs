@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::sync::Arc;
-use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::advanced::retry_node::{RetryConfig, RetryNode, retry_config};
 use tokio::sync::mpsc;
@@ -32,14 +31,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   });
 
-  // Build the graph using the graph! macro
-  let mut graph: Graph = graph! {
-    retry: RetryNode::new("retry".to_string(), 100), // 100ms base delay
-    graph.configuration => retry.configuration,
-    graph.input => retry.in,
-    graph.max_retries => retry.max_retries,
-    retry.out => graph.output,
-    retry.error => graph.error
+  // Build the graph from Mermaid (.mmd)
+  let mut graph: Graph = {
+    use std::path::Path;
+    use streamweave::mermaid::{
+      NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+    };
+    let path = Path::new("examples/nodes/advanced/retry_node.mmd");
+    let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+    let mut registry = NodeRegistry::new();
+    registry.register("RetryNode", |id, _inputs, _outputs| {
+      Box::new(RetryNode::new(id, 100))
+    });
+    blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?
   };
 
   // Connect external channels at runtime

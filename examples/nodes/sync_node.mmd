@@ -1,0 +1,44 @@
+%% streamweave: begin
+%% streamweave: input configuration -> sync.configuration
+%% streamweave: input in_0 -> sync.in_0
+%% streamweave: input in_1 -> sync.in_1
+%% streamweave: input in_2 -> sync.in_2
+%% streamweave: output output <- sync.out
+%% streamweave: output error <- sync.error
+%% streamweave: node sync kind=SyncNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in_0["in_0"]
+  in_1["in_1"]
+  in_2["in_2"]
+  output["output"]
+  error["error"]
+
+  subgraph sync["SyncNode"]
+    direction LR
+    sync_in_configuration["configuration"]
+    sync_in_in_0["in_0"]
+    sync_in_in_1["in_1"]
+    sync_in_in_2["in_2"]
+    sync_core["sync"]
+    sync_out_out["out"]
+    sync_out_error["error"]
+    sync_in_configuration --> sync_core
+    sync_in_in_0 --> sync_core
+    sync_in_in_1 --> sync_core
+    sync_in_in_2 --> sync_core
+    sync_core --> sync_out_out
+    sync_core --> sync_out_error
+  end
+
+  configuration --> sync_in_configuration
+  in_0 --> sync_in_in_0
+  in_1 --> sync_in_in_1
+  in_2 --> sync_in_in_2
+  sync_out_out --> output
+  sync_out_error --> error

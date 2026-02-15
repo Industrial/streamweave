@@ -114,6 +114,23 @@ pub fn blueprint_to_graph(
   if let Some(s) = &bp.shard_config {
     graph.set_shard_config(s.shard_id, s.total_shards);
   }
+  for (node_id, sup) in &bp.node_supervision {
+    use crate::supervision::{FailureAction, SupervisionPolicy};
+    let on_failure = match sup.policy.as_str() {
+      "Restart" | "restart" => FailureAction::Restart,
+      "RestartGroup" | "restart_group" => FailureAction::RestartGroup,
+      "Stop" | "stop" => FailureAction::Stop,
+      "Escalate" | "escalate" => FailureAction::Escalate,
+      _ => FailureAction::Restart,
+    };
+    graph.set_node_supervision_policy(
+      node_id,
+      SupervisionPolicy::new(on_failure).with_max_restarts(Some(3)),
+    );
+    if let Some(ref g) = sup.supervision_group {
+      graph.set_supervision_group(node_id, g);
+    }
+  }
 
   Ok(graph)
 }

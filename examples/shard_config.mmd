@@ -1,0 +1,13 @@
+%% streamweave: begin
+%% streamweave: shard_config=1/3
+%% streamweave: node n kind=VariableNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  subgraph n["VariableNode"]
+    direction LR
+    n_core["n"]
+  end

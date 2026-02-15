@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
-use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::object::object_merge_node::ObjectMergeNode;
 use tokio::sync::mpsc;
@@ -15,14 +14,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (out_tx, mut out_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the graph! macro
-  let mut graph: Graph = graph! {
-    merge: ObjectMergeNode::new("merge".to_string()),
-    graph.configuration => merge.configuration,
-    graph.input1 => merge.in1,
-    graph.input2 => merge.in2,
-    merge.out => graph.output,
-    merge.error => graph.error
+  // Build the graph from Mermaid (.mmd)
+  let mut graph: Graph = {
+    use std::path::Path;
+    use streamweave::mermaid::{
+      NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+    };
+    let path = Path::new("examples/nodes/object/object_merge_node.mmd");
+    let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+    let mut registry = NodeRegistry::new();
+    registry.register("ObjectMergeNode", |id, _inputs, _outputs| {
+      Box::new(ObjectMergeNode::new(id))
+    });
+    blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?
   };
 
   // Connect external channels at runtime

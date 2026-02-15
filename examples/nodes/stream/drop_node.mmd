@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> drop.configuration
+%% streamweave: input input -> drop.in
+%% streamweave: output output <- drop.out
+%% streamweave: output error <- drop.error
+%% streamweave: node drop kind=DropNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph drop["DropNode"]
+    direction LR
+    drop_in_configuration["configuration"]
+    drop_in_in["in"]
+    drop_core["drop"]
+    drop_out_output["output"]
+    drop_out_error["error"]
+    drop_in_configuration --> drop_core
+    drop_in_in --> drop_core
+    drop_core --> drop_out_output
+    drop_core --> drop_out_error
+  end
+
+  configuration --> drop_in_configuration
+  input --> drop_in_in
+  drop_out_output --> output
+  drop_out_error --> error

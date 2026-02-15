@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> to_boolean.configuration
+%% streamweave: input input -> to_boolean.in
+%% streamweave: output output <- to_boolean.out
+%% streamweave: output error <- to_boolean.error
+%% streamweave: node to_boolean kind=ToBooleanNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph to_boolean["ToBooleanNode"]
+    direction LR
+    to_boolean_in_configuration["configuration"]
+    to_boolean_in_in["in"]
+    to_boolean_core["to_boolean"]
+    to_boolean_out_output["output"]
+    to_boolean_out_error["error"]
+    to_boolean_in_configuration --> to_boolean_core
+    to_boolean_in_in --> to_boolean_core
+    to_boolean_core --> to_boolean_out_output
+    to_boolean_core --> to_boolean_out_error
+  end
+
+  configuration --> to_boolean_in_configuration
+  input --> to_boolean_in_in
+  to_boolean_out_output --> output
+  to_boolean_out_error --> error

@@ -3,6 +3,9 @@
 //! This example demonstrates the `graph!` macro with fan-in patterns:
 //! multiple source nodes feeding into a single target node.
 //!
+//! The graph structure is also defined in [graph_macro_fan_patterns.mmd](graph_macro_fan_patterns.mmd)
+//! (Style B Mermaid diagram).
+//!
 //! **Note**: Fan-out (one source feeding multiple targets) is not currently supported.
 //! Each output port can only connect to one input port.
 //!

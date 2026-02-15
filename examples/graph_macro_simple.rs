@@ -3,8 +3,9 @@
 //! This example demonstrates the `graph!` macro with a simple linear pipeline:
 //! producer -> transform -> sink
 //!
-//! The `graph!` macro provides a concise, declarative syntax for building graphs,
-//! reducing boilerplate compared to the traditional Graph API.
+//! The graph structure is also defined in [graph_macro_simple.mmd](graph_macro_simple.mmd)
+//! (Style B Mermaid diagram). The `graph!` macro provides a concise, declarative syntax
+//! for building graphs, reducing boilerplate compared to the traditional Graph API.
 
 use async_trait::async_trait;
 use std::any::Any;

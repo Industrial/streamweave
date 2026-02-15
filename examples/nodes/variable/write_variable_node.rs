@@ -2,7 +2,6 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
-use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::write_variable_node::{WriteVariableConfig, WriteVariableNode};
 use tokio::sync::mpsc;
@@ -19,14 +18,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Create a variable store and share it with the node
   let variable_store: WriteVariableConfig = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
 
-  // Build the graph using the graph! macro
-  let mut graph: Graph = graph! {
-    write_var: WriteVariableNode::new("write_var".to_string()),
-    graph.configuration => write_var.configuration,
-    graph.name => write_var.name,
-    graph.value => write_var.value,
-    write_var.out => graph.out,
-    write_var.error => graph.error
+  // Build the graph from Mermaid (.mmd)
+  let mut graph: Graph = {
+    use std::path::Path;
+    use streamweave::mermaid::{
+      NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+    };
+    let path = Path::new("examples/nodes/variable/write_variable_node.mmd");
+    let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+    let mut registry = NodeRegistry::new();
+    registry.register("WriteVariableNode", |id, _inputs, _outputs| {
+      Box::new(WriteVariableNode::new(id))
+    });
+    blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?
   };
 
   // Connect external channels at runtime

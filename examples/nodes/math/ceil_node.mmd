@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> ceil.configuration
+%% streamweave: input input -> ceil.in
+%% streamweave: output output <- ceil.out
+%% streamweave: output error <- ceil.error
+%% streamweave: node ceil kind=CeilNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph ceil["CeilNode"]
+    direction LR
+    ceil_in_configuration["configuration"]
+    ceil_in_in["in"]
+    ceil_core["ceil"]
+    ceil_out_output["output"]
+    ceil_out_error["error"]
+    ceil_in_configuration --> ceil_core
+    ceil_in_in --> ceil_core
+    ceil_core --> ceil_out_output
+    ceil_core --> ceil_out_error
+  end
+
+  configuration --> ceil_in_configuration
+  input --> ceil_in_in
+  ceil_out_output --> output
+  ceil_out_error --> error

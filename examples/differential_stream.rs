@@ -1,30 +1,34 @@
 //! # Timestamped differential dataflow
 //!
-//! Demonstrates [`ToDifferentialNode`], [`DifferentialGroupByNode`], and [`DifferentialJoinNode`]:
-//! wrap a stream as (payload, time, diff), incremental group-by count, and differential equi-join.
+//! Demonstrates [`ToDifferentialNode`], [`DifferentialGroupByNode`], and [`DifferentialJoinNode`].
+//! Part 1 (group-by) is loaded from [differential_stream.mmd](differential_stream.mmd).
 //!
 //! See [docs/timestamped-differential-dataflow.md](docs/timestamped-differential-dataflow.md) and
 //! [docs/EXAMPLES-AND-HOW-TO.md](docs/EXAMPLES-AND-HOW-TO.md).
 
-use async_trait::async_trait;
-use std::any::Any;
-use std::collections::HashMap;
-use std::pin::Pin;
-use std::sync::Arc;
-use streamweave::edge::Edge;
-use streamweave::graph::Graph;
-use streamweave::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
-use streamweave::nodes::differential_join_node::DifferentialJoinNode;
-use streamweave::nodes::join_node::{JoinStrategy, join_config};
-use streamweave::nodes::reduction::{
-  DifferentialGroupByNode, GroupByConfigWrapper, group_by_config,
-};
-use streamweave::nodes::stream::ToDifferentialNode;
-use streamweave::time::DifferentialStreamMessage;
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
+mod run {
+  use async_trait::async_trait;
+  use std::any::Any;
+  use std::collections::HashMap;
+  use std::path::Path;
+  use std::pin::Pin;
+  use std::sync::Arc;
+  use streamweave::edge::Edge;
+  use streamweave::graph::Graph;
+  use streamweave::mermaid::{
+    blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint, NodeRegistry,
+  };
+  use streamweave::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
+  use streamweave::nodes::differential_join_node::DifferentialJoinNode;
+  use streamweave::nodes::join_node::{join_config, JoinStrategy};
+  use streamweave::nodes::reduction::{
+    group_by_config, DifferentialGroupByNode, GroupByConfigWrapper,
+  };
+  use streamweave::nodes::stream::ToDifferentialNode;
+  use streamweave::time::DifferentialStreamMessage;
+  use tokio::sync::mpsc;
+  use tokio_stream::wrappers::ReceiverStream;
 
-/// Producer that emits a sequence of (key, value) pairs as `Arc<(String, i64)>`.
 struct ProducerNode {
   name: String,
   data: Vec<(String, i64)>,
@@ -86,7 +90,6 @@ impl Node for ProducerNode {
   }
 }
 
-/// Second producer for join demo: emits HashMap items with "id" and "name" or "val".
 struct HashMapProducerNode {
   name: String,
   data: Vec<HashMap<String, i32>>,
@@ -148,63 +151,34 @@ impl Node for HashMapProducerNode {
   }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-  let rt = tokio::runtime::Runtime::new()?;
-  rt.block_on(run())
-}
-
-async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+  pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
   println!(
     "Differential stream example (ToDifferentialNode, DifferentialGroupBy, DifferentialJoin)\n"
   );
 
-  // --- Part 1: ToDifferential + DifferentialGroupBy ---
+  // --- Part 1: from .mmd ---
   println!("Part 1: ToDifferentialNode -> DifferentialGroupByNode (count per key)");
-  let mut graph = Graph::new("differential_group_by".to_string());
-  graph
-    .add_node(
-      "producer".to_string(),
-      Box::new(ProducerNode::new(
-        "producer".to_string(),
-        vec![
-          ("a".to_string(), 1),
-          ("b".to_string(), 1),
-          ("a".to_string(), 2),
-        ],
-      )),
-    )
-    .unwrap();
-  graph
-    .add_node(
-      "to_diff".to_string(),
-      Box::new(ToDifferentialNode::new("to_diff".to_string())),
-    )
-    .unwrap();
-  graph
-    .add_node(
-      "diff_group_by".to_string(),
-      Box::new(DifferentialGroupByNode::new("diff_group_by".to_string())),
-    )
-    .unwrap();
+  let mmd_path = Path::new("examples/differential_stream.mmd");
+  let bp = parse_mmd_file_to_blueprint(mmd_path)?;
+  let mut registry = NodeRegistry::new();
+  registry.register("Producer", |id, _inputs, _outputs| {
+    Box::new(ProducerNode::new(
+      id,
+      vec![
+        ("a".to_string(), 1),
+        ("b".to_string(), 1),
+        ("a".to_string(), 2),
+      ],
+    ))
+  });
+  registry.register("ToDifferentialNode", |id, _inputs, _outputs| {
+    Box::new(ToDifferentialNode::new(id))
+  });
+  registry.register("DifferentialGroupByNode", |id, _inputs, _outputs| {
+    Box::new(DifferentialGroupByNode::new(id))
+  });
+  let mut graph = blueprint_to_graph(&bp, Some(&registry))?;
 
-  graph
-    .add_edge(Edge {
-      source_node: "producer".to_string(),
-      source_port: "out".to_string(),
-      target_node: "to_diff".to_string(),
-      target_port: "in".to_string(),
-    })
-    .unwrap();
-  graph
-    .add_edge(Edge {
-      source_node: "to_diff".to_string(),
-      source_port: "out".to_string(),
-      target_node: "diff_group_by".to_string(),
-      target_port: "in".to_string(),
-    })
-    .unwrap();
-
-  // Key: extract first element from (String, i64)
   let key_config = group_by_config(|value| {
     Box::pin(async move {
       let arc = value
@@ -213,13 +187,6 @@ async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
       Ok(arc.0.clone())
     })
   });
-  graph
-    .expose_input_port("diff_group_by", "key_function", "key_config")
-    .unwrap();
-  graph
-    .expose_output_port("diff_group_by", "out", "output")
-    .unwrap();
-
   let (key_tx, key_rx) = mpsc::channel(1);
   key_tx
     .send(Arc::new(GroupByConfigWrapper(key_config)) as Arc<dyn Any + Send + Sync>)
@@ -249,7 +216,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
   );
   println!();
 
-  // --- Part 2: ToDifferential + DifferentialJoin ---
+  // --- Part 2: built in code (different topology) ---
   println!("Part 2: Two sources -> ToDifferential -> DifferentialJoinNode (inner join on id)");
   let mut graph2 = Graph::new("differential_join".to_string());
   let mut left_data = HashMap::new();
@@ -391,4 +358,10 @@ async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
   println!("Done.");
   Ok(())
+  }
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+  let rt = tokio::runtime::Runtime::new()?;
+  rt.block_on(run::run())
 }

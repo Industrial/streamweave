@@ -1,0 +1,30 @@
+%% streamweave: begin
+%% streamweave: output output <- flaky.out
+%% streamweave: node producer kind=Producer
+%% streamweave: node flaky kind=FailNTimesThenSucceed supervision_policy=Restart
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  output["output"]
+
+  subgraph producer["Producer"]
+    direction LR
+    producer_core["producer"]
+    producer_out_out["out"]
+    producer_core --> producer_out_out
+  end
+
+  subgraph flaky["FailNTimesThenSucceed"]
+    direction LR
+    flaky_in_in["in"]
+    flaky_core["flaky"]
+    flaky_out_out["out"]
+    flaky_in_in --> flaky_core
+    flaky_core --> flaky_out_out
+  end
+
+  producer_out_out --> flaky_in_in
+  flaky_out_out --> output

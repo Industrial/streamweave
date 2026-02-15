@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> multiply.configuration
+%% streamweave: input in1 -> multiply.in1
+%% streamweave: input in2 -> multiply.in2
+%% streamweave: output output <- multiply.out
+%% streamweave: output error <- multiply.error
+%% streamweave: node multiply kind=MultiplyNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in1["in1"]
+  in2["in2"]
+  output["output"]
+  error["error"]
+
+  subgraph multiply["MultiplyNode"]
+    direction LR
+    multiply_in_configuration["configuration"]
+    multiply_in_in1["in1"]
+    multiply_in_in2["in2"]
+    multiply_core["multiply"]
+    multiply_out_output["output"]
+    multiply_out_error["error"]
+    multiply_in_configuration --> multiply_core
+    multiply_in_in1 --> multiply_core
+    multiply_in_in2 --> multiply_core
+    multiply_core --> multiply_out_output
+    multiply_core --> multiply_out_error
+  end
+
+  configuration --> multiply_in_configuration
+  in1 --> multiply_in_in1
+  in2 --> multiply_in_in2
+  multiply_out_output --> output
+  multiply_out_error --> error

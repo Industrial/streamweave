@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::sync::Arc;
-use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::for_each_node::{ForEachConfig, ForEachNode, for_each_config};
 use tokio::sync::mpsc;
@@ -26,13 +25,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   });
 
-  // Build the graph using the graph! macro
-  let mut graph: Graph = graph! {
-    for_each: ForEachNode::new("for_each".to_string()),
-    graph.configuration => for_each.configuration,
-    graph.input => for_each.in,
-    for_each.out => graph.output,
-    for_each.error => graph.error
+  // Build the graph from Mermaid (.mmd)
+  let mut graph: Graph = {
+    use std::path::Path;
+    use streamweave::mermaid::{
+      NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+    };
+    let path = Path::new("examples/nodes/stream/for_each_node.mmd");
+    let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+    let mut registry = NodeRegistry::new();
+    registry.register("ForEachNode", |id, _inputs, _outputs| {
+      Box::new(ForEachNode::new(id))
+    });
+    blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?
   };
 
   // Connect external channels at runtime

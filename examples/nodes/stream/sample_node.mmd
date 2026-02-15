@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> sample.configuration
+%% streamweave: input input -> sample.in
+%% streamweave: input rate -> sample.rate
+%% streamweave: output output <- sample.out
+%% streamweave: output error <- sample.error
+%% streamweave: node sample kind=SampleNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  rate["rate"]
+  output["output"]
+  error["error"]
+
+  subgraph sample["SampleNode"]
+    direction LR
+    sample_in_configuration["configuration"]
+    sample_in_in["in"]
+    sample_in_rate["rate"]
+    sample_core["sample"]
+    sample_out_output["output"]
+    sample_out_error["error"]
+    sample_in_configuration --> sample_core
+    sample_in_in --> sample_core
+    sample_in_rate --> sample_core
+    sample_core --> sample_out_output
+    sample_core --> sample_out_error
+  end
+
+  configuration --> sample_in_configuration
+  input --> sample_in_in
+  rate --> sample_in_rate
+  sample_out_output --> output
+  sample_out_error --> error

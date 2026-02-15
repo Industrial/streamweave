@@ -1,0 +1,30 @@
+%% streamweave: begin
+%% streamweave: output output <- iter.output
+%% streamweave: node seed kind=SeedNode
+%% streamweave: node iter kind=BoundedIterationNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  output["output"]
+
+  subgraph seed["SeedNode"]
+    direction LR
+    seed_core["seed"]
+    seed_out_out["out"]
+    seed_core --> seed_out_out
+  end
+
+  subgraph iter["BoundedIterationNode"]
+    direction LR
+    iter_in_seed["seed"]
+    iter_core["iter"]
+    iter_out_output["output"]
+    iter_in_seed --> iter_core
+    iter_core --> iter_out_output
+  end
+
+  seed_out_out --> iter_in_seed
+  iter_out_output --> output

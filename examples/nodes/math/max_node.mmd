@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> max.configuration
+%% streamweave: input input1 -> max.in1
+%% streamweave: input input2 -> max.in2
+%% streamweave: output output <- max.out
+%% streamweave: output error <- max.error
+%% streamweave: node max kind=MaxNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input1["input1"]
+  input2["input2"]
+  output["output"]
+  error["error"]
+
+  subgraph max["MaxNode"]
+    direction LR
+    max_in_configuration["configuration"]
+    max_in_in1["in1"]
+    max_in_in2["in2"]
+    max_core["max"]
+    max_out_output["output"]
+    max_out_error["error"]
+    max_in_configuration --> max_core
+    max_in_in1 --> max_core
+    max_in_in2 --> max_core
+    max_core --> max_out_output
+    max_core --> max_out_error
+  end
+
+  configuration --> max_in_configuration
+  input1 --> max_in_in1
+  input2 --> max_in_in2
+  max_out_output --> output
+  max_out_error --> error

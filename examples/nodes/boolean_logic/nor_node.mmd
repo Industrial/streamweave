@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> nor.configuration
+%% streamweave: input in1 -> nor.in1
+%% streamweave: input in2 -> nor.in2
+%% streamweave: output output <- nor.out
+%% streamweave: output error <- nor.error
+%% streamweave: node nor kind=NorNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in1["in1"]
+  in2["in2"]
+  output["output"]
+  error["error"]
+
+  subgraph nor["NorNode"]
+    direction LR
+    nor_in_configuration["configuration"]
+    nor_in_in1["in1"]
+    nor_in_in2["in2"]
+    nor_core["nor"]
+    nor_out_output["output"]
+    nor_out_error["error"]
+    nor_in_configuration --> nor_core
+    nor_in_in1 --> nor_core
+    nor_in_in2 --> nor_core
+    nor_core --> nor_out_output
+    nor_core --> nor_out_error
+  end
+
+  configuration --> nor_in_configuration
+  in1 --> nor_in_in1
+  in2 --> nor_in_in2
+  nor_out_output --> output
+  nor_out_error --> error

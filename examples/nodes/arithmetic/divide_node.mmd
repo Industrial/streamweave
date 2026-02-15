@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> divide.configuration
+%% streamweave: input in1 -> divide.in1
+%% streamweave: input in2 -> divide.in2
+%% streamweave: output output <- divide.out
+%% streamweave: output error <- divide.error
+%% streamweave: node divide kind=DivideNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in1["in1"]
+  in2["in2"]
+  output["output"]
+  error["error"]
+
+  subgraph divide["DivideNode"]
+    direction LR
+    divide_in_configuration["configuration"]
+    divide_in_in1["in1"]
+    divide_in_in2["in2"]
+    divide_core["divide"]
+    divide_out_output["output"]
+    divide_out_error["error"]
+    divide_in_configuration --> divide_core
+    divide_in_in1 --> divide_core
+    divide_in_in2 --> divide_core
+    divide_core --> divide_out_output
+    divide_core --> divide_out_error
+  end
+
+  configuration --> divide_in_configuration
+  in1 --> divide_in_in1
+  in2 --> divide_in_in2
+  divide_out_output --> output
+  divide_out_error --> error

@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> filter_map.configuration
+%% streamweave: input input -> filter_map.in
+%% streamweave: input function -> filter_map.function
+%% streamweave: output output <- filter_map.out
+%% streamweave: output error <- filter_map.error
+%% streamweave: node filter_map kind=FilterMapNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  function["function"]
+  output["output"]
+  error["error"]
+
+  subgraph filter_map["FilterMapNode"]
+    direction LR
+    filter_map_in_configuration["configuration"]
+    filter_map_in_in["in"]
+    filter_map_in_function["function"]
+    filter_map_core["filter_map"]
+    filter_map_out_output["output"]
+    filter_map_out_error["error"]
+    filter_map_in_configuration --> filter_map_core
+    filter_map_in_in --> filter_map_core
+    filter_map_in_function --> filter_map_core
+    filter_map_core --> filter_map_out_output
+    filter_map_core --> filter_map_out_error
+  end
+
+  configuration --> filter_map_in_configuration
+  input --> filter_map_in_in
+  function --> filter_map_in_function
+  filter_map_out_output --> output
+  filter_map_out_error --> error

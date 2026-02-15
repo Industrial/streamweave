@@ -1,0 +1,44 @@
+%% streamweave: begin
+%% streamweave: input configuration -> try_catch.configuration
+%% streamweave: input input -> try_catch.in
+%% streamweave: input try -> try_catch.try
+%% streamweave: input catch -> try_catch.catch
+%% streamweave: output output <- try_catch.out
+%% streamweave: output error <- try_catch.error
+%% streamweave: node try_catch kind=TryCatchNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  try["try"]
+  catch["catch"]
+  output["output"]
+  error["error"]
+
+  subgraph try_catch["TryCatchNode"]
+    direction LR
+    try_catch_in_configuration["configuration"]
+    try_catch_in_in["in"]
+    try_catch_in_try["try"]
+    try_catch_in_catch["catch"]
+    try_catch_core["try_catch"]
+    try_catch_out_output["output"]
+    try_catch_out_error["error"]
+    try_catch_in_configuration --> try_catch_core
+    try_catch_in_in --> try_catch_core
+    try_catch_in_try --> try_catch_core
+    try_catch_in_catch --> try_catch_core
+    try_catch_core --> try_catch_out_output
+    try_catch_core --> try_catch_out_error
+  end
+
+  configuration --> try_catch_in_configuration
+  input --> try_catch_in_in
+  try --> try_catch_in_try
+  catch --> try_catch_in_catch
+  try_catch_out_output --> output
+  try_catch_out_error --> error

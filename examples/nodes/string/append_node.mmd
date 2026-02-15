@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> append.configuration
+%% streamweave: input base -> append.in
+%% streamweave: input suffix -> append.suffix
+%% streamweave: output output <- append.out
+%% streamweave: output error <- append.error
+%% streamweave: node append kind=StringAppendNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  base["base"]
+  suffix["suffix"]
+  output["output"]
+  error["error"]
+
+  subgraph append["StringAppendNode"]
+    direction LR
+    append_in_configuration["configuration"]
+    append_in_in["in"]
+    append_in_suffix["suffix"]
+    append_core["append"]
+    append_out_output["output"]
+    append_out_error["error"]
+    append_in_configuration --> append_core
+    append_in_in --> append_core
+    append_in_suffix --> append_core
+    append_core --> append_out_output
+    append_core --> append_out_error
+  end
+
+  configuration --> append_in_configuration
+  base --> append_in_in
+  suffix --> append_in_suffix
+  append_out_output --> output
+  append_out_error --> error

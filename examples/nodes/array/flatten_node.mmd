@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> flatten.configuration
+%% streamweave: input input -> flatten.in
+%% streamweave: output output <- flatten.out
+%% streamweave: output error <- flatten.error
+%% streamweave: node flatten kind=ArrayFlattenNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph flatten["ArrayFlattenNode"]
+    direction LR
+    flatten_in_configuration["configuration"]
+    flatten_in_in["in"]
+    flatten_core["flatten"]
+    flatten_out_output["output"]
+    flatten_out_error["error"]
+    flatten_in_configuration --> flatten_core
+    flatten_in_in --> flatten_core
+    flatten_core --> flatten_out_output
+    flatten_core --> flatten_out_error
+  end
+
+  configuration --> flatten_in_configuration
+  input --> flatten_in_in
+  flatten_out_output --> output
+  flatten_out_error --> error

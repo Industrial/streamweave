@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> merge.configuration
+%% streamweave: input input1 -> merge.in1
+%% streamweave: input input2 -> merge.in2
+%% streamweave: output output <- merge.out
+%% streamweave: output error <- merge.error
+%% streamweave: node merge kind=ObjectMergeNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input1["input1"]
+  input2["input2"]
+  output["output"]
+  error["error"]
+
+  subgraph merge["ObjectMergeNode"]
+    direction LR
+    merge_in_configuration["configuration"]
+    merge_in_in1["in1"]
+    merge_in_in2["in2"]
+    merge_core["merge"]
+    merge_out_output["output"]
+    merge_out_error["error"]
+    merge_in_configuration --> merge_core
+    merge_in_in1 --> merge_core
+    merge_in_in2 --> merge_core
+    merge_core --> merge_out_output
+    merge_core --> merge_out_error
+  end
+
+  configuration --> merge_in_configuration
+  input1 --> merge_in_in1
+  input2 --> merge_in_in2
+  merge_out_output --> output
+  merge_out_error --> error

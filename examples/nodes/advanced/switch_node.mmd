@@ -1,0 +1,49 @@
+%% streamweave: begin
+%% streamweave: input configuration -> switch.configuration
+%% streamweave: input input -> switch.in
+%% streamweave: input value -> switch.value
+%% streamweave: output out_0 <- switch.out_0
+%% streamweave: output out_1 <- switch.out_1
+%% streamweave: output default <- switch.default
+%% streamweave: output error <- switch.error
+%% streamweave: node switch kind=SwitchNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  value["value"]
+  out_0["out_0"]
+  out_1["out_1"]
+  default["default"]
+  error["error"]
+
+  subgraph switch["SwitchNode"]
+    direction LR
+    switch_in_configuration["configuration"]
+    switch_in_in["in"]
+    switch_in_value["value"]
+    switch_core["switch"]
+    switch_out_out_0["out_0"]
+    switch_out_out_1["out_1"]
+    switch_out_default["default"]
+    switch_out_error["error"]
+    switch_in_configuration --> switch_core
+    switch_in_in --> switch_core
+    switch_in_value --> switch_core
+    switch_core --> switch_out_out_0
+    switch_core --> switch_out_out_1
+    switch_core --> switch_out_default
+    switch_core --> switch_out_error
+  end
+
+  configuration --> switch_in_configuration
+  input --> switch_in_in
+  value --> switch_in_value
+  switch_out_out_0 --> out_0
+  switch_out_out_1 --> out_1
+  switch_out_default --> default
+  switch_out_error --> error

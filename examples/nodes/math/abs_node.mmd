@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> abs.configuration
+%% streamweave: input input -> abs.in
+%% streamweave: output output <- abs.out
+%% streamweave: output error <- abs.error
+%% streamweave: node abs kind=AbsNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph abs["AbsNode"]
+    direction LR
+    abs_in_configuration["configuration"]
+    abs_in_in["in"]
+    abs_core["abs"]
+    abs_out_output["output"]
+    abs_out_error["error"]
+    abs_in_configuration --> abs_core
+    abs_in_in --> abs_core
+    abs_core --> abs_out_output
+    abs_core --> abs_out_error
+  end
+
+  configuration --> abs_in_configuration
+  input --> abs_in_in
+  abs_out_output --> output
+  abs_out_error --> error

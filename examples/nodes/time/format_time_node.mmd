@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> format_time.configuration
+%% streamweave: input input -> format_time.in
+%% streamweave: input format -> format_time.format
+%% streamweave: output output <- format_time.out
+%% streamweave: output error <- format_time.error
+%% streamweave: node format_time kind=FormatTimeNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  format["format"]
+  output["output"]
+  error["error"]
+
+  subgraph format_time["FormatTimeNode"]
+    direction LR
+    format_time_in_configuration["configuration"]
+    format_time_in_in["in"]
+    format_time_in_format["format"]
+    format_time_core["format_time"]
+    format_time_out_output["output"]
+    format_time_out_error["error"]
+    format_time_in_configuration --> format_time_core
+    format_time_in_in --> format_time_core
+    format_time_in_format --> format_time_core
+    format_time_core --> format_time_out_output
+    format_time_core --> format_time_out_error
+  end
+
+  configuration --> format_time_in_configuration
+  input --> format_time_in_in
+  format --> format_time_in_format
+  format_time_out_output --> output
+  format_time_out_error --> error

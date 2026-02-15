@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> subtract.configuration
+%% streamweave: input in1 -> subtract.in1
+%% streamweave: input in2 -> subtract.in2
+%% streamweave: output output <- subtract.out
+%% streamweave: output error <- subtract.error
+%% streamweave: node subtract kind=SubtractNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in1["in1"]
+  in2["in2"]
+  output["output"]
+  error["error"]
+
+  subgraph subtract["SubtractNode"]
+    direction LR
+    subtract_in_configuration["configuration"]
+    subtract_in_in1["in1"]
+    subtract_in_in2["in2"]
+    subtract_core["subtract"]
+    subtract_out_output["output"]
+    subtract_out_error["error"]
+    subtract_in_configuration --> subtract_core
+    subtract_in_in1 --> subtract_core
+    subtract_in_in2 --> subtract_core
+    subtract_core --> subtract_out_output
+    subtract_core --> subtract_out_error
+  end
+
+  configuration --> subtract_in_configuration
+  in1 --> subtract_in_in1
+  in2 --> subtract_in_in2
+  subtract_out_output --> output
+  subtract_out_error --> error

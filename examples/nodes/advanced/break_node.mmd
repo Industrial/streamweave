@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> break_node.configuration
+%% streamweave: input in -> break_node.in
+%% streamweave: input signal -> break_node.signal
+%% streamweave: output out <- break_node.out
+%% streamweave: output error <- break_node.error
+%% streamweave: node break_node kind=BreakNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in["in"]
+  signal["signal"]
+  out["out"]
+  error["error"]
+
+  subgraph break_node["BreakNode"]
+    direction LR
+    break_node_in_configuration["configuration"]
+    break_node_in_in["in"]
+    break_node_in_signal["signal"]
+    break_node_core["break_node"]
+    break_node_out_out["out"]
+    break_node_out_error["error"]
+    break_node_in_configuration --> break_node_core
+    break_node_in_in --> break_node_core
+    break_node_in_signal --> break_node_core
+    break_node_core --> break_node_out_out
+    break_node_core --> break_node_out_error
+  end
+
+  configuration --> break_node_in_configuration
+  in --> break_node_in_in
+  signal --> break_node_in_signal
+  break_node_out_out --> out
+  break_node_out_error --> error

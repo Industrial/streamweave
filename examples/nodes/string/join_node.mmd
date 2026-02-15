@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> join.configuration
+%% streamweave: input left -> join.left
+%% streamweave: input right -> join.right
+%% streamweave: output output <- join.out
+%% streamweave: output error <- join.error
+%% streamweave: node join kind=JoinNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  left["left"]
+  right["right"]
+  output["output"]
+  error["error"]
+
+  subgraph join["JoinNode"]
+    direction LR
+    join_in_configuration["configuration"]
+    join_in_left["left"]
+    join_in_right["right"]
+    join_core["join"]
+    join_out_output["output"]
+    join_out_error["error"]
+    join_in_configuration --> join_core
+    join_in_left --> join_core
+    join_in_right --> join_core
+    join_core --> join_out_output
+    join_core --> join_out_error
+  end
+
+  configuration --> join_in_configuration
+  left --> join_in_left
+  right --> join_in_right
+  join_out_output --> output
+  join_out_error --> error

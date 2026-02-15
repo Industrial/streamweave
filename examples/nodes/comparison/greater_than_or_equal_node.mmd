@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> greater_than_or_equal.configuration
+%% streamweave: input in1 -> greater_than_or_equal.in1
+%% streamweave: input in2 -> greater_than_or_equal.in2
+%% streamweave: output output <- greater_than_or_equal.out
+%% streamweave: output error <- greater_than_or_equal.error
+%% streamweave: node greater_than_or_equal kind=GreaterThanOrEqualNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in1["in1"]
+  in2["in2"]
+  output["output"]
+  error["error"]
+
+  subgraph greater_than_or_equal["GreaterThanOrEqualNode"]
+    direction LR
+    greater_than_or_equal_in_configuration["configuration"]
+    greater_than_or_equal_in_in1["in1"]
+    greater_than_or_equal_in_in2["in2"]
+    greater_than_or_equal_core["greater_than_or_equal"]
+    greater_than_or_equal_out_output["output"]
+    greater_than_or_equal_out_error["error"]
+    greater_than_or_equal_in_configuration --> greater_than_or_equal_core
+    greater_than_or_equal_in_in1 --> greater_than_or_equal_core
+    greater_than_or_equal_in_in2 --> greater_than_or_equal_core
+    greater_than_or_equal_core --> greater_than_or_equal_out_output
+    greater_than_or_equal_core --> greater_than_or_equal_out_error
+  end
+
+  configuration --> greater_than_or_equal_in_configuration
+  in1 --> greater_than_or_equal_in_in1
+  in2 --> greater_than_or_equal_in_in2
+  greater_than_or_equal_out_output --> output
+  greater_than_or_equal_out_error --> error

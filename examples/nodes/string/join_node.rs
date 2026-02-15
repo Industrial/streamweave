@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::sync::Arc;
-use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::join_node::{JoinConfig, JoinNode, JoinStrategy, join_config};
 use tokio::sync::mpsc;
@@ -91,14 +90,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     },
   );
 
-  // Build the graph using the graph! macro
-  let mut graph: Graph = graph! {
-    join: JoinNode::new("join".to_string()),
-    graph.configuration => join.configuration,
-    graph.left => join.left,
-    graph.right => join.right,
-    join.out => graph.output,
-    join.error => graph.error
+  // Build the graph from Mermaid (.mmd)
+  let mut graph: Graph = {
+    use std::path::Path;
+    use streamweave::mermaid::{
+      NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+    };
+    let path = Path::new("examples/nodes/string/join_node.mmd");
+    let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+    let mut registry = NodeRegistry::new();
+    registry.register("JoinNode", |id, _inputs, _outputs| {
+      Box::new(JoinNode::new(id))
+    });
+    blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?
   };
 
   // Connect external channels at runtime

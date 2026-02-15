@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> min.configuration
+%% streamweave: input input1 -> min.in1
+%% streamweave: input input2 -> min.in2
+%% streamweave: output output <- min.out
+%% streamweave: output error <- min.error
+%% streamweave: node min kind=MinNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input1["input1"]
+  input2["input2"]
+  output["output"]
+  error["error"]
+
+  subgraph min["MinNode"]
+    direction LR
+    min_in_configuration["configuration"]
+    min_in_in1["in1"]
+    min_in_in2["in2"]
+    min_core["min"]
+    min_out_output["output"]
+    min_out_error["error"]
+    min_in_configuration --> min_core
+    min_in_in1 --> min_core
+    min_in_in2 --> min_core
+    min_core --> min_out_output
+    min_core --> min_out_error
+  end
+
+  configuration --> min_in_configuration
+  input1 --> min_in_in1
+  input2 --> min_in_in2
+  min_out_output --> output
+  min_out_error --> error

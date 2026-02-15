@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> log.configuration
+%% streamweave: input input -> log.in
+%% streamweave: input base -> log.base
+%% streamweave: output output <- log.out
+%% streamweave: output error <- log.error
+%% streamweave: node log kind=LogNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  base["base"]
+  output["output"]
+  error["error"]
+
+  subgraph log["LogNode"]
+    direction LR
+    log_in_configuration["configuration"]
+    log_in_in["in"]
+    log_in_base["base"]
+    log_core["log"]
+    log_out_output["output"]
+    log_out_error["error"]
+    log_in_configuration --> log_core
+    log_in_in --> log_core
+    log_in_base --> log_core
+    log_core --> log_out_output
+    log_core --> log_out_error
+  end
+
+  configuration --> log_in_configuration
+  input --> log_in_in
+  base --> log_in_base
+  log_out_output --> output
+  log_out_error --> error

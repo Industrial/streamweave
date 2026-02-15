@@ -1,0 +1,52 @@
+%% streamweave: begin
+%% streamweave: output output <- merge.out
+%% streamweave: node source1 kind=ProducerNode
+%% streamweave: node source2 kind=ProducerNode
+%% streamweave: node source3 kind=ProducerNode
+%% streamweave: node merge kind=MergeNode
+%% streamweave: end
+%% ---
+%% Style B: node-as-subgraph with port boxes.
+%% Fan-in: source1, source2, source3 -> merge
+%% ---
+flowchart TD
+  output["output"]
+
+  subgraph source1["ProducerNode"]
+    direction LR
+    source1_core["source1"]
+    source1_out_out["out"]
+    source1_core --> source1_out_out
+  end
+
+  subgraph source2["ProducerNode"]
+    direction LR
+    source2_core["source2"]
+    source2_out_out["out"]
+    source2_core --> source2_out_out
+  end
+
+  subgraph source3["ProducerNode"]
+    direction LR
+    source3_core["source3"]
+    source3_out_out["out"]
+    source3_core --> source3_out_out
+  end
+
+  subgraph merge["MergeNode"]
+    direction LR
+    merge_in_in1["in1"]
+    merge_in_in2["in2"]
+    merge_in_in3["in3"]
+    merge_core["merge"]
+    merge_out_out["out"]
+    merge_in_in1 --> merge_core
+    merge_in_in2 --> merge_core
+    merge_in_in3 --> merge_core
+    merge_core --> merge_out_out
+  end
+
+  source1_out_out --> merge_in_in1
+  source2_out_out --> merge_in_in2
+  source3_out_out --> merge_in_in3
+  merge_out_out --> output

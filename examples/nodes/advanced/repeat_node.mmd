@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> repeat.configuration
+%% streamweave: input input -> repeat.in
+%% streamweave: input count -> repeat.count
+%% streamweave: output output <- repeat.out
+%% streamweave: output error <- repeat.error
+%% streamweave: node repeat kind=RepeatNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  count["count"]
+  output["output"]
+  error["error"]
+
+  subgraph repeat["RepeatNode"]
+    direction LR
+    repeat_in_configuration["configuration"]
+    repeat_in_in["in"]
+    repeat_in_count["count"]
+    repeat_core["repeat"]
+    repeat_out_output["output"]
+    repeat_out_error["error"]
+    repeat_in_configuration --> repeat_core
+    repeat_in_in --> repeat_core
+    repeat_in_count --> repeat_core
+    repeat_core --> repeat_out_output
+    repeat_core --> repeat_out_error
+  end
+
+  configuration --> repeat_in_configuration
+  input --> repeat_in_in
+  count --> repeat_in_count
+  repeat_out_output --> output
+  repeat_out_error --> error

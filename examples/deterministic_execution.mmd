@@ -1,0 +1,42 @@
+%% streamweave: begin
+%% streamweave: output output <- merge.out
+%% streamweave: execution_mode=deterministic
+%% streamweave: node a kind=Producer
+%% streamweave: node b kind=Producer
+%% streamweave: node merge kind=MergeNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  output["output"]
+
+  subgraph a["Producer"]
+    direction LR
+    a_core["a"]
+    a_out_out["out"]
+    a_core --> a_out_out
+  end
+
+  subgraph b["Producer"]
+    direction LR
+    b_core["b"]
+    b_out_out["out"]
+    b_core --> b_out_out
+  end
+
+  subgraph merge["MergeNode"]
+    direction LR
+    merge_in_in_0["in_0"]
+    merge_in_in_1["in_1"]
+    merge_core["merge"]
+    merge_out_out["out"]
+    merge_in_in_0 --> merge_core
+    merge_in_in_1 --> merge_core
+    merge_core --> merge_out_out
+  end
+
+  a_out_out --> merge_in_in_0
+  b_out_out --> merge_in_in_1
+  merge_out_out --> output

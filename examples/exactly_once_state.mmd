@@ -1,0 +1,19 @@
+%% streamweave: begin
+%% streamweave: output output <- stateful.out
+%% streamweave: node stateful kind=StatefulNode
+%% streamweave: end
+%% ---
+%% Style B: node-as-subgraph with port boxes.
+%% Single stateful node (used after backend API demo).
+%% ---
+flowchart TD
+  output["output"]
+
+  subgraph stateful["StatefulNode"]
+    direction LR
+    stateful_core["stateful"]
+    stateful_out_out["out"]
+    stateful_core --> stateful_out_out
+  end
+
+  stateful_out_out --> output

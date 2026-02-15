@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> ends_with.configuration
+%% streamweave: input input -> ends_with.in
+%% streamweave: input suffix -> ends_with.suffix
+%% streamweave: output output <- ends_with.out
+%% streamweave: output error <- ends_with.error
+%% streamweave: node ends_with kind=StringEndsWithNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  suffix["suffix"]
+  output["output"]
+  error["error"]
+
+  subgraph ends_with["StringEndsWithNode"]
+    direction LR
+    ends_with_in_configuration["configuration"]
+    ends_with_in_in["in"]
+    ends_with_in_suffix["suffix"]
+    ends_with_core["ends_with"]
+    ends_with_out_output["output"]
+    ends_with_out_error["error"]
+    ends_with_in_configuration --> ends_with_core
+    ends_with_in_in --> ends_with_core
+    ends_with_in_suffix --> ends_with_core
+    ends_with_core --> ends_with_out_output
+    ends_with_core --> ends_with_out_error
+  end
+
+  configuration --> ends_with_in_configuration
+  input --> ends_with_in_in
+  suffix --> ends_with_in_suffix
+  ends_with_out_output --> output
+  ends_with_out_error --> error

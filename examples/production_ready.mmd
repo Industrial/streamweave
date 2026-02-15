@@ -1,0 +1,19 @@
+%% streamweave: begin
+%% streamweave: output output <- producer.out
+%% streamweave: node producer kind=Producer
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  output["output"]
+
+  subgraph producer["Producer"]
+    direction LR
+    producer_core["producer"]
+    producer_out_out["out"]
+    producer_core --> producer_out_out
+  end
+
+  producer_out_out --> output

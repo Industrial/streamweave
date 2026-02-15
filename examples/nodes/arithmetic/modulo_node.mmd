@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> modulo.configuration
+%% streamweave: input in1 -> modulo.in1
+%% streamweave: input in2 -> modulo.in2
+%% streamweave: output output <- modulo.out
+%% streamweave: output error <- modulo.error
+%% streamweave: node modulo kind=ModuloNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  in1["in1"]
+  in2["in2"]
+  output["output"]
+  error["error"]
+
+  subgraph modulo["ModuloNode"]
+    direction LR
+    modulo_in_configuration["configuration"]
+    modulo_in_in1["in1"]
+    modulo_in_in2["in2"]
+    modulo_core["modulo"]
+    modulo_out_output["output"]
+    modulo_out_error["error"]
+    modulo_in_configuration --> modulo_core
+    modulo_in_in1 --> modulo_core
+    modulo_in_in2 --> modulo_core
+    modulo_core --> modulo_out_output
+    modulo_core --> modulo_out_error
+  end
+
+  configuration --> modulo_in_configuration
+  in1 --> modulo_in_in1
+  in2 --> modulo_in_in2
+  modulo_out_output --> output
+  modulo_out_error --> error

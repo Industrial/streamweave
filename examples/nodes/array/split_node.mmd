@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> split.configuration
+%% streamweave: input input -> split.in
+%% streamweave: input chunk_size -> split.chunk_size
+%% streamweave: output output <- split.out
+%% streamweave: output error <- split.error
+%% streamweave: node split kind=ArraySplitNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  chunk_size["chunk_size"]
+  output["output"]
+  error["error"]
+
+  subgraph split["ArraySplitNode"]
+    direction LR
+    split_in_configuration["configuration"]
+    split_in_in["in"]
+    split_in_chunk_size["chunk_size"]
+    split_core["split"]
+    split_out_output["output"]
+    split_out_error["error"]
+    split_in_configuration --> split_core
+    split_in_in --> split_core
+    split_in_chunk_size --> split_core
+    split_core --> split_out_output
+    split_core --> split_out_error
+  end
+
+  configuration --> split_in_configuration
+  input --> split_in_in
+  chunk_size --> split_in_chunk_size
+  split_out_output --> output
+  split_out_error --> error

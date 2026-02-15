@@ -1,0 +1,19 @@
+%% streamweave: begin
+%% streamweave: output output <- stateful.out
+%% streamweave: node stateful kind=StatefulNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  output["output"]
+
+  subgraph stateful["StatefulNode"]
+    direction LR
+    stateful_core["stateful"]
+    stateful_out_out["out"]
+    stateful_core --> stateful_out_out
+  end
+
+  stateful_out_out --> output

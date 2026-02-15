@@ -1,0 +1,34 @@
+%% streamweave: begin
+%% streamweave: input configuration -> distinct_until_changed.configuration
+%% streamweave: input input -> distinct_until_changed.in
+%% streamweave: output output <- distinct_until_changed.out
+%% streamweave: output error <- distinct_until_changed.error
+%% streamweave: node distinct_until_changed kind=DistinctUntilChangedNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  output["output"]
+  error["error"]
+
+  subgraph distinct_until_changed["DistinctUntilChangedNode"]
+    direction LR
+    distinct_until_changed_in_configuration["configuration"]
+    distinct_until_changed_in_in["in"]
+    distinct_until_changed_core["distinct_until_changed"]
+    distinct_until_changed_out_output["output"]
+    distinct_until_changed_out_error["error"]
+    distinct_until_changed_in_configuration --> distinct_until_changed_core
+    distinct_until_changed_in_in --> distinct_until_changed_core
+    distinct_until_changed_core --> distinct_until_changed_out_output
+    distinct_until_changed_core --> distinct_until_changed_out_error
+  end
+
+  configuration --> distinct_until_changed_in_configuration
+  input --> distinct_until_changed_in_in
+  distinct_until_changed_out_output --> output
+  distinct_until_changed_out_error --> error

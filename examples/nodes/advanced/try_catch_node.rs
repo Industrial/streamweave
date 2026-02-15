@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::sync::Arc;
-use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::advanced::try_catch_node::{
   CatchConfig, TryCatchNode, TryConfig, catch_config, try_config,
@@ -41,15 +40,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
   });
 
-  // Build the graph using the graph! macro
-  let mut graph: Graph = graph! {
-    try_catch: TryCatchNode::new("try_catch".to_string()),
-    graph.configuration => try_catch.configuration,
-    graph.input => try_catch.in,
-    graph.try => try_catch.try,
-    graph.catch => try_catch.catch,
-    try_catch.out => graph.output,
-    try_catch.error => graph.error
+  // Build the graph from Mermaid (.mmd)
+  let mut graph: Graph = {
+    use std::path::Path;
+    use streamweave::mermaid::{
+      NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+    };
+    let path = Path::new("examples/nodes/advanced/try_catch_node.mmd");
+    let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+    let mut registry = NodeRegistry::new();
+    registry.register("TryCatchNode", |id, _inputs, _outputs| {
+      Box::new(TryCatchNode::new(id))
+    });
+    blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?
   };
 
   // Connect external channels at runtime

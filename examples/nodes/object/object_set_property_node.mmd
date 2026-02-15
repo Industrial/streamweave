@@ -1,0 +1,44 @@
+%% streamweave: begin
+%% streamweave: input configuration -> set.configuration
+%% streamweave: input input -> set.in
+%% streamweave: input key -> set.key
+%% streamweave: input value -> set.value
+%% streamweave: output output <- set.out
+%% streamweave: output error <- set.error
+%% streamweave: node set kind=ObjectSetPropertyNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  key["key"]
+  value["value"]
+  output["output"]
+  error["error"]
+
+  subgraph set["ObjectSetPropertyNode"]
+    direction LR
+    set_in_configuration["configuration"]
+    set_in_in["in"]
+    set_in_key["key"]
+    set_in_value["value"]
+    set_core["set"]
+    set_out_output["output"]
+    set_out_error["error"]
+    set_in_configuration --> set_core
+    set_in_in --> set_core
+    set_in_key --> set_core
+    set_in_value --> set_core
+    set_core --> set_out_output
+    set_core --> set_out_error
+  end
+
+  configuration --> set_in_configuration
+  input --> set_in_in
+  key --> set_in_key
+  value --> set_in_value
+  set_out_output --> output
+  set_out_error --> error

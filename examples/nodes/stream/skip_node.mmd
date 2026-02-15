@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> skip.configuration
+%% streamweave: input input -> skip.in
+%% streamweave: input count -> skip.count
+%% streamweave: output output <- skip.out
+%% streamweave: output error <- skip.error
+%% streamweave: node skip kind=SkipNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  count["count"]
+  output["output"]
+  error["error"]
+
+  subgraph skip["SkipNode"]
+    direction LR
+    skip_in_configuration["configuration"]
+    skip_in_in["in"]
+    skip_in_count["count"]
+    skip_core["skip"]
+    skip_out_output["output"]
+    skip_out_error["error"]
+    skip_in_configuration --> skip_core
+    skip_in_in --> skip_core
+    skip_in_count --> skip_core
+    skip_core --> skip_out_output
+    skip_core --> skip_out_error
+  end
+
+  configuration --> skip_in_configuration
+  input --> skip_in_in
+  count --> skip_in_count
+  skip_out_output --> output
+  skip_out_error --> error

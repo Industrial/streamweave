@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> power.configuration
+%% streamweave: input base -> power.base
+%% streamweave: input exponent -> power.exponent
+%% streamweave: output output <- power.out
+%% streamweave: output error <- power.error
+%% streamweave: node power kind=PowerNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  base["base"]
+  exponent["exponent"]
+  output["output"]
+  error["error"]
+
+  subgraph power["PowerNode"]
+    direction LR
+    power_in_configuration["configuration"]
+    power_in_base["base"]
+    power_in_exponent["exponent"]
+    power_core["power"]
+    power_out_output["output"]
+    power_out_error["error"]
+    power_in_configuration --> power_core
+    power_in_base --> power_core
+    power_in_exponent --> power_core
+    power_core --> power_out_output
+    power_core --> power_out_error
+  end
+
+  configuration --> power_in_configuration
+  base --> power_in_base
+  exponent --> power_in_exponent
+  power_out_output --> output
+  power_out_error --> error

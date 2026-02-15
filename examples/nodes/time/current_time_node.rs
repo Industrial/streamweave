@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use streamweave::graph;
 use streamweave::graph::Graph;
 use streamweave::nodes::time::CurrentTimeNode;
 use tokio::sync::mpsc;
@@ -14,13 +13,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   let (output_tx, mut output_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
   let (error_tx, mut error_rx) = mpsc::channel::<Arc<dyn Any + Send + Sync>>(10);
 
-  // Build the graph using the graph! macro
-  let mut graph: Graph = graph! {
-    current_time: CurrentTimeNode::new("current_time".to_string()),
-    graph.configuration => current_time.configuration,
-    graph.trigger => current_time.trigger,
-    current_time.out => graph.output,
-    current_time.error => graph.error
+  // Build the graph from Mermaid (.mmd)
+  let mut graph: Graph = {
+    use std::path::Path;
+    use streamweave::mermaid::{
+      NodeRegistry, blueprint_to_graph::blueprint_to_graph, parse::parse_mmd_file_to_blueprint,
+    };
+    let path = Path::new("examples/nodes/time/current_time_node.mmd");
+    let bp = parse_mmd_file_to_blueprint(path).map_err(|e| e.to_string())?;
+    let mut registry = NodeRegistry::new();
+    registry.register("CurrentTimeNode", |id, _inputs, _outputs| {
+      Box::new(CurrentTimeNode::new(id))
+    });
+    blueprint_to_graph(&bp, Some(&registry)).map_err(|e| e.to_string())?
   };
 
   // Connect external channels at runtime

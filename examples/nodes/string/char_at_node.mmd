@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> char_at.configuration
+%% streamweave: input input -> char_at.in
+%% streamweave: input index -> char_at.index
+%% streamweave: output output <- char_at.out
+%% streamweave: output error <- char_at.error
+%% streamweave: node char_at kind=StringCharAtNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  input["input"]
+  index["index"]
+  output["output"]
+  error["error"]
+
+  subgraph char_at["StringCharAtNode"]
+    direction LR
+    char_at_in_configuration["configuration"]
+    char_at_in_in["in"]
+    char_at_in_index["index"]
+    char_at_core["char_at"]
+    char_at_out_output["output"]
+    char_at_out_error["error"]
+    char_at_in_configuration --> char_at_core
+    char_at_in_in --> char_at_core
+    char_at_in_index --> char_at_core
+    char_at_core --> char_at_out_output
+    char_at_core --> char_at_out_error
+  end
+
+  configuration --> char_at_in_configuration
+  input --> char_at_in_in
+  index --> char_at_in_index
+  char_at_out_output --> output
+  char_at_out_error --> error

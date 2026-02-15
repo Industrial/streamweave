@@ -1,0 +1,39 @@
+%% streamweave: begin
+%% streamweave: input configuration -> format.configuration
+%% streamweave: input template -> format.template
+%% streamweave: input value -> format.value
+%% streamweave: output output <- format.out
+%% streamweave: output error <- format.error
+%% streamweave: node format kind=StringFormatNode
+%% streamweave: end
+%% ---
+%% Style B: The node itself is a subgraph; its ports are boxes inside the group.
+%% External I/O nodes sit outside and connect to the port boxes on the boundary.
+%% ---
+flowchart TD
+  configuration["configuration"]
+  template["template"]
+  value["value"]
+  output["output"]
+  error["error"]
+
+  subgraph format["StringFormatNode"]
+    direction LR
+    format_in_configuration["configuration"]
+    format_in_template["template"]
+    format_in_value["value"]
+    format_core["format"]
+    format_out_output["output"]
+    format_out_error["error"]
+    format_in_configuration --> format_core
+    format_in_template --> format_core
+    format_in_value --> format_core
+    format_core --> format_out_output
+    format_core --> format_out_error
+  end
+
+  configuration --> format_in_configuration
+  template --> format_in_template
+  value --> format_in_value
+  format_out_output --> output
+  format_out_error --> error
