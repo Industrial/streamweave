@@ -50,6 +50,33 @@ async fn test_sliding_window_creation() {
     assert_eq!(node.slide(), Duration::from_millis(200));
 }
 
+/// Out-of-order: events 3, 1, 2; all in window [0,1000). Correct results on watermark.
+#[tokio::test]
+async fn test_sliding_window_out_of_order() {
+    let node = SlidingEventTimeWindowNode::new(
+        "sliding".to_string(),
+        Duration::from_millis(1000),
+        Duration::from_millis(1000),
+    );
+    let (in_tx, inputs) = create_inputs();
+    let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
+
+    in_tx.send(data_at(3, 1)).await.unwrap();
+    in_tx.send(data_at(1, 2)).await.unwrap();
+    in_tx.send(data_at(2, 3)).await.unwrap();
+    in_tx.send(watermark(1000)).await.unwrap();
+    drop(in_tx);
+
+    let mut out_stream = outputs.remove("out").unwrap();
+    let mut results = Vec::new();
+    while let Some(item) = out_stream.next().await {
+        results.push(item);
+    }
+    assert_eq!(results.len(), 1);
+    let w = results[0].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>().unwrap();
+    assert_eq!(w.len(), 3);
+}
+
 #[tokio::test]
 async fn test_sliding_window_overlapping() {
     // size=1000, slide=400. Windows: [0,1000), [400,1400), [800,1800), ...

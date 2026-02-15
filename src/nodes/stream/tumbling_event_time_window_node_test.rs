@@ -120,6 +120,37 @@ async fn test_event_time_window_late_data_side_output() {
     assert_eq!(*late_val, 2);
 }
 
+/// Event-time processing test: out-of-order delivery.
+/// Events arrive as (time 3, 1, 2); all belong to window [0,1000).
+/// Window results must be correct when watermark passes (event-time ordering, not arrival).
+#[tokio::test]
+async fn test_event_time_window_out_of_order() {
+    let node = TumblingEventTimeWindowNode::new(
+        "event_window".to_string(),
+        Duration::from_millis(1000),
+    );
+    let (in_tx, inputs) = create_inputs();
+
+    let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
+
+    // Out-of-order: times 3, 1, 2 (wrong order) - all in window [0, 1000)
+    in_tx.send(data_at(3, 1)).await.unwrap();
+    in_tx.send(data_at(1, 2)).await.unwrap();
+    in_tx.send(data_at(2, 3)).await.unwrap();
+    in_tx.send(watermark(1000)).await.unwrap(); // close [0, 1000)
+    drop(in_tx);
+
+    let mut out_stream = outputs.remove("out").unwrap();
+    let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+    while let Some(item) = out_stream.next().await {
+        results.push(item);
+    }
+
+    assert_eq!(results.len(), 1, "one window [0,1000)");
+    let w = results[0].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>().unwrap();
+    assert_eq!(w.len(), 3, "all three items in correct window regardless of arrival order");
+}
+
 #[tokio::test]
 async fn test_event_time_window_late_data_dropped() {
     let node = TumblingEventTimeWindowNode::new(

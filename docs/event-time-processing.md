@@ -77,8 +77,8 @@ Plus one cross-cutting concern: **late-data policy**.
 
 ## 6. Testing
 
-- **Out-of-order:** Feed events in wrong order (e.g. time 3, 1, 2); assert window results are correct when watermark passes.
-- **Late data:** Feed event with time T after watermark has passed T; assert drop / allowed-lateness update / side-output emission per policy.
+- **Out-of-order:** Feed events in wrong order (e.g. time 3, 1, 2); assert window results are correct when watermark passes. **Done:** `test_event_time_window_out_of_order`, `test_sliding_window_out_of_order`, `test_session_window_out_of_order`.
+- **Late data:** Feed event with time T after watermark has passed T; assert drop / allowed-lateness update / side-output emission per policy. **Done:** `test_event_time_window_late_data_dropped`, `test_event_time_window_late_data_side_output`.
 - **Backfill:** Replay a batch of old events; assert they are assigned to correct windows and watermarks advance correctly.
 
 ---
