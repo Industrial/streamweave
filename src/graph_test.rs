@@ -567,6 +567,56 @@ async fn test_execute_with_progress_advances_frontier() {
 }
 
 // ============================================================================
+// Determinism Tests
+// ============================================================================
+
+/// Builds producer->transform graph, runs execute_deterministic, collects output.
+async fn run_deterministic_and_collect() -> Vec<i32> {
+  let mut graph = Graph::new("test".to_string());
+  let producer = Box::new(MockProducerNode::new("producer".to_string(), vec![1, 2, 3]));
+  let transform = Box::new(MockTransformNode::new("transform".to_string()));
+
+  graph.add_node("producer".to_string(), producer).unwrap();
+  graph.add_node("transform".to_string(), transform).unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "producer".to_string(),
+      source_port: "out".to_string(),
+      target_node: "transform".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  graph
+    .expose_output_port("transform", "out", "output")
+    .unwrap();
+
+  let (tx, mut rx) = mpsc::channel(10);
+  graph.connect_output_channel("output", tx).unwrap();
+
+  graph.execute_deterministic().await.unwrap();
+
+  let mut collected = Vec::new();
+  for _ in 0..3 {
+    if let Some(item) = rx.recv().await {
+      if let Ok(arc) = item.downcast::<i32>() {
+        collected.push(*arc);
+      }
+    }
+  }
+  graph.wait_for_completion().await.unwrap();
+  collected
+}
+
+#[tokio::test]
+async fn test_execute_deterministic_reproducible() {
+  // Run the same graph twice in deterministic mode; outputs must be identical.
+  let run1 = run_deterministic_and_collect().await;
+  let run2 = run_deterministic_and_collect().await;
+  assert_eq!(run1, run2, "deterministic mode must produce identical outputs");
+  assert_eq!(run1, vec![2, 4, 6], "transform multiplies by 2: 1,2,3 -> 2,4,6");
+}
+
+// ============================================================================
 // Graph as Node Tests
 // ============================================================================
 
