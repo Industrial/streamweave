@@ -88,6 +88,9 @@ pub mod session_event_time_window_node_test;
 pub mod sliding_event_time_window_node;
 #[cfg(test)]
 pub mod sliding_event_time_window_node_test;
+pub mod to_differential_node;
+#[cfg(test)]
+pub mod to_differential_node_test;
 pub mod tumbling_event_time_window_node;
 #[cfg(test)]
 pub mod tumbling_event_time_window_node_test;
@@ -120,6 +123,7 @@ pub use sample_node::SampleNode;
 pub use skip_node::SkipNode;
 pub use take_node::TakeNode;
 pub use throttle_node::ThrottleNode;
+pub use to_differential_node::ToDifferentialNode;
 pub use session_event_time_window_node::SessionEventTimeWindowNode;
 pub use sliding_event_time_window_node::SlidingEventTimeWindowNode;
 pub use tumbling_event_time_window_node::TumblingEventTimeWindowNode;
