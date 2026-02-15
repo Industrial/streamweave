@@ -29,6 +29,7 @@
 
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::nodes::common::BaseNode;
+use crate::nodes::stream::LateDataPolicy;
 use crate::time::{LogicalTime, StreamMessage, Timestamped};
 use async_trait::async_trait;
 use std::any::Any;
@@ -45,11 +46,15 @@ use tokio_stream::{wrappers::ReceiverStream, StreamExt};
 /// Buffers items by window; on Watermark(T), closes windows with end <= T and emits.
 /// Requires upstream to emit `StreamMessage` (Data or Watermark). Works with
 /// `Timestamped`-only streams (no watermarks = windows never close until EOS).
+///
+/// Late data (event_time before watermark) is handled per [`LateDataPolicy`].
 pub struct TumblingEventTimeWindowNode {
     /// Base node functionality.
     pub(crate) base: BaseNode,
     /// Window duration (event-time units: LogicalTime.as_u64() as milliseconds).
     window_size: Duration,
+    /// Policy for late data (events with event_time < watermark).
+    late_data_policy: LateDataPolicy,
 }
 
 impl TumblingEventTimeWindowNode {
@@ -81,7 +86,17 @@ impl TumblingEventTimeWindowNode {
                 vec!["out".to_string(), "error".to_string()],
             ),
             window_size,
+            late_data_policy: LateDataPolicy::default(),
         }
+    }
+
+    /// Configures how late data (event_time &lt; watermark) is handled.
+    pub fn with_late_data_policy(mut self, policy: LateDataPolicy) -> Self {
+        self.late_data_policy = policy;
+        if policy.use_side_output() {
+            self.base.output_port_names.push("late".to_string());
+        }
+        self
     }
 
     /// Returns the window size.
@@ -149,12 +164,19 @@ impl Node for TumblingEventTimeWindowNode {
         Box<dyn std::future::Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>,
     > {
         let window_size = self.window_size;
+        let late_data_policy = self.late_data_policy;
         Box::pin(async move {
             let _config_stream = inputs.remove("configuration");
             let in_stream = inputs.remove("in").ok_or("Missing 'in' input")?;
 
             let (out_tx, out_rx) = mpsc::channel(10);
             let (_error_tx, error_rx) = mpsc::channel(10);
+            let (late_tx, late_rx) = if late_data_policy.use_side_output() {
+                let (tx, rx) = mpsc::channel(10);
+                (Some(tx), Some(rx))
+            } else {
+                (None, None)
+            };
 
             tokio::spawn(async move {
                 let size_ms = window_size.as_millis() as u64;
@@ -188,9 +210,10 @@ impl Node for TumblingEventTimeWindowNode {
                                         } else {
                                             let start = window_start_ms(t, size_ms);
                                             let window_end = start + size_ms;
-                                            // Drop if window already closed (late data)
                                             if last_watermark.as_u64() < window_end {
                                                 windows.entry(start).or_default().push(ts.payload);
+                                            } else if late_data_policy.use_side_output() {
+                                                let _ = late_tx.as_ref().unwrap().send(ts.payload).await;
                                             }
                                         }
                                     }
@@ -224,6 +247,8 @@ impl Node for TumblingEventTimeWindowNode {
                                     let window_end = start + size_ms;
                                     if last_watermark.as_u64() < window_end {
                                         windows.entry(start).or_default().push(ts.payload);
+                                    } else if late_data_policy.use_side_output() {
+                                        let _ = late_tx.as_ref().unwrap().send(ts.payload).await;
                                     }
                                 }
                             } else {
@@ -255,6 +280,13 @@ impl Node for TumblingEventTimeWindowNode {
                 Box::pin(ReceiverStream::new(error_rx))
                     as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
             );
+            if let Some(rx) = late_rx {
+                outputs.insert(
+                    "late".to_string(),
+                    Box::pin(ReceiverStream::new(rx))
+                        as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
+                );
+            }
             Ok(outputs)
         })
     }

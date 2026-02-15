@@ -2,7 +2,7 @@
 
 #![allow(unused_imports, dead_code, clippy::type_complexity)]
 
-use super::TumblingEventTimeWindowNode;
+use super::{LateDataPolicy, TumblingEventTimeWindowNode};
 use crate::node::{InputStreams, Node, OutputStreams};
 use crate::time::{LogicalTime, StreamMessage, Timestamped};
 use std::any::Any;
@@ -83,6 +83,41 @@ async fn test_event_time_window_close_on_watermark() {
     let w1 = results[1].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>().unwrap();
     assert_eq!(w0.len(), 2, "first window: 2 items (times 100, 500)");
     assert_eq!(w1.len(), 1, "second window: 1 item (time 1100)");
+}
+
+#[tokio::test]
+async fn test_event_time_window_late_data_side_output() {
+    let node = TumblingEventTimeWindowNode::new(
+        "event_window".to_string(),
+        Duration::from_millis(1000),
+    )
+    .with_late_data_policy(LateDataPolicy::SideOutput);
+    assert!(node.has_output_port("late"));
+
+    let (in_tx, inputs) = create_inputs();
+    let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
+
+    in_tx.send(data_at(100, 1)).await.unwrap();
+    in_tx.send(watermark(1000)).await.unwrap(); // close [0,1000)
+    in_tx.send(data_at(50, 2)).await.unwrap();  // late: window already closed
+    in_tx.send(data_at(1100, 3)).await.unwrap();
+    drop(in_tx);
+
+    let mut out_stream = outputs.remove("out").unwrap();
+    let mut late_stream = outputs.remove("late").unwrap();
+    let mut out_results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+    let mut late_results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+    while let Some(item) = out_stream.next().await {
+        out_results.push(item);
+    }
+    while let Some(item) = late_stream.next().await {
+        late_results.push(item);
+    }
+
+    assert_eq!(out_results.len(), 2, "two windows: [0,1000) and [1000,2000)");
+    assert_eq!(late_results.len(), 1, "one late item (data_at 50)");
+    let late_val = late_results[0].clone().downcast::<i32>().unwrap();
+    assert_eq!(*late_val, 2);
 }
 
 #[tokio::test]

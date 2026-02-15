@@ -20,6 +20,7 @@
 
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::nodes::common::BaseNode;
+use crate::nodes::stream::LateDataPolicy;
 use crate::time::{LogicalTime, StreamMessage, Timestamped};
 use async_trait::async_trait;
 use std::any::Any;
@@ -48,10 +49,13 @@ fn window_starts_for_t(t_ms: u64, size_ms: u64, slide_ms: u64) -> Vec<u64> {
 }
 
 /// Sliding event-time window node: overlapping windows, close on watermark.
+///
+/// Late data (event_time before watermark) is handled per [`LateDataPolicy`].
 pub struct SlidingEventTimeWindowNode {
     pub(crate) base: BaseNode,
     window_size: Duration,
     slide: Duration,
+    late_data_policy: LateDataPolicy,
 }
 
 impl SlidingEventTimeWindowNode {
@@ -70,7 +74,17 @@ impl SlidingEventTimeWindowNode {
             ),
             window_size,
             slide,
+            late_data_policy: LateDataPolicy::default(),
         }
+    }
+
+    /// Configures how late data (event_time &lt; watermark) is handled.
+    pub fn with_late_data_policy(mut self, policy: LateDataPolicy) -> Self {
+        self.late_data_policy = policy;
+        if policy.use_side_output() {
+            self.base.output_port_names.push("late".to_string());
+        }
+        self
     }
 
     /// Returns the window size duration.
@@ -129,6 +143,7 @@ impl Node for SlidingEventTimeWindowNode {
     > {
         let size_ms = self.window_size.as_millis() as u64;
         let slide_ms = self.slide.as_millis() as u64;
+        let late_data_policy = self.late_data_policy;
 
         Box::pin(async move {
             let _config = inputs.remove("configuration");
@@ -136,6 +151,12 @@ impl Node for SlidingEventTimeWindowNode {
 
             let (out_tx, out_rx) = mpsc::channel(10);
             let (_err_tx, error_rx) = mpsc::channel(10);
+            let (late_tx, late_rx) = if late_data_policy.use_side_output() {
+                let (tx, rx) = mpsc::channel(10);
+                (Some(tx), Some(rx))
+            } else {
+                (None, None)
+            };
 
             tokio::spawn(async move {
                 let mut windows: BTreeMap<u64, Vec<Arc<dyn Any + Send + Sync>>> = BTreeMap::new();
@@ -193,11 +214,16 @@ impl Node for SlidingEventTimeWindowNode {
                                         .await;
                                 } else {
                                     let starts = window_starts_for_t(event_time, size_ms, slide_ms);
+                                    let mut any_added = false;
                                     for start in starts {
                                         let window_end = start + size_ms;
                                         if last_watermark.as_u64() < window_end {
                                             windows.entry(start).or_default().push(payload.clone());
+                                            any_added = true;
                                         }
+                                    }
+                                    if !any_added && late_data_policy.use_side_output() {
+                                        let _ = late_tx.as_ref().unwrap().send(payload).await;
                                     }
                                 }
                             }
@@ -217,6 +243,13 @@ impl Node for SlidingEventTimeWindowNode {
                 Box::pin(ReceiverStream::new(error_rx))
                     as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
             );
+            if let Some(rx) = late_rx {
+                outputs.insert(
+                    "late".to_string(),
+                    Box::pin(ReceiverStream::new(rx))
+                        as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
+                );
+            }
             Ok(outputs)
         })
     }

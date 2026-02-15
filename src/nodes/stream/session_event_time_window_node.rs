@@ -20,7 +20,8 @@
 
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::nodes::common::BaseNode;
-use crate::time::{StreamMessage, Timestamped};
+use crate::nodes::stream::LateDataPolicy;
+use crate::time::{LogicalTime, StreamMessage, Timestamped};
 use async_trait::async_trait;
 use std::any::Any;
 use std::collections::HashMap;
@@ -31,9 +32,12 @@ use tokio::sync::mpsc;
 use tokio_stream::{wrappers::ReceiverStream, StreamExt};
 
 /// Session event-time window node: gap-based sessions, close on watermark.
+///
+/// Late data (event_time before watermark) is handled per [`LateDataPolicy`].
 pub struct SessionEventTimeWindowNode {
     pub(crate) base: BaseNode,
     gap: Duration,
+    late_data_policy: LateDataPolicy,
 }
 
 impl SessionEventTimeWindowNode {
@@ -50,7 +54,17 @@ impl SessionEventTimeWindowNode {
                 vec!["out".to_string(), "error".to_string()],
             ),
             gap,
+            late_data_policy: LateDataPolicy::default(),
         }
+    }
+
+    /// Configures how late data (event_time &lt; watermark) is handled.
+    pub fn with_late_data_policy(mut self, policy: LateDataPolicy) -> Self {
+        self.late_data_policy = policy;
+        if policy.use_side_output() {
+            self.base.output_port_names.push("late".to_string());
+        }
+        self
     }
 
     /// Returns the session gap duration.
@@ -103,6 +117,7 @@ impl Node for SessionEventTimeWindowNode {
         Box<dyn std::future::Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>,
     > {
         let gap_ms = self.gap.as_millis() as u64;
+        let late_data_policy = self.late_data_policy;
 
         Box::pin(async move {
             let _config = inputs.remove("configuration");
@@ -110,9 +125,16 @@ impl Node for SessionEventTimeWindowNode {
 
             let (out_tx, out_rx) = mpsc::channel(10);
             let (_err_tx, error_rx) = mpsc::channel(10);
+            let (late_tx, late_rx) = if late_data_policy.use_side_output() {
+                let (tx, rx) = mpsc::channel(10);
+                (Some(tx), Some(rx))
+            } else {
+                (None, None)
+            };
 
             tokio::spawn(async move {
                 let mut session: Option<(u64, u64, Vec<Arc<dyn Any + Send + Sync>>)> = None;
+                let mut last_watermark = LogicalTime::minimum();
                 let mut in_stream = in_stream;
 
                 loop {
@@ -146,6 +168,7 @@ impl Node for SessionEventTimeWindowNode {
                             };
 
                             if is_watermark {
+                                last_watermark = LogicalTime::new(event_time);
                                 if let Some((start, last, buf)) = session.take() {
                                     if last + gap_ms < event_time {
                                         if !buf.is_empty() {
@@ -158,22 +181,28 @@ impl Node for SessionEventTimeWindowNode {
                                     }
                                 }
                             } else if let Some(payload) = payload_opt {
-                                let start_new = session.as_ref().map_or(true, |(_, last, _)| {
-                                    event_time.saturating_sub(*last) > gap_ms
-                                });
-                                if start_new {
-                                    if let Some((_, _, buf)) = session.take() {
-                                        if !buf.is_empty() {
-                                            let _ = out_tx
-                                                .send(Arc::new(buf) as Arc<dyn Any + Send + Sync>)
-                                                .await;
-                                        }
+                                if event_time < last_watermark.as_u64() {
+                                    if late_data_policy.use_side_output() {
+                                        let _ = late_tx.as_ref().unwrap().send(payload).await;
                                     }
-                                    session = Some((event_time, event_time, vec![payload]));
                                 } else {
-                                    let (start, _, mut buf) = session.take().unwrap();
-                                    buf.push(payload);
-                                    session = Some((start, event_time, buf));
+                                    let start_new = session.as_ref().map_or(true, |(_, last, _)| {
+                                        event_time.saturating_sub(*last) > gap_ms
+                                    });
+                                    if start_new {
+                                        if let Some((_, _, buf)) = session.take() {
+                                            if !buf.is_empty() {
+                                                let _ = out_tx
+                                                    .send(Arc::new(buf) as Arc<dyn Any + Send + Sync>)
+                                                    .await;
+                                            }
+                                        }
+                                        session = Some((event_time, event_time, vec![payload]));
+                                    } else {
+                                        let (start, _, mut buf) = session.take().unwrap();
+                                        buf.push(payload);
+                                        session = Some((start, event_time, buf));
+                                    }
                                 }
                             }
                         }
@@ -192,6 +221,13 @@ impl Node for SessionEventTimeWindowNode {
                 Box::pin(ReceiverStream::new(error_rx))
                     as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
             );
+            if let Some(rx) = late_rx {
+                outputs.insert(
+                    "late".to_string(),
+                    Box::pin(ReceiverStream::new(rx))
+                        as Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
+                );
+            }
             Ok(outputs)
         })
     }
