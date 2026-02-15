@@ -42,7 +42,7 @@ use std::sync::Mutex;
 /// Used to correlate inputs and outputs, define "minimum completed time"
 /// (progress), and support rounds in iterative dataflows. Implements [`Ord`]
 /// and [`Default`] (0) so it can be used as a totally ordered timestamp.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub struct LogicalTime(pub u64);
 
 impl Default for LogicalTime {

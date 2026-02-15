@@ -123,7 +123,7 @@ Nodes that implement this (or use a state store that does) can advertise “exac
 | Phase | Content |
 |-------|--------|
 | **1** | Define and document the exactly-once state contract and key/version semantics. **Done:** `state::ExactlyOnceStateBackend` trait, README § Exactly-once state, [architecture.md](architecture.md#exactly-once-state). |
-| **2** | Implement an in-process state backend with `put(key, value, version)`, `get`, `snapshot`, `restore` (e.g. in-memory + optional file snapshot). |
+| **2** | Implement an in-process state backend with `put(key, value, version)`, `get`, `snapshot`, `restore` (e.g. in-memory + optional file snapshot). **Done:** `state::HashMapStateBackend<K, V, Ver>` in `src/state.rs`. |
 | **3** | Add a “stateful node” helper or trait that uses this backend and is driven by logical time from the execution layer. |
 | **4** | Document idempotent sink pattern and, if needed, add a small helper for stable output ids. |
 | **5** | Integrate with local checkpointing (see [distributed-checkpointing.md](distributed-checkpointing.md)) so that state is included in checkpoints. |

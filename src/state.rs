@@ -4,7 +4,9 @@
 //! updates: key/version semantics and idempotent put. See
 //! [docs/exactly-once-state.md](../docs/exactly-once-state.md).
 
+use std::collections::HashMap;
 use std::hash::Hash;
+use std::sync::Mutex;
 use thiserror::Error;
 
 /// Error type for state backend operations.
@@ -62,4 +64,164 @@ pub trait ExactlyOnceStateBackend {
 
     /// Restore state from checkpoint. Overwrites current state.
     fn restore(&mut self, data: &[u8]) -> Result<(), StateError>;
+}
+
+/// Snapshot format: serialized list of (key, value, version) tuples.
+type SnapshotEntry<K, V, Ver> = (K, (V, Ver));
+
+/// In-memory state backend with put/get/snapshot/restore.
+///
+/// Implements exactly-once semantics: `put` is idempotent and applies only when
+/// `version > current_version(key)`. Snapshot and restore use JSON serialization.
+///
+/// # Type parameters
+///
+/// - `K`: Key type; must be serializable
+/// - `V`: Value type; must be serializable and cloneable
+/// - `Ver`: Version type (e.g. [`crate::time::LogicalTime`] or `u64`)
+pub struct HashMapStateBackend<K, V, Ver>
+where
+    K: Hash + Eq + Clone + Send,
+    V: Clone + serde::Serialize + for<'de> serde::Deserialize<'de> + Send,
+    Ver: Ord + Clone + Send,
+{
+    inner: Mutex<HashMap<K, (V, Ver)>>,
+}
+
+impl<K, V, Ver> Default for HashMapStateBackend<K, V, Ver>
+where
+    K: Hash + Eq + Clone + Send,
+    V: Clone + serde::Serialize + for<'de> serde::Deserialize<'de> + Send,
+    Ver: Ord + Clone + Send,
+{
+    fn default() -> Self {
+        Self {
+            inner: Mutex::new(HashMap::new()),
+        }
+    }
+}
+
+impl<K, V, Ver> HashMapStateBackend<K, V, Ver>
+where
+    K: Hash + Eq + Clone + Send,
+    V: Clone + serde::Serialize + for<'de> serde::Deserialize<'de> + Send,
+    Ver: Ord + Clone + Send,
+{
+    /// Creates a new empty in-memory state backend.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl<K, V, Ver> ExactlyOnceStateBackend for HashMapStateBackend<K, V, Ver>
+where
+    K: Hash + Eq + Clone + Send + serde::Serialize + for<'de> serde::Deserialize<'de>,
+    V: Clone + serde::Serialize + for<'de> serde::Deserialize<'de> + Send,
+    Ver: Ord + Clone + Send + serde::Serialize + for<'de> serde::Deserialize<'de>,
+{
+    type Key = K;
+    type Value = V;
+    type Version = Ver;
+
+    fn put(
+        &self,
+        key: Self::Key,
+        value: Self::Value,
+        version: Self::Version,
+    ) -> Result<(), StateError> {
+        let mut map = self
+            .inner
+            .lock()
+            .map_err(|e| StateError::Other(e.to_string()))?;
+        let should_apply = map
+            .get(&key)
+            .map_or(true, |(_, v)| version > *v);
+        if should_apply {
+            map.insert(key, (value, version));
+        }
+        Ok(())
+    }
+
+    fn get(&self, key: &Self::Key) -> Result<Option<(Self::Value, Self::Version)>, StateError> {
+        let map = self
+            .inner
+            .lock()
+            .map_err(|e| StateError::Other(e.to_string()))?;
+        Ok(map.get(key).cloned())
+    }
+
+    fn snapshot(&self) -> Result<Vec<u8>, StateError> {
+        let map = self
+            .inner
+            .lock()
+            .map_err(|e| StateError::Other(e.to_string()))?;
+        let entries: Vec<SnapshotEntry<K, V, Ver>> = map.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+        serde_json::to_vec(&entries).map_err(|e| StateError::Serialization(e.to_string()))
+    }
+
+    fn restore(&mut self, data: &[u8]) -> Result<(), StateError> {
+        let entries: Vec<SnapshotEntry<K, V, Ver>> =
+            serde_json::from_slice(data).map_err(|e| StateError::Serialization(e.to_string()))?;
+        let mut map = self
+            .inner
+            .lock()
+            .map_err(|e| StateError::Other(e.to_string()))?;
+        map.clear();
+        for (key, (value, version)) in entries {
+            map.insert(key, (value, version));
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::time::LogicalTime;
+
+    #[test]
+    fn hash_map_state_backend_put_get_idempotent() {
+        let backend: HashMapStateBackend<String, u64, LogicalTime> = HashMapStateBackend::new();
+
+        backend
+            .put("k1".to_string(), 100u64, LogicalTime::new(1))
+            .unwrap();
+        assert_eq!(
+            backend.get(&"k1".to_string()).unwrap(),
+            Some((100u64, LogicalTime::new(1)))
+        );
+
+        // Same version again: idempotent (we apply only if version > current)
+        backend
+            .put("k1".to_string(), 999u64, LogicalTime::new(1))
+            .unwrap();
+        assert_eq!(
+            backend.get(&"k1".to_string()).unwrap(),
+            Some((100u64, LogicalTime::new(1)))
+        );
+
+        // Newer version: applies
+        backend
+            .put("k1".to_string(), 200u64, LogicalTime::new(2))
+            .unwrap();
+        assert_eq!(
+            backend.get(&"k1".to_string()).unwrap(),
+            Some((200u64, LogicalTime::new(2)))
+        );
+    }
+
+    #[test]
+    fn hash_map_state_backend_snapshot_restore() {
+        let backend: HashMapStateBackend<String, u64, LogicalTime> = HashMapStateBackend::new();
+        backend.put("a".to_string(), 1u64, LogicalTime::new(1)).unwrap();
+        backend.put("b".to_string(), 2u64, LogicalTime::new(2)).unwrap();
+
+        let data = backend.snapshot().unwrap();
+        assert!(!data.is_empty());
+
+        let mut restored: HashMapStateBackend<String, u64, LogicalTime> = HashMapStateBackend::new();
+        restored.restore(&data).unwrap();
+        assert_eq!(restored.get(&"a".to_string()).unwrap(), Some((1u64, LogicalTime::new(1))));
+        assert_eq!(restored.get(&"b".to_string()).unwrap(), Some((2u64, LogicalTime::new(2))));
+    }
 }
