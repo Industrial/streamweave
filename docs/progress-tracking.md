@@ -107,7 +107,7 @@ Channels that carry “data or watermark” use `StreamMessage<Payload>`. Nodes 
 | **1** | Document current progress semantics (sink frontier, single graph) and what is missing (per-node, watermarks as messages). **Done:** See README § Progress tracking, this doc. |
 | **2** | (Optional) Per-sink frontier and graph-level progress = min(sink frontiers). **Done:** `execute_with_progress_per_sink()`, `ProgressHandle::from_frontiers()`. |
 | **3** | Introduce `StreamMessage<T> = Data | Watermark` and a path for “stream with watermarks.” |
-| **4** | Add watermark injection at sources (or a watermark node) and consumption in window nodes. |
+| **4** | Add watermark injection at sources (or a watermark node) and consumption in window nodes. **Done:** `WatermarkInjectorNode` in `src/nodes/stream/watermark_injector_node.rs`. Accepts Timestamped, StreamMessage, or payloads with `event_timestamp`; outputs `StreamMessage`; emits `Watermark(max_time)` on EOS. `TumblingEventTimeWindowNode` consumes both Data and Watermark. Pipeline: EventTimeExtractorNode → WatermarkInjectorNode → TumblingEventTimeWindowNode. |
 | **5** | (With distribution) Distributed progress aggregation. |
 
 ---
