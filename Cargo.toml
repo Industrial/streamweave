@@ -526,5 +526,9 @@ path = "examples/event_time_window.rs"
 name = "checkpoint_restore"
 path = "examples/checkpoint_restore.rs"
 
+[[example]]
+name = "deterministic_execution"
+path = "examples/deterministic_execution.rs"
+
 [lints.rust]
 # Shared lint configuration
