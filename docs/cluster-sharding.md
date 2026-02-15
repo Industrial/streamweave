@@ -87,15 +87,84 @@ When **adding or removing workers**:
 
 | Phase | Content |
 |-------|--------|
-| **1** | Define **partitioning contract** in the API (key extractor, “this graph is partitioned by key”). Document “run N instances with different key ranges” as a user-driven pattern. |
-| **2** | Add **shard_id** (and optional key range) to graph or execution config so that nodes can behave differently per shard (e.g. state path). |
-| **3** | Implement or document a **distribution layer**: driver that deploys N processes, routes input by key, merges output. Can be minimal (script + env vars). |
-| **4** | **State migration:** With exactly-once state and checkpointing, implement “export state for keys K” and “import state for keys K” so that a coordinator can move state between shards on rebalance. |
+| **1** | Define **partitioning contract** in the API (key extractor, “this graph is partitioned by key”). Document “run N instances with different key ranges” as a user-driven pattern. **Done:** `PartitionKey`, `PartitionKeyExtractor`, `PartitioningConfig`, `partition_by_key()` in `src/partitioning.rs`. See §6. |
+| **2** | Add **shard_id** (and optional key range) to graph or execution config so that nodes can behave differently per shard (e.g. state path). **Done:** `ShardConfig`, `Graph::set_shard_config()`, `Graph::shard_id()`, `Graph::total_shards()`, `GraphBuilder::shard_config()`. Key range derived from `(shard_id, total_shards)`. |
+| **3** | Implement or document a **distribution layer**: driver that deploys N processes, routes input by key, merges output. Can be minimal (script + env vars). **Done:** §7 documents script + env vars, input routing (Kafka, router, filter), output merging, Kubernetes/systemd. |
+| **4** | **State migration:** With exactly-once state and checkpointing, implement “export state for keys K” and “import state for keys K” so that a coordinator can move state between shards on rebalance. **Done:** `ExactlyOnceStateBackend::snapshot_for_keys`, `restore_keys`; `Node::export_state_for_keys`, `import_state_for_keys`; `Graph::export_state_for_keys`, `import_state_for_keys`. |
 | **5** | **Rebalance protocol:** Define how assignment changes are communicated and how workers drain, migrate state, and resume. |
 
 ---
 
-## 6. References
+## 6. Run N instances (user-driven pattern)
+
+With the partitioning contract in place, you can run N graph instances manually:
+
+1. **Define the graph** once (with nodes that are keyed/partitionable).
+2. **Create a partition key extractor** using `streamweave::partitioning::partition_by_key()`.
+3. **Run N processes** (e.g. via a script or systemd), each with:
+   - `SHARD_ID=0..N-1` (or similar)
+   - Input routed so that each process receives only records whose key hashes to its shard (e.g. `hash(key) % N == shard_id`).
+
+**Example:** Kafka consumer group with N partitions. Run N StreamWeave processes; each consumes one Kafka partition. Kafka provides the partitioning; each process runs the same graph. No StreamWeave-internal sharding yet—partitioning is external.
+
+**With phase 2 (ShardConfig):** The graph can call `graph.shard_config()` to get `ShardConfig`, then use `owns_key(key)` to check "do I own this key?" and reject or route records accordingly. Use `GraphBuilder::shard_config(shard_id, total_shards)` or `Graph::set_shard_config()` when creating the graph.
+
+---
+
+## 7. Distribution layer (phase 3)
+
+A **minimal distribution layer** deploys N graph instances, routes input by key, and merges output. StreamWeave does not provide a built-in driver; use scripts, Kubernetes, or systemd.
+
+### 7.1 Deploying N processes (script + env vars)
+
+Each process reads `SHARD_ID` and `TOTAL_SHARDS` from the environment and passes them to the graph:
+
+```bash
+#!/bin/bash
+# run-sharded.sh - Deploy N StreamWeave instances (one per shard)
+TOTAL_SHARDS=${TOTAL_SHARDS:-4}
+for i in $(seq 0 $((TOTAL_SHARDS - 1))); do
+  SHARD_ID=$i TOTAL_SHARDS=$TOTAL_SHARDS ./your-streamweave-app &
+done
+wait
+```
+
+In your app, read env and configure the graph:
+
+```rust
+let shard_id = std::env::var("SHARD_ID").ok().and_then(|s| s.parse().ok());
+let total_shards = std::env::var("TOTAL_SHARDS").ok().and_then(|s| s.parse().ok());
+let mut builder = GraphBuilder::new("my_graph")...;
+if let (Some(sid), Some(ts)) = (shard_id, total_shards) {
+  builder = builder.shard_config(sid, ts);
+}
+let graph = builder.build()?;
+```
+
+### 7.2 Input routing
+
+**Option A – Kafka:** Create a topic with N partitions. Run N processes; each consumes from partition `shard_id`. Kafka provides routing; no extra code.
+
+**Option B – Custom router:** A separate service receives all input, extracts the partition key, hashes it, and forwards to the correct worker (e.g. over HTTP or a queue). Workers listen on distinct ports.
+
+**Option C – Shared queue with filter:** All workers consume from one queue; each filters to `owns_key(key)` and drops records it doesn't own. Less efficient but simple.
+
+### 7.3 Output merging
+
+**Option A – Kafka sink:** Each process writes to the same Kafka topic. Order is per-key (per shard). Downstream consumers merge automatically.
+
+**Option B – Shared storage:** Each process writes to a path like `output/shard_{id}/` or appends to a shared file/DB with a shard identifier.
+
+**Option C – Central collector:** Workers send output to a collector service that merges and forwards.
+
+### 7.4 Kubernetes / systemd
+
+- **Kubernetes:** Run N replicas with `SHARD_ID` from a downward API or ConfigMap (`shard-0` … `shard-N`).
+- **systemd:** N template units `streamweave@0.service` … `streamweave@N.service`, each with `Environment="SHARD_ID=%i"` and `Environment="TOTAL_SHARDS=N"`.
+
+---
+
+## 8. References
 
 - Gap analysis §14 (Mature cluster sharding).
 - [exactly-once-state.md](exactly-once-state.md), [distributed-checkpointing.md](distributed-checkpointing.md).

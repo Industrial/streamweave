@@ -49,6 +49,8 @@ pub struct GraphBuilder {
   input_bindings: Vec<InputBinding>,
   /// Output bindings: (external_name, node_name, port_name)
   output_bindings: Vec<(String, String, String)>,
+  /// Shard config for cluster-sharded execution: (shard_id, total_shards).
+  shard_config: Option<(u32, u32)>,
 }
 
 impl GraphBuilder {
@@ -76,7 +78,17 @@ impl GraphBuilder {
       edges: Vec::new(),
       input_bindings: Vec::new(),
       output_bindings: Vec::new(),
+      shard_config: None,
     }
+  }
+
+  /// Sets shard identity for cluster-sharded execution.
+  ///
+  /// When running N graph instances, each instance gets a unique (shard_id, total_shards).
+  /// Nodes can use `graph.shard_config()` to behave differently per shard (e.g. state path).
+  pub fn shard_config(mut self, shard_id: u32, total_shards: u32) -> Self {
+    self.shard_config = Some((shard_id, total_shards));
+    self
   }
 
   /// Adds a node to the graph being built.
@@ -322,6 +334,10 @@ impl GraphBuilder {
       graph
         .expose_output_port(&node, &port, &external)
         .map_err(|e: String| -> GraphExecutionError { Box::new(std::io::Error::other(e)) })?;
+    }
+
+    if let Some((shard_id, total_shards)) = self.shard_config {
+      graph.set_shard_config(shard_id, total_shards);
     }
 
     Ok(graph)

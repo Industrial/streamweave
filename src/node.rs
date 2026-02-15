@@ -259,4 +259,26 @@ pub trait Node: Send + Sync {
   fn restore_state(&mut self, _data: &[u8]) -> Result<(), NodeExecutionError> {
     Ok(())
   }
+
+  /// Exports state for the given partition keys only (for state migration between shards).
+  ///
+  /// Called during rebalance when this shard loses keys: export state for those keys
+  /// so it can be sent to the shard that gains them. Default returns empty (no keyed state).
+  /// Stateful nodes with key-scoped state (e.g. using [`crate::state::ExactlyOnceStateBackend`])
+  /// should override and delegate to their backend's `snapshot_for_keys`.
+  fn export_state_for_keys(
+    &self,
+    _keys: &[crate::partitioning::PartitionKey],
+  ) -> Result<Vec<u8>, NodeExecutionError> {
+    Ok(Vec::new())
+  }
+
+  /// Imports state for keys from another shard (for state migration during rebalance).
+  ///
+  /// Called when this shard gains keys: merge the imported state into the node.
+  /// Default is a no-op. Stateful nodes should override and delegate to their
+  /// backend's `restore_keys`.
+  fn import_state_for_keys(&mut self, _data: &[u8]) -> Result<(), NodeExecutionError> {
+    Ok(())
+  }
 }

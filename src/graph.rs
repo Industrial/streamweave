@@ -78,6 +78,7 @@
 use crate::checkpoint::{CheckpointId, CheckpointMetadata, CheckpointStorage};
 use crate::edge::Edge;
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
+use crate::partitioning::PartitionKey;
 use crate::time::{CompletedFrontier, LogicalTime, ProgressHandle, Timestamped};
 use async_trait::async_trait;
 use std::any::Any;
@@ -93,6 +94,42 @@ use tokio_stream::StreamExt;
 
 /// Default channel capacity for dataflow edges (backpressure).
 const DATAFLOW_CHANNEL_CAPACITY: usize = 64;
+
+/// Shard identity for cluster-sharded execution.
+///
+/// When running N graph instances (e.g. one per Kafka partition), each instance
+/// gets a `ShardConfig` so it knows which partition of the key space it owns.
+/// Keys are assigned by `hash(key) % total_shards == shard_id`.
+///
+/// See [cluster-sharding.md](../docs/cluster-sharding.md).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ShardConfig {
+    /// This instance's shard index (0..total_shards-1).
+    pub shard_id: u32,
+    /// Total number of shards; keys are partitioned by hash % total_shards.
+    pub total_shards: u32,
+}
+
+impl ShardConfig {
+    /// Creates a new shard config.
+    pub fn new(shard_id: u32, total_shards: u32) -> Self {
+        Self { shard_id, total_shards }
+    }
+
+    /// Returns true if this shard owns the given partition key.
+    ///
+    /// Uses `hash(key) % total_shards == shard_id`. The driver should route
+    /// records so that each instance only receives keys it owns; this method
+    /// allows nodes to reject or filter unexpected keys.
+    pub fn owns_key(&self, key: &str) -> bool {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = DefaultHasher::new();
+        key.hash(&mut hasher);
+        let h = hasher.finish();
+        (h % self.total_shards as u64) == self.shard_id as u64
+    }
+}
 
 /// Execution mode for the graph.
 ///
@@ -291,6 +328,8 @@ pub struct Graph {
   nodes_restored_after_run: Option<NodesRestoredMap>,
   /// Execution mode: Concurrent (default) or Deterministic.
   execution_mode: ExecutionMode,
+  /// Shard identity when running N instances; None = single instance.
+  shard_config: Option<ShardConfig>,
   /// Position restored from checkpoint; used to initialize time counter when executing with progress.
   restored_position: Option<LogicalTime>,
   /// Sequence number for checkpoint ids.
@@ -333,9 +372,34 @@ impl Graph {
       output_port_names: Vec::new(),
       nodes_restored_after_run: None,
       execution_mode: ExecutionMode::default(),
+      shard_config: None,
       restored_position: None,
       checkpoint_sequence: std::sync::atomic::AtomicU64::new(0),
     }
+  }
+
+  /// Sets shard identity for cluster-sharded execution.
+  ///
+  /// When running N graph instances (e.g. one per Kafka partition), set this so
+  /// nodes can behave differently per shard (e.g. state path). Keys are assigned
+  /// by `hash(key) % total_shards == shard_id`.
+  pub fn set_shard_config(&mut self, shard_id: u32, total_shards: u32) {
+    self.shard_config = Some(ShardConfig::new(shard_id, total_shards));
+  }
+
+  /// Returns this instance's shard id, or None if not sharded.
+  pub fn shard_id(&self) -> Option<u32> {
+    self.shard_config.as_ref().map(|c| c.shard_id)
+  }
+
+  /// Returns the total number of shards, or None if not sharded.
+  pub fn total_shards(&self) -> Option<u32> {
+    self.shard_config.as_ref().map(|c| c.total_shards)
+  }
+
+  /// Returns shard config if this graph is running as a sharded instance.
+  pub fn shard_config(&self) -> Option<ShardConfig> {
+    self.shard_config
   }
 
   /// Triggers a checkpoint, saving state from all nodes to storage.
@@ -416,6 +480,45 @@ impl Graph {
 
     self.restored_position = metadata.position;
     Ok(())
+  }
+
+  /// Exports state for the given partition keys from a node (for state migration during rebalance).
+  ///
+  /// When this shard loses keys to another shard, call this to extract state for those keys.
+  /// The returned bytes can be sent to the shard that gains the keys, which calls
+  /// [`import_state_for_keys`](Self::import_state_for_keys).
+  ///
+  /// Nodes that do not support key-scoped state return empty bytes.
+  pub fn export_state_for_keys(
+    &self,
+    node_id: &str,
+    keys: &[PartitionKey],
+  ) -> Result<Vec<u8>, GraphExecutionError> {
+    let nodes = self.nodes.lock().unwrap();
+    let node = nodes
+      .get(node_id)
+      .ok_or_else(|| format!("Node '{}' not found", node_id))?;
+    node
+      .export_state_for_keys(keys)
+      .map_err(|e| format!("Node '{}' export failed: {}", node_id, e).into())
+  }
+
+  /// Imports state for keys into a node (for state migration during rebalance).
+  ///
+  /// When this shard gains keys from another shard, call with the bytes from
+  /// [`export_state_for_keys`](Self::export_state_for_keys) on the source shard.
+  pub fn import_state_for_keys(
+    &self,
+    node_id: &str,
+    data: &[u8],
+  ) -> Result<(), GraphExecutionError> {
+    let mut nodes = self.nodes.lock().unwrap();
+    let node = nodes
+      .get_mut(node_id)
+      .ok_or_else(|| format!("Node '{}' not found", node_id))?;
+    node
+      .import_state_for_keys(data)
+      .map_err(|e| format!("Node '{}' import failed: {}", node_id, e).into())
   }
 
   /// Returns the position restored from the last checkpoint, if any.

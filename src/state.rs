@@ -65,6 +65,18 @@ pub trait ExactlyOnceStateBackend {
 
     /// Restore state from checkpoint. Overwrites current state.
     fn restore(&mut self, data: &[u8]) -> Result<(), StateError>;
+
+    /// Export state for the given keys only (for state migration between shards).
+    ///
+    /// Returns serialized state for keys in `keys` that exist. Used when rebalancing:
+    /// the shard that loses keys exports them; the shard that gains keys imports.
+    fn snapshot_for_keys(&self, keys: &[Self::Key]) -> Result<Vec<u8>, StateError>;
+
+    /// Import state from a previous [`snapshot_for_keys`](ExactlyOnceStateBackend::snapshot_for_keys).
+    ///
+    /// Merges the deserialized entries into current state (overwrites for existing keys).
+    /// Used when a shard gains keys during rebalance.
+    fn restore_keys(&mut self, data: &[u8]) -> Result<(), StateError>;
 }
 
 /// Snapshot format: serialized list of (key, value, version) tuples.
@@ -239,6 +251,33 @@ where
         }
         Ok(())
     }
+
+    fn snapshot_for_keys(&self, keys: &[K]) -> Result<Vec<u8>, StateError> {
+        let map = self
+            .inner
+            .lock()
+            .map_err(|e| StateError::Other(e.to_string()))?;
+        let key_set: std::collections::HashSet<_> = keys.iter().collect();
+        let entries: Vec<SnapshotEntry<K, V, Ver>> = map
+            .iter()
+            .filter(|(k, _)| key_set.contains(k))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        serde_json::to_vec(&entries).map_err(|e| StateError::Serialization(e.to_string()))
+    }
+
+    fn restore_keys(&mut self, data: &[u8]) -> Result<(), StateError> {
+        let entries: Vec<SnapshotEntry<K, V, Ver>> =
+            serde_json::from_slice(data).map_err(|e| StateError::Serialization(e.to_string()))?;
+        let mut map = self
+            .inner
+            .lock()
+            .map_err(|e| StateError::Other(e.to_string()))?;
+        for (key, (value, version)) in entries {
+            map.insert(key, (value, version));
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -290,6 +329,27 @@ mod tests {
         restored.restore(&data).unwrap();
         assert_eq!(restored.get(&"a".to_string()).unwrap(), Some((1u64, LogicalTime::new(1))));
         assert_eq!(restored.get(&"b".to_string()).unwrap(), Some((2u64, LogicalTime::new(2))));
+    }
+
+    #[test]
+    fn hash_map_state_backend_snapshot_for_keys_restore_keys() {
+        let backend: HashMapStateBackend<String, u64, LogicalTime> = HashMapStateBackend::new();
+        backend.put("a".to_string(), 1u64, LogicalTime::new(1)).unwrap();
+        backend.put("b".to_string(), 2u64, LogicalTime::new(2)).unwrap();
+        backend.put("c".to_string(), 3u64, LogicalTime::new(3)).unwrap();
+
+        let keys = vec!["a".to_string(), "c".to_string()];
+        let data = backend.snapshot_for_keys(&keys).unwrap();
+        assert!(!data.is_empty());
+
+        let mut target: HashMapStateBackend<String, u64, LogicalTime> = HashMapStateBackend::new();
+        target.put("x".to_string(), 99u64, LogicalTime::new(0)).unwrap();
+        target.restore_keys(&data).unwrap();
+
+        assert_eq!(target.get(&"a".to_string()).unwrap(), Some((1u64, LogicalTime::new(1))));
+        assert_eq!(target.get(&"c".to_string()).unwrap(), Some((3u64, LogicalTime::new(3))));
+        assert_eq!(target.get(&"x".to_string()).unwrap(), Some((99u64, LogicalTime::new(0))));
+        assert!(target.get(&"b".to_string()).unwrap().is_none());
     }
 
     #[test]

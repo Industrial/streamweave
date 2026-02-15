@@ -12,10 +12,15 @@ StreamWeave uses a **graph-based architecture** where computation is organized a
 
 ## Execution Model
 
-- **Concurrent execution**: By default, each node runs in its own Tokio task; multiple nodes execute concurrently
-- **Stream-based**: Nodes receive `InputStreams` (HashMap of port → stream) and return `OutputStreams`
-- **Channels**: One channel per edge; bounded mpsc for backpressure
-- **Pull-based**: Data flows when downstream nodes consume; external inputs drive the pipeline
+StreamWeave runs **one graph in one process**. There is no distributed execution.
+
+- **One process, one graph:** A single StreamWeave process runs a single graph instance. All nodes and edges are in-process.
+- **Nodes as async tasks:** Each node runs in its own Tokio task; multiple nodes execute concurrently.
+- **Channels in-process:** One channel per edge; bounded `mpsc` for backpressure. All communication is in-process; no network or IPC.
+- **Stream-based:** Nodes receive `InputStreams` (HashMap of port → stream) and return `OutputStreams`.
+- **Pull-based:** Data flows when downstream nodes consume; external inputs (e.g. via `connect_input_channel`) drive the pipeline.
+
+See [scope-in-process-no-distributed-fault-tolerance.md](scope-in-process-no-distributed-fault-tolerance.md) for scope and limitations.
 
 ## Time and Progress
 
@@ -58,6 +63,15 @@ Stateful nodes that participate in checkpoint/replay should follow the **exactly
 
 Implement the [`ExactlyOnceStateBackend`](https://docs.rs/streamweave/*/streamweave/state/trait.ExactlyOnceStateBackend.html) trait for custom state stores. See [exactly-once-state.md](exactly-once-state.md).
 
+## Failure Model
+
+- **Process crash:** If the StreamWeave process crashes, all in-memory state is lost. There is no built-in replay or recovery from a coordinated checkpoint.
+- **State persistence:** State is preserved only if the application persists it externally (e.g. to a database, file, or external state store). StreamWeave does not implement distributed checkpointing.
+- **Node failure:** If a node panics or returns an error, behavior depends on the execution context. Error ports allow downstream handling; there is no automatic restart or supervision tree (future work).
+- **Recovery:** To recover from a crash, restart the process and replay input from the last known position (e.g. Kafka offset). Combine with [exactly-once state](exactly-once-state.md) so that replay does not double-apply updates.
+
+See [distributed-checkpointing.md](distributed-checkpointing.md) for future plans; [scope-in-process-no-distributed-fault-tolerance.md](scope-in-process-no-distributed-fault-tolerance.md) for scope.
+
 ## Scope
 
 StreamWeave is an **in-process**, graph-based streaming framework.
@@ -68,3 +82,13 @@ StreamWeave is an **in-process**, graph-based streaming framework.
 - **What it does not provide:** Distributed execution, built-in fault tolerance, cluster membership, or coordination
 
 For scale-out or HA, run multiple processes and use external coordination (e.g. Kafka consumer groups, external state stores). See [scope-in-process-no-distributed-fault-tolerance.md](scope-in-process-no-distributed-fault-tolerance.md).
+
+## Comparison with Other Systems
+
+| Aspect | StreamWeave | Flink | Kafka Streams | Timely Dataflow |
+|--------|-------------|-------|---------------|-----------------|
+| **Execution** | In-process, single graph | Distributed, DAG across workers | Per-process, stateful streams | Distributed, dataflow graph |
+| **Fault tolerance** | None built-in | Checkpointing, failover | At-least-once via Kafka | None by default |
+| **Exactly-once** | Via state contract + replay | Supported with checkpoints | Supported with Kafka transactions | Via application design |
+| **Scaling** | User runs multiple processes | Auto-scale workers | Kafka partitioning | Scale workers |
+| **Strengths** | Composable graphs, zero-copy, logical time | Production-scale, exactly-once | Kafka-native, simple ops | Incremental, iterative, low latency |

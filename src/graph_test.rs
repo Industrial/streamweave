@@ -265,6 +265,27 @@ fn test_graph_name_set() {
 }
 
 // ============================================================================
+// Shard Config Tests
+// ============================================================================
+
+#[test]
+fn test_shard_config() {
+  let mut graph = Graph::new("test".to_string());
+  assert!(graph.shard_id().is_none());
+  assert!(graph.total_shards().is_none());
+  assert!(graph.shard_config().is_none());
+
+  graph.set_shard_config(1, 4);
+  assert_eq!(graph.shard_id(), Some(1));
+  assert_eq!(graph.total_shards(), Some(4));
+  let config = graph.shard_config().unwrap();
+  assert_eq!(config.shard_id, 1);
+  assert_eq!(config.total_shards, 4);
+  // owns_key is deterministic: same key always hashes to same shard
+  assert_eq!(config.owns_key("user_42"), config.owns_key("user_42"));
+}
+
+// ============================================================================
 // Node Management Tests
 // ============================================================================
 
