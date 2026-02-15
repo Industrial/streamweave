@@ -76,10 +76,54 @@
 - **Checkpoint:** Persist state and input positions (see [distributed-checkpointing.md](distributed-checkpointing.md)).
 - **Replay:** After restore, replay input from last checkpoint. With **exactly-once state** (see [exactly-once-state.md](exactly-once-state.md)), replay does not double-apply; only “new” data (after checkpoint) is effectively processed. So “incremental” here means “only process the delta since last checkpoint,” not “only process changed keys.”
 
-### 4.3 Documentation
+### 4.3 Incremental patterns (practical guide)
 
-- Document “incremental patterns”: replay from checkpoint, memoization, and (when available) differential operators.
-- Document that **differential nodes** are incremental by design once [timestamped-differential-dataflow.md](timestamped-differential-dataflow.md) is implemented.
+This section documents how to achieve incremental behavior today and with planned features.
+
+#### 4.3.1 Replay from checkpoint
+
+**When to use:** After a restart or when you need to reprocess only the "delta" since a known position.
+
+**How it works:**
+1. Periodically persist checkpoint (state + input positions) to durable storage.
+2. On restart, restore state from the last checkpoint.
+3. Replay input from the saved position. With **exactly-once state** (idempotent updates), replay does not double-apply; only data after the checkpoint is effectively processed.
+
+**Result:** Incremental in the sense of "only process the delta since last checkpoint," not per-key. Useful for crash recovery and catch-up after downtime.
+
+**References:** [distributed-checkpointing.md](distributed-checkpointing.md), [exactly-once-state.md](exactly-once-state.md).
+
+#### 4.3.2 Memoization (node-level caching)
+
+**When to use:** For expensive, **deterministic**, keyed nodes (e.g. map, filter, aggregation by key). When the same input produces the same output, cache the result and skip recomputation.
+
+**Key design:**
+- **Cache key:** Hash of (input port values, optional logical time or key).
+- **Cache value:** Output produced for that input.
+- **Behavior:** Before running the node, check cache; on hit, emit cached output. On miss, run node, store result, emit.
+
+**Limitations:** Only valid for deterministic nodes. Cache size and invalidation must be defined (e.g. TTL, LRU, or explicit invalidate on replay). Not suitable for stateful nodes that accumulate across inputs.
+
+**Implementation:** Optional memoizing wrapper node (see phase 2). Wrap a pure/keyed node to add caching.
+
+#### 4.3.3 Subgraph restart
+
+**When to use:** When only a **subset** of the graph needs to be re-run (e.g. one branch's source changed).
+
+**How it works:**
+1. Isolate the affected subgraph (e.g. a `Graph` used as a node).
+2. Disconnect its inputs from the old source and connect to a new source (or replay stream).
+3. Run only that subgraph (or the minimal set of nodes downstream of the change).
+
+**Note:** StreamWeave's execution model runs the whole graph. Fine-grained "restart only this subgraph" may require manual composition (e.g. a parent graph that conditionally feeds a child graph) or future execution-layer support.
+
+#### 4.3.4 Differential operators (incremental by design)
+
+**When to use:** For pipelines that process collections with inserts and retractions.
+
+**How it works:** Differential nodes (`DifferentialGroupByNode`, `DifferentialJoinNode`, etc.) consume `(payload, time, diff)` and emit only **changes** (deltas). They maintain incremental state; new input produces only new output diffs. No full recompute.
+
+**References:** [timestamped-differential-dataflow.md](timestamped-differential-dataflow.md). Differential dataflow is implemented; use `ToDifferentialNode`, `DifferentialGroupByNode`, `DifferentialJoinNode` for incremental behavior.
 
 ---
 
@@ -87,7 +131,7 @@
 
 | Phase | Content |
 |-------|--------|
-| **1** | Document incremental patterns (replay, memoization, subgraph restart). |
+| **1** | Document incremental patterns (replay, memoization, subgraph restart). **Done:** §4.3. |
 | **2** | (Optional) Provide a memoizing wrapper node or trait for deterministic, keyed nodes. |
 | **3** | With differential dataflow: document and rely on incremental behavior of differential operators. |
 | **4** | (Later) Progress + dependency-based time-range recomputation. |
