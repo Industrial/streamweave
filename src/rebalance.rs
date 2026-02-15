@@ -6,6 +6,17 @@
 //! must export or import.
 //!
 //! See [cluster-sharding.md](../docs/cluster-sharding.md) for the full protocol.
+//!
+//! ## API for external controllers (auto-scaling)
+//!
+//! External controllers (e.g. Kubernetes HPA, custom scaler) can drive rebalance:
+//!
+//! - **Get assignment:** [`RebalanceCoordinator::current_assignment`]
+//! - **Scale (InMemoryCoordinator):** [`InMemoryCoordinator::scale_to`] sets
+//!   `total_shards`; workers poll or are notified and run drain/migrate/resume.
+//! - **Production:** Implement `RebalanceCoordinator` with etcd, ZooKeeper, or
+//!   Kafka consumer group; the controller updates the shared store to trigger
+//!   assignment changes.
 
 use crate::partitioning::PartitionKey;
 use std::collections::hash_map::DefaultHasher;
@@ -181,6 +192,17 @@ impl InMemoryCoordinator {
         let mut g = self.inner.write().unwrap();
         assert!(g.1 > 1, "cannot remove last worker");
         g.1 -= 1;
+    }
+
+    /// Sets the cluster to the given number of shards (for external controller API).
+    ///
+    /// Keeps this worker's shard_id; updates total_shards. Use when an external
+    /// controller (e.g. Kubernetes HPA) decides to scale the cluster. Workers
+    /// should then run the rebalance protocol (drain, migrate, resume).
+    pub fn scale_to(&self, total_shards: u32) {
+        assert!(total_shards >= 1, "total_shards must be >= 1");
+        let mut g = self.inner.write().unwrap();
+        g.1 = total_shards;
     }
 
     /// Updates the assignment directly.

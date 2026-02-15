@@ -520,6 +520,60 @@ fn test_has_cycles_cyclic() {
   assert_eq!(feedback[0].target_node(), "a");
 }
 
+#[test]
+fn test_nodes_depending_on_and_downstream() {
+  let mut graph = Graph::new("test".to_string());
+  let a = Box::new(MockProducerNode::new("a".to_string(), vec![1]));
+  let b = Box::new(MockTransformNode::new("b".to_string()));
+  let c = Box::new(MockTransformNode::new("c".to_string()));
+  let d = Box::new(MockSinkNode::new("d".to_string()));
+  graph.add_node("a".to_string(), a).unwrap();
+  graph.add_node("b".to_string(), b).unwrap();
+  graph.add_node("c".to_string(), c).unwrap();
+  graph.add_node("d".to_string(), d).unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "a".to_string(),
+      source_port: "out".to_string(),
+      target_node: "b".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "a".to_string(),
+      source_port: "out".to_string(),
+      target_node: "c".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "b".to_string(),
+      source_port: "out".to_string(),
+      target_node: "d".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "c".to_string(),
+      source_port: "out".to_string(),
+      target_node: "d".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  let deps_a = graph.nodes_depending_on("a");
+  assert_eq!(deps_a.len(), 2);
+  assert!(deps_a.contains(&"b".to_string()));
+  assert!(deps_a.contains(&"c".to_string()));
+  let downstream_a = graph.nodes_downstream_transitive("a");
+  assert_eq!(downstream_a.len(), 3);
+  assert!(downstream_a.contains(&"b".to_string()));
+  assert!(downstream_a.contains(&"c".to_string()));
+  assert!(downstream_a.contains(&"d".to_string()));
+}
+
 // ============================================================================
 // Topological Sort Tests
 // ============================================================================

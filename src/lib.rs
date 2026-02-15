@@ -56,6 +56,8 @@ pub mod supervision;
 pub mod rebalance;
 /// Cluster health aggregation (all shards running, quorum).
 pub mod cluster_health;
+/// Types for incremental and time-range recomputation.
+pub mod incremental;
 /// Core node trait and interfaces.
 pub mod node;
 /// Collection of built-in nodes for common operations.

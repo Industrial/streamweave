@@ -1105,6 +1105,44 @@ impl Graph {
     self.edges.iter().collect()
   }
 
+  /// Returns nodes that directly depend on the given node's output.
+  ///
+  /// Used for dependency tracking in time-range recomputation: when a node's
+  /// input changes for a time range, its direct dependents may need to recompute.
+  pub fn nodes_depending_on(&self, node: &str) -> Vec<String> {
+    let mut deps: Vec<String> = self
+      .edges
+      .iter()
+      .filter(|e| e.source_node() == node)
+      .map(|e| e.target_node().to_string())
+      .collect::<std::collections::HashSet<_>>()
+      .into_iter()
+      .collect();
+    deps.sort();
+    deps
+  }
+
+  /// Returns all nodes transitively downstream of the given node.
+  ///
+  /// Used for dependency tracking: when recomputing for a time range starting
+  /// from a source node, this gives the set of nodes that might need to run.
+  pub fn nodes_downstream_transitive(&self, node: &str) -> Vec<String> {
+    let mut result = std::collections::HashSet::new();
+    let mut queue = std::collections::VecDeque::new();
+    queue.push_back(node.to_string());
+    while let Some(n) = queue.pop_front() {
+      for dep in self.nodes_depending_on(&n) {
+        if result.insert(dep.clone()) {
+          queue.push_back(dep);
+        }
+      }
+    }
+    result.remove(node);
+    let mut out: Vec<String> = result.into_iter().collect();
+    out.sort();
+    out
+  }
+
   /// Returns true if the graph contains at least one cycle.
   ///
   /// Uses DFS to detect back edges. Cyclic graphs require
@@ -1544,7 +1582,7 @@ impl Graph {
 
       for (_, h) in handles {
         h.await
-          .map_err(|e| format!("Round {} task failed: {}", round, e).into())??;
+          .map_err(|e| -> GraphExecutionError { format!("Round {} task failed: {}", round, e).into() })??;
       }
       {
         let mut guard = nodes_restored.lock().await;
@@ -1762,6 +1800,9 @@ impl Graph {
     >,
     feedback: Option<RoundFeedbackConfig>,
   ) -> Result<(Vec<TaskHandle>, NodesRestoredMap), GraphExecutionError> {
+    if let Some(config) = self.shard_config {
+      crate::metrics::record_shard_assignment(config.shard_id, config.total_shards);
+    }
     let edges = self.get_edges();
     let feedback_edges_set: HashSet<(String, String, String, String)> = feedback
       .as_ref()

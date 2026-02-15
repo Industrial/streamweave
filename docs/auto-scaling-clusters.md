@@ -85,9 +85,78 @@
 | Phase | Content |
 |-------|--------|
 | **1** | Document auto-scaling as a future goal; document that it depends on sharding and production tooling (metrics, rebalance API). **Done:** Status callout and §4.3. |
-| **2** | (With distribution) Expose metrics and rebalance API so that external controllers can scale and rebalance. |
-| **3** | (Optional) Provide an example or reference design for Kubernetes HPA + rebalance (e.g. operator or Helm chart with hooks). |
+| **2** | Expose metrics and rebalance API so that external controllers can scale and rebalance. **Done:** `record_items_in`/`record_items_out`, `record_shard_assignment`; `InMemoryCoordinator::scale_to`; see §5.1. |
+| **3** | (Optional) Provide an example or reference design for Kubernetes HPA + rebalance. **Done:** §5.2 (Deployment, HPA YAML). |
 | **4** | (Optional) Implement a simple built-in scaler that reads metrics and calls rebalance (e.g. “scale to N workers when backlog > threshold”). Defer until core distribution is stable. |
+
+### 5.1 Phase 2 implementation details
+
+**Metrics for scaling (Prometheus):**
+
+- `streamweave_items_in_total`, `streamweave_items_out_total` – counters; derive items/sec for throughput-based scaling.
+- `streamweave_shard_id`, `streamweave_total_shards` – gauges; recorded when `Graph` has `ShardConfig` (set automatically in `run_dataflow`).
+- Call `metrics::record_items_in` / `record_items_out` from instrumented nodes for throughput.
+
+**Rebalance API:**
+
+- `RebalanceCoordinator::current_assignment()` – observe current shard assignment.
+- `InMemoryCoordinator::scale_to(total_shards)` – set cluster size (tests/demos).
+- For production: implement `RebalanceCoordinator` with etcd/ZooKeeper/Kafka; controller updates the shared store.
+
+### 5.2 Kubernetes HPA + rebalance example (Phase 3)
+
+Reference design for scaling StreamWeave workers with Kubernetes HPA:
+
+**1. Deployment** – Each pod runs one graph instance with `SHARD_ID` and `TOTAL_SHARDS` from env (from Downward API or a controller):
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streamweave-workers
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: worker
+        image: streamweave:latest
+        env:
+        - name: SHARD_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['streamweave.io/shard-id']
+        - name: TOTAL_SHARDS
+          value: "3"
+        ports:
+        - name: metrics
+          containerPort: 9090
+```
+
+**2. HPA** – Scale based on CPU or custom metric (e.g. `streamweave_items_in_total` rate from Prometheus):
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: streamweave-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: streamweave-workers
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
+
+**3. Rebalance** – When HPA changes replicas, a sidecar, init container, or operator must update the coordinator (etcd/Kafka) with the new `total_shards`, then trigger drain/migrate/resume. Use `RebalanceCoordinator` with your coordination backend.
 
 ---
 

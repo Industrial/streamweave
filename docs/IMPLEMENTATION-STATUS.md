@@ -46,16 +46,16 @@ This document summarizes what has been implemented vs. what remains for each cap
 ---
 
 ### auto-scaling-clusters.md
-**Status: ❌ Deferred**
+**Status: ⚠️ Partial (Phase 2 done)**
 
 | Phase | Status | Notes |
 |-------|--------|-------|
 | 1 – Document as future goal | ✅ Done | Doc states deferred until sharding exists |
-| 2 – Metrics + rebalance API | ⏳ Not started | Requires distribution |
-| 3 – Kubernetes HPA example | ⏳ Not started | |
+| 2 – Metrics + rebalance API | ✅ Done | `record_items_in`/`record_items_out`, `record_shard_assignment`; `InMemoryCoordinator::scale_to`; RebalanceCoordinator trait |
+| 3 – Kubernetes HPA example | ✅ Done | Deployment + HPA YAML in auto-scaling-clusters.md §5.2 |
 | 4 – Built-in scaler | ⏳ Not started | Deferred |
 
-**Note:** Explicitly deferred until cluster sharding and production tooling exist.
+**Note:** Phase 2 enables external controllers to observe metrics and trigger rebalance via coordinator.
 
 ---
 
@@ -156,7 +156,7 @@ This document summarizes what has been implemented vs. what remains for each cap
 | MemoizingMapNode | ✅ Done | `src/nodes/memoizing_map_node.rs` |
 | Replay from checkpoint | ✅ Done | Via restore_from_checkpoint + exactly-once state |
 | Medium term – differential operators | ✅ Done | DifferentialGroupByNode, DifferentialJoinNode are incremental by construction |
-| Long term – time-range recomputation | ❌ Not done | Deferred; requires deeper execution model |
+| Long term – time-range recomputation | ⚠️ Partial | `TimeRange`, `RecomputeRequest`; `nodes_depending_on`, `nodes_downstream_transitive`; full time-scoped execution deferred |
 
 ---
 

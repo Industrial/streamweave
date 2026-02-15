@@ -135,8 +135,18 @@ This section documents how to achieve incremental behavior today and with planne
 |-------|--------|
 | **1** | Document incremental patterns (replay, memoization, subgraph restart). **Done:** §4.3. |
 | **2** | (Optional) Provide a memoizing wrapper node or trait for deterministic, keyed nodes. **Done:** MemoizingMapNode with MemoizeKeyExtractor (IdentityKeyExtractor, HashKeyExtractor). |
-| **3** | With differential dataflow: document and rely on incremental behavior of differential operators. |
-| **4** | (Later) Progress + dependency-based time-range recomputation. |
+| **3** | With differential dataflow: document and rely on incremental behavior of differential operators. **Done.** |
+| **4** | Progress + dependency-based time-range recomputation. **Partial:** `TimeRange`, `RecomputeRequest`; `nodes_depending_on`, `nodes_downstream_transitive`; full time-scoped execution deferred. See §5.1. |
+
+### 5.1 Phase 4 implementation details (time-range recomputation)
+
+**Dependency tracking:** `Graph::nodes_depending_on(node)` (direct dependents), `Graph::nodes_downstream_transitive(node)` (transitive downstream).
+
+**Types (`incremental` module):** `TimeRange { from, to }`, `RecomputeRequest { time_range, source_node }`.
+
+**Progress:** `CompletedFrontier` and `ProgressHandle` provide completed time at sinks. Use with dependency tracking to decide which nodes need recomputation.
+
+**Deferred:** Scheduler for "run only node N for time range [T1,T2]"; requires execution-model changes.
 
 ---
 

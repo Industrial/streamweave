@@ -3,6 +3,16 @@
 //! Records operational metrics (errors, throughput) for production observability.
 //! Use [`install_prometheus_recorder`] at startup to expose metrics for scraping.
 //!
+//! ## Auto-scaling
+//!
+//! External controllers (e.g. Kubernetes HPA) can use these metrics:
+//!
+//! - **Throughput:** [`record_items_in`] / [`record_items_out`] feed
+//!   `streamweave_items_in_total` and `streamweave_items_out_total` counters.
+//!   Compute rate (items/sec) in Prometheus for scaling decisions.
+//! - **Cluster size:** [`record_shard_assignment`] sets `streamweave_shard_id` and
+//!   `streamweave_total_shards` gauges when running sharded.
+//!
 //! # Example
 //!
 //! ```rust,no_run
@@ -52,9 +62,11 @@ pub fn record_node_error(graph_id: &str, node_id: &str) {
   .increment(1);
 }
 
-/// Records items received on an input port (for future instrumentation).
-#[allow(dead_code)]
-pub(crate) fn record_items_in(graph_id: &str, node_id: &str, port: &str, count: u64) {
+/// Records items received on an input port.
+///
+/// Use for throughput metrics; external scalers can derive items/sec from
+/// `streamweave_items_in_total` rate in Prometheus.
+pub fn record_items_in(graph_id: &str, node_id: &str, port: &str, count: u64) {
   counter!(
     "streamweave_items_in_total",
     "graph_id" => graph_id.to_string(),
@@ -64,9 +76,11 @@ pub(crate) fn record_items_in(graph_id: &str, node_id: &str, port: &str, count: 
   .increment(count);
 }
 
-/// Records items sent on an output port (for future instrumentation).
-#[allow(dead_code)]
-pub(crate) fn record_items_out(graph_id: &str, node_id: &str, port: &str, count: u64) {
+/// Records items sent on an output port.
+///
+/// Use for throughput metrics; external scalers can derive items/sec from
+/// `streamweave_items_out_total` rate in Prometheus.
+pub fn record_items_out(graph_id: &str, node_id: &str, port: &str, count: u64) {
   counter!(
     "streamweave_items_out_total",
     "graph_id" => graph_id.to_string(),
@@ -74,4 +88,14 @@ pub(crate) fn record_items_out(graph_id: &str, node_id: &str, port: &str, count:
     "port" => port.to_string()
   )
   .increment(count);
+}
+
+/// Records the current shard assignment when running cluster-sharded.
+///
+/// Call when the graph has [`ShardConfig`](crate::graph::ShardConfig) set (e.g. after
+/// `set_shard_config`). Gauges `streamweave_shard_id` and `streamweave_total_shards`
+/// allow external controllers to observe cluster size for scaling decisions.
+pub fn record_shard_assignment(shard_id: u32, total_shards: u32) {
+  metrics::gauge!("streamweave_shard_id").set(shard_id as f64);
+  metrics::gauge!("streamweave_total_shards").set(total_shards as f64);
 }

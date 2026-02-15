@@ -63,4 +63,9 @@ async fn test_in_memory_coordinator() {
     coord.remove_worker();
     let a = coord.current_assignment().await;
     assert_eq!(a.total_shards, 2);
+
+    coord.scale_to(5);
+    let a = coord.current_assignment().await;
+    assert_eq!(a.shard_id, 0);
+    assert_eq!(a.total_shards, 5);
 }
