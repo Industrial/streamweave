@@ -8,6 +8,31 @@
 
 ---
 
+## Quick start / Example
+
+Use **`execute_with_progress`** instead of `run_dataflow` when you need to observe the completed frontier (watermark) at the sink:
+
+```rust
+use streamweave::graph::Graph;
+use streamweave::time::LogicalTime;
+
+let mut graph = Graph::new("g".to_string());
+// ... add nodes, expose input/output, connect_timestamped_input_channel ...
+
+let (progress, run) = graph.execute_with_progress();
+// Drive input: send Timestamped items, then advance_to(LogicalTime::new(t)) when no more data with time < t.
+
+// Poll progress (e.g. in a loop or after sending a batch):
+while progress.less_than(LogicalTime::new(5)) {
+    tokio::task::yield_now().await;
+}
+let completed = progress.frontier(); // minimum completed logical time at the sink
+```
+
+**WatermarkInjectorNode** turns a timestamped (or event-time) stream into a stream of `StreamMessage::Data` and `StreamMessage::Watermark`; use it before event-time window nodes. See [event-time-semantics.md](event-time-semantics.md) and `event_time_watermark` / examples for full pipelines.
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** The runtime (or operators) can answer: “For this input/output, what is the **minimum logical timestamp** that has been completed (e.g. all data with time ≤ T has been processed)?” That is the “progress” or “watermark.” It enables safe closing of event-time windows and correct flushing.

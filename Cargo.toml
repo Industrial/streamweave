@@ -538,5 +538,21 @@ path = "examples/supervision_restart.rs"
 name = "bounded_iteration"
 path = "examples/bounded_iteration.rs"
 
+[[example]]
+name = "differential_stream"
+path = "examples/differential_stream.rs"
+
+[[example]]
+name = "exactly_once_state"
+path = "examples/exactly_once_state.rs"
+
+[[example]]
+name = "production_ready"
+path = "examples/production_ready.rs"
+
+[[example]]
+name = "shard_config"
+path = "examples/shard_config.rs"
+
 [lints.rust]
 # Shared lint configuration

@@ -8,6 +8,26 @@
 
 ---
 
+## Quick start / Example
+
+**1. Implement `HasEventTime`** for payloads that carry an occurrence time (e.g. `created_at`):
+
+```rust
+use streamweave::time::{HasEventTime, LogicalTime};
+
+struct ClickEvent { user_id: u64, created_at_ms: u64 }
+
+impl HasEventTime for ClickEvent {
+    fn event_time_ms(&self) -> Option<u64> { Some(self.created_at_ms) }
+}
+```
+
+**2. Use `EventTimeExtractorNode`** when the graph receives raw payloads and you want to add an `event_timestamp` field (e.g. from a HashMap `"timestamp"` or `"event_timestamp"`). Configure it with `event_time_from_map()` or a custom `event_time_extractor(|arc| async { ... })`.
+
+**3. Feed event-time input** with `connect_timestamped_input_channel`: send `Timestamped { payload, time: LogicalTime::new(event_time_ms) }` so the runtime uses your event time for ordering and progress. Use with `execute_with_progress` (see [progress-tracking.md](progress-tracking.md)).
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** Use the time **attached to the event** (e.g. “when the click happened”) as the basis for ordering, windowing, and progress, rather than **processing time** (“when we saw the event”). This matches user intuition and is required for correct analytics with late or out-of-order data.

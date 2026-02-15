@@ -4,6 +4,27 @@
 
 ---
 
+## Quick start / Example
+
+StreamWeave exposes logical time via the `streamweave::time` module. Every item in the timestamped path is a **`Timestamped<T>`** envelope carrying a **`LogicalTime`** and a payload:
+
+```rust
+use streamweave::time::{LogicalTime, Timestamped};
+
+// LogicalTime is a newtype over u64; Default is 0 (minimum).
+let t0 = LogicalTime::default();
+let t1 = LogicalTime::new(1);
+
+// Wrap any payload with a timestamp.
+let item: Timestamped<String> = Timestamped::new("hello".to_string(), t1);
+assert_eq!(item.time(), t1);
+assert_eq!(item.payload(), "hello");
+```
+
+To run a graph with timestamped streams and progress tracking, use the timestamped execution APIs (e.g. `execute_with_progress`, `TimestampedInputHandle`, and `CompletedFrontier`) — see [progress-tracking.md](progress-tracking.md) and the crate examples in `examples/` for runnable code.
+
+---
+
 ## 1. Why timestamps first?
 
 In a dataflow system, data moves between operators without a global notion of “when” or “in what order” things happened. That makes it hard to:
