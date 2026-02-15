@@ -530,5 +530,13 @@ path = "examples/checkpoint_restore.rs"
 name = "deterministic_execution"
 path = "examples/deterministic_execution.rs"
 
+[[example]]
+name = "supervision_restart"
+path = "examples/supervision_restart.rs"
+
+[[example]]
+name = "bounded_iteration"
+path = "examples/bounded_iteration.rs"
+
 [lints.rust]
 # Shared lint configuration
