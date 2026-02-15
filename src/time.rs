@@ -255,15 +255,36 @@ unsafe impl<T: Send> Sync for TimestampedInputHandle<T> {}
 ///
 /// Answers whether it is still possible to see data with timestamp less than
 /// (or less or equal to) a given time at the associated point in the dataflow.
+///
+/// When created from multiple frontiers (e.g. per-sink), [`frontier`](Self::frontier)
+/// returns the **minimum** over all frontiers (graph-level progress = "all sinks have
+/// completed up to T").
 #[derive(Clone, Debug)]
 pub struct ProgressHandle {
-    frontier: std::sync::Arc<CompletedFrontier>,
+    frontiers: Vec<std::sync::Arc<CompletedFrontier>>,
 }
 
 impl ProgressHandle {
-    /// Creates a progress handle that reads from the given completed frontier.
+    /// Creates a progress handle that reads from a single completed frontier.
     pub fn new(frontier: std::sync::Arc<CompletedFrontier>) -> Self {
-        Self { frontier }
+        Self {
+            frontiers: vec![frontier],
+        }
+    }
+
+    /// Creates a progress handle from multiple frontiers (e.g. one per sink).
+    /// Graph-level progress is the minimum over all frontiers: "all sinks have
+    /// completed up to T" when `frontier() >= T`.
+    pub fn from_frontiers(frontiers: Vec<std::sync::Arc<CompletedFrontier>>) -> Self {
+        Self { frontiers }
+    }
+
+    fn effective_frontier(&self) -> LogicalTime {
+        self.frontiers
+            .iter()
+            .map(|f| f.get())
+            .min()
+            .unwrap_or(LogicalTime::minimum())
     }
 
     /// Returns whether it is still possible to see a timestamp less than `t`.
@@ -271,20 +292,21 @@ impl ProgressHandle {
     /// completed at least up to `t`.
     #[inline]
     pub fn less_than(&self, t: LogicalTime) -> bool {
-        self.frontier.get() < t
+        self.effective_frontier() < t
     }
 
     /// Returns whether it is still possible to see a timestamp less or equal to `t`.
     /// Once the frontier is greater than `t` (we have completed past `t`), this returns `false`.
     #[inline]
     pub fn less_equal(&self, t: LogicalTime) -> bool {
-        self.frontier.get() <= t
+        self.effective_frontier() <= t
     }
 
     /// Returns the current completed frontier (minimum time completed).
+    /// With multiple frontiers (per-sink), this is the minimum over all of them.
     #[inline]
     pub fn frontier(&self) -> LogicalTime {
-        self.frontier.get()
+        self.effective_frontier()
     }
 }
 
@@ -295,6 +317,7 @@ unsafe impl Sync for ProgressHandle {}
 mod tests {
     use super::*;
     use std::cmp::Ordering;
+    use std::sync::Arc;
 
     #[test]
     fn default_is_minimum() {
@@ -410,6 +433,20 @@ mod tests {
         frontier.advance_to(LogicalTime::new(2));
         assert!(!probe.less_equal(LogicalTime::new(1)));
         assert_eq!(probe.frontier(), LogicalTime::new(2));
+    }
+
+    #[test]
+    fn progress_handle_from_frontiers_min() {
+        let f1 = Arc::new(CompletedFrontier::new());
+        let f2 = Arc::new(CompletedFrontier::new());
+        let handle = ProgressHandle::from_frontiers(vec![f1.clone(), f2.clone()]);
+        assert_eq!(handle.frontier(), LogicalTime::minimum());
+        f1.advance_to(LogicalTime::new(5));
+        assert_eq!(handle.frontier(), LogicalTime::minimum()); // f2 still at 0
+        f2.advance_to(LogicalTime::new(3));
+        assert_eq!(handle.frontier(), LogicalTime::new(3)); // min(5, 3) = 3
+        f2.advance_to(LogicalTime::new(10));
+        assert_eq!(handle.frontier(), LogicalTime::new(5)); // min(5, 10) = 5
     }
 
     /// Observe progress after advance_to: once frontier advances past t, less_equal(t) is false.

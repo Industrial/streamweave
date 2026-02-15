@@ -93,6 +93,15 @@ use tokio_stream::StreamExt;
 /// Default channel capacity for dataflow edges (backpressure).
 const DATAFLOW_CHANNEL_CAPACITY: usize = 64;
 
+/// Progress frontier configuration for run_dataflow.
+#[derive(Clone)]
+enum ProgressFrontierConfig {
+    /// Single shared frontier; all sinks advance the same frontier.
+    Single(Arc<CompletedFrontier>),
+    /// Per-sink frontiers; graph-level progress = min over all sink frontiers.
+    PerSink(HashMap<(String, String), Arc<CompletedFrontier>>),
+}
+
 /// Message type for dataflow edges. When progress tracking is enabled, items carry
 /// a logical time so the completed frontier can be advanced when items reach sinks.
 #[derive(Clone)]
@@ -885,7 +894,7 @@ impl Graph {
     };
     let (handles, nodes_restored) = self
       .run_dataflow(nodes, Some(external_inputs), Some(external_outputs), None)
-      .await?;
+      .await?; // None = no progress tracking
     self.execution_handles.lock().await.clear();
     self.execution_handles.lock().await.extend(handles);
     self.nodes_restored_after_run = Some(nodes_restored);
@@ -897,6 +906,10 @@ impl Graph {
   /// Same as [`execute()`](Self::execute), but the completed frontier is advanced
   /// when items reach exposed output ports (sinks). Returns a [`ProgressHandle`]
   /// so callers can observe progress (e.g. `less_than(t)`, `less_equal(t)`).
+  ///
+  /// Uses a single shared frontier; for graphs with multiple sinks, consider
+  /// [`execute_with_progress_per_sink`](Self::execute_with_progress_per_sink) so that
+  /// graph-level progress is the minimum over per-sink frontiers.
   ///
   /// # Returns
   ///
@@ -919,8 +932,64 @@ impl Graph {
     };
     let frontier = Arc::new(CompletedFrontier::new());
     let progress_handle = ProgressHandle::new(Arc::clone(&frontier));
+    let progress_config = Some(ProgressFrontierConfig::Single(frontier));
     let (handles, nodes_restored) = self
-      .run_dataflow(nodes, Some(external_inputs), Some(external_outputs), Some(frontier))
+      .run_dataflow(nodes, Some(external_inputs), Some(external_outputs), progress_config)
+      .await?;
+    self.execution_handles.lock().await.clear();
+    self.execution_handles.lock().await.extend(handles);
+    self.nodes_restored_after_run = Some(nodes_restored);
+    Ok(progress_handle)
+  }
+
+  /// Starts graph execution with progress tracking and per-sink frontiers.
+  ///
+  /// Same as [`execute_with_progress`](Self::execute_with_progress), but maintains
+  /// one frontier per exposed output port. Graph-level progress is the **minimum**
+  /// over all sink frontiers: "all sinks have completed up to T." Use this when
+  /// different sinks consume at different rates and you need accurate progress.
+  ///
+  /// # Returns
+  ///
+  /// `Ok(ProgressHandle)` with `frontier()` returning min over per-sink frontiers.
+  pub async fn execute_with_progress_per_sink(
+    &mut self,
+  ) -> Result<ProgressHandle, GraphExecutionError> {
+    let mut external_inputs = HashMap::new();
+    for (port_name, receiver_option) in &mut self.connected_input_channels {
+      if let Some(receiver) = receiver_option.take() {
+        let stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
+        let pinned_stream = Box::pin(stream) as crate::node::InputStream;
+        external_inputs.insert(port_name.clone(), pinned_stream);
+      }
+    }
+    let external_outputs = &self.connected_output_channels;
+    let nodes = {
+      let mut g = self.nodes.lock().unwrap();
+      std::mem::take(&mut *g)
+    };
+    let mut per_sink = HashMap::new();
+    let mut frontiers = Vec::new();
+    for mapping in self.output_port_mapping.values() {
+      let key = (mapping.node.clone(), mapping.port.clone());
+      if !per_sink.contains_key(&key) {
+        let f = Arc::new(CompletedFrontier::new());
+        per_sink.insert(key, Arc::clone(&f));
+        frontiers.push(f);
+      }
+    }
+    let progress_config = if per_sink.is_empty() {
+      None
+    } else {
+      Some(ProgressFrontierConfig::PerSink(per_sink))
+    };
+    let progress_handle = if frontiers.is_empty() {
+      ProgressHandle::new(Arc::new(CompletedFrontier::new()))
+    } else {
+      ProgressHandle::from_frontiers(frontiers)
+    };
+    let (handles, nodes_restored) = self
+      .run_dataflow(nodes, Some(external_inputs), Some(external_outputs), progress_config)
       .await?;
     self.execution_handles.lock().await.clear();
     self.execution_handles.lock().await.extend(handles);
@@ -929,8 +998,8 @@ impl Graph {
   }
 
   /// Dataflow execution: one channel per edge, one task per node. Supports cycles.
-  /// When `progress_frontier` is `Some`, items on edges carry logical times and the
-  /// frontier is advanced when items reach exposed outputs (sinks).
+  /// When `progress_config` is `Some`, items on edges carry logical times and the
+  /// frontier(s) are advanced when items reach exposed outputs (sinks).
   /// Returns (handles, nodes_restored) so callers can await and restore nodes.
   async fn run_dataflow(
     &self,
@@ -939,7 +1008,7 @@ impl Graph {
     external_outputs: Option<
       &HashMap<String, tokio::sync::mpsc::Sender<Arc<dyn Any + Send + Sync>>>,
     >,
-    progress_frontier: Option<Arc<CompletedFrontier>>,
+    progress_config: Option<ProgressFrontierConfig>,
   ) -> Result<
     (
       Vec<JoinHandle<Result<(), GraphExecutionError>>>,
@@ -949,7 +1018,7 @@ impl Graph {
   > {
     let edges = self.get_edges();
 
-    let time_counter = progress_frontier.as_ref().map(|_| Arc::new(AtomicU64::new(0)));
+    let time_counter = progress_config.as_ref().map(|_| Arc::new(AtomicU64::new(0)));
 
     // One channel per edge: (target_node, target_port) -> receiver
     let mut input_rx: HashMap<(String, String), tokio::sync::mpsc::Receiver<EdgeMessage>> =
@@ -1048,7 +1117,7 @@ impl Graph {
       let stop_signal = Arc::clone(&stop_signal);
       let output_port_mapping = output_port_mapping.clone();
       let external_outputs = external_outputs.cloned();
-      let frontier = progress_frontier.clone();
+      let progress_config = progress_config.clone();
       let counter = time_counter.clone();
 
       let handle = tokio::spawn(async move {
@@ -1079,7 +1148,14 @@ impl Graph {
                 .find(|(_, m)| m.node == node_name && m.port == port_name)
               && let Some(tx) = outputs.get(external_port)
             {
-              (Some(tx.clone()), frontier.clone())
+              let frontier_opt = match &progress_config {
+                Some(ProgressFrontierConfig::Single(f)) => Some(Arc::clone(f)),
+                Some(ProgressFrontierConfig::PerSink(m)) => {
+                  m.get(&(node_name.clone(), port_name.clone())).cloned()
+                }
+                None => None,
+              };
+              (Some(tx.clone()), frontier_opt)
             } else {
               (None, None)
             }

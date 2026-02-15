@@ -292,6 +292,10 @@ StreamWeave supports two time models for streaming data:
 
 Implement the [`HasEventTime`](https://docs.rs/streamweave/*/streamweave/time/trait.HasEventTime.html) trait for payloads that carry event time. See [docs/event-time-semantics.md](docs/event-time-semantics.md) for details.
 
+## 📊 Progress tracking (watermarks)
+
+Use [`execute_with_progress`](https://docs.rs/streamweave/*/streamweave/graph/struct.Graph.html#method.execute_with_progress) to get a [`ProgressHandle`](https://docs.rs/streamweave/*/streamweave/time/struct.ProgressHandle.html) that reports the minimum logical timestamp completed at sinks. Call `frontier()`, `less_than(t)`, or `less_equal(t)` to observe progress. For graphs with multiple sinks, use [`execute_with_progress_per_sink`](https://docs.rs/streamweave/*/streamweave/graph/struct.Graph.html#method.execute_with_progress_per_sink) so that graph-level progress is the **minimum** over per-sink frontiers ("all sinks have completed up to T"). See [docs/progress-tracking.md](docs/progress-tracking.md).
+
 ## 📚 Documentation
 
 - [API Documentation](https://docs.rs/streamweave) - Full API reference on docs.rs
