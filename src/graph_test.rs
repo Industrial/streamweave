@@ -526,8 +526,14 @@ fn test_has_cycles_cyclic() {
   assert!(graph.has_cycles());
   let feedback = graph.feedback_edges();
   assert_eq!(feedback.len(), 1);
-  assert_eq!(feedback[0].source_node(), "b");
-  assert_eq!(feedback[0].target_node(), "a");
+  // In a 2-cycle both edges are back edges; which one is reported depends on HashMap key order.
+  let (s, t) = (feedback[0].source_node(), feedback[0].target_node());
+  assert!(
+    (s == "a" && t == "b") || (s == "b" && t == "a"),
+    "feedback edge must be a->b or b->a, got {}->{}",
+    s,
+    t
+  );
 }
 
 #[test]

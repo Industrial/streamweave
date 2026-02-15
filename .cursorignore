@@ -71,5 +71,3 @@ proptest-regressions/
 *.sln
 *.suo
 
-# Pre-commit (if auto-generated)
-.pre-commit-config.yaml

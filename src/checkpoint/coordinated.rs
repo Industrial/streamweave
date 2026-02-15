@@ -314,8 +314,7 @@ impl CheckpointCoordinator for InMemoryCheckpointCoordinator {
     let state = {
       let pending = self.pending.read().unwrap();
       pending.get(&checkpoint_id).map(|(n, count, ok)| {
-        let already_done =
-          count.load(std::sync::atomic::Ordering::SeqCst) >= self.total_shards;
+        let already_done = count.load(std::sync::atomic::Ordering::SeqCst) >= self.total_shards;
         (
           std::sync::Arc::clone(n),
           already_done,
