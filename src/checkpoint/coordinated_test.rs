@@ -4,6 +4,14 @@ use crate::checkpoint::{
     CheckpointCoordinator, CheckpointDone, CheckpointRequest, DistributedCheckpointStorage,
     FileDistributedCheckpointStorage, InMemoryCheckpointCoordinator,
 };
+
+#[tokio::test]
+async fn test_chandy_lamport_request() {
+    let req = CheckpointRequest::chandy_lamport(CheckpointId::new(1));
+    assert_eq!(req.checkpoint_id.as_u64(), 1);
+    assert_eq!(req.barrier_t, None);
+    assert_eq!(req.mode, crate::checkpoint::CheckpointMode::ChandyLamport);
+}
 use crate::checkpoint::{CheckpointId, CheckpointMetadata};
 use crate::graph::Graph;
 use std::collections::HashMap;
@@ -98,10 +106,7 @@ async fn test_graph_trigger_checkpoint_for_coordination() {
         )
         .unwrap();
 
-    let req = CheckpointRequest {
-        checkpoint_id: CheckpointId::new(42),
-        barrier_t: None,
-    };
+    let req = CheckpointRequest::barrier(CheckpointId::new(42), None);
 
     let done = graph
         .trigger_checkpoint_for_coordination(&storage, &req, 0)

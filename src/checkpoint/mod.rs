@@ -9,7 +9,7 @@ mod coordinated_test;
 
 pub use coordinated::{
     compute_recovery_plan_absorb, CheckpointCommitted, CheckpointCoordinator, CheckpointDone,
-    CheckpointRequest, DistributedCheckpointStorage, FileDistributedCheckpointStorage,
+    CheckpointMode, CheckpointRequest, DistributedCheckpointStorage, FileDistributedCheckpointStorage,
     InMemoryCheckpointCoordinator, RecoveryStep, RecoveryStrategy,
 };
 

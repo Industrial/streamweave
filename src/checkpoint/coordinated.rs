@@ -11,6 +11,26 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::path::Path;
 
+/// Checkpoint protocol mode.
+///
+/// - **Barrier**: Aligned checkpoint at a logical time or after drain. All workers
+///   wait until they reach the barrier (or drain), then snapshot. Requires global
+///   logical time or quiescence.
+/// - **ChandyLamport**: Marker-based consistent cut. Coordinator sends a marker;
+///   workers run the Chandy–Lamport algorithm: on receiving a marker on all inputs,
+///   snapshot state, then forward markers on all outputs. Does not require global
+///   time. Currently falls back to barrier (drain-and-snapshot) until full marker
+///   propagation is implemented in the dataflow layer.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
+pub enum CheckpointMode {
+    /// Barrier-based: snapshot at logical time T or after drain.
+    #[default]
+    Barrier,
+    /// Chandy–Lamport: marker-based consistent cut. Falls back to Barrier until
+    /// marker propagation is implemented.
+    ChandyLamport,
+}
+
 /// Request from coordinator to worker: take checkpoint at optional barrier time.
 #[derive(Clone, Debug)]
 pub struct CheckpointRequest {
@@ -18,6 +38,28 @@ pub struct CheckpointRequest {
     pub checkpoint_id: CheckpointId,
     /// Optional barrier (logical time T) at which to snapshot; None = drain and snapshot.
     pub barrier_t: Option<LogicalTime>,
+    /// Protocol mode. ChandyLamport currently uses same path as Barrier (drain-and-snapshot).
+    pub mode: CheckpointMode,
+}
+
+impl CheckpointRequest {
+    /// Creates a barrier-based request with optional logical time.
+    pub fn barrier(checkpoint_id: CheckpointId, barrier_t: Option<LogicalTime>) -> Self {
+        Self {
+            checkpoint_id,
+            barrier_t,
+            mode: CheckpointMode::Barrier,
+        }
+    }
+
+    /// Creates a Chandy–Lamport request. Currently falls back to drain-and-snapshot.
+    pub fn chandy_lamport(checkpoint_id: CheckpointId) -> Self {
+        Self {
+            checkpoint_id,
+            barrier_t: None,
+            mode: CheckpointMode::ChandyLamport,
+        }
+    }
 }
 
 /// Report from worker to coordinator: checkpoint done or failed.
@@ -248,6 +290,7 @@ impl CheckpointCoordinator for InMemoryCheckpointCoordinator {
         CheckpointRequest {
             checkpoint_id: id,
             barrier_t: None,
+            mode: CheckpointMode::Barrier,
         }
     }
 

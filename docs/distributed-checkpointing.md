@@ -121,6 +121,8 @@ Alternative for graphs without a global logical time:
 3. Workers write snapshots to shared storage and report to the coordinator.
 4. Commit/abort same as barrier-based.
 
+**Implementation:** `CheckpointMode::ChandyLamport` and `CheckpointRequest::chandy_lamport()` are available. Currently this mode uses the same drain-and-snapshot path as barrier (no marker propagation). Full marker-based propagation through the dataflow layer is planned.
+
 ### 6.4 Message contract (sketch)
 
 | Message | Direction | Content |

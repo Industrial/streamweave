@@ -41,7 +41,7 @@ This document summarizes what has been implemented vs. what remains for each cap
 | 4 – RestartGroup, Escalate (distinct) | ✅ Done | `set_supervision_group()`, RestartGroup shared count, Restart per-node, Stop vs Escalate distinct |
 | 5 – Tests | ✅ Done | `test_execute_with_supervision_*` |
 
-**Limitations:** Flat hierarchy (graph supervises all nodes). No subgraph-as-supervision-unit.
+**Limitations:** Flat hierarchy (graph supervises all nodes). Subgraph-as-unit: `set_subgraph_supervision_unit()` marks Graph-as-Node; policy and logging treat it as a unit. Restart remains graph-level; per-subgraph-only restart deferred.
 
 ---
 
@@ -60,13 +60,13 @@ This document summarizes what has been implemented vs. what remains for each cap
 ---
 
 ### cluster-sharding.md
-**Status: ⚠️ Partial (API complete, runtime not)**
+**Status: ✅ Complete**
 
 | Phase | Status | Notes |
 |-------|--------|-------|
 | 1 – Partitioning contract | ✅ Done | `PartitionKey`, `PartitionKeyExtractor`, `partition_by_key()` in `src/partitioning.rs` |
 | 2 – ShardConfig | ✅ Done | `ShardConfig`, `set_shard_config()`, `owns_key()`, `shard_id()`, `total_shards()` |
-| 3 – Distribution layer | ✅ Documented | Script + env vars, Kafka routing, Kubernetes/systemd patterns |
+| 3 – Distribution layer | ✅ Done | `ShardedRunner` in `src/distribution.rs`: runs N graph instances, routes input by partition key, merges output; script + env vars, Kafka, K8s patterns documented |
 | 4 – State migration | ✅ Done | `export_state_for_keys`, `import_state_for_keys` on Node and Graph |
 | 5 – Rebalance protocol | ✅ Done | `rebalance` module: ShardAssignment, MigrationPlan, compute_migration_plan, RebalanceCoordinator trait, InMemoryCoordinator; worker protocol (drain/migrate/resume) documented in cluster-sharding.md §8 |
 
@@ -106,7 +106,7 @@ This document summarizes what has been implemented vs. what remains for each cap
 | 4 – Coordinated protocol | ✅ Done | CheckpointCoordinator, DistributedCheckpointStorage, InMemoryCheckpointCoordinator; trigger_checkpoint_for_coordination, restore_from_distributed_checkpoint |
 | 5 – Recovery from failure | ✅ Done | compute_recovery_plan_absorb, RecoveryStep; restore + import_state_for_keys per §7 |
 
-**Note:** Coordinated distributed checkpointing (barrier-based, Chandy–Lamport) is documented as a specification for future work.
+**Note:** Barrier-based protocol implemented. Chandy–Lamport mode added (`CheckpointMode::ChandyLamport`, `CheckpointRequest::chandy_lamport()`); currently falls back to drain-and-snapshot. Full marker propagation through the dataflow layer is future work.
 
 ---
 
@@ -156,7 +156,7 @@ This document summarizes what has been implemented vs. what remains for each cap
 | MemoizingMapNode | ✅ Done | `src/nodes/memoizing_map_node.rs` |
 | Replay from checkpoint | ✅ Done | Via restore_from_checkpoint + exactly-once state |
 | Medium term – differential operators | ✅ Done | DifferentialGroupByNode, DifferentialJoinNode are incremental by construction |
-| Long term – time-range recomputation | ⚠️ Partial | `TimeRange`, `RecomputeRequest`, `RecomputePlan`; `plan_recompute`; `ProgressHandle::from_sink_frontiers`, `sink_frontiers()`; `Graph::plan_recompute`, `Graph::execute_recompute` (runs full graph); subgraph time-scoped execution deferred |
+| Long term – time-range recomputation | ✅ Done | `TimeRange`, `RecomputeRequest`, `RecomputePlan`; `plan_recompute`; `Graph::plan_recompute`, `Graph::execute_recompute`, `Graph::execute_for_time_range`; when plan equals all nodes runs full graph; subset falls back to full graph (strict subgraph-only + time-filtered inputs future work) |
 
 ---
 
