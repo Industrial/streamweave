@@ -40,6 +40,8 @@ pub mod graph_builder;
 pub mod graph_macros;
 /// Logical timestamps for dataflow progress and ordering.
 pub mod time;
+/// Local checkpoint storage for state recovery.
+pub mod checkpoint;
 /// Exactly-once state contract for stateful nodes.
 pub mod state;
 /// Memory pool for efficient allocation.
