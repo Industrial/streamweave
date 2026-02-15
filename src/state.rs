@@ -4,6 +4,7 @@
 //! updates: key/version semantics and idempotent put. See
 //! [docs/exactly-once-state.md](../docs/exactly-once-state.md).
 
+use crate::time::LogicalTime;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Mutex;
@@ -68,6 +69,72 @@ pub trait ExactlyOnceStateBackend {
 
 /// Snapshot format: serialized list of (key, value, version) tuples.
 type SnapshotEntry<K, V, Ver> = (K, (V, Ver));
+
+/// Type alias for a keyed state backend using [`LogicalTime`] as version.
+///
+/// Use this when building stateful nodes driven by the timestamped execution
+/// path: items carry [`crate::time::Timestamped<T>`] and the logical time is
+/// used as the version for idempotent puts.
+pub type KeyedStateBackend<K, V> = HashMapStateBackend<K, V, LogicalTime>;
+
+/// Trait for state backends driven by logical time (for stateful nodes).
+///
+/// Stateful nodes that receive [`Timestamped`](crate::time::Timestamped) items
+/// from the execution layer should use this trait. Call
+/// [`apply_update`](StatefulNodeDriver::apply_update) with the key, value, and
+/// `item.time` for each incoming item; the backend guarantees idempotency.
+pub trait StatefulNodeDriver: Send + Sync {
+    /// Key type for state partitioning.
+    type Key: Hash + Eq + Clone + Send;
+    /// Value type stored per key.
+    type Value: Send;
+
+    /// Applies an update using logical time as version. Idempotent.
+    fn apply_update(
+        &self,
+        key: Self::Key,
+        value: Self::Value,
+        time: LogicalTime,
+    ) -> Result<(), StateError>;
+
+    /// Returns current value and version for key, or `None` if absent.
+    fn get_value(
+        &self,
+        key: &Self::Key,
+    ) -> Result<Option<(Self::Value, LogicalTime)>, StateError>;
+
+    /// Snapshot state for checkpoint (serialized form).
+    fn snapshot_bytes(&self) -> Result<Vec<u8>, StateError>;
+}
+
+impl<K, V> StatefulNodeDriver for HashMapStateBackend<K, V, LogicalTime>
+where
+    K: Hash + Eq + Clone + Send + serde::Serialize + for<'de> serde::Deserialize<'de>,
+    V: Clone + serde::Serialize + for<'de> serde::Deserialize<'de> + Send,
+{
+    type Key = K;
+    type Value = V;
+
+    fn apply_update(
+        &self,
+        key: Self::Key,
+        value: Self::Value,
+        time: LogicalTime,
+    ) -> Result<(), StateError> {
+        self.put(key, value, time)
+    }
+
+    fn get_value(
+        &self,
+        key: &Self::Key,
+    ) -> Result<Option<(Self::Value, LogicalTime)>, StateError> {
+        self.get(key)
+    }
+
+    fn snapshot_bytes(&self) -> Result<Vec<u8>, StateError> {
+        self.snapshot()
+    }
+}
 
 /// In-memory state backend with put/get/snapshot/restore.
 ///
@@ -223,5 +290,21 @@ mod tests {
         restored.restore(&data).unwrap();
         assert_eq!(restored.get(&"a".to_string()).unwrap(), Some((1u64, LogicalTime::new(1))));
         assert_eq!(restored.get(&"b".to_string()).unwrap(), Some((2u64, LogicalTime::new(2))));
+    }
+
+    #[test]
+    fn stateful_node_driver_apply_and_get() {
+        let backend: KeyedStateBackend<String, u64> = HashMapStateBackend::new();
+        backend.apply_update("x".to_string(), 42u64, LogicalTime::new(3)).unwrap();
+        assert_eq!(
+            backend.get_value(&"x".to_string()).unwrap(),
+            Some((42u64, LogicalTime::new(3)))
+        );
+        // Idempotent: same time again, no change
+        backend.apply_update("x".to_string(), 99u64, LogicalTime::new(3)).unwrap();
+        assert_eq!(
+            backend.get_value(&"x".to_string()).unwrap(),
+            Some((42u64, LogicalTime::new(3)))
+        );
     }
 }
