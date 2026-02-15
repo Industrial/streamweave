@@ -304,6 +304,10 @@ By default, nodes run **concurrently**; ordering between nodes and across multip
 
 Stateful nodes that need correct semantics after replay or recovery should use the **exactly-once state contract**: state is keyed, every update carries a **version** (e.g. `LogicalTime`), and `put(key, value, version)` is **idempotent** (applying the same triple again has no effect). Implement [`ExactlyOnceStateBackend`](https://docs.rs/streamweave/*/streamweave/state/trait.ExactlyOnceStateBackend.html) for custom state stores. See [docs/exactly-once-state.md](docs/exactly-once-state.md).
 
+## Scope and limitations
+
+StreamWeave runs in a **single process**. It does not provide distributed execution or distributed fault tolerance. For scale-out or HA, run multiple processes and use external coordination (e.g. Kafka consumer groups, external state stores). See [docs/architecture.md](docs/architecture.md) and [docs/scope-in-process-no-distributed-fault-tolerance.md](docs/scope-in-process-no-distributed-fault-tolerance.md).
+
 ## 📚 Documentation
 
 - [API Documentation](https://docs.rs/streamweave) - Full API reference on docs.rs

@@ -60,4 +60,11 @@ Implement the [`ExactlyOnceStateBackend`](https://docs.rs/streamweave/*/streamwe
 
 ## Scope
 
-StreamWeave is an **in-process**, graph-based streaming framework. It does not provide distributed execution or fault tolerance; for that, run multiple processes and use external coordination (e.g. Kafka consumer groups, external state stores). See [scope-in-process-no-distributed-fault-tolerance.md](scope-in-process-no-distributed-fault-tolerance.md).
+StreamWeave is an **in-process**, graph-based streaming framework.
+
+- **Execution model:** One graph, one process; nodes run as async tasks; channels are in-process
+- **Failure model:** If the process crashes, in-memory state is lost unless persisted externally; no built-in coordinated checkpoint or recovery
+- **Scaling:** Horizontal scaling is achieved by the user (e.g. multiple processes, each with its own graph, fed by partitioned sources like Kafka)
+- **What it does not provide:** Distributed execution, built-in fault tolerance, cluster membership, or coordination
+
+For scale-out or HA, run multiple processes and use external coordination (e.g. Kafka consumer groups, external state stores). See [scope-in-process-no-distributed-fault-tolerance.md](scope-in-process-no-distributed-fault-tolerance.md).
