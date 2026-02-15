@@ -93,6 +93,7 @@ pub trait CheckpointStorage: Send + Sync {
 /// `<base>/<id>/` containing `metadata.json` and per-node snapshot files
 /// `<node_id>.bin`.
 pub struct FileCheckpointStorage {
+  /// Root directory for checkpoint subdirectories (one per checkpoint id).
   base_path: std::path::PathBuf,
 }
 
@@ -104,6 +105,7 @@ impl FileCheckpointStorage {
     }
   }
 
+  /// Returns the subdirectory path for the given checkpoint id (`<base_path>/<id>/`).
   fn checkpoint_dir(&self, id: CheckpointId) -> std::path::PathBuf {
     self.base_path.join(id.as_u64().to_string())
   }

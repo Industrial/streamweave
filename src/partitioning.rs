@@ -96,6 +96,7 @@ impl PartitioningConfig {
 
 /// Wrapper that implements `PartitionKeyExtractor` for async closures.
 struct PartitionKeyExtractorWrapper<F> {
+  /// User-provided async closure that extracts partition key from payload.
   function: F,
 }
 

@@ -159,6 +159,7 @@ where
   V: Clone + serde::Serialize + for<'de> serde::Deserialize<'de> + Send,
   Ver: Ord + Clone + Send,
 {
+  /// Map from key to (value, version).
   inner: Mutex<HashMap<K, (V, Ver)>>,
 }
 

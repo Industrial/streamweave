@@ -82,6 +82,7 @@ fn event_time_from_payload(item: &Arc<dyn Any + Send + Sync>) -> Option<u64> {
 /// Accepts Timestamped, StreamMessage, or payloads with event_timestamp; outputs
 /// StreamMessage with Data and Watermark(max_time) on EOS.
 pub struct WatermarkInjectorNode {
+  /// Shared base node (ports, name).
   pub(crate) base: BaseNode,
 }
 

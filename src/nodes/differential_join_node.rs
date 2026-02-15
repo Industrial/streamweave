@@ -26,13 +26,18 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+/// Input port identifiers for the join node.
 #[derive(Clone, Copy)]
 enum Port {
+  /// Configuration port.
   Config,
+  /// Left input stream.
   Left,
+  /// Right input stream.
   Right,
 }
 
+/// Downcasts an item to `DifferentialStreamMessage` if possible.
 fn try_differential_message(
   item: &Arc<dyn Any + Send + Sync>,
 ) -> Option<DifferentialStreamMessage<Arc<dyn Any + Send + Sync>>> {
@@ -45,7 +50,9 @@ fn try_differential_message(
 
 /// Differential equi-join: outputs changes only. Output diff = left_diff * right_diff.
 pub struct DifferentialJoinNode {
+  /// Shared base node (ports, name).
   pub(crate) base: BaseNode,
+  /// Currently active join config (reconfigurable at runtime).
   current_config: Arc<Mutex<Option<Arc<JoinConfig>>>>,
 }
 

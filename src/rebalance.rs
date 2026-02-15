@@ -158,6 +158,7 @@ pub trait RebalanceCoordinator: Send + Sync {
 /// Holds a fixed assignment. Use [`InMemoryCoordinator::add_worker`] and
 /// [`InMemoryCoordinator::remove_worker`] to simulate cluster changes.
 pub struct InMemoryCoordinator {
+  /// (shard_id, total_shards) for the single worker.
   inner: std::sync::RwLock<(u32, u32)>,
 }
 

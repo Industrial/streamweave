@@ -26,13 +26,18 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+/// Input port names for the group-by node.
 #[allow(dead_code)]
 enum InputPort {
+  /// Configuration port.
   Config,
+  /// Main data input.
   In,
+  /// Key extraction function port.
   KeyFunction,
 }
 
+/// Downcasts an item to `DifferentialStreamMessage` if possible.
 fn try_differential_message(
   item: &Arc<dyn Any + Send + Sync>,
 ) -> Option<DifferentialStreamMessage<Arc<dyn Any + Send + Sync>>> {
@@ -45,6 +50,7 @@ fn try_differential_message(
 
 /// Differential group-by with count aggregation. Outputs (key, count, time, diff).
 pub struct DifferentialGroupByNode {
+  /// Shared base node (ports, name).
   pub(crate) base: BaseNode,
 }
 

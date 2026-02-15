@@ -23,14 +23,18 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+/// Returns an empty stream (used when a round produces no output).
 fn empty_stream() -> Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>> {
   Box::pin(stream::iter(vec![]))
 }
 
 /// Runs an inner graph for up to `max_rounds`. Round 1: seed only. Rounds 2..N: feedback from previous output.
 pub struct BoundedIterationNode {
+  /// Shared base node (ports, name).
   base: BaseNode,
+  /// Graph run each round with seed and feedback inputs.
   inner_graph: Arc<Graph>,
+  /// Maximum number of rounds (>= 1).
   max_rounds: usize,
 }
 

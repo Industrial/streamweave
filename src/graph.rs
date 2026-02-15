@@ -177,6 +177,7 @@ enum EdgeMessage {
 /// For each feedback edge, the target receives from `inject_rx` and the source's output
 /// is captured via `capture_tx`. This breaks the cycle for round-based execution.
 struct RoundFeedbackConfig {
+  /// For each feedback edge: (edge, receiver to inject into target, sender to capture source output).
   inject_and_capture: Vec<(
     Edge,
     tokio::sync::mpsc::Receiver<EdgeMessage>,
@@ -506,6 +507,82 @@ impl Graph {
   /// Returns shard config if this graph is running as a sharded instance.
   pub fn shard_config(&self) -> Option<ShardConfig> {
     self.shard_config
+  }
+
+  /// Builds a Mermaid blueprint from this graph’s topology, I/O bindings, and metadata.
+  ///
+  /// Use with [`crate::mermaid::export::blueprint_to_mermaid`] or
+  /// [`crate::mermaid::export::graph_to_mermaid`] to produce `.mmd` source. Node kinds/labels
+  /// are not inferred from runtime types; the blueprint uses default [`NodeInfo`] per node.
+  ///
+  /// [`NodeInfo`]: crate::mermaid::blueprint::NodeInfo
+  #[must_use]
+  pub fn to_blueprint(&self) -> crate::mermaid::blueprint::GraphBlueprint {
+    use crate::mermaid::blueprint::{
+      BlueprintEdge, ExecutionMode as BlueprintExecutionMode, GraphBlueprint, InputBinding,
+      NodeInfo, NodeSupervision, OutputBinding, ShardConfig as BlueprintShardConfig,
+    };
+
+    let mut bp = GraphBlueprint::new(self.name.clone());
+
+    let node_ids: Vec<String> = {
+      let nodes = self.nodes.lock().unwrap();
+      nodes.keys().cloned().collect()
+    };
+    for id in &node_ids {
+      bp.add_node(id.clone(), NodeInfo::default());
+    }
+    for e in &self.edges {
+      bp.add_edge(BlueprintEdge {
+        source_node: e.source_node.clone(),
+        source_port: e.source_port.clone(),
+        target_node: e.target_node.clone(),
+        target_port: e.target_port.clone(),
+      });
+    }
+    for (ext, pm) in &self.input_port_mapping {
+      bp.add_input(InputBinding {
+        external_name: ext.clone(),
+        node_id: pm.node.clone(),
+        port_name: pm.port.clone(),
+      });
+    }
+    for (ext, pm) in &self.output_port_mapping {
+      bp.add_output(OutputBinding {
+        external_name: ext.clone(),
+        node_id: pm.node.clone(),
+        port_name: pm.port.clone(),
+      });
+    }
+    bp.execution_mode = match self.execution_mode {
+      ExecutionMode::Concurrent => BlueprintExecutionMode::Concurrent,
+      ExecutionMode::Deterministic => BlueprintExecutionMode::Deterministic,
+    };
+    if let Some(s) = &self.shard_config {
+      bp.shard_config = Some(BlueprintShardConfig {
+        shard_id: s.shard_id,
+        total_shards: s.total_shards,
+      });
+    }
+    for (node_id, policy) in &self.node_supervision_policies {
+      let policy_str = match policy.on_failure {
+        FailureAction::Restart => "Restart",
+        FailureAction::RestartGroup => "RestartGroup",
+        FailureAction::Stop => "Stop",
+        FailureAction::Escalate => "Escalate",
+      };
+      bp.node_supervision.insert(
+        node_id.clone(),
+        NodeSupervision {
+          policy: policy_str.to_string(),
+          supervision_group: self.node_supervision_groups.get(node_id).cloned(),
+        },
+      );
+    }
+    for node_id in &self.subgraph_supervision_units {
+      bp.subgraph_units.push(node_id.clone());
+    }
+    bp
   }
 
   /// Triggers a checkpoint, saving state from all nodes to storage.

@@ -77,6 +77,7 @@ pub fn event_time_from_map() -> EventTimeExtractorConfig {
 
 /// Wrapper for custom async extractor closures.
 struct ClosureExtractor<F> {
+  /// User-provided async closure that returns event time in ms.
   f: F,
 }
 
@@ -102,6 +103,7 @@ where
   })))
 }
 
+/// Inserts or overwrites `event_timestamp` in a map payload, or wraps in `{ value, event_timestamp }`.
 fn add_event_timestamp(
   item: Arc<dyn Any + Send + Sync>,
   event_time_ms: u64,
@@ -127,7 +129,9 @@ fn add_event_timestamp(
 /// Configure with an [`EventTimeExtractor`] (e.g. [`event_time_from_map`] or
 /// [`event_time_extractor`]). When extraction returns `None`, uses 0 (minimum).
 pub struct EventTimeExtractorNode {
+  /// Shared base node (ports, name).
   base: BaseNode,
+  /// Currently active extractor config (reconfigurable at runtime).
   current_config: Arc<Mutex<Option<EventTimeExtractorConfig>>>,
 }
 

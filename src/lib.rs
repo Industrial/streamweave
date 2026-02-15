@@ -66,6 +66,8 @@ pub mod state;
 pub mod supervision;
 /// Logical timestamps for dataflow progress and ordering.
 pub mod time;
+/// Mermaid flowchart (`.mmd`) import/export for StreamWeave graphs.
+pub mod mermaid;
 
 #[cfg(test)]
 mod cluster_health_test;

@@ -52,9 +52,13 @@ fn window_starts_for_t(t_ms: u64, size_ms: u64, slide_ms: u64) -> Vec<u64> {
 ///
 /// Late data (event_time before watermark) is handled per [`LateDataPolicy`].
 pub struct SlidingEventTimeWindowNode {
+  /// Shared base node (ports, name).
   pub(crate) base: BaseNode,
+  /// Window duration.
   window_size: Duration,
+  /// Step between window starts (overlap when slide < window_size).
   slide: Duration,
+  /// How to handle late data (event_time before watermark).
   late_data_policy: LateDataPolicy,
 }
 
@@ -98,6 +102,7 @@ impl SlidingEventTimeWindowNode {
   }
 }
 
+/// Downcasts an item to `StreamMessage` if possible.
 fn try_stream_message(
   item: Arc<dyn Any + Send + Sync>,
 ) -> Option<StreamMessage<Arc<dyn Any + Send + Sync>>> {
@@ -107,6 +112,7 @@ fn try_stream_message(
     .map(|arc| (*arc).clone())
 }
 
+/// Downcasts an item to `Timestamped` if possible.
 fn try_timestamped(
   item: Arc<dyn Any + Send + Sync>,
 ) -> Option<Timestamped<Arc<dyn Any + Send + Sync>>> {

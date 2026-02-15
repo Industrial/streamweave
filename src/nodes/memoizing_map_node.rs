@@ -86,9 +86,13 @@ impl MemoizeKeyExtractor for HashKeyExtractor {
 /// A map node with memoization: caches output keyed by input for deterministic,
 /// keyed transformations. Skips recomputation when the same key is seen again.
 pub struct MemoizingMapNode {
+  /// Shared base node (ports, name).
   base: BaseNode,
+  /// Currently active map config (reconfigurable at runtime).
   current_config: Arc<Mutex<Option<Arc<MapConfig>>>>,
+  /// Cache: key (from key_extractor) -> cached output value.
   cache: Arc<Mutex<HashMap<u64, Arc<dyn Any + Send + Sync>>>>,
+  /// Extracts a cache key from the input (identity or value-based).
   key_extractor: Arc<dyn MemoizeKeyExtractor>,
 }
 
@@ -252,7 +256,10 @@ impl Node for MemoizingMapNode {
   }
 }
 
+/// Message type on the configuration port (config vs data).
 enum MessageType {
+  /// Map configuration update.
   Config,
+  /// Data item to transform.
   Data,
 }

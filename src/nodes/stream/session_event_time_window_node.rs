@@ -35,8 +35,11 @@ use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 ///
 /// Late data (event_time before watermark) is handled per [`LateDataPolicy`].
 pub struct SessionEventTimeWindowNode {
+  /// Shared base node (ports, name).
   pub(crate) base: BaseNode,
+  /// Maximum gap between events in the same session.
   gap: Duration,
+  /// How to handle late data (event_time before watermark).
   late_data_policy: LateDataPolicy,
 }
 
@@ -73,6 +76,7 @@ impl SessionEventTimeWindowNode {
   }
 }
 
+/// Downcasts an item to `StreamMessage` if possible.
 fn try_stream_message(
   item: Arc<dyn Any + Send + Sync>,
 ) -> Option<StreamMessage<Arc<dyn Any + Send + Sync>>> {
@@ -82,6 +86,7 @@ fn try_stream_message(
     .map(|arc| (*arc).clone())
 }
 
+/// Downcasts an item to `Timestamped` if possible.
 fn try_timestamped(
   item: Arc<dyn Any + Send + Sync>,
 ) -> Option<Timestamped<Arc<dyn Any + Send + Sync>>> {

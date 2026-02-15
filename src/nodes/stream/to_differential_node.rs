@@ -32,6 +32,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::mpsc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+/// Downcasts an item to `StreamMessage` if possible.
 fn try_stream_message(
   item: &Arc<dyn Any + Send + Sync>,
 ) -> Option<StreamMessage<Arc<dyn Any + Send + Sync>>> {
@@ -42,6 +43,7 @@ fn try_stream_message(
     .map(|arc| (*arc).clone())
 }
 
+/// Downcasts an item to `Timestamped` if possible.
 fn try_timestamped(
   item: &Arc<dyn Any + Send + Sync>,
 ) -> Option<Timestamped<Arc<dyn Any + Send + Sync>>> {
@@ -54,6 +56,7 @@ fn try_timestamped(
 
 /// Wraps each input item as `DifferentialElement::insert(payload, time, +1)`.
 pub struct ToDifferentialNode {
+  /// Shared base node (ports, name).
   pub(crate) base: BaseNode,
 }
 

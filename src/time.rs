@@ -361,7 +361,9 @@ unsafe impl Sync for CompletedFrontier {}
 /// advances the capability monotonically. Drop or call [`close`](TimestampedInputHandle::close)
 /// to signal no more data.
 pub struct TimestampedInputHandle<T> {
+  /// Channel to send timestamped payloads to the dataflow.
   tx: tokio::sync::mpsc::Sender<Timestamped<T>>,
+  /// Current capability (logical time); advances monotonically.
   current_time: Mutex<LogicalTime>,
 }
 
@@ -427,6 +429,7 @@ unsafe impl<T: Send> Sync for TimestampedInputHandle<T> {}
 /// frontier lookup for recompute planning (see [`crate::incremental::plan_recompute`]).
 #[derive(Clone, Debug)]
 pub struct ProgressHandle {
+  /// One or more completed frontiers; graph progress is the minimum over them.
   frontiers: Vec<std::sync::Arc<CompletedFrontier>>,
   /// Optional: (node, port) keys for each frontier, for per-sink lookup.
   sink_keys: Option<Vec<(String, String)>>,
@@ -470,6 +473,7 @@ impl ProgressHandle {
     }
   }
 
+  /// Returns the minimum time across all frontiers (all sinks completed up to this time).
   fn effective_frontier(&self) -> LogicalTime {
     self
       .frontiers

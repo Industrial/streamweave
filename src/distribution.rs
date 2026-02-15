@@ -185,6 +185,8 @@ impl ShardedRunner {
   }
 }
 
+/// Runs the distribution router: receives payloads from `input_rx`, extracts partition key,
+/// and sends each payload to the shard channel determined by the current assignment.
 async fn router_task(
   mut input_rx: mpsc::Receiver<Arc<dyn std::any::Any + Send + Sync>>,
   shard_txs: Vec<mpsc::Sender<Arc<dyn std::any::Any + Send + Sync>>>,

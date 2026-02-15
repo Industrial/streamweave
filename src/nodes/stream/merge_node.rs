@@ -80,6 +80,7 @@ impl MergeNode {
     Self::new_with_deterministic(name, num_inputs, true)
   }
 
+  /// Builds a merge node with the given name, number of inputs, and deterministic flag.
   fn new_with_deterministic(name: String, num_inputs: usize, deterministic: bool) -> Self {
     let mut input_ports = vec!["configuration".to_string()];
     for i in 0..num_inputs {
