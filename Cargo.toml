@@ -514,5 +514,9 @@ path = "examples/nodes/array/split_node.rs"
 name = "unique_node"
 path = "examples/nodes/array/unique_node.rs"
 
+[[example]]
+name = "event_time_watermark"
+path = "examples/event_time_watermark.rs"
+
 [lints.rust]
 # Shared lint configuration
