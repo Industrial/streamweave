@@ -359,3 +359,43 @@ async fn test_merge_different_types() {
   assert!(has_i32);
   assert!(has_string);
 }
+
+#[tokio::test]
+async fn test_merge_deterministic_order() {
+  let node = MergeNode::new_deterministic("merge".to_string(), 2);
+
+  let (_config_tx, input_txs, inputs) = create_merge_input_streams(2);
+  let execute_result: Result<OutputStreams, NodeExecutionError> = node.execute(inputs).await;
+  let mut outputs = execute_result.unwrap();
+
+  // Send items to both streams in interleaved order; deterministic merge prefers port 0
+  let _ = input_txs[1]
+    .send(Arc::new(2i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = input_txs[0]
+    .send(Arc::new(1i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = input_txs[1]
+    .send(Arc::new(4i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+  let _ = input_txs[0]
+    .send(Arc::new(3i32) as Arc<dyn Any + Send + Sync>)
+    .await;
+
+  drop(input_txs);
+
+  let out_stream = outputs.remove("out").unwrap();
+  let mut stream = out_stream;
+  let mut results = Vec::new();
+  while let Some(item) = stream.next().await {
+    results.push(item);
+  }
+
+  // Deterministic round-robin: port 0 first, then port 1. So order is 1, 2, 3, 4
+  assert_eq!(results.len(), 4);
+  let values: Vec<i32> = results
+    .iter()
+    .filter_map(|r| r.clone().downcast::<i32>().ok().map(|arc| *arc))
+    .collect();
+  assert_eq!(values, vec![1, 2, 3, 4], "deterministic merge order by port");
+}

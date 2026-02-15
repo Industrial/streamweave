@@ -14,6 +14,9 @@
 //! The node merges multiple streams together by forwarding items from any stream
 //! as they arrive. The order is non-deterministic and depends on which stream
 //! has items available. The merge continues until all streams have ended.
+//!
+//! For deterministic order, use [`MergeNode::new_deterministic`], which merges
+//! in round-robin by port index (port 0, then 1, then 2, ...).
 
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::nodes::common::BaseNode;
@@ -25,15 +28,23 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
+/// Type alias for a pinned stream of items
+type PinnedItemStream =
+  Pin<Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>;
+
 /// A node that merges multiple streams together.
 ///
 /// The node receives items from multiple input streams (in_0, in_1, ..., in_n)
 /// and merges them by forwarding items from any stream as they arrive.
 /// The order is non-deterministic and depends on which stream has items available.
 /// The merge continues until all streams have ended.
+///
+/// Use [`MergeNode::new_deterministic`] for reproducible order (round-robin by port index).
 pub struct MergeNode {
   /// Base node functionality.
   pub(crate) base: BaseNode,
+  /// When true, merge in round-robin by port index for deterministic order.
+  deterministic: bool,
 }
 
 impl MergeNode {
@@ -57,6 +68,19 @@ impl MergeNode {
   /// // Creates ports: configuration, in_0, in_1 → out, error
   /// ```
   pub fn new(name: String, num_inputs: usize) -> Self {
+    Self::new_with_deterministic(name, num_inputs, false)
+  }
+
+  /// Creates a MergeNode that merges in round-robin by port index for deterministic order.
+  ///
+  /// Items are merged in order: port 0, then port 1, then port 2, etc. (round-robin).
+  /// This gives reproducible output for the same inputs, suitable for use with
+  /// [`ExecutionMode::Deterministic`](crate::graph::ExecutionMode::Deterministic).
+  pub fn new_deterministic(name: String, num_inputs: usize) -> Self {
+    Self::new_with_deterministic(name, num_inputs, true)
+  }
+
+  fn new_with_deterministic(name: String, num_inputs: usize, deterministic: bool) -> Self {
     let mut input_ports = vec!["configuration".to_string()];
     for i in 0..num_inputs {
       input_ports.push(format!("in_{}", i));
@@ -68,6 +92,7 @@ impl MergeNode {
         input_ports,
         vec!["out".to_string(), "error".to_string()],
       ),
+      deterministic,
     }
   }
 }
@@ -104,46 +129,73 @@ impl Node for MergeNode {
   ) -> Pin<
     Box<dyn std::future::Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>,
   > {
+    let deterministic = self.deterministic;
     Box::pin(async move {
       // Extract configuration stream
       let _config_stream = inputs.remove("configuration");
 
-      // Extract all input streams (in_0, in_1, ..., in_n)
-      let mut tagged_streams = Vec::new();
-
-      // Collect all input streams and tag them
+      // Extract all input streams (in_0, in_1, ..., in_n) with port index
+      let mut input_streams: Vec<(usize, crate::node::InputStream)> = Vec::new();
       for (port_name, stream) in inputs {
-        if port_name.starts_with("in_") {
-          let tagged = stream.map(move |item| item);
-          tagged_streams.push(Box::pin(tagged)
-            as Pin<
-              Box<dyn tokio_stream::Stream<Item = Arc<dyn Any + Send + Sync>> + Send>,
-            >);
+        if port_name.starts_with("in_")
+          && let Ok(index) = port_name[3..].parse::<usize>()
+        {
+          input_streams.push((index, stream));
         }
       }
+      input_streams.sort_by_key(|(idx, _)| *idx);
 
-      if tagged_streams.is_empty() {
+      if input_streams.is_empty() {
         return Err("No input streams found (expected in_0, in_1, ...)".into());
       }
-
-      // Merge streams using select_all - items arrive as they're available
-      let merged_stream = stream::select_all(tagged_streams);
 
       // Create output channels
       let (out_tx, out_rx) = tokio::sync::mpsc::channel(10);
       let (error_tx, error_rx) = tokio::sync::mpsc::channel(10);
-
-      // Process merged stream
       let out_tx_clone = out_tx.clone();
       let _error_tx_clone = error_tx.clone();
 
-      tokio::spawn(async move {
-        let mut merged = merged_stream;
-        while let Some(item) = merged.next().await {
-          // Forward item from any stream
-          let _ = out_tx_clone.send(item).await;
-        }
-      });
+      if deterministic {
+        // Deterministic merge: round-robin by port index (port 0, 1, 2, ...)
+        let streams: Vec<PinnedItemStream> = input_streams
+          .into_iter()
+          .map(|(_, s)| Box::pin(s) as PinnedItemStream)
+          .collect();
+        tokio::spawn(async move {
+          let mut streams = streams;
+          let mut active = vec![true; streams.len()];
+          let mut active_count = streams.len();
+          while active_count > 0 {
+            for (idx, stream) in streams.iter_mut().enumerate() {
+              if !active[idx] {
+                continue;
+              }
+              match stream.next().await {
+                Some(item) => {
+                  let _ = out_tx_clone.send(item).await;
+                }
+                None => {
+                  active[idx] = false;
+                  active_count -= 1;
+                }
+              }
+            }
+          }
+        });
+      } else {
+        // Non-deterministic merge: select_all (items as they arrive)
+        let tagged_streams: Vec<_> = input_streams
+          .into_iter()
+          .map(|(_, s)| Box::pin(s) as PinnedItemStream)
+          .collect();
+        let merged_stream = stream::select_all(tagged_streams);
+        tokio::spawn(async move {
+          let mut merged = merged_stream;
+          while let Some(item) = merged.next().await {
+            let _ = out_tx_clone.send(item).await;
+          }
+        });
+      }
 
       // Convert channels to streams
       let mut outputs = HashMap::new();
