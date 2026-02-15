@@ -8,6 +8,26 @@
 
 ---
 
+## Quick start / Example
+
+Every differential record is a **`DifferentialElement<T>`** (payload, `LogicalTime`, diff). Use [`ToDifferentialNode`] to turn a plain or timestamped stream into `(data, time, +1)`, then [`DifferentialGroupByNode`] for incremental count-by-key or [`DifferentialJoinNode`] for equi-join on differential streams.
+
+[`ToDifferentialNode`]: https://docs.rs/streamweave/*/streamweave/nodes/stream/struct.ToDifferentialNode.html
+[`DifferentialGroupByNode`]: https://docs.rs/streamweave/*/streamweave/nodes/reduction/struct.DifferentialGroupByNode.html
+[`DifferentialJoinNode`]: https://docs.rs/streamweave/*/streamweave/nodes/differential_join_node/struct.DifferentialJoinNode.html
+
+```rust
+use streamweave::time::{DifferentialElement, LogicalTime};
+
+// Insert (+1) or retract (-1) at a logical time.
+let elem: DifferentialElement<i32> = DifferentialElement::insert(42, LogicalTime::new(1));
+assert_eq!(elem.diff(), 1);
+```
+
+**Full runnable example:** `cargo run --example differential_stream`. See [examples/differential_stream.rs](../examples/differential_stream.rs).
+
+---
+
 ## 1. Objective and rationale
 
 **Objective:** Dataflow where every record carries a **logical timestamp** and a **multiplicity (diff)** (insert +1, retract −1). Computation is expressed as **incremental** operators (e.g. differenced join/aggregate) so that only **changes** are propagated and outputs are maintained as differences over time. This yields efficient incremental and reactive updates.
