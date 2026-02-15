@@ -109,7 +109,7 @@ Differential Dataflow supports **nested timestamps** and **iterative fixed point
 | **1** | Define `DifferentialElement<T>` (or equivalent) and add a “differential” execution path (channels carry (payload, time, diff)). **Done:** `DifferentialElement<T>` and `DifferentialStreamMessage<T>` in `src/time.rs`. |
 | **2** | Wrap existing nodes so that they produce (payload, time, +1); consume (payload, time, diff) by stripping diff for non-differential nodes or by integrating for snapshot. **Done:** `ToDifferentialNode` in `src/nodes/stream/to_differential_node.rs` wraps each input as `DifferentialElement::insert(payload, time, +1)`; accepts Timestamped, StreamMessage, or plain `Arc<dyn Any>` (monotonic time). |
 | **3** | Implement **differential group-by** (single key, sum or count; output diffs as deltas). **Done:** `DifferentialGroupByNode` in `src/nodes/reduction/differential_group_by_node.rs`; count aggregation with key extractor; outputs (key, count, time, diff). |
-| **4** | Implement **differential join** (equi-join; output changes only). |
+| **4** | Implement **differential join** (equi-join; output changes only). **Done:** `DifferentialJoinNode` in `src/nodes/differential_join_node.rs`; consumes `DifferentialStreamMessage` from left/right, emits (key, (V1,V2), time, diff). |
 | **5** | Document and test; consider incremental recomputation (see [incremental-recomputation.md](incremental-recomputation.md)) as the default behavior of differential operators. |
 
 ---

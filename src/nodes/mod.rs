@@ -27,6 +27,7 @@ pub mod type_ops;
 
 pub mod common;
 pub mod condition_node;
+pub mod differential_join_node;
 pub mod error_branch_node;
 pub mod filter_node;
 pub mod for_each_node;
@@ -42,6 +43,8 @@ pub mod write_variable_node;
 
 #[cfg(test)]
 mod condition_node_test;
+#[cfg(test)]
+mod differential_join_node_test;
 #[cfg(test)]
 mod error_branch_node_test;
 #[cfg(test)]
