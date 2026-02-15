@@ -121,6 +121,7 @@ pub trait DistributedCheckpointStorage: Send + Sync {
 /// Layout: `<base>/<id>/shard_<shard_id>/metadata.json`, `<node>.bin`;
 /// `<base>/<id>/COMMITTED` when committed.
 pub struct FileDistributedCheckpointStorage {
+  /// Root directory for checkpoint data.
   base_path: std::path::PathBuf,
 }
 
@@ -132,6 +133,7 @@ impl FileDistributedCheckpointStorage {
     }
   }
 
+  /// Returns the directory path for a given checkpoint shard.
   fn shard_dir(&self, checkpoint_id: CheckpointId, shard_id: u32) -> std::path::PathBuf {
     self
       .base_path
@@ -139,6 +141,7 @@ impl FileDistributedCheckpointStorage {
       .join(format!("shard_{}", shard_id))
   }
 
+  /// Returns the path of the COMMITTED marker file for a checkpoint.
   fn committed_path(&self, checkpoint_id: CheckpointId) -> std::path::PathBuf {
     self
       .base_path
@@ -255,8 +258,11 @@ type PendingCheckpointMap = std::collections::HashMap<
 /// Collects reports from workers; commits when all `total_shards` have reported
 /// successfully. Aborts if any worker reports failure.
 pub struct InMemoryCheckpointCoordinator {
+  /// Number of shards that must report before commit.
   total_shards: u32,
+  /// Next checkpoint id to assign.
   next_id: std::sync::atomic::AtomicU64,
+  /// Pending checkpoints: id -> (notify, count, aborted).
   pending: std::sync::RwLock<PendingCheckpointMap>,
 }
 
