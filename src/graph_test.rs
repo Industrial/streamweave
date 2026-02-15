@@ -15,6 +15,7 @@
 use crate::edge::Edge;
 use crate::graph::{Graph, topological_sort};
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
+use crate::time::LogicalTime;
 use async_trait::async_trait;
 use std::any::Any;
 use std::collections::HashMap;
@@ -521,6 +522,47 @@ async fn test_stop_execution() {
   assert!(graph.stop().await.is_ok());
 
   // Wait for completion (should complete quickly after stop)
+  assert!(graph.wait_for_completion().await.is_ok());
+}
+
+#[tokio::test]
+async fn test_execute_with_progress_advances_frontier() {
+  // Pipeline: producer -> transform; expose transform output. With progress tracking,
+  // the frontier should advance when items reach the exposed output.
+  let mut graph = Graph::new("test".to_string());
+  let producer = Box::new(MockProducerNode::new("producer".to_string(), vec![10, 20, 30]));
+  let transform = Box::new(MockTransformNode::new("transform".to_string()));
+
+  graph.add_node("producer".to_string(), producer).unwrap();
+  graph.add_node("transform".to_string(), transform).unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "producer".to_string(),
+      source_port: "out".to_string(),
+      target_node: "transform".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  graph
+    .expose_output_port("transform", "out", "output")
+    .unwrap();
+
+  let (tx, mut rx) = mpsc::channel(10);
+  graph.connect_output_channel("output", tx).unwrap();
+
+  let progress = graph.execute_with_progress().await.unwrap();
+  // Initially frontier is 0
+  assert!(progress.less_than(LogicalTime::new(1)));
+
+  // Consume the three items from the output; each delivery advances the frontier
+  let _ = rx.recv().await.unwrap();
+  let _ = rx.recv().await.unwrap();
+  let _ = rx.recv().await.unwrap();
+
+  // After three items (times 0, 1, 2) reached the sink, frontier should be at least 2
+  assert!(!progress.less_than(LogicalTime::new(3)));
+  assert!(progress.frontier() >= LogicalTime::new(2));
+
   assert!(graph.wait_for_completion().await.is_ok());
 }
 

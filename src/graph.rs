@@ -77,20 +77,32 @@
 
 use crate::edge::Edge;
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
+use crate::time::{CompletedFrontier, LogicalTime, ProgressHandle};
 use async_trait::async_trait;
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
-use std::sync::atomic::{AtomicU8, Ordering};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio_stream::StreamExt;
 
 /// Default channel capacity for dataflow edges (backpressure).
 const DATAFLOW_CHANNEL_CAPACITY: usize = 64;
+
+/// Message type for dataflow edges. When progress tracking is enabled, items carry
+/// a logical time so the completed frontier can be advanced when items reach sinks.
+#[derive(Clone)]
+enum EdgeMessage {
+    /// No progress tracking; payload only.
+    PayloadOnly(Arc<dyn Any + Send + Sync>),
+    /// Progress tracking enabled; payload and its logical time.
+    #[allow(dead_code)] // time is carried on the channel; sender uses time_opt for frontier
+    WithTime(Arc<dyn Any + Send + Sync>, LogicalTime),
+}
 
 /// Error type for graph execution operations.
 pub type GraphExecutionError = Box<dyn std::error::Error + Send + Sync>;
@@ -872,7 +884,7 @@ impl Graph {
       std::mem::take(&mut *g)
     };
     let (handles, nodes_restored) = self
-      .run_dataflow(nodes, Some(external_inputs), Some(external_outputs))
+      .run_dataflow(nodes, Some(external_inputs), Some(external_outputs), None)
       .await?;
     self.execution_handles.lock().await.clear();
     self.execution_handles.lock().await.extend(handles);
@@ -880,7 +892,45 @@ impl Graph {
     Ok(())
   }
 
+  /// Starts graph execution with progress tracking.
+  ///
+  /// Same as [`execute()`](Self::execute), but the completed frontier is advanced
+  /// when items reach exposed output ports (sinks). Returns a [`ProgressHandle`]
+  /// so callers can observe progress (e.g. `less_than(t)`, `less_equal(t)`).
+  ///
+  /// # Returns
+  ///
+  /// `Ok(ProgressHandle)` so the caller can poll progress; the graph runs as with `execute()`.
+  pub async fn execute_with_progress(
+    &mut self,
+  ) -> Result<ProgressHandle, GraphExecutionError> {
+    let mut external_inputs = HashMap::new();
+    for (port_name, receiver_option) in &mut self.connected_input_channels {
+      if let Some(receiver) = receiver_option.take() {
+        let stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
+        let pinned_stream = Box::pin(stream) as crate::node::InputStream;
+        external_inputs.insert(port_name.clone(), pinned_stream);
+      }
+    }
+    let external_outputs = &self.connected_output_channels;
+    let nodes = {
+      let mut g = self.nodes.lock().unwrap();
+      std::mem::take(&mut *g)
+    };
+    let frontier = Arc::new(CompletedFrontier::new());
+    let progress_handle = ProgressHandle::new(Arc::clone(&frontier));
+    let (handles, nodes_restored) = self
+      .run_dataflow(nodes, Some(external_inputs), Some(external_outputs), Some(frontier))
+      .await?;
+    self.execution_handles.lock().await.clear();
+    self.execution_handles.lock().await.extend(handles);
+    self.nodes_restored_after_run = Some(nodes_restored);
+    Ok(progress_handle)
+  }
+
   /// Dataflow execution: one channel per edge, one task per node. Supports cycles.
+  /// When `progress_frontier` is `Some`, items on edges carry logical times and the
+  /// frontier is advanced when items reach exposed outputs (sinks).
   /// Returns (handles, nodes_restored) so callers can await and restore nodes.
   async fn run_dataflow(
     &self,
@@ -889,6 +939,7 @@ impl Graph {
     external_outputs: Option<
       &HashMap<String, tokio::sync::mpsc::Sender<Arc<dyn Any + Send + Sync>>>,
     >,
+    progress_frontier: Option<Arc<CompletedFrontier>>,
   ) -> Result<
     (
       Vec<JoinHandle<Result<(), GraphExecutionError>>>,
@@ -897,17 +948,18 @@ impl Graph {
     GraphExecutionError,
   > {
     let edges = self.get_edges();
-    type Payload = Arc<dyn Any + Send + Sync>;
+
+    let time_counter = progress_frontier.as_ref().map(|_| Arc::new(AtomicU64::new(0)));
 
     // One channel per edge: (target_node, target_port) -> receiver
-    let mut input_rx: HashMap<(String, String), tokio::sync::mpsc::Receiver<Payload>> =
+    let mut input_rx: HashMap<(String, String), tokio::sync::mpsc::Receiver<EdgeMessage>> =
       HashMap::new();
-    // (source_node, source_port) -> list of senders (one per edge; plus external if exposed)
-    let mut output_txs: HashMap<(String, String), Vec<tokio::sync::mpsc::Sender<Payload>>> =
+    // (source_node, source_port) -> list of senders (one per edge)
+    let mut output_txs: HashMap<(String, String), Vec<tokio::sync::mpsc::Sender<EdgeMessage>>> =
       HashMap::new();
 
     for edge in &edges {
-      let (tx, rx) = tokio::sync::mpsc::channel(DATAFLOW_CHANNEL_CAPACITY);
+      let (tx, rx) = tokio::sync::mpsc::channel::<EdgeMessage>(DATAFLOW_CHANNEL_CAPACITY);
       input_rx.insert(
         (
           edge.target_node().to_string(),
@@ -931,9 +983,10 @@ impl Graph {
     if let Some(mut external_inputs) = external_inputs {
       for (external_port, stream) in external_inputs.drain() {
         if let Some(mapping) = self.input_port_mapping.get(&external_port) {
-          let (tx, rx) = tokio::sync::mpsc::channel(DATAFLOW_CHANNEL_CAPACITY);
+          let (tx, rx) = tokio::sync::mpsc::channel::<EdgeMessage>(DATAFLOW_CHANNEL_CAPACITY);
           input_rx.insert((mapping.node.clone(), mapping.port.clone()), rx);
           let stop_signal = Arc::clone(&self.stop_signal);
+          let counter = time_counter.clone();
           let handle = tokio::spawn(async move {
             let mut stream = stream;
             loop {
@@ -942,7 +995,14 @@ impl Graph {
                 item = stream.next() => {
                   match item {
                     Some(item) => {
-                      if tx.send(item).await.is_err() {
+                      let msg = match &counter {
+                        Some(c) => EdgeMessage::WithTime(
+                          item,
+                          LogicalTime::new(c.fetch_add(1, Ordering::SeqCst)),
+                        ),
+                        None => EdgeMessage::PayloadOnly(item),
+                      };
+                      if tx.send(msg).await.is_err() {
                         break;
                       }
                     }
@@ -971,11 +1031,14 @@ impl Graph {
       let mut input_streams: InputStreams = HashMap::new();
       for (_, port) in node_input_keys {
         if let Some(rx) = input_rx.remove(&(node_name.clone(), port.clone())) {
-          let stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+          let stream = tokio_stream::wrappers::ReceiverStream::new(rx).map(|m| match m {
+            EdgeMessage::PayloadOnly(p) => p,
+            EdgeMessage::WithTime(p, _) => p,
+          });
           input_streams.insert(port, Box::pin(stream) as crate::node::InputStream);
         }
       }
-      let output_txs_for_node: HashMap<String, Vec<tokio::sync::mpsc::Sender<Payload>>> =
+      let output_txs_for_node: HashMap<String, Vec<tokio::sync::mpsc::Sender<EdgeMessage>>> =
         output_txs
           .iter()
           .filter(|((n, _), _)| n == &node_name)
@@ -985,6 +1048,8 @@ impl Graph {
       let stop_signal = Arc::clone(&stop_signal);
       let output_port_mapping = output_port_mapping.clone();
       let external_outputs = external_outputs.cloned();
+      let frontier = progress_frontier.clone();
+      let counter = time_counter.clone();
 
       let handle = tokio::spawn(async move {
         let node_outputs = match node.execute(input_streams).await {
@@ -999,24 +1064,29 @@ impl Graph {
 
         let mut forwarder_handles = Vec::new();
         for (port_name, stream) in node_outputs {
-          let mut senders = output_txs_for_node
+          let internal_senders = output_txs_for_node
             .get(&port_name)
             .cloned()
             .unwrap_or_default();
-          let is_exposed = output_port_mapping
-            .values()
-            .any(|mapping| mapping.node == node_name && mapping.port == port_name);
-          if is_exposed
-            && let Some(ref outputs) = external_outputs
-            && let Some((external_port, _)) = output_port_mapping
-              .iter()
-              .find(|(_, m)| m.node == node_name && m.port == port_name)
-            && let Some(tx) = outputs.get(external_port)
-          {
-            senders.push(tx.clone());
-          }
+          let (external_tx, frontier_for_port) = {
+            let is_exposed = output_port_mapping
+              .values()
+              .any(|mapping| mapping.node == node_name && mapping.port == port_name);
+            if is_exposed
+              && let Some(ref outputs) = external_outputs
+              && let Some((external_port, _)) = output_port_mapping
+                .iter()
+                .find(|(_, m)| m.node == node_name && m.port == port_name)
+              && let Some(tx) = outputs.get(external_port)
+            {
+              (Some(tx.clone()), frontier.clone())
+            } else {
+              (None, None)
+            }
+          };
 
           let stop_signal = Arc::clone(&stop_signal);
+          let counter = counter.clone();
           let handle = tokio::spawn(async move {
             let mut stream = stream;
             loop {
@@ -1025,9 +1095,24 @@ impl Graph {
                 item = stream.next() => {
                   match item {
                     Some(item) => {
-                      for tx in &senders {
-                        if tx.send(item.clone()).await.is_err() {
+                      let (msg, time_opt) = match &counter {
+                        Some(c) => {
+                          let t = LogicalTime::new(c.fetch_add(1, Ordering::SeqCst));
+                          (EdgeMessage::WithTime(item.clone(), t), Some(t))
+                        }
+                        None => (EdgeMessage::PayloadOnly(item.clone()), None),
+                      };
+                      for tx in &internal_senders {
+                        if tx.send(msg.clone()).await.is_err() {
                           return Ok(());
+                        }
+                      }
+                      if let Some(ext_tx) = &external_tx {
+                        if ext_tx.send(item).await.is_err() {
+                          return Ok(());
+                        }
+                        if let (Some(f), Some(t)) = (frontier_for_port.as_ref(), time_opt) {
+                          f.advance_to(t);
                         }
                       }
                     }
@@ -1153,7 +1238,7 @@ impl Graph {
     }
 
     let (handles, nodes_restored) = self
-      .run_dataflow(nodes, external_inputs, Some(&external_output_txs))
+      .run_dataflow(nodes, external_inputs, Some(&external_output_txs), None)
       .await?;
 
     for handle in handles {

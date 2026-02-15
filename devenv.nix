@@ -38,7 +38,8 @@
   # Development packages
   packages = with pkgs; [
     # AI
-    inputs.nixpkgs-unstable.legacyPackages.${pkgs.system}.beads
+    inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.beads
+    inputs.streamweave-attractor.packages.${pkgs.stdenv.hostPlatform.system}.default
 
     # Rust tools
     clippy

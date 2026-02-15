@@ -38,6 +38,8 @@ pub mod graph;
 pub mod graph_builder;
 /// Macros for declarative graph construction.
 pub mod graph_macros;
+/// Logical timestamps for dataflow progress and ordering.
+pub mod time;
 /// Memory pool for efficient allocation.
 pub mod memory_pool;
 /// Core node trait and interfaces.

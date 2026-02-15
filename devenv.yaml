@@ -8,6 +8,8 @@ inputs:
     url: github:cachix/devenv-nixpkgs/rolling
   nixpkgs-unstable:
     url: github:nixos/nixpkgs/nixos-unstable
+  streamweave-attractor:
+    url: github:Industrial/streamweave-attractor
   rust-overlay:
     url: github:oxalica/rust-overlay
     inputs:
