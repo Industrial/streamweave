@@ -10,6 +10,6 @@ mod observability;
 mod policy;
 
 pub use config::ScalerConfig;
-pub use loop_::{run_one_tick, ScalerState, TickMetrics};
+pub use loop_::{ScalerState, TickMetrics, run_one_tick};
 pub use observability::record_scale_decision;
-pub use policy::{decide, PolicyInputs, ScaleReason, ScalerDecision};
+pub use policy::{PolicyInputs, ScaleReason, ScalerDecision, decide};

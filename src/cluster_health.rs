@@ -13,25 +13,25 @@
 /// returns whether all shards are healthy and whether quorum is reached.
 #[derive(Clone, Debug)]
 pub struct ClusterHealthReport {
-    /// Number of shards that reported ready.
-    pub healthy_count: u32,
-    /// Total number of shards (expected workers).
-    pub total: u32,
-    /// True if all shards are ready.
-    pub all_healthy: bool,
-    /// True if at least a quorum (majority) of shards are ready.
-    /// Quorum = ceil(total/2); e.g. 2 of 3, 3 of 5.
-    pub quorum_healthy: bool,
+  /// Number of shards that reported ready.
+  pub healthy_count: u32,
+  /// Total number of shards (expected workers).
+  pub total: u32,
+  /// True if all shards are ready.
+  pub all_healthy: bool,
+  /// True if at least a quorum (majority) of shards are ready.
+  /// Quorum = ceil(total/2); e.g. 2 of 3, 3 of 5.
+  pub quorum_healthy: bool,
 }
 
 impl ClusterHealthReport {
-    /// Returns true if the cluster is ready to accept work (quorum or all).
-    ///
-    /// Use for a cluster-level readiness endpoint: return 200 when
-    /// `quorum_healthy`, 503 otherwise.
-    pub fn is_ready(&self) -> bool {
-        self.quorum_healthy
-    }
+  /// Returns true if the cluster is ready to accept work (quorum or all).
+  ///
+  /// Use for a cluster-level readiness endpoint: return 200 when
+  /// `quorum_healthy`, 503 otherwise.
+  pub fn is_ready(&self) -> bool {
+    self.quorum_healthy
+  }
 }
 
 /// Aggregates per-shard readiness into a cluster health report.
@@ -54,13 +54,13 @@ impl ClusterHealthReport {
 /// assert!(report.quorum_healthy);  // 2 >= ceil(3/2)
 /// ```
 pub fn aggregate_cluster_health(readiness: &[bool]) -> ClusterHealthReport {
-    let total = readiness.len() as u32;
-    let healthy_count = readiness.iter().filter(|&&r| r).count() as u32;
-    let quorum = (total + 1) / 2; // ceil(total/2)
-    ClusterHealthReport {
-        healthy_count,
-        total,
-        all_healthy: healthy_count == total && total > 0,
-        quorum_healthy: healthy_count >= quorum && total > 0,
-    }
+  let total = readiness.len() as u32;
+  let healthy_count = readiness.iter().filter(|&&r| r).count() as u32;
+  let quorum = total.div_ceil(2); // ceil(total/2)
+  ClusterHealthReport {
+    healthy_count,
+    total,
+    all_healthy: healthy_count == total && total > 0,
+    quorum_healthy: healthy_count >= quorum && total > 0,
+  }
 }

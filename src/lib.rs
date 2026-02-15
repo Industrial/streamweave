@@ -30,6 +30,12 @@
 // Documentation enforcement - treat missing docs as errors
 #![deny(missing_docs)]
 
+/// Local checkpoint storage for state recovery.
+pub mod checkpoint;
+/// Cluster health aggregation (all shards running, quorum).
+pub mod cluster_health;
+/// Built-in distribution layer: run N graph instances, route by partition key, merge output.
+pub mod distribution;
 /// Graph and node system for building data processing pipelines.
 pub mod edge;
 /// Graph execution and management.
@@ -38,42 +44,36 @@ pub mod graph;
 pub mod graph_builder;
 /// Macros for declarative graph construction.
 pub mod graph_macros;
-/// Logical timestamps for dataflow progress and ordering.
-pub mod time;
-/// Prometheus-compatible metrics for production observability.
-pub mod metrics;
-/// Partitioning contract for sharded execution (cluster sharding).
-pub mod partitioning;
-/// Local checkpoint storage for state recovery.
-pub mod checkpoint;
-/// Exactly-once state contract for stateful nodes.
-pub mod state;
-/// Memory pool for efficient allocation.
-pub mod memory_pool;
-/// Supervision policies for node failure handling.
-pub mod supervision;
-/// Rebalance protocol for cluster sharding (add/remove workers, state migration).
-pub mod rebalance;
-/// Built-in auto-scaler: policy config and (when implemented) loop that drives rebalance from metrics.
-pub mod scaler;
-/// Built-in distribution layer: run N graph instances, route by partition key, merge output.
-pub mod distribution;
-/// Cluster health aggregation (all shards running, quorum).
-pub mod cluster_health;
 /// Types for incremental and time-range recomputation.
 pub mod incremental;
+/// Memory pool for efficient allocation.
+pub mod memory_pool;
+/// Prometheus-compatible metrics for production observability.
+pub mod metrics;
 /// Core node trait and interfaces.
 pub mod node;
 /// Collection of built-in nodes for common operations.
 pub mod nodes;
+/// Partitioning contract for sharded execution (cluster sharding).
+pub mod partitioning;
+/// Rebalance protocol for cluster sharding (add/remove workers, state migration).
+pub mod rebalance;
+/// Built-in auto-scaler: policy config and (when implemented) loop that drives rebalance from metrics.
+pub mod scaler;
+/// Exactly-once state contract for stateful nodes.
+pub mod state;
+/// Supervision policies for node failure handling.
+pub mod supervision;
+/// Logical timestamps for dataflow progress and ordering.
+pub mod time;
 
+#[cfg(test)]
+mod cluster_health_test;
 #[cfg(test)]
 mod graph_macros_test;
 #[cfg(test)]
 mod graph_test;
 #[cfg(test)]
-mod rebalance_test;
-#[cfg(test)]
-mod cluster_health_test;
-#[cfg(test)]
 mod incremental_test;
+#[cfg(test)]
+mod rebalance_test;

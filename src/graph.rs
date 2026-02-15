@@ -75,14 +75,13 @@
 //! })?;
 //! ```
 
-use crate::incremental::{
-    plan_recompute as incremental_plan_recompute, RecomputePlan, RecomputeRequest, TimeRange,
-};
 use crate::checkpoint::{
-    CheckpointDone, CheckpointId, CheckpointMetadata, CheckpointStorage,
-    DistributedCheckpointStorage,
+  CheckpointDone, CheckpointId, CheckpointMetadata, CheckpointStorage, DistributedCheckpointStorage,
 };
 use crate::edge::Edge;
+use crate::incremental::{
+  RecomputePlan, RecomputeRequest, TimeRange, plan_recompute as incremental_plan_recompute,
+};
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::partitioning::PartitionKey;
 use crate::supervision::{FailureAction, FailureReport, SupervisionPolicy};
@@ -92,9 +91,9 @@ use std::any::Any;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
+use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio_stream::StreamExt;
@@ -111,31 +110,34 @@ const DATAFLOW_CHANNEL_CAPACITY: usize = 64;
 /// See [cluster-sharding.md](../docs/cluster-sharding.md).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ShardConfig {
-    /// This instance's shard index (0..total_shards-1).
-    pub shard_id: u32,
-    /// Total number of shards; keys are partitioned by hash % total_shards.
-    pub total_shards: u32,
+  /// This instance's shard index (0..total_shards-1).
+  pub shard_id: u32,
+  /// Total number of shards; keys are partitioned by hash % total_shards.
+  pub total_shards: u32,
 }
 
 impl ShardConfig {
-    /// Creates a new shard config.
-    pub fn new(shard_id: u32, total_shards: u32) -> Self {
-        Self { shard_id, total_shards }
+  /// Creates a new shard config.
+  pub fn new(shard_id: u32, total_shards: u32) -> Self {
+    Self {
+      shard_id,
+      total_shards,
     }
+  }
 
-    /// Returns true if this shard owns the given partition key.
-    ///
-    /// Uses `hash(key) % total_shards == shard_id`. The driver should route
-    /// records so that each instance only receives keys it owns; this method
-    /// allows nodes to reject or filter unexpected keys.
-    pub fn owns_key(&self, key: &str) -> bool {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-        let mut hasher = DefaultHasher::new();
-        key.hash(&mut hasher);
-        let h = hasher.finish();
-        (h % self.total_shards as u64) == self.shard_id as u64
-    }
+  /// Returns true if this shard owns the given partition key.
+  ///
+  /// Uses `hash(key) % total_shards == shard_id`. The driver should route
+  /// records so that each instance only receives keys it owns; this method
+  /// allows nodes to reject or filter unexpected keys.
+  pub fn owns_key(&self, key: &str) -> bool {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    key.hash(&mut hasher);
+    let h = hasher.finish();
+    (h % self.total_shards as u64) == self.shard_id as u64
+  }
 }
 
 /// Execution mode for the graph.
@@ -144,31 +146,31 @@ impl ShardConfig {
 /// - **Deterministic**: Nodes are started in topological order; improves reproducibility for testing.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
 pub enum ExecutionMode {
-    /// Concurrent tasks per node; order not guaranteed.
-    #[default]
-    Concurrent,
-    /// Single-task-friendly: nodes started in topological order for reproducibility.
-    Deterministic,
+  /// Concurrent tasks per node; order not guaranteed.
+  #[default]
+  Concurrent,
+  /// Single-task-friendly: nodes started in topological order for reproducibility.
+  Deterministic,
 }
 
 /// Progress frontier configuration for run_dataflow.
 #[derive(Clone)]
 enum ProgressFrontierConfig {
-    /// Single shared frontier; all sinks advance the same frontier.
-    Single(Arc<CompletedFrontier>),
-    /// Per-sink frontiers; graph-level progress = min over all sink frontiers.
-    PerSink(HashMap<(String, String), Arc<CompletedFrontier>>),
+  /// Single shared frontier; all sinks advance the same frontier.
+  Single(Arc<CompletedFrontier>),
+  /// Per-sink frontiers; graph-level progress = min over all sink frontiers.
+  PerSink(HashMap<(String, String), Arc<CompletedFrontier>>),
 }
 
 /// Message type for dataflow edges. When progress tracking is enabled, items carry
 /// a logical time so the completed frontier can be advanced when items reach sinks.
 #[derive(Clone)]
 enum EdgeMessage {
-    /// No progress tracking; payload only.
-    PayloadOnly(Arc<dyn Any + Send + Sync>),
-    /// Progress tracking enabled; payload and its logical time.
-    #[allow(dead_code)] // time is carried on the channel; sender uses time_opt for frontier
-    WithTime(Arc<dyn Any + Send + Sync>, LogicalTime),
+  /// No progress tracking; payload only.
+  PayloadOnly(Arc<dyn Any + Send + Sync>),
+  /// Progress tracking enabled; payload and its logical time.
+  #[allow(dead_code)] // time is carried on the channel; sender uses time_opt for frontier
+  WithTime(Arc<dyn Any + Send + Sync>, LogicalTime),
 }
 
 /// Per-round feedback override for cyclic execution.
@@ -301,6 +303,10 @@ struct PortMapping {
   port: String,
 }
 
+/// Map from external port name to optional receiver for timestamped items.
+type TimestampedInputChannels =
+  HashMap<String, Option<tokio::sync::mpsc::Receiver<Timestamped<Arc<dyn Any + Send + Sync>>>>>;
+
 /// A graph containing nodes and edges.
 ///
 /// Graphs represent the structure of a data processing pipeline, with nodes
@@ -335,8 +341,7 @@ pub struct Graph {
     HashMap<String, Option<tokio::sync::mpsc::Receiver<Arc<dyn Any + Send + Sync>>>>,
   /// Timestamped input channels (user-provided event time; used instead of counter when progress enabled)
   /// Key: external port name -> receiver for timestamped items
-  connected_timestamped_input_channels:
-    HashMap<String, Option<tokio::sync::mpsc::Receiver<Timestamped<Arc<dyn Any + Send + Sync>>>>>,
+  connected_timestamped_input_channels: TimestampedInputChannels,
   /// Connected output channels for external data
   /// Key: external port name -> sender for output data
   connected_output_channels: HashMap<String, tokio::sync::mpsc::Sender<Arc<dyn Any + Send + Sync>>>,
@@ -448,7 +453,10 @@ impl Graph {
 
   /// Returns the supervision group id for a node, if set.
   pub fn supervision_group(&self, node_id: &str) -> Option<&str> {
-    self.node_supervision_groups.get(node_id).map(|s| s.as_str())
+    self
+      .node_supervision_groups
+      .get(node_id)
+      .map(|s| s.as_str())
   }
 
   /// Sets the supervision policy for a node.
@@ -456,7 +464,9 @@ impl Graph {
   /// When a node fails (panic or `Err` from `execute`), the supervisor applies
   /// this policy. See [actor-supervision-trees.md](../docs/actor-supervision-trees.md).
   pub fn set_node_supervision_policy(&mut self, node_id: &str, policy: SupervisionPolicy) {
-    self.node_supervision_policies.insert(node_id.to_string(), policy);
+    self
+      .node_supervision_policies
+      .insert(node_id.to_string(), policy);
   }
 
   /// Sets the default supervision policy for nodes without an explicit policy.
@@ -1263,7 +1273,13 @@ impl Graph {
   /// [`execute_with_rounds`](Self::execute_with_rounds) instead of [`execute`](Self::execute).
   pub fn has_cycles(&self) -> bool {
     !Self::find_feedback_edges(
-      &self.nodes.lock().unwrap().keys().cloned().collect::<Vec<_>>(),
+      &self
+        .nodes
+        .lock()
+        .unwrap()
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>(),
       &self.edges,
     )
     .is_empty()
@@ -1288,13 +1304,11 @@ impl Graph {
     let mut adj: Vec<Vec<usize>> = vec![Vec::new(); node_names.len()];
     let mut edge_map: HashMap<(usize, usize), Vec<Edge>> = HashMap::new();
     for e in edges {
-      if let (Some(&si), Some(&ti)) =
-        (n.get(e.source_node()), n.get(e.target_node()))
+      if let (Some(&si), Some(&ti)) = (n.get(e.source_node()), n.get(e.target_node()))
+        && si != ti
       {
-        if si != ti {
-          adj[si].push(ti);
-          edge_map.entry((si, ti)).or_default().push(e.clone());
-        }
+        adj[si].push(ti);
+        edge_map.entry((si, ti)).or_default().push(e.clone());
       }
     }
     let mut visited = vec![false; node_names.len()];
@@ -1608,7 +1622,10 @@ impl Graph {
   /// [`connect_output_channel`](Self::connect_output_channel) before calling.
   ///
   /// See [cyclic-iterative-dataflows.md](../docs/cyclic-iterative-dataflows.md) Option B.
-  pub async fn execute_with_rounds(&mut self, max_rounds: usize) -> Result<(), GraphExecutionError> {
+  pub async fn execute_with_rounds(
+    &mut self,
+    max_rounds: usize,
+  ) -> Result<(), GraphExecutionError> {
     if !self.has_cycles() {
       return self.execute().await;
     }
@@ -1675,13 +1692,17 @@ impl Graph {
       } else {
         let mut empty = HashMap::new();
         for port in self.input_port_mapping.keys() {
-          let stream = Box::pin(tokio_stream::iter(std::iter::empty::<Arc<dyn Any + Send + Sync>>()))
-            as crate::node::InputStream;
+          let stream = Box::pin(tokio_stream::iter(std::iter::empty::<
+            Arc<dyn Any + Send + Sync>,
+          >())) as crate::node::InputStream;
           empty.insert(port.clone(), stream);
         }
         Some(empty)
       };
-      let ext_ts: HashMap<String, tokio::sync::mpsc::Receiver<Timestamped<Arc<dyn Any + Send + Sync>>>> = HashMap::new();
+      let ext_ts: HashMap<
+        String,
+        tokio::sync::mpsc::Receiver<Timestamped<Arc<dyn Any + Send + Sync>>>,
+      > = HashMap::new();
 
       let (handles, nodes_restored) = self
         .run_dataflow(
@@ -1695,8 +1716,9 @@ impl Graph {
         .await?;
 
       for (_, h) in handles {
-        h.await
-          .map_err(|e| -> GraphExecutionError { format!("Round {} task failed: {}", round, e).into() })??;
+        h.await.map_err(|e| -> GraphExecutionError {
+          format!("Round {} task failed: {}", round, e).into()
+        })??;
       }
       {
         let mut guard = nodes_restored.lock().await;
@@ -1734,9 +1756,7 @@ impl Graph {
   /// # Returns
   ///
   /// `Ok(ProgressHandle)` so the caller can poll progress; the graph runs as with `execute()`.
-  pub async fn execute_with_progress(
-    &mut self,
-  ) -> Result<ProgressHandle, GraphExecutionError> {
+  pub async fn execute_with_progress(&mut self) -> Result<ProgressHandle, GraphExecutionError> {
     let mut external_inputs = HashMap::new();
     let mut external_timestamped_inputs = HashMap::new();
     for (port_name, receiver_option) in &mut self.connected_input_channels {
@@ -1849,10 +1869,7 @@ impl Graph {
 
   /// Returns node names in topological order (sources first).
   /// Nodes with no incoming edges come first; ties broken by name.
-  fn topological_order(
-    nodes: &HashMap<String, Box<dyn Node>>,
-    edges: &[&Edge],
-  ) -> Vec<String> {
+  fn topological_order(nodes: &HashMap<String, Box<dyn Node>>, edges: &[&Edge]) -> Vec<String> {
     let mut in_degree: HashMap<String, usize> = nodes.keys().map(|n| (n.clone(), 0)).collect();
     let mut outgoing: HashMap<String, Vec<String>> = HashMap::new();
     for e in edges {
@@ -1876,7 +1893,13 @@ impl Graph {
     let mut result = Vec::new();
     while let Some(n) = queue.pop_front() {
       result.push(n.clone());
-      for m in outgoing.get(&n).into_iter().flatten().cloned().collect::<Vec<_>>() {
+      for m in outgoing
+        .get(&n)
+        .into_iter()
+        .flatten()
+        .cloned()
+        .collect::<Vec<_>>()
+      {
         if let Some(d) = in_degree.get_mut(&m) {
           *d = d.saturating_sub(1);
           if *d == 0 {
@@ -1937,10 +1960,7 @@ impl Graph {
       })
       .unwrap_or_default();
 
-    let initial_time = self
-      .restored_position
-      .map(|t| t.as_u64() + 1)
-      .unwrap_or(0);
+    let initial_time = self.restored_position.map(|t| t.as_u64() + 1).unwrap_or(0);
     let time_counter = progress_config
       .as_ref()
       .map(|_| Arc::new(AtomicU64::new(initial_time)));
@@ -2320,7 +2340,14 @@ impl Graph {
     }
 
     let (handles, nodes_restored) = self
-      .run_dataflow(nodes, external_inputs, Some(&external_output_txs), None, HashMap::new(), None)
+      .run_dataflow(
+        nodes,
+        external_inputs,
+        Some(&external_output_txs),
+        None,
+        HashMap::new(),
+        None,
+      )
       .await?;
 
     for (_node_id_opt, handle) in handles {
@@ -2385,7 +2412,7 @@ impl Graph {
                 error: e.to_string(),
               });
             }
-            first_error = Some(e.into());
+            first_error = Some(e);
           }
         }
         Err(join_err) => {
@@ -2456,26 +2483,18 @@ impl Graph {
     loop {
       reconnect(self)?;
 
-      if let Err(e) = self.execute().await {
-        return Err(e);
-      }
+      self.execute().await?;
 
       match self.wait_for_completion().await {
         Ok(()) => return Ok(()),
         Err(exec_err) => {
           // Receive the failure report (sent before wait_for_completion returned)
-          let report = tokio::time::timeout(
-            std::time::Duration::from_secs(1),
-            failure_rx.recv(),
-          )
-          .await
-          .ok()
-          .flatten();
+          let report = tokio::time::timeout(std::time::Duration::from_secs(1), failure_rx.recv())
+            .await
+            .ok()
+            .flatten();
 
-          let node_id = report
-            .as_ref()
-            .map(|r| r.node_id.as_str())
-            .unwrap_or("?");
+          let node_id = report.as_ref().map(|r| r.node_id.as_str()).unwrap_or("?");
 
           let policy = self
             .node_supervision_policies
@@ -2512,18 +2531,21 @@ impl Graph {
               return Err(exec_err);
             }
             FailureAction::Restart | FailureAction::RestartGroup => {
-              if let Some(max) = policy.max_restarts {
-                if *count > max {
-                  tracing::error!(
-                    node_id = %node_id,
-                    restart_count = *count,
-                    max_restarts = max,
-                    "Max restarts exceeded, stopping"
-                  );
-                  return Err(exec_err);
-                }
+              if let Some(max) = policy.max_restarts
+                && *count > max
+              {
+                tracing::error!(
+                  node_id = %node_id,
+                  restart_count = *count,
+                  max_restarts = max,
+                  "Max restarts exceeded, stopping"
+                );
+                return Err(exec_err);
               }
-              let (scope_msg, unit_type) = match (policy.on_failure, self.is_subgraph_supervision_unit(node_id)) {
+              let (scope_msg, unit_type) = match (
+                policy.on_failure,
+                self.is_subgraph_supervision_unit(node_id),
+              ) {
                 (FailureAction::RestartGroup, _) => ("restarting group", "group"),
                 (_, true) => ("restarting subgraph unit", "subgraph_unit"),
                 _ => ("restarting graph", "node"),

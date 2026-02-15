@@ -397,5 +397,9 @@ async fn test_merge_deterministic_order() {
     .iter()
     .filter_map(|r| r.clone().downcast::<i32>().ok().map(|arc| *arc))
     .collect();
-  assert_eq!(values, vec![1, 2, 3, 4], "deterministic merge order by port");
+  assert_eq!(
+    values,
+    vec![1, 2, 3, 4],
+    "deterministic merge order by port"
+  );
 }

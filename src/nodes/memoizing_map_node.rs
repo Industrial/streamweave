@@ -99,10 +99,7 @@ impl MemoizingMapNode {
   }
 
   /// Creates a MemoizingMapNode with a custom key extractor for value-based caching.
-  pub fn with_key_extractor(
-    name: String,
-    key_extractor: Arc<dyn MemoizeKeyExtractor>,
-  ) -> Self {
+  pub fn with_key_extractor(name: String, key_extractor: Arc<dyn MemoizeKeyExtractor>) -> Self {
     Self {
       base: BaseNode::new(
         name,
@@ -153,7 +150,9 @@ impl Node for MemoizingMapNode {
   ) -> Pin<
     Box<dyn std::future::Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>,
   > {
-    let config_stream = inputs.remove("configuration").ok_or("Missing 'configuration' input");
+    let config_stream = inputs
+      .remove("configuration")
+      .ok_or("Missing 'configuration' input");
     let data_stream = inputs.remove("in").ok_or("Missing 'in' input");
     let current_config = Arc::clone(&self.current_config);
     let cache = Arc::clone(&self.cache);
@@ -175,66 +174,65 @@ impl Node for MemoizingMapNode {
       tokio::spawn(async move {
         let mut merged = merged;
         while let Some((msg_type, item)) = merged.next().await {
-        match msg_type {
-          MessageType::Config => {
-            let cfg_opt = item
-              .clone()
-              .downcast::<Arc<MapConfig>>()
-              .ok()
-              .map(|a| (*a).clone())
-              .or_else(|| item.downcast::<MapConfig>().ok());
-            if let Some(cfg) = cfg_opt {
-              current_config_opt = Some(cfg.clone());
-              *current_config.lock().await = Some(cfg);
-            } else {
-              let _ = error_tx
-                .send(
-                  Arc::new(format!(
+          match msg_type {
+            MessageType::Config => {
+              let cfg_opt = item
+                .clone()
+                .downcast::<Arc<MapConfig>>()
+                .ok()
+                .map(|a| (*a).clone())
+                .or_else(|| item.downcast::<MapConfig>().ok());
+              if let Some(cfg) = cfg_opt {
+                current_config_opt = Some(cfg.clone());
+                *current_config.lock().await = Some(cfg);
+              } else {
+                let _ = error_tx
+                  .send(Arc::new(format!(
                     "Invalid config type, expected {}",
                     std::any::type_name::<MapConfig>()
-                  )) as Arc<dyn Any + Send + Sync>,
-                )
-                .await;
-            }
-          }
-          MessageType::Data => {
-            let cfg = match &current_config_opt {
-              Some(c) => c.clone(),
-              None => {
-                let _ = error_tx
-                .send(
-                  Arc::new("No configuration set".to_string()) as Arc<dyn Any + Send + Sync>,
-                )
-                .await;
-                continue;
+                  )) as Arc<dyn Any + Send + Sync>)
+                  .await;
               }
-            };
+            }
+            MessageType::Data => {
+              let cfg = match &current_config_opt {
+                Some(c) => c.clone(),
+                None => {
+                  let _ =
+                    error_tx
+                      .send(
+                        Arc::new("No configuration set".to_string()) as Arc<dyn Any + Send + Sync>
+                      )
+                      .await;
+                  continue;
+                }
+              };
 
-            let key = key_extractor.extract_key(&item);
+              let key = key_extractor.extract_key(&item);
 
-            if let Some(k) = key {
-              if let Some(cached) = cache.lock().await.get(&k) {
+              if let Some(k) = key
+                && let Some(cached) = cache.lock().await.get(&k)
+              {
                 let _ = out_tx.send(cached.clone()).await;
                 continue;
               }
-            }
 
-            match cfg.apply(item).await {
-              Ok(output) => {
-                if let Some(k) = key {
-                  cache.lock().await.insert(k, output.clone());
+              match cfg.apply(item).await {
+                Ok(output) => {
+                  if let Some(k) = key {
+                    cache.lock().await.insert(k, output.clone());
+                  }
+                  let _ = out_tx.send(output).await;
                 }
-                let _ = out_tx.send(output).await;
-              }
-              Err(e) => {
-                let _ = error_tx
-                  .send(Arc::new(e) as Arc<dyn Any + Send + Sync>)
-                  .await;
+                Err(e) => {
+                  let _ = error_tx
+                    .send(Arc::new(e) as Arc<dyn Any + Send + Sync>)
+                    .await;
+                }
               }
             }
           }
         }
-      }
       });
 
       let mut outputs = HashMap::new();

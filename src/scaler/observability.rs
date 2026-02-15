@@ -13,16 +13,16 @@ use tracing::info;
 /// - **Metric:** `streamweave_scaler_scale_total` counter with label `reason` (scale_up | scale_down).
 /// - **Metric:** `streamweave_scaler_target_shards` gauge set to target (for dashboards).
 pub fn record_scale_decision(reason: ScaleReason, from_shards: u32, target_shards: u32) {
-    info!(
-        %reason,
-        from_shards,
-        target_shards,
-        "scaler applied scale decision"
-    );
-    counter!(
-        "streamweave_scaler_scale_total",
-        "reason" => reason.to_string()
-    )
-    .increment(1);
-    metrics::gauge!("streamweave_scaler_target_shards").set(target_shards as f64);
+  info!(
+      %reason,
+      from_shards,
+      target_shards,
+      "scaler applied scale decision"
+  );
+  counter!(
+      "streamweave_scaler_scale_total",
+      "reason" => reason.to_string()
+  )
+  .increment(1);
+  metrics::gauge!("streamweave_scaler_target_shards").set(target_shards as f64);
 }

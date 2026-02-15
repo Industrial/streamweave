@@ -60,9 +60,9 @@ mod join_node_test;
 #[cfg(test)]
 mod map_node_test;
 #[cfg(test)]
-mod memoizing_map_node_test;
-#[cfg(test)]
 mod match_node_test;
+#[cfg(test)]
+mod memoizing_map_node_test;
 #[cfg(test)]
 mod range_node_test;
 #[cfg(test)]

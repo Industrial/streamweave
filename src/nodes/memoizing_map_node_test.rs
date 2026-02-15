@@ -2,13 +2,13 @@
 
 use crate::node::{InputStreams, Node};
 use crate::nodes::common::TestSender;
-use crate::nodes::map_node::{map_config, MapConfig};
+use crate::nodes::map_node::{MapConfig, map_config};
 use crate::nodes::memoizing_map_node::{HashKeyExtractor, MemoizingMapNode};
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tokio_stream::{wrappers::ReceiverStream, StreamExt};
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 fn create_input_streams() -> (TestSender, TestSender, InputStreams) {
   let (config_tx, config_rx) = mpsc::channel(10);
@@ -55,10 +55,10 @@ async fn test_memoizing_map_node_identity_cache() {
   let mut results = Vec::new();
   let mut stream = out_stream;
   for _ in 0..2 {
-    if let Some(item) = stream.next().await {
-      if let Ok(arc_i32) = item.downcast::<i32>() {
-        results.push(*arc_i32);
-      }
+    if let Some(item) = stream.next().await
+      && let Ok(arc_i32) = item.downcast::<i32>()
+    {
+      results.push(*arc_i32);
     }
   }
 
@@ -67,8 +67,7 @@ async fn test_memoizing_map_node_identity_cache() {
 
 #[tokio::test]
 async fn test_memoizing_map_node_value_cache() {
-  let node =
-    MemoizingMapNode::with_key_extractor("memo".to_string(), Arc::new(HashKeyExtractor));
+  let node = MemoizingMapNode::with_key_extractor("memo".to_string(), Arc::new(HashKeyExtractor));
   let config: MapConfig = map_config(|value| async move {
     if let Ok(arc_i32) = value.downcast::<i32>() {
       Ok(Arc::new(*arc_i32 * 2) as Arc<dyn Any + Send + Sync>)
@@ -97,10 +96,10 @@ async fn test_memoizing_map_node_value_cache() {
   let mut results = Vec::new();
   let mut stream = out_stream;
   for _ in 0..2 {
-    if let Some(item) = stream.next().await {
-      if let Ok(arc_i32) = item.downcast::<i32>() {
-        results.push(*arc_i32);
-      }
+    if let Some(item) = stream.next().await
+      && let Ok(arc_i32) = item.downcast::<i32>()
+    {
+      results.push(*arc_i32);
     }
   }
 

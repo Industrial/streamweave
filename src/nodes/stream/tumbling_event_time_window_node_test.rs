@@ -10,114 +10,122 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
-use tokio_stream::{wrappers::ReceiverStream, StreamExt};
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 fn create_inputs() -> (mpsc::Sender<Arc<dyn Any + Send + Sync>>, InputStreams) {
-    let (_config_tx, config_rx) = mpsc::channel(10);
-    let (in_tx, in_rx) = mpsc::channel(10);
+  let (_config_tx, config_rx) = mpsc::channel(10);
+  let (in_tx, in_rx) = mpsc::channel(10);
 
-    let mut inputs = HashMap::new();
-    inputs.insert(
-        "configuration".to_string(),
-        Box::pin(ReceiverStream::new(config_rx)) as crate::node::InputStream,
-    );
-    inputs.insert(
-        "in".to_string(),
-        Box::pin(ReceiverStream::new(in_rx)) as crate::node::InputStream,
-    );
+  let mut inputs = HashMap::new();
+  inputs.insert(
+    "configuration".to_string(),
+    Box::pin(ReceiverStream::new(config_rx)) as crate::node::InputStream,
+  );
+  inputs.insert(
+    "in".to_string(),
+    Box::pin(ReceiverStream::new(in_rx)) as crate::node::InputStream,
+  );
 
-    (in_tx, inputs)
+  (in_tx, inputs)
 }
 
 fn data_at(t: u64, payload: i32) -> Arc<dyn Any + Send + Sync> {
-    Arc::new(StreamMessage::<Arc<dyn Any + Send + Sync>>::Data(Timestamped::new(
-        Arc::new(payload) as Arc<dyn Any + Send + Sync>,
-        LogicalTime::new(t),
-    )))
+  Arc::new(StreamMessage::<Arc<dyn Any + Send + Sync>>::Data(
+    Timestamped::new(
+      Arc::new(payload) as Arc<dyn Any + Send + Sync>,
+      LogicalTime::new(t),
+    ),
+  ))
 }
 
 fn watermark(t: u64) -> Arc<dyn Any + Send + Sync> {
-    Arc::new(StreamMessage::<Arc<dyn Any + Send + Sync>>::Watermark(LogicalTime::new(t)))
+  Arc::new(StreamMessage::<Arc<dyn Any + Send + Sync>>::Watermark(
+    LogicalTime::new(t),
+  ))
 }
 
 #[tokio::test]
 async fn test_event_time_window_creation() {
-    let node = TumblingEventTimeWindowNode::new(
-        "event_window".to_string(),
-        Duration::from_secs(3600),
-    );
-    assert_eq!(node.name(), "event_window");
-    assert!(node.has_input_port("configuration"));
-    assert!(node.has_input_port("in"));
-    assert!(node.has_output_port("out"));
-    assert!(node.has_output_port("error"));
-    assert_eq!(node.window_size(), Duration::from_secs(3600));
+  let node =
+    TumblingEventTimeWindowNode::new("event_window".to_string(), Duration::from_secs(3600));
+  assert_eq!(node.name(), "event_window");
+  assert!(node.has_input_port("configuration"));
+  assert!(node.has_input_port("in"));
+  assert!(node.has_output_port("out"));
+  assert!(node.has_output_port("error"));
+  assert_eq!(node.window_size(), Duration::from_secs(3600));
 }
 
 #[tokio::test]
 async fn test_event_time_window_close_on_watermark() {
-    let node = TumblingEventTimeWindowNode::new(
-        "event_window".to_string(),
-        Duration::from_millis(1000),
-    );
-    let (in_tx, inputs) = create_inputs();
+  let node =
+    TumblingEventTimeWindowNode::new("event_window".to_string(), Duration::from_millis(1000));
+  let (in_tx, inputs) = create_inputs();
 
-    let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
+  let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
 
-    // Times: 0-999 -> window [0,1000), 1000-1999 -> [1000,2000)
-    in_tx.send(data_at(100, 1)).await.unwrap();
-    in_tx.send(data_at(500, 2)).await.unwrap();
-    in_tx.send(watermark(1000)).await.unwrap(); // close [0,1000)
-    in_tx.send(data_at(1100, 3)).await.unwrap();
-    in_tx.send(watermark(2000)).await.unwrap(); // close [1000,2000)
-    drop(in_tx);
+  // Times: 0-999 -> window [0,1000), 1000-1999 -> [1000,2000)
+  in_tx.send(data_at(100, 1)).await.unwrap();
+  in_tx.send(data_at(500, 2)).await.unwrap();
+  in_tx.send(watermark(1000)).await.unwrap(); // close [0,1000)
+  in_tx.send(data_at(1100, 3)).await.unwrap();
+  in_tx.send(watermark(2000)).await.unwrap(); // close [1000,2000)
+  drop(in_tx);
 
-    let mut out_stream = outputs.remove("out").unwrap();
-    let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-    while let Some(item) = out_stream.next().await {
-        results.push(item);
-    }
+  let mut out_stream = outputs.remove("out").unwrap();
+  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  while let Some(item) = out_stream.next().await {
+    results.push(item);
+  }
 
-    assert_eq!(results.len(), 2, "should receive two windows");
-    let w0 = results[0].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>().unwrap();
-    let w1 = results[1].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>().unwrap();
-    assert_eq!(w0.len(), 2, "first window: 2 items (times 100, 500)");
-    assert_eq!(w1.len(), 1, "second window: 1 item (time 1100)");
+  assert_eq!(results.len(), 2, "should receive two windows");
+  let w0 = results[0]
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .unwrap();
+  let w1 = results[1]
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .unwrap();
+  assert_eq!(w0.len(), 2, "first window: 2 items (times 100, 500)");
+  assert_eq!(w1.len(), 1, "second window: 1 item (time 1100)");
 }
 
 #[tokio::test]
 async fn test_event_time_window_late_data_side_output() {
-    let node = TumblingEventTimeWindowNode::new(
-        "event_window".to_string(),
-        Duration::from_millis(1000),
-    )
-    .with_late_data_policy(LateDataPolicy::SideOutput);
-    assert!(node.has_output_port("late"));
+  let node =
+    TumblingEventTimeWindowNode::new("event_window".to_string(), Duration::from_millis(1000))
+      .with_late_data_policy(LateDataPolicy::SideOutput);
+  assert!(node.has_output_port("late"));
 
-    let (in_tx, inputs) = create_inputs();
-    let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
+  let (in_tx, inputs) = create_inputs();
+  let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
 
-    in_tx.send(data_at(100, 1)).await.unwrap();
-    in_tx.send(watermark(1000)).await.unwrap(); // close [0,1000)
-    in_tx.send(data_at(50, 2)).await.unwrap();  // late: window already closed
-    in_tx.send(data_at(1100, 3)).await.unwrap();
-    drop(in_tx);
+  in_tx.send(data_at(100, 1)).await.unwrap();
+  in_tx.send(watermark(1000)).await.unwrap(); // close [0,1000)
+  in_tx.send(data_at(50, 2)).await.unwrap(); // late: window already closed
+  in_tx.send(data_at(1100, 3)).await.unwrap();
+  drop(in_tx);
 
-    let mut out_stream = outputs.remove("out").unwrap();
-    let mut late_stream = outputs.remove("late").unwrap();
-    let mut out_results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-    let mut late_results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-    while let Some(item) = out_stream.next().await {
-        out_results.push(item);
-    }
-    while let Some(item) = late_stream.next().await {
-        late_results.push(item);
-    }
+  let mut out_stream = outputs.remove("out").unwrap();
+  let mut late_stream = outputs.remove("late").unwrap();
+  let mut out_results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  let mut late_results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  while let Some(item) = out_stream.next().await {
+    out_results.push(item);
+  }
+  while let Some(item) = late_stream.next().await {
+    late_results.push(item);
+  }
 
-    assert_eq!(out_results.len(), 2, "two windows: [0,1000) and [1000,2000)");
-    assert_eq!(late_results.len(), 1, "one late item (data_at 50)");
-    let late_val = late_results[0].clone().downcast::<i32>().unwrap();
-    assert_eq!(*late_val, 2);
+  assert_eq!(
+    out_results.len(),
+    2,
+    "two windows: [0,1000) and [1000,2000)"
+  );
+  assert_eq!(late_results.len(), 1, "one late item (data_at 50)");
+  let late_val = late_results[0].clone().downcast::<i32>().unwrap();
+  assert_eq!(*late_val, 2);
 }
 
 /// Event-time processing test: out-of-order delivery.
@@ -125,117 +133,132 @@ async fn test_event_time_window_late_data_side_output() {
 /// Window results must be correct when watermark passes (event-time ordering, not arrival).
 #[tokio::test]
 async fn test_event_time_window_out_of_order() {
-    let node = TumblingEventTimeWindowNode::new(
-        "event_window".to_string(),
-        Duration::from_millis(1000),
-    );
-    let (in_tx, inputs) = create_inputs();
+  let node =
+    TumblingEventTimeWindowNode::new("event_window".to_string(), Duration::from_millis(1000));
+  let (in_tx, inputs) = create_inputs();
 
-    let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
+  let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
 
-    // Out-of-order: times 3, 1, 2 (wrong order) - all in window [0, 1000)
-    in_tx.send(data_at(3, 1)).await.unwrap();
-    in_tx.send(data_at(1, 2)).await.unwrap();
-    in_tx.send(data_at(2, 3)).await.unwrap();
-    in_tx.send(watermark(1000)).await.unwrap(); // close [0, 1000)
-    drop(in_tx);
+  // Out-of-order: times 3, 1, 2 (wrong order) - all in window [0, 1000)
+  in_tx.send(data_at(3, 1)).await.unwrap();
+  in_tx.send(data_at(1, 2)).await.unwrap();
+  in_tx.send(data_at(2, 3)).await.unwrap();
+  in_tx.send(watermark(1000)).await.unwrap(); // close [0, 1000)
+  drop(in_tx);
 
-    let mut out_stream = outputs.remove("out").unwrap();
-    let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-    while let Some(item) = out_stream.next().await {
-        results.push(item);
-    }
+  let mut out_stream = outputs.remove("out").unwrap();
+  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  while let Some(item) = out_stream.next().await {
+    results.push(item);
+  }
 
-    assert_eq!(results.len(), 1, "one window [0,1000)");
-    let w = results[0].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>().unwrap();
-    assert_eq!(w.len(), 3, "all three items in correct window regardless of arrival order");
+  assert_eq!(results.len(), 1, "one window [0,1000)");
+  let w = results[0]
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .unwrap();
+  assert_eq!(
+    w.len(),
+    3,
+    "all three items in correct window regardless of arrival order"
+  );
 }
 
 #[tokio::test]
 async fn test_event_time_window_late_data_dropped() {
-    let node = TumblingEventTimeWindowNode::new(
-        "event_window".to_string(),
-        Duration::from_millis(1000),
-    );
-    let (in_tx, inputs) = create_inputs();
+  let node =
+    TumblingEventTimeWindowNode::new("event_window".to_string(), Duration::from_millis(1000));
+  let (in_tx, inputs) = create_inputs();
 
-    let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
+  let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
 
-    in_tx.send(data_at(100, 1)).await.unwrap();
-    in_tx.send(watermark(1000)).await.unwrap(); // close [0,1000)
-    in_tx.send(data_at(50, 2)).await.unwrap();  // late: window already closed
-    in_tx.send(data_at(1100, 3)).await.unwrap();
-    drop(in_tx);
+  in_tx.send(data_at(100, 1)).await.unwrap();
+  in_tx.send(watermark(1000)).await.unwrap(); // close [0,1000)
+  in_tx.send(data_at(50, 2)).await.unwrap(); // late: window already closed
+  in_tx.send(data_at(1100, 3)).await.unwrap();
+  drop(in_tx);
 
-    let mut out_stream = outputs.remove("out").unwrap();
-    let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-    while let Some(item) = out_stream.next().await {
-        results.push(item);
-    }
+  let mut out_stream = outputs.remove("out").unwrap();
+  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  while let Some(item) = out_stream.next().await {
+    results.push(item);
+  }
 
-    assert_eq!(results.len(), 2, "two windows: [0,1000) and [1000,2000)");
-    let w0 = results[0].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>().unwrap();
-    let w1 = results[1].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>().unwrap();
-    assert_eq!(w0.len(), 1, "first window: only item 1 (item 2 late, dropped)");
-    assert_eq!(w1.len(), 1, "second window: item 3");
+  assert_eq!(results.len(), 2, "two windows: [0,1000) and [1000,2000)");
+  let w0 = results[0]
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .unwrap();
+  let w1 = results[1]
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .unwrap();
+  assert_eq!(
+    w0.len(),
+    1,
+    "first window: only item 1 (item 2 late, dropped)"
+  );
+  assert_eq!(w1.len(), 1, "second window: item 3");
 }
 
 #[tokio::test]
 async fn test_event_time_window_eos_flushes() {
-    let node = TumblingEventTimeWindowNode::new(
-        "event_window".to_string(),
-        Duration::from_millis(1000),
-    );
-    let (in_tx, inputs) = create_inputs();
+  let node =
+    TumblingEventTimeWindowNode::new("event_window".to_string(), Duration::from_millis(1000));
+  let (in_tx, inputs) = create_inputs();
 
-    let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
+  let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
 
-    in_tx.send(data_at(100, 1)).await.unwrap();
-    in_tx.send(data_at(500, 2)).await.unwrap();
-    // no watermark; drop sender -> EOS flushes remaining windows
-    drop(in_tx);
+  in_tx.send(data_at(100, 1)).await.unwrap();
+  in_tx.send(data_at(500, 2)).await.unwrap();
+  // no watermark; drop sender -> EOS flushes remaining windows
+  drop(in_tx);
 
-    let mut out_stream = outputs.remove("out").unwrap();
-    let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-    while let Some(item) = out_stream.next().await {
-        results.push(item);
-    }
+  let mut out_stream = outputs.remove("out").unwrap();
+  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  while let Some(item) = out_stream.next().await {
+    results.push(item);
+  }
 
-    assert_eq!(results.len(), 1, "EOS should flush one window");
-    let w = results[0].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>().unwrap();
-    assert_eq!(w.len(), 2);
+  assert_eq!(results.len(), 1, "EOS should flush one window");
+  let w = results[0]
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .unwrap();
+  assert_eq!(w.len(), 2);
 }
 
 #[tokio::test]
 async fn test_event_time_window_timestamped_only_input() {
-    let node = TumblingEventTimeWindowNode::new(
-        "event_window".to_string(),
-        Duration::from_millis(1000),
-    );
-    let (in_tx, inputs) = create_inputs();
+  let node =
+    TumblingEventTimeWindowNode::new("event_window".to_string(), Duration::from_millis(1000));
+  let (in_tx, inputs) = create_inputs();
 
-    let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
+  let mut outputs: OutputStreams = node.execute(inputs).await.unwrap();
 
-    // Timestamped (no StreamMessage) - no watermarks, EOS flushes
-    let ts1 = Arc::new(Timestamped::new(
-        Arc::new(10i32) as Arc<dyn Any + Send + Sync>,
-        LogicalTime::new(200),
-    ));
-    let ts2 = Arc::new(Timestamped::new(
-        Arc::new(20i32) as Arc<dyn Any + Send + Sync>,
-        LogicalTime::new(600),
-    ));
-    in_tx.send(ts1).await.unwrap();
-    in_tx.send(ts2).await.unwrap();
-    drop(in_tx);
+  // Timestamped (no StreamMessage) - no watermarks, EOS flushes
+  let ts1 = Arc::new(Timestamped::new(
+    Arc::new(10i32) as Arc<dyn Any + Send + Sync>,
+    LogicalTime::new(200),
+  ));
+  let ts2 = Arc::new(Timestamped::new(
+    Arc::new(20i32) as Arc<dyn Any + Send + Sync>,
+    LogicalTime::new(600),
+  ));
+  in_tx.send(ts1).await.unwrap();
+  in_tx.send(ts2).await.unwrap();
+  drop(in_tx);
 
-    let mut out_stream = outputs.remove("out").unwrap();
-    let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
-    while let Some(item) = out_stream.next().await {
-        results.push(item);
-    }
+  let mut out_stream = outputs.remove("out").unwrap();
+  let mut results: Vec<Arc<dyn Any + Send + Sync>> = Vec::new();
+  while let Some(item) = out_stream.next().await {
+    results.push(item);
+  }
 
-    assert_eq!(results.len(), 1);
-    let w = results[0].clone().downcast::<Vec<Arc<dyn Any + Send + Sync>>>().unwrap();
-    assert_eq!(w.len(), 2);
+  assert_eq!(results.len(), 1);
+  let w = results[0]
+    .clone()
+    .downcast::<Vec<Arc<dyn Any + Send + Sync>>>()
+    .unwrap();
+  assert_eq!(w.len(), 2);
 }

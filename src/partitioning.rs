@@ -37,27 +37,27 @@ use std::sync::Arc;
 pub struct PartitionKey(pub String);
 
 impl PartitionKey {
-    /// Creates a new partition key from a string.
-    pub fn new(s: String) -> Self {
-        Self(s)
-    }
+  /// Creates a new partition key from a string.
+  pub fn new(s: String) -> Self {
+    Self(s)
+  }
 
-    /// Returns the key as a string slice.
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
+  /// Returns the key as a string slice.
+  pub fn as_str(&self) -> &str {
+    &self.0
+  }
 }
 
 impl From<String> for PartitionKey {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
+  fn from(s: String) -> Self {
+    Self(s)
+  }
 }
 
 impl From<&str> for PartitionKey {
-    fn from(s: &str) -> Self {
-        Self(s.to_string())
-    }
+  fn from(s: &str) -> Self {
+    Self(s.to_string())
+  }
 }
 
 /// Extracts a partition key from a payload.
@@ -67,13 +67,13 @@ impl From<&str> for PartitionKey {
 /// that shard.
 #[async_trait]
 pub trait PartitionKeyExtractor: Send + Sync {
-    /// Extracts the partition key from a payload.
-    ///
-    /// Returns an error if the payload cannot be parsed (e.g. missing field).
-    async fn extract_key(
-        &self,
-        payload: Arc<dyn std::any::Any + Send + Sync>,
-    ) -> Result<PartitionKey, String>;
+  /// Extracts the partition key from a payload.
+  ///
+  /// Returns an error if the payload cannot be parsed (e.g. missing field).
+  async fn extract_key(
+    &self,
+    payload: Arc<dyn std::any::Any + Send + Sync>,
+  ) -> Result<PartitionKey, String>;
 }
 
 /// Configuration for partitioning a graph or input by key.
@@ -83,50 +83,50 @@ pub trait PartitionKeyExtractor: Send + Sync {
 /// range; input is routed so that each instance only sees keys in its range.
 #[derive(Clone)]
 pub struct PartitioningConfig {
-    /// Extractor that derives the partition key from each payload.
-    pub key_extractor: Arc<dyn PartitionKeyExtractor>,
+  /// Extractor that derives the partition key from each payload.
+  pub key_extractor: Arc<dyn PartitionKeyExtractor>,
 }
 
 impl PartitioningConfig {
-    /// Creates a new partitioning config with the given key extractor.
-    pub fn new(key_extractor: Arc<dyn PartitionKeyExtractor>) -> Self {
-        Self { key_extractor }
-    }
+  /// Creates a new partitioning config with the given key extractor.
+  pub fn new(key_extractor: Arc<dyn PartitionKeyExtractor>) -> Self {
+    Self { key_extractor }
+  }
 }
 
 /// Wrapper that implements `PartitionKeyExtractor` for async closures.
 struct PartitionKeyExtractorWrapper<F> {
-    function: F,
+  function: F,
 }
 
 #[async_trait]
 impl<F> PartitionKeyExtractor for PartitionKeyExtractorWrapper<F>
 where
-    F: Fn(Arc<dyn std::any::Any + Send + Sync>)
-            -> std::pin::Pin<
-                Box<
-                    dyn std::future::Future<Output = Result<PartitionKey, String>> + Send,
-                >,
-            > + Send
-        + Sync,
+  F: Fn(
+      Arc<dyn std::any::Any + Send + Sync>,
+    )
+      -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<PartitionKey, String>> + Send>>
+    + Send
+    + Sync,
 {
-    async fn extract_key(
-        &self,
-        payload: Arc<dyn std::any::Any + Send + Sync>,
-    ) -> Result<PartitionKey, String> {
-        (self.function)(payload).await
-    }
+  async fn extract_key(
+    &self,
+    payload: Arc<dyn std::any::Any + Send + Sync>,
+  ) -> Result<PartitionKey, String> {
+    (self.function)(payload).await
+  }
 }
 
 /// Creates a `PartitioningConfig` from an async closure.
 pub fn partition_by_key<F, Fut>(function: F) -> PartitioningConfig
 where
-    F: Fn(Arc<dyn std::any::Any + Send + Sync>) -> Fut + Send + Sync + 'static,
-    Fut: std::future::Future<Output = Result<PartitionKey, String>> + Send + 'static,
+  F: Fn(Arc<dyn std::any::Any + Send + Sync>) -> Fut + Send + Sync + 'static,
+  Fut: std::future::Future<Output = Result<PartitionKey, String>> + Send + 'static,
 {
-    PartitioningConfig::new(Arc::new(PartitionKeyExtractorWrapper {
-        function: move |p| {
-            Box::pin(function(p)) as std::pin::Pin<Box<dyn std::future::Future<Output = Result<PartitionKey, String>> + Send>>
-        },
-    }))
+  PartitioningConfig::new(Arc::new(PartitionKeyExtractorWrapper {
+    function: move |p| {
+      Box::pin(function(p))
+        as std::pin::Pin<Box<dyn std::future::Future<Output = Result<PartitionKey, String>> + Send>>
+    },
+  }))
 }

@@ -12,7 +12,9 @@
 //! - **Edge Management**: Adding, removing, and querying edges
 //! - **Stream Execution**: Executing graphs with stream-based node connections
 
-use crate::checkpoint::{CheckpointId, CheckpointMetadata, CheckpointStorage, FileCheckpointStorage};
+use crate::checkpoint::{
+  CheckpointId, CheckpointMetadata, CheckpointStorage, FileCheckpointStorage,
+};
 use crate::edge::Edge;
 use crate::graph::{Graph, topological_sort};
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
@@ -22,8 +24,8 @@ use async_trait::async_trait;
 use std::any::Any;
 use std::collections::HashMap;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::{Stream, StreamExt};
@@ -916,10 +918,7 @@ async fn test_execute_with_supervision_escalate() {
     })
     .unwrap();
 
-  graph.set_node_supervision_policy(
-    "fail_node",
-    SupervisionPolicy::new(FailureAction::Escalate),
-  );
+  graph.set_node_supervision_policy("fail_node", SupervisionPolicy::new(FailureAction::Escalate));
 
   let err = graph
     .execute_with_supervision(|_| Ok(()))
@@ -997,7 +996,10 @@ async fn test_execute_with_progress_advances_frontier() {
   // Pipeline: producer -> transform; expose transform output. With progress tracking,
   // the frontier should advance when items reach the exposed output.
   let mut graph = Graph::new("test".to_string());
-  let producer = Box::new(MockProducerNode::new("producer".to_string(), vec![10, 20, 30]));
+  let producer = Box::new(MockProducerNode::new(
+    "producer".to_string(),
+    vec![10, 20, 30],
+  ));
   let transform = Box::new(MockTransformNode::new("transform".to_string()));
 
   graph.add_node("producer".to_string(), producer).unwrap();
@@ -1064,10 +1066,10 @@ async fn run_deterministic_and_collect() -> Vec<i32> {
 
   let mut collected = Vec::new();
   for _ in 0..3 {
-    if let Some(item) = rx.recv().await {
-      if let Ok(arc) = item.downcast::<i32>() {
-        collected.push(*arc);
-      }
+    if let Some(item) = rx.recv().await
+      && let Ok(arc) = item.downcast::<i32>()
+    {
+      collected.push(*arc);
     }
   }
   graph.wait_for_completion().await.unwrap();
@@ -1079,8 +1081,15 @@ async fn test_execute_deterministic_reproducible() {
   // Run the same graph twice in deterministic mode; outputs must be identical.
   let run1 = run_deterministic_and_collect().await;
   let run2 = run_deterministic_and_collect().await;
-  assert_eq!(run1, run2, "deterministic mode must produce identical outputs");
-  assert_eq!(run1, vec![2, 4, 6], "transform multiplies by 2: 1,2,3 -> 2,4,6");
+  assert_eq!(
+    run1, run2,
+    "deterministic mode must produce identical outputs"
+  );
+  assert_eq!(
+    run1,
+    vec![2, 4, 6],
+    "transform multiplies by 2: 1,2,3 -> 2,4,6"
+  );
 }
 
 // ============================================================================
@@ -1438,7 +1447,9 @@ fn test_restore_from_checkpoint() {
   let mut graph = Graph::new("test".to_string());
   let stateful = MockRestorableNode::new("stateful".to_string());
   let restored_data = Arc::clone(&stateful.restored_data);
-  graph.add_node("stateful".to_string(), Box::new(stateful)).unwrap();
+  graph
+    .add_node("stateful".to_string(), Box::new(stateful))
+    .unwrap();
 
   graph
     .restore_from_checkpoint(&storage, CheckpointId::new(1))
@@ -1457,8 +1468,11 @@ fn test_trigger_checkpoint() {
   let storage = FileCheckpointStorage::new(tmp.path());
 
   let mut graph = Graph::new("test".to_string());
-  let stateful = MockRestorableNode::new("stateful".to_string()).with_snapshot_data(b"my-state".to_vec());
-  graph.add_node("stateful".to_string(), Box::new(stateful)).unwrap();
+  let stateful =
+    MockRestorableNode::new("stateful".to_string()).with_snapshot_data(b"my-state".to_vec());
+  graph
+    .add_node("stateful".to_string(), Box::new(stateful))
+    .unwrap();
 
   let id = graph.trigger_checkpoint(&storage).unwrap();
   assert_eq!(id.as_u64(), 0);
