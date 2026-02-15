@@ -48,6 +48,8 @@ pub mod graph_macros;
 pub mod incremental;
 /// Memory pool for efficient allocation.
 pub mod memory_pool;
+/// Mermaid flowchart (`.mmd`) import/export for StreamWeave graphs.
+pub mod mermaid;
 /// Prometheus-compatible metrics for production observability.
 pub mod metrics;
 /// Core node trait and interfaces.
@@ -66,8 +68,6 @@ pub mod state;
 pub mod supervision;
 /// Logical timestamps for dataflow progress and ordering.
 pub mod time;
-/// Mermaid flowchart (`.mmd`) import/export for StreamWeave graphs.
-pub mod mermaid;
 
 #[cfg(test)]
 mod cluster_health_test;

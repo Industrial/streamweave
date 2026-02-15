@@ -19,65 +19,65 @@ use std::sync::Arc;
 /// the graph structure is preserved for validation and roundtrip, but execution is a no-op.
 #[derive(Debug, Clone)]
 pub struct PlaceholderNode {
-    /// Node name (blueprint node id).
-    name: String,
-    /// Input port names (from edges targeting this node).
-    input_ports: Vec<String>,
-    /// Output port names (from edges originating from this node).
-    output_ports: Vec<String>,
+  /// Node name (blueprint node id).
+  name: String,
+  /// Input port names (from edges targeting this node).
+  input_ports: Vec<String>,
+  /// Output port names (from edges originating from this node).
+  output_ports: Vec<String>,
 }
 
 impl PlaceholderNode {
-    /// Creates a placeholder with the given name and port names.
-    #[must_use]
-    pub fn new(name: String, input_ports: Vec<String>, output_ports: Vec<String>) -> Self {
-        Self {
-            name,
-            input_ports,
-            output_ports,
-        }
+  /// Creates a placeholder with the given name and port names.
+  #[must_use]
+  pub fn new(name: String, input_ports: Vec<String>, output_ports: Vec<String>) -> Self {
+    Self {
+      name,
+      input_ports,
+      output_ports,
     }
+  }
 }
 
 #[async_trait]
 impl Node for PlaceholderNode {
-    fn name(&self) -> &str {
-        &self.name
-    }
+  fn name(&self) -> &str {
+    &self.name
+  }
 
-    fn set_name(&mut self, name: &str) {
-        self.name = name.to_string();
-    }
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_string();
+  }
 
-    fn input_port_names(&self) -> &[String] {
-        &self.input_ports
-    }
+  fn input_port_names(&self) -> &[String] {
+    &self.input_ports
+  }
 
-    fn output_port_names(&self) -> &[String] {
-        &self.output_ports
-    }
+  fn output_port_names(&self) -> &[String] {
+    &self.output_ports
+  }
 
-    fn has_input_port(&self, name: &str) -> bool {
-        self.input_ports.iter().any(|p| p == name)
-    }
+  fn has_input_port(&self, name: &str) -> bool {
+    self.input_ports.iter().any(|p| p == name)
+  }
 
-    fn has_output_port(&self, name: &str) -> bool {
-        self.output_ports.iter().any(|p| p == name)
-    }
+  fn has_output_port(&self, name: &str) -> bool {
+    self.output_ports.iter().any(|p| p == name)
+  }
 
-    fn execute(
-        &self,
-        _inputs: InputStreams,
-    ) -> Pin<Box<dyn Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>> {
-        let output_ports = self.output_ports.clone();
-        Box::pin(async move {
-            let mut outputs = HashMap::new();
-            for port in output_ports {
-                let empty =
-                    Box::pin(stream::empty::<Arc<dyn std::any::Any + Send + Sync>>()) as crate::node::OutputStream;
-                outputs.insert(port, empty);
-            }
-            Ok(outputs)
-        })
-    }
+  fn execute(
+    &self,
+    _inputs: InputStreams,
+  ) -> Pin<Box<dyn Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>> {
+    let output_ports = self.output_ports.clone();
+    Box::pin(async move {
+      let mut outputs = HashMap::new();
+      for port in output_ports {
+        let empty = Box::pin(stream::empty::<Arc<dyn std::any::Any + Send + Sync>>())
+          as crate::node::OutputStream;
+        outputs.insert(port, empty);
+      }
+      Ok(outputs)
+    })
+  }
 }
