@@ -24,7 +24,7 @@ This document summarizes what has been implemented vs. what remains for each cap
 | Actor supervision trees | ⚠️ Partial | [actor-supervision-trees.md](actor-supervision-trees.md) |
 | Incremental recomputation | ⚠️ Partial | [incremental-recomputation.md](incremental-recomputation.md) |
 | Distributed checkpointing | ❌ Not started | [distributed-checkpointing.md](distributed-checkpointing.md) |
-| Auto-scaling clusters | ❌ Deferred | [auto-scaling-clusters.md](auto-scaling-clusters.md) |
+| Auto-scaling clusters | ⚠️ Partial (built-in scaler done) | [auto-scaling-clusters.md](auto-scaling-clusters.md) |
 
 ---
 
@@ -46,16 +46,16 @@ This document summarizes what has been implemented vs. what remains for each cap
 ---
 
 ### auto-scaling-clusters.md
-**Status: ⚠️ Partial (Phase 2 done)**
+**Status: ⚠️ Partial (Phases 2–4 done)**
 
 | Phase | Status | Notes |
 |-------|--------|-------|
 | 1 – Document as future goal | ✅ Done | Doc states deferred until sharding exists |
-| 2 – Metrics + rebalance API | ✅ Done | `record_items_in`/`record_items_out`, `record_shard_assignment`; `InMemoryCoordinator::scale_to`; RebalanceCoordinator trait |
+| 2 – Metrics + rebalance API | ✅ Done | `record_items_in`/`record_items_out`, `record_shard_assignment`, `record_backlog_size`; `InMemoryCoordinator::scale_to`; RebalanceCoordinator trait |
 | 3 – Kubernetes HPA example | ✅ Done | Deployment + HPA YAML in auto-scaling-clusters.md §5.2 |
-| 4 – Built-in scaler | ⏳ Not started | Deferred |
+| 4 – Built-in scaler | ✅ Done | `scaler` module: ScalerConfig, policy (`decide`, `run_one_tick`), observability (`record_scale_decision`); §5.3 |
 
-**Note:** Phase 2 enables external controllers to observe metrics and trigger rebalance via coordinator.
+**Note:** Use either the built-in scaler or an external controller (e.g. HPA), not both.
 
 ---
 

@@ -12,6 +12,9 @@
 //!   Compute rate (items/sec) in Prometheus for scaling decisions.
 //! - **Cluster size:** [`record_shard_assignment`] sets `streamweave_shard_id` and
 //!   `streamweave_total_shards` gauges when running sharded.
+//! - **Backlog (optional):** [`record_backlog_size`] sets `streamweave_backlog_size` gauge.
+//!   Use when a source has a known backlog (e.g. Kafka consumer lag, queue depth). The
+//!   built-in scaler can scale out when backlog exceeds a threshold.
 //!
 //! # Example
 //!
@@ -98,4 +101,19 @@ pub fn record_items_out(graph_id: &str, node_id: &str, port: &str, count: u64) {
 pub fn record_shard_assignment(shard_id: u32, total_shards: u32) {
   metrics::gauge!("streamweave_shard_id").set(shard_id as f64);
   metrics::gauge!("streamweave_total_shards").set(total_shards as f64);
+}
+
+/// Records the current backlog size for scaling decisions.
+///
+/// Optional: call from sources that know their backlog (e.g. Kafka consumer lag,
+/// number of items waiting in an input queue). The built-in scaler can scale out when
+/// backlog exceeds a configured threshold. Use `graph_id` and `node_id` (or shard
+/// identity) so the scaler can aggregate per graph or per shard.
+pub fn record_backlog_size(graph_id: &str, node_id: &str, size: u64) {
+  metrics::gauge!(
+    "streamweave_backlog_size",
+    "graph_id" => graph_id.to_string(),
+    "node_id" => node_id.to_string()
+  )
+  .set(size as f64);
 }

@@ -87,7 +87,7 @@
 | **1** | Document auto-scaling as a future goal; document that it depends on sharding and production tooling (metrics, rebalance API). **Done:** Status callout and §4.3. |
 | **2** | Expose metrics and rebalance API so that external controllers can scale and rebalance. **Done:** `record_items_in`/`record_items_out`, `record_shard_assignment`; `InMemoryCoordinator::scale_to`; see §5.1. |
 | **3** | (Optional) Provide an example or reference design for Kubernetes HPA + rebalance. **Done:** §5.2 (Deployment, HPA YAML). |
-| **4** | (Optional) Implement a simple built-in scaler that reads metrics and calls rebalance (e.g. “scale to N workers when backlog > threshold”). Defer until core distribution is stable. |
+| **4** | (Optional) Implement a simple built-in scaler that reads metrics and calls rebalance (e.g. “scale to N workers when backlog > threshold”). **Done:** `scaler` module (§5.3). |
 
 ### 5.1 Phase 2 implementation details
 
@@ -157,6 +157,19 @@ spec:
 ```
 
 **3. Rebalance** – When HPA changes replicas, a sidecar, init container, or operator must update the coordinator (etcd/Kafka) with the new `total_shards`, then trigger drain/migrate/resume. Use `RebalanceCoordinator` with your coordination backend.
+
+### 5.3 Built-in scaler (Phase 4)
+
+The `streamweave::scaler` module provides a standards-oriented built-in scaler:
+
+- **Config:** `ScalerConfig` – min/max shards, scale-up/scale-down thresholds (throughput and/or backlog), stabilization windows, cooldown. Use `ScalerConfig::validate()` and `ScalerConfig::clamp_shards()`.
+- **Policy:** `decide` – pure function: given config, current shards, metrics, and stabilization booleans, returns `ScalerDecision` (target shards and optional `ScaleReason`). Caller tracks how long conditions have been satisfied.
+- **Loop:** `run_one_tick` – stateful tick: takes `ScalerState`, current shards, `TickMetrics` (items/sec, backlog), and current time; returns updated decision and state. Caller obtains `current_shards` from `RebalanceCoordinator::current_assignment().await.total_shards`, then if `decision.reason.is_some()` calls `InMemoryCoordinator::scale_to(decision.target_shards)` (or equivalent).
+- **Observability:** `record_scale_decision` – call after applying a scale; logs and records `streamweave_scaler_scale_total` (counter by reason) and `streamweave_scaler_target_shards` (gauge).
+
+**Single decision maker:** Use either the built-in scaler or an external controller (e.g. HPA) for scaling, not both. Disable the built-in scaler by not running the tick loop.
+
+**Example loop (pseudocode):** every N seconds: get assignment from coordinator; get items_per_sec and backlog from Prometheus or in-memory counters; `let (decision, new_state) = run_one_tick(config, state, assignment.total_shards, metrics, now)`; if `decision.reason.is_some()` { coordinator.scale_to(decision.target_shards); record_scale_decision(decision.reason.unwrap(), current, decision.target_shards); }; state = new_state.
 
 ---
 
