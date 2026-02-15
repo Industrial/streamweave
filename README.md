@@ -280,6 +280,18 @@ StreamWeave's core functionality is built around a flexible node system. These m
 
 For detailed examples and usage of each node, please refer to the [examples directory](examples/nodes/).
 
+## ⏱ Time Semantics
+
+StreamWeave supports two time models for streaming data:
+
+| | **Event time** | **Processing time** |
+|--|----------------|---------------------|
+| **Definition** | When the event actually occurred (from payload) | When the system processes the event |
+| **Ordering** | By event time (handles late/out-of-order data) | By arrival order |
+| **Use case** | Analytics, windowing, correct aggregations | Simple pipelines, low-latency processing |
+
+Implement the [`HasEventTime`](https://docs.rs/streamweave/*/streamweave/time/trait.HasEventTime.html) trait for payloads that carry event time. See [docs/event-time-semantics.md](docs/event-time-semantics.md) for details.
+
 ## 📚 Documentation
 
 - [API Documentation](https://docs.rs/streamweave) - Full API reference on docs.rs

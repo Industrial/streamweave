@@ -8,6 +8,21 @@
 //! or round index. The default value is the minimum and is used as the initial
 //! capability. [`Timestamped<T>`] attaches a logical time to a payload.
 //!
+//! ## Event time vs processing time
+//!
+//! StreamWeave distinguishes two time semantics:
+//!
+//! - **Event time**: The time when the event actually occurred (e.g. when a click happened,
+//!   from payload or metadata). Use for correct ordering, windowing, and analytics when
+//!   events arrive out of order. Implement [`HasEventTime`] for payload types that carry
+//!   event time; event-time sources emit `Timestamped { payload, time: event_time }`.
+//!
+//! - **Processing time**: The time when the system processes the event (e.g. wall clock).
+//!   Use for simple pipelines where arrival order is sufficient. Existing `TimestampNode`
+//!   uses processing time. No late-data handling; everything is considered "on time."
+//!
+//! See [docs/event-time-semantics.md](../docs/event-time-semantics.md) for details.
+//!
 //! ## Progress contract
 //!
 //! - **Monotonic `advance_to`**: When using [`TimestampedInputHandle`], you must call
@@ -60,6 +75,46 @@ impl LogicalTime {
 // LogicalTime is a newtype over u64, which is Send + Sync.
 unsafe impl Send for LogicalTime {}
 unsafe impl Sync for LogicalTime {}
+
+/// Trait for payload types that carry event time.
+///
+/// Implement this for events that have a meaningful occurrence time (e.g. from Kafka
+/// `timestamp`, a `created_at` field, or log timestamp). Event-time sources and window
+/// nodes use this to extract the time for ordering and window assignment.
+///
+/// # Convention
+///
+/// - Return milliseconds since Unix epoch (or another monotonic epoch) as a `u64`.
+/// - Return `None` if the event has no event time (e.g. synthetic or test data).
+/// - For events with event time, prefer implementing this trait over ad-hoc extraction.
+///
+/// # Example
+///
+/// ```rust
+/// use streamweave::time::{HasEventTime, LogicalTime};
+///
+/// struct ClickEvent {
+///     user_id: u64,
+///     created_at_ms: u64,
+/// }
+///
+/// impl HasEventTime for ClickEvent {
+///     fn event_time_ms(&self) -> Option<u64> {
+///         Some(self.created_at_ms)
+///     }
+/// }
+/// ```
+pub trait HasEventTime {
+    /// Returns the event time in milliseconds (e.g. since Unix epoch), or `None` if
+    /// this event has no event time.
+    fn event_time_ms(&self) -> Option<u64>;
+}
+
+impl HasEventTime for () {
+    fn event_time_ms(&self) -> Option<u64> {
+        None
+    }
+}
 
 /// A payload with an attached logical timestamp.
 ///
