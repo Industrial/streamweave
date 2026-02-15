@@ -75,6 +75,7 @@
 //! })?;
 //! ```
 
+use crate::checkpoint::{CheckpointId, CheckpointStorage};
 use crate::edge::Edge;
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::time::{CompletedFrontier, LogicalTime, ProgressHandle, Timestamped};
@@ -290,6 +291,8 @@ pub struct Graph {
   nodes_restored_after_run: Option<NodesRestoredMap>,
   /// Execution mode: Concurrent (default) or Deterministic.
   execution_mode: ExecutionMode,
+  /// Position restored from checkpoint; used to initialize time counter when executing with progress.
+  restored_position: Option<LogicalTime>,
 }
 
 impl Graph {
@@ -328,7 +331,48 @@ impl Graph {
       output_port_names: Vec::new(),
       nodes_restored_after_run: None,
       execution_mode: ExecutionMode::default(),
+      restored_position: None,
     }
+  }
+
+  /// Restores graph state from a checkpoint.
+  ///
+  /// Loads the checkpoint from storage, restores state into nodes that support
+  /// [`Node::restore_state`](crate::node::Node::restore_state), and records the
+  /// checkpoint position. When execution starts with progress tracking, the time
+  /// counter is initialized from this position so replay resumes correctly.
+  ///
+  /// Call this before [`execute`](Self::execute) or [`execute_with_progress`](Self::execute_with_progress)
+  /// to resume from a previous checkpoint (e.g. after a process restart).
+  ///
+  /// # Errors
+  ///
+  /// Returns an error if the checkpoint is not found or if any node fails to restore.
+  pub fn restore_from_checkpoint(
+    &mut self,
+    storage: &dyn CheckpointStorage,
+    id: CheckpointId,
+  ) -> Result<(), GraphExecutionError> {
+    let (metadata, snapshots) = storage
+      .load(id)
+      .map_err(|e| format!("Checkpoint load failed: {}", e))?;
+
+    let mut nodes = self.nodes.lock().unwrap();
+    for (node_id, data) in &snapshots {
+      if let Some(node) = nodes.get_mut(node_id) {
+        node
+          .restore_state(data)
+          .map_err(|e| format!("Node '{}' restore failed: {}", node_id, e))?;
+      }
+    }
+
+    self.restored_position = metadata.position;
+    Ok(())
+  }
+
+  /// Returns the position restored from the last checkpoint, if any.
+  pub fn restored_position(&self) -> Option<LogicalTime> {
+    self.restored_position
   }
 
   /// Sets the execution mode.
@@ -1186,7 +1230,13 @@ impl Graph {
   > {
     let edges = self.get_edges();
 
-    let time_counter = progress_config.as_ref().map(|_| Arc::new(AtomicU64::new(0)));
+    let initial_time = self
+      .restored_position
+      .map(|t| t.as_u64() + 1)
+      .unwrap_or(0);
+    let time_counter = progress_config
+      .as_ref()
+      .map(|_| Arc::new(AtomicU64::new(initial_time)));
 
     // One channel per edge: (target_node, target_port) -> receiver
     let mut input_rx: HashMap<(String, String), tokio::sync::mpsc::Receiver<EdgeMessage>> =

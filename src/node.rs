@@ -240,4 +240,14 @@ pub trait Node: Send + Sync {
     &self,
     inputs: InputStreams,
   ) -> Pin<Box<dyn Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>>;
+
+  /// Restores node state from checkpoint data.
+  ///
+  /// Called by [`Graph::restore_from_checkpoint`](crate::graph::Graph::restore_from_checkpoint)
+  /// before execution. Default implementation is a no-op for nodes that do not
+  /// support checkpointing. Stateful nodes that use [`crate::state::ExactlyOnceStateBackend`]
+  /// or similar should override this to deserialize and restore their state.
+  fn restore_state(&mut self, _data: &[u8]) -> Result<(), NodeExecutionError> {
+    Ok(())
+  }
 }

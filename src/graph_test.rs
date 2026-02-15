@@ -12,6 +12,7 @@
 //! - **Edge Management**: Adding, removing, and querying edges
 //! - **Stream Execution**: Executing graphs with stream-based node connections
 
+use crate::checkpoint::{CheckpointId, CheckpointMetadata, CheckpointStorage, FileCheckpointStorage};
 use crate::edge::Edge;
 use crate::graph::{Graph, topological_sort};
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
@@ -864,4 +865,111 @@ async fn test_stop_clears_state() {
   // After stop, execution handles should be cleared
   // (We verify this by checking wait_for_completion completes quickly)
   assert!(graph.wait_for_completion().await.is_ok());
+}
+
+// ============================================================================
+// Checkpoint Restore Tests
+// ============================================================================
+
+/// Mock node that supports restore_state for checkpoint tests.
+struct MockRestorableNode {
+  name: String,
+  input_port_names: Vec<String>,
+  output_port_names: Vec<String>,
+  restored_data: Arc<std::sync::Mutex<Option<Vec<u8>>>>,
+}
+
+impl MockRestorableNode {
+  fn new(name: String) -> Self {
+    Self {
+      name,
+      input_port_names: vec!["in".to_string()],
+      output_port_names: vec!["out".to_string()],
+      restored_data: Arc::new(std::sync::Mutex::new(None)),
+    }
+  }
+
+  #[allow(dead_code)]
+  fn restored_data(&self) -> Option<Vec<u8>> {
+    self.restored_data.lock().unwrap().clone()
+  }
+}
+
+#[async_trait]
+impl Node for MockRestorableNode {
+  fn name(&self) -> &str {
+    &self.name
+  }
+
+  fn set_name(&mut self, name: &str) {
+    self.name = name.to_string();
+  }
+
+  fn input_port_names(&self) -> &[String] {
+    &self.input_port_names
+  }
+
+  fn output_port_names(&self) -> &[String] {
+    &self.output_port_names
+  }
+
+  fn has_input_port(&self, name: &str) -> bool {
+    self.input_port_names.contains(&name.to_string())
+  }
+
+  fn has_output_port(&self, name: &str) -> bool {
+    self.output_port_names.contains(&name.to_string())
+  }
+
+  fn restore_state(&mut self, data: &[u8]) -> Result<(), NodeExecutionError> {
+    *self.restored_data.lock().unwrap() = Some(data.to_vec());
+    Ok(())
+  }
+
+  fn execute(
+    &self,
+    mut inputs: InputStreams,
+  ) -> Pin<
+    Box<dyn std::future::Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>,
+  > {
+    Box::pin(async move {
+      let _ = inputs.remove("in").ok_or("Missing 'in' input")?;
+      let mut outputs = HashMap::new();
+      outputs.insert(
+        "out".to_string(),
+        Box::pin(tokio_stream::empty())
+          as Pin<Box<dyn Stream<Item = Arc<dyn Any + Send + Sync>> + Send>>,
+      );
+      Ok(outputs)
+    })
+  }
+}
+
+#[test]
+fn test_restore_from_checkpoint() {
+  let tmp = tempfile::TempDir::new().unwrap();
+  let storage = FileCheckpointStorage::new(tmp.path());
+
+  let metadata = CheckpointMetadata {
+    id: CheckpointId::new(1),
+    position: Some(LogicalTime::new(100)),
+  };
+  let mut snapshots = HashMap::new();
+  snapshots.insert("stateful".to_string(), b"restored-state-bytes".to_vec());
+  storage.save(&metadata, &snapshots).unwrap();
+
+  let mut graph = Graph::new("test".to_string());
+  let stateful = MockRestorableNode::new("stateful".to_string());
+  let restored_data = Arc::clone(&stateful.restored_data);
+  graph.add_node("stateful".to_string(), Box::new(stateful)).unwrap();
+
+  graph
+    .restore_from_checkpoint(&storage, CheckpointId::new(1))
+    .unwrap();
+
+  assert_eq!(graph.restored_position(), Some(LogicalTime::new(100)));
+  assert_eq!(
+    *restored_data.lock().unwrap(),
+    Some(b"restored-state-bytes".to_vec())
+  );
 }

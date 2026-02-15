@@ -92,7 +92,7 @@ All workers in the cluster take a **coordinated** checkpoint so that the **globa
 | Phase | Content |
 |-------|--------|
 | **1** | **Local checkpointing:** State backends support `snapshot`/`restore`. Graph (or execution) can trigger “checkpoint now” (quiesce, snapshot all, record positions). Document format and storage. **Done:** `checkpoint::CheckpointStorage`, `FileCheckpointStorage`, `CheckpointId`, `CheckpointMetadata` in `src/checkpoint.rs`. Format: `<base>/<id>/metadata.json` and `<base>/<id>/<node_id>.bin`. |
-| **2** | **Restore and resume:** On startup, `restore_from_checkpoint(id)`; load state, set positions; sources replay from positions. Integrate with exactly-once state. |
+| **2** | **Restore and resume:** On startup, `restore_from_checkpoint(id)`; load state, set positions; sources replay from positions. **Done:** `Graph::restore_from_checkpoint(storage, id)` loads checkpoint, calls `Node::restore_state` on nodes with snapshot data, stores position; `restored_position()` for query; time counter initialized from position when executing with progress. `Node::restore_state` default no-op; stateful nodes override. Integrate with exactly-once state. |
 | **3** | **Periodic checkpointing:** Timer or “every N items” triggers checkpoint in the background (or at safe points). |
 | **4** | (With distribution) **Coordinated protocol:** Coordinator sends barrier or markers; workers snapshot and report; commit when all done. |
 | **5** | **Recovery from failure:** On worker failure, coordinator (or remaining workers) restore from last committed checkpoint; reassign failed worker’s keys; resume. |
