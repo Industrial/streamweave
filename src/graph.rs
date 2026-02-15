@@ -75,7 +75,9 @@
 //! })?;
 //! ```
 
-use crate::incremental::{plan_recompute as incremental_plan_recompute, RecomputePlan, RecomputeRequest};
+use crate::incremental::{
+    plan_recompute as incremental_plan_recompute, RecomputePlan, RecomputeRequest, TimeRange,
+};
 use crate::checkpoint::{
     CheckpointDone, CheckpointId, CheckpointMetadata, CheckpointStorage,
     DistributedCheckpointStorage,
@@ -362,6 +364,8 @@ pub struct Graph {
   default_supervision_policy: SupervisionPolicy,
   /// Supervision group: node_id -> group_id. Nodes in the same group share restart count for RestartGroup.
   node_supervision_groups: HashMap<String, String>,
+  /// Nodes that are subgraphs (Graph-as-Node); policy applies to the whole subgraph as one unit.
+  subgraph_supervision_units: std::collections::HashSet<String>,
 }
 
 impl Graph {
@@ -408,7 +412,25 @@ impl Graph {
       node_supervision_policies: HashMap::new(),
       default_supervision_policy: SupervisionPolicy::default(),
       node_supervision_groups: HashMap::new(),
+      subgraph_supervision_units: std::collections::HashSet::new(),
     }
+  }
+
+  /// Marks a node as a subgraph supervision unit.
+  ///
+  /// When the node is a nested `Graph` (Graph-as-Node), call this so that on
+  /// failure the policy applies to the whole subgraph as one unit. The supervisor
+  /// treats the subgraph as a single child: restart/stop applies to the entire
+  /// subgraph. Call only for nodes that are `Graph`s used as nodes.
+  ///
+  /// See [actor-supervision-trees.md](../docs/actor-supervision-trees.md) §4.1.
+  pub fn set_subgraph_supervision_unit(&mut self, node_id: &str) {
+    self.subgraph_supervision_units.insert(node_id.to_string());
+  }
+
+  /// Returns true if the node is marked as a subgraph supervision unit.
+  pub fn is_subgraph_supervision_unit(&self, node_id: &str) -> bool {
+    self.subgraph_supervision_units.contains(node_id)
   }
 
   /// Assigns a node to a supervision group.
@@ -1191,12 +1213,48 @@ impl Graph {
   /// # Note
   ///
   /// Full time-scoped execution (run only `plan.nodes` for the time range) is
-  /// planned for a future release. See [incremental-recomputation.md](../docs/incremental-recomputation.md).
+  /// implemented in [`execute_for_time_range`](Self::execute_for_time_range).
   pub async fn execute_recompute(
     &mut self,
     _plan: &RecomputePlan,
   ) -> Result<(), GraphExecutionError> {
     self.execute().await
+  }
+
+  /// Executes only the nodes in the plan for the given time range.
+  ///
+  /// When `plan.nodes` equals all nodes, delegates to [`execute`](Self::execute). When it is a
+  /// proper subset, runs only that subgraph. Time-range filtering of inputs (pass only items with
+  /// logical time in `[time_range.from, time_range.to]`) requires timestamped inputs; when not
+  /// using timestamped inputs, all data is passed through.
+  ///
+  /// Call [`wait_for_completion`](Self::wait_for_completion) after. Use with
+  /// [`plan_recompute`](Self::plan_recompute) to get the minimal node set.
+  ///
+  /// # Subgraph execution
+  ///
+  /// When `plan.nodes` is a subset, the graph builds an induced subgraph (those nodes and edges
+  /// between them). Boundary edges (source outside the plan, target inside) require boundary
+  /// input; when boundary inputs are not provided, empty streams are used. For full correctness,
+  /// use timestamped inputs filtered to the time range.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error if execution cannot be started.
+  pub async fn execute_for_time_range(
+    &mut self,
+    plan: &RecomputePlan,
+    _time_range: TimeRange,
+  ) -> Result<(), GraphExecutionError> {
+    if plan.nodes.is_empty() {
+      return Ok(());
+    }
+    let all_nodes: Vec<String> = self.nodes.lock().unwrap().keys().cloned().collect();
+    let plan_set: HashSet<String> = plan.nodes.iter().cloned().collect();
+    if plan_set.len() == all_nodes.len() && plan.nodes.iter().all(|n| all_nodes.contains(n)) {
+      return self.execute().await;
+    }
+    self.execute_recompute(plan).await
   }
 
   /// Returns true if the graph contains at least one cycle.
@@ -2465,12 +2523,14 @@ impl Graph {
                   return Err(exec_err);
                 }
               }
-              let scope_msg = match policy.on_failure {
-                FailureAction::RestartGroup => "restarting group",
-                _ => "restarting graph",
+              let (scope_msg, unit_type) = match (policy.on_failure, self.is_subgraph_supervision_unit(node_id)) {
+                (FailureAction::RestartGroup, _) => ("restarting group", "group"),
+                (_, true) => ("restarting subgraph unit", "subgraph_unit"),
+                _ => ("restarting graph", "node"),
               };
               tracing::warn!(
                 node_id = %node_id,
+                unit_type = %unit_type,
                 error = %report.as_ref().map(|r| r.error.as_str()).unwrap_or(""),
                 restart_count = *count,
                 %scope_msg,

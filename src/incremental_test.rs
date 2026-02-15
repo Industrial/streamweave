@@ -2,7 +2,7 @@
 
 use crate::edge::Edge;
 use crate::graph::Graph;
-use crate::incremental::{RecomputeRequest, TimeRange};
+use crate::incremental::{RecomputePlan, RecomputeRequest, TimeRange};
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::time::LogicalTime;
 use async_trait::async_trait;
@@ -153,4 +153,43 @@ async fn graph_execute_recompute_runs_full_graph() {
         count += 1;
     }
     assert_eq!(count, 3);
+}
+
+#[tokio::test]
+async fn graph_execute_for_time_range_runs_when_plan_equals_all_nodes() {
+    let mut graph = Graph::new("g".to_string());
+    graph
+        .add_node(
+            "producer".to_string(),
+            Box::new(TestProducerNode::new("producer", vec![1, 2])),
+        )
+        .unwrap();
+    graph.expose_output_port("producer", "out", "output").unwrap();
+
+    let (tx, mut rx) = tokio::sync::mpsc::channel(10);
+    graph.connect_output_channel("output", tx).unwrap();
+
+    let req = RecomputeRequest::new(
+        TimeRange::new(LogicalTime::new(0), LogicalTime::new(5)),
+        Some("producer".into()),
+    );
+    let plan = graph.plan_recompute(&req, None);
+    let time_range = req.time_range;
+
+    graph.execute_for_time_range(&plan, time_range).await.unwrap();
+    graph.wait_for_completion().await.unwrap();
+
+    let mut count = 0;
+    while rx.recv().await.is_some() {
+        count += 1;
+    }
+    assert_eq!(count, 2);
+}
+
+#[tokio::test]
+async fn graph_execute_for_time_range_empty_plan_returns_ok() {
+    let mut graph = Graph::new("g".to_string());
+    let plan = RecomputePlan { nodes: vec![] };
+    let time_range = TimeRange::new(LogicalTime::new(0), LogicalTime::new(10));
+    graph.execute_for_time_range(&plan, time_range).await.unwrap();
 }

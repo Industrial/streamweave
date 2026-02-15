@@ -346,6 +346,14 @@ fn test_graph_name_set() {
 // ============================================================================
 
 #[test]
+fn test_subgraph_supervision_unit() {
+  let mut graph = Graph::new("test".to_string());
+  assert!(!graph.is_subgraph_supervision_unit("sub"));
+  graph.set_subgraph_supervision_unit("sub");
+  assert!(graph.is_subgraph_supervision_unit("sub"));
+}
+
+#[test]
 fn test_shard_config() {
   let mut graph = Graph::new("test".to_string());
   assert!(graph.shard_id().is_none());

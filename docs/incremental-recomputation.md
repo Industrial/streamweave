@@ -148,7 +148,7 @@ This section documents how to achieve incremental behavior today and with planne
 
 **Per-sink progress:** `ProgressHandle::from_sink_frontiers(frontiers, keys)` and `sink_frontiers()` expose completed logical time per (node, port). `execute_with_progress_per_sink` returns a handle with keys for recompute planning.
 
-**Execution:** `Graph::execute_recompute(plan)` runs the full graph (fallback). Subgraph time-scoped execution ("run only plan.nodes for time range") is deferred.
+**Execution:** `Graph::execute_recompute(plan)` runs the full graph. `Graph::execute_for_time_range(plan, time_range)` runs the nodes in the plan; when plan equals all nodes it runs the full graph; when it is a subset it falls back to full graph. Strict subgraph-only execution and time-filtered inputs are future work.
 
 ---
 

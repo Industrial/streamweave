@@ -9,13 +9,10 @@
 //!
 //! - [`plan_recompute`]: Given a [`RecomputeRequest`] and sink frontiers, returns
 //!   which nodes need recomputation.
-//! - `Graph::execute_for_time_range(nodes, time_range)`: Runs only the given nodes
-//!   for the specified time range. Requires execution-model support (subgraph
-//!   extraction, time-filtered inputs). See task streamweave-ulx.4.
-//!
-//! For now, use [`plan_recompute`] with [`Graph::nodes_downstream_transitive`]
-//! and [`execute_recompute`](crate::graph::Graph::execute_recompute) which runs
-//! the full graph as a fallback when subgraph execution is not yet implemented.
+//! - `Graph::execute_for_time_range(plan, time_range)`: Runs only the nodes in the plan for the
+//!   specified time range. When the plan equals all nodes, runs the full graph; when it is a
+//!   subset, falls back to `execute_recompute` (full graph). Time-filtered inputs and strict
+//!   subgraph-only execution are future enhancements.
 
 use crate::time::LogicalTime;
 use std::collections::{HashMap, HashSet};

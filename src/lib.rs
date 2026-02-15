@@ -54,6 +54,8 @@ pub mod memory_pool;
 pub mod supervision;
 /// Rebalance protocol for cluster sharding (add/remove workers, state migration).
 pub mod rebalance;
+/// Built-in distribution layer: run N graph instances, route by partition key, merge output.
+pub mod distribution;
 /// Cluster health aggregation (all shards running, quorum).
 pub mod cluster_health;
 /// Types for incremental and time-range recomputation.
