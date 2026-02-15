@@ -8,9 +8,9 @@ mod coordinated;
 mod coordinated_test;
 
 pub use coordinated::{
-    CheckpointCommitted, CheckpointCoordinator, CheckpointDone, CheckpointRequest,
-    DistributedCheckpointStorage, FileDistributedCheckpointStorage,
-    InMemoryCheckpointCoordinator,
+    compute_recovery_plan_absorb, CheckpointCommitted, CheckpointCoordinator, CheckpointDone,
+    CheckpointRequest, DistributedCheckpointStorage, FileDistributedCheckpointStorage,
+    InMemoryCheckpointCoordinator, RecoveryStep, RecoveryStrategy,
 };
 
 use crate::time::LogicalTime;

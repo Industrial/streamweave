@@ -4,7 +4,7 @@
 
 **Dependencies:** Local checkpointing (in-process), Exactly-once state, Mature cluster sharding.
 
-**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md#distributed-checkpointingmd). Phases 1–4 done (local + coordinated protocol). Phase 5 (recovery from worker failure) not done.
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md#distributed-checkpointingmd). Phases 1–5 done.
 
 ---
 
@@ -157,6 +157,8 @@ When a worker fails, the coordinator (or orchestration layer) recovers using the
 
 ### 7.2 Recovery steps
 
+**API:** `checkpoint::compute_recovery_plan_absorb(failed_shard_id, old_total_shards, keys)` returns `Vec<RecoveryStep>` for Option A. Each step gives `new_shard_id`, `new_total_shards`, and `keys_to_import` for that worker.
+
 1. **Stop routing** to the failed worker; do not send new input for its keys.
 2. **Choose checkpoint:** Use the last **committed** checkpoint (not partial or in-progress).
 3. **Reassign keys:** The failed worker’s key range (e.g. `shard_id`, `total_shards` before failure) must be reassigned:
@@ -189,7 +191,7 @@ When a worker fails, the coordinator (or orchestration layer) recovers using the
 | **2** | Done | **Restore and resume:** On startup, `restore_from_checkpoint(id)`; load state, set positions; sources replay from positions. **Done:** `Graph::restore_from_checkpoint(storage, id)` loads checkpoint, calls `Node::restore_state` on nodes with snapshot data, stores position; `restored_position()` for query; time counter initialized from position when executing with progress. `Node::restore_state` default no-op; stateful nodes override. Integrate with exactly-once state. |
 | **3** | Done | **Periodic checkpointing:** Timer or “every N items” triggers checkpoint in the background (or at safe points). **Done:** `Graph::trigger_checkpoint(storage)` snapshots all stateful nodes via `Node::snapshot_state`, saves metadata and snapshots to storage, returns `CheckpointId`. Sequenced IDs via `checkpoint_sequence`. Tests: `test_trigger_checkpoint`, `test_trigger_checkpoint_no_nodes_fails`. |
 | **4** | Done | **Coordinated protocol:** `CheckpointCoordinator` trait, `DistributedCheckpointStorage`, `FileDistributedCheckpointStorage`, `InMemoryCheckpointCoordinator`. Graph: `trigger_checkpoint_for_coordination()`, `restore_from_distributed_checkpoint()`. Message contract and storage layout in §6. |
-| **5** | Not done | **Recovery from failure:** On worker failure, coordinator (or remaining workers) restore from last committed checkpoint; reassign failed worker’s keys; resume. |
+| **5** | Done | **Recovery from failure:** `compute_recovery_plan_absorb`, `RecoveryStep`, `RecoveryStrategy`. Workers restore via `restore_from_distributed_checkpoint`; gaining workers use `import_state_for_keys`. Protocol in §7. |
 
 ---
 

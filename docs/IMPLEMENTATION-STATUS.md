@@ -104,7 +104,7 @@ This document summarizes what has been implemented vs. what remains for each cap
 | 2 – Restore and resume | ✅ Done | `Node::restore_state`, `restored_position()` |
 | 3 – Periodic trigger | ✅ Done | `trigger_checkpoint()` (caller-driven; no built-in timer) |
 | 4 – Coordinated protocol | ✅ Done | CheckpointCoordinator, DistributedCheckpointStorage, InMemoryCheckpointCoordinator; trigger_checkpoint_for_coordination, restore_from_distributed_checkpoint |
-| 5 – Recovery from failure | ❌ Not done | Requires phase 4 |
+| 5 – Recovery from failure | ✅ Done | compute_recovery_plan_absorb, RecoveryStep; restore + import_state_for_keys per §7 |
 
 **Note:** Coordinated distributed checkpointing (barrier-based, Chandy–Lamport) is documented as a specification for future work.
 

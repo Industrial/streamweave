@@ -1,10 +1,11 @@
-//! Coordinated checkpoint protocol for distributed workers.
+//! Coordinated checkpoint protocol and recovery for distributed workers.
 //!
-//! Defines the message contract, storage layout, and coordinator trait for
-//! barrier-based aligned checkpoints across N shards. See
-//! [distributed-checkpointing.md](../../docs/distributed-checkpointing.md) §6.
+//! Defines the message contract, storage layout, coordinator trait, and
+//! recovery plan for barrier-based aligned checkpoints across N shards.
+//! See [distributed-checkpointing.md](../../docs/distributed-checkpointing.md) §6–7.
 
 use crate::checkpoint::{CheckpointError, CheckpointId, CheckpointMetadata};
+use crate::partitioning::PartitionKey;
 use crate::time::LogicalTime;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -277,4 +278,82 @@ impl CheckpointCoordinator for InMemoryCheckpointCoordinator {
             false
         }
     }
+}
+
+// -----------------------------------------------------------------------------
+// Recovery from worker failure (phase 5)
+// -----------------------------------------------------------------------------
+
+/// Recovery strategy when a worker fails.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RecoveryStrategy {
+    /// Absorb keys: reduce total_shards; remaining workers absorb the failed shard's keys.
+    Absorb,
+    /// Replace: start a new worker with the same shard_id; no key migration.
+    Replace,
+}
+
+/// Plan for one surviving worker during recovery (Option A: absorb).
+#[derive(Clone, Debug)]
+pub struct RecoveryStep {
+    /// This worker's old shard id (before failure).
+    pub old_shard_id: u32,
+    /// This worker's new shard id (after renumbering).
+    pub new_shard_id: u32,
+    /// New total number of shards.
+    pub new_total_shards: u32,
+    /// Keys to import from the failed shard (subset of keys the failed shard owned).
+    pub keys_to_import: Vec<PartitionKey>,
+}
+
+/// Computes the recovery plan when a worker fails and we use Option A (absorb).
+///
+/// Surviving workers are renumbered so shard ids remain 0..new_total-1. Returns
+/// one `RecoveryStep` per surviving worker. Each step's `keys_to_import` is
+/// computed from `keys` (typically the set of keys the failed shard owned); pass
+/// `None` to get steps with empty `keys_to_import` (caller supplies keys later).
+pub fn compute_recovery_plan_absorb(
+    failed_shard_id: u32,
+    old_total_shards: u32,
+    keys: Option<&[PartitionKey]>,
+) -> Vec<RecoveryStep> {
+    if old_total_shards <= 1 {
+        return Vec::new();
+    }
+    let new_total = old_total_shards - 1;
+
+    let mut steps = Vec::new();
+    for old_id in 0..old_total_shards {
+        if old_id == failed_shard_id {
+            continue;
+        }
+        let new_id = if old_id < failed_shard_id {
+            old_id
+        } else {
+            old_id - 1
+        };
+
+        let keys_to_import: Vec<PartitionKey> = match keys {
+            Some(k) => {
+                let failed_owns = |s: &str| {
+                    crate::rebalance::ShardAssignment::new(failed_shard_id, old_total_shards)
+                        .owns_key(s)
+                };
+                let new_assignment = crate::rebalance::ShardAssignment::new(new_id, new_total);
+                k.iter()
+                    .filter(|key| failed_owns(key.as_str()) && new_assignment.owns_key(key.as_str()))
+                    .cloned()
+                    .collect()
+            }
+            None => Vec::new(),
+        };
+
+        steps.push(RecoveryStep {
+            old_shard_id: old_id,
+            new_shard_id: new_id,
+            new_total_shards: new_total,
+            keys_to_import,
+        });
+    }
+    steps
 }
