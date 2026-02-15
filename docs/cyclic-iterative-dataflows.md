@@ -4,7 +4,7 @@
 
 **Dependencies:** None for Option A (bounded iteration). Logical timestamps / rounds for Option B (Timely-style).
 
-**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md#cyclic-iterative-dataflowsmd). Option A (BoundedIterationNode) done. Option B deferred.
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md#cyclic-iterative-dataflowsmd). Option A (BoundedIterationNode) and Option B (Timely-style rounds in main graph) are done.
 
 ---
 
@@ -204,7 +204,7 @@ Use **full buffer** (Option A1): collect all output items for round k before sta
 | **1** | Done | Bounded iteration API designed and documented. |
 | **2** | Done | `BoundedIterationNode` in `src/nodes/bounded_iteration_node.rs`. |
 | **3** | Done | Tests: single round, two rounds, fixed-point. |
-| **4** | Not done | Option B: Timely-style rounds in main graph. |
+| **4** | Done | Option B: Timely-style rounds in main graph (`execute_with_rounds`, `has_cycles`, `feedback_edges`). |
 
 ---
 

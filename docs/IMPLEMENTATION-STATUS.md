@@ -80,7 +80,7 @@ This document summarizes what has been implemented vs. what remains for each cap
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Option A – BoundedIterationNode | ✅ Done | `src/nodes/bounded_iteration_node.rs` |
-| Option B – Timely-style rounds | ⏳ Not done | Deferred; Option A suffices for current needs |
+| Option B – Timely-style rounds | ✅ Done | `Graph::execute_with_rounds`, `has_cycles`, `feedback_edges` in `src/graph.rs` |
 
 ---
 

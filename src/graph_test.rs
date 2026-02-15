@@ -458,6 +458,69 @@ fn test_remove_edge() {
 }
 
 // ============================================================================
+// Cycle Detection Tests (Option B - Timely-style rounds)
+// ============================================================================
+
+#[test]
+fn test_has_cycles_acyclic() {
+  let mut graph = Graph::new("test".to_string());
+  let a = Box::new(MockProducerNode::new("a".to_string(), vec![1]));
+  let b = Box::new(MockTransformNode::new("b".to_string()));
+  let c = Box::new(MockSinkNode::new("c".to_string()));
+  graph.add_node("a".to_string(), a).unwrap();
+  graph.add_node("b".to_string(), b).unwrap();
+  graph.add_node("c".to_string(), c).unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "a".to_string(),
+      source_port: "out".to_string(),
+      target_node: "b".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "b".to_string(),
+      source_port: "out".to_string(),
+      target_node: "c".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  assert!(!graph.has_cycles());
+  assert!(graph.feedback_edges().is_empty());
+}
+
+#[test]
+fn test_has_cycles_cyclic() {
+  let mut graph = Graph::new("test".to_string());
+  let a = Box::new(MockTransformNode::new("a".to_string()));
+  let b = Box::new(MockTransformNode::new("b".to_string()));
+  graph.add_node("a".to_string(), a).unwrap();
+  graph.add_node("b".to_string(), b).unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "a".to_string(),
+      source_port: "out".to_string(),
+      target_node: "b".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "b".to_string(),
+      source_port: "out".to_string(),
+      target_node: "a".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  assert!(graph.has_cycles());
+  let feedback = graph.feedback_edges();
+  assert_eq!(feedback.len(), 1);
+  assert_eq!(feedback[0].source_node(), "b");
+  assert_eq!(feedback[0].target_node(), "a");
+}
+
+// ============================================================================
 // Topological Sort Tests
 // ============================================================================
 

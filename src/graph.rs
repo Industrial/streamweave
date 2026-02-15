@@ -86,7 +86,7 @@ use crate::supervision::{FailureAction, FailureReport, SupervisionPolicy};
 use crate::time::{CompletedFrontier, LogicalTime, ProgressHandle, Timestamped};
 use async_trait::async_trait;
 use std::any::Any;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
@@ -166,6 +166,17 @@ enum EdgeMessage {
     /// Progress tracking enabled; payload and its logical time.
     #[allow(dead_code)] // time is carried on the channel; sender uses time_opt for frontier
     WithTime(Arc<dyn Any + Send + Sync>, LogicalTime),
+}
+
+/// Per-round feedback override for cyclic execution.
+/// For each feedback edge, the target receives from `inject_rx` and the source's output
+/// is captured via `capture_tx`. This breaks the cycle for round-based execution.
+struct RoundFeedbackConfig {
+  inject_and_capture: Vec<(
+    Edge,
+    tokio::sync::mpsc::Receiver<EdgeMessage>,
+    tokio::sync::mpsc::Sender<EdgeMessage>,
+  )>,
 }
 
 /// Error type for graph execution operations.
@@ -1094,6 +1105,89 @@ impl Graph {
     self.edges.iter().collect()
   }
 
+  /// Returns true if the graph contains at least one cycle.
+  ///
+  /// Uses DFS to detect back edges. Cyclic graphs require
+  /// [`execute_with_rounds`](Self::execute_with_rounds) instead of [`execute`](Self::execute).
+  pub fn has_cycles(&self) -> bool {
+    !Self::find_feedback_edges(
+      &self.nodes.lock().unwrap().keys().cloned().collect::<Vec<_>>(),
+      &self.edges,
+    )
+    .is_empty()
+  }
+
+  /// Returns edges that are feedback edges (back edges in DFS).
+  ///
+  /// Removing these edges would make the graph acyclic. Used by
+  /// [`execute_with_rounds`](Self::execute_with_rounds) for round-based execution.
+  pub fn feedback_edges(&self) -> Vec<Edge> {
+    let node_names: Vec<String> = self.nodes.lock().unwrap().keys().cloned().collect();
+    Self::find_feedback_edges(&node_names, &self.edges)
+  }
+
+  /// Finds feedback edges (back edges) via DFS.
+  fn find_feedback_edges(node_names: &[String], edges: &[Edge]) -> Vec<Edge> {
+    let n: HashMap<&str, usize> = node_names
+      .iter()
+      .enumerate()
+      .map(|(i, s)| (s.as_str(), i))
+      .collect();
+    let mut adj: Vec<Vec<usize>> = vec![Vec::new(); node_names.len()];
+    let mut edge_map: HashMap<(usize, usize), Vec<Edge>> = HashMap::new();
+    for e in edges {
+      if let (Some(&si), Some(&ti)) =
+        (n.get(e.source_node()), n.get(e.target_node()))
+      {
+        if si != ti {
+          adj[si].push(ti);
+          edge_map.entry((si, ti)).or_default().push(e.clone());
+        }
+      }
+    }
+    let mut visited = vec![false; node_names.len()];
+    let mut in_stack = vec![false; node_names.len()];
+    let mut feedback = Vec::new();
+    let mut seen: HashSet<(usize, usize)> = HashSet::new();
+    fn dfs(
+      v: usize,
+      adj: &[Vec<usize>],
+      visited: &mut [bool],
+      in_stack: &mut [bool],
+      edge_map: &HashMap<(usize, usize), Vec<Edge>>,
+      feedback: &mut Vec<Edge>,
+      seen: &mut HashSet<(usize, usize)>,
+    ) {
+      visited[v] = true;
+      in_stack[v] = true;
+      for &u in &adj[v] {
+        if !visited[u] {
+          dfs(u, adj, visited, in_stack, edge_map, feedback, seen);
+        } else if in_stack[u] && !seen.contains(&(v, u)) {
+          seen.insert((v, u));
+          if let Some(es) = edge_map.get(&(v, u)) {
+            feedback.extend(es.iter().cloned());
+          }
+        }
+      }
+      in_stack[v] = false;
+    }
+    for i in 0..node_names.len() {
+      if !visited[i] {
+        dfs(
+          i,
+          &adj,
+          &mut visited,
+          &mut in_stack,
+          &edge_map,
+          &mut feedback,
+          &mut seen,
+        );
+      }
+    }
+    feedback
+  }
+
   /// Gets an edge by source and target node and port.
   ///
   /// # Arguments
@@ -1313,6 +1407,7 @@ impl Graph {
         Some(external_outputs),
         None,
         HashMap::new(),
+        None,
       )
       .await?; // None = no progress, no timestamped inputs needed (already merged as payload)
     self.execution_handles.lock().await.clear();
@@ -1348,6 +1443,130 @@ impl Graph {
   pub async fn execute_deterministic(&mut self) -> Result<(), GraphExecutionError> {
     self.set_execution_mode(ExecutionMode::Deterministic);
     self.execute().await
+  }
+
+  /// Executes a cyclic graph with Timely-style round-based semantics.
+  ///
+  /// For graphs with cycles (feedback edges), runs up to `max_rounds` rounds. Round 0
+  /// uses external inputs; rounds 1..N inject the previous round's feedback output.
+  /// Feedback edges are identified via DFS and "cut" at round boundaries.
+  ///
+  /// For acyclic graphs, delegates to [`execute()`](Self::execute). Call
+  /// [`connect_input_channel`](Self::connect_input_channel) and
+  /// [`connect_output_channel`](Self::connect_output_channel) before calling.
+  ///
+  /// See [cyclic-iterative-dataflows.md](../docs/cyclic-iterative-dataflows.md) Option B.
+  pub async fn execute_with_rounds(&mut self, max_rounds: usize) -> Result<(), GraphExecutionError> {
+    if !self.has_cycles() {
+      return self.execute().await;
+    }
+    if max_rounds == 0 {
+      return Ok(());
+    }
+    let feedback_edges = self.feedback_edges();
+    if feedback_edges.is_empty() {
+      return self.execute().await;
+    }
+
+    let mut external_inputs = HashMap::new();
+    for (port_name, receiver_option) in &mut self.connected_input_channels {
+      if let Some(receiver) = receiver_option.take() {
+        let stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
+        let pinned_stream = Box::pin(stream) as crate::node::InputStream;
+        external_inputs.insert(port_name.clone(), pinned_stream);
+      }
+    }
+    for (port_name, receiver_option) in &mut self.connected_timestamped_input_channels {
+      if let Some(receiver) = receiver_option.take() {
+        let stream = tokio_stream::wrappers::ReceiverStream::new(receiver)
+          .map(|ts: Timestamped<Arc<dyn Any + Send + Sync>>| ts.payload);
+        let pinned_stream = Box::pin(stream) as crate::node::InputStream;
+        external_inputs.insert(port_name.clone(), pinned_stream);
+      }
+    }
+    let external_outputs = self.connected_output_channels.clone();
+
+    let mut nodes = {
+      let mut g = self.nodes.lock().unwrap();
+      std::mem::take(&mut *g)
+    };
+    let mut feedback_buffers: Vec<Vec<Arc<dyn Any + Send + Sync>>> =
+      vec![Vec::new(); feedback_edges.len()];
+
+    for round in 0..max_rounds {
+      let mut inject_and_capture = Vec::new();
+      let mut capture_rxs: Vec<tokio::sync::mpsc::Receiver<EdgeMessage>> = Vec::new();
+      for (i, edge) in feedback_edges.iter().enumerate() {
+        let (inject_tx, inject_rx) =
+          tokio::sync::mpsc::channel::<EdgeMessage>(DATAFLOW_CHANNEL_CAPACITY);
+        let (capture_tx, capture_rx) =
+          tokio::sync::mpsc::channel::<EdgeMessage>(DATAFLOW_CHANNEL_CAPACITY);
+        inject_and_capture.push((edge.clone(), inject_rx, capture_tx));
+        capture_rxs.push(capture_rx);
+
+        if round == 0 {
+          drop(inject_tx);
+        } else {
+          let buf = std::mem::take(&mut feedback_buffers[i]);
+          tokio::spawn(async move {
+            for item in buf {
+              let _ = inject_tx.send(EdgeMessage::PayloadOnly(item)).await;
+            }
+            drop(inject_tx);
+          });
+        }
+      }
+      let feedback_config = RoundFeedbackConfig { inject_and_capture };
+
+      let ext_inputs = if round == 0 {
+        Some(std::mem::take(&mut external_inputs))
+      } else {
+        let mut empty = HashMap::new();
+        for port in self.input_port_mapping.keys() {
+          let stream = Box::pin(tokio_stream::iter(std::iter::empty::<Arc<dyn Any + Send + Sync>>()))
+            as crate::node::InputStream;
+          empty.insert(port.clone(), stream);
+        }
+        Some(empty)
+      };
+      let ext_ts: HashMap<String, tokio::sync::mpsc::Receiver<Timestamped<Arc<dyn Any + Send + Sync>>>> = HashMap::new();
+
+      let (handles, nodes_restored) = self
+        .run_dataflow(
+          std::mem::take(&mut nodes),
+          ext_inputs,
+          Some(&external_outputs),
+          None,
+          ext_ts,
+          Some(feedback_config),
+        )
+        .await?;
+
+      for (_, h) in handles {
+        h.await
+          .map_err(|e| format!("Round {} task failed: {}", round, e).into())??;
+      }
+      {
+        let mut guard = nodes_restored.lock().await;
+        nodes = std::mem::take(&mut *guard);
+      }
+
+      for (i, mut capture_rx) in capture_rxs.into_iter().enumerate() {
+        let mut buf = Vec::new();
+        while let Some(msg) = capture_rx.recv().await {
+          if let EdgeMessage::PayloadOnly(p) = msg {
+            buf.push(p);
+          }
+        }
+        feedback_buffers[i] = buf;
+      }
+    }
+
+    let mut g = self.nodes.lock().unwrap();
+    *g = nodes;
+    self.running.store(false, Ordering::Release);
+    tracing::info!(graph_id = %self.name, rounds = max_rounds, "Cyclic graph execution completed");
+    Ok(())
   }
 
   /// Starts graph execution with progress tracking.
@@ -1395,6 +1614,7 @@ impl Graph {
         Some(external_outputs),
         progress_config,
         external_timestamped_inputs,
+        None,
       )
       .await?;
     self.execution_handles.lock().await.clear();
@@ -1463,6 +1683,7 @@ impl Graph {
         Some(external_outputs),
         progress_config,
         external_timestamped_inputs,
+        None,
       )
       .await?;
     self.execution_handles.lock().await.clear();
@@ -1525,6 +1746,7 @@ impl Graph {
   /// When `progress_config` is `Some`, items on edges carry logical times and the
   /// frontier(s) are advanced when items reach exposed outputs (sinks).
   /// When `external_timestamped_inputs` has a port, user-provided time is used instead of counter.
+  /// When `feedback` is `Some`, feedback edges use inject/capture instead of normal channels (round-based execution).
   /// Returns (handles, nodes_restored) so callers can await and restore nodes.
   async fn run_dataflow(
     &self,
@@ -1538,8 +1760,25 @@ impl Graph {
       String,
       tokio::sync::mpsc::Receiver<Timestamped<Arc<dyn Any + Send + Sync>>>,
     >,
+    feedback: Option<RoundFeedbackConfig>,
   ) -> Result<(Vec<TaskHandle>, NodesRestoredMap), GraphExecutionError> {
     let edges = self.get_edges();
+    let feedback_edges_set: HashSet<(String, String, String, String)> = feedback
+      .as_ref()
+      .map(|f| {
+        f.inject_and_capture
+          .iter()
+          .map(|(e, _, _)| {
+            (
+              e.source_node().to_string(),
+              e.source_port().to_string(),
+              e.target_node().to_string(),
+              e.target_port().to_string(),
+            )
+          })
+          .collect()
+      })
+      .unwrap_or_default();
 
     let initial_time = self
       .restored_position
@@ -1557,6 +1796,15 @@ impl Graph {
       HashMap::new();
 
     for edge in &edges {
+      let key = (
+        edge.source_node().to_string(),
+        edge.source_port().to_string(),
+        edge.target_node().to_string(),
+        edge.target_port().to_string(),
+      );
+      if feedback_edges_set.contains(&key) {
+        continue;
+      }
       let (tx, rx) = tokio::sync::mpsc::channel::<EdgeMessage>(DATAFLOW_CHANNEL_CAPACITY);
       input_rx.insert(
         (
@@ -1572,6 +1820,19 @@ impl Graph {
         ))
         .or_default()
         .push(tx);
+    }
+
+    if let Some(mut f) = feedback {
+      for (e, inject_rx, capture_tx) in f.inject_and_capture.drain(..) {
+        input_rx.insert(
+          (e.target_node().to_string(), e.target_port().to_string()),
+          inject_rx,
+        );
+        output_txs
+          .entry((e.source_node().to_string(), e.source_port().to_string()))
+          .or_default()
+          .push(capture_tx);
+      }
     }
 
     let nodes_restored = Arc::new(Mutex::new(HashMap::new()));
@@ -1902,7 +2163,7 @@ impl Graph {
     }
 
     let (handles, nodes_restored) = self
-      .run_dataflow(nodes, external_inputs, Some(&external_output_txs), None, HashMap::new())
+      .run_dataflow(nodes, external_inputs, Some(&external_output_txs), None, HashMap::new(), None)
       .await?;
 
     for (_node_id_opt, handle) in handles {
