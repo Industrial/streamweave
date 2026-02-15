@@ -77,7 +77,7 @@
 
 use crate::edge::Edge;
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
-use crate::time::{CompletedFrontier, LogicalTime, ProgressHandle};
+use crate::time::{CompletedFrontier, LogicalTime, ProgressHandle, Timestamped};
 use async_trait::async_trait;
 use std::any::Any;
 use std::collections::{HashMap, VecDeque};
@@ -258,10 +258,14 @@ pub struct Graph {
   /// Mapping of external output ports to internal nodes/ports
   /// Key: external port name (e.g., "output") -> (internal_node, internal_port)
   output_port_mapping: HashMap<String, PortMapping>,
-  /// Connected input channels for external data
+  /// Connected input channels for external data (payload only; time from counter when progress enabled)
   /// Key: external port name -> receiver for input data
   connected_input_channels:
     HashMap<String, Option<tokio::sync::mpsc::Receiver<Arc<dyn Any + Send + Sync>>>>,
+  /// Timestamped input channels (user-provided event time; used instead of counter when progress enabled)
+  /// Key: external port name -> receiver for timestamped items
+  connected_timestamped_input_channels:
+    HashMap<String, Option<tokio::sync::mpsc::Receiver<Timestamped<Arc<dyn Any + Send + Sync>>>>>,
   /// Connected output channels for external data
   /// Key: external port name -> sender for output data
   connected_output_channels: HashMap<String, tokio::sync::mpsc::Sender<Arc<dyn Any + Send + Sync>>>,
@@ -303,6 +307,7 @@ impl Graph {
       input_port_mapping: HashMap::new(),
       output_port_mapping: HashMap::new(),
       connected_input_channels: HashMap::new(),
+      connected_timestamped_input_channels: HashMap::new(),
       connected_output_channels: HashMap::new(),
       input_port_names: Vec::new(),
       output_port_names: Vec::new(),
@@ -475,6 +480,39 @@ impl Graph {
     }
     self
       .connected_input_channels
+      .insert(external_port.to_string(), Some(receiver));
+    Ok(())
+  }
+
+  /// Connects a timestamped input channel to an exposed input port.
+  ///
+  /// Use this when the external source provides event time (e.g. Kafka timestamp,
+  /// `created_at` from payload). With [`execute_with_progress`](Self::execute_with_progress),
+  /// the user-provided time is used as the logical time instead of an internal counter.
+  /// A port must have either [`connect_input_channel`](Self::connect_input_channel) or
+  /// `connect_timestamped_input_channel`, not both.
+  ///
+  /// # Arguments
+  ///
+  /// * `external_port` - The name of the exposed input port
+  /// * `receiver` - The channel receiver for timestamped items (payload + logical time)
+  ///
+  /// # Returns
+  ///
+  /// `Ok(())` if the connection was successful.
+  pub fn connect_timestamped_input_channel(
+    &mut self,
+    external_port: &str,
+    receiver: tokio::sync::mpsc::Receiver<Timestamped<Arc<dyn Any + Send + Sync>>>,
+  ) -> Result<(), String> {
+    if !self.input_port_mapping.contains_key(external_port) {
+      return Err(format!(
+        "External input port '{}' is not exposed",
+        external_port
+      ));
+    }
+    self
+      .connected_timestamped_input_channels
       .insert(external_port.to_string(), Some(receiver));
     Ok(())
   }
@@ -874,11 +912,19 @@ impl Graph {
   /// }
   /// ```
   pub async fn execute(&mut self) -> Result<(), GraphExecutionError> {
-    // Create input streams from connected channels
+    // Create input streams from connected channels (merge payload-only and timestamped; timestamped stripped to payload)
     let mut external_inputs = HashMap::new();
     for (port_name, receiver_option) in &mut self.connected_input_channels {
       if let Some(receiver) = receiver_option.take() {
         let stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
+        let pinned_stream = Box::pin(stream) as crate::node::InputStream;
+        external_inputs.insert(port_name.clone(), pinned_stream);
+      }
+    }
+    for (port_name, receiver_option) in &mut self.connected_timestamped_input_channels {
+      if let Some(receiver) = receiver_option.take() {
+        let stream = tokio_stream::wrappers::ReceiverStream::new(receiver)
+          .map(|ts: Timestamped<Arc<dyn Any + Send + Sync>>| ts.payload);
         let pinned_stream = Box::pin(stream) as crate::node::InputStream;
         external_inputs.insert(port_name.clone(), pinned_stream);
       }
@@ -893,8 +939,14 @@ impl Graph {
       std::mem::take(&mut *g)
     };
     let (handles, nodes_restored) = self
-      .run_dataflow(nodes, Some(external_inputs), Some(external_outputs), None)
-      .await?; // None = no progress tracking
+      .run_dataflow(
+        nodes,
+        Some(external_inputs),
+        Some(external_outputs),
+        None,
+        HashMap::new(),
+      )
+      .await?; // None = no progress, no timestamped inputs needed (already merged as payload)
     self.execution_handles.lock().await.clear();
     self.execution_handles.lock().await.extend(handles);
     self.nodes_restored_after_run = Some(nodes_restored);
@@ -918,11 +970,17 @@ impl Graph {
     &mut self,
   ) -> Result<ProgressHandle, GraphExecutionError> {
     let mut external_inputs = HashMap::new();
+    let mut external_timestamped_inputs = HashMap::new();
     for (port_name, receiver_option) in &mut self.connected_input_channels {
       if let Some(receiver) = receiver_option.take() {
         let stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
         let pinned_stream = Box::pin(stream) as crate::node::InputStream;
         external_inputs.insert(port_name.clone(), pinned_stream);
+      }
+    }
+    for (port_name, receiver_option) in &mut self.connected_timestamped_input_channels {
+      if let Some(receiver) = receiver_option.take() {
+        external_timestamped_inputs.insert(port_name.clone(), receiver);
       }
     }
     let external_outputs = &self.connected_output_channels;
@@ -934,7 +992,13 @@ impl Graph {
     let progress_handle = ProgressHandle::new(Arc::clone(&frontier));
     let progress_config = Some(ProgressFrontierConfig::Single(frontier));
     let (handles, nodes_restored) = self
-      .run_dataflow(nodes, Some(external_inputs), Some(external_outputs), progress_config)
+      .run_dataflow(
+        nodes,
+        Some(external_inputs),
+        Some(external_outputs),
+        progress_config,
+        external_timestamped_inputs,
+      )
       .await?;
     self.execution_handles.lock().await.clear();
     self.execution_handles.lock().await.extend(handles);
@@ -956,11 +1020,17 @@ impl Graph {
     &mut self,
   ) -> Result<ProgressHandle, GraphExecutionError> {
     let mut external_inputs = HashMap::new();
+    let mut external_timestamped_inputs = HashMap::new();
     for (port_name, receiver_option) in &mut self.connected_input_channels {
       if let Some(receiver) = receiver_option.take() {
         let stream = tokio_stream::wrappers::ReceiverStream::new(receiver);
         let pinned_stream = Box::pin(stream) as crate::node::InputStream;
         external_inputs.insert(port_name.clone(), pinned_stream);
+      }
+    }
+    for (port_name, receiver_option) in &mut self.connected_timestamped_input_channels {
+      if let Some(receiver) = receiver_option.take() {
+        external_timestamped_inputs.insert(port_name.clone(), receiver);
       }
     }
     let external_outputs = &self.connected_output_channels;
@@ -989,7 +1059,13 @@ impl Graph {
       ProgressHandle::from_frontiers(frontiers)
     };
     let (handles, nodes_restored) = self
-      .run_dataflow(nodes, Some(external_inputs), Some(external_outputs), progress_config)
+      .run_dataflow(
+        nodes,
+        Some(external_inputs),
+        Some(external_outputs),
+        progress_config,
+        external_timestamped_inputs,
+      )
       .await?;
     self.execution_handles.lock().await.clear();
     self.execution_handles.lock().await.extend(handles);
@@ -1000,6 +1076,7 @@ impl Graph {
   /// Dataflow execution: one channel per edge, one task per node. Supports cycles.
   /// When `progress_config` is `Some`, items on edges carry logical times and the
   /// frontier(s) are advanced when items reach exposed outputs (sinks).
+  /// When `external_timestamped_inputs` has a port, user-provided time is used instead of counter.
   /// Returns (handles, nodes_restored) so callers can await and restore nodes.
   async fn run_dataflow(
     &self,
@@ -1009,6 +1086,10 @@ impl Graph {
       &HashMap<String, tokio::sync::mpsc::Sender<Arc<dyn Any + Send + Sync>>>,
     >,
     progress_config: Option<ProgressFrontierConfig>,
+    mut external_timestamped_inputs: HashMap<
+      String,
+      tokio::sync::mpsc::Receiver<Timestamped<Arc<dyn Any + Send + Sync>>>,
+    >,
   ) -> Result<
     (
       Vec<JoinHandle<Result<(), GraphExecutionError>>>,
@@ -1048,7 +1129,40 @@ impl Graph {
     let nodes_restored = Arc::new(Mutex::new(HashMap::new()));
     let mut all_handles = Vec::new();
 
-    // Route external input streams into channels and give receiver to the target port
+    // Route external input streams into channels. Prefer timestamped (user-provided time) over payload-only (counter).
+    for (external_port, mut receiver) in external_timestamped_inputs.drain() {
+      if let Some(mapping) = self.input_port_mapping.get(&external_port) {
+        let (tx, rx) = tokio::sync::mpsc::channel::<EdgeMessage>(DATAFLOW_CHANNEL_CAPACITY);
+        input_rx.insert((mapping.node.clone(), mapping.port.clone()), rx);
+        let stop_signal = Arc::clone(&self.stop_signal);
+        let counter = time_counter.clone();
+        let handle = tokio::spawn(async move {
+          loop {
+            tokio::select! {
+              _ = stop_signal.notified() => break,
+              item = receiver.recv() => {
+                match item {
+                  Some(ts) => {
+                    let msg = match &counter {
+                      Some(_) => EdgeMessage::WithTime(ts.payload, ts.time),
+                      None => EdgeMessage::PayloadOnly(ts.payload),
+                    };
+                    if tx.send(msg).await.is_err() {
+                      break;
+                    }
+                  }
+                  None => break,
+                }
+              }
+            }
+          }
+          drop(tx);
+          Ok(()) as Result<(), GraphExecutionError>
+        });
+        all_handles.push(handle);
+      }
+    }
+    // Route payload-only external inputs (use counter when progress enabled)
     if let Some(mut external_inputs) = external_inputs {
       for (external_port, stream) in external_inputs.drain() {
         if let Some(mapping) = self.input_port_mapping.get(&external_port) {
@@ -1314,7 +1428,7 @@ impl Graph {
     }
 
     let (handles, nodes_restored) = self
-      .run_dataflow(nodes, external_inputs, Some(&external_output_txs), None)
+      .run_dataflow(nodes, external_inputs, Some(&external_output_txs), None, HashMap::new())
       .await?;
 
     for handle in handles {

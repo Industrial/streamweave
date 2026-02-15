@@ -290,7 +290,7 @@ StreamWeave supports two time models for streaming data:
 | **Ordering** | By event time (handles late/out-of-order data) | By arrival order |
 | **Use case** | Analytics, windowing, correct aggregations | Simple pipelines, low-latency processing |
 
-Implement the [`HasEventTime`](https://docs.rs/streamweave/*/streamweave/time/trait.HasEventTime.html) trait for payloads that carry event time. See [docs/event-time-semantics.md](docs/event-time-semantics.md) for details.
+Implement the [`HasEventTime`](https://docs.rs/streamweave/*/streamweave/time/trait.HasEventTime.html) trait for payloads that carry event time. Use [`connect_timestamped_input_channel`](https://docs.rs/streamweave/*/streamweave/graph/struct.Graph.html#method.connect_timestamped_input_channel) with [`execute_with_progress`](https://docs.rs/streamweave/*/streamweave/graph/struct.Graph.html#method.execute_with_progress) to feed user-provided event time. See [docs/event-time-semantics.md](docs/event-time-semantics.md) for details.
 
 ## 📊 Progress tracking (watermarks)
 

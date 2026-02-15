@@ -86,7 +86,7 @@
 | Phase | Content |
 |-------|--------|
 | **1** | Document event time vs processing time; define convention or trait for “event time” on payloads. **Done:** See `time::HasEventTime`, [README § Time Semantics](../README.md#-time-semantics). |
-| **2** | Ensure timestamped execution path can use **external** event time (user-provided) instead of only internal counter. |
+| **2** | Ensure timestamped execution path can use **external** event time (user-provided) instead of only internal counter. **Done:** `connect_timestamped_input_channel(port, Receiver<Timestamped<Arc<dyn Any>>>)`; with `execute_with_progress`, user time is used. |
 | **3** | Add event-time window nodes (depends on [windowing.md](windowing.md) and [progress-tracking.md](progress-tracking.md)). |
 | **4** | Add watermark propagation (progress) so that windows can close; add late-data policy (drop / buffer / side output). |
 
