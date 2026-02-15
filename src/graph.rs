@@ -75,7 +75,7 @@
 //! })?;
 //! ```
 
-use crate::checkpoint::{CheckpointId, CheckpointStorage};
+use crate::checkpoint::{CheckpointId, CheckpointMetadata, CheckpointStorage};
 use crate::edge::Edge;
 use crate::node::{InputStreams, Node, NodeExecutionError, OutputStreams};
 use crate::time::{CompletedFrontier, LogicalTime, ProgressHandle, Timestamped};
@@ -293,6 +293,8 @@ pub struct Graph {
   execution_mode: ExecutionMode,
   /// Position restored from checkpoint; used to initialize time counter when executing with progress.
   restored_position: Option<LogicalTime>,
+  /// Sequence number for checkpoint ids.
+  checkpoint_sequence: std::sync::atomic::AtomicU64,
 }
 
 impl Graph {
@@ -332,7 +334,53 @@ impl Graph {
       nodes_restored_after_run: None,
       execution_mode: ExecutionMode::default(),
       restored_position: None,
+      checkpoint_sequence: std::sync::atomic::AtomicU64::new(0),
     }
+  }
+
+  /// Triggers a checkpoint, saving state from all nodes to storage.
+  ///
+  /// Call when the graph is quiescent (before [`execute`](Self::execute) or after
+  /// [`wait_for_completion`](Self::wait_for_completion)). Collects snapshots from
+  /// nodes that implement [`Node::snapshot_state`](crate::node::Node::snapshot_state)
+  /// and saves to storage.
+  ///
+  /// Returns the checkpoint id, or an error if no nodes are available (e.g. graph
+  /// is executing) or if save fails.
+  pub fn trigger_checkpoint(
+    &self,
+    storage: &dyn CheckpointStorage,
+  ) -> Result<CheckpointId, GraphExecutionError> {
+    let nodes = self.nodes.lock().unwrap();
+    if nodes.is_empty() {
+      return Err("Cannot checkpoint: no nodes (graph may be executing)".into());
+    }
+
+    let id = CheckpointId::new(
+      self
+        .checkpoint_sequence
+        .fetch_add(1, std::sync::atomic::Ordering::SeqCst),
+    );
+
+    let mut snapshots = HashMap::new();
+    for (node_id, node) in nodes.iter() {
+      match node.snapshot_state() {
+        Ok(data) if !data.is_empty() => {
+          snapshots.insert(node_id.clone(), data);
+        }
+        Ok(_) => {}
+        Err(e) => return Err(format!("Node '{}' snapshot failed: {}", node_id, e).into()),
+      }
+    }
+
+    let metadata = CheckpointMetadata {
+      id,
+      position: self.restored_position,
+    };
+    storage
+      .save(&metadata, &snapshots)
+      .map_err(|e| format!("Checkpoint save failed: {}", e))?;
+    Ok(id)
   }
 
   /// Restores graph state from a checkpoint.

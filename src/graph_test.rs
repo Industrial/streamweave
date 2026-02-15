@@ -871,11 +871,12 @@ async fn test_stop_clears_state() {
 // Checkpoint Restore Tests
 // ============================================================================
 
-/// Mock node that supports restore_state for checkpoint tests.
+/// Mock node that supports snapshot_state and restore_state for checkpoint tests.
 struct MockRestorableNode {
   name: String,
   input_port_names: Vec<String>,
   output_port_names: Vec<String>,
+  snapshot_data: Arc<std::sync::Mutex<Vec<u8>>>,
   restored_data: Arc<std::sync::Mutex<Option<Vec<u8>>>>,
 }
 
@@ -885,8 +886,14 @@ impl MockRestorableNode {
       name,
       input_port_names: vec!["in".to_string()],
       output_port_names: vec!["out".to_string()],
+      snapshot_data: Arc::new(std::sync::Mutex::new(Vec::new())),
       restored_data: Arc::new(std::sync::Mutex::new(None)),
     }
+  }
+
+  fn with_snapshot_data(self, data: Vec<u8>) -> Self {
+    *self.snapshot_data.lock().unwrap() = data;
+    self
   }
 
   #[allow(dead_code)]
@@ -919,6 +926,10 @@ impl Node for MockRestorableNode {
 
   fn has_output_port(&self, name: &str) -> bool {
     self.output_port_names.contains(&name.to_string())
+  }
+
+  fn snapshot_state(&self) -> Result<Vec<u8>, NodeExecutionError> {
+    Ok(self.snapshot_data.lock().unwrap().clone())
   }
 
   fn restore_state(&mut self, data: &[u8]) -> Result<(), NodeExecutionError> {
@@ -972,4 +983,32 @@ fn test_restore_from_checkpoint() {
     *restored_data.lock().unwrap(),
     Some(b"restored-state-bytes".to_vec())
   );
+}
+
+#[test]
+fn test_trigger_checkpoint() {
+  let tmp = tempfile::TempDir::new().unwrap();
+  let storage = FileCheckpointStorage::new(tmp.path());
+
+  let mut graph = Graph::new("test".to_string());
+  let stateful = MockRestorableNode::new("stateful".to_string()).with_snapshot_data(b"my-state".to_vec());
+  graph.add_node("stateful".to_string(), Box::new(stateful)).unwrap();
+
+  let id = graph.trigger_checkpoint(&storage).unwrap();
+  assert_eq!(id.as_u64(), 0);
+
+  let (meta, snapshots) = storage.load(id).unwrap();
+  assert_eq!(meta.id.as_u64(), 0);
+  assert_eq!(snapshots.get("stateful"), Some(&b"my-state".to_vec()));
+
+  let id2 = graph.trigger_checkpoint(&storage).unwrap();
+  assert_eq!(id2.as_u64(), 1);
+}
+
+#[test]
+fn test_trigger_checkpoint_no_nodes_fails() {
+  let tmp = tempfile::TempDir::new().unwrap();
+  let storage = FileCheckpointStorage::new(tmp.path());
+  let graph = Graph::new("empty".to_string());
+  assert!(graph.trigger_checkpoint(&storage).is_err());
 }

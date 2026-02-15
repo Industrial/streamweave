@@ -241,6 +241,15 @@ pub trait Node: Send + Sync {
     inputs: InputStreams,
   ) -> Pin<Box<dyn Future<Output = Result<OutputStreams, NodeExecutionError>> + Send + '_>>;
 
+  /// Returns a snapshot of node state for checkpointing.
+  ///
+  /// Called by [`Graph::trigger_checkpoint`](crate::graph::Graph::trigger_checkpoint).
+  /// Default implementation returns empty bytes for nodes that do not support checkpointing.
+  /// Stateful nodes should override this to serialize their state.
+  fn snapshot_state(&self) -> Result<Vec<u8>, NodeExecutionError> {
+    Ok(Vec::new())
+  }
+
   /// Restores node state from checkpoint data.
   ///
   /// Called by [`Graph::restore_from_checkpoint`](crate::graph::Graph::restore_from_checkpoint)
