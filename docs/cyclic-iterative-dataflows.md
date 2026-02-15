@@ -120,18 +120,93 @@ The inner graph must have:
 
 ---
 
-## 5. Implementation phases
+## 5. Bounded iteration API (design)
+
+This section specifies the API for phase 1. Implementation (phase 2) must follow this contract.
+
+### 5.1 Ports
+
+| Port        | Direction | Type                     | Description                                                                 |
+|-------------|-----------|--------------------------|-----------------------------------------------------------------------------|
+| `seed`      | Input     | `Arc<dyn Any + Send + Sync>` | Initial input for round 1. Stream of items fed once at start.           |
+| `feedback`  | Input     | (internal)               | Filled by the node from the previous round's `output`. Not wired externally.|
+| `output`    | Output    | `Arc<dyn Any + Send + Sync>` | Items produced each round. Forwarded to next round and to external sink.|
+| `converged` | Output    | `Arc<dyn Any + Send + Sync>` | Optional. When the inner graph emits here, iteration stops early.        |
+
+**Note:** `feedback` is an internal port of the inner graph. The iteration driver connects the previous round's `output` stream to the inner graph's `feedback` input before each round k ≥ 1.
+
+### 5.2 Inner graph contract
+
+The inner graph (a `Graph` used as a subgraph) must:
+
+1. **Inputs:** Have at least `seed` and `feedback` input ports. Names must match exactly.
+2. **Outputs:** Have at least `output` port. Optional `converged` port.
+3. **Merge semantics:** The inner graph typically merges `seed` (round 1 only) and `feedback` (rounds 2..N) into a single logical stream. A merge/sync node or similar can combine them.
+
+### 5.3 BoundedIterationNode constructor
+
+```rust
+/// Runs an inner graph for up to `max_rounds`. Round 1: seed only. Rounds 2..N: feedback from previous output.
+pub struct BoundedIterationNode {
+    inner_graph: Graph,
+    max_rounds: usize,
+}
+
+impl BoundedIterationNode {
+    pub fn new(name: String, inner_graph: Graph, max_rounds: usize) -> Self;
+}
+```
+
+**Parameters:**
+
+- `name`: Node name for the iteration node.
+- `inner_graph`: The subgraph to run each round. Must have `seed`, `feedback`, `output`, and optionally `converged` ports.
+- `max_rounds`: Maximum iterations. Must be ≥ 1.
+
+### 5.4 Execution semantics
+
+1. **Round 1:**
+   - Connect external `seed` stream to inner graph's `seed` input.
+   - Provide an **empty** stream to inner graph's `feedback` input (no items).
+   - Run the inner graph to completion (all streams drained or graph stops).
+   - Collect all items from `output` into a buffer. Emit them to external `output` consumers.
+   - If `converged` emits any item, stop iteration immediately.
+
+2. **Round k (2 ≤ k ≤ max_rounds):**
+   - Disconnect or finish the previous round's connections.
+   - Connect the **buffered output from round k−1** as a stream to inner graph's `feedback` input.
+   - Provide an **empty** stream to `seed` (seed is only used in round 1).
+   - Run the inner graph to completion.
+   - Buffer output; emit to external consumers.
+   - If `converged` emits, stop iteration.
+
+3. **Stop conditions:**
+   - `k == max_rounds`, or
+   - Inner graph emits on `converged`, or
+   - (Future) Inner graph produces no output for a round (fixed point).
+
+### 5.5 Buffering strategy (phase 2)
+
+Use **full buffer** (Option A1): collect all output items for round k before starting round k+1. Simpler and correct for MVP. Streaming feedback can be added later.
+
+### 5.6 Integration note
+
+`BoundedIterationNode` wraps a `Graph` and drives it in a loop. The current `Graph` API uses `run_dataflow` with connected channels. For iteration, the driver must either: (a) run the graph once per round with fresh channel bindings (seed/feedback for that round), or (b) use a graph execution API that supports "run until round boundary" if such an API is introduced. Phase 2 will implement (a) using the existing `connect_input_channel` and collecting output from exposed output ports.
+
+---
+
+## 6. Implementation phases
 
 | Phase | Content |
 |-------|--------|
-| **1** | Design and document the bounded iteration API (rounds, seed, feedback, max_rounds, converged). |
+| **1** | Design and document the bounded iteration API (rounds, seed, feedback, max_rounds, converged). **Done:** §5 above. |
 | **2** | Implement `BoundedIterationNode` (or equivalent) that runs an inner graph for multiple rounds with buffered feedback. |
 | **3** | Add tests: e.g. simple fixed-point (x := x/2 + 1 until stable), PageRank-style stub. |
 | **4** | (Later) Option B: integrate rounds with logical time and allow cycles in the main graph with round-based delivery. |
 
 ---
 
-## 6. References
+## 7. References
 
 - Gap analysis §5 (True cyclic iterative dataflows).
 - [logical-timestamps-timely-and-streamweave.md](logical-timestamps-timely-and-streamweave.md) for logical time and progress (Option B).
