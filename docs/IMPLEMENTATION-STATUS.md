@@ -25,6 +25,7 @@ This document summarizes what has been implemented vs. what remains for each cap
 | Incremental recomputation | ⚠️ Partial | [incremental-recomputation.md](incremental-recomputation.md) |
 | Distributed checkpointing | ❌ Not started | [distributed-checkpointing.md](distributed-checkpointing.md) |
 | Auto-scaling clusters | ⚠️ Partial (built-in scaler done) | [auto-scaling-clusters.md](auto-scaling-clusters.md) |
+| Mermaid .mmd import/export | ❌ Not started | [mermaid-streamweave-implementation-plan.md](mermaid-streamweave-implementation-plan.md) |
 
 ---
 
@@ -42,6 +43,13 @@ This document summarizes what has been implemented vs. what remains for each cap
 | 5 – Tests | ✅ Done | `test_execute_with_supervision_*` |
 
 **Limitations:** Flat hierarchy (graph supervises all nodes). Subgraph-as-unit: `set_subgraph_supervision_unit()` marks Graph-as-Node; policy and logging treat it as a unit. Restart remains graph-level; per-subgraph-only restart deferred.
+
+---
+
+### mermaid-streamweave-implementation-plan.md
+**Status:** ❌ Not started
+
+Plan for using Mermaid flowchart `.mmd` as input/output for StreamWeave graphs. Two-AST approach: **mermaid-rs-renderer** for parse, **mermaid-builder** for export; canonical representation is StreamWeave `Graph`/blueprint. Phases: 1 – convention + blueprint types; 2 – export (StreamWeave → .mmd); 3 – parse (.mmd → blueprint); 4 – blueprint → runnable Graph (registry/placeholders); 5 – roundtrip and optional sidecar.
 
 ---
 

@@ -518,5 +518,9 @@ path = "examples/nodes/array/unique_node.rs"
 name = "event_time_watermark"
 path = "examples/event_time_watermark.rs"
 
+[[example]]
+name = "event_time_window"
+path = "examples/event_time_window.rs"
+
 [lints.rust]
 # Shared lint configuration
