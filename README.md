@@ -296,6 +296,10 @@ Implement the [`HasEventTime`](https://docs.rs/streamweave/*/streamweave/time/tr
 
 Use [`execute_with_progress`](https://docs.rs/streamweave/*/streamweave/graph/struct.Graph.html#method.execute_with_progress) to get a [`ProgressHandle`](https://docs.rs/streamweave/*/streamweave/time/struct.ProgressHandle.html) that reports the minimum logical timestamp completed at sinks. Call `frontier()`, `less_than(t)`, or `less_equal(t)` to observe progress. For graphs with multiple sinks, use [`execute_with_progress_per_sink`](https://docs.rs/streamweave/*/streamweave/graph/struct.Graph.html#method.execute_with_progress_per_sink) so that graph-level progress is the **minimum** over per-sink frontiers ("all sinks have completed up to T"). See [docs/progress-tracking.md](docs/progress-tracking.md).
 
+## 🔁 Determinism
+
+By default, nodes run **concurrently**; ordering between nodes and across multiple inputs is not guaranteed. For reproducible runs, use a **deterministic execution mode** (when available): single-task, topological order, or logical-time ordering. The determinism contract: output order of a node is deterministic given the order of items on its input ports and the node's internal logic. Avoid shared mutable state and non-deterministic constructs (e.g. `rand::random()`, unordered fan-in) in nodes that need reproducibility. See [docs/deterministic-execution.md](docs/deterministic-execution.md) and [docs/architecture.md](docs/architecture.md#determinism).
+
 ## 📚 Documentation
 
 - [API Documentation](https://docs.rs/streamweave) - Full API reference on docs.rs
