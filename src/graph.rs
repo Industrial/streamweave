@@ -345,6 +345,8 @@ pub struct Graph {
   node_supervision_policies: HashMap<String, SupervisionPolicy>,
   /// Default policy for nodes without an explicit policy.
   default_supervision_policy: SupervisionPolicy,
+  /// Supervision group: node_id -> group_id. Nodes in the same group share restart count for RestartGroup.
+  node_supervision_groups: HashMap<String, String>,
 }
 
 impl Graph {
@@ -390,7 +392,26 @@ impl Graph {
       running: Arc::new(std::sync::atomic::AtomicBool::new(false)),
       node_supervision_policies: HashMap::new(),
       default_supervision_policy: SupervisionPolicy::default(),
+      node_supervision_groups: HashMap::new(),
     }
+  }
+
+  /// Assigns a node to a supervision group.
+  ///
+  /// When the policy is [`FailureAction::RestartGroup`], all nodes in the same group share
+  /// a restart count. If any node in the group fails, the count increments for the whole group.
+  /// Nodes without a group are treated as their own group (restart count per node).
+  ///
+  /// See [actor-supervision-trees.md](../docs/actor-supervision-trees.md).
+  pub fn set_supervision_group(&mut self, node_id: &str, group_id: &str) {
+    self
+      .node_supervision_groups
+      .insert(node_id.to_string(), group_id.to_string());
+  }
+
+  /// Returns the supervision group id for a node, if set.
+  pub fn supervision_group(&self, node_id: &str) -> Option<&str> {
+    self.node_supervision_groups.get(node_id).map(|s| s.as_str())
   }
 
   /// Sets the supervision policy for a node.
@@ -1958,24 +1979,56 @@ impl Graph {
             .cloned()
             .unwrap_or_else(|| self.default_supervision_policy.clone());
 
-          let count = restart_count.entry(node_id.to_string()).or_insert(0);
+          let restart_key = match policy.on_failure {
+            FailureAction::Restart => node_id.to_string(),
+            FailureAction::RestartGroup => self
+              .node_supervision_groups
+              .get(node_id)
+              .cloned()
+              .map(|g| format!("group:{}", g))
+              .unwrap_or_else(|| node_id.to_string()),
+            FailureAction::Stop | FailureAction::Escalate => node_id.to_string(),
+          };
+          let count = restart_count.entry(restart_key.clone()).or_insert(0);
           *count += 1;
 
           match policy.on_failure {
-            FailureAction::Stop | FailureAction::Escalate => {
+            FailureAction::Stop => {
+              tracing::error!(
+                node_id = %node_id,
+                "Node failed (Stop policy), stopping graph"
+              );
+              return Err(exec_err);
+            }
+            FailureAction::Escalate => {
+              tracing::error!(
+                node_id = %node_id,
+                "Node failed (Escalate policy), escalating to graph level"
+              );
               return Err(exec_err);
             }
             FailureAction::Restart | FailureAction::RestartGroup => {
               if let Some(max) = policy.max_restarts {
                 if *count > max {
+                  tracing::error!(
+                    node_id = %node_id,
+                    restart_count = *count,
+                    max_restarts = max,
+                    "Max restarts exceeded, stopping"
+                  );
                   return Err(exec_err);
                 }
               }
+              let scope_msg = match policy.on_failure {
+                FailureAction::RestartGroup => "restarting group",
+                _ => "restarting graph",
+              };
               tracing::warn!(
                 node_id = %node_id,
                 error = %report.as_ref().map(|r| r.error.as_str()).unwrap_or(""),
                 restart_count = *count,
-                "Node failed, restarting graph"
+                %scope_msg,
+                "Node failed"
               );
               tokio::time::sleep(policy.restart_backoff).await;
             }

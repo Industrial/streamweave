@@ -4,6 +4,8 @@
 
 **Dependencies:** Exactly-once state (for correct rebalance and state migration).
 
+**Implementation status:** See [IMPLEMENTATION-STATUS.md](IMPLEMENTATION-STATUS.md#cluster-shardingmd). Phases 1–5 done. Phase 5: `rebalance` module (ShardAssignment, MigrationPlan, compute_migration_plan, RebalanceCoordinator trait, InMemoryCoordinator); worker protocol documented in §8.
+
 ---
 
 ## 1. Objective and rationale
@@ -91,7 +93,7 @@ When **adding or removing workers**:
 | **2** | Add **shard_id** (and optional key range) to graph or execution config so that nodes can behave differently per shard (e.g. state path). **Done:** `ShardConfig`, `Graph::set_shard_config()`, `Graph::shard_id()`, `Graph::total_shards()`, `GraphBuilder::shard_config()`. Key range derived from `(shard_id, total_shards)`. |
 | **3** | Implement or document a **distribution layer**: driver that deploys N processes, routes input by key, merges output. Can be minimal (script + env vars). **Done:** §7 documents script + env vars, input routing (Kafka, router, filter), output merging, Kubernetes/systemd. |
 | **4** | **State migration:** With exactly-once state and checkpointing, implement “export state for keys K” and “import state for keys K” so that a coordinator can move state between shards on rebalance. **Done:** `ExactlyOnceStateBackend::snapshot_for_keys`, `restore_keys`; `Node::export_state_for_keys`, `import_state_for_keys`; `Graph::export_state_for_keys`, `import_state_for_keys`. |
-| **5** | **Rebalance protocol:** Define how assignment changes are communicated and how workers drain, migrate state, and resume. |
+| **5** | **Rebalance protocol:** Define how assignment changes are communicated and how workers drain, migrate state, and resume. **Done:** `rebalance` module, `RebalanceCoordinator` trait, `InMemoryCoordinator`, `compute_migration_plan`, worker protocol in §8. |
 
 ---
 
@@ -164,7 +166,31 @@ let graph = builder.build()?;
 
 ---
 
-## 8. References
+## 8. Rebalance protocol (phase 5)
+
+When workers join or leave, the coordinator decides the new assignment. StreamWeave provides types and a coordinator trait; the actual coordination (e.g. Kafka consumer group, ZooKeeper) is external.
+
+### 8.1 Types
+
+- **`ShardAssignment`** (`rebalance::ShardAssignment`): `(shard_id, total_shards)`. Use `owns_key(key)` and `shard_for_key(key)`.
+- **`MigrationPlan`**: For a shard, `keys_to_export` (state to send) and `keys_to_import` (state to receive).
+- **`compute_migration_plan(shard_id, old_total, new_total, keys)`**: Computes export/import sets when `total_shards` changes.
+- **`RebalanceCoordinator`** trait: `current_assignment()` and `await_assignment_change()`. Implement with your coordination system.
+- **`InMemoryCoordinator`**: For tests; `add_worker()`, `remove_worker()` simulate cluster changes.
+
+### 8.2 Worker protocol (drain / migrate / resume)
+
+1. **Detect change**: Coordinator reports new assignment (e.g. `total_shards` increased).
+2. **Compute plan**: `compute_migration_plan(my_shard_id, old_total, new_total, Some(&known_keys))`.
+3. **Drain** (losing keys): `graph.pause()` → for each stateful node, `graph.export_state_for_keys(node_id, &plan.keys_to_export)` → send bytes to coordinator or gaining shard.
+4. **Receive** (gaining keys): Receive state bytes from coordinator → for each stateful node, `graph.import_state_for_keys(node_id, data)`.
+5. **Resume**: `graph.set_shard_config(my_shard_id, new_total)` → `graph.resume()`.
+
+The graph already provides `pause`, `resume`, `export_state_for_keys`, `import_state_for_keys`, `set_shard_config`. Transport of state bytes between processes is the user’s responsibility (e.g. HTTP, gRPC, shared storage).
+
+---
+
+## 9. References
 
 - Gap analysis §14 (Mature cluster sharding).
 - [exactly-once-state.md](exactly-once-state.md), [distributed-checkpointing.md](distributed-checkpointing.md).

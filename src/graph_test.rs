@@ -804,6 +804,70 @@ async fn test_execute_with_supervision_escalate() {
 }
 
 #[tokio::test]
+async fn test_execute_with_supervision_restart_group_shared_count() {
+  // Two nodes in the same group share restart count. A fails first run, B fails second run.
+  // With max_restarts=2 for the group, both failures count toward the group limit; third run succeeds.
+  let mut graph = Graph::new("test".to_string());
+  let producer = Box::new(MockProducerNode::new("producer".to_string(), vec![1, 2]));
+  let fail_a = Box::new(FailNTimesThenSucceedNode::new("fail_a".to_string(), 1));
+  let fail_b = Box::new(FailNTimesThenSucceedNode::new("fail_b".to_string(), 1));
+  let sink = Box::new(MockSinkNode::new("sink".to_string()));
+
+  graph.add_node("producer".to_string(), producer).unwrap();
+  graph.add_node("fail_a".to_string(), fail_a).unwrap();
+  graph.add_node("fail_b".to_string(), fail_b).unwrap();
+  graph.add_node("sink".to_string(), sink).unwrap();
+
+  graph
+    .add_edge(Edge {
+      source_node: "producer".to_string(),
+      source_port: "out".to_string(),
+      target_node: "fail_a".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "producer".to_string(),
+      source_port: "out".to_string(),
+      target_node: "fail_b".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  let sink_b = Box::new(MockSinkNode::new("sink_b".to_string()));
+  graph.add_node("sink_b".to_string(), sink_b).unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "fail_a".to_string(),
+      source_port: "out".to_string(),
+      target_node: "sink".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+  graph
+    .add_edge(Edge {
+      source_node: "fail_b".to_string(),
+      source_port: "out".to_string(),
+      target_node: "sink_b".to_string(),
+      target_port: "in".to_string(),
+    })
+    .unwrap();
+
+  graph.set_supervision_group("fail_a", "group1");
+  graph.set_supervision_group("fail_b", "group1");
+  graph.set_node_supervision_policy(
+    "fail_a",
+    SupervisionPolicy::new(FailureAction::RestartGroup).with_max_restarts(Some(2)),
+  );
+  graph.set_node_supervision_policy(
+    "fail_b",
+    SupervisionPolicy::new(FailureAction::RestartGroup).with_max_restarts(Some(2)),
+  );
+
+  graph.execute_with_supervision(|_| Ok(())).await.unwrap();
+}
+
+#[tokio::test]
 async fn test_execute_with_progress_advances_frontier() {
   // Pipeline: producer -> transform; expose transform output. With progress tracking,
   // the frontier should advance when items reach the exposed output.
